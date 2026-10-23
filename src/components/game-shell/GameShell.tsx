@@ -30,6 +30,7 @@ export function GameShell({ slug }: { slug: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<GameInstance | null>(null);
   const stageStateRef = useRef<Stage>("loading");
+  const lastAnnounce = useRef(0);
   const [stage, setStageState] = useState<Stage>("loading");
   const [progress, setProgress] = useState(0.04);
   const [leaving, setLeaving] = useState(false);
@@ -115,9 +116,13 @@ export function GameShell({ slug }: { slug: string }) {
               case "score":
                 setScore(event.score);
                 break;
-              case "announce":
-                setAnnouncement(event.message);
+              case "announce": {
+                const now = performance.now();
+                const merge = now - lastAnnounce.current < 400;
+                lastAnnounce.current = now;
+                setAnnouncement((prev) => (merge ? `${prev} ${event.message}` : event.message));
                 break;
+              }
               case "pause-request":
                 if (stageStateRef.current === "playing") {
                   instanceRef.current?.pause();

@@ -84,7 +84,7 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
   },
 };
 
-export const AMMO: ProjectileId[] = ["tenis", "balao", "pneu", "pato", "tenis", "pneu"];
+export const AMMO: ProjectileId[] = ["tenis", "balao", "pneu", "pato", "tenis", "balao", "pneu"];
 
 export type BodyDef = {
   id: string;
@@ -100,11 +100,12 @@ export type BodyDef = {
   material: "ceramic" | "wood" | "metal" | "rubber" | "plastic";
 };
 
-export type TargetDef = BodyDef & { points: number; name: string; shout: string; fem?: boolean };
+export type TargetDef = BodyDef & { points: number; name: string; shout: string; fem?: boolean; wave: number };
 
 export const TARGETS: TargetDef[] = [
   {
     id: "gnomo",
+    wave: 1,
     tex: "gnome",
     x: 760,
     y: 787,
@@ -119,6 +120,7 @@ export const TARGETS: TargetDef[] = [
   },
   {
     id: "flamingo",
+    wave: 1,
     tex: "flamingo",
     x: 1050,
     y: 749,
@@ -133,6 +135,7 @@ export const TARGETS: TargetDef[] = [
   },
   {
     id: "dourado",
+    wave: 2,
     tex: "gnome-gold",
     x: 1462,
     y: 591,
@@ -147,6 +150,7 @@ export const TARGETS: TargetDef[] = [
   },
   {
     id: "correio",
+    wave: 2,
     tex: "mailbox",
     x: 1603,
     y: 769,
@@ -162,6 +166,7 @@ export const TARGETS: TargetDef[] = [
   },
   {
     id: "passarinho",
+    wave: 3,
     tex: "birdhouse",
     x: 1736,
     y: 380,
@@ -206,7 +211,18 @@ export const SCORE = {
   messBonus: 25,
   comboBonus: 100,
   ammoBonus: 250,
-  twoStars: 1300,
-  threeStars: 1750,
-  record: 2000,
+  waveBonus: 100,
+  twoStars: 1500,
+  threeStars: 2050,
+  record: 2500,
 };
+
+export type WaveDef = { title: string; subtitle: string; arlindo?: string };
+
+export const WAVES: WaveDef[] = [
+  { title: "Aquecimento", subtitle: "Derrube o gnomo e o flamingo" },
+  { title: "Mira fina", subtitle: "O ouro está atrás das caixas", arlindo: "AGORA VOCÊS VÃO VER!" },
+  { title: "Lá no alto", subtitle: "A casinha fica no galho mais alto", arlindo: "ESSA NINGUÉM ALCANÇA!" },
+];
+
+export const CAT_SPOT = { x: 606, y: 716 };

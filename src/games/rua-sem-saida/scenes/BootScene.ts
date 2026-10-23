@@ -32,6 +32,18 @@ export const ASSETS: [key: string, file: string, width: number, height: number][
   ["drop", "drop.svg", 20, 26],
   ["feather", "feather.svg", 22, 42],
   ["splinter", "splinter.svg", 26, 12],
+  ["cat-sleep", "cat-sleep.svg", 130, 70],
+  ["cat-scared", "cat-scared.svg", 130, 100],
+  ["trash-can-open", "trash-can-open.svg", 80, 110],
+  ["lid", "lid.svg", 84, 30],
+  ["junk-banana", "junk-banana.svg", 36, 30],
+  ["junk-fish", "junk-fish.svg", 40, 22],
+  ["junk-can", "junk-can.svg", 22, 32],
+  ["bird", "bird.svg", 56, 44],
+  ["bird-down", "bird-down.svg", 56, 44],
+  ["letter", "letter.svg", 38, 26],
+  ["spark", "spark.svg", 26, 26],
+  ["birdhouse-empty", "birdhouse-empty.svg", 80, 90],
 ];
 
 export class BootScene extends Phaser.Scene {

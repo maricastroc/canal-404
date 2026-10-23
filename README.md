@@ -77,7 +77,7 @@ O portal cuida do carregamento com barra de progresso real, da tela de apresenta
 
 ## Rua Sem Saída
 
-Estilingue montado num carrinho: puxe para trás (mouse ou toque) ou use as setas para mirar e espaço para lançar. Cinco alvos no quintal do Seu Arlindo, seis objetos com física diferente (tênis, balão d'água que estoura, pneu pesado, pato que quica). Pontos por alvo, bagunça, combos e munição de sobra; recorde salvo localmente.
+Estilingue montado num carrinho: puxe para trás (mouse ou toque) ou use as setas para mirar e espaço para lançar. Três rodadas curtas no quintal do Seu Arlindo — alvos próximos, depois atrás de obstáculos e por fim lá no alto — com sete lançamentos de quatro tipos com física diferente (tênis, balão d'água que estoura, pneu pesado, pato que quica). O bairro reage: o gato foge, a tampa da lata voa, o passarinho escapa da casinha. Pontos por alvo, rodada, bagunça, combos e munição de sobra; recorde salvo localmente.
 
 ## Acessibilidade
 

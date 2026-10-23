@@ -83,6 +83,72 @@ export const GAME_SFX = {
   mess: {
     layers: [{ kind: "tone", wave: "triangle", from: 660, to: 880, duration: 0.06, gain: 0.05 }],
   },
+  miss: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 330, to: 300, duration: 0.14, gain: 0.12 },
+      { kind: "tone", wave: "triangle", from: 247, to: 196, duration: 0.3, delay: 0.14, gain: 0.12, vibrato: { rate: 9, depth: 6 } },
+    ],
+  },
+  nearMiss: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 520, to: 880, duration: 0.12, gain: 0.08 },
+      { kind: "tone", wave: "sine", from: 880, to: 600, duration: 0.2, delay: 0.12, gain: 0.08 },
+    ],
+  },
+  hiss: {
+    layers: [
+      { kind: "noise", duration: 0.32, gain: 0.16, attack: 0.02, filter: { type: "highpass", from: 3200, to: 5200, q: 0.8 } },
+      { kind: "tone", wave: "sawtooth", from: 620, to: 900, duration: 0.18, gain: 0.04, delay: 0.05, filter: { type: "bandpass", frequency: 1400, q: 3 } },
+    ],
+  },
+  clang: {
+    layers: [
+      { kind: "tone", wave: "square", from: 1240, to: 1180, duration: 0.42, gain: 0.05, filter: { type: "bandpass", frequency: 2200, q: 8 } },
+      { kind: "tone", wave: "sine", from: 1860, duration: 0.5, gain: 0.05, vibrato: { rate: 14, depth: 22 } },
+      { kind: "noise", duration: 0.1, gain: 0.12, filter: { type: "highpass", from: 2800 } },
+    ],
+  },
+  tweet: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 2400, to: 3200, duration: 0.07, gain: 0.08 },
+      { kind: "tone", wave: "sine", from: 2600, to: 3600, duration: 0.07, delay: 0.1, gain: 0.08 },
+      { kind: "tone", wave: "sine", from: 3000, to: 2400, duration: 0.09, delay: 0.2, gain: 0.07 },
+    ],
+  },
+  rustle: {
+    layers: [{ kind: "noise", duration: 0.35, gain: 0.1, attack: 0.04, filter: { type: "bandpass", from: 2000, to: 4200, q: 0.7 } }],
+  },
+  boing: {
+    layers: [{ kind: "tone", wave: "sine", from: 140, to: 320, duration: 0.3, gain: 0.16, vibrato: { rate: 18, depth: 40 } }],
+  },
+  bonk: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 200, to: 70, duration: 0.22, gain: 0.32 },
+      { kind: "tone", wave: "square", from: 400, to: 300, duration: 0.05, gain: 0.05 },
+    ],
+  },
+  charge: {
+    layers: [{ kind: "tone", wave: "triangle", from: 1568, duration: 0.12, gain: 0.07 }],
+  },
+  spawn: {
+    layers: [
+      { kind: "noise", duration: 0.12, gain: 0.08, filter: { type: "bandpass", from: 900, to: 2400, q: 1 } },
+      { kind: "tone", wave: "pulse", from: 660, to: 990, duration: 0.12, gain: 0.07, delay: 0.04 },
+    ],
+  },
+  waveClear: {
+    layers: [
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.09, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 784, duration: 0.09, delay: 0.09, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 988, duration: 0.09, delay: 0.18, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 1319, duration: 0.3, delay: 0.27, gain: 0.11, vibrato: { rate: 7, depth: 14 } },
+    ],
+  },
+  stinky: {
+    layers: [
+      { kind: "tone", wave: "sawtooth", from: 110, to: 90, duration: 0.25, gain: 0.05, vibrato: { rate: 22, depth: 8 }, filter: { type: "lowpass", frequency: 500 } },
+    ],
+  },
   victory: {
     layers: [
       { kind: "tone", wave: "pulse", from: 523, duration: 0.11, gain: 0.12 },

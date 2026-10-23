@@ -41,7 +41,7 @@ export const GAMES: GameMeta[] = [
     status: "disponivel",
     accent: "sun",
     cast: ["deco", "lina", "bruno"],
-    objective: "Derrube os 5 alvos do quintal antes de acabar a munição. Bagunça extra vale pontos.",
+    objective: "Três rodadas no quintal do Seu Arlindo: derrube os enfeites antes de acabar a munição. Bagunça extra vale pontos.",
     controls: [
       { input: "Arrastar (mouse ou dedo)", action: "Puxe para trás e solte para lançar" },
       { input: "← → ou A D", action: "Ajustar o ângulo" },
