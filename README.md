@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CANAL 404 — Desenhos. Jogos. Bagunça.
 
-## Getting Started
+Portal fictício de jogos inspirado na sensação dos sites de desenho animado dos anos 2000. O canal saiu do ar, mas o portal continua funcionando: uma sala de transmissão ilustrada e interativa, personagens originais, segredos escondidos e o minijogo **Rua Sem Saída**.
 
-First, run the development server:
+## Como rodar
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra `http://localhost:3000`. Para gerar a versão de produção:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build && npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Não há serviços externos, autenticação ou chaves de API. Progresso, recordes, segredos e preferências ficam no `localStorage` do navegador.
 
-## Learn More
+## Stack
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js (App Router) + React + TypeScript
+- Tailwind CSS 4 (tokens de cor, fontes e texturas em `src/app/globals.css`)
+- Phaser 3 com Matter.js para o minijogo (carregado sob demanda, só na página do jogo)
+- Motion para microinterações da interface
+- SVG autoral para todas as ilustrações
+- Web Audio API para efeitos sonoros e trilhas sintetizadas ao vivo
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Seções
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Rota | Conteúdo |
+| --- | --- |
+| `/` | Sala de transmissão: TV com o jogo da semana e canais, fliperama que abre o catálogo, rádio com trilha sonora, mascote 404 e objetos com segredos |
+| `/jogos` | Catálogo com filtros por categoria |
+| `/jogos/[slug]` | Ficha do jogo (jogável ou "fora do ar") |
+| `/jogar/[slug]` | Carregamento real, apresentação, partida, pausa e resultado |
+| `/personagens` | Seleção de personagens com reações |
+| `/extras` | Pôsteres para baixar (PNG), trilhas, conquistas e segredos |
+| `/sobre` | História fictícia do canal |
 
-## Deploy on Vercel
+## Estrutura
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+  app/                 rotas (App Router)
+  components/
+    room/              sala de transmissão, objetos e diretor do mascote
+    mascot/            mascote 404 (expressões, poses, olhar)
+    characters/        personagens e tela de seleção
+    catalog/           cartões e catálogo de jogos
+    game-shell/        carregamento, painéis de pausa/resultado e ponte com o jogo
+    extras/            pôsteres, jukebox, conquistas e segredos
+    art/               logo, capas, ícones e selos
+    layout/            navegação, toasts, som
+    ui/                primitivas visuais
+  games/
+    registry.ts        metadados de todos os jogos (catálogo)
+    loaders.ts         import dinâmico de cada jogo jogável
+    types.ts           contrato entre o portal e os jogos
+    rua-sem-saida/     o jogo (cenas Phaser, nível, sons)
+  lib/
+    audio/             motor Web Audio, efeitos e trilhas
+    progress/          persistência, segredos e conquistas
+public/games/rua-sem-saida/   arte SVG do jogo
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Adicionando um novo jogo
+
+Os jogos são independentes do portal. Cada um exporta um `GameModule` com `mount(ctx)` e recebe do portal apenas o que precisa (elemento pai, fontes, áudio, recorde atual e callbacks de progresso/eventos).
+
+1. Crie a pasta `src/games/<slug>/` com um `index.ts` que exporte `{ mount }` seguindo `src/games/types.ts`.
+2. Registre os metadados em `src/games/registry.ts` (título, categoria, controles, instruções, `status: "disponivel"`).
+3. Adicione o carregador em `src/games/loaders.ts`.
+4. Desenhe a capa em `src/components/art/Covers.tsx`.
+
+O portal cuida do carregamento com barra de progresso real, da tela de apresentação, pausa, resultado, recordes, conquistas e anúncios para leitores de tela.
+
+## Rua Sem Saída
+
+Estilingue montado num carrinho: puxe para trás (mouse ou toque) ou use as setas para mirar e espaço para lançar. Cinco alvos no quintal do Seu Arlindo, seis objetos com física diferente (tênis, balão d'água que estoura, pneu pesado, pato que quica). Pontos por alvo, bagunça, combos e munição de sobra; recorde salvo localmente.
+
+## Acessibilidade
+
+- Todos os objetos da sala são botões ou links reais, navegáveis por teclado, com foco visível.
+- Dicas de hover também aparecem no foco; ações importantes têm alternativa sem hover.
+- O jogo aceita teclado, mouse e toque, e anuncia eventos via região `aria-live`.
+- Respeita `prefers-reduced-motion` e nada depende só de áudio; o som começa apenas após interação e pode ser desligado.

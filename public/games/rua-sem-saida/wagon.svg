@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 300" width="280" height="300">
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M140 226 L140 140 L106 28" fill="none" stroke="#1d1830" stroke-width="26"/>
+    <path d="M140 226 L140 140 L106 28" fill="none" stroke="#9c5b36" stroke-width="16"/>
+    <path d="M136 210 L136 150 L108 54" fill="none" stroke="#c98352" stroke-width="5"/>
+    <path d="M140 140 L174 28" fill="none" stroke="#1d1830" stroke-width="26"/>
+    <path d="M140 140 L174 28" fill="none" stroke="#7c4527" stroke-width="16"/>
+    <path d="M98 40 L114 44" stroke="#ffc83d" stroke-width="10"/>
+    <path d="M98 40 L114 44" stroke="#1d1830" stroke-width="3" opacity="0.5"/>
+    <path d="M22 236 Q4 230 2 206" fill="none" stroke="#1d1830" stroke-width="9"/>
+    <path d="M22 236 Q4 230 2 206" fill="none" stroke="#eda21a" stroke-width="4"/>
+    <path d="M14 214 L266 214 L254 276 L28 276 Z" fill="#ef4f43" stroke="#1d1830" stroke-width="6"/>
+    <path d="M26 230 L256 230" stroke="#c4352c" stroke-width="8"/>
+    <path d="M40 262 L240 262" stroke="#c4352c" stroke-width="4"/>
+    <rect x="80" y="236" width="120" height="22" rx="4" fill="#fbf5e6" stroke="#1d1830" stroke-width="4"/>
+    <text x="140" y="253" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="15" fill="#1d1830">LINA ENG.</text>
+    <circle cx="64" cy="274" r="24" fill="#1d1830"/>
+    <circle cx="64" cy="274" r="10" fill="#9aa6b8" stroke="#1d1830" stroke-width="4"/>
+    <circle cx="216" cy="274" r="24" fill="#1d1830"/>
+    <circle cx="216" cy="274" r="10" fill="#9aa6b8" stroke="#1d1830" stroke-width="4"/>
+    <path d="M52 262 Q60 256 70 258 M204 262 Q212 256 222 258" stroke="#64708a" stroke-width="4" fill="none"/>
+  </g>
+</svg>

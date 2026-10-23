@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 70" width="96" height="70">
+  <g stroke="#1d1830" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M70 34 L70 6 L90 6 L90 18 L76 18 L76 34" fill="#ef4f43"/>
+    <path d="M6 64 L6 30 Q6 6 30 6 L60 6 Q82 6 82 30 L82 64 Z" fill="#5cb9f0"/>
+    <path d="M74 20 Q80 30 80 62 L64 62 Q74 40 74 20 Z" fill="#2f86c9" stroke="none"/>
+    <path d="M18 64 L18 30 Q18 16 30 16" fill="none" stroke="#2f86c9" stroke-width="4"/>
+    <rect x="26" y="34" width="44" height="14" rx="3" fill="#fbf5e6" stroke-width="3"/>
+    <text x="48" y="45" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="10" fill="#1d1830" stroke="none">ARLINDO</text>
+    <path d="M16 18 Q22 12 32 12" stroke="#a9dcf7" stroke-width="4" fill="none"/>
+  </g>
+</svg>

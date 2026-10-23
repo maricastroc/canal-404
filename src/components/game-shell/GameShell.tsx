@@ -1,0 +1,351 @@
+"use client";
+
+import { AnimatePresence } from "motion/react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeftIcon, PauseIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
+import { SoundToggle } from "@/components/layout/SoundToggle";
+import { getAudio } from "@/lib/audio/engine";
+import { useSound } from "@/lib/audio/hooks";
+import { GAME_LOADERS } from "@/games/loaders";
+import { getGame } from "@/games/registry";
+import type { GameInstance, GameResult, LoadStage } from "@/games/types";
+import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
+import { useHydrated } from "@/lib/progress/hooks";
+import { getGameRecord, recordGameResult, recordGameStart, unlockAchievement } from "@/lib/progress/store";
+import { LoadingScreen, pickTip } from "./LoadingScreen";
+import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
+
+type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
+
+function cssFont(variable: string, fallback: string) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+  return value ? `${value}, ${fallback}` : fallback;
+}
+
+export function GameShell({ slug }: { slug: string }) {
+  const game = getGame(slug)!;
+  const { play } = useSound();
+  const stageRef = useRef<HTMLDivElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const instanceRef = useRef<GameInstance | null>(null);
+  const stageStateRef = useRef<Stage>("loading");
+  const [stage, setStageState] = useState<Stage>("loading");
+  const [progress, setProgress] = useState(0.04);
+  const [leaving, setLeaving] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const [score, setScore] = useState(0);
+  const [result, setResult] = useState<{ result: GameResult; isRecord: boolean; previousBest: number } | null>(null);
+  const [highScore, setHighScore] = useState(0);
+  const [attempt, setAttempt] = useState(0);
+  const hydrated = useHydrated();
+  const [tipSeed] = useState(() => Math.floor(Math.random() * 1000));
+  const tip = pickTip(hydrated ? tipSeed : 0);
+
+  const setStage = useCallback((next: Stage) => {
+    stageStateRef.current = next;
+    setStageState(next);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let instance: GameInstance | null = null;
+    const startedAt = performance.now();
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const record = getGameRecord(slug);
+
+    const creep = window.setInterval(() => {
+      setProgress((p) => (p < 0.28 ? p + (0.3 - p) * 0.15 : p));
+    }, 90);
+
+    const finishLoading = () => {
+      if (cancelled) return;
+      setProgress(1);
+      const elapsed = performance.now() - startedAt;
+      const hold = reduced ? 0 : elapsed < 700 ? 260 : 420;
+      window.setTimeout(() => {
+        if (cancelled) return;
+        setLeaving(true);
+        setStage("intro");
+        window.setTimeout(() => !cancelled && setShowLoader(false), reduced ? 0 : 320);
+      }, hold);
+    };
+
+    const run = async () => {
+      try {
+        await document.fonts.ready;
+        if (cancelled) return;
+        setHighScore(record.highScore);
+        const fonts = {
+          display: cssFont("--font-luckiest", "Arial Black, sans-serif"),
+          body: cssFont("--font-baloo", "Trebuchet MS, sans-serif"),
+          hand: cssFont("--font-patrick", "Comic Sans MS, sans-serif"),
+        };
+        await Promise.all([
+          document.fonts.load(`48px ${fonts.display}`),
+          document.fonts.load(`700 24px ${fonts.body}`),
+        ]).catch(() => undefined);
+        const loader = GAME_LOADERS[slug];
+        if (!loader) throw new Error("jogo sem carregador");
+        const mod = await loader();
+        window.clearInterval(creep);
+        if (cancelled || !hostRef.current || !stageRef.current) return;
+        setProgress(0.32);
+        const mapStage = (value: number, stageName: LoadStage) => {
+          if (stageName === "arte") return 0.32 + value * 0.56;
+          if (stageName === "cena") return 0.92;
+          return value * 0.3;
+        };
+        instance = mod.mount({
+          parent: hostRef.current,
+          keyboardTarget: stageRef.current,
+          fonts,
+          reducedMotion: Boolean(reduced),
+          highScore: record.highScore,
+          audio: { play: (recipe, options) => getAudio().play(recipe, options) },
+          onProgress: (value, stageName) => {
+            if (!cancelled) setProgress((p) => Math.max(p, Math.min(0.95, mapStage(value, stageName))));
+          },
+          onReady: finishLoading,
+          onEvent: (event) => {
+            if (cancelled) return;
+            switch (event.type) {
+              case "score":
+                setScore(event.score);
+                break;
+              case "announce":
+                setAnnouncement(event.message);
+                break;
+              case "pause-request":
+                if (stageStateRef.current === "playing") {
+                  instanceRef.current?.pause();
+                  setStage("paused");
+                }
+                break;
+              case "achievement":
+                if (ACHIEVEMENTS.some((a) => a.id === event.id)) unlockAchievement(event.id as AchievementId);
+                break;
+              case "finished": {
+                const saved = recordGameResult(slug, event.result);
+                event.result.achievements?.forEach((id) => {
+                  if (ACHIEVEMENTS.some((a) => a.id === id)) unlockAchievement(id as AchievementId);
+                });
+                setHighScore(saved.record.highScore);
+                instanceRef.current?.setHighScore(saved.record.highScore);
+                setResult({ result: event.result, isRecord: saved.isRecord, previousBest: saved.isRecord ? saved.previousBest : saved.record.highScore });
+                setAnnouncement(
+                  event.result.won
+                    ? `Vitória! ${event.result.score} pontos, ${event.result.stars} estrelas.${saved.isRecord ? " Novo recorde!" : ""}`
+                    : `Fim de jogo. ${event.result.score} pontos.`,
+                );
+                setStage("result");
+                break;
+              }
+              default:
+                break;
+            }
+          },
+        });
+        instanceRef.current = instance;
+      } catch {
+        window.clearInterval(creep);
+        if (!cancelled) {
+          setStage("error");
+          setShowLoader(false);
+        }
+      }
+    };
+    void run();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(creep);
+      instance?.destroy();
+      instanceRef.current = null;
+    };
+  }, [slug, attempt, setStage]);
+
+  useEffect(() => {
+    const audio = getAudio();
+    audio.duckMusic(0.35);
+    return () => audio.duckMusic(1);
+  }, []);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden && stageStateRef.current === "playing") {
+        instanceRef.current?.pause();
+        setStage("paused");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [setStage]);
+
+  useEffect(() => {
+    if (stage !== "paused") return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        instanceRef.current?.resume();
+        setStage("playing");
+        window.setTimeout(() => stageRef.current?.focus(), 30);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [stage, setStage]);
+
+  const focusGame = () => window.setTimeout(() => stageRef.current?.focus(), 40);
+
+  const start = () => {
+    play("confirm");
+    recordGameStart(slug);
+    setScore(0);
+    instanceRef.current?.start();
+    setStage("playing");
+    focusGame();
+  };
+
+  const pause = () => {
+    if (stage !== "playing") return;
+    play("click");
+    instanceRef.current?.pause();
+    setStage("paused");
+  };
+
+  const resume = () => {
+    play("confirm");
+    instanceRef.current?.resume();
+    setStage("playing");
+    focusGame();
+  };
+
+  const restart = () => {
+    play("confirm");
+    recordGameStart(slug);
+    setResult(null);
+    setScore(0);
+    instanceRef.current?.restart();
+    setStage("playing");
+    focusGame();
+  };
+
+  const canControl = stage === "playing" || stage === "paused";
+
+  return (
+    <div className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b-[3px] border-ink bg-plum-800 px-2 sm:gap-3 sm:px-4">
+        <Link
+          href={`/jogos/${slug}`}
+          onClick={() => play("back")}
+          className="press flex min-h-10 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-cream px-2.5 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]"
+        >
+          <ArrowLeftIcon className="size-4" />
+          <span className="hidden sm:inline">Voltar</span>
+        </Link>
+        <p className="truncate font-display text-lg uppercase tracking-wide text-sun sm:text-2xl">{game.title}</p>
+        <p className="ml-auto hidden rounded-lg border-[3px] border-ink bg-plum-950 px-3 py-0.5 font-display text-sm tabular-nums text-cream sm:block" aria-hidden>
+          {score.toLocaleString("pt-BR")} pts
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            if (stage === "playing") pause();
+            setShowHelp(true);
+          }}
+          disabled={!canControl}
+          aria-label="Como jogar"
+          className="press ml-auto grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-cream shadow-[var(--shadow-ink-sm)] disabled:opacity-40 sm:ml-0"
+        >
+          <QuestionIcon className="size-6" />
+        </button>
+        <button
+          type="button"
+          onClick={restart}
+          disabled={!canControl}
+          aria-label="Recomeçar partida"
+          className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-mint shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
+        >
+          <RestartIcon className="size-6" />
+        </button>
+        <button
+          type="button"
+          onClick={stage === "paused" ? resume : pause}
+          disabled={!canControl}
+          aria-label={stage === "paused" ? "Continuar" : "Pausar"}
+          className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-sun text-ink shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
+        >
+          <PauseIcon className="size-6" />
+        </button>
+        <SoundToggle compact />
+      </header>
+
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={stageRef}
+          tabIndex={0}
+          role="application"
+          aria-roledescription="jogo"
+          aria-label={`${game.title}. Setas ajustam ângulo e força, espaço lança, Esc pausa.`}
+          className="absolute inset-0 touch-none select-none outline-none focus-visible:outline-none [&:focus-visible_canvas]:outline-4 [&:focus-visible_canvas]:outline-offset-2 [&:focus-visible_canvas]:outline-sun"
+        >
+          <div ref={hostRef} className="h-full w-full [&_canvas]:rounded-xl [&_canvas]:border-[3px] [&_canvas]:border-ink" />
+        </div>
+
+        <AnimatePresence>
+          {stage === "intro" && (
+            <IntroPanel
+              key="intro"
+              game={game}
+              highScore={highScore}
+              showHelp={showHelp}
+              onToggleHelp={() => setShowHelp((v) => !v)}
+              onPlay={start}
+            />
+          )}
+          {stage === "paused" && (
+            <PausePanel
+              key="pause"
+              game={game}
+              onResume={resume}
+              onRestart={restart}
+              showHelp={showHelp}
+              onToggleHelp={() => setShowHelp((v) => !v)}
+            />
+          )}
+          {stage === "result" && result && (
+            <ResultPanel key="result" result={result.result} isRecord={result.isRecord} previousBest={result.previousBest} onRestart={restart} />
+          )}
+          {stage === "error" && (
+            <ErrorPanel
+              key="error"
+              onRetry={() => {
+                setProgress(0.04);
+                setLeaving(false);
+                setShowLoader(true);
+                setStage("loading");
+                setAttempt((a) => a + 1);
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {showLoader && <LoadingScreen progress={progress} tip={tip} leaving={leaving} />}
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center px-3 landscape:hidden sm:hidden">
+          {stage === "playing" && (
+            <p className="rounded-full border-[3px] border-ink bg-sun px-3 py-1 font-display text-xs uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]">
+              Dica: gire o celular para ver maior
+            </p>
+          )}
+        </div>
+      </div>
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </p>
+    </div>
+  );
+}

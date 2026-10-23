@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 230" width="140" height="230">
+  <g stroke="#1d1830" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M52 192 L48 214 M84 192 L90 214" stroke-width="12"/>
+    <path d="M52 192 L48 214 M84 192 L90 214" stroke="#e7a874" stroke-width="5"/>
+    <path d="M30 222 Q30 208 48 208 L58 208 Q64 212 62 224 Z" fill="#ef4f43"/>
+    <path d="M110 222 Q110 208 92 208 L82 208 Q76 212 78 224 Z" fill="#ef4f43"/>
+    <path d="M44 160 L96 160 L100 196 L74 196 L70 184 L66 196 L38 196 Z" fill="#2f86c9"/>
+    <path d="M40 116 Q70 104 100 116 L104 164 L36 164 Z" fill="#ffc83d"/>
+    <path d="M38 142 L102 142" stroke="#ef4f43" stroke-width="8"/>
+    <path d="M100 120 Q122 100 120 66" fill="none" stroke-width="15"/>
+    <path d="M100 120 Q122 100 120 66" fill="none" stroke="#ffc83d" stroke-width="7"/>
+    <circle cx="120" cy="58" r="13" fill="#e7a874"/>
+    <path d="M40 120 Q20 136 22 160" fill="none" stroke-width="15"/>
+    <path d="M40 120 Q20 136 22 160" fill="none" stroke="#ffc83d" stroke-width="7"/>
+    <circle cx="22" cy="166" r="11" fill="#e7a874"/>
+    <path d="M60 100 L60 114 L80 114 L80 100 Z" fill="#e7a874"/>
+    <ellipse cx="34" cy="72" rx="9" ry="12" fill="#e7a874"/>
+    <ellipse cx="106" cy="72" rx="9" ry="12" fill="#e7a874"/>
+    <path d="M34 66 Q32 22 70 20 Q108 22 106 66 Q108 106 70 108 Q32 106 34 66 Z" fill="#e7a874"/>
+    <path d="M98 50 Q110 76 96 100 Q86 106 74 106 Q98 92 98 50 Z" fill="#c4824f" stroke="none" opacity="0.6"/>
+    <path d="M30 60 L18 40 L36 42 L30 16 L52 28 L58 2 L72 24 L86 0 L92 26 L114 14 L108 38 L126 40 L110 58 Q104 46 92 44 Q82 52 70 46 Q58 54 46 46 Q36 50 30 60 Z" fill="#e0631f"/>
+    <ellipse cx="54" cy="70" rx="9" ry="10" fill="#fffaf0" stroke-width="4"/>
+    <ellipse cx="86" cy="70" rx="9" ry="10" fill="#fffaf0" stroke-width="4"/>
+    <circle cx="57" cy="72" r="4.5" fill="#1d1830" stroke="none"/>
+    <circle cx="89" cy="72" r="4.5" fill="#1d1830" stroke="none"/>
+    <path d="M44 56 L62 60 M78 60 L96 54" stroke-width="5"/>
+    <path d="M52 86 Q70 106 88 86 Z" fill="#1d1830" stroke-width="4"/>
+    <path d="M57 88 L83 88 L81 92 L59 92 Z" fill="#fffaf0" stroke="none"/>
+    <rect x="68" y="88" width="5" height="5" fill="#1d1830" stroke="none"/>
+    <g transform="rotate(-20 96 92)"><rect x="86" y="86" width="22" height="10" rx="4" fill="#fbf5e6" stroke-width="3"/></g>
+  </g>
+</svg>
