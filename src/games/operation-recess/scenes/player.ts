@@ -34,6 +34,7 @@ export class Hero {
   private slash: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
   private groundY: number;
+  private k = 1;
   facing = 1;
   attackId = 0;
   private attackAt = -9999;
@@ -64,6 +65,21 @@ export class Hero {
     this.slash = scene.add.image(x, feet, "slash").setDepth(21).setVisible(false).setScale(0.95);
     this.shadow = scene.add.image(x, feet + 2, "blob").setDepth(14).setDisplaySize(110, 26);
     this.groundY = feet;
+  }
+
+  private get sc() {
+    return HERO_SCALE * this.k;
+  }
+
+  grow(k: number, ms: number) {
+    this.k = k;
+    if (this.reduced) {
+      this.sprite.setScale(this.sc);
+      this.slash.setScale(0.95 * k);
+      return;
+    }
+    this.scene.tweens.add({ targets: this.sprite, scaleX: this.sc, scaleY: this.sc, duration: ms, ease: "Sine.easeInOut" });
+    this.scene.tweens.add({ targets: this.slash, scaleX: 0.95 * k, scaleY: 0.95 * k, duration: ms });
   }
 
   dizzy() {
@@ -112,8 +128,9 @@ export class Hero {
     const since = t - this.attackAt;
     if (since < ATTACK.windup || since > ATTACK.windup + ATTACK.active) return null;
     const b = this.body;
-    const x0 = this.facing > 0 ? b.center.x : b.center.x - ATTACK.reach;
-    return new Phaser.Geom.Rectangle(x0, b.top - 30, ATTACK.reach, b.height + 10);
+    const reach = ATTACK.reach * (1 + (this.k - 1) * 0.5);
+    const x0 = this.facing > 0 ? b.center.x : b.center.x - reach;
+    return new Phaser.Geom.Rectangle(x0, b.top - 30, reach, b.height + 10);
   }
 
   knock(fromX: number, t: number, kx: number, ky: number) {
@@ -155,8 +172,8 @@ export class Hero {
         this.fx.sfx("land", 0.5);
         this.fx.dust(this.x, this.feet, 0);
         if (!this.reduced) {
-          this.sprite.setScale(HERO_SCALE * 1.1, HERO_SCALE * 0.88);
-          this.scene.tweens.add({ targets: this.sprite, scaleX: HERO_SCALE, scaleY: HERO_SCALE, duration: 160, ease: "Back.easeOut" });
+          this.sprite.setScale(this.sc * 1.1, this.sc * 0.88);
+          this.scene.tweens.add({ targets: this.sprite, scaleX: this.sc, scaleY: this.sc, duration: 160, ease: "Back.easeOut" });
         }
       }
       this.lastGround = t;
@@ -176,8 +193,8 @@ export class Hero {
       this.fx.sfx("jump", 0.6);
       this.fx.dust(this.x, this.feet, 0);
       if (!this.reduced) {
-        this.sprite.setScale(HERO_SCALE * 0.88, HERO_SCALE * 1.12);
-        this.scene.tweens.add({ targets: this.sprite, scaleX: HERO_SCALE, scaleY: HERO_SCALE, duration: 200, ease: "Back.easeOut" });
+        this.sprite.setScale(this.sc * 0.88, this.sc * 1.12);
+        this.scene.tweens.add({ targets: this.sprite, scaleX: this.sc, scaleY: this.sc, duration: 200, ease: "Back.easeOut" });
       }
     }
     if (this.jumping && b.velocity.y < 0 && !input.jumpHeld) {
@@ -219,12 +236,12 @@ export class Hero {
   sync(t: number, invulnUntil: number) {
     const b = this.body;
     this.sprite.setPosition(b.center.x, b.bottom + 2).setFlipX(this.facing < 0);
-    this.slash.setPosition(b.center.x + this.facing * 96, b.center.y - 20);
+    this.slash.setPosition(b.center.x + this.facing * 96 * this.k, b.center.y - 20 - (this.k - 1) * 60);
     if (t < invulnUntil && !this.locked) this.sprite.setAlpha(Math.floor(t / 70) % 2 ? 0.35 : 1);
     else this.sprite.setAlpha(1);
     if (this.grounded) this.groundY = b.bottom;
     const lift = Phaser.Math.Clamp((this.groundY - b.bottom) / 320, 0, 1);
-    this.shadow.setPosition(b.center.x, this.groundY + 3).setDisplaySize(110 * (1 - lift * 0.5), 26 * (1 - lift * 0.4)).setAlpha(1 - lift * 0.6);
+    this.shadow.setPosition(b.center.x, this.groundY + 3).setDisplaySize(110 * this.k * (1 - lift * 0.5), 26 * this.k * (1 - lift * 0.4)).setAlpha(1 - lift * 0.6);
     this.shadow.setVisible(b.bottom < this.groundY + 40);
   }
 }

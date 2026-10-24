@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { EnemyKind } from "../levels";
 import type { RecessSfx } from "../sounds";
+import type { RoomEvent } from "./scenery";
 
 export type HeroView = { x: number; feet: number; top: number; grounded: boolean };
 
@@ -15,6 +16,7 @@ export type StageApi = {
   spawnWave: (x: number, y: number, dir: number, big: boolean) => void;
   groundAt: (x: number) => boolean;
   quake: (power: number) => void;
+  room: (event: RoomEvent, dir?: number) => void;
 };
 
 export type HitResult = "hit" | "block" | "kill" | "dodge" | null;

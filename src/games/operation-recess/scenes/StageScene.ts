@@ -120,6 +120,7 @@ export class StageScene extends Phaser.Scene {
       spawnWave: (x, y, dir, big) => this.waves.push(new Wave(this, x, y, dir, big)),
       groundAt: (x) => this.world.groundAt(x) || this.carts.some((c) => Math.abs(c.img.x - x) < 120),
       quake: (power) => this.scenery.quake(power),
+      room: (event, dir) => this.scenery.room(event, dir),
     };
 
     if (this.level.exit) {
@@ -596,8 +597,12 @@ export class StageScene extends Phaser.Scene {
     g.strokeRect(this.arena.left - 40, 60, 40, FLOOR_Y - 60);
     this.hud.showBoss(true);
     this.hud.setBoss(this.boss!.hp, this.boss!.maxHp);
-    this.boss!.intro(this.t);
-    this.hud.flash("INSPETOR DO SILÊNCIO", "#f06ba8", 1400, "Ataque quando ele ficar tonto ou cansado.");
+    const seen = Boolean(this.registry.get("bossSeen"));
+    this.registry.set("bossSeen", true);
+    this.boss!.intro(this.t, seen);
+    this.hero.grow(1.2, 700);
+    if (seen) this.hud.flash("INSPETOR DO SILÊNCIO", "#f06ba8", 700);
+    else this.hud.flash("INSPETOR DO SILÊNCIO", "#f06ba8", 1300, "Ataque quando ele ficar tonto ou cansado.");
     this.announce("Chefe: Inspetor do Silêncio. Desvie dos ataques e acerte quando ele ficar tonto, cansado ou com a prancheta presa.");
   }
 

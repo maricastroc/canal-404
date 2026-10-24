@@ -4,6 +4,16 @@ import type { LevelDef } from "../levels";
 import { INK_HEX } from "../../kit/ui";
 
 export type ReactKind = "locker" | "bin" | "swing" | "plant" | "metal";
+export type RoomEvent = "intro" | "stomp" | "crash" | "slam" | "whistle" | "hit" | "angry" | "defeat";
+type ArenaRefs = {
+  banner: Phaser.GameObjects.Image;
+  board: Phaser.GameObjects.Image;
+  shelf: Phaser.GameObjects.Image;
+  frames: Phaser.GameObjects.Image[];
+  curtains: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
+  desk: Phaser.GameObjects.Image;
+  left: number;
+};
 type Reactive = { img: Phaser.GameObjects.Image; kind: ReactKind; lastHit: number };
 type Pile = { x: number; y: number; at: number };
 
@@ -196,6 +206,8 @@ export class Scenery {
   private reactive: Reactive[] = [];
   private piles: Pile[] = [];
   private quakeTargets: Phaser.GameObjects.Image[] = [];
+  private refs: ArenaRefs | null = null;
+  private hitCount = 0;
   private paperFrom: { x: number; y: number } | null = null;
   private nextAmbient = 2500;
   readonly spotlight: Phaser.GameObjects.Image | null = null;
@@ -497,20 +509,22 @@ export class Scenery {
   private arena(left: number) {
     const s = this.scene;
     const cx = left + W / 2;
-    this.img("curtain", left, FLOOR_Y, D.back + 0.05, [0, 1]).setScale(0.9);
-    this.img("curtain", left + W, FLOOR_Y, D.back + 0.05, [0, 1]).setScale(0.9).setFlipX(true).setOrigin(1, 1);
+    const curtainTop = FLOOR_Y - 680 * 0.9;
+    const cl = this.img("curtain", left, curtainTop, D.back + 0.05, [0, 0]).setScale(0.9);
+    const cr = this.img("curtain", left + W, curtainTop, D.back + 0.05, [1, 0]).setScale(0.9).setFlipX(true);
     const banner = this.img("banner-discipline", cx, 170, D.back, [0.5, 0]).setScale(0.95);
     const board = this.img("rules-board", left + 470, 520, D.back, [0.5, 0.5]).setScale(0.9);
     const shelf = this.img("trophy-shelf", left + W - 470, 520, D.back, [0.5, 0.5]).setScale(0.9);
     const p1 = this.img("portrait", cx - 300, 520, D.back, [0.5, 0.5]);
     const p2 = this.img("principal-c", cx + 300, 520, D.back, [0.5, 0.5]);
-    this.img("big-desk", cx, FLOOR_Y, D.floor);
+    const desk = this.grounded(this.img("big-desk", cx, FLOOR_Y - 4, D.wall + 0.15).setScale(0.86).setTint(0xd6cbe0), 0.95);
     this.img("file-cabinet", left + W - 300, FLOOR_Y, D.floor).setScale(0.9);
     this.img("plant-big", left + 300, FLOOR_Y, D.floor).setScale(0.9);
     this.img("lamp-warm", cx, 90, D.back + 0.1, [0.5, 0]);
     this.cone(cx, 190, 0.25, 1.8);
     this.quakeTargets.push(banner, board, shelf, p1, p2);
-    this.paperFrom = { x: cx, y: FLOOR_Y - 230 };
+    this.refs = { banner, board, shelf, frames: [p1, p2], curtains: [cl, cr], desk, left };
+    this.paperFrom = { x: cx, y: FLOOR_Y - 200 };
     const spot = s.add.image(cx, 120, "light-cone").setOrigin(0.5, 0).setDepth(D.floor + 0.1).setAlpha(0.18).setScale(1, 1.25);
     return spot;
   }
@@ -552,6 +566,92 @@ export class Scenery {
       this.scene.tweens.add({ targets: p, x: p.x + dx, duration: 1400, ease: "Sine.easeOut" });
       this.scene.tweens.add({ targets: p, y: y - Phaser.Math.Between(80, 180), duration: 500, ease: "Quad.easeOut", yoyo: true, hold: 120 });
       this.scene.tweens.add({ targets: p, angle: p.angle + Phaser.Math.Between(-260, 260), alpha: 0, delay: 600, duration: 900, onComplete: () => p.destroy() });
+    }
+  }
+
+  private shake(img: Phaser.GameObjects.Image, power: number) {
+    const base = (img.getData("baseX") as number | undefined) ?? img.x;
+    img.setData("baseX", base);
+    this.scene.tweens.add({ targets: img, x: { from: base + 4 * power, to: base }, duration: 55, repeat: 3, yoyo: true, onComplete: () => img.setX(base) });
+  }
+
+  private swing(img: Phaser.GameObjects.Image, power: number) {
+    const base = (img.getData("baseAngle") as number | undefined) ?? img.angle;
+    img.setData("baseAngle", base);
+    this.scene.tweens.killTweensOf(img);
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    this.scene.tweens.add({ targets: img, angle: { from: base + dir * 5 * power, to: base }, duration: 900, ease: "Elastic.easeOut" });
+  }
+
+  private billow(img: Phaser.GameObjects.Image, dir: number) {
+    const sx = (img.getData("baseScale") as number | undefined) ?? img.scaleX;
+    img.setData("baseScale", sx);
+    this.scene.tweens.killTweensOf(img);
+    this.scene.tweens.add({ targets: img, scaleX: sx * 1.06, angle: dir * 2.5, duration: 240, yoyo: true, ease: "Sine.easeInOut", onComplete: () => img.setAngle(0).setScale(sx, img.scaleY) });
+  }
+
+  private deskPapers(n: number, drift = 0) {
+    if (!this.paperFrom) return;
+    for (let i = 0; i < n; i += 1) {
+      const x = this.paperFrom.x + Phaser.Math.Between(-180, 180);
+      const p = this.scene.add.image(x, this.paperFrom.y, "paper").setDepth(D.wall + 0.2).setScale(0.75).setAngle(Phaser.Math.Between(-30, 30));
+      const dx = drift ? drift * Phaser.Math.Between(160, 320) : Phaser.Math.Between(-200, 200);
+      this.scene.tweens.add({ targets: p, x: x + dx, duration: 1300, ease: "Sine.easeOut" });
+      this.scene.tweens.add({ targets: p, y: p.y - Phaser.Math.Between(90, 170), duration: 420, ease: "Quad.easeOut", yoyo: true, hold: 100 });
+      this.scene.tweens.add({ targets: p, angle: p.angle + Phaser.Math.Between(-240, 240), alpha: 0, delay: 650, duration: 700, onComplete: () => p.destroy() });
+    }
+  }
+
+  room(event: RoomEvent, dir = 0) {
+    const r = this.refs;
+    if (!r || this.reduced) return;
+    const nearSide = dir < 0 ? 0 : 1;
+    switch (event) {
+      case "intro":
+        this.shake(r.desk, 0.7);
+        this.shake(r.shelf, 0.6);
+        this.deskPapers(2);
+        return;
+      case "stomp":
+        this.shake(r.shelf, 0.5);
+        return;
+      case "crash":
+        this.shake(r.shelf, 1.3);
+        for (const f of r.frames) this.swing(f, 1);
+        this.swing(r.banner, 0.6);
+        this.billow(r.curtains[nearSide], dir || 1);
+        this.deskPapers(3);
+        return;
+      case "slam":
+        this.shake(r.shelf, 1);
+        this.shake(r.desk, 0.6);
+        this.swing(r.board, 0.8);
+        this.deskPapers(3);
+        return;
+      case "whistle":
+        this.billow(r.curtains[0], dir || 1);
+        this.billow(r.curtains[1], dir || 1);
+        this.swing(r.banner, 0.35);
+        this.deskPapers(2, dir);
+        return;
+      case "hit":
+        this.hitCount += 1;
+        if (this.hitCount % 3 === 0) this.swing(r.frames[this.hitCount % 2], 0.4);
+        return;
+      case "angry":
+        for (const f of r.frames) this.swing(f, 0.8);
+        this.shake(r.shelf, 0.9);
+        this.swing(r.banner, 0.5);
+        return;
+      case "defeat":
+        for (const f of r.frames) this.swing(f, 1.4);
+        this.swing(r.board, 1);
+        this.swing(r.banner, 1);
+        this.shake(r.shelf, 1.6);
+        this.shake(r.desk, 1);
+        this.billow(r.curtains[0], -1);
+        this.billow(r.curtains[1], 1);
+        this.deskPapers(5);
     }
   }
 

@@ -23,6 +23,10 @@ export class Inspector {
   private shadow: Phaser.GameObjects.Image;
   private secondWaveAt = 0;
   private t = 0;
+  private introStep = 0;
+  private introShort = false;
+  private recoil = 0;
+  private wasAngry = false;
 
   constructor(
     private api: StageApi,
@@ -71,11 +75,24 @@ export class Inspector {
     return this.angry ? ms * 0.78 : ms;
   }
 
-  intro(t: number) {
+  intro(t: number, short = false) {
     this.state = "intro";
-    this.until = t + 1700;
-    this.tex("blow");
-    this.api.sfx("bigWhistle", 0.9);
+    this.introStep = 0;
+    this.introShort = short;
+    this.until = t + (short ? 260 : 520);
+    this.facing = -1;
+    this.tex("stomp");
+    this.api.sfx("stomp", 1);
+    this.api.dust(this.x, FLOOR_Y, 0);
+    this.api.room("intro");
+    if (!this.api.reduced) this.api.scene.cameras.main.shake(160, 0.006);
+  }
+
+  private stateTex() {
+    if (this.state === "dizzy") return "dizzy";
+    if (this.state === "stuck" || this.state === "slam") return "slam";
+    if (this.state === "tired") return "hurt";
+    return "idle";
   }
 
   private nextMove(): Move {
@@ -104,7 +121,19 @@ export class Inspector {
     }
     switch (this.state) {
       case "intro":
-        if (t >= this.until) this.guard(t, 600);
+        b.setVelocityX(0);
+        if (t < this.until) return;
+        if (this.introStep === 0) {
+          this.introStep = 1;
+          this.until = t + (this.introShort ? 520 : 1000);
+          this.tex("blow");
+          this.api.sfx("bigWhistle", 1);
+          this.api.word("SILÊNCIO!", this.x - 40, b.top - 70, "#f06ba8", this.introShort ? 52 : 68);
+          this.api.room("whistle", -1);
+          if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.sprite, scaleX: SCALE * 1.06, scaleY: SCALE * 0.96, duration: 140, yoyo: true, repeat: 1 });
+          return;
+        }
+        this.guard(t, this.introShort ? 250 : 450);
         return;
       case "guard": {
         b.setVelocityX(0);
@@ -124,7 +153,7 @@ export class Inspector {
           this.api.sfx("stomp", 0.9);
           this.api.dust(this.x, FLOOR_Y, 0);
           this.api.warn(this.x, b.top - 60, this.tele(780));
-          this.api.quake(0.5);
+          this.api.room("stomp");
           if (!this.api.reduced) this.api.scene.cameras.main.shake(180, 0.006);
         } else {
           this.state = "raise";
@@ -142,6 +171,7 @@ export class Inspector {
         this.tex("blow");
         this.api.sfx("bigWhistle", 1);
         this.api.spawnWave(this.x + this.facing * 120, FLOOR_Y, this.facing, true);
+        this.api.room("whistle", this.facing);
         this.secondWaveAt = this.angry ? t + 1000 : 0;
         return;
       case "blow":
@@ -167,7 +197,7 @@ export class Inspector {
       case "charge": {
         b.setVelocityX(this.facing * (this.angry ? 900 : 780));
         if (Math.random() < 0.3) this.api.dust(this.x - this.facing * 60, FLOOR_Y, -this.facing);
-        const hitWall = (this.facing < 0 && this.x <= this.left + 120) || (this.facing > 0 && this.x >= this.right - 120);
+        const hitWall = (this.facing < 0 && this.x <= this.left + 180) || (this.facing > 0 && this.x >= this.right - 180);
         if (hitWall) {
           b.setVelocityX(0);
           this.sprite.setAngle(0);
@@ -177,7 +207,7 @@ export class Inspector {
           this.api.sfx("crash", 1);
           this.api.burst(this.x + this.facing * 80, b.top + 60, 8, "spark");
           this.api.word("BONC!", this.x + this.facing * 60, b.top - 20, "#ffc83d", 56);
-          this.api.quake(1.4);
+          this.api.room("crash", this.facing);
           if (!this.api.reduced) this.api.scene.cameras.main.shake(260, 0.012);
         }
         return;
@@ -197,7 +227,7 @@ export class Inspector {
         this.api.sfx("stomp", 0.7);
         this.shock.setPosition(this.x + this.facing * 200, FLOOR_Y + 6).setFlipX(this.facing < 0).setVisible(true).setScale(0.4, 0.4);
         this.api.scene.tweens.add({ targets: this.shock, scaleX: 1.1, scaleY: 1, duration: 120, ease: "Back.easeOut" });
-        this.api.quake(1);
+        this.api.room("slam");
         if (!this.api.reduced) this.api.scene.cameras.main.shake(200, 0.01);
         return;
       case "slam":
@@ -226,13 +256,33 @@ export class Inspector {
       return "block";
     }
     this.hp -= 1;
+    const dir = Math.sign(this.x - fromX) || 1;
     this.sprite.setTintFill(0xffffff);
     this.api.scene.time.delayedCall(70, () => this.sprite.clearTint());
-    if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.sprite, x: this.sprite.x + Math.sign(this.x - fromX) * 14, duration: 60, yoyo: true });
+    this.tex("hurt");
+    this.api.scene.time.delayedCall(170, () => {
+      if (this.state !== "beaten") this.tex(this.stateTex());
+    });
+    if (!this.api.reduced) {
+      const scene = this.api.scene;
+      scene.tweens.killTweensOf(this);
+      this.recoil = dir * 34;
+      scene.tweens.add({ targets: this, recoil: 0, duration: 260, ease: "Back.easeOut" });
+      if (this.state !== "charge") {
+        this.sprite.setAngle(dir * 6);
+        scene.tweens.add({ targets: this.sprite, angle: 0, duration: 320, ease: "Back.easeOut" });
+      }
+    }
+    this.api.room("hit");
+    if (this.angry && !this.wasAngry) {
+      this.wasAngry = true;
+      this.api.room("angry");
+      this.api.word("GRRR!", this.x, this.body.top - 40, "#ef4f43", 46);
+    }
     if (this.hp <= 0) {
       this.state = "beaten";
       this.tex("beaten");
-      this.api.quake(1.6);
+      this.api.room("defeat");
       this.body.setVelocityX(0);
       this.shock.setVisible(false);
       return "kill";
@@ -253,7 +303,7 @@ export class Inspector {
 
   sync() {
     const b = this.body;
-    this.sprite.setPosition(b.center.x, b.bottom + 2).setFlipX(this.facing < 0);
+    this.sprite.setPosition(b.center.x + this.recoil, b.bottom + 2).setFlipX(this.facing < 0);
     this.shadow.setPosition(b.center.x, FLOOR_Y + 3);
   }
 }
