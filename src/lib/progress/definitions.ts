@@ -24,7 +24,10 @@ export type AchievementId =
   | "lab-complete"
   | "fight-win"
   | "fight-clean"
-  | "fight-sharpshooter";
+  | "fight-sharpshooter"
+  | "recess-first"
+  | "recess-flawless"
+  | "recess-boss";
 
 export type SecretDef = {
   id: SecretId;
@@ -204,6 +207,27 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: "Acertou 10 alunos seguidos na Guerra de Lanche.",
     hint: "Não erre nenhum lanche por um bom tempo.",
     color: "sky",
+  },
+  {
+    id: "recess-first",
+    title: "Corredor Livre",
+    description: "Passou pelo corredor proibido da Operação: Recreio.",
+    hint: "Comece pelo corredor.",
+    color: "sky",
+  },
+  {
+    id: "recess-flawless",
+    title: "Sem um Arranhão",
+    description: "Terminou uma fase da Operação: Recreio sem levar nenhuma batida.",
+    hint: "Os monitores sempre avisam antes de atacar.",
+    color: "sun",
+  },
+  {
+    id: "recess-boss",
+    title: "Recreio Liberado",
+    description: "Venceu o Inspetor do Silêncio.",
+    hint: "A direção fica no fim do caminho.",
+    color: "bubblegum",
   },
 ];
 

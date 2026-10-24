@@ -280,14 +280,108 @@ export function FoodFightHowToPanel({ step }: { step: 0 | 1 | 2 }) {
   );
 }
 
+export function OperationRecessLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="-22 -6 403 192" className={className} role="img" aria-label="Operação: Recreio">
+      <g transform="translate(318 30) rotate(38)" stroke={P.ink} strokeLinejoin="round">
+        <rect x="-8" y="-14" width="16" height="30" rx="4" fill="#c9d4e4" strokeWidth="4" />
+        <rect x="-20" y="14" width="40" height="11" rx="3" fill="#a96d36" strokeWidth="4" />
+        <path d="M-10 25 L-10 128 Q0 142 10 128 L10 25 Z" fill="#d9a066" strokeWidth="5" />
+        <path d="M-3 34 L-3 118 M4 34 L4 110" stroke="#b07a44" strokeWidth="2.5" />
+      </g>
+      <g style={display}>
+        <g transform="rotate(-3 180 50)">
+          <text x="186" y="70" textAnchor="middle" fontSize="54" fill={P.ink} letterSpacing="2">
+            OPERAÇÃO:
+          </text>
+          <text x="180" y="64" textAnchor="middle" fontSize="54" fill={P.sun} stroke={P.ink} strokeWidth="9" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            OPERAÇÃO:
+          </text>
+        </g>
+        <g transform="rotate(2 180 150)">
+          <text x="188" y="172" textAnchor="middle" fontSize="98" fill={P.ink} letterSpacing="3">
+            RECREIO
+          </text>
+          <text x="180" y="164" textAnchor="middle" fontSize="98" fill={P.sky} stroke={P.ink} strokeWidth="12" paintOrder="stroke" strokeLinejoin="round" letterSpacing="3">
+            RECREIO
+          </text>
+          <path d="M58 104 q10 -8 22 -6" stroke={P.white} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.8" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+export function OperationRecessHowToPanel({ step }: { step: 0 | 1 | 2 }) {
+  const bruno = (x: number, y: number) => (
+    <g transform={`translate(${x} ${y})`}>
+      <rect x="-12" y="10" width="24" height="40" rx="6" fill={P.sky} stroke={P.ink} strokeWidth="4" />
+      <circle cx="0" cy="0" r="16" fill="#f6dcc4" stroke={P.ink} strokeWidth="4" />
+      <path d="M-16 -2 Q-14 -18 0 -18 Q14 -18 16 -2 Q8 -10 0 -8 Q-8 -10 -16 -2 Z" fill="#4a2c1c" stroke={P.ink} strokeWidth="3" />
+      <circle cx="-6" cy="2" r="5" fill="none" stroke={P.ink} strokeWidth="2.5" />
+      <circle cx="7" cy="2" r="5" fill="none" stroke={P.ink} strokeWidth="2.5" />
+    </g>
+  );
+  const scene = (children: React.ReactNode) => (
+    <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
+      <rect width="200" height="130" fill="#f3e6c4" />
+      <rect y="78" width="200" height="26" fill={P.mint} />
+      <rect y="104" width="200" height="26" fill="#e6dcc4" stroke={P.ink} strokeWidth="4" />
+      {children}
+    </svg>
+  );
+  if (step === 0) {
+    return scene(
+      <>
+        <path d="M70 92 Q100 30 130 92" fill="none" stroke={P.sun} strokeWidth="5" strokeLinecap="round" strokeDasharray="2 10" />
+        {bruno(100, 48)}
+        <path d="M54 70 L34 70 M42 62 L34 70 L42 78 M146 70 L166 70 M158 62 L166 70 L158 78" fill="none" stroke={P.plum600} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+      </>,
+    );
+  }
+  if (step === 1) {
+    return scene(
+      <>
+        {bruno(62, 54)}
+        <g transform="translate(76 70) rotate(-12)">
+          <path d="M0 -5 L56 -5 Q64 0 56 5 L0 5 Z" fill="#d9a066" stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />
+          <rect x="-8" y="-9" width="8" height="18" rx="2" fill="#a96d36" stroke={P.ink} strokeWidth="3" />
+        </g>
+        <g transform="translate(150 50)">
+          <rect x="-15" y="12" width="30" height="42" rx="6" fill={P.sun} stroke={P.ink} strokeWidth="4" />
+          <circle cx="0" cy="0" r="17" fill="#f2c9a6" stroke={P.ink} strokeWidth="4" />
+          <path d="M-18 -4 Q-16 -22 0 -21 Q16 -22 18 -4 Z" fill={P.leaf} stroke={P.ink} strokeWidth="3.5" />
+          <path d="M-8 4 L-2 6 M8 4 L2 6" stroke={P.ink} strokeWidth="3" strokeLinecap="round" />
+          <path d="M-8 12 Q0 6 8 12" fill="none" stroke={P.ink} strokeWidth="3" />
+        </g>
+        <path d="M134 40 l5 9 l10 -4 l-4 10 l9 5 l-10 3 l3 10 l-9 -5 l-6 8 l-1 -10 l-10 -1 l8 -6 l-6 -8 l10 2 z" fill={P.sun} stroke={P.ink} strokeWidth="2.5" strokeLinejoin="round" />
+      </>,
+    );
+  }
+  return scene(
+    <>
+      <rect x="132" y="30" width="48" height="74" rx="4" fill="#7c4527" stroke={P.ink} strokeWidth="4" />
+      <rect x="126" y="18" width="60" height="16" rx="3" fill={P.sun} stroke={P.ink} strokeWidth="3" />
+      <text x="156" y="30" textAnchor="middle" fontSize="10" fill={P.ink} style={display}>
+        DIREÇÃO
+      </text>
+      <circle cx="170" cy="70" r="3.5" fill={P.sun} stroke={P.ink} strokeWidth="2" />
+      {bruno(70, 54)}
+      <path d="M96 76 L116 76 M108 68 L116 76 L108 84" fill="none" stroke={P.plum600} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+    </>,
+  );
+}
+
 export const GAME_LOGOS: Record<string, (props: { className?: string }) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetLogo,
   "bad-ideas-lab": BadIdeasLabLogo,
   "food-fight": FoodFightLogo,
+  "operation-recess": OperationRecessLogo,
 };
 
 export function GameHowToPanel({ slug, step }: { slug: string; step: 0 | 1 | 2 }) {
   if (slug === "bad-ideas-lab") return <BadIdeasLabHowToPanel step={step} />;
   if (slug === "food-fight") return <FoodFightHowToPanel step={step} />;
+  if (slug === "operation-recess") return <OperationRecessHowToPanel step={step} />;
   return <DeadEndStreetHowToPanel step={step} />;
 }

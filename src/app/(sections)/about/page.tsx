@@ -149,7 +149,7 @@ export default function AboutPage() {
           <InkLink href="/" tone="sun">
             Voltar para a sala
           </InkLink>
-          <InkLink href="/play/rua-sem-saida" tone="mint">
+          <InkLink href="/play/dead-end-street" tone="mint">
             Jogar Rua Sem Saída
           </InkLink>
         </div>

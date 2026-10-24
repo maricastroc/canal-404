@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="900" height="420">
+<g stroke="#1d1830" stroke-linejoin="round">
+<rect x="40" y="120" width="820" height="300" fill="#e06a5a" stroke-width="7"/>
+<path d="M20 124 L450 20 L880 124 Z" fill="#b8473c" stroke-width="7"/>
+<rect x="390" y="50" width="120" height="60" rx="6" fill="#fffaf0" stroke-width="5"/>
+<circle cx="450" cy="80" r="22" fill="#fffaf0" stroke-width="4"/><path d="M450 80 L450 64 M450 80 L462 86" stroke-width="4"/>
+<rect x="80" y="160" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><path d="M117 160 L117 244" stroke-width="3"/><rect x="192" y="160" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><path d="M229 160 L229 244" stroke-width="3"/><rect x="304" y="160" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><path d="M341 160 L341 244" stroke-width="3"/><rect x="416" y="160" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><path d="M453 160 L453 244" stroke-width="3"/><rect x="528" y="160" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><path d="M565 160 L565 244" stroke-width="3"/><rect x="640" y="160" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><path d="M677 160 L677 244" stroke-width="3"/><rect x="752" y="160" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><path d="M789 160 L789 244" stroke-width="3"/>
+<rect x="80" y="280" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><rect x="192" y="280" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><rect x="304" y="280" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/>
+<rect x="528" y="280" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><rect x="640" y="280" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/><rect x="752" y="280" width="74" height="84" rx="4" fill="#a9dcf7" stroke-width="5"/>
+<rect x="400" y="270" width="100" height="150" rx="6" fill="#7c4527" stroke-width="6"/>
+<rect x="330" y="236" width="240" height="34" rx="4" fill="#fffaf0" stroke-width="5"/>
+<text x="450" y="261" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="22" fill="#1d1830" stroke="none">ESCOLA 404</text></g>
+</svg>

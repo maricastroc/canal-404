@@ -105,6 +105,45 @@ export const LUNCH_SFX = {
       { kind: "noise", duration: 0.4, delay: 0.7, gain: 0.18, filter: { type: "lowpass", from: 1400, to: 200 } },
     ],
   },
+  clang: {
+    layers: [
+      { kind: "tone", wave: "square", from: 1480, to: 1400, duration: 0.16, gain: 0.05, filter: { type: "bandpass", frequency: 2600, q: 3 } },
+      { kind: "tone", wave: "triangle", from: 2210, duration: 0.3, gain: 0.06, vibrato: { rate: 40, depth: 30 } },
+      { kind: "noise", duration: 0.08, gain: 0.08, filter: { type: "highpass", from: 3500 } },
+    ],
+  },
+  plop: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 640, to: 160, duration: 0.18, gain: 0.18, glide: "exp" },
+      { kind: "noise", duration: 0.2, gain: 0.14, delay: 0.04, filter: { type: "lowpass", from: 1400, to: 250 } },
+      { kind: "tone", wave: "triangle", from: 880, to: 990, duration: 0.08, delay: 0.22, gain: 0.07 },
+      { kind: "tone", wave: "triangle", from: 1175, to: 1320, duration: 0.14, delay: 0.3, gain: 0.07 },
+    ],
+  },
+  laugh: {
+    layers: [
+      { kind: "tone", wave: "square", from: 520, to: 440, duration: 0.07, gain: 0.04, filter: { type: "lowpass", frequency: 1400 } },
+      { kind: "tone", wave: "square", from: 540, to: 450, duration: 0.07, delay: 0.1, gain: 0.04, filter: { type: "lowpass", frequency: 1400 } },
+      { kind: "tone", wave: "square", from: 560, to: 460, duration: 0.09, delay: 0.2, gain: 0.04, filter: { type: "lowpass", frequency: 1400 } },
+    ],
+  },
+  crowd: {
+    layers: [
+      { kind: "noise", duration: 1.1, gain: 0.12, attack: 0.15, filter: { type: "bandpass", from: 500, to: 900, q: 0.8 } },
+      { kind: "tone", wave: "sawtooth", from: 220, to: 300, duration: 0.5, gain: 0.03, vibrato: { rate: 11, depth: 25 }, filter: { type: "lowpass", frequency: 900 } },
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.08, delay: 0.1, gain: 0.07 },
+      { kind: "tone", wave: "pulse", from: 784, duration: 0.08, delay: 0.2, gain: 0.07 },
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.08, delay: 0.3, gain: 0.07 },
+      { kind: "tone", wave: "pulse", from: 988, duration: 0.14, delay: 0.4, gain: 0.07 },
+    ],
+  },
+  whistle: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 2700, duration: 0.18, gain: 0.07, vibrato: { rate: 32, depth: 140 } },
+      { kind: "tone", wave: "sine", from: 2750, duration: 0.55, delay: 0.24, gain: 0.08, vibrato: { rate: 32, depth: 160 } },
+      { kind: "noise", duration: 0.75, gain: 0.03, filter: { type: "bandpass", from: 2800, q: 6 } },
+    ],
+  },
 } satisfies Record<string, SoundRecipe>;
 
 export type LunchSfx = keyof typeof LUNCH_SFX;

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 440" width="180" height="440">
+<g stroke="#1d1830" stroke-linejoin="round"><rect x="10" y="4" width="160" height="16" rx="6" fill="#ffc83d" stroke-width="5"/>
+<path d="M22 20 L158 20 L158 400 L90 360 L22 400 Z" fill="#5a4790" stroke-width="6"/><path d="M34 32 L146 32 L146 380 L90 346 L34 380 Z" fill="none" stroke="#ffc83d" stroke-width="4"/>
+<text x="90" y="110" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="26" fill="#ffc83d" stroke="none">ORDEM</text><circle cx="90" cy="170" r="30" fill="#ffc83d" stroke-width="4"/><path d="M76 170 L104 170" stroke-width="5" stroke-linecap="round"/><text x="90" y="250" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="28" fill="#fffaf0" stroke="none">E</text><text x="90" y="300" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="18" fill="#ffc83d" stroke="none">SILÊNCIO</text></g>
+</svg>

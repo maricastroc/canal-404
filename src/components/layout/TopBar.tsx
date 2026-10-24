@@ -56,7 +56,7 @@ export function TopBar({ className = "" }: { className?: string }) {
     };
   }, [open]);
 
-  const navItems = NAV_ITEMS.filter((item) => item.href !== "/games/rua-sem-saida");
+  const navItems = NAV_ITEMS.filter((item) => item.href !== "/games/dead-end-street");
 
   return (
     <header className={`on-dark relative z-50 border-b-[3px] border-ink bg-plum-800 ${className}`}>

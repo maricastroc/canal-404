@@ -153,7 +153,7 @@ export default async function GamePage({ params }: PageProps<"/games/[slug]">) {
               escondida.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <InkLink href="/play/rua-sem-saida" tone="sun">
+              <InkLink href="/play/dead-end-street" tone="sun">
                 <PlayIcon className="size-5 text-ink" /> Jogar Rua Sem Saída
               </InkLink>
               <InkLink href="/" tone="mint">

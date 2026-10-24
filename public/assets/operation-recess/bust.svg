@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 360" width="200" height="360">
+<g stroke="#1d1830" stroke-linejoin="round">
+<rect x="30" y="200" width="140" height="150" rx="4" fill="#e8dcc4" stroke-width="6"/><rect x="18" y="190" width="164" height="22" rx="4" fill="#f3e6c4" stroke-width="5"/><rect x="18" y="338" width="164" height="22" rx="4" fill="#f3e6c4" stroke-width="5"/>
+<rect x="46" y="240" width="108" height="34" rx="4" fill="#ffc83d" stroke-width="4"/><text x="100" y="263" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="14" fill="#1d1830" >DISCIPLINA</text>
+<path d="M44 190 Q50 140 100 134 Q150 140 156 190 Z" fill="#c9d4e4" stroke-width="5"/>
+<ellipse cx="100" cy="86" rx="44" ry="54" fill="#dfe6ef" stroke-width="5"/>
+<path d="M62 70 L90 80 M138 70 L110 80" stroke-width="7" stroke-linecap="round"/>
+<circle cx="80" cy="90" r="5" fill="#9aa6b8" stroke="none"/><circle cx="120" cy="90" r="5" fill="#9aa6b8" stroke="none"/>
+<path d="M66 116 Q84 100 100 112 Q116 100 134 116 Q116 126 100 118 Q84 126 66 116 Z" fill="#b4c0d3" stroke-width="3.5"/>
+<path d="M60 40 Q100 10 140 40" fill="none" stroke="#b4c0d3" stroke-width="8"/>
+<path d="M140 70 Q150 100 136 128" fill="none" stroke="#b4c0d3" stroke-width="6"/></g>
+</svg>

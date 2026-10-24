@@ -15,13 +15,13 @@ export const CHANNELS: Record<ChannelId, Channel> = {
     id: "street",
     number: "03",
     name: "Jogo da semana: Rua Sem Saída",
-    cta: { href: "/play/rua-sem-saida", label: "Jogar agora", context: "Rua Sem Saída, o jogo da semana", play: true },
+    cta: { href: "/play/dead-end-street", label: "Jogar agora", context: "Rua Sem Saída, o jogo da semana", play: true },
   },
   house: {
     id: "house",
     number: "05",
     name: "Prévia: Casa Estranha (em breve)",
-    cta: { href: "/games/casa-estranha", label: "Ver detalhes", context: "Casa Estranha, jogo em breve" },
+    cta: { href: "/games/strange-house", label: "Ver detalhes", context: "Casa Estranha, jogo em breve" },
   },
   bars: { id: "bars", number: "07", name: "Fora do ar: barras coloridas" },
   cartoon: {

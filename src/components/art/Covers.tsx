@@ -206,41 +206,65 @@ export function StrangeHouseCover({ decorative }: { decorative?: boolean }) {
 
 export function OperationRecessCover({ decorative }: { decorative?: boolean }) {
   return (
-    <Frame decorative={decorative} bg={P.sky} label="Capa de Operação: Recreio: Bruno com walkie-talkie e o plano da missão no pátio da escola">
-      <rect x="0" y="0" width="320" height="240" fill={P.skyPale} opacity="0.4" />
-      <path d="M0 150 L320 150 L320 240 L0 240 Z" fill="#9fd36a" />
-      <path d="M0 150 L320 150" stroke={P.ink} strokeWidth="3" />
-      <path d="M180 150 L180 70 L310 70 L310 150 Z" fill={P.cream2} {...ink} />
-      <path d="M170 74 L245 30 L320 74 Z" fill={P.tomato} {...ink} />
-      <circle cx="262" cy="34" r="12" fill={P.white} {...ink} strokeWidth={3} />
-      <path d="M254 30 Q262 26 270 30 M252 38 Q262 42 272 38" stroke={P.ink} strokeWidth="2" fill="none" />
-      <rect x="200" y="92" width="28" height="26" fill={P.sky} {...ink} strokeWidth={3} />
-      <rect x="260" y="92" width="28" height="26" fill={P.sky} {...ink} strokeWidth={3} />
-      <g transform="rotate(-8 80 70)">
-        <rect x="20" y="20" width="120" height="96" fill={P.paper} {...ink} />
-        <path d="M34 92 Q60 50 90 70 T126 40" fill="none" stroke={P.tomato} strokeWidth="3" strokeDasharray="5 5" />
-        <path d="M120 34 L132 46 M132 34 L120 46" stroke={P.tomato} strokeWidth="4" strokeLinecap="round" />
-        <circle cx="38" cy="92" r="5" fill={P.mint} {...ink} strokeWidth={2.5} />
-        <text x="30" y="38" fontSize="12" fill={P.ink} style={{ fontFamily: "var(--font-patrick)" }}>
-          PLANO #47
+    <Frame decorative={decorative} bg="#f3e6c4" label="Capa de Operação: Recreio: Bruno ergue uma espada de papelão contra um monitor de apito no corredor da escola">
+      <rect x="0" y="0" width="320" height="150" fill="#f3e6c4" />
+      <g fill="#e8d8b0">
+        <rect x="30" y="0" width="8" height="150" />
+        <rect x="110" y="0" width="8" height="150" />
+        <rect x="190" y="0" width="8" height="150" />
+        <rect x="270" y="0" width="8" height="150" />
+      </g>
+      <rect x="0" y="118" width="320" height="52" fill={P.mint} />
+      <path d="M0 118 L320 118" stroke={P.mintDeep} strokeWidth="5" />
+      <rect x="0" y="170" width="320" height="70" fill="#e6dcc4" />
+      {Array.from({ length: 16 }, (_, i) => (
+        <rect key={i} x={(i % 8) * 40 + ((Math.floor(i / 8) % 2) * 20)} y={186 + Math.floor(i / 8) * 26} width="20" height="13" fill="#c9bfa6" />
+      ))}
+      <path d="M0 170 L320 170" stroke={P.ink} strokeWidth="3" />
+      <g transform="translate(202 52)" {...ink}>
+        <rect x="0" y="0" width="34" height="118" rx="3" fill={P.sky} />
+        <rect x="34" y="0" width="34" height="118" rx="3" fill={P.sun} />
+        <rect x="68" y="0" width="34" height="118" rx="3" fill={P.sky} />
+        <path d="M8 14 L26 14 M8 20 L26 20 M42 14 L60 14 M42 20 L60 20 M76 14 L94 14 M76 20 L94 20" strokeWidth={2.5} />
+      </g>
+      <Burst cx={104} cy={120} color="#ffe39a" count={14} r={150} />
+      <g transform="translate(26 22) rotate(-6)">
+        <rect x="0" y="0" width="56" height="70" rx="3" fill={P.white} {...ink} strokeWidth={3} />
+        <rect x="5" y="5" width="46" height="18" fill={P.tomato} />
+        <text x="28" y="18" textAnchor="middle" fontSize="9" fill={P.white} style={{ fontFamily: "var(--font-luckiest)" }}>
+          SILÊNCIO
         </text>
+        <circle cx="28" cy="44" r="13" fill={P.sunPale} {...ink} strokeWidth={2.5} />
+        <path d="M21 50 L35 50" stroke={P.ink} strokeWidth="3" />
       </g>
-      <g transform="translate(150 30) rotate(-14)">
-        <path d="M0 0 L40 10 L8 16 Z" fill={P.white} {...ink} strokeWidth={3} />
-        <path d="M8 16 L12 26 L18 13" fill={P.cream2} {...ink} strokeWidth={3} />
+      <g transform="translate(236 70)">
+        <path d="M-36 100 L-30 46 Q-28 34 -14 32 L14 32 Q28 34 30 46 L36 100 Z" fill="#3f5bd8" {...ink} />
+        <path d="M-28 40 L-8 40 L-8 100 L-32 100 Z" fill={P.sun} {...ink} strokeWidth={3} />
+        <path d="M8 40 L28 40 L32 100 L8 100 Z" fill={P.sun} {...ink} strokeWidth={3} />
+        <path d="M-32 74 L-8 74 M8 74 L32 74" stroke={P.white} strokeWidth="5" />
+        <ellipse cx="0" cy="6" rx="26" ry="28" fill="#f2c9a6" {...ink} />
+        <path d="M-28 -6 Q-26 -32 0 -32 Q26 -32 28 -6 Z" fill={P.leaf} {...ink} />
+        <path d="M-30 -8 L-58 -4 Q-60 2 -52 2 L-26 0 Z" fill={P.leafDeep} {...ink} strokeWidth={3} />
+        <path d="M-18 -4 L-4 2 M18 -4 L4 2" stroke={P.ink} strokeWidth="5" strokeLinecap="round" />
+        <circle cx="-9" cy="6" r="3.5" fill={P.ink} />
+        <circle cx="9" cy="6" r="3.5" fill={P.ink} />
+        <rect x="-30" y="16" width="22" height="11" rx="4" fill="#c9d4e4" {...ink} strokeWidth={3} />
+        <circle cx="-26" cy="22" r="3" fill={P.ink} />
+        <g fill="none" stroke={P.screenDeep} strokeWidth="4" strokeLinecap="round">
+          <path d="M-42 12 Q-50 22 -42 32" />
+          <path d="M-54 6 Q-66 22 -54 38" />
+        </g>
       </g>
-      <path d="M128 40 L140 36 M128 50 L142 50" stroke={P.ink} strokeWidth="2.5" strokeLinecap="round" />
-      <Kid who="bruno" x={96} y={90} size={128} face="normal" rotate={-4} />
-      <g transform="translate(212 196) rotate(14)">
-        <rect x="-14" y="-26" width="28" height="46" rx="5" fill={P.inkSoft} {...ink} />
-        <path d="M8 -26 L8 -44" stroke={P.ink} strokeWidth="5" strokeLinecap="round" />
-        <circle cx="0" cy="-12" r="6" fill={P.lime} stroke={P.ink} strokeWidth="2.5" />
-        <path d="M-8 4 L8 4 M-8 10 L8 10" stroke={P.steel} strokeWidth="3" />
+      <text x="236" y="16" textAnchor="middle" fontSize="40" fill={P.tomato} stroke={P.ink} strokeWidth="6" paintOrder="stroke" style={{ fontFamily: "var(--font-luckiest)" }} transform="translate(0 20)">
+        !
+      </text>
+      <g transform="translate(112 134) rotate(-74)">
+        <rect x="-6" y="-8" width="20" height="16" rx="4" fill="#c9d4e4" {...ink} strokeWidth={3} />
+        <rect x="12" y="-14" width="8" height="28" rx="2" fill="#a96d36" {...ink} strokeWidth={3} />
+        <path d="M20 -7 L104 -7 Q114 0 104 7 L20 7 Z" fill="#d9a066" {...ink} />
+        <path d="M28 -2 L96 -2 M28 3 L90 3" stroke="#b07a44" strokeWidth="2" />
       </g>
-      <g transform="translate(160 158) rotate(-4)">
-        <path d="M-32 -6 Q-30 -16 -16 -14 L-4 -10 L4 -10 L16 -14 Q30 -16 32 -6 Q30 4 16 2 L6 -2 L-6 -2 L-16 2 Q-30 4 -32 -6 Z" fill={P.ink} />
-        <path d="M-24 -10 L-12 -10" stroke={P.white} strokeWidth="2.5" strokeLinecap="round" />
-      </g>
+      <Kid who="bruno" x={44} y={92} size={124} face="normal" rotate={-6} />
     </Frame>
   );
 }

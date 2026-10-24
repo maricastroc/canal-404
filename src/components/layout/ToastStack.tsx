@@ -75,7 +75,7 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
 
 export function ToastStack() {
   const toasts = useToasts();
-  const inGame = usePathname().startsWith("/jogar");
+  const inGame = usePathname().startsWith("/play");
   return (
     <div
       aria-live="polite"

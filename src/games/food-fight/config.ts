@@ -61,15 +61,19 @@ export const PHASES: Phase[] = [
   { from: 65000, maxActive: 3, windup: 850, gap: [350, 700], speedy: 0.4, big: 0.2, flight: 0.8 },
 ];
 
-export const LUNCH_LADY_TIMES = [30000, 56000];
+export const LUNCH_LADY_TIMES = [30000];
+
+export const EVENTS = { trayFrom: 19000, trayChance: 0.3, brawlAt: 43000, brawlMs: 6500, brawlers: 4 };
 
 export const SCORE = {
   comboStep: 20,
   lifeBonus: 300,
   cleanBonus: 500,
   lunchLadyPenalty: 200,
-  twoStars: 6000,
-  threeStars: 9000,
+  interruptBonus: 100,
+  brawlMultiplier: 2,
+  twoStars: 7500,
+  threeStars: 11500,
 };
 
 export const FOODS = ["sandwich", "apple", "grapes", "banana"] as const;

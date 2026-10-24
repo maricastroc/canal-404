@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 440" width="180" height="440">
+<g stroke="#1d1830" stroke-linejoin="round"><rect x="10" y="4" width="160" height="16" rx="6" fill="#ffc83d" stroke-width="5"/>
+<path d="M22 20 L158 20 L158 400 L90 360 L22 400 Z" fill="#c4352c" stroke-width="6"/><path d="M34 32 L146 32 L146 380 L90 346 L34 380 Z" fill="none" stroke="#ffc83d" stroke-width="4"/>
+<text x="90" y="100" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="26" fill="#ffc83d" stroke="none">REGRA</text><text x="90" y="140" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="20" fill="#fffaf0" stroke="none">É REGRA</text><path d="M60 190 L90 220 L120 190 L90 260 Z" fill="#ffc83d" stroke-width="4"/><text x="90" y="310" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="21" fill="#ffc83d" stroke="none">SEMPRE</text></g>
+</svg>

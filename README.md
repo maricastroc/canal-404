@@ -1,6 +1,6 @@
 # CANAL 404
 
-A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and three complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias** and **Guerra de Lanche**.
+A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and four complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche** and **Operação: Recreio**.
 
 The code, file names and ids are in English. Everything the visitor reads on screen is in Brazilian Portuguese.
 
@@ -41,7 +41,7 @@ There are no external services, sign-ins or API keys. Progress, high scores, sec
 | `/extras` | Downloadable posters (PNG), music, achievements and secrets |
 | `/about` | The channel's fictional history |
 
-Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `strange-house` and `operation-recess` (coming soon).
+Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio) and `strange-house` (coming soon).
 
 ## Structure
 
@@ -66,6 +66,7 @@ src/
     dead-end-street/     slingshot game (Phaser scenes, waves, sounds)
     bad-ideas-lab/       machine puzzle (levels, geometry, scenes, sounds)
     food-fight/          cafeteria food fight (scenes, rivals, sounds)
+    operation-recess/    side-scrolling action platformer (phases, hero, enemies, boss, sounds)
   lib/
     audio/               Web Audio engine, effects and music
     progress/            persistence, secrets and achievements
@@ -100,6 +101,18 @@ The levels were calibrated in simulation with the same physics rules as the game
 A cafeteria food fight in 75-second rounds. Déco and Mila hide behind their table. Tap a kid from the rival class to throw a snack at them, and hold ABAIXAR when the exclamation mark appears so the pudding flies overhead. While ducked, Mila hands over more snacks. Three puddings use up the napkins; lasting until the bell rings is a win. Pimentinha throws fast, Grandão takes two hits, and the lunch lady, who walks by now and then, must not be hit.
 
 The first match starts with a short practice: a rival waits for the first snack and the first pudding comes slowly, with Mila calling it out. On the keyboard, Space throws at the most dangerous rival, 1 to 5 pick a table and the down arrow ducks.
+
+The round changes as it goes: after about 20 seconds some kids hide behind a lunch tray (wait until they lower it to throw), hitting a kid who is about to throw drops the pudding on his own head for a bonus, and around the middle of the round the rival tables start fighting each other for a few seconds (every hit counts double) until the lunch lady's whistle ends it. Incoming puddings have a red ring, and the lunch lady carries a "don't hit" marker.
+
+## Operação: Recreio (`operation-recess`)
+
+A side-scrolling action platformer. The school monitors cancelled recess, and Bruno grabs a cardboard sword to get it back. Arrows or A/D move, Space jumps (hold to jump higher) and J attacks; on touch screens there are left, right, jump and attack buttons. Movement uses coyote time and jump buffering, attacks have a short wind-up, an active slash window, a small lunge and a cooldown, and hits pause the action for a few frames.
+
+Three phases: the forbidden corridor (common monitors, lockers, puddles), the occupied yard (whistle monitors whose sound waves can be jumped or slashed, balls bouncing out of a box, jungle gym platforms) and the way to the principal's office (shield monitors that block frontal hits, book carts over gaps, and the final fight). Every enemy shows an exclamation mark before attacking. Bruno has five hearts, snacks restore one, and bells work as checkpoints: losing after a bell restarts from it.
+
+Each phase has its own layered set: the corridor (rows of lockers, classroom doors, windows to the yard, authoritarian posters, papers that blow when Bruno runs past), the yard (parallax buildings and trees, the court fence, a snack kiosk, bunting, protest signs) and the way to the office (columns, portraits of former principals, busts, banners, warmer light). Lockers, posters, bins and plants react to the sword. The camera zooms in on the action and opens up for the boss fight, with the HUD on its own camera.
+
+The boss, the Inspetor do Silêncio, has three telegraphed attacks: a giant whistle wave to jump over, a charge that ends with him dizzy against the wall, and a clipboard slam that gets stuck. He blocks hits while guarding and can only be hit in those openings. Beating him frees recess and the kids celebrate.
 
 ## Accessibility
 

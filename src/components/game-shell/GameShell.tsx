@@ -224,8 +224,10 @@ export function GameShell({ slug }: { slug: string }) {
 
   useEffect(() => {
     if (stage !== "paused") return;
+    const since = performance.now();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.timeStamp < since || event.repeat) return;
+      if (event.key === "Escape" || event.key.toLowerCase() === "p") {
         event.preventDefault();
         instanceRef.current?.resume();
         setStage("playing");

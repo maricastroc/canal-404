@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowBigDown, Pointer } from "lucide";
+import { ArrowBigDown, Ban, Pointer } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 
@@ -37,6 +37,7 @@ const ASSETS: [key: string, file: string, width: number, height: number][] = [
   ["clock", "clock.svg", 150, 150],
   ["star", "star.svg", 36, 36],
   ["spark", "spark.svg", 26, 26],
+  ["tray", "tray.svg", 180, 124],
 ];
 
 export class BootScene extends Phaser.Scene {
@@ -54,6 +55,7 @@ export class BootScene extends Phaser.Scene {
       { key: "icon-duck", icon: ArrowBigDown, size: 160, color: "#1d1830", fill: "#fbf5e6", strokeWidth: 2.2 },
       { key: "icon-tap-outline", icon: Pointer, size: 160, color: "#1d1830", strokeWidth: 4 },
       { key: "icon-tap", icon: Pointer, size: 160, color: "#fbf5e6", strokeWidth: 1.8 },
+      { key: "icon-ban", icon: Ban, size: 64, color: "#ef4f43", fill: "#fbf5e6", strokeWidth: 3.2 },
     ]);
   }
 

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 276" width="180" height="276">
+<rect x="6" y="6" width="168" height="264" rx="6" fill="#55301e" stroke="#1d1830" stroke-width="6"/>
+<rect x="18" y="18" width="144" height="252" rx="4" fill="#b06c3f" stroke="#1d1830" stroke-width="4"/>
+<rect x="38" y="34" width="104" height="80" rx="4" fill="#2b2150" stroke="#1d1830" stroke-width="4"/>
+<rect x="46" y="42" width="88" height="40" fill="#3f8f4a" stroke="#1d1830" stroke-width="2.5"/>
+<path d="M54 52 L80 52 M54 60 L96 60 M54 68 L74 68" stroke="#fffaf0" stroke-width="2.5"/>
+<rect x="50" y="92" width="22" height="14" fill="#7c4527"/><rect x="82" y="92" width="22" height="14" fill="#7c4527"/><rect x="114" y="92" width="18" height="14" fill="#7c4527"/>
+<path d="M38 34 L142 114" stroke="#ffffff" stroke-width="4" opacity="0.15"/>
+<path d="M90 34 L90 114" stroke="#1d1830" stroke-width="3"/>
+<rect x="46" y="128" width="88" height="28" rx="4" fill="#fffaf0" stroke="#1d1830" stroke-width="3.5"/>
+<text x="90" y="149" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="17" fill="#1d1830" >SALA 12</text>
+<circle cx="146" cy="186" r="9" fill="#ffc83d" stroke="#1d1830" stroke-width="3.5"/>
+<path d="M30 230 L60 236 M110 250 L140 244" stroke="#9a5a32" stroke-width="3"/><g transform="rotate(5 90 210)"><rect x="34" y="194" width="112" height="34" rx="3" fill="#ffe39a" stroke="#1d1830" stroke-width="3"/><text x="90" y="216" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="10" fill="#1d1830" >NÃO PERTURBE</text></g><path d="M90 194 L80 172 M90 194 L100 172" stroke="#1d1830" stroke-width="2"/>
+</svg>

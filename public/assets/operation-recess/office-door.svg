@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 300" width="220" height="300">
+<g stroke="#1d1830" stroke-linejoin="round">
+<rect x="10" y="40" width="200" height="256" rx="8" fill="#55301e" stroke-width="7"/>
+<rect x="26" y="56" width="80" height="240" rx="4" fill="#7c4527" stroke-width="4"/><rect x="114" y="56" width="80" height="240" rx="4" fill="#7c4527" stroke-width="4"/>
+<circle cx="96" cy="190" r="7" fill="#ffc83d" stroke-width="3"/><circle cx="124" cy="190" r="7" fill="#ffc83d" stroke-width="3"/>
+<rect x="20" y="4" width="180" height="44" rx="6" fill="#ffc83d" stroke-width="6"/>
+<text x="110" y="35" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="24" fill="#1d1830" stroke="none">DIREÇÃO</text></g>
+</svg>
