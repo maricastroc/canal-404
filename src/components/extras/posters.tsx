@@ -41,9 +41,9 @@ function rays(cx: number, cy: number, color: string, count = 18, r = 900) {
 
 export const POSTERS: PosterDef[] = [
   {
-    id: "caos",
+    id: "chaos",
     title: "Caos faz parte da programação",
-    file: "canal404-poster-caos.png",
+    file: "canal404-poster-chaos.png",
     unlock: { label: "Liberado desde 2004", check: () => true },
     art: (
       <g>
@@ -62,9 +62,9 @@ export const POSTERS: PosterDef[] = [
     ],
   },
   {
-    id: "sonhe",
+    id: "dream",
     title: "Sonhe, jogue, invente, repita",
-    file: "canal404-poster-sonhe.png",
+    file: "canal404-poster-dream.png",
     unlock: { label: "Liberado desde 2004", check: () => true },
     art: (
       <g>
@@ -100,12 +100,12 @@ export const POSTERS: PosterDef[] = [
     ],
   },
   {
-    id: "rua",
+    id: "dead-end-street",
     title: "Rua Sem Saída: a bagunça oficial",
-    file: "canal404-poster-rua-sem-saida.png",
+    file: "canal404-poster-dead-end-street.png",
     unlock: {
       label: "Vença Rua Sem Saída",
-      check: (p) => Boolean(p.achievements["vitoria-rua"]),
+      check: (p) => Boolean(p.achievements["street-win"]),
     },
     art: (
       <g>
@@ -131,9 +131,9 @@ export const POSTERS: PosterDef[] = [
     ],
   },
   {
-    id: "fora-do-ar",
+    id: "off-air",
     title: "Fora do ar (ou não)",
-    file: "canal404-poster-fora-do-ar.png",
+    file: "canal404-poster-off-air.png",
     unlock: {
       label: "Encontre 3 segredos na sala",
       check: (p) => Object.keys(p.secrets).length >= 3,

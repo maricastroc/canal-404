@@ -1,6 +1,6 @@
-export type GameCategory = "acao" | "puzzle" | "aventura" | "estrategia";
+export type GameCategory = "action" | "puzzle" | "adventure" | "strategy";
 
-export type GameStatus = "disponivel" | "em-breve";
+export type GameStatus = "available" | "coming-soon";
 
 export type ControlHint = { input: string; action: string };
 
@@ -29,22 +29,22 @@ export type GameMeta = {
 };
 
 export const CATEGORY_LABELS: Record<GameCategory, string> = {
-  acao: "Ação",
+  action: "Ação",
   puzzle: "Puzzle",
-  aventura: "Aventura",
-  estrategia: "Estratégia",
+  adventure: "Aventura",
+  strategy: "Estratégia",
 };
 
 export const GAMES: GameMeta[] = [
   {
-    slug: "rua-sem-saida",
+    slug: "dead-end-street",
     title: "Rua Sem Saída",
     tagline: "Engenhocas, física e muita confusão no quintal do vizinho.",
     description:
       "Déco e Lina construíram uma engenhoca de lançamento com um carrinho de rolimã, uma colher de pau gigante e elástico de calcinha. Mire, lance objetos absurdos pelo bairro e derrube todos os enfeites do jardim do Seu Arlindo antes que a munição acabe.",
-    category: "acao",
+    category: "action",
     tags: ["Ação", "Física", "Engenhocas"],
-    status: "disponivel",
+    status: "available",
     accent: "sun",
     cast: ["deco", "lina", "bruno"],
     objective: "Três rodadas no quintal do Seu Arlindo: derrube os enfeites antes de acabar a munição. Bagunça extra vale pontos.",
@@ -78,14 +78,14 @@ export const GAMES: GameMeta[] = [
     },
   },
   {
-    slug: "laboratorio-de-pessimas-ideias",
+    slug: "bad-ideas-lab",
     title: "Laboratório de Péssimas Ideias",
     tagline: "Monte máquinas malucas para resolver problemas bobos.",
     description:
       "A Lina transformou a garagem num laboratório de invenções. Em cada fase tem um problema bobo para resolver, como acordar o gato ou ligar a torradeira. Use rampas, molas, ventiladores e esteiras para levar a bolinha até o lugar certo.",
     category: "puzzle",
     tags: ["Puzzle", "Construção", "Física"],
-    status: "disponivel",
+    status: "available",
     accent: "plum",
     cast: ["lina", "bruno"],
     objective: "Use as peças para levar a bolinha até o alvo. Quanto menos peças você usar, mais estrelas ganha.",
@@ -108,12 +108,12 @@ export const GAMES: GameMeta[] = [
       { title: "Ligue", text: "Aperte LIGAR e veja a bolinha. Não deu? Mude as peças e tente de novo." },
     ],
     levels: [
-      { id: "teste", title: "Primeiro teste", goal: "Coloque a rampa e ligue a máquina." },
+      { id: "test", title: "Primeiro teste", goal: "Coloque a rampa e ligue a máquina." },
       { id: "pixel", title: "Bom dia, Pixel", goal: "Faça a bolinha tocar o sino." },
-      { id: "torrada", title: "Café da manhã", goal: "Faça a bolinha apertar o botão da torradeira." },
-      { id: "suco", title: "Suco de laranja", goal: "Leve a laranja até o espremedor." },
-      { id: "controle", title: "Cadê o controle?", goal: "Faça a bolinha apertar o botão do controle." },
-      { id: "definitiva", title: "A pior ideia de todas", goal: "Faça a bolinha tocar o sino atrás do muro." },
+      { id: "toast", title: "Café da manhã", goal: "Faça a bolinha apertar o botão da torradeira." },
+      { id: "juice", title: "Suco de laranja", goal: "Leve a laranja até o espremedor." },
+      { id: "remote", title: "Cadê o controle?", goal: "Faça a bolinha apertar o botão do controle." },
+      { id: "finale", title: "A pior ideia de todas", goal: "Faça a bolinha tocar o sino atrás do muro." },
     ],
     tips: [
       "Não deu certo? Mude uma peça de lugar e tente de novo.",
@@ -132,40 +132,68 @@ export const GAMES: GameMeta[] = [
     },
   },
   {
-    slug: "guerra-de-lanche",
+    slug: "food-fight",
     title: "Guerra de Lanche",
     tagline: "A cantina virou campo de batalha. Abaixe-se!",
     description:
-      "Alguém jogou uma uva. Agora é guerra. Desvie de pudins voadores, recarregue com sanduíches e defenda sua mesa na cantina da escola até o sinal tocar.",
-    category: "acao",
+      "Alguém jogou uma uva e começou a guerra. Ajude o Déco e a Mila a defender a mesa na cantina da escola: jogue lanches na turma rival, abaixe quando vier pudim e aguente até o sinal tocar.",
+    category: "action",
     tags: ["Ação", "Arcade", "Comida"],
-    status: "em-breve",
+    status: "available",
     accent: "tangerine",
     cast: ["deco", "mila"],
-    production: "Estamos testando quantos pudins cabem na tela ao mesmo tempo. Resposta atual: demais.",
+    objective: "Jogue lanches na turma rival e abaixe quando vier pudim. Aguente até o sinal tocar sem gastar os três guardanapos.",
+    controls: [
+      { input: "Tocar ou clicar num aluno", action: "Jogar um lanche nele" },
+      { input: "Segurar ABAIXAR", action: "Abaixar atrás da mesa e pegar mais lanches" },
+      { input: "Espaço ou Enter", action: "Jogar no aluno mais perigoso" },
+      { input: "1 a 5", action: "Jogar na mesa com esse número" },
+      { input: "Seta para baixo ou S (segurar)", action: "Abaixar" },
+      { input: "Esc ou P", action: "Pausar" },
+    ],
+    howTo: [
+      { title: "Mire", text: "Toque num aluno da turma rival para jogar um lanche nele." },
+      { title: "Abaixe", text: "Viu um pudim vindo? Segure ABAIXAR até ele passar." },
+      { title: "Recarregue", text: "Abaixado, a Mila te passa mais lanches. Só não acerte a tia da cantina!" },
+    ],
+    tips: [
+      "Viu um ponto de exclamação? Prepare-se para abaixar.",
+      "Abaixado, a Mila te passa mais lanches.",
+      "O Grandão precisa levar dois lanches.",
+      "A Pimentinha joga rápido. Acerte ela primeiro.",
+      "Acertar vários seguidos vale bônus.",
+      "Acertar a tia da cantina tira pontos.",
+    ],
+    controlsSummary: "Guerra de Lanche. Espaço joga no aluno mais perigoso, 1 a 5 escolhem a mesa, segure seta para baixo para abaixar, Esc pausa.",
+    copy: {
+      winTitle: "Sinal!",
+      winText: "A mesa resistiu até o fim do recreio.",
+      loseTitle: "Melecado!",
+      loseText: "Acabaram os guardanapos. Fica pra próxima!",
+    },
   },
   {
-    slug: "casa-estranha",
+    slug: "strange-house",
     title: "Casa Estranha",
     tagline: "Uma casa onde a gravidade tem opinião própria.",
     description:
       "A Mila jura que a casa no fim da rua muda de lugar à noite. Explore cômodos onde o teto vira chão, as escadas dão voltas e os móveis sussurram dicas. Ou ameaças.",
-    category: "aventura",
+    category: "adventure",
     tags: ["Aventura", "Exploração", "Puzzles"],
-    status: "em-breve",
+    status: "coming-soon",
     accent: "mint",
     cast: ["mila", "bruno"],
     production: "Mapeando os 13 cômodos. Ou 14. Depende da noite.",
   },
   {
-    slug: "operacao-recreio",
+    slug: "operation-recess",
     title: "Operação: Recreio",
     tagline: "15 minutos de intervalo. Uma missão impossível.",
     description:
       "Bruno planejou tudo: recuperar a bola presa no telhado, trocar figurinhas raras e voltar antes do sinal. Monte equipamentos improvisados e complete missões no pátio da escola.",
-    category: "estrategia",
+    category: "strategy",
     tags: ["Estratégia", "Missões", "Equipamentos"],
-    status: "em-breve",
+    status: "coming-soon",
     accent: "sky",
     cast: ["bruno", "deco", "lina"],
     production: "O plano do Bruno tem 47 etapas. Estamos na etapa 12.",
@@ -176,4 +204,4 @@ export function getGame(slug: string) {
   return GAMES.find((g) => g.slug === slug);
 }
 
-export const PLAYABLE = GAMES.filter((g) => g.status === "disponivel");
+export const PLAYABLE = GAMES.filter((g) => g.status === "available");

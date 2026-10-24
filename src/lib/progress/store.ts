@@ -44,7 +44,7 @@ export type Toast = {
   description: string;
 };
 
-const STORAGE_KEY = "canal404:progresso:v1";
+const STORAGE_KEY = "canal404:progress:v1";
 
 export const DEFAULT_STATE: ProgressState = {
   version: 1,
@@ -52,7 +52,7 @@ export const DEFAULT_STATE: ProgressState = {
   visits: 0,
   firstVisitAt: null,
   lastVisitAt: null,
-  settings: { sfx: true, music: false, track: "tema" },
+  settings: { sfx: true, music: false, track: "theme" },
   secrets: {},
   achievements: {},
   games: {},
@@ -170,8 +170,8 @@ export function registerVisit() {
   ensureLoaded();
   let isNewSession = true;
   try {
-    isNewSession = !window.sessionStorage.getItem("canal404:sessao");
-    window.sessionStorage.setItem("canal404:sessao", "1");
+    isNewSession = !window.sessionStorage.getItem("canal404:session");
+    window.sessionStorage.setItem("canal404:session", "1");
   } catch {}
   if (!isNewSession) return state;
   const now = Date.now();
@@ -185,7 +185,7 @@ export function registerVisit() {
     firstVisitAt: state.firstVisitAt ?? now,
     lastVisitAt: now,
   });
-  if (first) unlockAchievement("primeira-visita");
+  if (first) unlockAchievement("first-visit");
   return state;
 }
 
@@ -213,8 +213,8 @@ export function unlockSecret(id: SecretId) {
     pushToast({ kind: "secret", title: def.title, description: def.description });
   }
   const found = Object.keys(state.secrets).length;
-  if (found >= 3) unlockAchievement("explorador");
-  if (found >= SECRETS.length) unlockAchievement("cacador");
+  if (found >= 3) unlockAchievement("explorer");
+  if (found >= SECRETS.length) unlockAchievement("secret-hunter");
   return true;
 }
 
@@ -305,8 +305,8 @@ export function resetProgress() {
     firstVisitAt: state.firstVisitAt,
     lastVisitAt: state.lastVisitAt,
     settings: state.settings,
-    achievements: state.achievements["primeira-visita"]
-      ? { "primeira-visita": state.achievements["primeira-visita"] }
+    achievements: state.achievements["first-visit"]
+      ? { "first-visit": state.achievements["first-visit"] }
       : {},
   });
 }

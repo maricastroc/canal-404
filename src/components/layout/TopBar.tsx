@@ -56,7 +56,7 @@ export function TopBar({ className = "" }: { className?: string }) {
     };
   }, [open]);
 
-  const navItems = NAV_ITEMS.filter((item) => item.href !== "/jogos/rua-sem-saida");
+  const navItems = NAV_ITEMS.filter((item) => item.href !== "/games/rua-sem-saida");
 
   return (
     <header className={`on-dark relative z-50 border-b-[3px] border-ink bg-plum-800 ${className}`}>
@@ -67,7 +67,7 @@ export function TopBar({ className = "" }: { className?: string }) {
         <nav aria-label="Principal" className="ml-auto hidden md:block">
           <ul className="flex items-center gap-2">
             {navItems.map((item) => {
-              const active = isActive(pathname, item.href) || (item.href === "/jogos" && pathname.startsWith("/jogos"));
+              const active = isActive(pathname, item.href) || (item.href === "/games" && pathname.startsWith("/games"));
               return (
                 <li key={item.href}>
                   <Link
@@ -95,7 +95,7 @@ export function TopBar({ className = "" }: { className?: string }) {
             setOpen((v) => !v);
           }}
           aria-expanded={open}
-          aria-controls="menu-gaveta"
+          aria-controls="menu-drawer"
           aria-label={open ? "Fechar menu" : "Abrir menu"}
           className="press grid size-12 place-items-center rounded-xl border-[3px] border-ink bg-sun shadow-[var(--shadow-ink-sm)] md:hidden"
         >
@@ -116,7 +116,7 @@ export function TopBar({ className = "" }: { className?: string }) {
             />
             <motion.div
               key="drawer"
-              id="menu-gaveta"
+              id="menu-drawer"
               ref={drawer}
               role="dialog"
               aria-modal="true"

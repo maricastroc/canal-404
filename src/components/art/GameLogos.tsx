@@ -2,9 +2,9 @@ import { P } from "@/lib/palette";
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
-export function RuaLogo({ className }: { className?: string }) {
+export function DeadEndStreetLogo({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 340 170" className={className} role="img" aria-label="Rua Sem Saída">
+    <svg viewBox="-8 -8 350 184" className={className} role="img" aria-label="Rua Sem Saída">
       <g style={display}>
         <g transform="rotate(-7 120 70)">
           <text x="128" y="94" textAnchor="middle" fontSize="104" fill={P.ink} letterSpacing="2">
@@ -38,7 +38,7 @@ export function RuaLogo({ className }: { className?: string }) {
   );
 }
 
-export function HowToPanel({ step }: { step: 0 | 1 | 2 }) {
+export function DeadEndStreetHowToPanel({ step }: { step: 0 | 1 | 2 }) {
   if (step === 0) {
     return (
       <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
@@ -99,9 +99,9 @@ export function HowToPanel({ step }: { step: 0 | 1 | 2 }) {
   );
 }
 
-export function LabLogo({ className }: { className?: string }) {
+export function BadIdeasLabLogo({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 360 190" className={className} role="img" aria-label="Laboratório de Péssimas Ideias">
+    <svg viewBox="-10 -3 382 198" className={className} role="img" aria-label="Laboratório de Péssimas Ideias">
       <g style={display}>
         <g transform="rotate(-5 160 50)">
           <text x="166" y="66" textAnchor="middle" fontSize="50" fill={P.ink} letterSpacing="1">
@@ -138,7 +138,7 @@ export function LabLogo({ className }: { className?: string }) {
   );
 }
 
-export function LabHowToPanel({ step }: { step: 0 | 1 | 2 }) {
+export function BadIdeasLabHowToPanel({ step }: { step: 0 | 1 | 2 }) {
   if (step === 0) {
     return (
       <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
@@ -192,12 +192,102 @@ export function LabHowToPanel({ step }: { step: 0 | 1 | 2 }) {
   );
 }
 
+export function FoodFightLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="3 -15 375 205" className={className} role="img" aria-label="Guerra de Lanche">
+      <g style={display}>
+        <g transform="rotate(-6 166 60)">
+          <text x="170" y="88" textAnchor="middle" fontSize="80" fill={P.ink} letterSpacing="2">
+            GUERRA
+          </text>
+          <text x="164" y="82" textAnchor="middle" fontSize="80" fill={P.tomato} stroke={P.ink} strokeWidth="10" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            GUERRA
+          </text>
+        </g>
+        <g transform="rotate(5 92 116)">
+          <rect x="60" y="98" width="60" height="32" rx="8" fill={P.mint} stroke={P.ink} strokeWidth="5" />
+          <text x="90" y="122" textAnchor="middle" fontSize="24" fill={P.ink}>
+            de
+          </text>
+        </g>
+        <g transform="rotate(-3 200 150)">
+          <text x="206" y="178" textAnchor="middle" fontSize="72" fill={P.ink} letterSpacing="2">
+            LANCHE
+          </text>
+          <text x="200" y="172" textAnchor="middle" fontSize="72" fill={P.sun} stroke={P.ink} strokeWidth="10" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            LANCHE
+          </text>
+        </g>
+      </g>
+      <g transform="translate(330 36) rotate(16) scale(0.8)" stroke={P.ink} strokeLinejoin="round" strokeLinecap="round">
+        <path d="M-26 22 L-18 -14 Q0 -24 18 -14 L26 22 Q0 30 -26 22 Z" fill={P.sunPale} strokeWidth="5" />
+        <path d="M-18 -14 Q0 -24 18 -14 L20 -4 Q14 4 10 -4 Q6 8 0 -2 Q-6 8 -10 -4 Q-14 4 -20 -4 Z" fill="#b5652e" strokeWidth="4" />
+        <path d="M-40 -30 L-50 -38 M-44 -10 L-58 -10 M30 -30 L38 -40" stroke={P.tangerine} strokeWidth="5" />
+      </g>
+    </svg>
+  );
+}
+
+export function FoodFightHowToPanel({ step }: { step: 0 | 1 | 2 }) {
+  const wall = "#c8eadf";
+  if (step === 0) {
+    return (
+      <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
+        <rect width="200" height="130" fill={wall} />
+        <rect y="84" width="200" height="46" fill="#f7e7c2" />
+        <path d="M118 96 L190 96 L186 128 L122 128 Z" fill={P.sky} stroke={P.ink} strokeWidth="4" strokeLinejoin="round" />
+        <circle cx="154" cy="70" r="22" fill={P.skinLight} stroke={P.ink} strokeWidth="4" />
+        <path d="M132 62 Q134 40 154 40 Q174 40 176 62 Q164 54 154 56 Q144 54 132 62 Z" fill={P.sky} stroke={P.ink} strokeWidth="4" strokeLinejoin="round" />
+        <path d="M24 104 Q60 40 128 60" fill="none" stroke={P.ink} strokeWidth="3" strokeDasharray="5 6" />
+        <path d="M118 52 L142 64 M120 74 L140 66" stroke={P.ink} strokeWidth="4" strokeLinecap="round" />
+        <g transform="translate(40 92)">
+          <path d="M-16 4 Q-17 -10 0 -12 Q17 -10 16 4 Z" fill={P.sunPale} stroke={P.ink} strokeWidth="3.5" />
+          <path d="M-16 4 L16 4 L14 10 L-14 10 Z" fill={P.lime} stroke={P.ink} strokeWidth="3" />
+        </g>
+        <circle cx="154" cy="70" r="30" fill="none" stroke={P.sun} strokeWidth="5" strokeDasharray="8 6" />
+      </svg>
+    );
+  }
+  if (step === 1) {
+    return (
+      <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
+        <rect width="200" height="130" fill={wall} />
+        <path d="M20 80 L140 80 L136 128 L24 128 Z" fill={P.tomato} stroke={P.ink} strokeWidth="4" strokeLinejoin="round" />
+        <path d="M44 80 L50 64 L60 74 L66 58 L74 72 L82 60 L86 80 Z" fill={P.tangerineDeep} stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />
+        <path d="M150 22 Q110 10 74 40" fill="none" stroke={P.ink} strokeWidth="3" strokeDasharray="5 6" />
+        <g transform="translate(70 44) rotate(-20)">
+          <path d="M-14 12 L-10 -6 Q0 -12 10 -6 L14 12 Q0 16 -14 12 Z" fill={P.sunPale} stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />
+          <path d="M-10 -6 Q0 -12 10 -6 L11 0 Q0 4 -11 0 Z" fill="#b5652e" stroke={P.ink} strokeWidth="3" />
+        </g>
+        <circle cx="168" cy="96" r="24" fill={P.sun} stroke={P.ink} strokeWidth="4" />
+        <path d="M168 84 L168 104 M160 98 L168 106 L176 98" fill="none" stroke={P.ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
+      <rect width="200" height="130" fill={wall} />
+      <path d="M20 70 L180 70 L176 128 L24 128 Z" fill={P.tomato} stroke={P.ink} strokeWidth="4" strokeLinejoin="round" />
+      <path d="M20 70 L180 70 L180 78 L20 78 Z" fill="#e8b46a" stroke={P.ink} strokeWidth="4" />
+      {[48, 80, 112, 144].map((x, i) => (
+        <circle key={x} cx={x} cy={58} r="10" fill={[P.tomato, P.plum500, P.sun, P.lime][i]} stroke={P.ink} strokeWidth="3.5" />
+      ))}
+      <path d="M70 36 L80 26 L90 36 M110 36 L120 26 L130 36" fill="none" stroke={P.ink} strokeWidth="4" strokeLinecap="round" />
+      <text x="100" y="22" textAnchor="middle" fontSize="16" fill={P.ink} style={display}>
+        +1 LANCHE
+      </text>
+    </svg>
+  );
+}
+
 export const GAME_LOGOS: Record<string, (props: { className?: string }) => React.JSX.Element> = {
-  "rua-sem-saida": RuaLogo,
-  "laboratorio-de-pessimas-ideias": LabLogo,
+  "dead-end-street": DeadEndStreetLogo,
+  "bad-ideas-lab": BadIdeasLabLogo,
+  "food-fight": FoodFightLogo,
 };
 
 export function GameHowToPanel({ slug, step }: { slug: string; step: 0 | 1 | 2 }) {
-  if (slug === "laboratorio-de-pessimas-ideias") return <LabHowToPanel step={step} />;
-  return <HowToPanel step={step} />;
+  if (slug === "bad-ideas-lab") return <BadIdeasLabHowToPanel step={step} />;
+  if (slug === "food-fight") return <FoodFightHowToPanel step={step} />;
+  return <DeadEndStreetHowToPanel step={step} />;
 }

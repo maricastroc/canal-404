@@ -1,19 +1,16 @@
-import { ChestIcon, ControllerIcon, HouseIcon, SmileyIcon, StarIcon, TowerIcon } from "@/components/art/Icons";
+import { ControllerIcon, GiftIcon, HouseIcon, SmileyIcon, StarIcon, TowerIcon } from "@/components/art/Icons";
 import type { NavItem } from "./nav";
 
-export function NavIcon({ icon, className }: { icon: NavItem["icon"]; className?: string }) {
-  switch (icon) {
-    case "house":
-      return <HouseIcon className={className} />;
-    case "controller":
-      return <ControllerIcon className={className} />;
-    case "star":
-      return <StarIcon className={className} />;
-    case "smiley":
-      return <SmileyIcon className={className} />;
-    case "chest":
-      return <ChestIcon className={className} />;
-    case "tower":
-      return <TowerIcon className={className} />;
-  }
+const ICONS = {
+  house: HouseIcon,
+  controller: ControllerIcon,
+  star: StarIcon,
+  smiley: SmileyIcon,
+  chest: GiftIcon,
+  tower: TowerIcon,
+} satisfies Record<NavItem["icon"], (props: { className?: string }) => React.JSX.Element>;
+
+export function NavIcon({ icon, className = "" }: { icon: NavItem["icon"]; className?: string }) {
+  const Icon = ICONS[icon];
+  return <Icon className={`text-ink ${className}`} />;
 }

@@ -6,12 +6,13 @@ import { Tag, type Tone } from "@/components/ui/Primitives";
 import { useSound } from "@/lib/audio/hooks";
 import { CATEGORY_LABELS, type GameMeta } from "@/games/registry";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
+import { LockIcon } from "@/components/art/Icons";
 
 const categoryTone: Record<GameMeta["category"], Tone> = {
-  acao: "tangerine",
+  action: "tangerine",
   puzzle: "plum",
-  aventura: "mint",
-  estrategia: "sky",
+  adventure: "mint",
+  strategy: "sky",
 };
 
 export function GameCard({ game, index }: { game: GameMeta; index: number }) {
@@ -19,12 +20,12 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
   const progress = useProgress();
   const hydrated = useHydrated();
   const record = hydrated ? progress.games[game.slug] : undefined;
-  const available = game.status === "disponivel";
+  const available = game.status === "available";
   const tilt = index % 3 === 0 ? "-rotate-1" : index % 3 === 1 ? "rotate-1" : "-rotate-[0.5deg]";
 
   return (
     <Link
-      href={`/jogos/${game.slug}`}
+      href={`/games/${game.slug}`}
       onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
       onClick={() => play("click")}
       className={`group relative flex h-full flex-col border-[3px] border-ink bg-paper p-2.5 shadow-[var(--shadow-ink)] transition-transform duration-200 wobbly-sm hover:-translate-y-1.5 hover:rotate-0 hover:shadow-[var(--shadow-ink-lg)] focus-visible:rotate-0 ${tilt}`}
@@ -88,12 +89,7 @@ export function LostGamesCard() {
       <span aria-hidden className="absolute bottom-6 right-6 rotate-12 font-display text-6xl text-plum-600">
         ?
       </span>
-      <svg viewBox="0 0 64 64" className="w-16" aria-hidden>
-        <path d="M20 30 L20 22 Q20 10 32 10 Q44 10 44 22 L44 30" fill="none" stroke="#b9a6ef" strokeWidth="6" strokeLinecap="round" />
-        <rect x="12" y="28" width="40" height="30" rx="6" fill="#5a4790" stroke="#1d1830" strokeWidth="4" />
-        <circle cx="32" cy="40" r="4" fill="#1d1830" />
-        <path d="M32 42 L32 50" stroke="#1d1830" strokeWidth="4" strokeLinecap="round" />
-      </svg>
+      <LockIcon className="size-16 text-plum-300" />
       <p className="font-display text-lg uppercase leading-tight tracking-wide text-plum-300">
         Alguns jogos ainda estão perdidos...
       </p>

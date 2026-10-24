@@ -106,8 +106,8 @@ export function GameShell({ slug }: { slug: string }) {
         if (cancelled || !hostRef.current || !stageRef.current) return;
         setProgress(0.32);
         const mapStage = (value: number, stageName: LoadStage) => {
-          if (stageName === "arte") return 0.32 + value * 0.56;
-          if (stageName === "cena") return 0.92;
+          if (stageName === "art") return 0.32 + value * 0.56;
+          if (stageName === "scene") return 0.92;
           return value * 0.3;
         };
         instance = mod.mount({
@@ -278,7 +278,7 @@ export function GameShell({ slug }: { slug: string }) {
     <div className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
       <header className="flex h-14 shrink-0 items-center gap-2 border-b-[3px] border-ink bg-plum-800 px-2 sm:gap-3 sm:px-4">
         <Link
-          href={`/jogos/${slug}`}
+          href={`/games/${slug}`}
           onClick={() => play("back")}
           className="press flex min-h-10 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-cream px-2.5 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]"
         >

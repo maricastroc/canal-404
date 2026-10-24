@@ -25,8 +25,8 @@ import {
   OnAirSign,
   PizzaArt,
   PlaneArt,
-  PosterCaosArt,
-  PosterSonheArt,
+  PosterChaosArt,
+  PosterDreamArt,
   RadioArt,
   SkateArt,
   TrophyArt,
@@ -61,21 +61,22 @@ const BOOK_TIPS = [
 const CARTRIDGE_LINES = [
   "Cartucho RUA: Rua Sem Saída. Tá até gasto de tanto jogar.",
   "Cartucho LAB: Laboratório de Péssimas Ideias. A Lina terminou! Dá pra jogar no fliperama.",
+  "Cartucho LAN: Guerra de Lanche. Ainda tem pudim grudado nele.",
   "Cartucho ???: esse não tem nome. Às vezes ele esquenta sozinho.",
 ];
 
 function periodFor(hour: number): SkyPeriod {
-  if (hour >= 6 && hour < 12) return "manha";
-  if (hour >= 12 && hour < 17) return "tarde";
-  if (hour >= 17 && hour < 19) return "fim";
-  return "noite";
+  if (hour >= 6 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 19) return "dusk";
+  return "night";
 }
 
 const PERIOD_LINES: Record<SkyPeriod, string> = {
-  manha: "Lá fora é de manhã. Aqui dentro é sempre sábado de manhã de 2004.",
-  tarde: "Tarde ensolarada lá fora. Perfeita pra ficar aqui dentro jogando.",
-  fim: "O sol tá indo embora. A transmissão, não.",
-  noite: "Já é noite! Hora de dormir... ou de só mais uma partida.",
+  morning: "Lá fora é de manhã. Aqui dentro é sempre sábado de manhã de 2004.",
+  afternoon: "Tarde ensolarada lá fora. Perfeita pra ficar aqui dentro jogando.",
+  dusk: "O sol tá indo embora. A transmissão, não.",
+  night: "Já é noite! Hora de dormir... ou de só mais uma partida.",
 };
 
 export function BroadcastRoom() {
@@ -95,8 +96,8 @@ export function BroadcastRoom() {
   const [wiggle, setWiggle] = useState(0);
   const pokes = useRef<number[]>([]);
 
-  const [channel, setChannel] = useState<ChannelId>("rua");
-  const [lastRegular, setLastRegular] = useState<ChannelId>("rua");
+  const [channel, setChannel] = useState<ChannelId>("street");
+  const [lastRegular, setLastRegular] = useState<ChannelId>("street");
   const [switching, setSwitching] = useState(false);
   const [osd, setOsd] = useState(false);
   const [knobAngle, setKnobAngle] = useState(0);
@@ -119,7 +120,7 @@ export function BroadcastRoom() {
   const [hiddenFound, setHiddenFound] = useState(false);
   const [skating, setSkating] = useState(0);
   const counters = useRef({ joke: 0, book: 0, cart: 0 });
-  const [period, setPeriod] = useState<SkyPeriod>("tarde");
+  const [period, setPeriod] = useState<SkyPeriod>("afternoon");
   const greeted = useRef(false);
 
   useEffect(() => {
@@ -212,27 +213,27 @@ export function BroadcastRoom() {
     setKnobAngle((a) => a + 45);
     const now = Date.now();
     zaps.current = [...zaps.current.filter((t) => now - t < 8000), now];
-    if (zaps.current.length >= 5) unlockAchievement("zapeador");
+    if (zaps.current.length >= 5) unlockAchievement("channel-surfer");
     let next: ChannelId;
     if (turns.current % 9 === 8) {
-      next = "perdido";
+      next = "lost";
     } else {
-      const base = channel === "perdido" || channel === "fita" ? lastRegular : channel;
+      const base = channel === "lost" || channel === "tape" ? lastRegular : channel;
       next = CHANNEL_ORDER[(CHANNEL_ORDER.indexOf(base) + 1) % CHANNEL_ORDER.length];
       setLastRegular(next);
     }
     tuneTo(next);
-    if (next === "perdido") {
-      unlockSecret("canal-perdido");
+    if (next === "lost") {
+      unlockSecret("lost-channel");
       say({ text: "Peraí... que canal é esse? Eu nunca vi esse canal. Eu SOU o canal!", expression: "surprised", duration: 6500 });
     } else {
       const lines: Partial<Record<ChannelId, string>> = {
-        rua: "Canal 3: o jogo da semana! Rua Sem Saída.",
-        casa: "Canal 5: Casa Estranha. Ainda não tá pronto, mas já dá pra espiar.",
-        barras: "Canal 7: fora do ar. Relaxa, isso é normal aqui.",
-        desenho: "Canal 9: reprise do meu desenho! Eu tô ótimo nesse episódio.",
+        street: "Canal 3: o jogo da semana! Rua Sem Saída.",
+        house: "Canal 5: Casa Estranha. Ainda não tá pronto, mas já dá pra espiar.",
+        bars: "Canal 7: fora do ar. Relaxa, isso é normal aqui.",
+        cartoon: "Canal 9: reprise do meu desenho! Eu tô ótimo nesse episódio.",
       };
-      say({ text: lines[next] ?? CHANNELS[next].name, expression: next === "barras" ? "confused" : "happy", duration: 4200 });
+      say({ text: lines[next] ?? CHANNELS[next].name, expression: next === "bars" ? "confused" : "happy", duration: 4200 });
     }
   }, [channel, lastRegular, poke, say, tuneTo]);
 
@@ -244,8 +245,8 @@ export function BroadcastRoom() {
       buffer = (buffer + event.key).slice(-3);
       if (buffer === "404") {
         buffer = "";
-        tuneTo("perdido");
-        unlockSecret("canal-perdido");
+        tuneTo("lost");
+        unlockSecret("lost-channel");
         say({ text: "Você digitou o nome do canal! A TV obedeceu. Assustador.", expression: "surprised", duration: 6000 });
       }
     };
@@ -271,7 +272,7 @@ export function BroadcastRoom() {
     play("coin");
     setArcadeActive(true);
     say({ text: "Ficha inserida! Abrindo o catálogo...", expression: "excited", duration: 2000, announce: false });
-    window.setTimeout(() => router.push("/jogos"), reduced ? 0 : 480);
+    window.setTimeout(() => router.push("/games"), reduced ? 0 : 480);
   }, [play, reduced, router, say]);
 
   const tracks = useMemo(() => unlockedTracks(progress), [progress]);
@@ -285,10 +286,10 @@ export function BroadcastRoom() {
       say({ text: "Rádio desligado. O silêncio também é uma trilha sonora. Uma bem chata.", expression: "neutral", duration: 4200 });
       return;
     }
-    const id = tracks.some((t) => t.id === progress.settings.track) ? progress.settings.track : "tema";
+    const id = tracks.some((t) => t.id === progress.settings.track) ? progress.settings.track : "theme";
     play("toggleOn");
     engine.startMusic(id);
-    unlockAchievement("radio-ligado");
+    unlockAchievement("radio-on");
     const track = TRACKS.find((t) => t.id === id);
     say({ text: `Rádio 404 no ar! Tocando: ${track?.title}.`, expression: "happy", duration: 4200 });
   }, [music.playing, play, poke, progress.settings.track, say, tracks]);
@@ -314,7 +315,7 @@ export function BroadcastRoom() {
     const next = !lightsOn;
     setLightsOn(next);
     if (!next) {
-      unlockSecret("apagao");
+      unlockSecret("blackout");
       say({ text: "Ei, quem apagou a luz? ...Peraí, tem alguma coisa escrita na parede!", expression: "surprised", duration: 5200 });
     } else {
       say({ text: "Luz de volta! Que susto.", expression: "happy", duration: 2600 });
@@ -326,7 +327,7 @@ export function BroadcastRoom() {
     if (flying) return;
     play("engine");
     setFlying(true);
-    unlockSecret("aviao");
+    unlockSecret("plane");
     say({ text: "O aviãozinho voou! Ninguém sabe como. Física de desenho animado.", expression: "excited", duration: 4000 });
     window.setTimeout(() => setFlying(false), reduced ? 400 : 3200);
   }, [flying, play, poke, reduced, say]);
@@ -338,7 +339,7 @@ export function BroadcastRoom() {
     if (catPets.current >= 3) {
       setCatMood("purr");
       play("purr");
-      unlockSecret("gato");
+      unlockSecret("cat");
       say({ text: "O Pixel tá ronronando! Ele só faz isso com gente muito especial. Ou com quem tem atum.", expression: "love", duration: 5000 });
       catPets.current = 0;
     } else {
@@ -374,7 +375,7 @@ export function BroadcastRoom() {
     if (pokes.current.length >= 7) {
       pokes.current = [];
       play("dizzy");
-      unlockSecret("cutucao");
+      unlockSecret("poke");
       say({ text: "Para... tá tudo... girando... eu vejo... chiado colorido...", expression: "dizzy", duration: 4800 });
       poke();
       return;
@@ -388,15 +389,15 @@ export function BroadcastRoom() {
 
   const handleVhs = useCallback(() => {
     poke();
-    if (channel === "fita") {
+    if (channel === "tape") {
       play("click");
       tuneTo(lastRegular);
       say({ text: "Fita ejetada. Vamos fingir que nada aconteceu.", expression: "wink", duration: 3000 });
       return;
     }
     play("click");
-    tuneTo("fita");
-    unlockSecret("fita");
+    tuneTo("tape");
+    unlockSecret("tape");
     say({ text: "Você colocou a fita proibida! Ah não, é o meu ensaio de dança...", expression: "surprised", duration: 5200 });
   }, [channel, lastRegular, play, poke, say, tuneTo]);
 
@@ -476,7 +477,7 @@ export function BroadcastRoom() {
         </RoomButton>
 
         <RoomButton
-          spot={SPOTS.posterCaos}
+          spot={SPOTS.posterChaos}
           label="Pôster: Caos faz parte da programação"
           hint="O lema oficial do canal. Tá até no contrato."
           onHint={onHint}
@@ -491,11 +492,11 @@ export function BroadcastRoom() {
           }}
           z={6}
         >
-          <PosterCaosArt peeled={peeled} />
+          <PosterChaosArt peeled={peeled} />
         </RoomButton>
 
         <RoomButton
-          spot={SPOTS.posterSonhe}
+          spot={SPOTS.posterDream}
           label="Pôster: Sonhe, jogue, invente, repita"
           hint="Sonhe. Jogue. Invente. Repita. Nessa ordem. Ou não."
           onHint={onHint}
@@ -503,7 +504,7 @@ export function BroadcastRoom() {
           onActivate={() => say2("Sonhe, jogue, invente, repita. A Lina pintou isso com tinta de parede. Da parede.", "happy", "page")}
           z={6}
         >
-          <PosterSonheArt />
+          <PosterDreamArt />
         </RoomButton>
 
         <div aria-hidden className="pointer-events-none absolute z-[6]" style={spotStyle(SPOTS.onAir)}>
@@ -630,15 +631,15 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.vhs}
-          label={channel === "fita" ? "Ejetar a fita do videocassete" : "Fitas VHS: colocar a fita 'Não assista' no videocassete"}
-          pressed={channel === "fita"}
-          hint={channel === "fita" ? "Ejeta essa fita, por favor." : "Uma das fitas diz NÃO ASSISTA. Hmm."}
+          label={channel === "tape" ? "Ejetar a fita do videocassete" : "Fitas VHS: colocar a fita 'Não assista' no videocassete"}
+          pressed={channel === "tape"}
+          hint={channel === "tape" ? "Ejeta essa fita, por favor." : "Uma das fitas diz NÃO ASSISTA. Hmm."}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={handleVhs}
           z={13}
         >
-          <VhsArt inserted={channel === "fita"} />
+          <VhsArt inserted={channel === "tape"} />
         </RoomButton>
 
         <RoomButton
@@ -665,7 +666,7 @@ export function BroadcastRoom() {
           onHoverSound={hover}
           onActivate={() => {
             setHiddenFound(true);
-            unlockSecret("cartucho");
+            unlockSecret("cartridge");
             say2("Um cartucho dourado escondido! Escrito '404'. Eu nem sabia que eu tinha um jogo!", "excited", "coin");
           }}
           z={17}

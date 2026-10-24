@@ -141,18 +141,18 @@ export function PlaneArt({ flying }: { flying: boolean }) {
   );
 }
 
-export type SkyPeriod = "manha" | "tarde" | "fim" | "noite";
+export type SkyPeriod = "morning" | "afternoon" | "dusk" | "night";
 
 const SKIES: Record<SkyPeriod, { top: string; bottom: string; light: string }> = {
-  manha: { top: "#8fd8ff", bottom: "#d8f2ff", light: P.sunPale },
-  tarde: { top: "#5cb9f0", bottom: "#a9dcf7", light: P.sun },
-  fim: { top: "#7b62c4", bottom: "#ff9a6a", light: P.tangerine },
-  noite: { top: "#1f1839", bottom: "#3f3170", light: P.sunPale },
+  morning: { top: "#8fd8ff", bottom: "#d8f2ff", light: P.sunPale },
+  afternoon: { top: "#5cb9f0", bottom: "#a9dcf7", light: P.sun },
+  dusk: { top: "#7b62c4", bottom: "#ff9a6a", light: P.tangerine },
+  night: { top: "#1f1839", bottom: "#3f3170", light: P.sunPale },
 };
 
 export function WindowArt({ period }: { period: SkyPeriod }) {
   const sky = SKIES[period];
-  const night = period === "noite";
+  const night = period === "night";
   return (
     <svg viewBox="0 0 352 372" className="h-full w-full" overflow="visible" aria-hidden>
       <defs>
@@ -184,7 +184,7 @@ export function WindowArt({ period }: { period: SkyPeriod }) {
             </g>
           ) : (
             <g>
-              <circle cx={period === "fim" ? 150 : 240} cy={period === "fim" ? 190 : 78} r="26" fill={sky.light} stroke={P.ink} strokeWidth="3.5" />
+              <circle cx={period === "dusk" ? 150 : 240} cy={period === "dusk" ? 190 : 78} r="26" fill={sky.light} stroke={P.ink} strokeWidth="3.5" />
               <path d="M80 92 Q78 78 94 78 Q100 64 116 70 Q130 62 138 76 Q154 76 150 92 Z" fill={P.white} stroke={P.ink} strokeWidth="3" strokeLinejoin="round" style={{ animation: "float 7s ease-in-out infinite" }} />
             </g>
           )}
@@ -437,7 +437,7 @@ export function VhsArt({ inserted }: { inserted: boolean }) {
   );
 }
 
-export function PosterCaosArt({ peeled }: { peeled: boolean }) {
+export function PosterChaosArt({ peeled }: { peeled: boolean }) {
   return (
     <svg viewBox="0 0 150 190" className="h-full w-full" overflow="visible" aria-hidden>
       <g transform="rotate(4 75 95)">
@@ -482,7 +482,7 @@ export function PosterCaosArt({ peeled }: { peeled: boolean }) {
   );
 }
 
-export function PosterSonheArt() {
+export function PosterDreamArt() {
   const words: [string, string][] = [
     ["SONHE", P.sun],
     ["JOGUE", P.mint],

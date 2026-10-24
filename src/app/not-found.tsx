@@ -4,7 +4,7 @@ import { SpeechBubble } from "@/components/ui/SpeechBubble";
 
 export default function NotFound() {
   return (
-    <main id="conteudo" className="on-dark grid min-h-svh place-items-center px-4 py-10">
+    <main id="content" className="on-dark grid min-h-svh place-items-center px-4 py-10">
       <div className="grid max-w-3xl items-center gap-6 rounded-[28px] border-[3px] border-ink bg-plum-800 p-6 shadow-[var(--shadow-ink-lg)] sm:grid-cols-[auto_1fr] sm:p-10">
         <Mascot404 expression="static" pose="peek" className="mx-auto w-48 sm:w-56" />
         <div>
@@ -17,7 +17,7 @@ export default function NotFound() {
             <InkLink href="/" tone="sun">
               Voltar para a sala
             </InkLink>
-            <InkLink href="/jogos" tone="mint">
+            <InkLink href="/games" tone="mint">
               Ver os jogos
             </InkLink>
           </div>

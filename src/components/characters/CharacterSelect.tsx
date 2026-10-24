@@ -43,7 +43,7 @@ export function CharacterSelect() {
       const id = window.location.hash.replace("#", "") as CharacterId;
       if (CHARACTERS.some((c) => c.id === id)) {
         setSelected(id);
-        document.getElementById("ficha")?.scrollIntoView({ block: "nearest" });
+        document.getElementById("profile")?.scrollIntoView({ block: "nearest" });
       }
     };
     fromHash();
@@ -104,7 +104,7 @@ export function CharacterSelect() {
               role="tab"
               type="button"
               aria-selected={active}
-              aria-controls="ficha"
+              aria-controls="profile"
               tabIndex={active ? 0 : -1}
               onClick={() => select(c.id)}
               onKeyDown={(e) => onKeyDown(e, i)}
@@ -135,7 +135,7 @@ export function CharacterSelect() {
       </div>
 
       <div
-        id="ficha"
+        id="profile"
         role="tabpanel"
         aria-labelledby={`tab-${character.id}`}
         tabIndex={0}
@@ -198,11 +198,11 @@ export function CharacterSelect() {
                     games.map((g) => (
                       <li key={g.slug}>
                         <Link
-                          href={`/jogos/${g.slug}`}
+                          href={`/games/${g.slug}`}
                           className="press inline-flex min-h-10 items-center rounded-lg border-[3px] border-ink bg-cream px-3 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]"
                         >
                           {g.title}
-                          {g.status === "em-breve" && <span className="ml-1.5 text-xs text-ink-soft">(em breve)</span>}
+                          {g.status === "coming-soon" && <span className="ml-1.5 text-xs text-ink-soft">(em breve)</span>}
                         </Link>
                       </li>
                     ))

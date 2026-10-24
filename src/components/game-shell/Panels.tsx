@@ -3,7 +3,7 @@
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
-import { PlayTriangle, RestartIcon } from "@/components/art/Icons";
+import { PlayIcon, RestartIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { LockIcon } from "@/components/art/Icons";
 import { KidBust } from "@/components/characters/Heads";
@@ -84,11 +84,7 @@ function CountUp({ value, delay = 0 }: { value: number; delay?: number }) {
   const text = useTransform(mv, (v) => Math.round(v).toLocaleString("pt-BR"));
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      mv.set(value);
-      return;
-    }
-    const controls = animate(mv, value, { duration: 0.9, delay, ease: "easeOut" });
+    const controls = animate(mv, value, reduced ? { duration: 0.01 } : { duration: 0.9, delay, ease: "easeOut" });
     return () => controls.stop();
   }, [mv, value, delay]);
   return (
@@ -203,9 +199,9 @@ export function IntroPanel({
       )}
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay(leveled ? suggested : undefined)}>
-          <PlayTriangle className="size-7 text-ink" /> {leveled ? `Jogar fase ${suggested + 1}` : "Jogar"}
+          <PlayIcon className="size-7 text-ink" /> {leveled ? `Jogar fase ${suggested + 1}` : "Jogar"}
         </InkButton>
-        <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="como-jogar-painel">
+        <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="how-to-play-panel">
           {showHelp ? "Esconder instruções" : "Como jogar"}
         </InkButton>
         {!leveled && (
@@ -215,7 +211,7 @@ export function IntroPanel({
         )}
       </div>
       {showHelp && (
-        <div id="como-jogar-painel" className="mt-5 border-t-[3px] border-dashed border-ink/30 pt-4">
+        <div id="how-to-play-panel" className="mt-5 border-t-[3px] border-dashed border-ink/30 pt-4">
           <ControlsList game={game} />
         </div>
       )}
@@ -248,7 +244,7 @@ export function PausePanel({
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <InkButton ref={resumeRef} tone="sun" onClick={onResume}>
-          <PlayTriangle className="size-5 text-ink" /> Continuar
+          <PlayIcon className="size-5 text-ink" /> Continuar
         </InkButton>
         <InkButton tone="mint" onClick={onRestart}>
           <RestartIcon className="size-5" /> Recomeçar
@@ -256,7 +252,7 @@ export function PausePanel({
         <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp}>
           {showHelp ? "Esconder instruções" : "Como jogar"}
         </InkButton>
-        <InkLink href={`/jogos/${game.slug}`} tone="cream">
+        <InkLink href={`/games/${game.slug}`} tone="cream">
           Sair do jogo
         </InkLink>
       </div>
@@ -351,7 +347,10 @@ export function ResultPanel({
             className="flex items-baseline justify-between gap-4 py-1.5"
           >
             <dt className="text-ink-soft">{row.label}</dt>
-            <dd className="font-display text-lg tabular-nums text-ink">+{row.value.toLocaleString("pt-BR")}</dd>
+            <dd className={`font-display text-lg tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
+              {row.value < 0 ? "−" : "+"}
+              {Math.abs(row.value).toLocaleString("pt-BR")}
+            </dd>
           </motion.div>
         ))}
         <div className="flex items-baseline justify-between gap-4 py-2">
@@ -365,7 +364,7 @@ export function ResultPanel({
       <div className="mt-5 flex flex-wrap gap-3">
         {onNext ? (
           <InkButton ref={mainRef} tone="sun" onClick={onNext}>
-            <PlayTriangle className="size-5 text-ink" /> Próxima fase
+            <PlayIcon className="size-5 text-ink" /> Próxima fase
           </InkButton>
         ) : null}
         <InkButton ref={onNext ? undefined : mainRef} tone={onNext ? "mint" : "sun"} onClick={onRestart}>
@@ -376,7 +375,7 @@ export function ResultPanel({
             Escolher fase
           </InkButton>
         ) : (
-          <InkLink href="/jogos" tone="mint">
+          <InkLink href="/games" tone="mint">
             Ver catálogo
           </InkLink>
         )}
@@ -403,7 +402,7 @@ export function ErrorPanel({ onRetry }: { onRetry: () => void }) {
         <InkButton ref={ref} tone="sun" onClick={onRetry}>
           Tentar de novo
         </InkButton>
-        <InkLink href="/jogos" tone="cream">
+        <InkLink href="/games" tone="cream">
           Voltar ao catálogo
         </InkLink>
       </div>

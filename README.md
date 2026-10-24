@@ -1,98 +1,109 @@
-# CANAL 404 — Desenhos. Jogos. Bagunça.
+# CANAL 404
 
-Portal fictício de jogos inspirado na sensação dos sites de desenho animado dos anos 2000. O canal saiu do ar, mas o portal continua funcionando: uma sala de transmissão ilustrada e interativa, personagens originais, segredos escondidos e dois jogos completos: **Rua Sem Saída** e **Laboratório de Péssimas Ideias**.
+A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and three complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias** and **Guerra de Lanche**.
 
-## Como rodar
+The code, file names and ids are in English. Everything the visitor reads on screen is in Brazilian Portuguese.
+
+## Running
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra `http://localhost:3000`. Para gerar a versão de produção:
+Open `http://localhost:3000`. For a production build:
 
 ```bash
 npm run build && npm start
 ```
 
-Não há serviços externos, autenticação ou chaves de API. Progresso, recordes, segredos e preferências ficam no `localStorage` do navegador.
+There are no external services, sign-ins or API keys. Progress, high scores, secrets and preferences live in the browser's `localStorage` (key `canal404:progress:v1`).
 
 ## Stack
 
 - Next.js (App Router) + React + TypeScript
-- Tailwind CSS 4 (tokens de cor, fontes e texturas em `src/app/globals.css`)
-- Phaser 3 com Matter.js para os jogos (carregados sob demanda, só na página do jogo)
-- Motion para microinterações da interface
-- SVG autoral para todas as ilustrações
-- Web Audio API para efeitos sonoros e trilhas sintetizadas ao vivo
+- Tailwind CSS 4 (color, font and texture tokens in `src/app/globals.css`)
+- Phaser 3 for the games, loaded on demand only on the play page (Matter.js physics for Rua Sem Saída and the Laboratório)
+- Motion for interface micro-interactions
+- Lucide icons (`lucide-react` in the portal, Lucide icon nodes rendered to textures inside the games)
+- Hand-made SVG for every illustration
+- Web Audio API for sound effects and live-synthesized music
 
-## Seções
+## Routes
 
-| Rota | Conteúdo |
+| Route | Content |
 | --- | --- |
-| `/` | Sala de transmissão: TV com o jogo da semana e canais, fliperama que abre o catálogo, rádio com trilha sonora, mascote 404 e objetos com segredos |
-| `/jogos` | Catálogo com filtros por categoria |
-| `/jogos/[slug]` | Ficha do jogo (jogável ou "fora do ar") |
-| `/jogar/[slug]` | Carregamento real, apresentação, partida, pausa e resultado |
-| `/personagens` | Seleção de personagens com reações |
-| `/extras` | Pôsteres para baixar (PNG), trilhas, conquistas e segredos |
-| `/sobre` | História fictícia do canal |
+| `/` | Broadcast room: TV with the game of the week and channels, arcade cabinet that opens the catalog, radio with music, the 404 mascot and objects hiding secrets |
+| `/games` | Catalog with category filters |
+| `/games/[slug]` | Game page (playable or "off the air") |
+| `/play/[slug]` | Real loading screen, intro, match, pause and results |
+| `/characters` | Character select with reactions |
+| `/extras` | Downloadable posters (PNG), music, achievements and secrets |
+| `/about` | The channel's fictional history |
 
-## Estrutura
+Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `strange-house` and `operation-recess` (coming soon).
+
+## Structure
 
 ```
 src/
-  app/                 rotas (App Router)
+  app/                   routes (App Router); (sections) groups the pages with the site chrome
   components/
-    room/              sala de transmissão, objetos e diretor do mascote
-    mascot/            mascote 404 (expressões, poses, olhar)
-    characters/        personagens e tela de seleção
-    catalog/           cartões e catálogo de jogos
-    game-shell/        carregamento, painéis de pausa/resultado e ponte com o jogo
-    extras/            pôsteres, jukebox, conquistas e segredos
-    art/               logo, capas, ícones e selos
-    layout/            navegação, toasts, som
-    ui/                primitivas visuais
+    room/                broadcast room, objects and mascot director
+    mascot/              404 mascot (expressions, poses, gaze)
+    characters/          characters and the select screen
+    catalog/             game cards and catalog
+    game-shell/          loading, intro/pause/result panels and the bridge to the game
+    extras/              posters, jukebox, achievements and secrets
+    art/                 logo, covers, game logos, icons and badges
+    layout/              navigation, toasts, sound
+    ui/                  visual primitives
   games/
-    registry.ts        metadados de todos os jogos (catálogo)
-    loaders.ts         import dinâmico de cada jogo jogável
-    types.ts           contrato entre o portal e os jogos
-    kit/               utilitários visuais compartilhados entre os jogos Phaser
-    rua-sem-saida/     estilingue (cenas Phaser, ondas, sons)
-    laboratorio/       quebra-cabeça de máquinas (fases, geometria, cenas, sons)
+    registry.ts          metadata for every game (catalog)
+    loaders.ts           dynamic import for each playable game
+    types.ts             contract between the portal and the games
+    kit/                 shared Phaser helpers (cartoon text, panels, speech bubble, Lucide icons)
+    dead-end-street/     slingshot game (Phaser scenes, waves, sounds)
+    bad-ideas-lab/       machine puzzle (levels, geometry, scenes, sounds)
+    food-fight/          cafeteria food fight (scenes, rivals, sounds)
   lib/
-    audio/             motor Web Audio, efeitos e trilhas
-    progress/          persistência, segredos e conquistas
-public/games/rua-sem-saida/   arte SVG da Rua Sem Saída
-public/games/laboratorio/     arte SVG do Laboratório
+    audio/               Web Audio engine, effects and music
+    progress/            persistence, secrets and achievements
+public/assets/<slug>/    SVG art for each game
 ```
 
-## Adicionando um novo jogo
+## Adding a game
 
-Os jogos são independentes do portal. Cada um exporta um `GameModule` com `mount(ctx)` e recebe do portal apenas o que precisa (elemento pai, fontes, áudio, recorde atual e callbacks de progresso/eventos).
+Games are independent from the portal. Each one exports a `GameModule` with `mount(ctx)` and receives only what it needs from the portal (parent element, fonts, audio, current high score and progress/event callbacks).
 
-1. Crie a pasta `src/games/<slug>/` com um `index.ts` que exporte `{ mount }` seguindo `src/games/types.ts`.
-2. Registre os metadados em `src/games/registry.ts` (título, categoria, controles, instruções, `status: "disponivel"`).
-3. Adicione o carregador em `src/games/loaders.ts`.
-4. Desenhe a capa em `src/components/art/Covers.tsx`.
+1. Create `src/games/<slug>/` with an `index.ts` that exports `{ mount }` following `src/games/types.ts`.
+2. Register the metadata in `src/games/registry.ts` (title, category, controls, how-to, `status: "available"`).
+3. Add the loader in `src/games/loaders.ts`.
+4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`.
 
-O portal cuida do carregamento com barra de progresso real, da tela de apresentação, pausa, resultado, recordes, conquistas e anúncios para leitores de tela. Jogos com fases declaram `levels` no registro e devolvem `level` no resultado: o portal mostra a seleção de fases (cada uma libera a seguinte), salva estrelas por fase e oferece "Próxima fase".
+The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements and screen-reader announcements. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase".
 
-## Rua Sem Saída
+## Rua Sem Saída (`dead-end-street`)
 
-Estilingue montado num carrinho: puxe para trás (mouse ou toque) ou use as setas para mirar e espaço para lançar. Três rodadas curtas no quintal do Seu Arlindo — alvos próximos, depois atrás de obstáculos e por fim lá no alto — com sete lançamentos de quatro tipos com física diferente (tênis, balão d'água que estoura, pneu pesado, pato que quica). O bairro reage: o gato foge, a tampa da lata voa, o passarinho escapa da casinha. Pontos por alvo, rodada, bagunça, combos e munição de sobra; recorde salvo localmente.
+A slingshot mounted on a wagon: pull back (mouse or touch) or use the arrow keys to aim and Space to launch. Three short rounds in Seu Arlindo's yard (close targets, then behind obstacles, then up high) with seven launches of four projectile types with different physics. The neighborhood reacts: the cat runs, the trash can lid flies, the bird escapes the birdhouse. Points per target, round, mess, combos and leftover ammo; the high score is saved locally.
 
-## Laboratório de Péssimas Ideias
+## Laboratório de Péssimas Ideias (`bad-ideas-lab`)
 
-Quebra-cabeça de física na garagem da Lina. A primeira fase é um teste rápido: uma rampa, uma marca tracejada mostrando onde colocar e uma seta no botão LIGAR. Depois vêm cinco problemas bobos: acordar o gato com o sino, apertar a torradeira, levar uma laranja até o espremedor, trazer a bolinha de volta até o controle remoto e a pior ideia de todas.
+A physics puzzle in Lina's garage. The first level is a quick test: one ramp, a dashed marker showing where it goes and an arrow on the LIGAR button. Then come five silly problems: wake the cat with the bell, press the toaster button, get an orange into the juicer, bring the ball back to the TV remote, and the worst idea of all.
 
-Cada fase tem uma caixa com peças contadas (rampas, molas, ventiladores e esteiras) e uma área tracejada para montar. Dá para arrastar as peças com mouse ou dedo, ou usar o teclado: números pegam, setas movem, R gira, Enter coloca, espaço liga a máquina e H pede dica. Se não funcionar, o caminho da bolinha fica marcado na tela, a Lina reage e, na segunda tentativa errada, dá uma dica. As estrelas dependem de quantas peças você usou.
+Each level has a box of counted parts (ramps, springs, fans and conveyor belts) and a dashed build area. Parts can be dragged with mouse or finger, or placed with the keyboard: numbers pick, arrows move, R rotates, Enter places, Space runs the machine and H asks for a hint. When a run fails, the ball's path stays on screen, Lina reacts and, on the second failure, gives a hint. Stars depend on how many parts were used.
 
-As fases foram calibradas em simulação com as mesmas regras de física do jogo (`config.ts`, `levels.ts` e `geometry.ts`): cada uma tem soluções testadas, e atalhos com uma peça só não resolvem.
+The levels were calibrated in simulation with the same physics rules as the game (`config.ts`, `levels.ts` and `geometry.ts`): each one has tested solutions, and single-part shortcuts don't work.
 
-## Acessibilidade
+## Guerra de Lanche (`food-fight`)
 
-- Todos os objetos da sala são botões ou links reais, navegáveis por teclado, com foco visível.
-- Dicas de hover também aparecem no foco; ações importantes têm alternativa sem hover.
-- O jogo aceita teclado, mouse e toque, e anuncia eventos via região `aria-live`.
-- Respeita `prefers-reduced-motion` e nada depende só de áudio; o som começa apenas após interação e pode ser desligado.
+A cafeteria food fight in 75-second rounds. Déco and Mila hide behind their table. Tap a kid from the rival class to throw a snack at them, and hold ABAIXAR when the exclamation mark appears so the pudding flies overhead. While ducked, Mila hands over more snacks. Three puddings use up the napkins; lasting until the bell rings is a win. Pimentinha throws fast, Grandão takes two hits, and the lunch lady, who walks by now and then, must not be hit.
+
+The first match starts with a short practice: a rival waits for the first snack and the first pudding comes slowly, with Mila calling it out. On the keyboard, Space throws at the most dangerous rival, 1 to 5 pick a table and the down arrow ducks.
+
+## Accessibility
+
+- Every object in the room is a real button or link, keyboard-reachable, with a visible focus ring.
+- Hover hints also appear on focus; important actions don't depend on hover.
+- The games accept keyboard, mouse and touch, and announce events through an `aria-live` region.
+- `prefers-reduced-motion` is respected and nothing depends only on audio; sound starts only after an interaction and can be turned off.

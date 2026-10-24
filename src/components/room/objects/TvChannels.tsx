@@ -1,7 +1,7 @@
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { P } from "@/lib/palette";
 
-export type ChannelId = "rua" | "casa" | "barras" | "desenho" | "perdido" | "fita";
+export type ChannelId = "street" | "house" | "bars" | "cartoon" | "lost" | "tape";
 
 export type Channel = {
   id: ChannelId;
@@ -11,30 +11,30 @@ export type Channel = {
 };
 
 export const CHANNELS: Record<ChannelId, Channel> = {
-  rua: {
-    id: "rua",
+  street: {
+    id: "street",
     number: "03",
     name: "Jogo da semana: Rua Sem Saída",
-    cta: { href: "/jogar/rua-sem-saida", label: "Jogar agora", context: "Rua Sem Saída, o jogo da semana", play: true },
+    cta: { href: "/play/rua-sem-saida", label: "Jogar agora", context: "Rua Sem Saída, o jogo da semana", play: true },
   },
-  casa: {
-    id: "casa",
+  house: {
+    id: "house",
     number: "05",
     name: "Prévia: Casa Estranha (em breve)",
-    cta: { href: "/jogos/casa-estranha", label: "Ver detalhes", context: "Casa Estranha, jogo em breve" },
+    cta: { href: "/games/casa-estranha", label: "Ver detalhes", context: "Casa Estranha, jogo em breve" },
   },
-  barras: { id: "barras", number: "07", name: "Fora do ar: barras coloridas" },
-  desenho: {
-    id: "desenho",
+  bars: { id: "bars", number: "07", name: "Fora do ar: barras coloridas" },
+  cartoon: {
+    id: "cartoon",
     number: "09",
     name: "Desenho: 404 e o Controle Perdido",
-    cta: { href: "/personagens", label: "Personagens", context: "conhecer a turma do CANAL 404" },
+    cta: { href: "/characters", label: "Personagens", context: "conhecer a turma do CANAL 404" },
   },
-  perdido: { id: "perdido", number: "00", name: "Transmissão perdida" },
-  fita: { id: "fita", number: "AV", name: "Fita misteriosa no videocassete" },
+  lost: { id: "lost", number: "00", name: "Transmissão perdida" },
+  tape: { id: "tape", number: "AV", name: "Fita misteriosa no videocassete" },
 };
 
-export const CHANNEL_ORDER: ChannelId[] = ["rua", "casa", "barras", "desenho"];
+export const CHANNEL_ORDER: ChannelId[] = ["street", "house", "bars", "cartoon"];
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
@@ -51,7 +51,7 @@ function Cloud({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   );
 }
 
-function RuaScreen() {
+function StreetScreen() {
   return (
     <svg viewBox="0 0 294 246" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
       <rect width="294" height="246" fill="#82d3f7" />
@@ -94,7 +94,7 @@ function RuaScreen() {
   );
 }
 
-function CasaScreen() {
+function HouseScreen() {
   return (
     <svg viewBox="0 0 294 246" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
       <rect width="294" height="246" fill={P.plum800} />
@@ -135,7 +135,7 @@ function CasaScreen() {
   );
 }
 
-function BarrasScreen() {
+function BarsScreen() {
   const bars = ["#f2efe6", "#f7d94c", "#5fd8e6", "#68d36a", "#e05fd0", "#ea4a46", "#3f5bd8"];
   return (
     <div className="absolute inset-0">
@@ -161,7 +161,7 @@ function BarrasScreen() {
   );
 }
 
-function DesenhoScreen() {
+function CartoonScreen() {
   return (
     <div className="absolute inset-0 bg-[#ffe7a8]">
       <svg viewBox="0 0 294 246" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
@@ -189,7 +189,7 @@ function DesenhoScreen() {
   );
 }
 
-function PerdidoScreen() {
+function LostScreen() {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-[6%] bg-plum-950 px-[8%] text-center">
       <p
@@ -206,7 +206,7 @@ function PerdidoScreen() {
   );
 }
 
-function FitaScreen() {
+function TapeScreen() {
   return (
     <div className="absolute inset-0 bg-[#2a3a6a]">
       <div className="absolute inset-0 flex items-end justify-center pb-[14%]">
@@ -226,17 +226,17 @@ function FitaScreen() {
 
 export function ChannelContent({ id }: { id: ChannelId }) {
   switch (id) {
-    case "rua":
-      return <RuaScreen />;
-    case "casa":
-      return <CasaScreen />;
-    case "barras":
-      return <BarrasScreen />;
-    case "desenho":
-      return <DesenhoScreen />;
-    case "perdido":
-      return <PerdidoScreen />;
-    case "fita":
-      return <FitaScreen />;
+    case "street":
+      return <StreetScreen />;
+    case "house":
+      return <HouseScreen />;
+    case "bars":
+      return <BarsScreen />;
+    case "cartoon":
+      return <CartoonScreen />;
+    case "lost":
+      return <LostScreen />;
+    case "tape":
+      return <TapeScreen />;
   }
 }

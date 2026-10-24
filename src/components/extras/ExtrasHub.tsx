@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { KeyholeBadge, LockedBadge, StarBadge } from "@/components/art/Badges";
-import { LockIcon, PauseIcon, PlayTriangle } from "@/components/art/Icons";
+import { ImagesIcon, KeyIcon, LockIcon, PauseIcon, PlayIcon, RadioIcon, TrophyIcon } from "@/components/art/Icons";
 import { InkButton } from "@/components/ui/Primitives";
 import { getAudio } from "@/lib/audio/engine";
 import { useMusicState, useSound } from "@/lib/audio/hooks";
@@ -15,52 +15,11 @@ import { PosterCard } from "./PosterCard";
 import { POSTERS } from "./posters";
 
 const SECTIONS = [
-  { id: "posteres", label: "Pôsteres para baixar", art: "poster" },
-  { id: "trilhas", label: "Trilhas sonoras", art: "radio" },
-  { id: "conquistas", label: "Conquistas", art: "trophy" },
-  { id: "segredos", label: "Segredos", art: "secret" },
+  { id: "posters", label: "Pôsteres para baixar", Icon: ImagesIcon, tone: "bg-tangerine" },
+  { id: "tracks", label: "Trilhas sonoras", Icon: RadioIcon, tone: "bg-sky" },
+  { id: "achievements", label: "Conquistas", Icon: TrophyIcon, tone: "bg-sun" },
+  { id: "secrets", label: "Segredos", Icon: KeyIcon, tone: "bg-plum-300" },
 ] as const;
-
-function TileArt({ kind }: { kind: (typeof SECTIONS)[number]["art"] }) {
-  if (kind === "poster")
-    return (
-      <svg viewBox="0 0 80 64" className="h-16 w-20" aria-hidden>
-        <rect x="8" y="10" width="34" height="46" fill="#63d6c1" stroke="#1d1830" strokeWidth="3.5" transform="rotate(-10 25 33)" />
-        <rect x="22" y="6" width="34" height="46" fill="#ff8a3d" stroke="#1d1830" strokeWidth="3.5" transform="rotate(4 39 29)" />
-        <rect x="38" y="10" width="34" height="46" fill="#fbf5e6" stroke="#1d1830" strokeWidth="3.5" transform="rotate(12 55 33)" />
-        <circle cx="56" cy="30" r="7" fill="#ffc83d" stroke="#1d1830" strokeWidth="3" />
-      </svg>
-    );
-  if (kind === "radio")
-    return (
-      <svg viewBox="0 0 80 64" className="h-16 w-20" aria-hidden>
-        <path d="M24 18 Q24 6 40 6 Q56 6 56 18" fill="none" stroke="#1d1830" strokeWidth="5" />
-        <rect x="6" y="16" width="68" height="42" rx="8" fill="#2f86c9" stroke="#1d1830" strokeWidth="3.5" />
-        <circle cx="25" cy="37" r="12" fill="#2b2150" stroke="#1d1830" strokeWidth="3" />
-        <rect x="42" y="25" width="24" height="12" rx="2" fill="#9df0dc" stroke="#1d1830" strokeWidth="3" />
-        <circle cx="48" cy="47" r="3.5" fill="#ef4f43" stroke="#1d1830" strokeWidth="2" />
-        <circle cx="60" cy="47" r="3.5" fill="#ffc83d" stroke="#1d1830" strokeWidth="2" />
-      </svg>
-    );
-  if (kind === "trophy")
-    return (
-      <svg viewBox="0 0 80 64" className="h-16 w-20" aria-hidden>
-        <path d="M28 8 Q14 8 16 22 Q18 32 30 34 M52 8 Q66 8 64 22 Q62 32 50 34" fill="none" stroke="#1d1830" strokeWidth="5" />
-        <path d="M26 6 L54 6 Q54 34 40 38 Q26 34 26 6 Z" fill="#ffc83d" stroke="#1d1830" strokeWidth="3.5" strokeLinejoin="round" />
-        <path d="M36 38 L44 38 L45 48 L35 48 Z" fill="#eda21a" stroke="#1d1830" strokeWidth="3" />
-        <rect x="26" y="48" width="28" height="12" rx="3" fill="#5a4790" stroke="#1d1830" strokeWidth="3" />
-      </svg>
-    );
-  return (
-    <svg viewBox="0 0 80 64" className="h-16 w-20" aria-hidden>
-      <rect x="18" y="8" width="44" height="50" rx="8" fill="#3f3170" stroke="#1d1830" strokeWidth="3.5" />
-      <text x="40" y="45" textAnchor="middle" fontSize="34" fill="#b9a6ef" style={{ fontFamily: "var(--font-luckiest)" }}>
-        ?
-      </text>
-      <path d="M66 10 L70 4 M70 18 L76 16 M12 50 L6 54" stroke="#ffc83d" strokeWidth="3.5" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function SectionTitle({ id, children, count }: { id: string; children: React.ReactNode; count?: string }) {
   return (
@@ -97,7 +56,7 @@ export function ExtrasHub() {
     play("toggleOn");
     engine.startMusic(id);
     setSetting("track", id);
-    unlockAchievement("radio-ligado");
+    unlockAchievement("radio-on");
   };
 
   return (
@@ -112,7 +71,9 @@ export function ExtrasHub() {
                 onClick={() => play("page")}
                 className={`press flex h-full flex-col items-center gap-2 rounded-2xl border-[3px] border-ink bg-cream-2 p-3 text-center shadow-[var(--shadow-ink)] ${i % 2 ? "rotate-1" : "-rotate-1"}`}
               >
-                <TileArt kind={s.art} />
+                <span className={`grid size-16 place-items-center rounded-2xl border-[3px] border-ink shadow-[var(--shadow-ink-sm)] ${s.tone}`}>
+                  <s.Icon className="size-9 text-ink" />
+                </span>
                 <span className="font-display text-sm uppercase leading-tight tracking-wide text-ink">{s.label}</span>
               </a>
             </li>
@@ -145,8 +106,8 @@ export function ExtrasHub() {
         </div>
       </nav>
 
-      <section aria-labelledby="posteres" className="mt-14">
-        <SectionTitle id="posteres" count={`${POSTERS.filter((po) => hydrated && po.unlock.check(p)).length}/${POSTERS.length} liberados`}>
+      <section aria-labelledby="posters" className="mt-14">
+        <SectionTitle id="posters" count={`${POSTERS.filter((po) => hydrated && po.unlock.check(p)).length}/${POSTERS.length} liberados`}>
           Pôsteres para baixar
         </SectionTitle>
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -158,8 +119,8 @@ export function ExtrasHub() {
         </ul>
       </section>
 
-      <section aria-labelledby="trilhas" className="mt-14">
-        <SectionTitle id="trilhas" count={`${TRACKS.filter((t) => hydrated && isTrackUnlocked(t, p)).length}/${TRACKS.length} liberadas`}>
+      <section aria-labelledby="tracks" className="mt-14">
+        <SectionTitle id="tracks" count={`${TRACKS.filter((t) => hydrated && isTrackUnlocked(t, p)).length}/${TRACKS.length} liberadas`}>
           Trilhas sonoras
         </SectionTitle>
         <ul className="paper divide-y-[3px] divide-dashed divide-ink/20 border-[3px] border-ink px-4 shadow-[var(--shadow-ink-lg)] wobbly-alt">
@@ -198,7 +159,7 @@ export function ExtrasHub() {
                     aria-label={playing ? `Parar ${track.title}` : `Tocar ${track.title}`}
                     onClick={() => toggleTrack(track.id)}
                   >
-                    {playing ? <PauseIcon className="size-5 text-ink" /> : <PlayTriangle className="size-5 text-ink" />}
+                    {playing ? <PauseIcon className="size-5 text-ink" /> : <PlayIcon className="size-5 text-ink" />}
                     {playing ? "Parar" : "Tocar"}
                   </InkButton>
                 ) : (
@@ -215,8 +176,8 @@ export function ExtrasHub() {
         </p>
       </section>
 
-      <section aria-labelledby="conquistas" className="mt-14">
-        <SectionTitle id="conquistas" count={`${achievementsDone}/${ACHIEVEMENTS.length}`}>
+      <section aria-labelledby="achievements" className="mt-14">
+        <SectionTitle id="achievements" count={`${achievementsDone}/${ACHIEVEMENTS.length}`}>
           Conquistas
         </SectionTitle>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -241,8 +202,8 @@ export function ExtrasHub() {
         </ul>
       </section>
 
-      <section aria-labelledby="segredos" className="mt-14">
-        <SectionTitle id="segredos" count={`${secretsFound}/${SECRETS.length}`}>
+      <section aria-labelledby="secrets" className="mt-14">
+        <SectionTitle id="secrets" count={`${secretsFound}/${SECRETS.length}`}>
           Segredos da sala
         </SectionTitle>
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -53,7 +53,7 @@ function Frame({ children, bg, label, decorative }: { children: React.ReactNode;
   );
 }
 
-export function RuaCover({ decorative }: { decorative?: boolean }) {
+export function DeadEndStreetCover({ decorative }: { decorative?: boolean }) {
   return (
     <Frame decorative={decorative} bg="#82d3f7" label="Capa de Rua Sem Saída: Déco e Lina numa engenhoca de carrinho lançando um tênis">
       <circle cx="270" cy="44" r="24" fill={P.sun} {...ink} />
@@ -91,7 +91,7 @@ export function RuaCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
-export function LabCover({ decorative }: { decorative?: boolean }) {
+export function BadIdeasLabCover({ decorative }: { decorative?: boolean }) {
   return (
     <Frame decorative={decorative} bg={P.plum700} label="Capa de Laboratório de Péssimas Ideias: Lina segurando um frasco borbulhante entre engrenagens">
       <Burst cx={160} cy={120} color={P.plum600} count={14} />
@@ -123,7 +123,7 @@ export function LabCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
-export function LancheCover({ decorative }: { decorative?: boolean }) {
+export function FoodFightCover({ decorative }: { decorative?: boolean }) {
   return (
     <Frame decorative={decorative} bg={P.tangerine} label="Capa de Guerra de Lanche: Déco gritando enquanto comida voa pela cantina">
       <Burst cx={170} cy={110} color={P.sun} count={18} />
@@ -161,7 +161,7 @@ export function LancheCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
-export function CasaCover({ decorative }: { decorative?: boolean }) {
+export function StrangeHouseCover({ decorative }: { decorative?: boolean }) {
   return (
     <Frame decorative={decorative} bg={P.plum800} label="Capa de Casa Estranha: uma casa torta à noite com janelas acesas e uma cadeira flutuando">
       {[
@@ -204,7 +204,7 @@ export function CasaCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
-export function RecreioCover({ decorative }: { decorative?: boolean }) {
+export function OperationRecessCover({ decorative }: { decorative?: boolean }) {
   return (
     <Frame decorative={decorative} bg={P.sky} label="Capa de Operação: Recreio: Bruno com walkie-talkie e o plano da missão no pátio da escola">
       <rect x="0" y="0" width="320" height="240" fill={P.skyPale} opacity="0.4" />
@@ -246,11 +246,11 @@ export function RecreioCover({ decorative }: { decorative?: boolean }) {
 }
 
 export const COVERS: Record<string, (props: { decorative?: boolean }) => React.JSX.Element> = {
-  "rua-sem-saida": RuaCover,
-  "laboratorio-de-pessimas-ideias": LabCover,
-  "guerra-de-lanche": LancheCover,
-  "casa-estranha": CasaCover,
-  "operacao-recreio": RecreioCover,
+  "dead-end-street": DeadEndStreetCover,
+  "bad-ideas-lab": BadIdeasLabCover,
+  "food-fight": FoodFightCover,
+  "strange-house": StrangeHouseCover,
+  "operation-recess": OperationRecessCover,
 };
 
 export function GameCover({ slug, decorative }: { slug: string; decorative?: boolean }) {

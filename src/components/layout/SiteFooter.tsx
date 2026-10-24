@@ -18,7 +18,7 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link className="underline decoration-mint decoration-2 underline-offset-4 hover:text-mint" href="/jogos">
+              <Link className="underline decoration-mint decoration-2 underline-offset-4 hover:text-mint" href="/games">
                 Jogos
               </Link>
             </li>
@@ -28,7 +28,7 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link className="underline decoration-sky decoration-2 underline-offset-4 hover:text-sky" href="/sobre">
+              <Link className="underline decoration-sky decoration-2 underline-offset-4 hover:text-sky" href="/about">
                 Sobre o canal
               </Link>
             </li>

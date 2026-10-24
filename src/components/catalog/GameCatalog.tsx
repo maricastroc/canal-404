@@ -6,29 +6,29 @@ import { useSound } from "@/lib/audio/hooks";
 import { CATEGORY_LABELS, GAMES, type GameCategory } from "@/games/registry";
 import { GameCard, LostGamesCard } from "./GameCard";
 
-type Filter = "todos" | GameCategory;
+type Filter = "all" | GameCategory;
 
 const FILTER_TONES: Record<Filter, string> = {
-  todos: "bg-sun",
-  acao: "bg-tangerine",
+  all: "bg-sun",
+  action: "bg-tangerine",
   puzzle: "bg-plum-300",
-  aventura: "bg-mint",
-  estrategia: "bg-sky",
+  adventure: "bg-mint",
+  strategy: "bg-sky",
 };
 
 export function GameCatalog() {
-  const [filter, setFilter] = useState<Filter>("todos");
+  const [filter, setFilter] = useState<Filter>("all");
   const { play, hover } = useSound();
   const categories = Array.from(new Set(GAMES.map((g) => g.category)));
-  const filters: Filter[] = ["todos", ...categories];
-  const visible = GAMES.filter((g) => filter === "todos" || g.category === filter);
+  const filters: Filter[] = ["all", ...categories];
+  const visible = GAMES.filter((g) => filter === "all" || g.category === filter);
 
   return (
     <div>
       <div role="group" aria-label="Filtrar jogos por categoria" className="flex flex-wrap justify-center gap-2.5">
         {filters.map((f) => {
           const active = f === filter;
-          const count = f === "todos" ? GAMES.length : GAMES.filter((g) => g.category === f).length;
+          const count = f === "all" ? GAMES.length : GAMES.filter((g) => g.category === f).length;
           return (
             <button
               key={f}
@@ -43,7 +43,7 @@ export function GameCatalog() {
                 active ? `${FILTER_TONES[f]} -rotate-2` : "bg-cream-2 hover:bg-cream"
               }`}
             >
-              {f === "todos" ? "Todos" : CATEGORY_LABELS[f]}
+              {f === "all" ? "Todos" : CATEGORY_LABELS[f]}
               <span className="ml-1.5 text-xs opacity-70">({count})</span>
             </button>
           );
@@ -66,8 +66,8 @@ export function GameCatalog() {
               <GameCard game={game} index={index} />
             </motion.li>
           ))}
-          {filter === "todos" && (
-            <motion.li key="perdidos" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          {filter === "all" && (
+            <motion.li key="lost-games" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <LostGamesCard />
             </motion.li>
           )}

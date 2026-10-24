@@ -8,7 +8,7 @@ export default function Home() {
     <div className="room-page relative min-h-svh overflow-x-clip xl:h-svh xl:overflow-hidden">
       <TopBar className="xl:hidden" />
       <SideNav className="absolute inset-y-0 left-0 z-50 hidden w-[17rem] px-5 py-5 xl:flex" />
-      <main id="conteudo" className="relative xl:ml-[17rem] xl:flex xl:h-svh xl:items-center xl:justify-center">
+      <main id="content" className="relative xl:ml-[17rem] xl:flex xl:h-svh xl:items-center xl:justify-center">
         <h1 className="sr-only">CANAL 404 — Sala de transmissão</h1>
         <p className="sr-only">
           Uma sala ilustrada e interativa. Use Tab para percorrer os objetos: a TV mostra o jogo da semana, o fliperama abre

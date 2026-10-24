@@ -158,7 +158,7 @@ export function Arcade({
   };
   return (
     <Link
-      href="/jogos"
+      href="/games"
       onClick={handleClick}
       onPointerEnter={(e) => {
         if (e.pointerType !== "mouse") return;

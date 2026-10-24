@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { MouseEvent } from "react";
-import { PlayTriangle } from "@/components/art/Icons";
+import { PlayIcon } from "@/components/art/Icons";
 import { spotStyle, SPOTS, type Spot } from "../layout";
 import { CHANNELS, ChannelContent, type ChannelId } from "./TvChannels";
 import { TV_BOX, TV_KNOB, TV_SCREEN, TvKnob, TvSet } from "./TvSet";
@@ -46,11 +46,11 @@ export function Tv({ channel, switching, osd, knobAngle, flash, onKnob, onLaunch
   };
 
   const screenHint =
-    channel === "rua"
+    channel === "street"
       ? "Esse é o jogo da semana! Clica na tela pra jogar."
-      : channel === "casa"
+      : channel === "house"
         ? "Casa Estranha ainda está em produção. Dá pra espiar os detalhes."
-        : channel === "desenho"
+        : channel === "cartoon"
           ? "Reprise do meu desenho! Clica pra conhecer a turma."
           : null;
 
@@ -86,7 +86,7 @@ export function Tv({ channel, switching, osd, knobAngle, flash, onKnob, onLaunch
             <span className="flex items-center gap-[0.4em] rounded-full border-[3px] border-ink bg-sun px-[0.9em] py-[0.25em] font-display text-[clamp(10px,1.15vw,19px)] uppercase leading-none tracking-wide text-ink shadow-[0_3px_0_0_var(--color-ink)] transition-transform duration-150 group-hover:-translate-y-0.5 group-hover:scale-105 group-active:translate-y-0.5">
               {info.cta.label}
               <span className="sr-only">: {info.cta.context}</span>
-              <PlayTriangle className="size-[1em] text-ink" />
+              <PlayIcon className="size-[1em] text-ink" />
             </span>
           </Link>
         )}

@@ -23,7 +23,7 @@ const bars = (...parts: string[]) => parts.join(" ");
 
 export const TRACKS: Track[] = [
   {
-    id: "tema",
+    id: "theme",
     title: "Tema do Canal 404",
     station: "FM 404.0",
     mood: "A vinheta oficial. Toca desde 2004 sem parar.",
@@ -65,7 +65,7 @@ export const TRACKS: Track[] = [
     unlock: { type: "default" },
   },
   {
-    id: "intervalo",
+    id: "recess",
     title: "Vinheta de Intervalo",
     station: "FM 88.4",
     mood: "Música de espera para quando o lanche está no micro-ondas.",
@@ -108,10 +108,10 @@ export const TRACKS: Track[] = [
       snare: "....x.......x...",
       hat: "..x...x...x...x.",
     },
-    unlock: { type: "achievement", id: "radio-ligado", label: "Ligue o rádio da sala" },
+    unlock: { type: "achievement", id: "radio-on", label: "Ligue o rádio da sala" },
   },
   {
-    id: "rua",
+    id: "street",
     title: "Rua Sem Saída (Tema)",
     station: "FM 101.3",
     mood: "Trilha oficial da maior bagunça do bairro.",
@@ -150,10 +150,10 @@ export const TRACKS: Track[] = [
       snare: "....x.......x...",
       hat: "xxxxxxxxxxxxxxxx",
     },
-    unlock: { type: "achievement", id: "primeiro-lancamento", label: "Faça um lançamento em Rua Sem Saída" },
+    unlock: { type: "achievement", id: "first-launch", label: "Faça um lançamento em Rua Sem Saída" },
   },
   {
-    id: "fim",
+    id: "sign-off",
     title: "Fim de Transmissão",
     station: "AM 404",
     mood: "A música que tocava quando o canal saía do ar. Ou não saía.",

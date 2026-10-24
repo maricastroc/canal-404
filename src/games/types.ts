@@ -21,7 +21,7 @@ export type GameEvent =
   | { type: "launch" }
   | { type: "finished"; result: GameResult };
 
-export type LoadStage = "codigo" | "arte" | "cena";
+export type LoadStage = "code" | "art" | "scene";
 
 export type GameHostContext = {
   parent: HTMLElement;
