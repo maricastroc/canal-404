@@ -18,7 +18,10 @@ export type AchievementId =
   | "vitoria-rua"
   | "tres-estrelas"
   | "efeito-domino"
-  | "recordista";
+  | "recordista"
+  | "lab-primeira"
+  | "lab-minimalista"
+  | "lab-completo";
 
 export type SecretDef = {
   id: SecretId;
@@ -69,8 +72,8 @@ export const SECRETS: SecretDef[] = [
   {
     id: "cartucho",
     title: "Cartucho Perdido",
-    description: "Você achou o cartucho escondido atrás da planta.",
-    hint: "Nem todo cartucho está à vista. Procure perto do verde.",
+    description: "Você achou o cartucho escondido perto da planta.",
+    hint: "Nem todo cartucho está à vista. Procure perto da planta.",
   },
   {
     id: "fita",
@@ -147,7 +150,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     id: "efeito-domino",
     title: "Efeito Dominó",
     description: "Derrubou 2 alvos com um único lançamento.",
-    hint: "Objetos estranhos fazem combos melhores.",
+    hint: "Tente derrubar dois alvos de uma vez.",
     color: "mint",
   },
   {
@@ -156,6 +159,27 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: "Fez mais de 2500 pontos em Rua Sem Saída.",
     hint: "Bagunça extra também vale ponto.",
     color: "bubblegum",
+  },
+  {
+    id: "lab-primeira",
+    title: "Péssima Ideia Nº 1",
+    description: "Fez a primeira máquina do Laboratório funcionar.",
+    hint: "Toda invenção começa com uma rampa torta.",
+    color: "plum",
+  },
+  {
+    id: "lab-minimalista",
+    title: "Menos É Mais",
+    description: "Resolveu uma fase do Laboratório com menos peças que a meta.",
+    hint: "Tente gastar menos peças do que a meta pede.",
+    color: "mint",
+  },
+  {
+    id: "lab-completo",
+    title: "Cientista Maluca",
+    description: "Terminou todas as fases do Laboratório de Péssimas Ideias.",
+    hint: "A pior ideia de todas está te esperando.",
+    color: "sun",
   },
 ];
 

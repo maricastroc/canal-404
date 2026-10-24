@@ -20,7 +20,7 @@ const TIMELINE = [
   {
     year: "2001",
     title: "Nasce o 404",
-    text: "Um técnico cola dois olhos numa TV quebrada para animar a reunião de pauta. A TV pisca de volta. Ninguém explica isso até hoje.",
+    text: "Um técnico cola dois olhos numa TV quebrada para animar uma reunião chata. A TV pisca de volta. Até hoje ninguém sabe explicar.",
     tone: "bg-mint",
   },
   {
@@ -141,9 +141,9 @@ export default function SobrePage() {
         </h2>
         <p className="mt-2 leading-relaxed text-ink-soft">
           O CANAL 404 é um projeto fictício e original: personagens, desenhos e sons foram feitos especialmente para ele. Tudo
-          roda no seu navegador, sem cadastro e sem serviços externos. Recordes, segredos e conquistas ficam salvos apenas
-          neste dispositivo. Os sons são sintetizados ao vivo e só tocam depois que você interage com a página — e dá para
-          desligá-los no botão de alto-falante.
+          funciona no seu navegador, sem cadastro e sem depender de outros sites. Recordes, segredos e conquistas ficam
+          salvos só neste navegador. Os sons são criados na hora e só tocam depois que você clica ou aperta uma tecla. Dá
+          para desligar no botão de alto-falante.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <InkLink href="/" tone="sun">

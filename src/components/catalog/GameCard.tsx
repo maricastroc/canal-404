@@ -59,7 +59,13 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
         <div className="mt-auto flex flex-wrap items-center justify-center gap-1.5 pt-2">
           <Tag tone={categoryTone[game.category]}>{CATEGORY_LABELS[game.category]}</Tag>
           {available ? (
-            <Tag tone="cream">{record && record.highScore > 0 ? `Recorde: ${record.highScore}` : "Sem recorde ainda"}</Tag>
+            <Tag tone="cream">
+              {game.levels
+                ? `★ ${game.levels.reduce((acc, l) => acc + (record?.levels?.[l.id]?.stars ?? 0), 0)}/${game.levels.length * 3}`
+                : record && record.highScore > 0
+                  ? `Recorde: ${record.highScore}`
+                  : "Sem recorde ainda"}
+            </Tag>
           ) : (
             <Tag tone="cream">Em produção</Tag>
           )}

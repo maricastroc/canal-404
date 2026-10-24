@@ -1,6 +1,6 @@
 # CANAL 404 — Desenhos. Jogos. Bagunça.
 
-Portal fictício de jogos inspirado na sensação dos sites de desenho animado dos anos 2000. O canal saiu do ar, mas o portal continua funcionando: uma sala de transmissão ilustrada e interativa, personagens originais, segredos escondidos e o minijogo **Rua Sem Saída**.
+Portal fictício de jogos inspirado na sensação dos sites de desenho animado dos anos 2000. O canal saiu do ar, mas o portal continua funcionando: uma sala de transmissão ilustrada e interativa, personagens originais, segredos escondidos e dois jogos completos: **Rua Sem Saída** e **Laboratório de Péssimas Ideias**.
 
 ## Como rodar
 
@@ -21,7 +21,7 @@ Não há serviços externos, autenticação ou chaves de API. Progresso, recorde
 
 - Next.js (App Router) + React + TypeScript
 - Tailwind CSS 4 (tokens de cor, fontes e texturas em `src/app/globals.css`)
-- Phaser 3 com Matter.js para o minijogo (carregado sob demanda, só na página do jogo)
+- Phaser 3 com Matter.js para os jogos (carregados sob demanda, só na página do jogo)
 - Motion para microinterações da interface
 - SVG autoral para todas as ilustrações
 - Web Audio API para efeitos sonoros e trilhas sintetizadas ao vivo
@@ -57,11 +57,14 @@ src/
     registry.ts        metadados de todos os jogos (catálogo)
     loaders.ts         import dinâmico de cada jogo jogável
     types.ts           contrato entre o portal e os jogos
-    rua-sem-saida/     o jogo (cenas Phaser, nível, sons)
+    kit/               utilitários visuais compartilhados entre os jogos Phaser
+    rua-sem-saida/     estilingue (cenas Phaser, ondas, sons)
+    laboratorio/       quebra-cabeça de máquinas (fases, geometria, cenas, sons)
   lib/
     audio/             motor Web Audio, efeitos e trilhas
     progress/          persistência, segredos e conquistas
-public/games/rua-sem-saida/   arte SVG do jogo
+public/games/rua-sem-saida/   arte SVG da Rua Sem Saída
+public/games/laboratorio/     arte SVG do Laboratório
 ```
 
 ## Adicionando um novo jogo
@@ -73,11 +76,19 @@ Os jogos são independentes do portal. Cada um exporta um `GameModule` com `moun
 3. Adicione o carregador em `src/games/loaders.ts`.
 4. Desenhe a capa em `src/components/art/Covers.tsx`.
 
-O portal cuida do carregamento com barra de progresso real, da tela de apresentação, pausa, resultado, recordes, conquistas e anúncios para leitores de tela.
+O portal cuida do carregamento com barra de progresso real, da tela de apresentação, pausa, resultado, recordes, conquistas e anúncios para leitores de tela. Jogos com fases declaram `levels` no registro e devolvem `level` no resultado: o portal mostra a seleção de fases (cada uma libera a seguinte), salva estrelas por fase e oferece "Próxima fase".
 
 ## Rua Sem Saída
 
 Estilingue montado num carrinho: puxe para trás (mouse ou toque) ou use as setas para mirar e espaço para lançar. Três rodadas curtas no quintal do Seu Arlindo — alvos próximos, depois atrás de obstáculos e por fim lá no alto — com sete lançamentos de quatro tipos com física diferente (tênis, balão d'água que estoura, pneu pesado, pato que quica). O bairro reage: o gato foge, a tampa da lata voa, o passarinho escapa da casinha. Pontos por alvo, rodada, bagunça, combos e munição de sobra; recorde salvo localmente.
+
+## Laboratório de Péssimas Ideias
+
+Quebra-cabeça de física na garagem da Lina. A primeira fase é um teste rápido: uma rampa, uma marca tracejada mostrando onde colocar e uma seta no botão LIGAR. Depois vêm cinco problemas bobos: acordar o gato com o sino, apertar a torradeira, levar uma laranja até o espremedor, trazer a bolinha de volta até o controle remoto e a pior ideia de todas.
+
+Cada fase tem uma caixa com peças contadas (rampas, molas, ventiladores e esteiras) e uma área tracejada para montar. Dá para arrastar as peças com mouse ou dedo, ou usar o teclado: números pegam, setas movem, R gira, Enter coloca, espaço liga a máquina e H pede dica. Se não funcionar, o caminho da bolinha fica marcado na tela, a Lina reage e, na segunda tentativa errada, dá uma dica. As estrelas dependem de quantas peças você usou.
+
+As fases foram calibradas em simulação com as mesmas regras de física do jogo (`config.ts`, `levels.ts` e `geometry.ts`): cada uma tem soluções testadas, e atalhos com uma peça só não resolvem.
 
 ## Acessibilidade
 

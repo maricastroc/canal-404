@@ -6,6 +6,8 @@ export type ControlHint = { input: string; action: string };
 
 export type HowToStep = { title: string; text: string };
 
+export type LevelMeta = { id: string; title: string; goal: string };
+
 export type GameMeta = {
   slug: string;
   title: string;
@@ -20,6 +22,10 @@ export type GameMeta = {
   controls?: ControlHint[];
   howTo?: HowToStep[];
   objective?: string;
+  levels?: LevelMeta[];
+  tips?: string[];
+  controlsSummary?: string;
+  copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
 export const CATEGORY_LABELS: Record<GameCategory, string> = {
@@ -51,22 +57,79 @@ export const GAMES: GameMeta[] = [
     ],
     howTo: [
       { title: "Puxe", text: "Arraste para trás em qualquer lugar da tela. Quanto mais longe, mais força." },
-      { title: "Mire", text: "A linha pontilhada é o plano do Bruno. Ela mostra o começo da trajetória." },
+      { title: "Mire", text: "A linha pontilhada mostra o começo do caminho. É o plano do Bruno." },
       { title: "Bagunce", text: "Cada objeto voa diferente. O pato quica, o pneu derruba, o balão estoura." },
     ],
+    tips: [
+      "Derrubar dois alvos com um lançamento vale bônus.",
+      "O pato de borracha quica muito. Use isso a seu favor.",
+      "Bagunça também vale ponto. Derrube tudo!",
+      "Munição que sobra vira bônus no final.",
+      "A linha pontilhada é o plano do Bruno. Confie... um pouco.",
+      "O balão d'água empurra tudo que estiver perto quando estoura.",
+      "O pneu é pesado: mire na base das pilhas.",
+    ],
+    controlsSummary: "Rua Sem Saída. Setas ajustam ângulo e força, espaço lança, Esc pausa.",
+    copy: {
+      winTitle: "Bagunça completa!",
+      winText: "O quintal do Seu Arlindo nunca mais será o mesmo.",
+      loseTitle: "Acabou a munição!",
+      loseText: "Os enfeites do Seu Arlindo sobreviveram. Por enquanto.",
+    },
   },
   {
     slug: "laboratorio-de-pessimas-ideias",
     title: "Laboratório de Péssimas Ideias",
-    tagline: "Monte máquinas absurdas para resolver problemas simples.",
+    tagline: "Monte máquinas malucas para resolver problemas bobos.",
     description:
-      "A Lina transformou a garagem num laboratório. Cada fase é um problema bobo (acordar o gato, servir um copo de suco) que só pode ser resolvido com uma máquina gigante de engrenagens, ventiladores e bolinhas de gude.",
+      "A Lina transformou a garagem num laboratório de invenções. Em cada fase tem um problema bobo para resolver, como acordar o gato ou ligar a torradeira. Use rampas, molas, ventiladores e esteiras para levar a bolinha até o lugar certo.",
     category: "puzzle",
     tags: ["Puzzle", "Construção", "Física"],
-    status: "em-breve",
+    status: "disponivel",
     accent: "plum",
     cast: ["lina", "bruno"],
-    production: "Protótipo de engrenagens funcionando. Os ventiladores ainda sopram para o lado errado.",
+    objective: "Use as peças para levar a bolinha até o alvo. Quanto menos peças você usar, mais estrelas ganha.",
+    controls: [
+      { input: "Arrastar (mouse ou dedo)", action: "Levar uma peça da caixa até a área tracejada" },
+      { input: "Tocar numa peça", action: "Mostrar os botões de girar e tirar" },
+      { input: "1 a 4", action: "Pegar uma peça da caixa" },
+      { input: "Setas", action: "Mover a peça" },
+      { input: "R (ou Q)", action: "Girar a peça" },
+      { input: "Enter", action: "Soltar a peça no lugar" },
+      { input: "Delete ou X", action: "Guardar a peça na caixa" },
+      { input: "S", action: "Escolher uma peça já montada" },
+      { input: "Espaço", action: "Ligar ou desligar a máquina" },
+      { input: "H", action: "Pedir uma dica" },
+      { input: "Esc ou P", action: "Pausar" },
+    ],
+    howTo: [
+      { title: "Pegue", text: "Arraste uma peça da caixa, lá embaixo, até a área tracejada." },
+      { title: "Ajuste", text: "Gire a peça se precisar. Verde quer dizer que ela cabe ali." },
+      { title: "Ligue", text: "Aperte LIGAR e veja a bolinha. Não deu? Mude as peças e tente de novo." },
+    ],
+    levels: [
+      { id: "teste", title: "Primeiro teste", goal: "Coloque a rampa e ligue a máquina." },
+      { id: "pixel", title: "Bom dia, Pixel", goal: "Faça a bolinha tocar o sino." },
+      { id: "torrada", title: "Café da manhã", goal: "Faça a bolinha apertar o botão da torradeira." },
+      { id: "suco", title: "Suco de laranja", goal: "Leve a laranja até o espremedor." },
+      { id: "controle", title: "Cadê o controle?", goal: "Faça a bolinha apertar o botão do controle." },
+      { id: "definitiva", title: "A pior ideia de todas", goal: "Faça a bolinha tocar o sino atrás do muro." },
+    ],
+    tips: [
+      "Não deu certo? Mude uma peça de lugar e tente de novo.",
+      "A mola joga a bolinha para onde ela aponta.",
+      "O ventilador empurra a bolinha que passa na frente dele.",
+      "A esteira leva a bolinha para onde as setas apontam.",
+      "Quanto menos peças, mais estrelas.",
+      "Toda grande invenção começou como uma péssima ideia.",
+    ],
+    controlsSummary: "Laboratório de Péssimas Ideias. Números pegam peças, setas movem, R gira, Enter coloca, espaço liga a máquina, H pede dica, Esc pausa.",
+    copy: {
+      winTitle: "Funcionou!",
+      winText: "Mais uma péssima ideia que deu certo.",
+      loseTitle: "Não deu...",
+      loseText: "Mude as peças e tente de novo.",
+    },
   },
   {
     slug: "guerra-de-lanche",

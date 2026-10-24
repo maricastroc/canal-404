@@ -101,7 +101,7 @@ export const POSTERS: PosterDef[] = [
   },
   {
     id: "rua",
-    title: "Rua Sem Saída — a bagunça oficial",
+    title: "Rua Sem Saída: a bagunça oficial",
     file: "canal404-poster-rua-sem-saida.png",
     unlock: {
       label: "Vença Rua Sem Saída",

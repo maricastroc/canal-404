@@ -11,18 +11,10 @@ export const LOADING_STEPS = [
   { at: 1, text: "Pronto! (talvez)" },
 ];
 
-const TIPS = [
-  "Objetos estranhos fazem combos melhores.",
-  "O pato de borracha quica até em ideia ruim.",
-  "Bagunça também vale ponto. Derrube tudo!",
-  "Munição que sobra vira bônus no final.",
-  "A linha pontilhada é o plano do Bruno. Confie... um pouco.",
-  "O balão d'água empurra tudo que estiver perto quando estoura.",
-  "O pneu é pesado: mire na base das pilhas.",
-];
+const DEFAULT_TIPS = ["Toda grande invenção começou como uma péssima ideia.", "Se travar, tente desligar e ligar de novo."];
 
-export function pickTip(seed: number) {
-  return TIPS[Math.abs(seed) % TIPS.length];
+export function pickTip(seed: number, tips: string[] = DEFAULT_TIPS) {
+  return tips[Math.abs(seed) % tips.length];
 }
 
 export function LoadingScreen({

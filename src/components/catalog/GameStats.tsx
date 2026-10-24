@@ -19,10 +19,29 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-export function GameStats({ slug }: { slug: string }) {
+export function GameStats({ slug, levels }: { slug: string; levels?: { id: string }[] }) {
   const progress = useProgress();
   const hydrated = useHydrated();
   const record = hydrated ? progress.games[slug] : undefined;
+  if (levels) {
+    const done = levels.filter((l) => (record?.levels?.[l.id]?.stars ?? 0) > 0).length;
+    const stars = levels.reduce((acc, l) => acc + (record?.levels?.[l.id]?.stars ?? 0), 0);
+    const levelItems = [
+      { label: "Fases", value: `${done}/${levels.length}` },
+      { label: "Estrelas", value: `${stars}/${levels.length * 3}` },
+      { label: "Partidas", value: record?.plays ? String(record.plays) : "0" },
+    ];
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        {levelItems.map((item) => (
+          <div key={item.label} className="min-w-24 rounded-lg border-[3px] border-ink bg-cream px-3 py-1.5 text-center shadow-[var(--shadow-ink-sm)]">
+            <p className="font-display text-[11px] uppercase tracking-widest text-ink-soft">{item.label}</p>
+            <p className="font-display text-xl leading-tight text-ink tabular-nums">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
   const items = [
     { label: "Recorde", value: record?.highScore ? record.highScore.toLocaleString("pt-BR") : "—" },
     { label: "Partidas", value: record?.plays ? String(record.plays) : "0" },

@@ -8,19 +8,28 @@ import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
 import { GAME_LOADERS } from "@/games/loaders";
-import { getGame } from "@/games/registry";
+import { getGame, type LevelMeta } from "@/games/registry";
 import type { GameInstance, GameResult, LoadStage } from "@/games/types";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
-import { useHydrated } from "@/lib/progress/hooks";
-import { getGameRecord, recordGameResult, recordGameStart, unlockAchievement } from "@/lib/progress/store";
+import { useHydrated, useProgress } from "@/lib/progress/hooks";
+import { getGameRecord, recordGameResult, recordGameStart, recordLevelResult, unlockAchievement } from "@/lib/progress/store";
 import { LoadingScreen, pickTip } from "./LoadingScreen";
-import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
+import { ErrorPanel, IntroPanel, PausePanel, ResultPanel, type LevelProgress } from "./Panels";
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
 
 function cssFont(variable: string, fallback: string) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
   return value ? `${value}, ${fallback}` : fallback;
+}
+
+function computeLevelProgress(levels: LevelMeta[] | undefined, records: Record<string, { stars: number }> | undefined): LevelProgress | undefined {
+  if (!levels) return undefined;
+  const stars = levels.map((l) => records?.[l.id]?.stars ?? 0);
+  const furthest = stars.reduce((acc, st, i) => (st > 0 ? i : acc), -1);
+  const unlocked = Math.min(furthest + 1, levels.length - 1);
+  const firstOpen = stars.findIndex((st) => st === 0);
+  return { stars, unlocked, suggested: firstOpen === -1 ? levels.length - 1 : Math.min(firstOpen, unlocked) };
 }
 
 export function GameShell({ slug }: { slug: string }) {
@@ -32,23 +41,25 @@ export function GameShell({ slug }: { slug: string }) {
   const stageStateRef = useRef<Stage>("loading");
   const lastAnnounce = useRef(0);
   const [stage, setStageState] = useState<Stage>("loading");
+  const setStage = useCallback((next: Stage) => {
+    stageStateRef.current = next;
+    setStageState(next);
+  }, []);
   const [progress, setProgress] = useState(0.04);
   const [leaving, setLeaving] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [score, setScore] = useState(0);
-  const [result, setResult] = useState<{ result: GameResult; isRecord: boolean; previousBest: number } | null>(null);
+  const [result, setResult] = useState<{ result: GameResult; isRecord: boolean; note: string } | null>(null);
+  const progressState = useProgress();
   const [highScore, setHighScore] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const hydrated = useHydrated();
   const [tipSeed] = useState(() => Math.floor(Math.random() * 1000));
-  const tip = pickTip(hydrated ? tipSeed : 0);
-
-  const setStage = useCallback((next: Stage) => {
-    stageStateRef.current = next;
-    setStageState(next);
-  }, []);
+  const tip = pickTip(hydrated ? tipSeed : 0, game.tips);
+  const levelRecords = progressState.games[slug]?.levels;
+  const levelProgress = computeLevelProgress(game.levels, hydrated ? levelRecords : undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,17 +144,39 @@ export function GameShell({ slug }: { slug: string }) {
                 if (ACHIEVEMENTS.some((a) => a.id === event.id)) unlockAchievement(event.id as AchievementId);
                 break;
               case "finished": {
-                const saved = recordGameResult(slug, event.result);
-                event.result.achievements?.forEach((id) => {
+                const r = event.result;
+                let isRecord: boolean;
+                let note: string;
+                if (r.level) {
+                  const saved = recordLevelResult(slug, r.level.id, r);
+                  isRecord = saved.isRecord && saved.previous.stars > 0;
+                  const best = saved.record.levels?.[r.level.id];
+                  note = r.won
+                    ? saved.previous.stars === 0
+                      ? "Fase concluída pela primeira vez neste computador."
+                      : `Seu melhor nesta fase: ${best?.stars ?? r.stars} ${best?.stars === 1 ? "estrela" : "estrelas"}.`
+                    : "";
+                  setHighScore(saved.record.highScore);
+                } else {
+                  const saved = recordGameResult(slug, r);
+                  isRecord = saved.isRecord;
+                  note = saved.isRecord
+                    ? saved.previousBest > 0
+                      ? `Seu recorde anterior era ${saved.previousBest.toLocaleString("pt-BR")}.`
+                      : "Primeiro recorde registrado neste computador."
+                    : `Recorde atual: ${saved.record.highScore.toLocaleString("pt-BR")}.`;
+                  setHighScore(saved.record.highScore);
+                  instanceRef.current?.setHighScore(saved.record.highScore);
+                }
+                r.achievements?.forEach((id) => {
                   if (ACHIEVEMENTS.some((a) => a.id === id)) unlockAchievement(id as AchievementId);
                 });
-                setHighScore(saved.record.highScore);
-                instanceRef.current?.setHighScore(saved.record.highScore);
-                setResult({ result: event.result, isRecord: saved.isRecord, previousBest: saved.isRecord ? saved.previousBest : saved.record.highScore });
+                setResult({ result: r, isRecord, note });
+                const levelText = r.level ? `Fase ${r.level.index + 1}, ${r.level.title}: ` : "";
                 setAnnouncement(
-                  event.result.won
-                    ? `Vitória! ${event.result.score} pontos, ${event.result.stars} estrelas.${saved.isRecord ? " Novo recorde!" : ""}`
-                    : `Fim de jogo. ${event.result.score} pontos.`,
+                  r.won
+                    ? `${levelText}vitória! ${r.score} pontos, ${r.stars} estrelas.${isRecord ? " Melhor resultado!" : ""}`
+                    : `${levelText}fim de jogo. ${r.score} pontos.`,
                 );
                 setStage("result");
                 break;
@@ -205,11 +238,12 @@ export function GameShell({ slug }: { slug: string }) {
 
   const focusGame = () => window.setTimeout(() => stageRef.current?.focus(), 40);
 
-  const start = () => {
+  const start = (level?: number) => {
     play("confirm");
     recordGameStart(slug);
     setScore(0);
-    instanceRef.current?.start();
+    setResult(null);
+    instanceRef.current?.start(level === undefined ? undefined : { level });
     setStage("playing");
     focusGame();
   };
@@ -294,7 +328,7 @@ export function GameShell({ slug }: { slug: string }) {
           tabIndex={0}
           role="application"
           aria-roledescription="jogo"
-          aria-label={`${game.title}. Setas ajustam ângulo e força, espaço lança, Esc pausa.`}
+          aria-label={game.controlsSummary ?? game.title}
           className="absolute inset-0 touch-none select-none outline-none focus-visible:outline-none [&:focus-visible_canvas]:outline-4 [&:focus-visible_canvas]:outline-offset-2 [&:focus-visible_canvas]:outline-sun"
         >
           <div ref={hostRef} className="h-full w-full [&_canvas]:rounded-xl [&_canvas]:border-[3px] [&_canvas]:border-ink" />
@@ -306,6 +340,7 @@ export function GameShell({ slug }: { slug: string }) {
               key="intro"
               game={game}
               highScore={highScore}
+              levels={levelProgress}
               showHelp={showHelp}
               onToggleHelp={() => setShowHelp((v) => !v)}
               onPlay={start}
@@ -322,7 +357,20 @@ export function GameShell({ slug }: { slug: string }) {
             />
           )}
           {stage === "result" && result && (
-            <ResultPanel key="result" result={result.result} isRecord={result.isRecord} previousBest={result.previousBest} onRestart={restart} />
+            <ResultPanel
+              key="result"
+              game={game}
+              result={result.result}
+              isRecord={result.isRecord}
+              recordNote={result.note}
+              onRestart={restart}
+              onNext={
+                result.result.level && result.result.won && result.result.level.index + 1 < result.result.level.total
+                  ? () => start(result.result.level!.index + 1)
+                  : undefined
+              }
+              onLevels={game.levels ? () => setStage("intro") : undefined}
+            />
           )}
           {stage === "error" && (
             <ErrorPanel

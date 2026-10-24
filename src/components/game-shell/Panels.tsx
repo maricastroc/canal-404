@@ -1,15 +1,17 @@
 "use client";
 
-import { motion } from "motion/react";
+import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
 import { PlayTriangle, RestartIcon } from "@/components/art/Icons";
-import { RuaLogo } from "@/components/art/GameLogos";
+import { GAME_LOGOS } from "@/components/art/GameLogos";
+import { LockIcon } from "@/components/art/Icons";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
 import type { GameResult } from "@/games/types";
+import { useSound } from "@/lib/audio/hooks";
 
 function useAutoFocus<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -75,44 +77,142 @@ export function ControlsList({ game }: { game: GameMeta }) {
   );
 }
 
+export type LevelProgress = { stars: number[]; unlocked: number; suggested: number };
+
+function CountUp({ value, delay = 0 }: { value: number; delay?: number }) {
+  const mv = useMotionValue(0);
+  const text = useTransform(mv, (v) => Math.round(v).toLocaleString("pt-BR"));
+  useEffect(() => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      mv.set(value);
+      return;
+    }
+    const controls = animate(mv, value, { duration: 0.9, delay, ease: "easeOut" });
+    return () => controls.stop();
+  }, [mv, value, delay]);
+  return (
+    <>
+      <span className="sr-only">{value.toLocaleString("pt-BR")}</span>
+      <motion.span aria-hidden>{text}</motion.span>
+    </>
+  );
+}
+
+function GameTitle({ game }: { game: GameMeta }) {
+  const Logo = GAME_LOGOS[game.slug];
+  return Logo ? (
+    <h1>
+      <Logo className="w-full max-w-md" />
+    </h1>
+  ) : (
+    <h1 className="font-display text-4xl uppercase text-ink">{game.title}</h1>
+  );
+}
+
+function CastPair({ game, happy }: { game: GameMeta; happy?: boolean }) {
+  const kids = game.cast.filter((c): c is "lina" | "bruno" | "deco" | "mila" => c !== "404").slice(0, 2);
+  return (
+    <div className="flex shrink-0">
+      {kids.map((k, i) => (
+        <KidBust key={k} who={k} face={happy || i === 0 ? "happy" : "wow"} className={`w-20 sm:w-24 ${i ? "-ml-3 rotate-6" : "-rotate-6"}`} />
+      ))}
+    </div>
+  );
+}
+
+function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
+  return (
+    <span role="img" aria-label={`${count} de ${total} estrelas`} className="inline-flex gap-0.5">
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} aria-hidden className={`text-xl leading-none ${i < count ? "text-sun" : "text-cream-3"}`} style={{ textShadow: "1.5px 2px 0 #1d1830" }}>
+          ★
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export function IntroPanel({
   game,
   highScore,
+  levels,
   showHelp,
   onToggleHelp,
   onPlay,
 }: {
   game: GameMeta;
   highScore: number;
+  levels?: LevelProgress;
   showHelp: boolean;
   onToggleHelp: () => void;
-  onPlay: () => void;
+  onPlay: (level?: number) => void;
 }) {
   const playRef = useAutoFocus<HTMLButtonElement>();
+  const leveled = Boolean(game.levels && levels);
+  const totalStars = levels ? levels.stars.reduce((a, b) => a + b, 0) : 0;
+  const suggested = levels ? Math.min(levels.suggested, levels.unlocked) : 0;
   return (
     <OverlayFrame label={`${game.title}: tela de apresentação`} className="max-w-3xl p-5 sm:p-7">
       <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto]">
         <div>
-          <h1>
-            <RuaLogo className="w-full max-w-md" />
-          </h1>
+          <GameTitle game={game} />
           <p className="mt-2 text-lg font-semibold leading-snug text-ink">{game.objective}</p>
         </div>
-        <div className="hidden gap-1 sm:flex">
-          <KidBust who="deco" face="happy" className="w-24 -rotate-6" />
-          <KidBust who="lina" face="wow" className="w-24 rotate-6" />
+        <div className="hidden sm:block">
+          <CastPair game={game} />
         </div>
       </div>
+      {leveled && game.levels && levels && (
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-xl uppercase tracking-wide text-ink">Escolha a fase</h2>
+            <p className="font-display text-sm uppercase tracking-wide text-ink-soft">
+              Estrelas: {totalStars}/{game.levels.length * 3}
+            </p>
+          </div>
+          <ol className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {game.levels.map((level, i) => {
+              const locked = i > levels.unlocked;
+              return (
+                <li key={level.id}>
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => onPlay(i)}
+                    className={`press flex h-full w-full items-center gap-3 rounded-xl border-[3px] border-ink p-2.5 text-left shadow-[var(--shadow-ink-sm)] disabled:cursor-not-allowed disabled:opacity-60 ${
+                      i === suggested ? "bg-sun" : "bg-cream-2"
+                    }`}
+                  >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-paper font-display text-lg text-ink">
+                      {locked ? <LockIcon className="size-6" /> : i + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-display text-base uppercase leading-tight text-ink">{level.title}</span>
+                      <span className="block text-xs leading-snug text-ink-soft">
+                        {locked ? "Termine a fase anterior" : level.goal}
+                      </span>
+                      {!locked && levels.stars[i] > 0 && <MiniStars count={levels.stars[i]} />}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <InkButton ref={playRef} size="lg" tone="sun" onClick={onPlay}>
-          <PlayTriangle className="size-7 text-ink" /> Jogar
+        <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay(leveled ? suggested : undefined)}>
+          <PlayTriangle className="size-7 text-ink" /> {leveled ? `Jogar fase ${suggested + 1}` : "Jogar"}
         </InkButton>
         <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="como-jogar-painel">
           {showHelp ? "Esconder instruções" : "Como jogar"}
         </InkButton>
-        <p className="ml-auto rounded-lg border-[3px] border-ink bg-cream-2 px-3 py-1 font-display text-sm uppercase tracking-wide text-ink">
-          Recorde: {highScore > 0 ? highScore.toLocaleString("pt-BR") : "—"}
-        </p>
+        {!leveled && (
+          <p className="ml-auto rounded-lg border-[3px] border-ink bg-cream-2 px-3 py-1 font-display text-sm uppercase tracking-wide text-ink">
+            Recorde: {highScore > 0 ? highScore.toLocaleString("pt-BR") : "—"}
+          </p>
+        )}
       </div>
       {showHelp && (
         <div id="como-jogar-painel" className="mt-5 border-t-[3px] border-dashed border-ink/30 pt-4">
@@ -170,42 +270,50 @@ export function PausePanel({
 }
 
 export function ResultPanel({
+  game,
   result,
   isRecord,
-  previousBest,
+  recordNote,
   onRestart,
+  onNext,
+  onLevels,
 }: {
+  game: GameMeta;
   result: GameResult;
   isRecord: boolean;
-  previousBest: number;
+  recordNote: string;
   onRestart: () => void;
+  onNext?: () => void;
+  onLevels?: () => void;
 }) {
-  const againRef = useAutoFocus<HTMLButtonElement>();
+  const mainRef = useAutoFocus<HTMLButtonElement>();
+  const { play } = useSound();
+  useEffect(() => {
+    if (!result.won) return;
+    const ids = Array.from({ length: result.stars }, (_, i) =>
+      window.setTimeout(() => play("coin", { pitch: 1 + i * 0.15 }), 300 + i * 180),
+    );
+    return () => ids.forEach((id) => window.clearTimeout(id));
+  }, [play, result.won, result.stars]);
+  const title = result.copy?.title ?? (result.won ? game.copy?.winTitle : game.copy?.loseTitle) ?? (result.won ? "Vitória!" : "Fim de jogo");
+  const text = result.copy?.text ?? (result.won ? game.copy?.winText : game.copy?.loseText) ?? "";
   return (
-    <OverlayFrame label={result.won ? "Vitória" : "Fim de jogo"} className="max-w-2xl p-5 sm:p-7">
+    <OverlayFrame label={result.won ? `Vitória: ${title}` : `Fim de jogo: ${title}`} className="max-w-2xl p-5 sm:p-7">
       {isRecord && (
         <span className="absolute -right-3 -top-4 rotate-12 rounded-lg border-[3px] border-ink bg-bubblegum px-3 py-1 font-display text-lg uppercase tracking-wider text-ink shadow-[var(--shadow-ink)]">
-          Novo recorde!
+          {result.level ? "Melhor resultado!" : "Novo recorde!"}
         </span>
       )}
+      {result.level && (
+        <p className="mb-2 inline-block -rotate-1 rounded-md border-[3px] border-ink bg-mint px-2 font-display text-sm uppercase tracking-wider text-ink">
+          Fase {result.level.index + 1} de {result.level.total} · {result.level.title}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-4">
-        {result.won ? (
-          <div className="flex shrink-0">
-            <KidBust who="deco" face="happy" className="w-20 -rotate-6" />
-            <KidBust who="lina" face="happy" className="-ml-4 w-20 rotate-6" />
-          </div>
-        ) : (
-          <Mascot404 expression="sad" className="w-24 shrink-0" />
-        )}
+        {result.won ? <CastPair game={game} happy /> : <Mascot404 expression="sad" className="w-24 shrink-0" />}
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink">
-            {result.won ? "Bagunça completa!" : "Acabou a munição!"}
-          </h2>
-          <p className="mt-1 font-hand text-xl leading-snug text-ink-soft">
-            {result.won
-              ? "O quintal do Seu Arlindo nunca mais será o mesmo."
-              : "Os enfeites do Seu Arlindo sobreviveram. Por enquanto."}
-          </p>
+          <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink">{title}</h2>
+          {text && <p className="mt-1 font-hand text-xl leading-snug text-ink-soft">{text}</p>}
         </div>
       </div>
       {result.won && (
@@ -223,32 +331,55 @@ export function ResultPanel({
           ))}
         </div>
       )}
+      {result.summary && (
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.85 }}
+          className="mt-2 text-center font-display text-base uppercase tracking-wide text-ink"
+        >
+          {result.summary}
+        </motion.p>
+      )}
       <dl className="mt-5 divide-y-2 divide-dashed divide-ink/25 rounded-xl border-[3px] border-ink bg-cream-2 px-4 py-2">
-        {result.breakdown.map((row) => (
-          <div key={row.label} className="flex items-baseline justify-between gap-4 py-1.5">
+        {result.breakdown.map((row, i) => (
+          <motion.div
+            key={row.label}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 + i * 0.12 }}
+            className="flex items-baseline justify-between gap-4 py-1.5"
+          >
             <dt className="text-ink-soft">{row.label}</dt>
             <dd className="font-display text-lg tabular-nums text-ink">+{row.value.toLocaleString("pt-BR")}</dd>
-          </div>
+          </motion.div>
         ))}
         <div className="flex items-baseline justify-between gap-4 py-2">
           <dt className="font-display text-xl uppercase tracking-wide text-ink">Total</dt>
-          <dd className="font-display text-3xl tabular-nums text-ink">{result.score.toLocaleString("pt-BR")}</dd>
+          <dd className="font-display text-3xl tabular-nums text-ink">
+            <CountUp value={result.score} delay={0.3 + result.breakdown.length * 0.12} />
+          </dd>
         </div>
       </dl>
-      <p className="mt-2 text-sm text-ink-soft">
-        {isRecord
-          ? previousBest > 0
-            ? `Seu recorde anterior era ${previousBest.toLocaleString("pt-BR")}.`
-            : "Primeiro recorde registrado neste computador."
-          : `Recorde atual: ${previousBest.toLocaleString("pt-BR")}.`}
-      </p>
+      {recordNote && <p className="mt-2 text-sm text-ink-soft">{recordNote}</p>}
       <div className="mt-5 flex flex-wrap gap-3">
-        <InkButton ref={againRef} tone="sun" onClick={onRestart}>
-          <RestartIcon className="size-5" /> Jogar de novo
+        {onNext ? (
+          <InkButton ref={mainRef} tone="sun" onClick={onNext}>
+            <PlayTriangle className="size-5 text-ink" /> Próxima fase
+          </InkButton>
+        ) : null}
+        <InkButton ref={onNext ? undefined : mainRef} tone={onNext ? "mint" : "sun"} onClick={onRestart}>
+          <RestartIcon className="size-5" /> {result.level ? "Refazer fase" : "Jogar de novo"}
         </InkButton>
-        <InkLink href="/jogos" tone="mint">
-          Ver catálogo
-        </InkLink>
+        {onLevels ? (
+          <InkButton tone="cream" onClick={onLevels}>
+            Escolher fase
+          </InkButton>
+        ) : (
+          <InkLink href="/jogos" tone="mint">
+            Ver catálogo
+          </InkLink>
+        )}
         <InkLink href="/" tone="cream">
           Voltar à sala
         </InkLink>

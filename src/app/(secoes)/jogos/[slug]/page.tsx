@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Sparkle } from "@/components/art/Badges";
 import { GameCover } from "@/components/art/Covers";
-import { HowToPanel, RuaLogo } from "@/components/art/GameLogos";
+import { GAME_LOGOS, GameHowToPanel } from "@/components/art/GameLogos";
 import { ArrowLeftIcon, PlayTriangle } from "@/components/art/Icons";
 import { GameStats } from "@/components/catalog/GameStats";
 import { KidBust } from "@/components/characters/Heads";
@@ -39,6 +39,7 @@ export default async function GamePage({ params }: PageProps<"/jogos/[slug]">) {
   const game = getGame(slug);
   if (!game) notFound();
   const available = game.status === "disponivel";
+  const Logo = GAME_LOGOS[game.slug];
   const cast = game.cast.map((id) => CHARACTERS.find((c) => c.id === id)).filter((c) => c !== undefined);
 
   return (
@@ -66,9 +67,9 @@ export default async function GamePage({ params }: PageProps<"/jogos/[slug]">) {
             )}
           </div>
           <div className="paper rounded-2xl border-[3px] border-ink p-5 shadow-[var(--shadow-ink)] sm:p-6">
-            {game.slug === "rua-sem-saida" ? (
+            {Logo ? (
               <h1>
-                <RuaLogo className="mx-auto w-full max-w-sm" />
+                <Logo className="mx-auto w-full max-w-sm" />
               </h1>
             ) : (
               <h1 className="font-display text-[clamp(2rem,5vw,3.4rem)] uppercase leading-[0.95] tracking-wide text-ink">
@@ -92,7 +93,7 @@ export default async function GamePage({ params }: PageProps<"/jogos/[slug]">) {
                 <InkLink href={`/jogar/${game.slug}`} size="lg" tone="sun" className="self-start">
                   <PlayTriangle className="size-7 text-ink" /> Jogar
                 </InkLink>
-                <GameStats slug={game.slug} />
+                <GameStats slug={game.slug} levels={game.levels} />
               </div>
             ) : (
               <div className="mt-5 rounded-xl border-[3px] border-dashed border-ink bg-cream-2 p-4">
@@ -114,7 +115,7 @@ export default async function GamePage({ params }: PageProps<"/jogos/[slug]">) {
             {game.howTo.map((step, i) => (
               <li key={step.title} className={`paper border-[3px] border-ink p-3 shadow-[var(--shadow-ink)] wobbly-sm ${i === 1 ? "md:translate-y-3 md:rotate-1" : "md:-rotate-1"}`}>
                 <div className="aspect-[200/130] overflow-hidden rounded-lg border-[3px] border-ink">
-                  <HowToPanel step={i as 0 | 1 | 2} />
+                  <GameHowToPanel slug={game.slug} step={i as 0 | 1 | 2} />
                 </div>
                 <p className="mt-3 font-display text-2xl uppercase text-ink">
                   <span className="mr-2 inline-grid size-9 place-items-center rounded-full border-[3px] border-ink bg-sun text-lg">{i + 1}</span>

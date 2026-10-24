@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 34" width="240" height="34">
+  <g stroke="#1d1830" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="3" y="3" width="234" height="28" rx="14" fill="#2b2150" stroke-width="5"/>
+    <path d="M18 8 L222 8" stroke="#5d4b8c" stroke-width="3" fill="none"/>
+    <g stroke-width="2.5"><rect x="14" y="2" width="6" height="8" transform="rotate(0 17 17)" fill="#9aa6b8"/><rect x="14" y="2" width="6" height="8" transform="rotate(45 17 17)" fill="#9aa6b8"/><rect x="14" y="2" width="6" height="8" transform="rotate(90 17 17)" fill="#9aa6b8"/><rect x="14" y="2" width="6" height="8" transform="rotate(135 17 17)" fill="#9aa6b8"/><rect x="14" y="2" width="6" height="8" transform="rotate(180 17 17)" fill="#9aa6b8"/><rect x="14" y="2" width="6" height="8" transform="rotate(225 17 17)" fill="#9aa6b8"/><rect x="14" y="2" width="6" height="8" transform="rotate(270 17 17)" fill="#9aa6b8"/><rect x="14" y="2" width="6" height="8" transform="rotate(315 17 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(0 223 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(45 223 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(90 223 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(135 223 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(180 223 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(225 223 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(270 223 17)" fill="#9aa6b8"/><rect x="220" y="2" width="6" height="8" transform="rotate(315 223 17)" fill="#9aa6b8"/></g>
+    <circle cx="17" cy="17" r="10" fill="#c9d2de" stroke-width="4"/>
+    <circle cx="223" cy="17" r="10" fill="#c9d2de" stroke-width="4"/>
+    <circle cx="17" cy="17" r="3" fill="#1d1830" stroke="none"/>
+    <circle cx="223" cy="17" r="3" fill="#1d1830" stroke="none"/>
+    <circle cx="120" cy="17" r="7" fill="#9aa6b8" stroke-width="3"/>
+    <circle cx="68" cy="17" r="6" fill="#9aa6b8" stroke-width="3"/>
+    <circle cx="172" cy="17" r="6" fill="#9aa6b8" stroke-width="3"/>
+  </g>
+</svg>

@@ -6,7 +6,12 @@ export type GameResult = {
   stars: number;
   breakdown: { label: string; value: number }[];
   achievements?: string[];
+  level?: { index: number; id: string; title: string; total: number };
+  copy?: { title: string; text: string };
+  summary?: string;
 };
+
+export type StartOptions = { level?: number };
 
 export type GameEvent =
   | { type: "score"; score: number }
@@ -33,7 +38,7 @@ export type GameHostContext = {
 };
 
 export type GameInstance = {
-  start: () => void;
+  start: (options?: StartOptions) => void;
   pause: () => void;
   resume: () => void;
   restart: () => void;

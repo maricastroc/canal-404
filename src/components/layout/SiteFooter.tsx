@@ -7,8 +7,8 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-center">
         <Squiggle className="w-32" />
         <p className="max-w-xl font-hand text-lg leading-snug text-cream-2">
-          O CANAL 404 é um canal fictício. Nenhum desenho foi cancelado durante a produção deste site — eles só estão
-          fora do ar.
+          O CANAL 404 é um canal fictício. Nenhum desenho foi cancelado na produção deste site. Eles só estão fora do
+          ar.
         </p>
         <nav aria-label="Rodapé">
           <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 font-display text-sm uppercase tracking-wide">

@@ -46,7 +46,7 @@ const MASCOT_JOKES: { text: string; expression: "happy" | "wink" | "excited" | "
   { text: "Oi! Eu sou o 404. Sim, igual ao erro. Não, eu não estou perdido.", expression: "happy" },
   { text: "Minha cabeça pega 3 canais e meio. O meio é só chiado.", expression: "wink" },
   { text: "Se você bater em mim, eu volto a funcionar? Melhor não testar.", expression: "confused" },
-  { text: "Fun fact: eu fui feito com uma TV que caiu do caminhão de mudança.", expression: "excited" },
+  { text: "Curiosidade: eu fui feito com uma TV que caiu do caminhão de mudança.", expression: "excited" },
   { text: "Tô de fone porque a trilha do canal não para nunca. NUNCA.", expression: "surprised" },
 ];
 
@@ -59,8 +59,8 @@ const BOOK_TIPS = [
 ];
 
 const CARTRIDGE_LINES = [
-  "Cartucho RUA: Rua Sem Saída. O único que funciona. Por enquanto.",
-  "Cartucho LAB: Laboratório de Péssimas Ideias. A Lina ainda tá construindo.",
+  "Cartucho RUA: Rua Sem Saída. Tá até gasto de tanto jogar.",
+  "Cartucho LAB: Laboratório de Péssimas Ideias. A Lina terminou! Dá pra jogar no fliperama.",
   "Cartucho ???: esse não tem nome. Às vezes ele esquenta sozinho.",
 ];
 
@@ -228,7 +228,7 @@ export function BroadcastRoom() {
     } else {
       const lines: Partial<Record<ChannelId, string>> = {
         rua: "Canal 3: o jogo da semana! Rua Sem Saída.",
-        casa: "Canal 5: Casa Estranha. Ainda não tá pronto, mas olha que casa estranha.",
+        casa: "Canal 5: Casa Estranha. Ainda não tá pronto, mas já dá pra espiar.",
         barras: "Canal 7: fora do ar. Relaxa, isso é normal aqui.",
         desenho: "Canal 9: reprise do meu desenho! Eu tô ótimo nesse episódio.",
       };
@@ -302,7 +302,7 @@ export function BroadcastRoom() {
     setSetting("track", next.id);
     const locked = TRACKS.length - tracks.length;
     say({
-      text: `${next.station}: ${next.title}.${locked > 0 ? ` (Ainda tem ${locked} estação escondida...)` : ""}`,
+      text: `${next.station}: ${next.title}.${locked > 0 ? ` (Ainda tem ${locked} ${locked > 1 ? "estações escondidas" : "estação escondida"}...)` : ""}`,
       expression: "wink",
       duration: 4200,
     });
@@ -453,7 +453,7 @@ export function BroadcastRoom() {
         <RoomButton
           spot={SPOTS.window}
           label="Janela: ver como está o céu lá fora"
-          hint="A janela mostra o céu de verdade, na hora em que você está."
+          hint="A janela segue o seu relógio. Se aí é noite, aqui também é."
           onHint={onHint}
           onHoverSound={hover}
           onActivate={() => say2(PERIOD_LINES[period], "happy", "page")}
@@ -606,7 +606,7 @@ export function BroadcastRoom() {
           onHoverSound={hover}
           onActivate={() => {
             setLava((v) => v + 1);
-            say2("Nova cor! Essa lâmpada tem mais humor que eu.", "happy", "pop");
+            say2("Nova cor! Essa lâmpada muda de humor mais do que eu.", "happy", "pop");
           }}
           z={15}
           className={lightsOn ? "" : "drop-shadow-[0_0_24px_var(--lava-glow)]"}

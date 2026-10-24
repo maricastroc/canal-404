@@ -7,12 +7,15 @@ import {
   type SecretId,
 } from "./definitions";
 
+export type LevelRecord = { stars: number; score: number };
+
 export type GameRecord = {
   highScore: number;
   bestStars: number;
   plays: number;
   wins: number;
   lastScore: number;
+  levels?: Record<string, LevelRecord>;
 };
 
 export type Settings = {
@@ -262,6 +265,35 @@ export function recordGameResult(
   };
   commit({ ...state, games: { ...state.games, [slug]: next } });
   return { isRecord: isRecord && result.score > 0, previousBest: current.highScore, record: next };
+}
+
+export function recordLevelResult(
+  slug: string,
+  levelId: string,
+  result: { score: number; stars: number; won: boolean },
+) {
+  ensureLoaded();
+  const current = state.games[slug] ?? EMPTY_RECORD;
+  const levels = { ...current.levels };
+  const before = levels[levelId] ?? { stars: 0, score: 0 };
+  const improved = result.won && (result.stars > before.stars || result.score > before.score);
+  if (result.won) {
+    levels[levelId] = { stars: Math.max(before.stars, result.stars), score: Math.max(before.score, result.score) };
+  }
+  const totals = Object.values(levels).reduce(
+    (acc, l) => ({ score: acc.score + l.score, stars: acc.stars + l.stars }),
+    { score: 0, stars: 0 },
+  );
+  const next: GameRecord = {
+    ...current,
+    levels,
+    highScore: totals.score,
+    bestStars: totals.stars,
+    wins: current.wins + (result.won ? 1 : 0),
+    lastScore: result.score,
+  };
+  commit({ ...state, games: { ...state.games, [slug]: next } });
+  return { isRecord: improved, previous: before, record: next };
 }
 
 export function resetProgress() {

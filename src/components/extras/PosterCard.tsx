@@ -106,7 +106,7 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
         <p className="font-display text-lg uppercase leading-tight text-ink">{unlocked ? def.title : "Pôster misterioso"}</p>
         {unlocked ? (
           <InkButton size="sm" tone="mint" onClick={download} disabled={!ready || saving} className="mt-auto self-start">
-            <DownloadIcon className="size-5" /> {saving ? "Salvando..." : "Baixar PNG"}
+            <DownloadIcon className="size-5" /> {saving ? "Salvando..." : "Baixar imagem"}
             <span className="sr-only">: pôster {def.title}</span>
           </InkButton>
         ) : (

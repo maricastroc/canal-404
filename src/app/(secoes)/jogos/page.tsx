@@ -16,7 +16,7 @@ export default function JogosPage() {
       <PageTitle kicker="Fliperama do canal">Catálogo de jogos</PageTitle>
       <Squiggle className="mx-auto mt-2 w-40" color="#ff8a3d" />
       <p className="mx-auto mt-3 max-w-xl text-center text-lg leading-snug text-ink-soft">
-        Um jogo está pronto para jogar. Os outros ainda estão sendo desenhados à mão — dá pra espiar como eles vão ser.
+        Dois jogos estão prontos para jogar. Os outros ainda estão sendo desenhados à mão — dá pra espiar como eles vão ser.
       </p>
       <div className="mt-8">
         <GameCatalog />
