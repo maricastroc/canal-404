@@ -9,9 +9,11 @@ export type GameResult = {
   level?: { index: number; id: string; title: string; total: number };
   copy?: { title: string; text: string };
   summary?: string;
+  alt?: string;
+  featured?: string;
 };
 
-export type StartOptions = { level?: number };
+export type StartOptions = { level?: number; next?: boolean };
 
 export type GameEvent =
   | { type: "score"; score: number }
@@ -42,6 +44,7 @@ export type GameInstance = {
   pause: () => void;
   resume: () => void;
   restart: () => void;
+  alt?: () => void;
   setHighScore: (value: number) => void;
   destroy: () => void;
 };

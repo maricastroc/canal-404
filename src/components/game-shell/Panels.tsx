@@ -3,7 +3,8 @@
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
-import { PlayIcon, RestartIcon } from "@/components/art/Icons";
+import { GAME_CAST } from "@/components/art/GameCast";
+import { PlayIcon, RestartIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { LockIcon } from "@/components/art/Icons";
 import { KidBust } from "@/components/characters/Heads";
@@ -146,6 +147,8 @@ export function IntroPanel({
 }) {
   const playRef = useAutoFocus<HTMLButtonElement>();
   const leveled = Boolean(game.levels && levels);
+  const word = game.levelWord ?? "fase";
+  const Cast = GAME_CAST[game.slug];
   const totalStars = levels ? levels.stars.reduce((a, b) => a + b, 0) : 0;
   const suggested = levels ? Math.min(levels.suggested, levels.unlocked) : 0;
   return (
@@ -155,14 +158,12 @@ export function IntroPanel({
           <GameTitle game={game} />
           <p className="mt-2 text-lg font-semibold leading-snug text-ink">{game.objective}</p>
         </div>
-        <div className="hidden sm:block">
-          <CastPair game={game} />
-        </div>
+        <div className="hidden sm:block">{Cast ? <Cast mood="intro" /> : <CastPair game={game} />}</div>
       </div>
       {leveled && game.levels && levels && (
         <div className="mt-5">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="font-display text-xl uppercase tracking-wide text-ink">Escolha a fase</h2>
+            <h2 className="font-display text-xl uppercase tracking-wide text-ink">Escolha a {word}</h2>
             <p className="font-display text-sm uppercase tracking-wide text-ink-soft">
               Estrelas: {totalStars}/{game.levels.length * 3}
             </p>
@@ -186,7 +187,7 @@ export function IntroPanel({
                     <span className="min-w-0">
                       <span className="block font-display text-base uppercase leading-tight text-ink">{level.title}</span>
                       <span className="block text-xs leading-snug text-ink-soft">
-                        {locked ? "Termine a fase anterior" : level.goal}
+                        {locked ? (word === "arena" ? "Vença a arena anterior" : "Termine a fase anterior") : level.goal}
                       </span>
                       {!locked && levels.stars[i] > 0 && <MiniStars count={levels.stars[i]} />}
                     </span>
@@ -199,7 +200,7 @@ export function IntroPanel({
       )}
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay(leveled ? suggested : undefined)}>
-          <PlayIcon className="size-7 text-ink" /> {leveled ? `Jogar fase ${suggested + 1}` : "Jogar"}
+          <PlayIcon className="size-7 text-ink" /> {leveled ? `Jogar ${word} ${suggested + 1}` : "Jogar"}
         </InkButton>
         <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="how-to-play-panel">
           {showHelp ? "Esconder instruções" : "Como jogar"}
@@ -273,6 +274,7 @@ export function ResultPanel({
   onRestart,
   onNext,
   onLevels,
+  onAlt,
 }: {
   game: GameMeta;
   result: GameResult;
@@ -281,7 +283,11 @@ export function ResultPanel({
   onRestart: () => void;
   onNext?: () => void;
   onLevels?: () => void;
+  onAlt?: () => void;
 }) {
+  const word = game.levelWord ?? "fase";
+  const Word = word[0].toUpperCase() + word.slice(1);
+  const Cast = GAME_CAST[game.slug];
   const mainRef = useAutoFocus<HTMLButtonElement>();
   const { play } = useSound();
   useEffect(() => {
@@ -302,11 +308,17 @@ export function ResultPanel({
       )}
       {result.level && (
         <p className="mb-2 inline-block -rotate-1 rounded-md border-[3px] border-ink bg-mint px-2 font-display text-sm uppercase tracking-wider text-ink">
-          Fase {result.level.index + 1} de {result.level.total} · {result.level.title}
+          {Word} {result.level.index + 1} de {result.level.total} · {result.level.title}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-4">
-        {result.won ? <CastPair game={game} happy /> : <Mascot404 expression="sad" className="w-24 shrink-0" />}
+        {Cast ? (
+          <Cast mood={result.won ? "win" : "lose"} featured={result.featured} />
+        ) : result.won ? (
+          <CastPair game={game} happy />
+        ) : (
+          <Mascot404 expression="sad" className="w-24 shrink-0" />
+        )}
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink">{title}</h2>
           {text && <p className="mt-1 font-hand text-xl leading-snug text-ink-soft">{text}</p>}
@@ -364,15 +376,20 @@ export function ResultPanel({
       <div className="mt-5 flex flex-wrap gap-3">
         {onNext ? (
           <InkButton ref={mainRef} tone="sun" onClick={onNext}>
-            <PlayIcon className="size-5 text-ink" /> Próxima fase
+            <PlayIcon className="size-5 text-ink" /> Próxima {word}
           </InkButton>
         ) : null}
         <InkButton ref={onNext ? undefined : mainRef} tone={onNext ? "mint" : "sun"} onClick={onRestart}>
-          <RestartIcon className="size-5" /> {result.level ? "Refazer fase" : "Jogar de novo"}
+          <RestartIcon className="size-5" /> {result.level && word === "fase" ? "Refazer fase" : "Jogar de novo"}
         </InkButton>
+        {onAlt && result.alt ? (
+          <InkButton tone="cream" onClick={onAlt}>
+            <UsersIcon className="size-5" /> {result.alt}
+          </InkButton>
+        ) : null}
         {onLevels ? (
           <InkButton tone="cream" onClick={onLevels}>
-            Escolher fase
+            Escolher {word}
           </InkButton>
         ) : (
           <InkLink href="/games" tone="mint">

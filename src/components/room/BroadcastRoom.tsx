@@ -229,7 +229,7 @@ export function BroadcastRoom() {
     } else {
       const lines: Partial<Record<ChannelId, string>> = {
         street: "Canal 3: o jogo da semana! Rua Sem Saída.",
-        house: "Canal 5: Casa Estranha. Ainda não tá pronto, mas já dá pra espiar.",
+        pajama: "Canal 5: estreia da Guerra do Pijama! Travesseiro voando pra todo lado.",
         bars: "Canal 7: fora do ar. Relaxa, isso é normal aqui.",
         cartoon: "Canal 9: reprise do meu desenho! Eu tô ótimo nesse episódio.",
       };

@@ -147,14 +147,15 @@ export function GameShell({ slug }: { slug: string }) {
                 const r = event.result;
                 let isRecord: boolean;
                 let note: string;
+                const word = getGame(slug)?.levelWord ?? "fase";
                 if (r.level) {
                   const saved = recordLevelResult(slug, r.level.id, r);
                   isRecord = saved.isRecord && saved.previous.stars > 0;
                   const best = saved.record.levels?.[r.level.id];
                   note = r.won
                     ? saved.previous.stars === 0
-                      ? "Fase concluída pela primeira vez neste computador."
-                      : `Seu melhor nesta fase: ${best?.stars ?? r.stars} ${best?.stars === 1 ? "estrela" : "estrelas"}.`
+                      ? `${word === "arena" ? "Arena vencida" : "Fase concluída"} pela primeira vez neste computador.`
+                      : `Seu melhor nesta ${word}: ${best?.stars ?? r.stars} ${best?.stars === 1 ? "estrela" : "estrelas"}.`
                     : "";
                   setHighScore(saved.record.highScore);
                 } else {
@@ -172,7 +173,7 @@ export function GameShell({ slug }: { slug: string }) {
                   if (ACHIEVEMENTS.some((a) => a.id === id)) unlockAchievement(id as AchievementId);
                 });
                 setResult({ result: r, isRecord, note });
-                const levelText = r.level ? `Fase ${r.level.index + 1}, ${r.level.title}: ` : "";
+                const levelText = r.level ? `${word === "arena" ? "Arena" : "Fase"} ${r.level.index + 1}, ${r.level.title}: ` : "";
                 setAnnouncement(
                   r.won
                     ? `${levelText}vitória! ${r.score} pontos, ${r.stars} estrelas.${isRecord ? " Melhor resultado!" : ""}`
@@ -240,12 +241,12 @@ export function GameShell({ slug }: { slug: string }) {
 
   const focusGame = () => window.setTimeout(() => stageRef.current?.focus(), 40);
 
-  const start = (level?: number) => {
+  const start = (level?: number, next = false) => {
     play("confirm");
     recordGameStart(slug);
     setScore(0);
     setResult(null);
-    instanceRef.current?.start(level === undefined ? undefined : { level });
+    instanceRef.current?.start(level === undefined ? undefined : next ? { level, next } : { level });
     setStage("playing");
     focusGame();
   };
@@ -270,6 +271,16 @@ export function GameShell({ slug }: { slug: string }) {
     setResult(null);
     setScore(0);
     instanceRef.current?.restart();
+    setStage("playing");
+    focusGame();
+  };
+
+  const alt = () => {
+    play("confirm");
+    recordGameStart(slug);
+    setResult(null);
+    setScore(0);
+    instanceRef.current?.alt?.();
     setStage("playing");
     focusGame();
   };
@@ -368,9 +379,10 @@ export function GameShell({ slug }: { slug: string }) {
               onRestart={restart}
               onNext={
                 result.result.level && result.result.won && result.result.level.index + 1 < result.result.level.total
-                  ? () => start(result.result.level!.index + 1)
+                  ? () => start(result.result.level!.index + 1, true)
                   : undefined
               }
+              onAlt={result.result.alt ? alt : undefined}
               onLevels={game.levels ? () => setStage("intro") : undefined}
             />
           )}

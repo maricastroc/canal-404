@@ -17,6 +17,7 @@ import {
   Smile,
   Star,
   Trophy,
+  Users,
   Volume2,
   VolumeX,
   X,
@@ -51,6 +52,7 @@ export const ImagesIcon = make(Images);
 export const RadioIcon = make(Radio);
 export const TrophyIcon = make(Trophy);
 export const KeyIcon = make(KeyRound);
+export const UsersIcon = make(Users);
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

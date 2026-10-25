@@ -23,6 +23,8 @@ export type GameMeta = {
   howTo?: HowToStep[];
   objective?: string;
   levels?: LevelMeta[];
+  levelWord?: "fase" | "arena";
+  guests?: { id: string; name: string; role: string }[];
   tips?: string[];
   controlsSummary?: string;
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
@@ -175,17 +177,61 @@ export const GAMES: GameMeta[] = [
     },
   },
   {
-    slug: "strange-house",
-    title: "Casa Estranha",
-    tagline: "Uma casa onde a gravidade tem opinião própria.",
+    slug: "pajama-war",
+    title: "Guerra do Pijama",
+    tagline: "A festa do pijama virou guerra de travesseiros.",
     description:
-      "A Mila jura que a casa no fim da rua muda de lugar à noite. Explore cômodos onde o teto vira chão, as escadas dão voltas e os móveis sussurram dicas. Ou ameaças.",
-    category: "adventure",
-    tags: ["Aventura", "Exploração", "Puzzles"],
-    status: "coming-soon",
-    accent: "mint",
-    cast: ["mila", "bruno"],
-    production: "Mapeando os 13 cômodos. Ou 14. Depende da noite.",
+      "Lia, Nico e Bia combinaram uma noite tranquila. Durou cinco minutos. Escolha um dos três, desvie dos travesseiros e seja o último de pé.",
+    category: "action",
+    tags: ["Ação", "Arcade", "Travesseiros"],
+    status: "available",
+    accent: "bubblegum",
+    cast: [],
+    guests: [
+      { id: "lia", name: "Lia", role: "A veloz" },
+      { id: "nico", name: "Nico", role: "O atirador" },
+      { id: "bia", name: "Bia", role: "A resistente" },
+    ],
+    objective: "Escolha um personagem e acerte os outros dois com travesseiros. Último de pé vence!",
+    controls: [
+      { input: "WASD ou setas", action: "Andar" },
+      { input: "Mouse", action: "Mirar" },
+      { input: "Clique ou espaço", action: "Jogar travesseiro (segure para continuar jogando)" },
+      { input: "Controle e botão na tela", action: "Andar e jogar no celular. A mira é automática." },
+      { input: "Esc ou P", action: "Pausar" },
+    ],
+    howTo: [
+      { title: "Escolha", text: "Lia corre mais, Nico joga mais rápido e Bia recupera energia mais rápido." },
+      { title: "Acerte", text: "Mire nos outros dois e jogue travesseiros. Um ! avisa quando alguém vai jogar em você." },
+      { title: "Fique de pé", text: "Desvie, recupere energia longe da bagunça e seja o último de pé." },
+    ],
+    levels: [
+      { id: "bedroom", title: "Quarto", goal: "Aprenda a mirar e desviar." },
+      { id: "living", title: "Sala de estar", goal: "Use os móveis para se proteger." },
+      { id: "yard", title: "Quintal", goal: "A guerra vai lá para fora." },
+    ],
+    levelWord: "arena",
+    tips: [
+      "Segure espaço ou o botão do mouse para jogar sem parar.",
+      "A Lia é rápida. Fuja, respire e volte.",
+      "O Nico joga travesseiros quase sem parar.",
+      "A Bia recupera energia mais rápido.",
+      "Fique um tempo sem ser atingido para recuperar energia.",
+      "Os outros dois também brigam entre si. Aproveite!",
+      "Viu um ! em cima de alguém? Ele vai jogar em você. Saia da frente!",
+      "Quem acabou de jogar fica sem travesseiro por um instante. É a sua chance.",
+      "Sem mouse, o espaço mira sozinho no adversário mais perto.",
+      "Depois de um tempo, a guerra esquenta.",
+      "Na sala, o sofá segura os travesseiros.",
+      "No quintal, a barraca e a árvore servem de escudo.",
+    ],
+    controlsSummary: "Guerra do Pijama. WASD ou setas andam, o mouse mira, clique ou espaço joga o travesseiro, Esc pausa.",
+    copy: {
+      winTitle: "Você ganhou!",
+      winText: "Último de pé! Mais uma partida?",
+      loseTitle: "Fora da guerra!",
+      loseText: "Mais uma partida?",
+    },
   },
   {
     slug: "operation-recess",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Sparkle } from "@/components/art/Badges";
+import { GuestBust, guestCardClass } from "@/components/art/GameCast";
 import { GameCover } from "@/components/art/Covers";
 import { GAME_LOGOS, GameHowToPanel } from "@/components/art/GameLogos";
 import { ArrowLeftIcon, PlayIcon } from "@/components/art/Icons";
@@ -93,7 +94,7 @@ export default async function GamePage({ params }: PageProps<"/games/[slug]">) {
                 <InkLink href={`/play/${game.slug}`} size="lg" tone="sun" className="self-start">
                   <PlayIcon className="size-7 text-ink" /> Jogar
                 </InkLink>
-                <GameStats slug={game.slug} levels={game.levels} />
+                <GameStats slug={game.slug} levels={game.levels} levelWord={game.levelWord} />
               </div>
             ) : (
               <div className="mt-5 rounded-xl border-[3px] border-dashed border-ink bg-cream-2 p-4">
@@ -183,6 +184,15 @@ export default async function GamePage({ params }: PageProps<"/games/[slug]">) {
                 <span className="mt-1 font-display text-lg uppercase leading-none text-ink">{c.name}</span>
                 <span className="text-xs font-semibold uppercase tracking-wide text-ink">{c.role}</span>
               </Link>
+            </li>
+          ))}
+          {game.guests?.map((g) => (
+            <li key={g.id}>
+              <div className={`flex w-36 flex-col items-center rounded-2xl border-[3px] border-ink p-2 pb-3 shadow-[var(--shadow-ink)] ${guestCardClass(g.id)}`}>
+                <GuestBust id={g.id} className="w-24" />
+                <span className="mt-1 font-display text-lg uppercase leading-none text-ink">{g.name}</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink">{g.role}</span>
+              </div>
             </li>
           ))}
         </ul>

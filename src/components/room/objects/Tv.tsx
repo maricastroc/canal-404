@@ -48,8 +48,8 @@ export function Tv({ channel, switching, osd, knobAngle, flash, onKnob, onLaunch
   const screenHint =
     channel === "street"
       ? "Esse é o jogo da semana! Clica na tela pra jogar."
-      : channel === "house"
-        ? "Casa Estranha ainda está em produção. Dá pra espiar os detalhes."
+      : channel === "pajama"
+        ? "Estreia nova: Guerra do Pijama! Clica na tela pra jogar."
         : channel === "cartoon"
           ? "Reprise do meu desenho! Clica pra conhecer a turma."
           : null;

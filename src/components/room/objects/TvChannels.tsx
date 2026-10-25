@@ -1,7 +1,8 @@
 import { Mascot404 } from "@/components/mascot/Mascot404";
+import { Feather, Head, Pillow } from "@/components/art/PajamaWarArt";
 import { P } from "@/lib/palette";
 
-export type ChannelId = "street" | "house" | "bars" | "cartoon" | "lost" | "tape";
+export type ChannelId = "street" | "pajama" | "bars" | "cartoon" | "lost" | "tape";
 
 export type Channel = {
   id: ChannelId;
@@ -17,11 +18,11 @@ export const CHANNELS: Record<ChannelId, Channel> = {
     name: "Jogo da semana: Rua Sem Saída",
     cta: { href: "/play/dead-end-street", label: "Jogar agora", context: "Rua Sem Saída, o jogo da semana", play: true },
   },
-  house: {
-    id: "house",
+  pajama: {
+    id: "pajama",
     number: "05",
-    name: "Prévia: Casa Estranha (em breve)",
-    cta: { href: "/games/strange-house", label: "Ver detalhes", context: "Casa Estranha, jogo em breve" },
+    name: "Estreia: Guerra do Pijama",
+    cta: { href: "/play/pajama-war", label: "Jogar agora", context: "Guerra do Pijama, o jogo novo", play: true },
   },
   bars: { id: "bars", number: "07", name: "Fora do ar: barras coloridas" },
   cartoon: {
@@ -34,7 +35,7 @@ export const CHANNELS: Record<ChannelId, Channel> = {
   tape: { id: "tape", number: "AV", name: "Fita misteriosa no videocassete" },
 };
 
-export const CHANNEL_ORDER: ChannelId[] = ["street", "house", "bars", "cartoon"];
+export const CHANNEL_ORDER: ChannelId[] = ["street", "pajama", "bars", "cartoon"];
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
@@ -94,41 +95,31 @@ function StreetScreen() {
   );
 }
 
-function HouseScreen() {
+function PajamaScreen() {
   return (
     <svg viewBox="0 0 294 246" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
-      <rect width="294" height="246" fill={P.plum800} />
-      {[
-        [30, 30],
-        [80, 60],
-        [260, 26],
-        [200, 70],
-        [130, 20],
-        [40, 110],
-      ].map(([x, y]) => (
-        <circle key={`${x}${y}`} cx={x} cy={y} r="2" fill={P.sunPale} />
+      <rect width="294" height="246" fill="#5b3f9c" />
+      <path d="M0 20 Q36 38 74 20 Q110 38 148 20 Q184 38 220 20 Q256 38 294 20" fill="none" stroke={P.ink} strokeWidth="2.5" />
+      {Array.from({ length: 12 }, (_, i) => (
+        <circle key={i} cx={12 + i * 25} cy={24 + Math.abs(Math.sin((i + 0.5) * 0.8)) * 9} r="4.5" fill={["#ffd36b", "#ff8fc4", "#8ff0d8"][i % 3]} stroke={P.ink} strokeWidth="1.5" />
       ))}
-      <circle cx="232" cy="56" r="24" fill={P.sunPale} stroke={P.ink} strokeWidth="3" />
-      <circle cx="224" cy="50" r="5" fill="#e8d28a" />
-      <path d="M70 210 L76 120 L60 120 L118 66 L170 116 L156 118 L164 210 Z" fill={P.plum600} stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />
-      <path d="M150 96 L154 70 L166 72 L164 104" fill={P.plum600} stroke={P.ink} strokeWidth="3" />
-      <rect x="92" y="128" width="22" height="26" fill={P.sun} stroke={P.ink} strokeWidth="3" transform="rotate(-6 103 141)" />
-      <rect x="128" y="138" width="20" height="22" fill={P.sun} stroke={P.ink} strokeWidth="3" transform="rotate(8 138 149)" />
-      <path d="M106 210 L106 176 Q114 168 122 176 L122 210 Z" fill={P.ink} />
-      <g style={{ animation: "float 3s ease-in-out infinite" }}>
-        <g transform="translate(206 140) rotate(160)">
-          <rect x="-14" y="-4" width="28" height="6" fill={P.wood} stroke={P.ink} strokeWidth="2.5" />
-          <path d="M-12 2 L-12 18 M12 2 L12 18 M-12 -4 L-12 -20 L12 -20 L12 -4" stroke={P.ink} strokeWidth="3" fill="none" />
-        </g>
+      <rect y="150" width="294" height="60" fill="#b8774a" />
+      <path d="M0 150 L294 150" stroke={P.ink} strokeWidth="3.5" />
+      <g style={{ animation: "float 2.4s ease-in-out infinite" }}>
+        <Pillow x={148} y={96} w={52} rotate={-20} tint="#ffdcec" />
       </g>
+      <Feather x={170} y={70} rotate={-30} s={1.2} />
+      <Feather x={120} y={120} rotate={20} s={1.1} />
+      <Head who="lia" x={20} y={66} size={92} face="fierce" rotate={-6} />
+      <Head who="bia" x={186} y={70} size={88} face="ouch" rotate={8} flip />
       <rect y="208" width="294" height="38" fill={P.plum900} />
-      <text x="147" y="234" textAnchor="middle" fontSize="24" fill={P.mint} stroke={P.ink} strokeWidth="5" paintOrder="stroke" style={display}>
-        CASA ESTRANHA
+      <text x="147" y="234" textAnchor="middle" fontSize="22" fill={P.bubblegum} stroke={P.ink} strokeWidth="5" paintOrder="stroke" style={display}>
+        GUERRA DO PIJAMA
       </text>
-      <g transform="rotate(12 236 166)">
-        <rect x="196" y="150" width="84" height="30" rx="4" fill="none" stroke={P.tomato} strokeWidth="4" />
-        <text x="238" y="173" textAnchor="middle" fontSize="18" fill={P.tomato} style={display}>
-          EM BREVE
+      <g transform="rotate(-10 238 52)">
+        <rect x="198" y="38" width="82" height="28" rx="4" fill={P.sun} stroke={P.ink} strokeWidth="3.5" />
+        <text x="239" y="59" textAnchor="middle" fontSize="17" fill={P.ink} style={display}>
+          ESTREIA
         </text>
       </g>
     </svg>
@@ -228,8 +219,8 @@ export function ChannelContent({ id }: { id: ChannelId }) {
   switch (id) {
     case "street":
       return <StreetScreen />;
-    case "house":
-      return <HouseScreen />;
+    case "pajama":
+      return <PajamaScreen />;
     case "bars":
       return <BarsScreen />;
     case "cartoon":

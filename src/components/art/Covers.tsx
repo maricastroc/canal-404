@@ -1,5 +1,6 @@
 import { BrunoHead, DecoHead, LinaHead, MilaHead, type Face } from "@/components/characters/Heads";
 import { P } from "@/lib/palette";
+import { PajamaWarCoverArt } from "./PajamaWarArt";
 
 const ink = { stroke: P.ink, strokeWidth: 4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
@@ -269,11 +270,19 @@ export function OperationRecessCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
+export function PajamaWarCover({ decorative }: { decorative?: boolean }) {
+  return (
+    <Frame decorative={decorative} bg="#5b3f9c" label="Capa de Guerra do Pijama: Lia, Nico e Bia numa guerra de travesseiros no quarto, com penas voando">
+      <PajamaWarCoverArt />
+    </Frame>
+  );
+}
+
 export const COVERS: Record<string, (props: { decorative?: boolean }) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetCover,
   "bad-ideas-lab": BadIdeasLabCover,
   "food-fight": FoodFightCover,
-  "strange-house": StrangeHouseCover,
+  "pajama-war": PajamaWarCover,
   "operation-recess": OperationRecessCover,
 };
 

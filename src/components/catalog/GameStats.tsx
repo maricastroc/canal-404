@@ -19,7 +19,7 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-export function GameStats({ slug, levels }: { slug: string; levels?: { id: string }[] }) {
+export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; levels?: { id: string }[]; levelWord?: "fase" | "arena" }) {
   const progress = useProgress();
   const hydrated = useHydrated();
   const record = hydrated ? progress.games[slug] : undefined;
@@ -27,7 +27,7 @@ export function GameStats({ slug, levels }: { slug: string; levels?: { id: strin
     const done = levels.filter((l) => (record?.levels?.[l.id]?.stars ?? 0) > 0).length;
     const stars = levels.reduce((acc, l) => acc + (record?.levels?.[l.id]?.stars ?? 0), 0);
     const levelItems = [
-      { label: "Fases", value: `${done}/${levels.length}` },
+      { label: levelWord === "arena" ? "Arenas" : "Fases", value: `${done}/${levels.length}` },
       { label: "Estrelas", value: `${stars}/${levels.length * 3}` },
       { label: "Partidas", value: record?.plays ? String(record.plays) : "0" },
     ];

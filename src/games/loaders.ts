@@ -5,4 +5,5 @@ export const GAME_LOADERS: Record<string, () => Promise<GameModule>> = {
   "bad-ideas-lab": () => import("./bad-ideas-lab").then((m) => m.default),
   "food-fight": () => import("./food-fight").then((m) => m.default),
   "operation-recess": () => import("./operation-recess").then((m) => m.default),
+  "pajama-war": () => import("./pajama-war").then((m) => m.default),
 };

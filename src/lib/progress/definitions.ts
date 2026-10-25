@@ -27,7 +27,10 @@ export type AchievementId =
   | "fight-sharpshooter"
   | "recess-first"
   | "recess-flawless"
-  | "recess-boss";
+  | "recess-boss"
+  | "pajama-first"
+  | "pajama-flawless"
+  | "pajama-trio";
 
 export type SecretDef = {
   id: SecretId;
@@ -228,6 +231,27 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: "Venceu o Inspetor do Silêncio.",
     hint: "A direção fica no fim do caminho.",
     color: "bubblegum",
+  },
+  {
+    id: "pajama-first",
+    title: "Último de Pé",
+    description: "Venceu uma partida da Guerra do Pijama.",
+    hint: "Acerte os outros dois e não caia.",
+    color: "bubblegum",
+  },
+  {
+    id: "pajama-flawless",
+    title: "Nem uma Pena",
+    description: "Venceu uma partida da Guerra do Pijama sem levar nenhuma travesseirada.",
+    hint: "Desvie de tudo.",
+    color: "sun",
+  },
+  {
+    id: "pajama-trio",
+    title: "Trio do Pijama",
+    description: "Venceu a Guerra do Pijama com a Lia, o Nico e a Bia.",
+    hint: "Cada um joga de um jeito.",
+    color: "plum",
   },
 ];
 

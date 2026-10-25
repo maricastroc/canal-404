@@ -1,6 +1,6 @@
 # CANAL 404
 
-A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and four complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche** and **Operação: Recreio**.
+A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and five complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio** and **Guerra do Pijama**.
 
 The code, file names and ids are in English. Everything the visitor reads on screen is in Brazilian Portuguese.
 
@@ -41,7 +41,7 @@ There are no external services, sign-ins or API keys. Progress, high scores, sec
 | `/extras` | Downloadable posters (PNG), music, achievements and secrets |
 | `/about` | The channel's fictional history |
 
-Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio) and `strange-house` (coming soon).
+Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio) and `pajama-war` (Guerra do Pijama).
 
 ## Structure
 
@@ -67,6 +67,7 @@ src/
     bad-ideas-lab/       machine puzzle (levels, geometry, scenes, sounds)
     food-fight/          cafeteria food fight (scenes, rivals, sounds)
     operation-recess/    side-scrolling action platformer (phases, hero, enemies, boss, sounds)
+    pajama-war/          three-way pillow fight (arenas, fighters, AI, pillows, sounds)
   lib/
     audio/               Web Audio engine, effects and music
     progress/            persistence, secrets and achievements
@@ -82,7 +83,7 @@ Games are independent from the portal. Each one exports a `GameModule` with `mou
 3. Add the loader in `src/games/loaders.ts`.
 4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`.
 
-The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements and screen-reader announcements. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase".
+The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements and screen-reader announcements. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem").
 
 ## Rua Sem Saída (`dead-end-street`)
 
@@ -113,6 +114,18 @@ Three phases: the forbidden corridor (common monitors, lockers, puddles), the oc
 Each phase has its own layered set: the corridor (rows of lockers, classroom doors, windows to the yard, authoritarian posters, papers that blow when Bruno runs past), the yard (parallax buildings and trees, the court fence, a snack kiosk, bunting, protest signs) and the way to the office (columns, portraits of former principals, busts, banners, warmer light). Lockers, posters, bins and plants react to the sword. The camera zooms in on the action and opens up for the boss fight, with the HUD on its own camera.
 
 The boss, the Inspetor do Silêncio, has three telegraphed attacks: a giant whistle wave to jump over, a charge that ends with him dizzy against the wall, and a clipboard slam that gets stuck. He blocks hits while guarding and can only be hit in those openings. Beating him frees recess and the kids celebrate.
+
+## Guerra do Pijama (`pajama-war`)
+
+A three-way pillow fight seen from above at a slight angle. The player picks Lia (faster), Nico (throws faster) or Bia (recovers faster) and fights the other two, who also fight each other. WASD or arrows move, the mouse aims, and a click or Space throws (holding keeps throwing; quick taps are queued so none get lost). On touch screens a joystick appears where the left thumb touches and the right side of the screen throws with automatic aim. Kids are drawn facing front, back and sideways (mirrored for left), with a four-step run cycle, a lean when speeding up or braking, and windup and throw poses that follow the aim, not the movement.
+
+Aim: a short dotted line follows the real flight of the pillow at hand height and turns yellow when the next pillow is ready; an arrow at the player's feet shows the throw direction and a ring around them fills during the cooldown. With the mouse, aiming close to an opponent locks on (yellow ring and arrow on the target) and leads it slightly; without the mouse, Space and the touch button pick the closest opponent in front. Flying pillows have an outline in the thrower's color and a short trail, while floor pillows are muted. Hits show a ring, a word (POF!, PAF!, FLOF!, TUF!), a squashed pillow, a half heart falling off the target and a body reaction; a pillow that passes close shows UFA! (on the player) or QUASE! (on an opponent).
+
+Each kid has five hearts (each hit takes half a heart). Energy comes back after a few seconds without getting hit. After 40 seconds the fight heats up and energy returns more slowly; after 70 seconds nobody recovers, so matches end in about one to one and a half minutes. Opponents pick targets by distance and recent hits, spread out so they don't both chase the player, keep a preferred distance, dodge some pillows and back off when low on energy. Last one standing wins.
+
+Fairness rules for the player: an opponent about to throw at the player shows an orange ! during a longer windup (about 300 ms in the bedroom, 260 ms in the living room, 220 ms in the backyard); only one opponent attacks the player at a time, with a gap between attacks; after the player is hit there is a one-second break and 850 ms of invulnerability; opponent pillows fly a little slower than the player's; and in the first 15 seconds opponents throw at the player less often and less accurately.
+
+Three arenas unlock in order: the bedroom (open floor, toys that react), the living room (sofa, TV and armchairs block pillows, cushions fall off the sofa, a cat wakes up and runs) and the backyard at night (tent, tree and grill as cover, tire swing, lanterns and fireflies). Wins per character are saved locally and shown on the character select.
 
 ## Accessibility
 

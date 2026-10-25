@@ -1,4 +1,5 @@
 import { P } from "@/lib/palette";
+import { PajamaWarHowToPanel, PajamaWarLogo } from "./PajamaWarArt";
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
@@ -377,11 +378,13 @@ export const GAME_LOGOS: Record<string, (props: { className?: string }) => React
   "bad-ideas-lab": BadIdeasLabLogo,
   "food-fight": FoodFightLogo,
   "operation-recess": OperationRecessLogo,
+  "pajama-war": PajamaWarLogo,
 };
 
 export function GameHowToPanel({ slug, step }: { slug: string; step: 0 | 1 | 2 }) {
   if (slug === "bad-ideas-lab") return <BadIdeasLabHowToPanel step={step} />;
   if (slug === "food-fight") return <FoodFightHowToPanel step={step} />;
   if (slug === "operation-recess") return <OperationRecessHowToPanel step={step} />;
+  if (slug === "pajama-war") return <PajamaWarHowToPanel step={step} />;
   return <DeadEndStreetHowToPanel step={step} />;
 }
