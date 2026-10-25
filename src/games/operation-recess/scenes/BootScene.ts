@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowBigUp, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Flag, Heart, Sword } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { HERO_TEX } from "../config";
 
 const BASE = "/assets/operation-recess/";
 
@@ -126,7 +127,7 @@ export class BootScene extends Phaser.Scene {
   preload() {
     const ctx = this.registry.get("ctx") as GameHostContext;
     this.load.on("progress", (value: number) => ctx.onProgress(value, "art"));
-    for (const p of HERO) this.load.svg(`hero-${p}`, `${BASE}hero-${p}.svg`, { width: 300, height: 214 });
+    for (const p of HERO) this.load.svg(`hero-${p}`, `${BASE}hero-${p}.svg`, { width: HERO_TEX.w, height: HERO_TEX.h });
     for (const [kind, poses] of Object.entries(MON)) {
       for (const p of poses) {
         this.load.svg(`mon-${kind}-${p}`, `${BASE}mon-${kind}-${p}.svg`, { width: 260, height: 256 });

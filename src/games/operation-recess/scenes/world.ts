@@ -33,38 +33,72 @@ function drawGround(scene: Phaser.Scene, level: LevelDef, width: number) {
 
 const PLATFORM_ART = { shelf: 0xb06c3f, bench: 0xb06c3f, bars: 0xef4f43, desk: 0xb06c3f };
 
+
+function contact(scene: Phaser.Scene, x: number, w: number) {
+  scene.add.image(x, FLOOR_Y + 4, "blob").setDepth(5.1).setDisplaySize(w, 22).setAlpha(0.45);
+}
+
+function wallShadow(scene: Phaser.Scene, x: number, y: number, w: number) {
+  const g = scene.add.graphics().setDepth(3.9);
+  g.fillStyle(INK_HEX, 0.05);
+  g.fillRoundedRect(x - 2, y, w + 4, 30, 15);
+  g.fillStyle(INK_HEX, 0.08);
+  g.fillRoundedRect(x + 12, y, w - 24, 16, 8);
+}
+
 function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
   const x = cx(pl.col);
   const y = cy(pl.row);
   const w = pl.w * TILE;
   if (pl.art === "bench" && pl.w === 3) {
+    contact(scene, x + w / 2, w * 0.95);
     scene.add.image(x + w / 2, y - 6, "bench").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w, 100 * (w / 250));
     return;
   }
   if (pl.art === "desk") {
-    scene.add.image(x + w / 2, y - 8, "desk").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, 130 * ((w + 10) / 250));
+    const h = 130 * ((w + 10) / 250);
+    if (y - 8 + h > FLOOR_Y - 40) contact(scene, x + w / 2, w);
+    else wallShadow(scene, x, y - 8 + h - 6, w);
+    scene.add.image(x + w / 2, y - 8, "desk").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, h);
     return;
   }
   const g = scene.add.graphics().setDepth(4);
   const color = PLATFORM_ART[pl.art];
   if (pl.art === "bars") {
+    contact(scene, x + 16, 54);
+    contact(scene, x + w - 16, 54);
     g.lineStyle(10, INK_HEX, 1);
     g.lineBetween(x + 16, y + 10, x + 16, FLOOR_Y);
     g.lineBetween(x + w - 16, y + 10, x + w - 16, FLOOR_Y);
     g.lineStyle(5, 0xffc83d, 1);
     g.lineBetween(x + 16, y + 10, x + 16, FLOOR_Y);
     g.lineBetween(x + w - 16, y + 10, x + w - 16, FLOOR_Y);
-  } else {
     g.fillStyle(INK_HEX, 1);
-    g.fillTriangle(x + 14, y + 22, x + 34, y + 22, x + 14, y + 50);
-    g.fillTriangle(x + w - 14, y + 22, x + w - 34, y + 22, x + w - 14, y + 50);
+    g.fillRoundedRect(x - 4, y - 4, w + 8, 30, 8);
+    g.fillStyle(color, 1);
+    g.fillRoundedRect(x, y, w, 22, 6);
+    g.fillStyle(0xffffff, 0.25);
+    g.fillRect(x + 6, y + 4, w - 12, 5);
+    return;
+  }
+  wallShadow(scene, x, y + 22, w);
+  for (const bx of [x + 14, x + w - 14]) {
+    const d = bx < x + w / 2 ? 1 : -1;
+    g.fillStyle(INK_HEX, 1);
+    g.fillTriangle(bx - d * 3, y + 18, bx + d * 30, y + 18, bx - d * 3, y + 56);
+    g.fillStyle(0x7d4526, 1);
+    g.fillTriangle(bx + d * 2, y + 22, bx + d * 20, y + 22, bx + d * 2, y + 44);
   }
   g.fillStyle(INK_HEX, 1);
-  g.fillRoundedRect(x - 4, y - 4, w + 8, 30, 8);
-  g.fillStyle(color, 1);
-  g.fillRoundedRect(x, y, w, 22, 6);
-  g.fillStyle(0xffffff, 0.25);
-  g.fillRect(x + 6, y + 4, w - 12, 5);
+  g.fillRoundedRect(x - 4, y - 5, w + 8, 32, 8);
+  g.fillStyle(0x9c5832, 1);
+  g.fillRoundedRect(x, y - 1, w, 24, 6);
+  g.fillStyle(0xd99558, 1);
+  g.fillRoundedRect(x, y - 1, w, 10, { tl: 6, tr: 6, bl: 0, br: 0 });
+  g.fillStyle(0xffffff, 0.3);
+  g.fillRect(x + 8, y + 1, w - 16, 3);
+  g.lineStyle(2, INK_HEX, 0.35);
+  g.lineBetween(x + 4, y + 9, x + w - 4, y + 9);
 }
 
 export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {

@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import type { EnemyKind } from "../levels";
+import type { EnemyKind, EnemyStyle } from "../levels";
 import type { RecessSfx } from "../sounds";
 import type { RoomEvent } from "./scenery";
 
@@ -9,7 +9,7 @@ export type StageApi = {
   scene: Phaser.Scene;
   reduced: boolean;
   sfx: (name: RecessSfx, volume?: number) => void;
-  warn: (x: number, y: number, ms: number) => void;
+  warn: (x: number, y: number, ms: number) => Phaser.GameObjects.Text;
   word: (text: string, x: number, y: number, color: string, size?: number) => void;
   burst: (x: number, y: number, count: number, tex?: string) => void;
   dust: (x: number, y: number, dir: number) => void;
@@ -17,6 +17,8 @@ export type StageApi = {
   groundAt: (x: number) => boolean;
   quake: (power: number) => void;
   room: (event: RoomEvent, dir?: number) => void;
+  busy: (self: Enemy) => boolean;
+  clang: (x: number, y: number) => void;
 };
 
 export type HitResult = "hit" | "block" | "kill" | "dodge" | null;
@@ -40,6 +42,9 @@ export abstract class Enemy {
   protected mirrored = false;
   private pose = "walk-a";
   protected telegraphUntil = 0;
+  protected knockback = { x: 380, y: 320 };
+  lift = 0;
+  protected alarm: Phaser.GameObjects.Text | null = null;
   private flashing = false;
 
   constructor(
@@ -69,7 +74,7 @@ export abstract class Enemy {
     this.tex(this.kind === "whistle" ? "blow" : this.kind === "shield" ? "block" : "windup");
     this.api.word("HAHA!", this.x, this.body.top - 60, "#fbf5e6", 40);
     this.api.sfx("whistle", 0.6);
-    if (!this.api.reduced) scene.tweens.add({ targets: this.sprite, y: this.sprite.y - 40, duration: 160, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
+    if (!this.api.reduced) scene.tweens.add({ targets: this, lift: 40, duration: 160, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
   }
 
   protected onHurt(dir: number, t: number) {
@@ -120,6 +125,19 @@ export abstract class Enemy {
     return true;
   }
 
+  protected backstep(speed: number, dt: number) {
+    const behind = this.x - this.facing * 60;
+    if (!this.api.groundAt(behind) || (this.facing > 0 ? this.body.blocked.left : this.body.blocked.right)) {
+      this.body.setVelocityX(0);
+      this.tex("walk-a");
+      return false;
+    }
+    this.body.setVelocityX(-this.facing * speed);
+    this.walkClock += dt * speed;
+    this.tex(Math.floor(this.walkClock / 70) % 2 === 0 ? "walk-a" : "walk-b");
+    return true;
+  }
+
   protected blocks(fromX: number) {
     return Number.isNaN(fromX);
   }
@@ -132,6 +150,8 @@ export abstract class Enemy {
       return "block";
     }
     this.hp -= 1;
+    this.alarm?.destroy();
+    this.alarm = null;
     const dir = Math.sign(this.x - fromX) || 1;
     if (this.hp <= 0) {
       this.die(dir);
@@ -141,7 +161,7 @@ export abstract class Enemy {
     this.state = "recover";
     this.until = t + 520;
     this.telegraphUntil = 0;
-    this.body.setVelocity(dir * 380, -320);
+    this.body.setVelocity(dir * this.knockback.x, -this.knockback.y);
     this.tex("hurt");
     this.flashing = true;
     this.sprite.setTintFill(0xffffff);
@@ -152,8 +172,9 @@ export abstract class Enemy {
     this.api.dust(this.x, this.feet, -dir);
     if (!this.api.reduced) {
       this.api.scene.tweens.killTweensOf(this.sprite);
-      this.sprite.setAngle(dir * 16);
+      this.sprite.setAngle(dir * 16).setScale(MON_SCALE * 1.1, MON_SCALE * 0.9);
       this.api.scene.tweens.add({ targets: this.sprite, angle: 0, duration: 420, ease: "Back.easeOut" });
+      this.api.scene.tweens.add({ targets: this.sprite, scaleX: MON_SCALE, scaleY: MON_SCALE, duration: 220, ease: "Back.easeOut" });
     }
     this.onHurt(dir, t);
     return "hit";
@@ -211,7 +232,7 @@ export abstract class Enemy {
   sync() {
     if (this.dead) return;
     const b = this.body;
-    this.sprite.setPosition(b.center.x, b.bottom + 2);
+    this.sprite.setPosition(b.center.x, b.bottom + 2 - this.lift);
     const air = this.grounded ? 0 : Math.min(1, Math.abs(b.velocity.y) / 900);
     this.shadow.setPosition(b.center.x, b.bottom + 3).setAlpha(1 - air * 0.6);
     if (!this.flashing) {
@@ -231,18 +252,35 @@ export abstract class Enemy {
   }
 }
 
+type CommonTune = { sight: number; speed: number; windup: number; lunge: number; recover: number; dodge: number };
+
+const COMMON: Record<EnemyStyle, CommonTune> = {
+  patrol: { sight: 640, speed: 155, windup: 460, lunge: 330, recover: 620, dodge: 0.3 },
+  rush: { sight: 600, speed: 250, windup: 400, lunge: 400, recover: 860, dodge: 0 },
+  guard: { sight: 340, speed: 125, windup: 520, lunge: 300, recover: 700, dodge: 0 },
+};
+
 export class CommonMonitor extends Enemy {
   private dodgeReady = 3000;
+  private tune: CommonTune;
+  private dustAt = 0;
+  private called = false;
 
-  constructor(api: StageApi, x: number, feet: number) {
+  constructor(
+    api: StageApi,
+    x: number,
+    feet: number,
+    private style: EnemyStyle = "patrol",
+  ) {
     super(api, "common", x, feet, 2);
-    this.state = "patrol";
+    this.tune = COMMON[style];
+    this.state = style === "guard" ? "wait" : "patrol";
   }
 
   hitBy(attackId: number, fromX: number, t: number): HitResult {
     const front = (fromX - this.x) * this.facing > 0;
     const landing = this.api.groundAt(this.x - this.facing * 190) && this.api.groundAt(this.x - this.facing * 90);
-    if (!this.dead && attackId !== this.lastHit && this.state === "chase" && front && landing && t > this.dodgeReady && Math.random() < 0.3) {
+    if (!this.dead && attackId !== this.lastHit && this.state === "chase" && front && landing && t > this.dodgeReady && Math.random() < this.tune.dodge) {
       this.lastHit = attackId;
       this.dodgeReady = t + 4500;
       this.state = "dodge";
@@ -255,37 +293,104 @@ export class CommonMonitor extends Enemy {
     return super.hitBy(attackId, fromX, t);
   }
 
+  protected onHurt(dir: number, t: number) {
+    this.facing = -dir;
+    if (this.style === "rush") {
+      this.until = t + 420;
+      return;
+    }
+    this.state = "back";
+    this.until = t + 820;
+  }
+
+  private startWindup(t: number) {
+    this.state = "windup";
+    this.until = t + this.tune.windup;
+    this.body.setVelocityX(0);
+    this.tex("windup");
+    this.telegraph(this.tune.windup);
+    this.api.sfx("shout", 0.7);
+    this.alarm = this.api.warn(this.x, this.body.top - 70, this.tune.windup);
+  }
+
   protected think(t: number, dt: number, h: HeroView) {
     const dx = h.x - this.x;
-    const near = Math.abs(dx) < 640 && Math.abs(h.feet - this.feet) < 280;
+    const level = Math.abs(h.feet - this.feet) < 280;
+    const near = Math.abs(dx) < this.tune.sight && level;
     switch (this.state) {
       case "patrol":
         if (near) {
-          this.state = "chase";
+          if (this.style === "rush") {
+            this.state = "alert";
+            this.until = t + 300;
+            this.faceHero(h);
+            this.body.setVelocity(0, this.grounded ? -260 : this.body.velocity.y);
+            this.tex("windup");
+            this.api.word("EI!", this.x, this.body.top - 50, "#ffc83d", 38);
+          } else this.state = "chase";
           this.api.sfx("shout", 0.5);
           return;
         }
         if (Math.abs(this.x - this.spawnX) > 150) this.facing = this.x > this.spawnX ? -1 : 1;
         if (!this.walk(80, dt)) this.facing = -this.facing;
         return;
-      case "chase":
+      case "wait": {
+        this.body.setVelocityX(0);
+        this.tex("walk-a");
+        if (Math.abs(dx) < 760 && level) {
+          this.faceHero(h);
+          if (!this.called) {
+            this.called = true;
+            this.api.word("VEM!", this.x, this.body.top - 50, "#fbf5e6", 36);
+            if (!this.api.reduced) this.api.scene.tweens.add({ targets: this, lift: 18, duration: 140, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
+          }
+        }
+        if (near) {
+          this.state = "chase";
+          this.api.sfx("shout", 0.5);
+        }
+        return;
+      }
+      case "alert":
+        this.body.setVelocityX(0);
+        if (t >= this.until && this.grounded) this.state = "chase";
+        return;
+      case "chase": {
         this.faceHero(h);
         if (Math.abs(dx) < 150 && Math.abs(h.feet - this.feet) < 160) {
-          this.state = "windup";
-          this.until = t + 460;
-          this.body.setVelocityX(0);
-          this.tex("windup");
-          this.telegraph(460);
-          this.api.sfx("shout", 0.7);
-          this.api.warn(this.x, this.body.top - 70, 460);
+          this.startWindup(t);
           return;
         }
         if (!near) {
-          this.state = "patrol";
+          this.state = this.style === "guard" ? "home" : "patrol";
           return;
         }
-        this.walk(155, dt);
+        if (this.api.busy(this) && Math.abs(dx) < 380) {
+          this.body.setVelocityX(0);
+          this.tex("walk-a");
+          return;
+        }
+        this.walk(this.tune.speed, dt);
+        if (this.style === "rush" && t > this.dustAt && this.grounded) {
+          this.dustAt = t + 190;
+          this.api.dust(this.x - this.facing * 30, this.feet, this.facing);
+        }
         return;
+      }
+      case "home": {
+        if (near) {
+          this.state = "chase";
+          return;
+        }
+        if (Math.abs(this.x - this.spawnX) < 30) {
+          this.state = "wait";
+          this.called = false;
+          return;
+        }
+        this.facing = this.x > this.spawnX ? -1 : 1;
+        if (!this.walk(90, dt)) this.state = "wait";
+        return;
+      }
       case "windup":
         this.body.setVelocityX(0);
         if (t >= this.until) {
@@ -293,14 +398,14 @@ export class CommonMonitor extends Enemy {
           this.until = t + 240;
           this.tex("attack");
           this.api.sfx("lunge", 0.7);
-          this.body.setVelocityX(this.facing * 330);
+          this.body.setVelocityX(this.facing * this.tune.lunge);
         }
         return;
       case "attack":
         if (!this.api.groundAt(this.x + this.facing * 50)) this.body.setVelocityX(0);
         if (t >= this.until) {
           this.state = "recover";
-          this.until = t + 620;
+          this.until = t + this.tune.recover;
           this.body.setVelocityX(0);
           this.tex("walk-a");
         }
@@ -308,6 +413,13 @@ export class CommonMonitor extends Enemy {
       case "recover":
         this.body.setVelocityX(0);
         if (t >= this.until) this.state = "chase";
+        return;
+      case "back":
+        this.faceHero(h);
+        if (t >= this.until || Math.abs(dx) > 420 || !this.backstep(170, dt)) {
+          this.body.setVelocityX(0);
+          this.state = "chase";
+        }
         return;
       case "dodge":
         this.tex("walk-a");
@@ -333,6 +445,7 @@ export class WhistleMonitor extends Enemy {
 
   constructor(api: StageApi, x: number, feet: number) {
     super(api, "whistle", x, feet, 2);
+    this.knockback = { x: 440, y: 360 };
     this.state = "watch";
     this.nextShot = 900;
   }
@@ -373,7 +486,7 @@ export class WhistleMonitor extends Enemy {
           this.tex("puff");
           this.telegraph(650);
           this.api.sfx("puff", 0.8);
-          this.api.warn(this.x, this.body.top - 70, 650);
+          this.alarm = this.api.warn(this.x, this.body.top - 70, 650);
           return;
         }
         if (dist < 360 && this.grounded) {
@@ -438,8 +551,22 @@ export class ShieldMonitor extends Enemy {
 
   constructor(api: StageApi, x: number, feet: number) {
     super(api, "shield", x, feet, 3);
+    this.knockback = { x: 240, y: 200 };
     this.mirrored = true;
     this.state = "advance";
+  }
+
+  protected backstep(speed: number, dt: number) {
+    const behind = this.x - this.facing * 60;
+    if (!this.api.groundAt(behind) || (this.facing > 0 ? this.body.blocked.left : this.body.blocked.right)) {
+      this.body.setVelocityX(0);
+      this.tex("walk-a");
+      return false;
+    }
+    this.body.setVelocityX(-this.facing * speed);
+    this.walkClock += dt * speed;
+    this.tex(Math.floor(this.walkClock / 70) % 2 === 0 ? "walk-a" : "walk-b");
+    return true;
   }
 
   protected blocks(fromX: number) {
@@ -450,8 +577,12 @@ export class ShieldMonitor extends Enemy {
 
   protected onBlock(t: number) {
     this.api.sfx("block", 0.9);
-    this.api.burst(this.x + this.facing * 70, this.body.top + 30, 4, "spark");
-    this.api.word("TÓIM!", this.x + this.facing * 60, this.body.top - 30, "#fbf5e6", 38);
+    this.api.clang(this.x + this.facing * 62, this.body.top + 70);
+    this.api.word("TÓIM!", this.x + this.facing * 60, this.body.top - 30, "#cfe4ff", 38);
+    if (!this.api.reduced) {
+      this.lift = 0;
+      this.api.scene.tweens.add({ targets: this.sprite, angle: -this.facing * 5, duration: 70, yoyo: true });
+    }
     this.blocksAt = this.blocksAt.filter((b) => t - b < 2000);
     this.blocksAt.push(t);
     if (this.blocksAt.length >= 2 && (this.state === "advance" || this.state === "guard")) {
@@ -461,7 +592,7 @@ export class ShieldMonitor extends Enemy {
       this.body.setVelocityX(0);
       this.tex("block");
       this.telegraph(300);
-      this.api.warn(this.x, this.body.top - 70, 300);
+      this.alarm = this.api.warn(this.x, this.body.top - 70, 300);
       return;
     }
     if (this.state === "advance") {
@@ -522,7 +653,9 @@ export class ShieldMonitor extends Enemy {
           this.tex("block");
           this.telegraph(520);
           this.api.sfx("shout", 0.7);
-          this.api.warn(this.x, this.body.top - 70, 520);
+          this.alarm = this.api.warn(this.x, this.body.top - 70, 520);
+          this.api.dust(this.x - this.facing * 40, this.feet, -this.facing);
+          this.api.scene.time.delayedCall(220, () => !this.dead && this.api.dust(this.x - this.facing * 40, this.feet, -this.facing));
           return;
         }
         this.walk(100, dt);
@@ -608,8 +741,8 @@ export class Wave {
   }
 }
 
-export function makeEnemy(api: StageApi, kind: EnemyKind, x: number, feet: number): Enemy {
+export function makeEnemy(api: StageApi, kind: EnemyKind, x: number, feet: number, style?: EnemyStyle): Enemy {
   if (kind === "whistle") return new WhistleMonitor(api, x, feet);
   if (kind === "shield") return new ShieldMonitor(api, x, feet);
-  return new CommonMonitor(api, x, feet);
+  return new CommonMonitor(api, x, feet, style);
 }

@@ -463,7 +463,7 @@ export class Scenery {
       ["signpost", 4850],
     ];
     for (const [kind, x] of plan) this.officeModule(kind, x);
-    for (const x of [1050, 2630, 3800]) this.grounded(this.react(this.img("plant-big", x, FLOOR_Y, D.back), "plant"));
+    for (const x of [1320, 2630, 3800]) this.grounded(this.react(this.img("plant-big", x, FLOOR_Y, D.back), "plant"));
     this.img("office-door", arenaX - 120, FLOOR_Y, D.back);
   }
 

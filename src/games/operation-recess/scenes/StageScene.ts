@@ -13,11 +13,14 @@ import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
 
 type Mode = "attract" | "play" | "ko" | "won";
+type Lesson = "walk" | "jump" | "attack";
+type Chip = { box: Phaser.GameObjects.Container; lift: number; dx: number; leaving: boolean };
 type Checkpoint = { level: number; col: number; score: number; kills: number; stickers: number };
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 const OUCH = ["AI!", "UI!", "OPA!"];
 const HIT_WORDS = ["POW!", "TOMA!", "PAF!", "BOING!"];
+const learned = new Set<Lesson>();
 
 export class StageScene extends Phaser.Scene {
   private ctx!: GameHostContext;
@@ -49,8 +52,13 @@ export class StageScene extends Phaser.Scene {
   private invulnUntil = 0;
   private safe = { x: 0, y: 0 };
   private lookAhead = 0;
-  private tutorial: "walk" | "jump" | "attack" | "done" = "done";
-  private chip: Phaser.GameObjects.Container | null = null;
+  private camTop = 0;
+  private tutorialOn = false;
+  private tutorialFrom = 0;
+  private lesson: Lesson | null = null;
+  private lessonUntil = 0;
+  private shown = new Set<Lesson>();
+  private chips: Chip[] = [];
   private exitZone: Phaser.Geom.Rectangle | null = null;
   private lastSound = new Map<string, number>();
   private api!: StageApi;
@@ -84,8 +92,12 @@ export class StageScene extends Phaser.Scene {
     this.hits = 0;
     this.invulnUntil = 0;
     this.lookAhead = 0;
-    this.tutorial = "done";
-    this.chip = null;
+    this.camTop = 0;
+    this.tutorialOn = false;
+    this.lesson = null;
+    this.lessonUntil = 0;
+    this.shown = new Set();
+    this.chips = [];
     this.exitZone = null;
     this.lastSound = new Map();
   }
@@ -121,6 +133,8 @@ export class StageScene extends Phaser.Scene {
       groundAt: (x) => this.world.groundAt(x) || this.carts.some((c) => Math.abs(c.img.x - x) < 120),
       quake: (power) => this.scenery.quake(power),
       room: (event, dir) => this.scenery.room(event, dir),
+      busy: (self) => this.crowded(self),
+      clang: (x, y) => this.clang(x, y),
     };
 
     if (this.level.exit) {
@@ -150,7 +164,7 @@ export class StageScene extends Phaser.Scene {
     for (const e of this.level.enemies) {
       if (resume && e.col < startCol + 4) continue;
       const feet = cy((e.row ?? 11) + 1);
-      this.enemies.push(makeEnemy(this.api, e.kind, cx(e.col) + TILE / 2, feet));
+      this.enemies.push(makeEnemy(this.api, e.kind, cx(e.col) + TILE / 2, feet, e.style));
     }
     if (resume) for (const it of this.items) if (it.img.x < cx(startCol)) it.take(this);
 
@@ -180,8 +194,9 @@ export class StageScene extends Phaser.Scene {
     }
     if (this.boss) this.physics.add.collider(this.boss.rect, solids);
 
-    this.cameras.main.startFollow(this.hero.rect, true, 0.14, 0.14, 0, 120);
-    this.cameras.main.centerOn(this.hero.rect.x + 400, H / 2);
+    this.camTop = H - H / ZOOM;
+    this.cameras.main.startFollow(this.hero.rect, true, 0.14, 0, 0, 0);
+    this.cameras.main.centerOn(this.hero.rect.x + 400, H - H / ZOOM / 2);
 
     this.buildingHud = true;
     const vignette = { corridor: 0.32, yard: 0.18, office: 0.5 }[this.level.theme];
@@ -213,6 +228,14 @@ export class StageScene extends Phaser.Scene {
     }
   }
 
+  private crowded(self: Enemy) {
+    if (!this.hero) return false;
+    const hx = this.hero.x;
+    const side = Math.sign(self.x - hx);
+    const gap = Math.abs(self.x - hx);
+    return this.enemies.some((o) => o !== self && !o.dead && o.kind !== "whistle" && Math.sign(o.x - hx) === side && Math.abs(o.x - hx) < gap && Math.abs(o.x - hx) < 340 && Math.abs(o.feet - self.feet) < 60);
+  }
+
   private route(obj: Phaser.GameObjects.GameObject) {
     if (this.buildingHud) this.cameras.main.ignore(obj);
     else this.uiCam?.ignore(obj);
@@ -239,9 +262,10 @@ export class StageScene extends Phaser.Scene {
     }
     this.hud.flash(this.level.title.toUpperCase(), "#ffc83d", 1300, this.level.intro);
     this.announce(`Fase ${this.levelIndex + 1} de ${LEVELS.length}: ${this.level.title}. ${this.level.intro} Setas andam, espaço pula, J ataca.`);
-    if (this.levelIndex === 0) {
-      this.tutorial = "walk";
-      this.showChip("PARA ANDAR", TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
+    if (this.levelIndex === 0 && !(["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l))) {
+      this.tutorialOn = true;
+      this.tutorialFrom = this.hero.x;
+      if (!learned.has("walk")) this.teach("walk");
     }
   }
 
@@ -300,40 +324,99 @@ export class StageScene extends Phaser.Scene {
     if (!this.ctx.reducedMotion) {
       t.setScale(0.4);
       this.tweens.add({ targets: t, scale: 1.15, duration: 130, ease: "Back.easeOut" });
-      this.tweens.add({ targets: t, scale: 0.92, delay: 150, duration: 110, yoyo: true, repeat: -1 });
+      this.tweens.add({ targets: t, scale: 0.92, delay: 150, duration: 110, yoyo: true, repeat: Math.max(0, Math.ceil((ms - 150) / 220)) });
     }
     this.time.delayedCall(Math.max(260, ms), () => t.destroy());
+    return t;
+  }
+
+  private teach(lesson: Lesson) {
+    if (this.lesson || this.shown.has(lesson)) return;
+    this.shown.add(lesson);
+    this.lesson = lesson;
+    this.lessonUntil = this.t + 9000;
+    if (lesson === "walk") this.showChip("PARA ANDAR", TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
+    if (lesson === "jump") {
+      this.showChip(TOUCH_UI ? "PARA PULAR" : "ESPAÇO PARA PULAR", TOUCH_UI ? ["chip-jump"] : []);
+      this.hud.pulseJump(true);
+    }
+    if (lesson === "attack") {
+      this.showChip(TOUCH_UI ? "PARA ATACAR" : "J PARA ATACAR", TOUCH_UI ? ["chip-attack"] : []);
+      this.announce(TOUCH_UI ? "Toque na espada para atacar." : "Aperte J para atacar.");
+    }
+  }
+
+  private learn(lesson: Lesson) {
+    learned.add(lesson);
+    if (this.lesson !== lesson) return;
+    this.endLesson();
+  }
+
+  private endLesson() {
+    if (this.lesson === "jump") this.hud.pulseJump(false);
+    this.lesson = null;
+    this.hideChip();
   }
 
   private showChip(text: string, icons: string[] = []) {
-    this.chip?.destroy();
-    const label = this.add.text(0, 0, text, { fontFamily: this.ctx.fonts.display, fontSize: "30px", color: "#1d1830", padding: { x: 2, y: 4 } }).setOrigin(0, 0.5);
-    const iconW = 38;
-    const iconsW = icons.length ? icons.length * iconW + 6 : 0;
-    const w = iconsW + label.width + 36;
-    const h = 58;
+    this.hideChip();
+    const label = this.add.text(0, 0, text, { fontFamily: this.ctx.fonts.display, fontSize: "24px", color: "#1d1830", padding: { x: 2, y: 3 } }).setOrigin(0, 0.5);
+    const iconW = 30;
+    const iconsW = icons.length ? icons.length * iconW + 4 : 0;
+    const w = iconsW + label.width + 28;
+    const h = 46;
     const bg = this.add.graphics();
-    bg.fillStyle(INK_HEX, 1);
-    bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 5, w, h, 14);
+    bg.fillStyle(INK_HEX, 0.9);
+    bg.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, 12);
     bg.fillStyle(0xffc83d, 1);
-    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
-    bg.lineStyle(4, INK_HEX, 1);
-    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 12);
+    bg.lineStyle(3, INK_HEX, 1);
+    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 12);
     const parts: Phaser.GameObjects.GameObject[] = [bg];
-    let x = -w / 2 + 18;
+    let x = -w / 2 + 14;
     for (const key of icons) {
-      parts.push(this.add.image(x + iconW / 2, 0, key));
+      parts.push(this.add.image(x + iconW / 2, 0, key).setScale(0.8));
       x += iconW;
     }
-    if (icons.length) x += 6;
+    if (icons.length) x += 4;
     label.setX(x);
     parts.push(label);
-    this.chip = this.add.container(0, 0, parts).setDepth(45);
+    const chip: Chip = { box: this.add.container(this.hero.x, this.hero.top - 34, parts).setDepth(45).setAlpha(0), lift: 0, dx: 0, leaving: false };
+    this.chips.push(chip);
+    if (this.ctx.reducedMotion) {
+      this.tweens.add({ targets: chip.box, alpha: 1, duration: 160 });
+      return;
+    }
+    chip.lift = -10;
+    chip.box.setScale(0.9);
+    this.tweens.add({ targets: chip.box, alpha: 1, scale: 1, duration: 200, ease: "Back.easeOut" });
+    this.tweens.add({ targets: chip, lift: 0, duration: 200, ease: "Quad.easeOut" });
   }
 
   private hideChip() {
-    this.chip?.destroy();
-    this.chip = null;
+    for (const chip of this.chips) {
+      if (chip.leaving) continue;
+      chip.leaving = true;
+      const done = () => {
+        chip.box.destroy();
+        this.chips = this.chips.filter((c) => c !== chip);
+      };
+      if (this.ctx.reducedMotion) this.tweens.add({ targets: chip.box, alpha: 0, duration: 160, onComplete: done });
+      else {
+        this.tweens.add({ targets: chip.box, alpha: 0, scale: 0.92, duration: 260, ease: "Quad.easeIn", onComplete: done });
+        this.tweens.add({ targets: chip, lift: 18, duration: 260, ease: "Quad.easeOut" });
+      }
+    }
+  }
+
+  private placeChips() {
+    if (!this.chips.length) return;
+    const foe = this.enemies.filter((e) => !e.dead && Math.abs(e.x - this.hero.x) < 420).sort((a, b) => Math.abs(a.x - this.hero.x) - Math.abs(b.x - this.hero.x))[0];
+    const want = foe ? -Math.sign(foe.x - this.hero.x) * 70 : 0;
+    for (const chip of this.chips) {
+      chip.dx = Phaser.Math.Linear(chip.dx, want, 0.12);
+      chip.box.setPosition(this.hero.x + chip.dx, this.hero.top - 34 - chip.lift);
+    }
   }
 
   private setupInput() {
@@ -379,16 +462,12 @@ export class StageScene extends Phaser.Scene {
   jump() {
     if (this.mode !== "play") return;
     this.hero.requestJump(this.t);
-    if (this.tutorial === "jump") {
-      this.tutorial = "attack";
-      this.hideChip();
-      this.hud.pulseJump(false);
-    }
+    this.learn("jump");
   }
 
   attack() {
     if (this.mode !== "play") return;
-    this.hero.requestAttack(this.t);
+    if (this.hero.requestAttack(this.t)) this.learn("attack");
   }
 
   private heroView(): HeroView {
@@ -442,6 +521,8 @@ export class StageScene extends Phaser.Scene {
   }
 
   private clearShots() {
+    for (const e of this.enemies) if (!e.dead) e.body.setVelocityX(0);
+    this.boss?.body.setVelocityX(0);
     for (const w of this.waves) {
       if (!w.alive) continue;
       this.tweens.add({ targets: w.img, alpha: 0, duration: 200, onComplete: () => w.kill() });
@@ -460,7 +541,7 @@ export class StageScene extends Phaser.Scene {
       const foe = this.enemies.filter((e) => !e.dead && Math.abs(e.x - this.hero.x) < 1100).sort((a, b) => Math.abs(a.x - this.hero.x) - Math.abs(b.x - this.hero.x))[0];
       if (foe) this.time.delayedCall(300, () => foe.taunt());
     }
-    this.hideChip();
+    this.endLesson();
     this.hud.hideControls();
     this.hero.body.setVelocityX(0);
     this.sfx("lose", 1);
@@ -496,7 +577,7 @@ export class StageScene extends Phaser.Scene {
     if (this.mode !== "play") return;
     this.mode = "won";
     this.clearShots();
-    this.hideChip();
+    this.endLesson();
     this.hud.hideControls();
     this.hero.body.setVelocity(0, this.hero.body.velocity.y);
     this.hero.cheer();
@@ -613,19 +694,33 @@ export class StageScene extends Phaser.Scene {
   }
 
   private updateTutorial() {
-    if (this.tutorial === "done") return;
-    const x = this.hero.x;
-    if (this.chip) this.chip.setPosition(x, this.hero.body.top - 70);
-    if (this.tutorial === "walk" && x > cx(6)) {
-      this.tutorial = "jump";
-      this.showChip(TOUCH_UI ? "PARA PULAR" : "ESPAÇO PARA PULAR", TOUCH_UI ? ["chip-jump"] : []);
-      this.hud.pulseJump(true);
-    } else if (this.tutorial === "attack" && x > cx(15)) {
-      this.tutorial = "done";
-      this.showChip(TOUCH_UI ? "PARA ATACAR" : "J PARA ATACAR", TOUCH_UI ? ["chip-attack"] : []);
-      this.announce("Aperte J para atacar.");
-      this.time.delayedCall(4000, () => this.hideChip());
-    }
+    if (!this.tutorialOn) return;
+    const h = this.hero;
+    if (Math.abs(h.x - this.tutorialFrom) > 140) this.learn("walk");
+    if (this.lesson && this.t > this.lessonUntil) this.endLesson();
+    if (this.lesson) return;
+    if (!learned.has("walk")) return;
+    if (!learned.has("jump") && h.x > cx(4)) this.teach("jump");
+    else if (!learned.has("attack") && h.grounded && this.enemies.some((e) => !e.dead && e.x > h.x && e.x - h.x < 640 && Math.abs(e.feet - h.feet) < 200)) this.teach("attack");
+    if ((["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l) || this.shown.has(l))) this.tutorialOn = false;
+  }
+
+  private updateCamera(dt: number) {
+    if (this.arena.entered) return;
+    const cam = this.cameras.main;
+    const h = this.hero;
+    const viewW = W / cam.zoom;
+    const viewH = H / cam.zoom;
+    const maxTop = H - viewH;
+    const near = this.enemies.filter((e) => !e.dead && Math.abs(e.x - h.x) < viewW * 0.6);
+    const behind = near.some((e) => (e.x - h.x) * h.facing < 0 && Math.abs(e.x - h.x) < 520 && Math.abs(e.feet - h.feet) < 200);
+    this.lookAhead += ((behind ? 0 : -h.facing * 170) - this.lookAhead) * (1 - Math.exp(-dt * 2.4));
+    cam.setFollowOffset(this.lookAhead, 0);
+    const below = near.some((e) => e.feet > h.feet + 120);
+    const want = Phaser.Math.Clamp(Math.min(maxTop, h.top - (below ? 60 : 130)), 0, maxTop);
+    const rate = want < this.camTop ? (h.top - this.camTop < 50 ? 14 : 6) : h.body.velocity.y > 0 ? 4.5 : 3;
+    this.camTop += (want - this.camTop) * (1 - Math.exp(-dt * rate));
+    cam.scrollY = this.camTop - (H - viewH) / 2;
   }
 
   private syncVisual() {
@@ -633,7 +728,7 @@ export class StageScene extends Phaser.Scene {
     this.hero.sync(this.t, this.invulnUntil);
     for (const e of this.enemies) e.sync();
     this.boss?.sync();
-    if (this.chip && this.tutorial === "done") this.chip.setPosition(this.hero.x, this.hero.body.top - 70);
+    this.placeChips();
     const cam = this.cameras.main;
     const v = cam.worldView;
     const z = cam.zoom;
@@ -682,8 +777,7 @@ export class StageScene extends Phaser.Scene {
     for (const it of this.items) it.update(t);
     if (this.scenery.update(t, this.hero.x, this.hero.body.velocity.x, this.hero.grounded, this.cameras.main.worldView)) this.sfx("swing", 0.3);
 
-    this.lookAhead = Phaser.Math.Linear(this.lookAhead, -this.hero.facing * 170, 0.04);
-    if (!this.arena.entered) this.cameras.main.setFollowOffset(this.lookAhead, 120);
+    this.updateCamera(dt);
 
     const atk = this.hero.attackBox(t);
     if (atk) this.resolveAttack(atk, t);
@@ -758,18 +852,18 @@ export class StageScene extends Phaser.Scene {
       const res = e.hitBy(id, fromX, t);
       if (!res || res === "dodge") continue;
       if (res === "block") {
-        this.hero.knock(e.x, t, 260, 120);
+        this.hero.recoil(e.x, t, 260, 120);
         continue;
       }
-      this.onEnemyHit(e.x, e.body.center.y - 30, res === "kill");
-      if (this.tutorial === "attack") this.tutorial = "done";
+      const top = e.body.top;
+      this.onEnemyHit(e.x, top, e.body.bottom, res === "kill");
       if (res === "kill") {
         this.kills += 1;
         const pts = e.kind === "shield" ? SCORE.shield : e.kind === "whistle" ? SCORE.whistle : SCORE.common;
         this.killScore += pts;
         this.addScore(pts);
-        this.word(`+${pts}`, e.x, e.body.top - 70, "#9df0dc", 36);
-        if (this.chip && this.tutorial === "done") this.hideChip();
+        const x = e.x;
+        this.time.delayedCall(150, () => this.word(`+${pts}`, x, top - 110, "#9df0dc", 34));
       }
     }
     if (this.boss) {
@@ -777,9 +871,9 @@ export class StageScene extends Phaser.Scene {
       const r = new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height);
       if (Phaser.Geom.Intersects.RectangleToRectangle(atk, r)) {
         const res = this.boss.hitBy(id, fromX, t);
-        if (res === "block") this.hero.knock(this.boss.x, t, 300, 160);
+        if (res === "block") this.hero.recoil(this.boss.x, t, 300, 160);
         else if (res) {
-          this.onEnemyHit(this.boss.x, b.center.y - 40, res === "kill", true);
+          this.onEnemyHit(this.boss.x, b.top, b.bottom, res === "kill", true);
           this.hud.setBoss(this.boss.hp, this.boss.maxHp);
           if (res === "kill") this.bossDown();
         }
@@ -804,14 +898,36 @@ export class StageScene extends Phaser.Scene {
     }
   }
 
-  private onEnemyHit(x: number, y: number, kill: boolean, boss = false) {
+  private onEnemyHit(x: number, top: number, bottom: number, kill: boolean, boss = false) {
+    const side = Math.sign(x - this.hero.x) || this.hero.facing;
+    const px = x - side * (boss ? 70 : 34);
+    const py = Phaser.Math.Clamp(this.hero.body.center.y - 24, top + 40, bottom - 50);
     this.hitStopUntil = this.time.now + (kill ? HIT_STOP_MS * 1.6 : HIT_STOP_MS);
     this.sfx(boss ? "bossHit" : "hit", 0.9);
     if (kill && !boss) this.time.delayedCall(60, () => this.sfx("ko", 0.8));
-    this.pow(x + this.hero.facing * 10, y, kill ? 1 : 0.75);
-    this.burst(x, y, kill ? 6 : 3);
-    this.word(Phaser.Utils.Array.GetRandom(HIT_WORDS) as string, x, y - 90, "#ffc83d", kill ? 54 : 44);
+    this.pow(px, py, kill ? 0.9 : 0.68);
+    this.burst(px, py, kill ? 6 : 3);
+    this.word(Phaser.Utils.Array.GetRandom(HIT_WORDS) as string, x + side * 24, top - 34, "#ffc83d", kill ? 54 : 44);
     if (!this.ctx.reducedMotion) this.cameras.main.shake(kill ? 110 : 70, kill ? 0.006 : 0.003);
+  }
+
+  private clang(x: number, y: number) {
+    const ring = this.add.graphics().setDepth(39).setPosition(x, y);
+    ring.lineStyle(9, INK_HEX, 0.85);
+    ring.strokeCircle(0, 0, 32);
+    ring.lineStyle(5, 0xdcecff, 1);
+    ring.strokeCircle(0, 0, 32);
+    if (this.ctx.reducedMotion) {
+      this.tweens.add({ targets: ring, alpha: 0, duration: 220, onComplete: () => ring.destroy() });
+      return;
+    }
+    ring.setScale(0.45);
+    this.tweens.add({ targets: ring, scale: 1.25, alpha: 0, duration: 240, ease: "Quad.easeOut", onComplete: () => ring.destroy() });
+    for (let i = 0; i < 4; i += 1) {
+      const img = this.add.image(x, y, "spark").setDepth(39).setScale(0.55).setTint(0xcfe4ff);
+      const a = -Math.PI / 2 + (i - 1.5) * 0.7;
+      this.tweens.add({ targets: img, x: x + Math.cos(a) * 70, y: y + Math.sin(a) * 60, alpha: 0, duration: 260, onComplete: () => img.destroy() });
+    }
   }
 
   private bossDown() {

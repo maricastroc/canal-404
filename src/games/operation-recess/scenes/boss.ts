@@ -251,8 +251,8 @@ export class Inspector {
     this.lastHit = attackId;
     if (!this.vulnerable) {
       this.api.sfx("block", 0.9);
-      this.api.burst(this.x + Math.sign(fromX - this.x) * 70, this.body.top + 120, 4, "spark");
-      this.api.word("TÓIM!", this.x + Math.sign(fromX - this.x) * 80, this.body.top + 40, "#fbf5e6", 40);
+      this.api.clang(this.x + Math.sign(fromX - this.x) * 70, this.body.top + 120);
+      this.api.word("TÓIM!", this.x + Math.sign(fromX - this.x) * 80, this.body.top + 40, "#cfe4ff", 40);
       return "block";
     }
     this.hp -= 1;

@@ -1,5 +1,6 @@
 export type Theme = "corridor" | "yard" | "office";
 export type EnemyKind = "common" | "whistle" | "shield";
+export type EnemyStyle = "patrol" | "rush" | "guard";
 
 export type LevelDef = {
   id: string;
@@ -14,7 +15,7 @@ export type LevelDef = {
   blocks: { col: number; row: number; w: number; h: number; art: "bin" | "boxes" | "cabinet" }[];
   platforms: { col: number; row: number; w: number; art: "shelf" | "bench" | "bars" | "desk" }[];
   puddles: { col: number; w: number }[];
-  enemies: { kind: EnemyKind; col: number; row?: number }[];
+  enemies: { kind: EnemyKind; col: number; row?: number; style?: EnemyStyle }[];
   items: { kind: "snack" | "sticker"; col: number; row: number }[];
   checkpoints: number[];
   balls?: { col: number; every: number; offset: number; wake: number }[];
@@ -51,12 +52,12 @@ export const LEVELS: LevelDef[] = [
       { col: 46, w: 7 },
     ],
     enemies: [
-      { kind: "common", col: 21 },
+      { kind: "common", col: 21, style: "guard" },
       { kind: "common", col: 36 },
-      { kind: "common", col: 40 },
-      { kind: "common", col: 54 },
-      { kind: "common", col: 65 },
-      { kind: "common", col: 68 },
+      { kind: "common", col: 40, style: "rush" },
+      { kind: "common", col: 55 },
+      { kind: "common", col: 64, style: "guard" },
+      { kind: "common", col: 68, style: "rush" },
     ],
     items: [
       { kind: "sticker", col: 14, row: 8 },
@@ -94,11 +95,11 @@ export const LEVELS: LevelDef[] = [
       { kind: "whistle", col: 16 },
       { kind: "whistle", col: 25, row: 6 },
       { kind: "common", col: 33 },
-      { kind: "common", col: 37 },
+      { kind: "common", col: 37, style: "rush" },
       { kind: "whistle", col: 45 },
-      { kind: "common", col: 53 },
+      { kind: "common", col: 53, style: "guard" },
       { kind: "whistle", col: 61, row: 6 },
-      { kind: "common", col: 70 },
+      { kind: "common", col: 70, style: "rush" },
       { kind: "whistle", col: 75 },
     ],
     items: [
@@ -141,8 +142,8 @@ export const LEVELS: LevelDef[] = [
     puddles: [],
     enemies: [
       { kind: "shield", col: 10 },
-      { kind: "common", col: 15 },
-      { kind: "common", col: 27 },
+      { kind: "common", col: 15, style: "rush" },
+      { kind: "common", col: 27, style: "guard" },
       { kind: "shield", col: 31 },
       { kind: "common", col: 43 },
       { kind: "shield", col: 47 },

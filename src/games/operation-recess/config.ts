@@ -18,8 +18,10 @@ export const MAX_FALL = 1500;
 export const COYOTE_MS = 100;
 export const BUFFER_MS = 130;
 export const BODY_W = 56;
-export const BODY_H = 150;
-export const HERO_SCALE = 0.92;
+export const BODY_H = 160;
+export const HERO_SCALE = 1.03;
+export const HERO_RES = 1.25;
+export const HERO_TEX = { w: Math.round(300 * HERO_RES), h: Math.round(214 * HERO_RES) };
 
 export const HEARTS = 5;
 export const INVULN_MS = 1100;
@@ -28,7 +30,7 @@ export const KNOCK_X = 420;
 export const KNOCK_Y = 520;
 export const HIT_STOP_MS = 60;
 
-export const ATTACK = { windup: 55, active: 135, cooldown: 290, reach: 170, lunge: 140 };
+export const ATTACK = { windup: 55, active: 135, cooldown: 290, reach: 180, lunge: 140 };
 
 export const SCORE = { common: 100, whistle: 150, shield: 200, sticker: 50, wave: 10, phase: 500, heart: 100, boss: 1500 };
 
