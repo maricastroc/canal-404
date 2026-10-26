@@ -662,13 +662,22 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
     const f = d.s.flags;
     d.meet("lento");
     if (f.ended) {
-      if (!d.s.secrets.includes("lento")) {
+      const first = !d.s.secrets.includes("lento");
+      if (first) {
         await d.say("lento", "Cheguei! ...Perdi alguma coisa?", "surprised");
         await d.say("deco", "Só o fim da história. Mas foi bem legal.", "happy");
         await d.say("lento", "Que bom. Eu chego no próximo.", "talk");
         await d.secret("lento");
+      }
+      if (!f.gotKey) {
+        await d.say("lento", "Ah, já ia esquecendo. Achei esta chave na praia em 2004. Era pra entregar na recepção.", "talk");
+        d.set("gotKey");
+        await d.action("lentoKeyless");
+        await d.give("key");
+        await d.say("deco", "Quarto 404? É o quarto trancado da recepção!", "surprised");
         return;
       }
+      if (first) return;
       await d.say("lento", "Daqui eu não saio tão cedo. Tão cedo pra mim é daqui a uns dez anos.", "talk");
       return;
     }

@@ -306,7 +306,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("hedge", 400, 1958, { origin: [0.5, 1], rect: [-140, -60, 280, 60] });
     b.prop("hibiscus", 1000, 1958, { origin: [0.5, 1], rect: [-120, -60, 240, 60] });
     b.prop("hibiscus", 2700, 1000, { origin: [0.5, 1], rect: [-80, -40, 160, 40], scale: 0.65 });
-    b.npc("lento", 2300, 1800, { scale: 0.8, show: (st) => Boolean(st.flags.ended), frames: { normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" } });
+    const poolLento = b.npc("lento", 2300, 1800, { scale: 0.8, show: (st) => Boolean(st.flags.ended), frames: s.flags.gotKey ? { normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" } : { normal: "walk-a", look: "walk-b", talk: "talk", happy: "talk", surprised: "talk" } });
+    b.act("lentoKeyless", () => poolLento?.setFrames({ normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" }));
     b.spot({ id: "lento", x: 2300, y: 1840, r: 160, verb: "Conversar", script: "lento", show: (st) => Boolean(st.flags.ended) });
     b.circleBlock(2300, 1794, 40, (st) => Boolean(st.flags.ended));
     b.spot({ id: "marola", x: 790, y: 1570, r: 180, verb: "Conversar", script: "marola" });
