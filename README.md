@@ -69,6 +69,28 @@ npm run build && npm start
 
 There are no external services, sign-ins or API keys. Progress, high scores, secrets and preferences live in the browser's `localStorage` (key `canal404:progress:v1`).
 
+## Testing
+
+```bash
+npm test
+```
+
+```bash
+npm run test:e2e
+```
+
+`npm test` runs the unit and component tests with Vitest and Testing Library (about 5 seconds). They cover:
+
+- **Progress:** high scores, stars per level, secrets, achievements, reset and syncing between tabs.
+- **Game data:** every game in the registry has a loader, cover, logo and matching levels; level layouts stay on solid ground and inside the screen; tracks only use valid notes.
+- **Férias Fora do Ar:** the whole main quest is played through the real story scripts with a fake director, including both endings and the side content; the save and the pathfinding are tested too.
+- **Laboratório:** placement rules, and a known solution for every level that must stay buildable.
+- **Components:** the game intro (level picker, locked levels, continuing or restarting an adventure), the catalog filters and the character tabs, queried by role and accessible name.
+
+`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses the dev server on port 3000 (or starts one); set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch.
+
+`npm run typecheck` and `npm run lint` complete the checks. GitHub Actions runs all of them on every push to `main` and on pull requests; there the end-to-end tests run against a production build.
+
 ## Stack
 
 - Next.js (App Router) + React + TypeScript
@@ -78,6 +100,7 @@ There are no external services, sign-ins or API keys. Progress, high scores, sec
 - Lucide icons (`lucide-react` in the portal, Lucide icon nodes rendered to textures inside the games)
 - Hand-made SVG for every illustration
 - Web Audio API for sound effects and live-synthesized music
+- Vitest and Testing Library for unit and component tests, Playwright for end-to-end tests
 
 ## Routes
 

@@ -8,28 +8,20 @@ import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
 import { GAME_LOADERS } from "@/games/loaders";
-import { getGame, type LevelMeta } from "@/games/registry";
+import { getGame } from "@/games/registry";
 import type { GameInstance, GameResult, LoadStage } from "@/games/types";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { getGameRecord, recordGameResult, recordGameStart, recordLevelResult, unlockAchievement } from "@/lib/progress/store";
+import { computeLevelProgress } from "./levelProgress";
 import { LoadingScreen, pickTip } from "./LoadingScreen";
-import { ErrorPanel, IntroPanel, PausePanel, ResultPanel, type LevelProgress } from "./Panels";
+import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
 
 function cssFont(variable: string, fallback: string) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
   return value ? `${value}, ${fallback}` : fallback;
-}
-
-function computeLevelProgress(levels: LevelMeta[] | undefined, records: Record<string, { stars: number }> | undefined): LevelProgress | undefined {
-  if (!levels) return undefined;
-  const stars = levels.map((l) => records?.[l.id]?.stars ?? 0);
-  const furthest = stars.reduce((acc, st, i) => (st > 0 ? i : acc), -1);
-  const unlocked = Math.min(furthest + 1, levels.length - 1);
-  const firstOpen = stars.findIndex((st) => st === 0);
-  return { stars, unlocked, suggested: firstOpen === -1 ? levels.length - 1 : Math.min(firstOpen, unlocked) };
 }
 
 export function GameShell({ slug }: { slug: string }) {
