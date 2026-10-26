@@ -197,8 +197,6 @@ export class ResortHud {
       g.clear();
       g.fillStyle(INK_HEX, 0.92);
       g.fillRoundedRect(-w / 2, -30, w, 60, 30);
-      g.lineStyle(4, 0xfbf5e6, 0.9);
-      g.strokeRoundedRect(-w / 2, -30, w, 60, 30);
       if (!this.touchUi) {
         g.fillStyle(0xffc83d, 1);
         g.fillRoundedRect(-w / 2 + 10, -22, 44, 44, 10);

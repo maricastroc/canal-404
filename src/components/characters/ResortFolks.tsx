@@ -671,8 +671,8 @@ export function Placar({ mood = "normal", blink = false }: { mood?: FolkMood; bl
       <path d="M58 236 Q52 182 110 168 Q168 182 162 236 Z" fill={P.white} {...ink} />
       <path d="M60 236 Q56 190 92 172 L100 236 Z" fill={P.tomato} {...ink4} />
       <path d="M160 236 Q164 190 128 172 L120 236 Z" fill={P.tomato} {...ink4} />
-      <rect x="124" y="194" width="34" height="14" rx="3" fill={P.white} {...ink3} />
-      <text x="141" y="205" textAnchor="middle" fontSize="8" fontFamily="Arial Black, Arial, sans-serif" fill={P.ink}>
+      <rect x="120" y="193" width="42" height="15" rx="3" fill={P.white} {...ink3} />
+      <text x="141" y="204" textAnchor="middle" fontSize="7.5" fontFamily="Arial Black, Arial, sans-serif" fill={P.ink}>
         STAFF
       </text>
       {folkLimb("M150 184 Q170 208 156 230", fur, 16)}

@@ -10,6 +10,7 @@ const MIN_W = { face: 760, plain: 620 };
 const TEXT = { size: 41, line: 10 };
 const PAD = { top: 40, bottom: 46, right: 96, plain: 60, face: 234 };
 const PORTRAIT_R = 92;
+const TEXT_PAD_Y = 4;
 const DEPTH = 9000;
 const CREAM = 0xfbf5e6;
 const NIGHT = 0x2b2150;
@@ -58,7 +59,7 @@ export class DialogBox {
     this.nameBg = scene.add.graphics();
     this.nameText = scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: "30px", color: "#1d1830", padding: { x: 4, y: 4 } }).setOrigin(0, 0.5);
     this.nameTag = scene.add.container(0, 0, [this.nameBg, this.nameText]);
-    const style = { fontFamily: round, fontSize: `${TEXT.size}px`, fontStyle: "600", color: "#1d1830", lineSpacing: TEXT.line, padding: { x: 2, y: 4 } };
+    const style = { fontFamily: round, fontSize: `${TEXT.size}px`, fontStyle: "600", color: "#1d1830", lineSpacing: TEXT.line, padding: { x: 2, y: TEXT_PAD_Y } };
     this.text = scene.add.text(0, 0, "", style);
     this.measure = scene.add.text(0, 0, "", { ...style, wordWrap: { width: 1000 } }).setVisible(false);
     this.more = scene.add.text(0, 0, "▼", { fontFamily: round, fontSize: "30px", fontStyle: "700", color: "#c94785" }).setOrigin(0.5);
@@ -89,8 +90,9 @@ export class DialogBox {
     const { lines, widest } = this.wrap(line.text, maxText);
     this.nameText.setText(tag.toUpperCase());
     const tagW = tag ? this.nameText.width + 40 : 0;
-    const lineH = TEXT.size * 1.24 + TEXT.line;
-    const textH = lines.length * lineH - TEXT.line;
+    const m = this.text.getTextMetrics();
+    const lineH = m.fontSize + TEXT.line;
+    const textH = lines.length * lineH - TEXT.line + TEXT_PAD_Y * 2;
     const w = Phaser.Math.Clamp(Math.max(left + widest + PAD.right, left + tagW + 40), narrator ? MIN_W.plain : MIN_W.face, MAX_W);
     const h = Math.max(narrator ? 150 : 176, PAD.top + textH + PAD.bottom);
     const box = { x: Math.round(960 - w / 2), y: BOTTOM - h, w, h };
@@ -108,8 +110,9 @@ export class DialogBox {
       g.lineStyle(3, 0x5a4790, 1);
       g.strokeRoundedRect(box.x + 12, box.y + 12, w - 24, h - 24, 22);
     } else {
-      g.fillStyle(0xecd9b2, 0.55);
-      for (let i = 1; i < lines.length + 1; i += 1) g.fillRect(box.x + left - 6, box.y + PAD.top + i * lineH - TEXT.line / 2 + 2, w - left - 50, 3);
+      g.fillStyle(0xe2cc9f, 0.75);
+      const firstBase = box.y + PAD.top - 4 + TEXT_PAD_Y + m.ascent;
+      for (let i = 0; i < lines.length; i += 1) g.fillRect(box.x + left - 6, Math.round(firstBase + i * lineH + 6), w - left - 50, 3);
     }
 
     this.portraitBg.clear();

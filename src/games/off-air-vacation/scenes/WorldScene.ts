@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { AREA_TITLES, FOOT, H, HINT_R, INTERACT_R, SCORE, W, type AreaId, type Dir } from "../config";
+import { AREA_TITLES, CHAR_RES, FOOT, H, HINT_R, INTERACT_R, SCORE, W, type AreaId, type Dir } from "../config";
 import { ALL_POSTERS, freshState, saveState, type FolkKey, type Item, type State } from "../save";
 import { RESORT_SFX, type ResortSfx } from "../sounds";
 import { FOUND_TEXT, ITEM_INFO, POSTER_INFO, POSTER_SCRIPT, SCRIPTS, SPEAKERS, SPOT_LABELS, hasMain, mainObjective, score, type Director, type Mood, type Speaker } from "../story";
@@ -1046,9 +1046,14 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const x = 450 + 54 + c * 350 + 146;
       const y = 45 + 54 + r * 220 + 84;
       const bg = this.add.rectangle(0, 0, 292, 168, color, 0.9);
-      const face = this.add.image(0, 8, id === "deco" ? "face-deco-normal" : `face-${id}-normal`).setDisplaySize(130, id === "deco" ? 144 : 130);
+      const key = id === "deco" ? "deco-idle-f" : `${id}-normal`;
+      const src = this.textures.get(key).getSourceImage() as HTMLImageElement;
+      const padB = id === "deco" ? 11 : 8 * CHAR_RES;
+      const padT = id === "deco" ? 10 : 8 * CHAR_RES;
+      const k = Math.min(138 / (src.height - padB - padT), 250 / src.width);
+      const face = this.add.image(0, 84, key).setOrigin(0.5, 1 - padB / src.height).setScale(k);
       const tag = this.add.text(-136, -78, label, { fontFamily: this.ctx.fonts.display, fontSize: "20px", color: "#1d1830" });
-      const live = this.add.text(136, -78, "● AO VIVO", { fontFamily: this.ctx.fonts.display, fontSize: "18px", color: "#ef4f43" }).setOrigin(1, 0);
+      const live = this.add.text(136, -78, "● AO VIVO", { fontFamily: this.ctx.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
       const scan = this.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
       const cont = this.add.container(x, y, [bg, face, tag, live, scan]).setDepth(2.5);
       cont.setData("id", id);

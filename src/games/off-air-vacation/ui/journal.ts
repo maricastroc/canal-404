@@ -13,6 +13,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "map", label: "Mapa" },
 ];
 const BOOK = { x: 170, y: 110, w: 1580, h: 900 };
+const RULE0 = BOOK.y + 150;
+const RULE = 52;
+const RULES = 14;
+const ruleY = (k: number) => RULE0 + k * RULE;
 const SECRET_NAMES: Record<string, string> = { room404: "O hóspede do quarto 404", machine: "A máquina escondida", lento: "Seu Lento chegou" };
 const FOLKS: FolkKey[] = ["bigodes", "marola", "capi", "tilt", "placar", "marisa", "clique", "lento", "psiu", "cavuca", "chiado", "mascot"];
 const FACE: Record<FolkKey, string> = Object.fromEntries(FOLKS.map((id) => [id, `face-${id}-normal`])) as Record<FolkKey, string>;
@@ -64,7 +68,7 @@ export class Journal {
     g.strokeRoundedRect(BOOK.x - 14, BOOK.y - 14, BOOK.w + 28, BOOK.h + 28, 38);
     g.strokeRoundedRect(BOOK.x, BOOK.y, BOOK.w, BOOK.h, 28);
     g.lineStyle(2, 0xd9c39a, 1);
-    for (let y = BOOK.y + 150; y < BOOK.y + BOOK.h - 30; y += 52) g.lineBetween(BOOK.x + 90, y, BOOK.x + BOOK.w - 40, y);
+    for (let k = 0; k < RULES; k += 1) g.lineBetween(BOOK.x + 90, ruleY(k), BOOK.x + BOOK.w - 40, ruleY(k));
     g.lineStyle(3, 0xef8f86, 1);
     g.lineBetween(BOOK.x + 80, BOOK.y + 100, BOOK.x + 80, BOOK.y + BOOK.h - 20);
     for (let i = 0; i < 9; i += 1) {
@@ -154,10 +158,27 @@ export class Journal {
     return t;
   }
 
-  private head(x: number, y: number, text: string) {
-    const t = this.scene.add.text(x, y, text.toUpperCase(), { fontFamily: this.fonts.display, fontSize: "32px", color: "#1d1830", padding: { x: 2, y: 4 } });
-    this.content.add(t);
+  private onRule(t: Phaser.GameObjects.Text, k: number) {
+    const m = t.getTextMetrics();
+    t.setLineSpacing(RULE - m.fontSize);
+    t.setY(ruleY(k) - 3 - m.ascent - 4);
     return t;
+  }
+
+  private line(x: number, k: number, text: string, size: number, color = "#1d1830", opts: Phaser.Types.GameObjects.Text.TextStyle = {}) {
+    return this.onRule(this.txt(x, 0, text, size, color, opts), k);
+  }
+
+  private icon(key: string, x: number, k: number, size: number, scale: number) {
+    const img = this.scene.add.image(x, ruleY(k) - 3 - size * 0.36, key).setScale(scale);
+    this.content.add(img);
+    return img;
+  }
+
+  private head(x: number, k: number, text: string) {
+    const t = this.scene.add.text(x, 0, text.toUpperCase(), { fontFamily: this.fonts.display, fontSize: "32px", color: "#1d1830", padding: { x: 2, y: 4 } });
+    this.content.add(t);
+    return this.onRule(t, k);
   }
 
   private check(x: number, y: number, done: boolean) {
@@ -193,114 +214,125 @@ export class Journal {
 
   private fill(s: State, area: AreaId, ax: number, ay: number) {
     const L = BOOK.x + 120;
-    const T = BOOK.y + 130;
     if (this.tab === "missions") {
       const main = mainObjective(s);
-      this.head(L, T, "Missão principal");
+      this.head(L, 0, "Missão principal");
+      const top = ruleY(0) + 12;
+      const h = RULE * 2 - 20;
       const g = this.scene.add.graphics();
       g.fillStyle(main.done ? 0xc9f2e4 : 0xffe39a, 1);
-      g.fillRoundedRect(L, T + 56, 1340, 96, 18);
+      g.fillRoundedRect(L, top, 1340, h, 18);
       g.lineStyle(5, INK_HEX, 1);
-      g.strokeRoundedRect(L, T + 56, 1340, 96, 18);
+      g.strokeRoundedRect(L, top, 1340, h, 18);
       this.content.add(g);
-      this.content.add(this.scene.add.image(L + 50, T + 104, "ui-star").setScale(1.05));
-      this.txt(L + 96, T + 80, "Descobrir por que o resort continua ligado", 24, "#7b62c4");
-      this.txt(L + 96, T + 106, main.text, 32);
-      this.check(L + 1280, T + 84, main.done);
-      this.head(L, T + 190, "Missões secundárias");
-      sideQuests(s).forEach((q, i) => {
-        const y = T + 246 + i * 66;
-        this.txt(L + 8, y + 2, q.text, 32, q.done ? "#2fa996" : "#1d1830");
-        this.check(L + 1280, y + 4, q.done);
+      this.content.add(this.scene.add.image(L + 46, top + h / 2, "ui-star").setScale(1));
+      this.txt(L + 92, top + 6, "Descobrir por que o resort continua ligado", 20, "#7b62c4");
+      this.txt(L + 92, top + 34, main.text, 30);
+      this.check(L + 1282, top + (h - 38) / 2, main.done);
+      this.head(L, 3, "Missões secundárias");
+      const side = sideQuests(s);
+      side.forEach((q, i) => {
+        this.line(L + 8, 4 + i, q.text, 30, q.done ? "#2fa996" : "#1d1830");
+        this.check(L + 1282, ruleY(4 + i) - 44, q.done);
       });
-      const by = T + 540;
-      this.head(L, by, "Na mochila");
-      if (!s.items.length) this.txt(L, by + 56, "Vazia. Por enquanto.", 30, "#7d6fb0");
+      const kb = 5 + side.length;
+      this.head(L, kb, "Na mochila");
+      if (!s.items.length) this.line(L + 8, kb + 1, "Vazia. Por enquanto.", 28, "#7d6fb0");
       s.items.forEach((it, i) => {
         const x = L + i * 270;
+        const y = ruleY(kb) + 12;
+        const bh = RULE * 2 - 20;
         const box = this.scene.add.graphics();
         box.fillStyle(0xecd9b2, 1);
-        box.fillRoundedRect(x, by + 52, 250, 120, 18);
+        box.fillRoundedRect(x, y, 250, bh, 16);
         box.lineStyle(4, INK_HEX, 1);
-        box.strokeRoundedRect(x, by + 52, 250, 120, 18);
+        box.strokeRoundedRect(x, y, 250, bh, 16);
         this.content.add(box);
-        this.content.add(this.scene.add.image(x + 60, by + 112, ITEM_INFO[it].icon).setDisplaySize(80, 80));
-        this.txt(x + 112, by + 82, ITEM_INFO[it].name, 24, "#1d1830", { wordWrap: { width: 130 } });
+        this.content.add(this.scene.add.image(x + 46, y + bh / 2, ITEM_INFO[it].icon).setDisplaySize(64, 64));
+        const name = this.txt(x + 88, 0, ITEM_INFO[it].name, 22, "#1d1830", { wordWrap: { width: 150 }, lineSpacing: 0 });
+        name.setY(y + (bh - name.height) / 2);
       });
       return;
     }
     if (this.tab === "found") {
-      this.head(L, T, "Descobertas importantes");
+      this.head(L, 0, "Descobertas importantes");
       const found = s.found.filter((f) => FOUND_TEXT[f]);
-      if (!found.length) this.txt(L, T + 70, "Nada ainda. Explore e examine as coisas!", 32, "#7d6fb0");
+      if (!found.length) this.line(L + 8, 1, "Nada ainda. Explore e examine as coisas!", 28, "#7d6fb0");
+      const two = found.length > RULES - 1;
+      const per = two ? Math.ceil(found.length / 2) : found.length;
+      const size = two ? 23 : 28;
       found.forEach((f, i) => {
-        const y = T + 64 + i * 72;
-        this.content.add(this.scene.add.image(L + 24, y + 24, "ui-bulb").setScale(0.9));
-        this.txt(L + 64, y, FOUND_TEXT[f], 34);
+        const x = L + (two ? Math.floor(i / per) * 690 : 0);
+        const k = 1 + (i % per);
+        this.icon("ui-bulb", x + 20, k, size, two ? 0.7 : 0.85);
+        this.line(x + 52, k, FOUND_TEXT[f], size);
       });
       return;
     }
     if (this.tab === "collection") {
-      this.head(L, T, `Pôsteres perdidos (${s.posters.length}/${ALL_POSTERS.length})`);
+      this.head(L, 0, `Pôsteres perdidos (${s.posters.length}/${ALL_POSTERS.length})`);
+      const top = ruleY(0) + 14;
+      const ch = ruleY(6) - 8 - top;
       ALL_POSTERS.forEach((p, i) => {
         const x = L + i * 270;
         const got = s.posters.includes(p);
         const card = this.scene.add.graphics();
         card.fillStyle(got ? 0xfffaf0 : 0xd9c39a, 1);
-        card.fillRoundedRect(x, T + 56, 240, 300, 16);
+        card.fillRoundedRect(x, top, 240, ch, 16);
         card.lineStyle(5, INK_HEX, 1);
-        card.strokeRoundedRect(x, T + 56, 240, 300, 16);
+        card.strokeRoundedRect(x, top, 240, ch, 16);
         this.content.add(card);
-        if (got) this.content.add(this.scene.add.image(x + 120, T + 180, `poster-${p}`).setDisplaySize(150, 197));
-        else this.content.add(this.scene.add.text(x + 120, T + 180, "?", { fontFamily: this.fonts.display, fontSize: "90px", color: "#a8822f" }).setOrigin(0.5));
-        this.txt(x + 120, T + 296, got ? POSTER_INFO[p].title : AREA_TITLES[POSTER_INFO[p].area], 22, "#1d1830", { align: "center", wordWrap: { width: 220 } }).setOrigin(0.5, 0);
+        if (got) this.content.add(this.scene.add.image(x + 120, top + 112, `poster-${p}`).setDisplaySize(142, 187));
+        else this.content.add(this.scene.add.text(x + 120, top + 112, "?", { fontFamily: this.fonts.display, fontSize: "90px", color: "#a8822f" }).setOrigin(0.5));
+        const title = this.txt(x + 120, 0, got ? POSTER_INFO[p].title : AREA_TITLES[POSTER_INFO[p].area], 21, "#1d1830", { align: "center", wordWrap: { width: 216 }, lineSpacing: 0 }).setOrigin(0.5, 0);
+        title.setY(top + ch - 14 - title.height);
       });
-      const y2 = T + 400;
-      this.head(L, y2, `Fichas douradas (${s.tokens.length}/${ALL_TOKENS.length})`);
-      ALL_TOKENS.forEach((t, i) => {
-        const img = this.scene.add.image(L + 50 + i * 110, y2 + 104, "item-token").setDisplaySize(84, 84);
-        if (!s.tokens.includes(t)) img.setTintFill(0xd9c39a);
+      this.head(L, 7, `Fichas douradas (${s.tokens.length}/${ALL_TOKENS.length})`);
+      ALL_TOKENS.forEach((tk, i) => {
+        const img = this.scene.add.image(L + 50 + i * 110, (ruleY(8) + ruleY(9)) / 2, "item-token").setDisplaySize(84, 84);
+        if (!s.tokens.includes(tk)) img.setTintFill(0xd9c39a);
         this.content.add(img);
       });
-      this.head(L + 700, y2, `Segredos (${s.secrets.length}/${ALL_SECRETS.length})`);
+      this.head(L + 700, 7, `Segredos (${s.secrets.length}/${ALL_SECRETS.length})`);
       ALL_SECRETS.forEach((sec, i) => {
         const got = s.secrets.includes(sec);
-        this.content.add(this.scene.add.image(L + 722, y2 + 78 + i * 58, got ? "ui-star" : "ui-dot").setScale(0.8));
-        this.txt(L + 760, y2 + 58 + i * 58, got ? SECRET_NAMES[sec] : "???", 30, got ? "#1d1830" : "#7d6fb0");
+        this.icon(got ? "ui-star" : "ui-dot", L + 722, 8 + i, 28, 0.75);
+        this.line(L + 756, 8 + i, got ? SECRET_NAMES[sec] : "???", 28, got ? "#1d1830" : "#7d6fb0");
       });
       return;
     }
     if (this.tab === "people") {
-      this.head(L, T, `Personagens (${s.met.length}/${FOLKS.length})`);
+      this.head(L, 0, `Personagens (${s.met.length}/${FOLKS.length})`);
       FOLKS.forEach((id, i) => {
         const col = i % 3;
         const row = Math.floor(i / 3);
         const x = L + col * 460;
-        const y = T + 58 + row * 150;
+        const k = 1 + row * 3;
+        const cx = x + 56;
+        const cy = ruleY(k) + 40;
         const met = s.met.includes(id);
         const g = this.scene.add.graphics();
         g.fillStyle(met ? FOLK_COLOR[id] : 0xd9c39a, 1);
-        g.fillCircle(x + 58, y + 58, 54);
+        g.fillCircle(cx, cy, 52);
         g.lineStyle(5, INK_HEX, 1);
-        g.strokeCircle(x + 58, y + 58, 54);
+        g.strokeCircle(cx, cy, 52);
         this.content.add(g);
         if (met) {
-          const face = this.scene.add.image(x + 58, y + 62, FACE[id]).setDisplaySize(104, 104);
+          const face = this.scene.add.image(cx, cy + 4, FACE[id]).setDisplaySize(100, 100);
           const m = this.scene.make.graphics({}, false);
           m.fillStyle(0xffffff, 1);
-          m.fillCircle(x + 58, y + 58, 51);
+          m.fillCircle(cx, cy, 49);
           m.setScrollFactor(0);
           this.masks.push(m);
           face.setMask(m.createGeometryMask());
           this.content.add(face);
           const ring = this.scene.add.graphics();
           ring.lineStyle(5, INK_HEX, 1);
-          ring.strokeCircle(x + 58, y + 58, 54);
+          ring.strokeCircle(cx, cy, 52);
           this.content.add(ring);
-        }
-        else this.content.add(this.scene.add.text(x + 58, y + 58, "?", { fontFamily: this.fonts.display, fontSize: "56px", color: "#a8822f" }).setOrigin(0.5));
-        this.txt(x + 128, y + 8, met ? FOLK_LINE[id].name : "???", 28);
-        this.txt(x + 128, y + 46, met ? FOLK_LINE[id].line : "Ainda não conheceu.", 21, "#3a3157", { wordWrap: { width: 300 } });
+        } else this.content.add(this.scene.add.text(cx, cy, "?", { fontFamily: this.fonts.display, fontSize: "56px", color: "#a8822f" }).setOrigin(0.5));
+        this.line(x + 124, k, met ? FOLK_LINE[id].name : "???", 27);
+        this.line(x + 124, k + 1, met ? FOLK_LINE[id].line : "Ainda não conheceu.", 22, "#3a3157", { wordWrap: { width: 318 } });
       });
       return;
     }
@@ -354,8 +386,8 @@ export class Journal {
       ["ui-star", "Pôster por achar"],
     ];
     legend.forEach(([icon, label], i) => {
-      this.content.add(this.scene.add.image(lx + 20, my + 40 + i * 70, icon).setScale(0.9));
-      this.txt(lx + 50, my + 22 + i * 70, label, 24, "#1d1830", { wordWrap: { width: 150 } });
+      this.icon(icon, lx + 20, 1 + i * 3, 24, 0.85);
+      this.line(lx + 50, 1 + i * 3, label, 23, "#1d1830", { wordWrap: { width: 150 } });
     });
   }
 
