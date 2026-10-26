@@ -241,12 +241,12 @@ export function GameShell({ slug }: { slug: string }) {
 
   const focusGame = () => window.setTimeout(() => stageRef.current?.focus(), 40);
 
-  const start = (level?: number, next = false) => {
+  const start = (level?: number, next = false, fresh = false) => {
     play("confirm");
     recordGameStart(slug);
     setScore(0);
     setResult(null);
-    instanceRef.current?.start(level === undefined ? undefined : next ? { level, next } : { level });
+    instanceRef.current?.start(fresh ? { fresh } : level === undefined ? undefined : next ? { level, next } : { level });
     setStage("playing");
     focusGame();
   };
@@ -314,15 +314,17 @@ export function GameShell({ slug }: { slug: string }) {
         >
           <QuestionIcon className="size-6" />
         </button>
-        <button
-          type="button"
-          onClick={restart}
-          disabled={!canControl}
-          aria-label="Recomeçar partida"
-          className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-mint shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
-        >
-          <RestartIcon className="size-6" />
-        </button>
+        {game.resumable ? null : (
+          <button
+            type="button"
+            onClick={restart}
+            disabled={!canControl}
+            aria-label="Recomeçar partida"
+            className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-mint shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
+          >
+            <RestartIcon className="size-6" />
+          </button>
+        )}
         <button
           type="button"
           onClick={stage === "paused" ? resume : pause}
@@ -357,6 +359,7 @@ export function GameShell({ slug }: { slug: string }) {
               showHelp={showHelp}
               onToggleHelp={() => setShowHelp((v) => !v)}
               onPlay={start}
+              onNew={game.resumable ? () => start(undefined, false, true) : undefined}
             />
           )}
           {stage === "paused" && (
@@ -364,7 +367,7 @@ export function GameShell({ slug }: { slug: string }) {
               key="pause"
               game={game}
               onResume={resume}
-              onRestart={restart}
+              onRestart={game.resumable ? undefined : restart}
               showHelp={showHelp}
               onToggleHelp={() => setShowHelp((v) => !v)}
             />

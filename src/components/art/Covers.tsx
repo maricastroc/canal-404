@@ -1,5 +1,6 @@
 import { BrunoHead, DecoHead, LinaHead, MilaHead, type Face } from "@/components/characters/Heads";
 import { P } from "@/lib/palette";
+import { OffAirVacationCoverArt } from "./OffAirVacationArt";
 import { PajamaWarCoverArt } from "./PajamaWarArt";
 
 const ink = { stroke: P.ink, strokeWidth: 4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
@@ -278,12 +279,21 @@ export function PajamaWarCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
+export function OffAirVacationCover({ decorative }: { decorative?: boolean }) {
+  return (
+    <Frame decorative={decorative} bg="#5cb9f0" label="Capa de Férias Fora do Ar: Déco chega a um resort na praia com o Sr. Bigodes, a gaivota Marisa e uma antena do Canal 404">
+      <OffAirVacationCoverArt />
+    </Frame>
+  );
+}
+
 export const COVERS: Record<string, (props: { decorative?: boolean }) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetCover,
   "bad-ideas-lab": BadIdeasLabCover,
   "food-fight": FoodFightCover,
   "pajama-war": PajamaWarCover,
   "operation-recess": OperationRecessCover,
+  "off-air-vacation": OffAirVacationCover,
 };
 
 export function GameCover({ slug, decorative }: { slug: string; decorative?: boolean }) {

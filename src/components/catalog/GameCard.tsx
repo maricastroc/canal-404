@@ -6,7 +6,6 @@ import { Tag, type Tone } from "@/components/ui/Primitives";
 import { useSound } from "@/lib/audio/hooks";
 import { CATEGORY_LABELS, type GameMeta } from "@/games/registry";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
-import { LockIcon } from "@/components/art/Icons";
 
 const categoryTone: Record<GameMeta["category"], Tone> = {
   action: "tangerine",
@@ -73,27 +72,5 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
         </div>
       </div>
     </Link>
-  );
-}
-
-export function LostGamesCard() {
-  return (
-    <div
-      role="note"
-      aria-label="Alguns jogos ainda estão perdidos"
-      className="relative flex h-full min-h-72 flex-col items-center justify-center gap-3 overflow-hidden border-[3px] border-dashed border-plum-300 bg-plum-800 p-6 text-center wobbly-sm"
-    >
-      <span aria-hidden className="absolute left-5 top-4 font-display text-5xl text-plum-600">
-        ?
-      </span>
-      <span aria-hidden className="absolute bottom-6 right-6 rotate-12 font-display text-6xl text-plum-600">
-        ?
-      </span>
-      <LockIcon className="size-16 text-plum-300" />
-      <p className="font-display text-lg uppercase leading-tight tracking-wide text-plum-300">
-        Alguns jogos ainda estão perdidos...
-      </p>
-      <p className="font-hand text-lg leading-snug text-cream-2">Dizem que um cartucho dourado está escondido na sala de transmissão.</p>
-    </div>
   );
 }

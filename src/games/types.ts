@@ -11,9 +11,10 @@ export type GameResult = {
   summary?: string;
   alt?: string;
   featured?: string;
+  restartLabel?: string;
 };
 
-export type StartOptions = { level?: number; next?: boolean };
+export type StartOptions = { level?: number; next?: boolean; fresh?: boolean };
 
 export type GameEvent =
   | { type: "score"; score: number }

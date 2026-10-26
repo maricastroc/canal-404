@@ -30,7 +30,10 @@ export type AchievementId =
   | "recess-boss"
   | "pajama-first"
   | "pajama-flawless"
-  | "pajama-trio";
+  | "pajama-trio"
+  | "offair-mystery"
+  | "offair-posters"
+  | "offair-room";
 
 export type SecretDef = {
   id: SecretId;
@@ -252,6 +255,27 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: "Venceu a Guerra do Pijama com a Lia, o Nico e a Bia.",
     hint: "Cada um joga de um jeito.",
     color: "plum",
+  },
+  {
+    id: "offair-mystery",
+    title: "Férias sem Fim",
+    description: "Descobriu por que o resort do Canal 404 continua no ar.",
+    hint: "Siga o sinal até a floresta.",
+    color: "mint",
+  },
+  {
+    id: "offair-posters",
+    title: "Colecionador de Pôsteres",
+    description: "Achou os cinco pôsteres do Canal 404 escondidos no resort.",
+    hint: "Tem um pôster em cada área do resort.",
+    color: "tangerine",
+  },
+  {
+    id: "offair-room",
+    title: "Hóspede do 404",
+    description: "Abriu o quarto 404 e conheceu quem dorme lá.",
+    hint: "Um hóspede bem lento guarda uma chave.",
+    color: "sky",
   },
 ];
 

@@ -27,6 +27,7 @@ export type GameMeta = {
   guests?: { id: string; name: string; role: string }[];
   tips?: string[];
   controlsSummary?: string;
+  resumable?: string;
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
@@ -277,6 +278,65 @@ export const GAMES: GameMeta[] = [
       winText: "O recreio está de volta!",
       loseTitle: "Pego!",
       loseText: "Tenta de novo!",
+    },
+  },
+  {
+    slug: "off-air-vacation",
+    title: "Férias Fora do Ar",
+    tagline: "Um resort esquecido. Férias que nunca acabam.",
+    description:
+      "O Canal 404 saiu do ar há anos, mas o resort do canal continua funcionando. Ninguém sabe explicar como. Explore a recepção, a piscina, o fliperama, a praia e a floresta, converse com os hóspedes e descubra por que as férias nunca acabam.",
+    category: "adventure",
+    tags: ["Aventura", "Exploração", "Mistério"],
+    status: "available",
+    accent: "mint",
+    cast: ["deco", "404"],
+    guests: [
+      { id: "bigodes", name: "Sr. Bigodes", role: "Recepcionista" },
+      { id: "marola", name: "Capitão Marola", role: "Salva-vidas" },
+      { id: "tilt", name: "Tilt", role: "Fliperama" },
+      { id: "marisa", name: "Marisa", role: "Gaivota de férias" },
+      { id: "psiu", name: "Psiu", role: "Mora na floresta" },
+      { id: "capi", name: "Capivaldo", role: "Barraca de sucos" },
+      { id: "clique", name: "Clique", role: "Turista" },
+      { id: "cavuca", name: "Dr. Cavuca", role: "Explorador" },
+      { id: "placar", name: "Placar", role: "Fliperama" },
+    ],
+    objective: "Explore o resort, ajude os hóspedes e descubra por que tudo continua no ar.",
+    controls: [
+      { input: "WASD ou setas", action: "Andar" },
+      { input: "E, espaço ou Enter", action: "Conversar, examinar e pegar" },
+      { input: "Clique ou toque", action: "Andar até um lugar ou falar com alguém" },
+      { input: "J", action: "Abrir o diário" },
+      { input: "M", action: "Abrir o mapa" },
+      { input: "Controle e botão na tela", action: "Andar e interagir no celular" },
+      { input: "Esc ou P", action: "Pausar" },
+    ],
+    howTo: [
+      { title: "Explore", text: "Ande pelo resort. Um brilho avisa que tem algo para ver por perto." },
+      { title: "Converse", text: "Chegue perto de alguém e aperte E. Um ! mostra quem pode ajudar agora." },
+      { title: "Anote", text: "O diário guarda a missão atual, as descobertas, os pôsteres e o mapa." },
+    ],
+    tips: [
+      "Um ! em cima de alguém quer dizer que essa pessoa tem algo para você.",
+      "O diário (J) sempre mostra a próxima missão.",
+      "No mapa (M), o alvo mostra onde está a missão principal.",
+      "Tem um pôster do Canal 404 escondido em cada área.",
+      "Três fichas douradas abrem uma surpresa no fliperama.",
+      "O quarto 404 está trancado. Quem será que tem a chave?",
+      "O controle remoto pausa mais coisas do que você imagina.",
+      "Depois do final, volte ao resort. Alguém novo pode aparecer.",
+      "O jogo salva sozinho. Pode sair e voltar quando quiser.",
+      "O Capivaldo, da barraca de sucos, sempre sabe uma fofoca útil.",
+      "Ficar paradinho na floresta deixa certos bichinhos curiosos.",
+    ],
+    controlsSummary: "Férias Fora do Ar. WASD ou setas andam, E interage, J abre o diário, M abre o mapa, Esc pausa.",
+    resumable: "canal404:off-air-vacation:v1",
+    copy: {
+      winTitle: "Mistério resolvido!",
+      winText: "As férias continuam.",
+      loseTitle: "Até logo!",
+      loseText: "O resort espera por você.",
     },
   },
 ];

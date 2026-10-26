@@ -1,5 +1,7 @@
 import type React from "react";
+import { KidBust } from "@/components/characters/Heads";
 import { PajamaBust, type PajamaKidId } from "@/components/characters/PajamaKids";
+import { FOLK_INFO, FolkBust, type FolkId } from "@/components/characters/ResortFolks";
 
 export type CastMood = "intro" | "win" | "lose";
 
@@ -23,17 +25,43 @@ function PajamaCast({ mood, featured }: { mood: CastMood; featured?: string }) {
   return <PajamaBust who={who} face={mood === "win" ? "happy" : "dizzy"} className={`w-24 shrink-0 sm:w-28 ${mood === "win" ? "-rotate-3" : "rotate-6"}`} />;
 }
 
+function isFolk(id: string | undefined): id is FolkId {
+  return Boolean(id && id in FOLK_INFO);
+}
+
+function ResortCast({ mood, featured }: { mood: CastMood; featured?: string }) {
+  if (mood === "intro") {
+    return (
+      <div className="flex shrink-0 items-end">
+        <FolkBust id="bigodes" mood="look" className="w-20 -rotate-6 sm:w-24" />
+        <KidBust who="deco" face="wow" className="-ml-4 w-20 sm:w-24" />
+        <FolkBust id="marola" mood="happy" className="-ml-4 w-20 rotate-6 sm:w-24" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex shrink-0 items-end">
+      <KidBust who="deco" face="happy" className="w-20 -rotate-3 sm:w-24" />
+      <FolkBust id={featured === "off" ? "psiu" : "tilt"} mood="happy" className="-ml-4 w-20 rotate-6 sm:w-24" />
+    </div>
+  );
+}
+
 export const GAME_CAST: Record<string, (props: { mood: CastMood; featured?: string }) => React.JSX.Element> = {
   "pajama-war": PajamaCast,
+  "off-air-vacation": ResortCast,
 };
 
 const GUEST_CARD: Record<PajamaKidId, string> = { lia: "bg-sun", nico: "bg-plum-300", bia: "bg-bubblegum" };
 
 export function guestCardClass(id: string) {
-  return isPajamaKid(id) ? GUEST_CARD[id] : "bg-cream";
+  if (isPajamaKid(id)) return GUEST_CARD[id];
+  if (isFolk(id)) return FOLK_INFO[id].card;
+  return "bg-cream";
 }
 
 export function GuestBust({ id, className }: { id: string; className?: string }) {
-  if (!isPajamaKid(id)) return null;
-  return <PajamaBust who={id} face="happy" className={className} />;
+  if (isPajamaKid(id)) return <PajamaBust who={id} face="happy" className={className} />;
+  if (isFolk(id)) return <FolkBust id={id} mood="happy" className={className} clip />;
+  return null;
 }

@@ -1,6 +1,6 @@
 # CANAL 404
 
-A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and five complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio** and **Guerra do Pijama**.
+A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and six complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama** and **Férias Fora do Ar**.
 
 The code, file names and ids are in English. Everything the visitor reads on screen is in Brazilian Portuguese.
 
@@ -41,7 +41,7 @@ There are no external services, sign-ins or API keys. Progress, high scores, sec
 | `/extras` | Downloadable posters (PNG), music, achievements and secrets |
 | `/about` | The channel's fictional history |
 
-Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio) and `pajama-war` (Guerra do Pijama).
+Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama) and `off-air-vacation` (Férias Fora do Ar).
 
 ## Structure
 
@@ -83,7 +83,7 @@ Games are independent from the portal. Each one exports a `GameModule` with `mou
 3. Add the loader in `src/games/loaders.ts`.
 4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`.
 
-The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements and screen-reader announcements. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem").
+The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements and screen-reader announcements. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`.
 
 ## Rua Sem Saída (`dead-end-street`)
 
@@ -126,6 +126,18 @@ Each kid has five hearts (each hit takes half a heart). Energy comes back after 
 Fairness rules for the player: an opponent about to throw at the player shows an orange ! during a longer windup (about 300 ms in the bedroom, 260 ms in the living room, 220 ms in the backyard); only one opponent attacks the player at a time, with a gap between attacks; after the player is hit there is a one-second break and 850 ms of invulnerability; opponent pillows fly a little slower than the player's; and in the first 15 seconds opponents throw at the player less often and less accurately.
 
 Three arenas unlock in order: the bedroom (open floor, toys that react), the living room (sofa, TV and armchairs block pillows, cushions fall off the sofa, a cat wakes up and runs) and the backyard at night (tent, tree and grill as cover, tire swing, lanterns and fireflies). Wins per character are saved locally and shown on the character select.
+
+## Férias Fora do Ar (`off-air-vacation`)
+
+A top-down exploration adventure in the Canal 404 resort, which kept running after the channel went off the air. Déco explores five areas connected by paths (Recepção, Piscina, Fliperama, Praia and Floresta) plus two hidden rooms (the transmission room behind the waterfall and room 404). Arrows or WASD move, E, Space or Enter talk, examine and pick things up, J opens the journal and M the map. A click or tap walks to a spot (with pathfinding around obstacles) and talks to whoever is there; on touch screens a joystick appears under the left thumb and an action button shows the current verb.
+
+The main quest is a chain of small puzzles, not fetch quests: the receptionist cat points to the lifeguard, the lifeguard's whistle hangs on a flamingo float out of reach (a leaf net from the shed solves it), the arcade machine Tilt only returns the master remote after the player beats its level-404 minigame (catch ten signals, avoid the static), the remote pauses the sea so a bottle with the final order appears in the wet sand, and pausing the waterfall reveals the transmission room. There the twist plays out on the monitors: the residents always knew, and nobody wanted to press the button. The player chooses to end the broadcast or keep it on air. Both endings lead to a pool party, and then the resort stays open for exploring.
+
+Besides the main cast, a few residents make the resort feel lived in without handing out chores: Capivaldo runs the juice stand by the pool (a special juice that "rewinds" the moment, and gossip that follows the current quest step), Clique the frog tourist never gets the photo of the 4:04 wave (the master remote can pause the sea for him), Dr. Cavuca walks in circles in the forest with his map upside down, Chiadinho is a shy bit of TV static that peeks from behind trees and only comes closer when Déco stands still, and Placar, the arcade attendant, keeps the record board (which updates as the player progresses). Residents greet the player with short speech balloons when he gets close, and many objects react when examined: the flamingo float turns its head, the surfboards wobble like dominoes, a crab pops out of the sand castle, the mushrooms light up in sequence, the bridge reflects color bars, and the broken arcade cabinet spells out a clue about the waterfall.
+
+Optional content: five lost Canal 404 posters (one per area), three golden tokens that wake a hidden machine behind the arcade curtain, the key carried by Seu Lento (a tortoise who walks the beach very slowly) that opens room 404, and Seu Lento himself, who only reaches the pool after the ending. Residents have idle animations, react while talking and get new lines as the story moves on. The journal shows the current main mission, side missions, discoveries, the collection and an island map with the player, the next objective and missing posters.
+
+The world is split into areas loaded one at a time with a fade. Déco (about 220 px tall) is the scale reference: doors are around 270–290 px, counters and tables come up to his chest, palms are about 2.5 times his height, and a few props are rasterized at a larger scale in `BootScene` (`ART_SCALE`) so they stay sharp. Collision uses the player's feet against rectangles at the base of each object, circles for trunks and poles, and custom shapes (the sea, the stream, the waterfall pool); depth follows the y position, and tall props fade when the player walks behind them. The camera follows the player and, near a building or a point of interest, keeps its whole frame in view when it fits on screen (`frame()` in `areas.ts`). Exits are marked by paths, doors and doormats; a small arrow only appears when the player is close. Progress is saved automatically in `localStorage` (`canal404:off-air-vacation:v1`) on every area change, item and quest step, and every few seconds. A full playthrough was verified with a bot that walks with the game's own pathfinding and collision, plays every quest, secret and both endings, and reloads the page halfway to test "Continuar aventura".
 
 ## Accessibility
 

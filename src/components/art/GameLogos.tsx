@@ -1,4 +1,5 @@
 import { P } from "@/lib/palette";
+import { OffAirVacationHowToPanel, OffAirVacationLogo } from "./OffAirVacationArt";
 import { PajamaWarHowToPanel, PajamaWarLogo } from "./PajamaWarArt";
 
 const display = { fontFamily: "var(--font-luckiest)" };
@@ -379,6 +380,7 @@ export const GAME_LOGOS: Record<string, (props: { className?: string }) => React
   "food-fight": FoodFightLogo,
   "operation-recess": OperationRecessLogo,
   "pajama-war": PajamaWarLogo,
+  "off-air-vacation": OffAirVacationLogo,
 };
 
 export function GameHowToPanel({ slug, step }: { slug: string; step: 0 | 1 | 2 }) {
@@ -386,5 +388,6 @@ export function GameHowToPanel({ slug, step }: { slug: string; step: 0 | 1 | 2 }
   if (slug === "food-fight") return <FoodFightHowToPanel step={step} />;
   if (slug === "operation-recess") return <OperationRecessHowToPanel step={step} />;
   if (slug === "pajama-war") return <PajamaWarHowToPanel step={step} />;
+  if (slug === "off-air-vacation") return <OffAirVacationHowToPanel step={step} />;
   return <DeadEndStreetHowToPanel step={step} />;
 }

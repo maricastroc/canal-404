@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useSound } from "@/lib/audio/hooks";
 import { CATEGORY_LABELS, GAMES, type GameCategory } from "@/games/registry";
-import { GameCard, LostGamesCard } from "./GameCard";
+import { GameCard } from "./GameCard";
 
 type Filter = "all" | GameCategory;
 
@@ -66,11 +66,6 @@ export function GameCatalog() {
               <GameCard game={game} index={index} />
             </motion.li>
           ))}
-          {filter === "all" && (
-            <motion.li key="lost-games" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <LostGamesCard />
-            </motion.li>
-          )}
         </AnimatePresence>
       </ul>
     </div>

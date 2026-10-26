@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
 import { GAME_CAST } from "@/components/art/GameCast";
 import { PlayIcon, RestartIcon, UsersIcon } from "@/components/art/Icons";
@@ -118,6 +118,14 @@ function CastPair({ game, happy }: { game: GameMeta; happy?: boolean }) {
   );
 }
 
+function hasStoredSave(key: string) {
+  try {
+    return Boolean(window.localStorage.getItem(key));
+  } catch {
+    return false;
+  }
+}
+
 function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
   return (
     <span role="img" aria-label={`${count} de ${total} estrelas`} className="inline-flex gap-0.5">
@@ -137,6 +145,7 @@ export function IntroPanel({
   showHelp,
   onToggleHelp,
   onPlay,
+  onNew,
 }: {
   game: GameMeta;
   highScore: number;
@@ -144,8 +153,12 @@ export function IntroPanel({
   showHelp: boolean;
   onToggleHelp: () => void;
   onPlay: (level?: number) => void;
+  onNew?: () => void;
 }) {
   const playRef = useAutoFocus<HTMLButtonElement>();
+  const [saved] = useState(() => (game.resumable ? hasStoredSave(game.resumable) : false));
+  const [confirming, setConfirming] = useState(false);
+  const resume = Boolean(game.resumable && saved);
   const leveled = Boolean(game.levels && levels);
   const word = game.levelWord ?? "fase";
   const Cast = GAME_CAST[game.slug];
@@ -198,10 +211,42 @@ export function IntroPanel({
           </ol>
         </div>
       )}
+      {resume && <p className="mt-4 font-hand text-xl leading-snug text-ink-soft">Sua aventura está salva. Continue de onde parou.</p>}
+      {confirming ? (
+        <div role="alertdialog" aria-label="Começar uma nova aventura" className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 p-4">
+          <p className="font-display text-lg uppercase tracking-wide text-ink">Começar do zero?</p>
+          <p className="mt-1 leading-snug text-ink-soft">O progresso salvo desta aventura será apagado.</p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <InkButton tone="tomato" onClick={onNew}>
+              <RestartIcon className="size-5" /> Sim, nova aventura
+            </InkButton>
+            <InkButton tone="cream" onClick={() => setConfirming(false)}>
+              Cancelar
+            </InkButton>
+          </div>
+        </div>
+      ) : null}
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay(leveled ? suggested : undefined)}>
-          <PlayIcon className="size-7 text-ink" /> {leveled ? `Jogar ${word} ${suggested + 1}` : "Jogar"}
-        </InkButton>
+        {game.resumable && onNew ? (
+          resume ? (
+            <>
+              <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay()}>
+                <PlayIcon className="size-7 text-ink" /> Continuar aventura
+              </InkButton>
+              <InkButton tone="cream" onClick={() => setConfirming(true)} aria-expanded={confirming}>
+                <RestartIcon className="size-5" /> Nova aventura
+              </InkButton>
+            </>
+          ) : (
+            <InkButton ref={playRef} size="lg" tone="sun" onClick={onNew}>
+              <PlayIcon className="size-7 text-ink" /> Começar aventura
+            </InkButton>
+          )
+        ) : (
+          <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay(leveled ? suggested : undefined)}>
+            <PlayIcon className="size-7 text-ink" /> {leveled ? `Jogar ${word} ${suggested + 1}` : "Jogar"}
+          </InkButton>
+        )}
         <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="how-to-play-panel">
           {showHelp ? "Esconder instruções" : "Como jogar"}
         </InkButton>
@@ -229,7 +274,7 @@ export function PausePanel({
 }: {
   game: GameMeta;
   onResume: () => void;
-  onRestart: () => void;
+  onRestart?: () => void;
   showHelp: boolean;
   onToggleHelp: () => void;
 }) {
@@ -247,9 +292,11 @@ export function PausePanel({
         <InkButton ref={resumeRef} tone="sun" onClick={onResume}>
           <PlayIcon className="size-5 text-ink" /> Continuar
         </InkButton>
-        <InkButton tone="mint" onClick={onRestart}>
-          <RestartIcon className="size-5" /> Recomeçar
-        </InkButton>
+        {onRestart ? (
+          <InkButton tone="mint" onClick={onRestart}>
+            <RestartIcon className="size-5" /> Recomeçar
+          </InkButton>
+        ) : null}
         <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp}>
           {showHelp ? "Esconder instruções" : "Como jogar"}
         </InkButton>
@@ -380,11 +427,12 @@ export function ResultPanel({
           </InkButton>
         ) : null}
         <InkButton ref={onNext ? undefined : mainRef} tone={onNext ? "mint" : "sun"} onClick={onRestart}>
-          <RestartIcon className="size-5" /> {result.level && word === "fase" ? "Refazer fase" : "Jogar de novo"}
+          {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
+          {result.restartLabel ?? (result.level && word === "fase" ? "Refazer fase" : "Jogar de novo")}
         </InkButton>
         {onAlt && result.alt ? (
           <InkButton tone="cream" onClick={onAlt}>
-            <UsersIcon className="size-5" /> {result.alt}
+            {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}
           </InkButton>
         ) : null}
         {onLevels ? (

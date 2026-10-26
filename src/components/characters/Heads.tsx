@@ -170,26 +170,48 @@ export function BrunoHead({ face = "normal" }: { face?: Face }) {
   );
 }
 
-export function DecoHead({ face = "normal" }: { face?: Face }) {
+export function DecoHead({ face = "normal", view = "front", bare = false }: { face?: Face; view?: "front" | "side" | "back"; bare?: boolean }) {
   const skin = P.skinTan;
   const shade = P.skinTanShade;
   const hair = P.tangerineDeep;
+  const spikes = "M44 96 L30 70 L54 72 L44 40 L74 56 L80 20 L100 48 L118 16 L126 52 L156 34 L148 66 L176 66 L156 92 Q150 76 132 74 Q118 84 100 74 Q82 86 66 76 Q52 82 44 96 Z";
+  if (view === "back") {
+    return (
+      <g>
+        {!bare && (
+          <g>
+            <Shoulders color={P.sun} shade={P.sunDeep} />
+            <path d="M22 206 Q100 196 178 206" fill="none" stroke={P.tomato} strokeWidth="9" />
+          </g>
+        )}
+        <Neck skin={skin} shade={shade} />
+        <ellipse cx="50" cy="114" rx="12" ry="15" fill={skin} {...ink4} />
+        <ellipse cx="150" cy="114" rx="12" ry="15" fill={skin} {...ink4} />
+        <path d="M50 106 Q48 54 100 52 Q152 54 150 106 Q152 162 100 164 Q48 162 50 106 Z" fill={skin} {...ink} />
+        <path d="M44 120 L28 96 L50 92 L34 62 L64 70 L62 34 L90 54 L100 18 L114 52 L140 32 L138 68 L170 60 L154 94 L174 100 L152 124 Q150 150 130 156 L118 142 L106 158 L94 142 L82 158 L70 142 Q50 146 44 120 Z" fill={hair} {...ink} />
+        <path d="M70 70 L84 92 M100 40 L102 70 M130 62 L118 90 M60 110 L80 120 M140 108 L120 120" stroke={P.tangerine} strokeWidth="4" strokeLinecap="round" />
+      </g>
+    );
+  }
+  const fx = view === "side" ? 16 : 0;
   return (
     <g>
-      <Shoulders color={P.sun} shade={P.sunDeep} />
-      <path d="M22 206 Q100 196 178 206" fill="none" stroke={P.tomato} strokeWidth="9" />
+      {!bare && (
+        <g>
+          <Shoulders color={P.sun} shade={P.sunDeep} />
+          <path d="M22 206 Q100 196 178 206" fill="none" stroke={P.tomato} strokeWidth="9" />
+        </g>
+      )}
       <Neck skin={skin} shade={shade} />
       <ellipse cx="50" cy="114" rx="12" ry="15" fill={skin} {...ink4} />
-      <ellipse cx="150" cy="114" rx="12" ry="15" fill={skin} {...ink4} />
+      {!fx && <ellipse cx="150" cy="114" rx="12" ry="15" fill={skin} {...ink4} />}
       <path d="M50 106 Q48 54 100 52 Q152 54 150 106 Q152 162 100 164 Q48 162 50 106 Z" fill={skin} {...ink} />
       <path d="M140 84 Q156 118 136 152 Q122 162 104 162 Q140 142 140 84 Z" fill={shade} opacity="0.65" />
-      <path
-        d="M44 96 L30 70 L54 72 L44 40 L74 56 L80 20 L100 48 L118 16 L126 52 L156 34 L148 66 L176 66 L156 92 Q150 76 132 74 Q118 84 100 74 Q82 86 66 76 Q52 82 44 96 Z"
-        fill={hair}
-        {...ink}
-      />
+      <path d={spikes} fill={hair} {...ink} />
+      {fx > 0 && <path d="M46 98 L30 112 L50 116 L40 134 L58 126 Q52 112 56 100 Z" fill={hair} {...ink4} />}
       <path d="M78 40 L90 56 M120 34 L118 54 M58 60 L70 68" stroke={P.tangerine} strokeWidth="4" strokeLinecap="round" />
-      <Eyes face={face} y={110} gap={23} look={-1} />
+      <g transform={`translate(${fx} 0)`}>
+      <Eyes face={face} y={110} gap={fx ? 20 : 23} look={fx ? 5 : -1} />
       <path d="M64 88 L90 94 M110 94 L136 86" fill="none" {...ink} strokeWidth={6} />
       <g fill={shade}>
         <circle cx="68" cy="132" r="2.4" />
@@ -202,6 +224,7 @@ export function DecoHead({ face = "normal" }: { face?: Face }) {
       </g>
       <path d="M100 118 Q94 128 104 130" fill="none" {...ink4} strokeWidth={3.5} />
       <Mouth face={face === "normal" ? "happy" : face} y={144} gap />
+      </g>
     </g>
   );
 }
