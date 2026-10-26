@@ -31,6 +31,7 @@ export type SpotDef = {
   script: string;
   show?: Show;
   hint?: "item" | "secret";
+  priority?: boolean;
   at?: () => [number, number];
 };
 export type Builder = {
@@ -890,7 +891,19 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       [1680, 1590],
       [2100, 1680],
       [1062, 600],
+      [2560, 1000],
+      [1960, 860],
     ];
+    const onScreen = (x: number, y: number) => {
+      const v = b.world.cameras.main.worldView;
+      return x > v.x + 90 && x < v.right - 90 && y - 80 > v.y + 90 && y < v.bottom - 50;
+    };
+    const glint = (x: number, y: number) => {
+      for (let i = 0; i < 5; i += 1) {
+        const sp = b.world.add.image(x + (Math.random() - 0.5) * 70, y - 40 - Math.random() * 50, "spark").setDepth(5700).setTint(0xc9d4e4).setScale(0.6);
+        b.world.tweens.add({ targets: sp, alpha: 0, scale: 1.1, angle: 90, duration: b.reduced ? 10 : 500, delay: i * 70, onComplete: () => sp.destroy() });
+      }
+    };
     const chi = b.npc("chiado", 356, 1330, { scale: 0.62, noShadow: true });
     let cstate: "hidden" | "peek" | "curious" = "hidden";
     let cnext = 2500;
@@ -900,7 +913,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     const hide = (t: number, flee: boolean) => {
       if (!chi) return;
       cstate = "hidden";
-      cnext = t + 6000 + Math.random() * 4000;
+      cnext = t + 4000 + Math.random() * 2500;
       if (flee) b.fx.sfx("blipSoft", 0.35, 2);
       if (b.reduced) chi.sprite.setAlpha(0);
       else b.world.tweens.add({ targets: chi.sprite, alpha: 0, x: chi.x + (flee ? 60 : 0), duration: 260 });
@@ -913,9 +926,9 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         if (!h) return;
         if (cstate === "hidden") {
           if (t < cnext || h.busy) return;
-          const opts = peeks.filter(([x, y]) => Math.hypot(x - h.x, y - h.y) > 480 && Math.hypot(x - h.x, y - h.y) < 1300);
+          const opts = peeks.filter(([x, y]) => Math.hypot(x - h.x, y - h.y) > 420 && onScreen(x, y));
           if (!opts.length) {
-            cnext = t + 2000;
+            cnext = t + 1500;
             return;
           }
           const [px, py] = opts[Math.floor(Math.random() * opts.length)];
@@ -925,29 +938,30 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
           cstate = "peek";
           cshown = t;
           still = 0;
-          b.fx.sfx("blipSoft", 0.2, 1.8);
+          b.fx.sfx("bars", 0.22, 1.9);
+          glint(px, py);
           if (b.reduced) chi.sprite.setAlpha(1);
           else b.world.tweens.add({ targets: chi.sprite, alpha: 1, duration: 400 });
           return;
         }
         const d = Math.hypot(chi.x - h.x, chi.y - h.y);
         if (cstate === "peek") {
-          if (h.speed > 60 && d < 320) return hide(t, true);
-          if (h.speed < 20 && d < 560) {
+          if (h.speed > 60 && d < 300) return hide(t, true);
+          if (h.speed < 20 && onScreen(chi.x, chi.y)) {
             still = still || t;
-            if (t - still > 2000) {
+            if (t - still > 1500) {
               cstate = "curious";
               chi.setMood("happy", 999999, t);
               b.fx.sfx("arcadeBeep", 0.3, 1.8);
             }
           } else still = 0;
-          if (t - cshown > 9000) hide(t, false);
+          if (t - cshown > 14000) hide(t, false);
           return;
         }
         if (h.speed > 300 && d < 160) return hide(t, true);
-        if (d > 190 && t > hopAt && h.speed < 20) {
-          hopAt = t + 650;
-          const k = Math.min(70, d - 170) / d;
+        if (d > 140 && t > hopAt && h.speed < 20) {
+          hopAt = t + 520;
+          const k = Math.min(d > 500 ? 120 : 70, d - 120) / d;
           const nx = chi.x + (h.x - chi.x) * k;
           const ny = chi.y + (h.y - chi.y) * k;
           chi.sprite.setDepth(ny);
@@ -965,9 +979,9 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
             });
           b.fx.sfx("blipSoft", 0.2, 2.2);
         }
-        if (d > 700) hide(t, false);
+        if (d > 1300 || (!onScreen(chi.x, chi.y) && d > 600)) hide(t, false);
       });
-      b.spot({ id: "chiado", x: 356, y: 1330, r: 200, verb: "Observar", script: "chiado", show: () => cstate === "curious", at: () => [chi.x, chi.y + 30] });
+      b.spot({ id: "chiado", x: 356, y: 1330, r: 200, verb: "Observar", script: "chiado", priority: true, show: () => cstate === "curious", at: () => [chi.x, chi.y + 30] });
       b.act("chiadoHello", async () => {
         b.fx.sfx("arcadeBeep", 0.5, 1.6);
         chi.playSeq(["happy", "surprised", "happy", "happy"], 200, b.world.time.now);

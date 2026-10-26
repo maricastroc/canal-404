@@ -1307,8 +1307,9 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       const [sx, sy] = sp.at ? sp.at() : [sp.x, sp.y];
       const d = Math.hypot(sx - p.x, (sy - p.y) * 1.25);
-      if (d < (sp.r ?? INTERACT_R) && d < bestD) {
-        bestD = d;
+      const rank = sp.priority ? d - 10000 : d;
+      if (d < (sp.r ?? INTERACT_R) && rank < bestD) {
+        bestD = rank;
         best = sp;
       }
       if (sp.hint) this.updateHint(sp, sx, sy, d, time);
