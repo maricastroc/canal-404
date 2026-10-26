@@ -39,6 +39,71 @@ export const POSTER_INFO: Record<PosterId, { title: string; area: AreaId; text: 
   ghost: { title: "Trem Fantasma (2003)", area: "forest", text: "'O Trem Fantasma volta em 2005.' Ele não voltou. Ainda." },
 };
 
+export const SPOT_LABELS: Record<string, string> = {
+  bell: "Campainha",
+  guestbook: "Livro de hóspedes",
+  door404: "Quarto 404",
+  frameSunset: "Quadro",
+  frameTv: "Quadro",
+  clock: "Relógio",
+  elevator: "Elevador",
+  poster: "Pôster",
+  posterPijama: "Pôster",
+  sofa: "Sofá",
+  suitcases: "Malas",
+  tv: "TV",
+  flamingo: "Flamingo",
+  net: "Rede",
+  lounge: "Espreguiçadeira",
+  juiceMenu: "Cardápio",
+  poolSign: "Aviso",
+  towel: "Toalha",
+  enterHotel: "Hotel",
+  enterArcade: "Fliperama",
+  signpost: "Placa",
+  duck: "Patinho",
+  cabA: "Rua Sem Saída",
+  cabB: "Laboratório",
+  cabC: "Guerra de Lanche",
+  cabD: "Máquina quebrada",
+  claw: "Pega-pega",
+  curtain: "Cortina",
+  gold: "Máquina dourada",
+  prizes: "Prêmios",
+  pinball: "Pinball",
+  hockey: "Hóquei de mesa",
+  records: "Recordes",
+  shore: "Mar",
+  bottle: "Garrafa",
+  shell: "Concha",
+  shells: "Conchinhas",
+  kiosk: "Quiosque",
+  waveSign: "Placa",
+  sandcastle: "Castelo de areia",
+  pierEnd: "Farol",
+  surf: "Pranchas",
+  chips: "Batatinhas",
+  fall: "Cachoeira",
+  door: "Porta",
+  placardArch: "Placa do trem",
+  placardStatue: "Placa da estátua",
+  dish: "Antena 404",
+  treehouse: "Casa na árvore",
+  log: "Tronco",
+  horse: "Cavalinho",
+  mushrooms: "Cogumelos",
+  bridge: "Ponte",
+  booth: "Bilheteria",
+  console: "Mesa de corte",
+  button: "Botão",
+  calendar: "Calendário",
+  monitors: "Telas",
+  tape: "Gravador",
+  mug: "Caneca",
+  window: "Janela",
+  cartridge: "Cartucho",
+};
+
 export const FOUND_TEXT: Record<string, string> = {
   clock: "O relógio do saguão parou às 4:04.",
   tv: "A TV do saguão só passa chuvisco.",
@@ -208,7 +273,7 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
   bell: async (d) => {
     d.sfx("bell", 0.9);
     d.act();
-    await d.wait(300);
+    await d.action("bellRing");
     const n = Object.keys(d.s.flags).filter((k) => k.startsWith("n_bell_")).length;
     await bump(d, "bell");
     d.mood("bigodes", "look");
@@ -222,12 +287,16 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
 
   tvLobby: async (d) => {
     if (d.s.flags.ended && d.s.ending === "on") return d.say("narrator", "Agora a TV mostra a piscina, ao vivo. O Capitão Marola está acenando.");
-    if (d.has("remote")) {
-      d.act();
-      await d.say("narrator", "Você aperta o controle. Canal 404: chuvisco. Canal 405: um chuvisco mais caprichado.");
-      return;
-    }
-    await d.say("narrator", "Só chuvisco. Aquilo é um pinguim? Não. É só chuvisco.");
+    await d.action("tvFragment");
+    const n = Object.keys(d.s.flags).filter((k) => k.startsWith("n_tvLobby_")).length;
+    await d.say("narrator", [
+      "Por um segundo, a TV pega o Canal 404: o mascote acena e diz 'voltamos já'. Depois, chuvisco.",
+      "Canal 404, 'Corrida Maluca': uma tartaruga cruzando a linha de chegada. Faltam só trezentos metros.",
+      "Canal 404, intervalo: 'Suco de Manga 2004. O sabor que não acaba.' Depois, chuvisco.",
+      "Canal 404, previsão do tempo: 'Ensolarado. 4:04 a tarde inteira.' Chuvisco de novo.",
+    ][n % 4]);
+    await bump(d, "tvLobby");
+    if (d.has("remote") && n % 2 === 1) await d.say("deco", "Nem o controle mestre segura esse canal.");
     d.discover("tv");
   },
 
@@ -237,17 +306,40 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
   },
 
   suitcases: async (d) => {
+    await d.action("suitcaseWiggle");
+    if (d.s.flags.n_cases_0) {
+      await d.say("narrator", repeatLine(d.s, "cases2", ["Uma das malas tem um adesivo: 'EU SOBREVIVI AO VERÃO DE 2004'.", "Você levanta a mala de cima. Pesa como vinte anos de férias.", "Tem um bilhete preso na alça: 'Não abrir antes do fim da temporada'. Qual temporada?"]));
+      await bump(d, "cases2");
+      return;
+    }
+    d.set("n_cases_0");
     await d.say("narrator", "Etiquetas de viagem: 'Ilha do Recreio', 'Vila do Pudim', 'Rua Sem Saída'.");
     await d.say("deco", "Eu conheço a Rua Sem Saída!", "happy");
+  },
+  guestbook: async (d) => {
+    const s = d.s;
+    const rows = ["Quarto 101: Capitão Marola. 'Reservado até o fim do verão.' Qual verão, não diz.", "Quarto 202: Marisa. 'Vista pro mar. Sem data de saída.'"];
+    rows.push(s.flags.gotKey ? "Seu Lento: 'Check-in previsto para 2004. Chave entregue a um jovem rápido.'" : "Seu Lento: 'Check-in previsto para 2004. Status: a caminho.'");
+    rows.push(s.secrets.includes("room404") ? "Quarto 404: o 404 (mascote). 'Check-out: nunca. Não perturbe. Já perturbaram.'" : "Quarto 404: a letra está borrada. Embaixo, carimbado: NÃO PERTURBE.");
+    await d.say("narrator", "O livro de hóspedes. A última página diz:");
+    for (const r of rows) await d.say("narrator", r);
+    if (s.flags.ended) await d.say("narrator", "E, numa letra nova: 'Déco. Check-in: hoje. Check-out: a combinar.'");
+    else if (!s.flags.n_guestbook_0) {
+      d.set("n_guestbook_0");
+      d.mood("bigodes", "look");
+      await d.say("bigodes", "Esse livro é confidencial. Mas pode ler. Ninguém lê.", "look");
+    }
   },
 
   frameSunset: async (d) => {
     d.act();
-    await d.say("narrator", "Um quadro torto. Você endireita. Ele entorta de novo sozinho.");
+    await d.action("frameStraighten");
+    await d.say("narrator", "'Primeiro pôr do sol do resort, 1998.' Você endireita o quadro. Ele entorta de novo sozinho.");
   },
 
   frameTv: async (d) => {
-    await d.say("narrator", "O quadro de uma TV. Dentro do quadro, a TV parece ligada.");
+    await d.action("frameFlicker");
+    await d.say("narrator", "O quadro de uma TV. Por um instante, a TV do quadro parece ligada. Embaixo: 'Inauguração da antena, 1999'.");
   },
 
   sofa: async (d) => {
@@ -410,7 +502,9 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
   },
 
   duck: async (d) => {
-    await d.say("narrator", "Um patinho de borracha relaxando na banheira. Ele parece estar de férias há décadas.");
+    await d.action("duckSqueak");
+    await d.say("narrator", repeatLine(d.s, "duck", ["Um patinho de borracha relaxando na banheira. Ele parece estar de férias há décadas.", "Quén. O patinho gira e volta a relaxar.", "O patinho está concentrado. Melhor não atrapalhar."]));
+    await bump(d, "duck");
   },
 
   tilt: async (d) => {
@@ -611,14 +705,38 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
     await d.token("shell");
   },
 
-  kiosk: async (d) => d.say("narrator", "Fechado para almoço desde 2004. No cardápio: picolé de chuvisco."),
+  kiosk: async (d) => {
+    const pick = await d.ask("narrator", "Fechado para almoço desde 2004. No balcão: um cardápio, um radinho e uma sineta.", ["Ler o cardápio", "Ligar o radinho", "Tocar a sineta"]);
+    if (pick === 0) {
+      await d.say("narrator", "Picolé de chuvisco. Água de coco safra 2004. Especial da casa: Sanduíche Fora do Ar, servido sem sinal.");
+      return;
+    }
+    if (pick === 1) {
+      await d.action("radioTune");
+      await d.say("narrator", repeatLine(d.s, "radio", ["'...Canal 404, a sua... (chiado) ...sempre no ar...'", "'...previsão para hoje: ondas às 4:04. Como ontem. Como amanhã...'", "'...alguém aí? Aqui é a sala de... (chiado) ...câmbio...' Depois, só chiado."]));
+      await bump(d, "radio");
+      return;
+    }
+    await d.action("kioskBell");
+    await d.say("narrator", "Ninguém aparece. Uma plaquinha gira sozinha: 'VOLTO EM 5 MINUTOS'. A tinta é de 2004.");
+  },
+  shells: async (d) => {
+    d.act();
+    d.sfx("wave", 0.4);
+    await d.say("narrator", repeatLine(d.s, "shells", ["Você encosta uma conchinha no ouvido. Em vez do mar: '...e agora, de volta à nossa programação...'", "Na concha, bem baixinho: o tema de abertura do Canal 404. Desafinado.", "Só o mar. Uma reprise do mar, mas ainda assim o mar."]));
+    await bump(d, "shells");
+  },
   waveSign: async (d) => d.say("narrator", "ONDAS TODO DIA ÀS 4:04. Você olha em volta. Parece que são 4:04 agora."),
   sandcastle: async (d) => {
     await d.action("crabPop");
     await d.say("narrator", repeatLine(d.s, "castle", ["Um caranguejo sai do castelo, olha pra você e fecha a porta.", "O castelo está ocupado. Tem até campainha.", "Ninguém sabe quem fez esse castelo. O caranguejo sabe, mas não conta."]));
     await bump(d, "castle");
   },
-  pierEnd: async (d) => d.say("narrator", "Do fim do píer dá pra ver o farol. A luz pisca no ritmo de um sinal de TV."),
+  pierEnd: async (d) => {
+    await d.action("lighthouseLook");
+    await d.say("narrator", "Do fim do píer dá pra ver o farol. A luz pisca no ritmo de um sinal de TV.");
+    await d.say("deco", "Quatro piscadas... uma pausa... quatro de novo.", "surprised");
+  },
   surf: async (d) => {
     await d.action("surfWobble");
     await d.say("narrator", "Você encosta numa prancha e todas balançam como dominó. Ninguém surfa há anos, mas elas continuam enceradas.");
@@ -728,7 +846,8 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
   fall: async (d) => {
     if (d.s.flags.fallPaused) return d.say("narrator", "A cachoeira está pausada. A porta está à vista.");
     if (!d.has("remote")) {
-      await d.say("narrator", "Uma cachoeira enorme. O barulho parece chiado de TV.");
+      await d.action("fallFlicker");
+      await d.say("narrator", "Uma cachoeira enorme. Por um instante, a água treme como imagem de TV. O barulho parece chiado.");
       return;
     }
     d.act();
@@ -749,7 +868,15 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
   placardDish: async (d) => {
     await d.action("dishWobble");
     await d.say("narrator", "ANTENA 404: transmite o sinal do canal para todo o resort. NÃO DESLIGUE SEM A ORDEM FINAL.");
+    if (d.s.flags.ended) await d.say("deco", d.s.ending === "off" ? "Ela continua girando. Por hábito, acho." : "Continua no ar. Do jeito que eles queriam.");
+    else if (d.has("order")) await d.say("deco", "A ordem final... está comigo.", "surprised");
+    else await d.say("deco", "Ordem final? Que ordem?");
     d.discover("antenna");
+  },
+  booth: async (d) => {
+    await d.action("ticketPrint");
+    await d.say("narrator", repeatLine(d.s, "ticket", ["Um bilhete sai da janelinha: 'TREM FANTASMA 404. VÁLIDO PARA 2005.' Ainda não chegou 2005.", "Outro bilhete: 'Lugar na janela. A janela dá para a cachoeira.'", "A bilheteria imprime: 'ESGOTADO'. Você é a única pessoa na fila."]));
+    await bump(d, "ticket");
   },
   horse: async (d) => d.say("narrator", "Um cavalinho de carrossel no meio do mato. Ele parece estar esperando a música voltar."),
   cavuca: async (d) => {

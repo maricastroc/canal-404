@@ -94,10 +94,13 @@ export function GameShell({ slug }: { slug: string }) {
           display: cssFont("--font-luckiest", "Arial Black, sans-serif"),
           body: cssFont("--font-baloo", "Trebuchet MS, sans-serif"),
           hand: cssFont("--font-patrick", "Comic Sans MS, sans-serif"),
+          round: cssFont("--font-fredoka", "Trebuchet MS, sans-serif"),
         };
         await Promise.all([
           document.fonts.load(`48px ${fonts.display}`),
           document.fonts.load(`700 24px ${fonts.body}`),
+          document.fonts.load(`600 32px ${fonts.round}`),
+          document.fonts.load(`700 32px ${fonts.round}`),
         ]).catch(() => undefined);
         const loader = GAME_LOADERS[slug];
         if (!loader) throw new Error("jogo sem carregador");

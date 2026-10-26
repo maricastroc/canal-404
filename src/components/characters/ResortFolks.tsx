@@ -35,13 +35,13 @@ export const FOLK_FACE: Record<FolkId, [number, number, number]> = {
   placar: [40, 26, 140],
 };
 
-export function Bigodes({ mood = "normal" }: { mood?: FolkMood }) {
+export function Bigodes({ mood = "normal", blink = false, gaze }: { mood?: FolkMood; blink?: boolean; gaze?: number }) {
   const fur = "#9aa3b5";
   const furDark = "#6f7891";
   const furLight = "#d9dde6";
   const jacket = "#8e2f45";
   const jacketDark = "#6a1f33";
-  const look = mood === "look" ? 7 : 0;
+  const look = gaze ?? (mood === "look" ? 7 : 0);
   const wide = mood === "surprised";
   return (
     <g>
@@ -63,6 +63,13 @@ export function Bigodes({ mood = "normal" }: { mood?: FolkMood }) {
       <path d="M36 124 L18 128 L38 138 L26 150 L50 148 Z M204 124 L222 128 L202 138 L214 150 L190 148 Z" fill={fur} {...ink4} />
       <path d="M100 44 L104 64 M120 40 L120 62 M140 44 L136 64" stroke={furDark} strokeWidth="6" strokeLinecap="round" />
       <path d="M180 66 Q206 100 196 132 Q182 150 160 154 Q196 116 180 66 Z" fill={furDark} opacity="0.45" />
+      {blink ? (
+        <g fill="none" {...ink4}>
+          <path d="M72 98 Q92 108 112 98" />
+          <path d="M128 98 Q148 108 168 98" />
+          <path d="M68 76 L112 84 M128 84 L172 76" strokeWidth={6} />
+        </g>
+      ) : (
       <g>
         <ellipse cx={92} cy={96} rx="20" ry={wide ? 20 : 16} fill={P.white} {...ink4} />
         <ellipse cx={148} cy={96} rx="20" ry={wide ? 20 : 16} fill={P.white} {...ink4} />
@@ -76,6 +83,7 @@ export function Bigodes({ mood = "normal" }: { mood?: FolkMood }) {
         )}
         <path d={wide ? "M70 66 Q92 56 112 66 M128 66 Q148 56 170 66" : mood === "talk" ? "M68 76 L112 82 M128 82 L172 76" : "M68 72 L112 82 M128 82 L172 72"} fill="none" {...ink} strokeWidth={6} />
       </g>
+      )}
       <path d="M110 112 L130 112 L120 124 Z" fill="#f28ba0" {...ink3} />
       <path d="M86 132 Q102 116 120 128 Q138 116 154 132 Q138 144 120 136 Q102 144 86 132 Z" fill={furLight} {...ink4} />
       <path d="M84 126 L36 116 M84 134 L34 138 M156 126 L204 116 M156 134 L206 138" stroke={P.ink} strokeWidth="3" strokeLinecap="round" />
@@ -161,13 +169,14 @@ export function Marola({ mood = "normal", whistle = false }: { mood?: FolkMood; 
   );
 }
 
-export function Tilt({ mood = "normal", lit = true }: { mood?: FolkMood; lit?: boolean }) {
+export function Tilt({ mood = "normal", lit = true, blink = false }: { mood?: FolkMood; lit?: boolean; blink?: boolean }) {
   const body = "#5a3fb8";
   const bodyDark = "#3b2788";
   const screen = lit ? "#123a3a" : "#1d1830";
   const px = (x: number, y: number, w = 1, h = 1) => <rect key={`${x}-${y}-${w}-${h}`} x={62 + x * 10} y={92 + y * 10} width={w * 10} height={h * 10} />;
-  const eyes =
-    mood === "happy"
+  const eyes = blink
+    ? [px(1, 3, 2, 1), px(7, 3, 2, 1)]
+    : mood === "happy"
       ? [px(1, 3, 1, 1), px(2, 2, 1, 1), px(3, 3, 1, 1), px(7, 3, 1, 1), px(8, 2, 1, 1), px(9, 3, 1, 1)]
       : mood === "sad"
         ? [px(1, 2, 3, 1), px(7, 2, 3, 1), px(2, 3, 1, 1), px(8, 3, 1, 1), px(2, 4, 1, 2), px(8, 4, 1, 2)]
@@ -300,7 +309,7 @@ export function Psiu({ mood = "normal" }: { mood?: FolkMood }) {
   );
 }
 
-export function Lento({ mood = "normal", step = 0, keyOn = true }: { mood?: FolkMood; step?: number; keyOn?: boolean }) {
+export function Lento({ mood = "normal", step = 0, keyOn = true, blink = false }: { mood?: FolkMood; step?: number; keyOn?: boolean; blink?: boolean }) {
   const skin = "#8fc46a";
   const skinDark = "#5e9443";
   const shell = "#3f7d3a";
@@ -322,7 +331,7 @@ export function Lento({ mood = "normal", step = 0, keyOn = true }: { mood?: Folk
       <path d="M188 104 Q214 98 214 74 Q212 50 188 52 Q170 56 172 80 Z" fill={skin} {...ink} />
       <path d="M192 96 Q206 92 208 80" fill="none" stroke={skinDark} strokeWidth="3" />
       <circle cx="196" cy="70" r="9" fill="none" {...ink3} />
-      <circle cx="196" cy="70" r={mood === "surprised" ? 4 : 3} fill={P.ink} />
+      {blink ? <path d="M188 71 Q196 76 204 71" fill="none" {...ink3} /> : <circle cx="196" cy="70" r={mood === "surprised" ? 4 : 3} fill={P.ink} />}
       <path d="M180 68 L187 70" stroke={P.ink} strokeWidth="3" />
       {mood === "talk" ? <ellipse cx="204" cy="88" rx="5" ry="4" fill={P.ink} /> : <path d="M198 90 Q205 92 210 86" fill="none" {...ink3} />}
       <path d="M204 54 Q214 50 212 60" fill="none" stroke={P.white} strokeWidth="3" strokeLinecap="round" />
@@ -354,7 +363,7 @@ function folkLimb(d: string, color: string, w = 16) {
   );
 }
 
-export function Capivaldo({ mood = "normal", shake = 0 }: { mood?: FolkMood; shake?: number }) {
+export function Capivaldo({ mood = "normal", shake = 0, blink = false }: { mood?: FolkMood; shake?: number; blink?: boolean }) {
   const fur = "#b07a4a";
   const furDark = "#83552f";
   const furLight = "#dcae78";
@@ -363,7 +372,9 @@ export function Capivaldo({ mood = "normal", shake = 0 }: { mood?: FolkMood; sha
   const look = mood === "look" ? 7 : 0;
   const wide = mood === "surprised";
   const eye = (cx: number) =>
-    mood === "happy" ? (
+    blink ? (
+      <path key={cx} d={`M${cx - 13} 102 Q${cx} 110 ${cx + 13} 102`} fill="none" {...ink4} />
+    ) : mood === "happy" ? (
       <path key={cx} d={`M${cx - 13} 104 Q${cx} 92 ${cx + 13} 104`} fill="none" {...ink4} />
     ) : (
       <g key={cx}>
@@ -438,7 +449,7 @@ export function Capivaldo({ mood = "normal", shake = 0 }: { mood?: FolkMood; sha
   );
 }
 
-export function Clique({ mood = "normal", shoot = false }: { mood?: FolkMood; shoot?: boolean }) {
+export function Clique({ mood = "normal", shoot = false, blink = false }: { mood?: FolkMood; shoot?: boolean; blink?: boolean }) {
   const skin = "#79c94f";
   const skinDark = "#4f9a34";
   const belly = "#d6efa8";
@@ -448,7 +459,9 @@ export function Clique({ mood = "normal", shoot = false }: { mood?: FolkMood; sh
   const eye = (cx: number) => (
     <g key={cx}>
       <circle cx={cx} cy="58" r="22" fill={skin} {...ink} />
-      {mood === "happy" ? (
+      {blink ? (
+        <path d={`M${cx - 13} 60 Q${cx} 68 ${cx + 13} 60`} fill="none" {...ink4} />
+      ) : mood === "happy" ? (
         <path d={`M${cx - 11} 60 Q${cx} 48 ${cx + 11} 60`} fill="none" {...ink4} />
       ) : (
         <g>
@@ -597,7 +610,7 @@ const STATIC_DOTS: [number, number, string][] = [
   [70, 40, "#9aa6b8"], [30, 70, "#ffffff"], [108, 106, "#ffffff"], [84, 78, "#64708a"], [60, 76, "#9aa6b8"], [100, 50, "#9aa6b8"],
 ];
 
-export function Chiadinho({ mood = "normal" }: { mood?: FolkMood }) {
+export function Chiadinho({ mood = "normal", blink = false }: { mood?: FolkMood; blink?: boolean }) {
   const look = mood === "look" ? 5 : 0;
   const wide = mood === "surprised";
   const spikes = Array.from({ length: 22 }, (_, i) => {
@@ -615,7 +628,12 @@ export function Chiadinho({ mood = "normal" }: { mood?: FolkMood }) {
       {STATIC_DOTS.map(([x, y, c], i) => (
         <rect key={i} x={x} y={y} width={i % 3 ? 7 : 10} height="3" fill={c} />
       ))}
-      {mood === "happy" ? (
+      {blink ? (
+        <g fill="none" stroke={P.ink} strokeWidth="5" strokeLinecap="round">
+          <path d="M42 78 L66 78" />
+          <path d="M74 78 L98 78" />
+        </g>
+      ) : mood === "happy" ? (
         <g fill="none" stroke={P.ink} strokeWidth="5" strokeLinecap="round">
           <path d="M44 78 Q54 66 64 78" />
           <path d="M76 78 Q86 66 96 78" />
@@ -633,7 +651,7 @@ export function Chiadinho({ mood = "normal" }: { mood?: FolkMood }) {
   );
 }
 
-export function Placar({ mood = "normal" }: { mood?: FolkMood }) {
+export function Placar({ mood = "normal", blink = false }: { mood?: FolkMood; blink?: boolean }) {
   const fur = "#8f96a8";
   const furDark = "#5f6578";
   const light = "#e3e6ee";
@@ -669,7 +687,12 @@ export function Placar({ mood = "normal" }: { mood?: FolkMood }) {
       <path d="M150 74 Q172 106 162 138 Q150 156 132 160 Q166 122 150 74 Z" fill={furDark} opacity="0.45" />
       <path d="M78 126 Q110 112 142 126 Q140 160 110 162 Q80 160 78 126 Z" fill={light} {...ink4} />
       <path d="M56 100 Q84 84 110 98 Q136 84 164 100 L162 124 Q136 118 110 128 Q84 118 58 124 Z" fill={mask} {...ink4} />
-      {mood === "happy" ? (
+      {blink ? (
+        <g fill="none" stroke={P.white} strokeWidth="5" strokeLinecap="round">
+          <path d="M76 108 Q86 114 96 108" />
+          <path d="M124 108 Q134 114 144 108" />
+        </g>
+      ) : mood === "happy" ? (
         <g fill="none" stroke={P.white} strokeWidth="5" strokeLinecap="round">
           <path d="M76 110 Q86 100 96 110" />
           <path d="M124 110 Q134 100 144 110" />

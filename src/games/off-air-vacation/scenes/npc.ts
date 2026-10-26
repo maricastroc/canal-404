@@ -3,7 +3,7 @@ import { CHAR_RES } from "../config";
 import type { FolkKey } from "../save";
 import type { Mood } from "../story";
 
-export type NpcOpts = { scale?: number; flip?: boolean; depth?: number; frames?: Partial<Record<Mood, string>>; idle?: string; look?: string; bob?: number };
+export type NpcOpts = { scale?: number; flip?: boolean; depth?: number; frames?: Partial<Record<Mood, string>>; idle?: string; look?: string; bob?: number; follow?: boolean };
 
 const DEFAULT_FRAMES: Record<FolkKey, Partial<Record<Mood, string>>> = {
   bigodes: { normal: "normal", talk: "talk", look: "look", happy: "happy", surprised: "surprised", sad: "look" },
@@ -27,6 +27,9 @@ export class Npc {
   private barkBox: Phaser.GameObjects.Container | null = null;
   private barkUntil = 0;
   private seq: { keys: string[]; step: number; start: number } | null = null;
+  private blinkKey: string | null = null;
+  private blinkAt = 0;
+  private blinkUntil = 0;
   private bubbleKind: string | null = null;
   private frames: Partial<Record<Mood, string>>;
   private mood: Mood = "normal";
@@ -38,6 +41,7 @@ export class Npc {
   private base: number;
   x: number;
   y: number;
+  font = "Arial Black, Arial, sans-serif";
 
   constructor(
     private scene: Phaser.Scene,
@@ -60,6 +64,8 @@ export class Npc {
       .setFlipX(Boolean(opts.flip))
       .setDepth(opts.depth ?? y);
     const start = this.key("normal");
+    this.blinkKey = scene.textures.exists(`${id}-blink`) ? `${id}-blink` : id === "psiu" ? "psiu-sad" : null;
+    this.blinkAt = 1200 + Math.random() * 3000;
     const pad = start === "mascot-sleep" ? 0 : id === "mascot" ? 10 : 8;
     this.sprite.setOrigin(0.5, 1 - (pad * CHAR_RES) / this.sprite.frame.realHeight);
     this.nextLook = 1500 + Math.random() * 2500;
@@ -112,13 +118,13 @@ export class Npc {
     g.lineStyle(5, 0x1d1830, 1);
     g.lineBetween(-8, 24, 0, 36);
     g.lineBetween(8, 24, 0, 36);
-    const t = this.scene.add.text(0, 2, kind, { fontFamily: "Arial Black, Arial, sans-serif", fontSize: "34px", color: "#1d1830" }).setOrigin(0.5);
+    const t = this.scene.add.text(0, 4, kind, { fontFamily: this.font, fontSize: "34px", color: "#1d1830" }).setOrigin(0.5);
     this.bubble = this.scene.add.container(this.x, this.topY - 40, [g, t]).setDepth(5800);
   }
 
   bark(text: string, font: string, time: number) {
     this.barkBox?.destroy();
-    const t = this.scene.add.text(0, 0, text, { fontFamily: font, fontSize: "30px", color: "#1d1830", align: "center", wordWrap: { width: 380 } }).setOrigin(0.5, 1);
+    const t = this.scene.add.text(0, 0, text, { fontFamily: font, fontSize: "28px", fontStyle: "700", color: "#1d1830", align: "center", wordWrap: { width: 380 }, padding: { x: 2, y: 4 } }).setOrigin(0.5, 1);
     const w = t.width + 40;
     const h = t.height + 22;
     const g = this.scene.add.graphics();
@@ -179,6 +185,25 @@ export class Npc {
         else this.scene.tweens.add({ targets: b, alpha: 0, duration: 200, onComplete: () => b.destroy() });
       }
     }
+    const restKey = this.key(this.mood);
+    if (this.blinkKey && !this.talking && !this.seq && !this.reduced) {
+      const k = this.sprite.texture.key;
+      if (this.blinkUntil && time > this.blinkUntil) {
+        this.blinkUntil = 0;
+        if (k === this.blinkKey) this.sprite.setTexture(restKey);
+      } else if (!this.blinkUntil && time > this.blinkAt && (k === restKey || k.includes("gaze"))) {
+        this.blinkUntil = time + 130;
+        this.blinkAt = time + 2200 + Math.random() * 3800;
+        this.sprite.setTexture(this.blinkKey);
+      }
+      if (this.blinkUntil) return this.tail(time, playerX);
+    }
+    if (this.opts.follow && !this.talking && !this.seq && time >= this.holdUntil && this.mood === "normal") {
+      const dx = playerX - this.x;
+      const want = dx < -170 ? `${this.id}-gaze-l` : dx > 170 ? `${this.id}-gaze-r` : restKey;
+      if (this.sprite.texture.key !== want && this.scene.textures.exists(want)) this.sprite.setTexture(want);
+      return this.tail(time, playerX);
+    }
     if (!this.talking && !this.seq && time >= this.holdUntil) {
       if (time > this.nextLook && this.lookUntil < time) {
         this.lookUntil = time + 900 + Math.random() * 700;
@@ -191,6 +216,10 @@ export class Npc {
         if (!this.opts.flip) this.sprite.setFlipX(false);
       }
     }
+    this.tail(time, playerX);
+  }
+
+  private tail(time: number, playerX: number) {
     if (this.talking && this.id !== "tilt" && this.id !== "mascot" && this.id !== "lento") this.sprite.setFlipX(playerX < this.x);
     const breathe = this.reduced ? 1 : 1 + Math.sin(time / (380 + (this.x % 7) * 20)) * (this.opts.bob ?? 0.018);
     this.sprite.setScale(this.base * (2 - breathe), this.base * breathe);

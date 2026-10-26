@@ -64,7 +64,7 @@ export class ResortHud {
 
     this.promptBg = scene.add.graphics();
     this.promptKey = scene.add.text(0, 0, "E", { fontFamily: fonts.display, fontSize: "28px", color: "#1d1830" }).setOrigin(0.5);
-    this.promptText = scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: "28px", color: "#fbf5e6", padding: { x: 2, y: 4 } }).setOrigin(0, 0.5);
+    this.promptText = scene.add.text(0, 0, "", { fontFamily: fonts.round ?? fonts.body, fontSize: "28px", fontStyle: "700", color: "#fbf5e6", padding: { x: 2, y: 4 } }).setOrigin(0, 0.5);
     this.prompt = scene.add.container(0, 0, [this.promptBg, this.promptKey, this.promptText]).setDepth(5950).setVisible(false);
 
     this.stickBase = scene.add.circle(0, 0, 110, 0xfbf5e6, 0.16).setStrokeStyle(6, INK_HEX, 0.5).setDepth(DEPTH).setScrollFactor(0).setVisible(false);
@@ -77,7 +77,7 @@ export class ResortHud {
     ag.lineStyle(7, INK_HEX, 1);
     ag.strokeCircle(0, 0, 104);
     const hand = scene.add.image(0, -18, "ui-hand").setScale(1.1);
-    this.actionLabel = scene.add.text(0, 48, "", { fontFamily: fonts.display, fontSize: "26px", color: "#1d1830" }).setOrigin(0.5);
+    this.actionLabel = scene.add.text(0, 48, "", { fontFamily: fonts.round ?? fonts.body, fontSize: "26px", fontStyle: "700", color: "#1d1830" }).setOrigin(0.5);
     this.action = scene.add.container(W - 190, H - 190, [ag, hand, this.actionLabel]).setDepth(DEPTH).setScrollFactor(0, 0, true).setVisible(false);
 
     const scan = scene.add.tileSprite(0, 0, W, H, "scanlines").setOrigin(0, 0).setAlpha(0.35);
@@ -143,7 +143,7 @@ export class ResortHud {
   toast(title: string, text: string, icon: string, color = 0xffc83d) {
     const g = this.scene.add.graphics();
     const t1 = this.scene.add.text(110, 24, title.toUpperCase(), { fontFamily: this.fonts.display, fontSize: "24px", color: "#7b62c4" });
-    const t2 = this.scene.add.text(110, 54, text, { fontFamily: this.fonts.body, fontSize: "30px", fontStyle: "bold", color: "#1d1830", wordWrap: { width: 520 }, padding: { x: 2, y: 2 } });
+    const t2 = this.scene.add.text(110, 54, text, { fontFamily: this.fonts.round ?? this.fonts.body, fontSize: "29px", fontStyle: "600", color: "#1d1830", wordWrap: { width: 520 }, padding: { x: 2, y: 2 } });
     const h = Math.max(110, t2.height + 76);
     const w = Math.max(t1.width, Math.min(520, t2.width)) + 150;
     g.fillStyle(INK_HEX, 1);
@@ -209,7 +209,7 @@ export class ResortHud {
       this.promptText.setPosition(-w / 2 + (this.touchUi ? 17 : 66), 0);
     }
     this.prompt.setVisible(true).setPosition(x, y);
-    if (this.touchUi) this.actionLabel.setText(verb.toUpperCase());
+    if (this.touchUi) this.actionLabel.setText(verb.split(" · ")[0].toUpperCase());
   }
 
   setTouchVisible(on: boolean) {

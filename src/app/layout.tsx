@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Baloo_2, Patrick_Hand } from "next/font/google";
+import { Baloo_2, Fredoka, Patrick_Hand } from "next/font/google";
 import localFont from "next/font/local";
 import { AppProviders } from "@/components/layout/AppProviders";
 import "./globals.css";
@@ -18,6 +18,12 @@ const luckiest = localFont({
 
 const baloo = Baloo_2({
   variable: "--font-baloo",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
   subsets: ["latin"],
   display: "swap",
 });
@@ -50,7 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${luckiest.variable} ${baloo.variable} ${patrick.variable} antialiased`}
+      className={`${luckiest.variable} ${baloo.variable} ${patrick.variable} ${fredoka.variable} antialiased`}
     >
       <body className="min-h-svh">
         <a

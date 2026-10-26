@@ -3,7 +3,7 @@ import type { GameHostContext, GameResult } from "@/games/types";
 import { AREA_TITLES, FOOT, H, HINT_R, INTERACT_R, SCORE, W, type AreaId, type Dir } from "../config";
 import { ALL_POSTERS, freshState, saveState, type FolkKey, type Item, type State } from "../save";
 import { RESORT_SFX, type ResortSfx } from "../sounds";
-import { FOUND_TEXT, ITEM_INFO, POSTER_INFO, POSTER_SCRIPT, SCRIPTS, SPEAKERS, hasMain, mainObjective, score, type Director, type Mood, type Speaker } from "../story";
+import { FOUND_TEXT, ITEM_INFO, POSTER_INFO, POSTER_SCRIPT, SCRIPTS, SPEAKERS, SPOT_LABELS, hasMain, mainObjective, score, type Director, type Mood, type Speaker } from "../story";
 import { ArcadeGame } from "../ui/arcade";
 import { DialogBox } from "../ui/dialog";
 import { ResortHud } from "../ui/hud";
@@ -88,10 +88,12 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private ambientSet: { sounds: [ResortSfx, number][]; min: number; max: number } | null = null;
   private cam = { x: 0, y: 0 };
   private auto: { x: number; y: number; done: () => void } | null = null;
+  private speakLabel: string | undefined;
+  private focus: Phaser.GameObjects.Graphics | null = null;
   private arrows: { img: Phaser.GameObjects.Image; x: number; y: number; angle: number }[] = [];
   private frames: { rect: [number, number, number, number]; zone: [number, number, number, number] }[] = [];
   private areaActions = new Map<string, () => Promise<void> | void>();
-  private greets: { who: FolkKey; lines: string[]; r: number; inside: boolean; next: number; i: number }[] = [];
+  private greets: { who: FolkKey; lines: string[] | (() => string[]); r: number; inside: boolean; next: number; i: number }[] = [];
   fx = {
     vhs: (label: string, ms: number) => {
       this.hud.vhsOn(true, label);
@@ -160,6 +162,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.registry.set("state", this.s);
     this.cameras.main.setBackgroundColor("#1d1830");
     AREAS[this.area](this);
+    this.focus = this.add.graphics().setDepth(1.35).setVisible(false);
     this.collectTall();
     this.cameras.main.setBounds(0, 0, this.w, this.h);
 
@@ -276,6 +279,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   npc(id: FolkKey, x: number, y: number, opts: NpcOpts & { show?: Show; mood?: Mood; noShadow?: boolean } = {}) {
     if (opts.show && !opts.show(this.s)) return null;
     const n = new Npc(this, id, x, y, opts, this.reduced, !opts.noShadow);
+    n.font = this.ctx.fonts.display;
     this.npcs.set(id, n);
     return n;
   }
@@ -338,13 +342,13 @@ export class WorldScene extends Phaser.Scene implements Builder {
   bark(who: FolkKey, text: string, sound: ResortSfx | null = "blipSoft") {
     const n = this.npcs.get(who);
     if (!n || this.mode !== "play") return;
-    n.bark(text, this.ctx.fonts.display, this.time.now);
+    n.bark(text, this.ctx.fonts.round ?? this.ctx.fonts.body, this.time.now);
     if (sound) this.sfx(sound, 0.5, SPEAKERS[who].pitch);
     this.ctx.onEvent({ type: "announce", message: `${SPEAKERS[who].name}: ${text}` });
   }
 
-  greet(who: FolkKey, lines: string[], r = 300) {
-    this.greets.push({ who, lines, r, inside: false, next: 0, i: Math.floor(Math.random() * lines.length) });
+  greet(who: FolkKey, lines: string[] | (() => string[]), r = 300) {
+    this.greets.push({ who, lines, r, inside: false, next: 0, i: Math.floor(Math.random() * 4) });
   }
 
   hero() {
@@ -553,7 +557,16 @@ export class WorldScene extends Phaser.Scene implements Builder {
     const sp = this.nearest;
     const [sx, sy] = sp.at ? sp.at() : [sp.x, sp.y];
     this.player.face(sx - this.player.x, sy - 60 - this.player.y);
-    void this.runScript(sp.script);
+    void this.runScript(sp.script, this.labelOf(sp));
+  }
+
+  private labelOf(sp: SpotDef) {
+    if (this.npcs.has(sp.id as FolkKey)) return undefined;
+    return SPOT_LABELS[sp.id];
+  }
+
+  get fonts() {
+    return this.ctx.fonts;
   }
 
   private director(): Director {
@@ -687,6 +700,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     await this.dialog.show({
       name: info.name,
       face,
+      label: who === "narrator" ? this.speakLabel : undefined,
       text,
       color: SPEAKER_COLOR[who],
       blip: () => {
@@ -697,11 +711,12 @@ export class WorldScene extends Phaser.Scene implements Builder {
     npc?.talk(false);
   }
 
-  private async runScript(id: string) {
+  private async runScript(id: string, label?: string) {
     if (this.busy) return;
     const script = id.startsWith("poster:") ? POSTER_SCRIPT(id.slice(7) as Parameters<typeof POSTER_SCRIPT>[0]) : SCRIPTS[id];
     if (!script) return;
     this.busy = true;
+    this.speakLabel = label;
     this.target = null;
     this.player?.stop();
     this.hud.showPrompt(0, 0, null);
@@ -712,6 +727,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       await script(this.director());
     } finally {
       this.vars.lentoTalking = false;
+      this.speakLabel = undefined;
       this.vars.talking = null;
       if (this.dialog.open) this.dialog.close();
       this.busy = false;
@@ -960,13 +976,14 @@ export class WorldScene extends Phaser.Scene implements Builder {
   }
 
   private collectTall() {
+    const canopy: Record<string, [number, number]> = { "tree-a": [0.9, 0.36], "tree-b": [0.9, 0.36], "tree-c": [0.9, 0.36], palm: [0.98, 0.66], "palm-b": [0.98, 0.66], "ruin-arch": [0.98, 0.55] };
     for (const pr of this.props) {
-      const d = pr.opts.depth;
-      if (d === "floor" || d === "wall" || typeof d === "number") continue;
+      const c = canopy[pr.key];
+      if (!c) continue;
       const img = pr.img;
-      if (img.displayHeight < 260) continue;
-      const b = img.getBounds();
-      this.tall.push({ img, x0: b.x + 40, x1: b.right - 40, y0: b.y, y1: b.bottom - 40, alpha: img.alpha });
+      const h = img.displayHeight;
+      const w = img.displayWidth;
+      this.tall.push({ img, x0: img.x - w * 0.3, x1: img.x + w * 0.3, y0: img.y - h * c[0], y1: img.y - h * c[1], alpha: img.alpha });
     }
   }
 
@@ -974,11 +991,13 @@ export class WorldScene extends Phaser.Scene implements Builder {
     const p = this.player;
     if (!p) return;
     const top = p.top;
+    const body = p.y - top;
     for (const t of this.tall) {
       if (!t.img.visible) continue;
-      const behind = p.x > t.x0 && p.x < t.x1 && top < t.y1 && p.y > t.y0 + 140 && p.y < t.img.y - 24;
-      const goal = behind ? t.alpha * 0.5 : t.alpha;
-      const a = t.img.alpha + (goal - t.img.alpha) * Math.min(1, dt * 10);
+      const covered = Math.min(p.y, t.y1) - Math.max(top, t.y0);
+      const hidden = p.y < t.img.y - 24 && p.x > t.x0 && p.x < t.x1 && covered > body * 0.6;
+      const goal = hidden ? t.alpha * 0.55 : t.alpha;
+      const a = t.img.alpha + (goal - t.img.alpha) * Math.min(1, dt * 8);
       if (Math.abs(a - t.img.alpha) > 0.002) t.img.setAlpha(a);
     }
   }
@@ -1225,7 +1244,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
           if (sp) {
             const [sx, sy] = sp.at ? sp.at() : [sp.x, sp.y];
             p.face(sx - p.x, sy - 60 - p.y);
-            void this.runScript(sp.script);
+            void this.runScript(sp.script, this.labelOf(sp));
           }
         };
         if (sp && this.spotDistance(sp, p.x, p.y) < reach * 0.7) arrive();
@@ -1320,9 +1339,35 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const verb = typeof sp.verb === "function" ? sp.verb(this.s) : sp.verb;
       const [sx, sy] = sp.at ? sp.at() : [sp.x, sp.y];
       const npc = this.npcs.get(sp.id as FolkKey);
-      const y = npc ? npc.topY - 90 - npc.barkHeight : Math.min(sy - 170, p.top - 30);
-      this.hud.showPrompt(sx, y, verb);
-    } else this.hud.showPrompt(0, 0, null);
+      const label = this.labelOf(sp);
+      const text = label && !verb.toLowerCase().includes(label.toLowerCase()) ? `${verb} · ${label}` : verb;
+      if (npc) this.hud.showPrompt(npc.x, npc.topY - 64 - npc.barkHeight, text);
+      else {
+        const above = p.top - 44;
+        let covers = false;
+        for (const [, n] of this.npcs) {
+          if (!n.sprite.visible || n.sprite.alpha < 0.5) continue;
+          if (Math.abs(n.x - p.x) < 230 && above > n.topY - 30 && above < n.y) covers = true;
+        }
+        this.hud.showPrompt(p.x, covers ? p.y + 52 : above, text);
+      }
+      const fx = npc ? npc.x : sx;
+      const fy = npc ? npc.y + 4 : sy;
+      const k = this.reduced ? 0.5 : 0.5 + Math.sin(time / 260) * 0.5;
+      const f = this.focus;
+      if (f) {
+        f.clear();
+        const w = npc ? 170 : 150;
+        f.fillStyle(0xfff1c0, 0.14 + k * 0.08);
+        f.fillEllipse(fx, fy, w, w * 0.3);
+        f.lineStyle(4, 0xfffaf0, 0.55 + k * 0.3);
+        f.strokeEllipse(fx, fy, w + k * 10, (w + k * 10) * 0.3);
+        f.setVisible(true);
+      }
+    } else {
+      this.hud.showPrompt(0, 0, null);
+      this.focus?.setVisible(false);
+    }
     this.hud.setTouchVisible(free);
     if (free && !this.leaving) {
       for (const e of this.exits) {
@@ -1386,9 +1431,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const inside = d < g.r;
       if (inside && !g.inside && !quiet && time > g.next) {
         g.next = time + 22000;
-        g.i = (g.i + 1) % g.lines.length;
+        const lines = typeof g.lines === "function" ? g.lines() : g.lines;
+        g.i = (g.i + 1) % lines.length;
         n.setMood("look", 1200, time);
-        this.bark(g.who, g.lines[g.i]);
+        this.bark(g.who, lines[g.i]);
       }
       g.inside = inside;
     }

@@ -29,7 +29,7 @@ export type LoadStage = "code" | "art" | "scene";
 export type GameHostContext = {
   parent: HTMLElement;
   keyboardTarget: HTMLElement;
-  fonts: { display: string; body: string; hand: string };
+  fonts: { display: string; body: string; hand: string; round?: string };
   reducedMotion: boolean;
   highScore: number;
   audio: {

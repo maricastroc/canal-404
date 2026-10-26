@@ -45,6 +45,7 @@ export class Journal {
   open = false;
   private pin: Phaser.GameObjects.Container | null = null;
   private masks: Phaser.GameObjects.Graphics[] = [];
+  private cleanup = false;
 
   constructor(
     private scene: Phaser.Scene,
@@ -148,7 +149,7 @@ export class Journal {
   }
 
   private txt(x: number, y: number, text: string, size: number, color = "#1d1830", opts: Phaser.Types.GameObjects.Text.TextStyle = {}) {
-    const t = this.scene.add.text(x, y, text, { fontFamily: this.fonts.body, fontSize: `${size}px`, fontStyle: "bold", color, padding: { x: 2, y: 4 }, ...opts });
+    const t = this.scene.add.text(x, y, text, { fontFamily: this.fonts.round ?? this.fonts.body, fontSize: `${size}px`, fontStyle: "600", color, padding: { x: 2, y: 4 }, ...opts });
     this.content.add(t);
     return t;
   }
@@ -180,6 +181,10 @@ export class Journal {
     this.content.removeAll(true);
     this.masks.forEach((m) => m.destroy());
     this.masks = [];
+    if (!this.cleanup) {
+      this.cleanup = true;
+      this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.masks.forEach((m) => m.destroy()));
+    }
     this.pin = null;
     this.paintTabs();
     this.fill(s, area, ax, ay);

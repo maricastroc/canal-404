@@ -3,6 +3,7 @@ import type { AreaId, Dir } from "../config";
 import type { FolkKey, State } from "../save";
 import type { ResortSfx } from "../sounds";
 import type { Mood } from "../story";
+import type { Fonts } from "../../kit/ui";
 import type { Npc, NpcOpts } from "./npc";
 
 export type Show = (s: State) => boolean;
@@ -56,9 +57,10 @@ export type Builder = {
   kickable(key: string, x: number, y: number): void;
   arrow(x: number, y: number, angle: number): void;
   frame(rect: [number, number, number, number], zone: [number, number, number, number]): void;
+  fonts: Fonts;
   act(name: string, fn: () => Promise<void> | void): void;
   bark(who: FolkKey, text: string, sound?: ResortSfx | null): void;
-  greet(who: FolkKey, lines: string[], r?: number): void;
+  greet(who: FolkKey, lines: string[] | (() => string[]), r?: number): void;
   hero(): { x: number; y: number; speed: number; busy: boolean } | null;
   npcOf(who: FolkKey): Npc | null;
   fx: {
@@ -166,17 +168,44 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("door-404", 470, 432, { origin: [0.5, 1], depth: "wall", key2: (st) => (st.secrets.includes("room404") ? "door-404-open" : "door-404") });
     b.prop("column", 660, 436, { origin: [0.5, 1], depth: "wall" });
     b.prop("column", 1740, 436, { origin: [0.5, 1], depth: "wall" });
-    b.prop("frame-sunset", 830, 170, { origin: [0.5, 0.5], angle: -7, depth: "wall" });
-    b.prop("frame-tv", 990, 168, { origin: [0.5, 0.5], angle: 8, depth: "wall" });
+    const frameSun = b.prop("frame-sunset", 830, 170, { origin: [0.5, 0.5], angle: -7, depth: "wall" });
+    const frameTv = b.prop("frame-tv", 990, 168, { origin: [0.5, 0.5], angle: 8, depth: "wall" });
+    b.act("frameStraighten", async () => {
+      b.fx.sfx("tick", 0.6, 0.8);
+      if (b.reduced) return;
+      await new Promise<void>((r) => b.world.tweens.add({ targets: frameSun, angle: 0, duration: 240, ease: "Back.easeOut", onComplete: () => r() }));
+      await b.fx.wait(700);
+      b.fx.sfx("tick", 0.5, 0.6);
+      b.world.tweens.add({ targets: frameSun, angle: -7, duration: 900, ease: "Bounce.easeOut" });
+    });
+    b.act("frameFlicker", async () => {
+      b.fx.sfx("bars", 0.25, 1.6);
+      for (let i = 0; i < 4; i += 1) {
+        frameTv.setTint(i % 2 ? 0xffffff : 0x9df0dc);
+        await b.fx.wait(90);
+      }
+      frameTv.clearTint();
+    });
     b.prop("key-rack", 1200, 176, { origin: [0.5, 0.5], depth: "wall" });
     b.prop("clock", 1520, 166, { origin: [0.5, 0.5], depth: "wall" });
     b.prop("elevator", 1960, 432, { origin: [0.5, 1], depth: "wall" });
     b.prop("poster-club", 2262, 200, { origin: [0.5, 0.5], depth: "wall" });
     b.glow(1200, 660, 1100, 520, 0xffd36b, 0.2, 0.4);
-    b.npc("bigodes", 1200, 522, { scale: 0.95, depth: 520 });
+    b.npc("bigodes", 1200, 522, { scale: 0.95, depth: 520, follow: true });
     b.greet("bigodes", ["Pois não?", "Tudo absolutamente normal."], 360);
     b.prop("counter", 1200, 650, { origin: [0.5, 1], depth: 650, rect: [-380, -112, 760, 112] });
-    b.prop("desk-bell", 1360, 470, { origin: [0.5, 1], depth: 651 });
+    const bell = b.prop("desk-bell", 1360, 470, { origin: [0.5, 1], depth: 651 });
+    b.prop("guest-book", 1060, 472, { origin: [0.5, 1], depth: 651, scale: 0.9 });
+    b.act("bellRing", async () => {
+      b.fx.word("DING!", 1360, 400, "#ffe39a");
+      if (!b.reduced) {
+        b.world.tweens.add({ targets: bell, scaleY: { from: 0.7, to: 1 }, scaleX: { from: 1.15, to: 1 }, duration: 260, ease: "Back.easeOut" });
+        b.world.tweens.add({ targets: bell, angle: { from: -8, to: 8 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => bell.setAngle(0) });
+      }
+      const cat = b.npcOf("bigodes");
+      cat?.setMood("surprised", 600, b.world.time.now);
+      await b.fx.wait(450);
+    });
     b.prop("chandelier", 1200, -4, { origin: [0.5, 0], depth: "over", anim: "swing", amp: 1.6 });
     b.glow(1200, 220, 420, 260, 0xffe39a, 0.35, 4999);
     b.prop("rug-lobby", 1200, 940, { origin: [0.5, 0.5], depth: "floor" });
@@ -186,13 +215,53 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("plant-tall", 2100, 690, { origin: [0.5, 1], rect: [-52, -40, 104, 40], anim: "sway", amp: 1.5, flip: true });
     b.prop("plant-small", 880, 760, { origin: [0.5, 1], rect: [-40, -28, 80, 28] });
     b.prop("plant-small", 1530, 760, { origin: [0.5, 1], rect: [-40, -28, 80, 28], flip: true });
-    b.prop("suitcases", 1660, 820, { origin: [0.5, 1], rect: [-96, -70, 192, 70] });
+    const cases = b.prop("suitcases", 1660, 820, { origin: [0.5, 1], rect: [-96, -70, 192, 70] });
+    b.act("suitcaseWiggle", async () => {
+      b.fx.sfx("kick", 0.5, 1.3);
+      if (!b.reduced) b.world.tweens.add({ targets: cases, angle: { from: -4, to: 4 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => cases.setAngle(0) });
+      await b.fx.wait(450);
+    });
     b.prop("tv-lobby", 1880, 700, { origin: [0.5, 1], rect: [-110, -70, 220, 70] });
     const tv = b.world.add.tileSprite(1880 - 120 + 46 + 4, 700 - 250 + 44 + 4, 112, 94, "static").setOrigin(0, 0).setDepth(701).setAlpha(0.9);
-    b.onUpdate(() => tv.setTilePosition(Math.random() * 200, Math.random() * 200));
+    const tvBars = b.g(702);
+    const tvShow = b.world.add.image(tv.x + 56, tv.y + 50, "face-mascot-normal").setDepth(703).setVisible(false);
+    const paintBars = (on: boolean) => {
+      tvBars.clear();
+      if (!on) return;
+      [0xfbf5e6, 0xffc83d, 0x63d6c1, 0x93cf4c, 0xf06ba8, 0xef4f43, 0x5cb9f0].forEach((c, i) => {
+        tvBars.fillStyle(c, 1);
+        tvBars.fillRect(tv.x + i * 16, tv.y, 16, 94);
+      });
+    };
+    let tvBlipAt = 9000;
+    let tvBusy = false;
+    b.onUpdate((t) => {
+      if (!tvBusy) tv.setTilePosition(Math.random() * 200, Math.random() * 200);
+      if (b.reduced || tvBusy || t < tvBlipAt) return;
+      tvBlipAt = t + 14000 + Math.random() * 10000;
+      paintBars(true);
+      b.world.time.delayedCall(260, () => !tvBusy && paintBars(false));
+    });
+    b.act("tvFragment", async () => {
+      tvBusy = true;
+      b.fx.sfx("bars", 0.5, 1);
+      paintBars(true);
+      await b.fx.wait(500);
+      paintBars(false);
+      const n = Object.keys(b.s.flags).filter((k) => k.startsWith("n_tvLobby_")).length;
+      const key = ["face-mascot-normal", "face-lento-happy", "face-capi-happy", "face-tilt-happy"][n % 4];
+      tvShow.setTexture(key).setDisplaySize(84, 84).setVisible(true);
+      tv.setAlpha(0.35);
+      b.fx.sfx("blipSoft", 0.5, 1.3);
+      await b.fx.wait(900);
+      tvShow.setVisible(false);
+      tv.setAlpha(0.9);
+      tvBusy = false;
+    });
     b.prop("luggage-cart", 260, 1110, { origin: [0.5, 1], rect: [-100, -50, 200, 50] });
     b.spot({ id: "bigodes", x: 1200, y: 700, r: 200, verb: "Conversar", script: "bigodes" });
     b.spot({ id: "bell", x: 1380, y: 700, r: 90, verb: "Tocar", script: "bell" });
+    b.spot({ id: "guestbook", x: 1040, y: 700, r: 90, verb: "Ler", script: "guestbook" });
     b.spot({ id: "door404", x: 470, y: 500, r: 140, verb: (st) => (st.items.includes("key") ? "Abrir" : "Examinar"), script: "door404" });
     b.spot({ id: "frameSunset", x: 830, y: 490, r: 110, verb: "Examinar", script: "frameSunset" });
     b.spot({ id: "frameTv", x: 960, y: 690, r: 90, verb: "Examinar", script: "frameTv" });
@@ -256,7 +325,41 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       flamingo.setPosition(fx + Math.sin(t / 2600) * 60, fy + Math.cos(t / 3100) * 30 + Math.sin(t / 500) * 4).setAngle(Math.sin(t / 900) * 4);
     });
     const duck = b.prop("duck", 1709, 1250, { origin: [0.5, 0.5], depth: 1255, scale: 0.9 });
-    b.onUpdate((t) => duck.setY(1250 + Math.sin(t / 600) * 4).setAngle(Math.sin(t / 800) * 6));
+    let duckSpin = false;
+    b.onUpdate((t) => {
+      if (!duckSpin) duck.setY(1250 + Math.sin(t / 600) * 4).setAngle(Math.sin(t / 800) * 6);
+    });
+    const ripple = b.g(1.6);
+    b.act("duckSqueak", async () => {
+      duckSpin = true;
+      b.fx.sfx("blipSoft", 0.8, 2.2);
+      b.fx.word("QUÉN!", 1709, 1170, "#ffe39a");
+      if (!b.reduced) b.world.tweens.add({ targets: duck, angle: duck.angle + 360, duration: 600, ease: "Cubic.easeOut" });
+      for (let i = 0; i < 10; i += 1) {
+        ripple.clear();
+        ripple.lineStyle(3, 0xffffff, 0.7 - i * 0.07);
+        ripple.strokeEllipse(1709, 1262, 60 + i * 9, 24 + i * 3.5);
+        await b.fx.wait(60);
+      }
+      ripple.clear();
+      duckSpin = false;
+    });
+    const water = b.g(1.55);
+    b.onUpdate((t) => {
+      water.clear();
+      water.lineStyle(3, 0xffffff, 0.28);
+      for (let r = 0; r < 4; r += 1) {
+        const y0 = 1232 + r * 80;
+        const ph = b.reduced ? r : t / 900 + r * 1.3;
+        water.beginPath();
+        for (let x = 960; x <= 1520; x += 20) {
+          const y = y0 + Math.sin(x / 70 + ph) * 6;
+          if (x === 960) water.moveTo(x, y);
+          else water.lineTo(x, y);
+        }
+        water.strokePath();
+      }
+    });
     b.prop("lifeguard-chair", 790, 1500, { origin: [0.5, 1], rect: [-90, -44, 180, 44], shadow: 150 });
     b.npc("marola", 790, 1292, {
       scale: 0.78,
@@ -392,9 +495,9 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.onUpdate((t) => neon.setAlpha(b.reduced ? 1 : Math.sin(t / 90) > 0.97 ? 0.6 : 1));
     b.prop("poster-tilt", 1615, 200, { origin: [0.5, 0.5], scale: 0.9, depth: "wall" });
     const cabs: [string, number, string][] = [
-      ["cab-a", 220, "cabA"],
-      ["cab-b", 400, "cabB"],
-      ["cab-c", 580, "cabC"],
+      ["cab-a", 190, "cabA"],
+      ["cab-b", 390, "cabB"],
+      ["cab-c", 590, "cabC"],
       ["cab-d", 1220, "cabD"],
     ];
     const colors = [0xff7ad9, 0x5cf0ff, 0x7dffb2, 0xc9d4e4];
@@ -402,6 +505,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     const bursts = new Map<string, number>();
     cabs.forEach(([key, x, script], idx) => {
       b.prop(key, x, 530, { origin: [0.5, 1] });
+      const halo = b.glow(x, 254, 230, 110, colors[idx], 0.22, 0.6);
+      b.onUpdate((t) => halo.setAlpha(b.reduced ? 0.22 : 0.16 + Math.max(0, Math.sin(t / 700 + idx * 1.7)) * 0.16));
       const g = b.world.add.graphics().setDepth(531);
       screens.set(script, g);
       const sx = x - 49;
@@ -451,8 +556,26 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         }
       });
     });
+    let errAt = 6000;
+    let errBusy = false;
+    b.onUpdate((t) => {
+      if (b.reduced || errBusy || t < errAt) return;
+      errAt = t + 9000 + Math.random() * 6000;
+      errBusy = true;
+      const scr = screens.get("cabD");
+      scr?.setVisible(false);
+      const bg = b.world.add.rectangle(1171, 298, 98, 80, 0x3a0d18, 1).setOrigin(0, 0).setDepth(531.5);
+      msgBox.setColor("#ff8f86").setText("ERRO 404");
+      b.world.time.delayedCall(900, () => {
+        bg.destroy();
+        msgBox.setText("").setColor("#7dffb2");
+        scr?.setVisible(true);
+        errBusy = false;
+      });
+    });
     const msgBox = b.world.add.text(1220, 338, "", { fontFamily: "Courier New, monospace", fontSize: "13px", fontStyle: "bold", color: "#7dffb2", align: "center", wordWrap: { width: 92 } }).setOrigin(0.5).setDepth(532);
     b.act("brokenScreen", async () => {
+      errBusy = true;
       bursts.set("cabD", b.world.time.now + 300);
       b.fx.sfx("bars", 0.5, 1.2);
       await b.fx.wait(320);
@@ -466,8 +589,30 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       msgBox.setText("");
       bg.destroy();
       screens.get("cabD")?.setVisible(true);
+      errBusy = false;
     });
     const records = b.prop("records", 300, 112, { origin: [0.5, 0.5], depth: "wall", scale: 0.9 });
+    const chase = b.g(2.9);
+    let near = false;
+    b.onUpdate((t) => {
+      const h = b.hero();
+      const close = Boolean(h && Math.hypot(h.x - 300, h.y - 600) < 340);
+      if (close && !near) b.fx.sfx("arcadeBeep", 0.35, 1.5);
+      near = close;
+      chase.clear();
+      if (!close) return;
+      const step = Math.floor(t / 120);
+      const pts: [number, number][] = [];
+      for (let i = 0; i < 14; i += 1) pts.push([164 + i * 21, 12]);
+      for (let i = 0; i < 9; i += 1) pts.push([443, 12 + i * 22]);
+      for (let i = 0; i < 14; i += 1) pts.push([443 - i * 21, 210]);
+      for (let i = 0; i < 9; i += 1) pts.push([157, 210 - i * 22]);
+      pts.forEach(([x, y], i) => {
+        const on = (i + step) % 4 === 0;
+        chase.fillStyle(on ? 0xffe39a : 0x5a3fb8, on ? 1 : 0.6);
+        chase.fillCircle(x, y, on ? 5 : 3.5);
+      });
+    });
     const recText = b.world.add.text(300, 80, "", { fontFamily: "Courier New, monospace", fontSize: "19px", fontStyle: "bold", color: "#ffe39a", lineSpacing: 5 }).setOrigin(0.5, 0).setDepth(3);
     let recSig = "";
     b.onUpdate(() => {
@@ -497,7 +642,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.block(110, 470, 1880, 70);
     b.npc("tilt", 1000, 548, { scale: 0.95, depth: 548, bob: 0.008 });
     b.greet("tilt", b.s.flags.tiltWon ? ["Jogador número 1!", "Meus pixels ainda tremem!"] : ["Psst! Jogador!", "Não olhe pra mim. Olhe. Não olhe."], 280);
-    b.glow(1000, 600, 320, 120, 0x7dffb2, 0.25, 0.6);
+    const tiltGlow = b.glow(1000, 600, 320, 120, 0x7dffb2, 0.25, 0.6);
+    b.onUpdate((t) => tiltGlow.setAlpha(b.reduced || b.s.flags.tiltWon ? 0.25 : 0.22 + Math.max(0, Math.sin(t / 380)) * 0.3));
     b.spot({ id: "tilt", x: 1000, y: 640, r: 170, verb: "Conversar", script: "tilt" });
     b.prop("cab-gold", 1842, 525, { origin: [0.5, 1], depth: 520, show: (st) => Boolean(st.flags.curtainOpen) });
     const gold = b.glow(1842, 360, 260, 340, 0xffe39a, 0.4, 521);
@@ -542,6 +688,25 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     const sky = b.world.add.image(0, 0, "sky-beach").setOrigin(0, 0).setDisplaySize(3000, 180).setDepth(0);
     void sky;
     b.prop("island", 2150, 174, { origin: [0.5, 1], depth: 0.05, scale: 0.75 });
+    const lamp = b.glow(2150, 35, 110, 110, 0xffc83d, 0, 0.06).setBlendMode(Phaser.BlendModes.NORMAL);
+    const lampCore = b.glow(2150, 35, 34, 34, 0xfffaf0, 0, 0.07).setBlendMode(Phaser.BlendModes.NORMAL);
+    const beacon = (t: number) => {
+      const c = t % 7080;
+      const flash = (s: number) => c >= s && c < s + 4 * 360 && (c - s) % 360 < 180;
+      return flash(0) || flash(2640);
+    };
+    let lampBoost = 0;
+    b.onUpdate((t) => {
+      const on = beacon(t);
+      lamp.setAlpha(on ? 0.75 + lampBoost * 0.5 : 0);
+      lampCore.setAlpha(on ? 1 : 0);
+      lamp.setDisplaySize(on ? 110 + lampBoost * 160 : 80, on ? 110 + lampBoost * 160 : 80);
+    });
+    b.act("lighthouseLook", async () => {
+      lampBoost = 0.35;
+      await b.fx.wait(2200);
+      lampBoost = 0;
+    });
     const sea = b.world.add.tileSprite(0, 160, 3000, 480, "sea-tile").setOrigin(0, 0).setDepth(0.1);
     b.tiles("sand", 0, 600, 3000, 900, 0.15);
     const shore = b.g(0.3);
@@ -600,6 +765,21 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("bottle", 1250, 540, { origin: [0.5, 1], depth: 541, show: (st) => Boolean(st.flags.seaPaused && !st.flags.gotOrder) });
     b.prop("wave-sign", 1050, 720, { origin: [0.5, 1], circle: 18 });
     b.prop("kiosk", 1960, 930, { origin: [0.5, 1], rect: [-262, -170, 524, 170], shadow: 560 });
+    const radio = b.prop("radio", 2100, 742, { origin: [0.5, 1], depth: 931, scale: 0.9 });
+    b.act("radioTune", async () => {
+      b.fx.sfx("bars", 0.35, 1.4);
+      for (let i = 0; i < 6; i += 1) {
+        if (!b.reduced) radio.setAngle(i % 2 ? 4 : -4);
+        if (i === 2) b.fx.word("♪", 2130, 680, "#ffe39a");
+        await b.fx.wait(110);
+      }
+      radio.setAngle(0);
+    });
+    b.act("kioskBell", async () => {
+      b.fx.sfx("bell", 0.6, 1.4);
+      b.fx.word("PLIM!", 1960, 640, "#ffe39a");
+      await b.fx.wait(400);
+    });
     b.prop("poster-surf", 1752, 800, { origin: [0.5, 0.5], scale: 0.42, depth: 931 });
     const boards = [
       b.prop("surf-a", 2600, 940, { origin: [0.5, 1], angle: -6 }),
@@ -621,7 +801,13 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("deckchair", 1420, 1040, { origin: [0.5, 1], rect: [-70, -40, 140, 40] });
     const marisa = b.npc("marisa", 1570, 1030, { scale: 0.85 });
     b.prop("chips", 1452, 1000, { origin: [0.5, 1], depth: 1042, scale: 0.8 });
-    b.greet("marisa", ["Olha a distância!", "Tô de férias. Não incomode."], 260);
+    b.greet("marisa", () => {
+      const f = b.s.flags;
+      if (f.ended) return ["Férias que nunca acabam!", "Vem, a areia tá quentinha."];
+      if (f.gotOrder) return ["Uma garrafa com recado? Clássico.", "O mar voltou. A reprise também."];
+      if (f.seaPaused) return ["O mar parou! Que silêncio bom.", "Aproveita e vê o que ele deixou."];
+      return ["Olha a distância!", "Tô de férias. Não incomode.", "Já viu o farol? Ele pisca esquisito."];
+    }, 260);
     let guardAt = 0;
     const guard = async (t: number) => {
       guardAt = t + 6000;
@@ -638,7 +824,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.act("marisaGuard", () => guard(b.world.time.now));
     const clique = b.npc("clique", 880, 830, { scale: 0.82 });
     b.circleBlock(880, 824, 34);
-    b.greet("clique", ["Shh! A onda tá vindo!", "Sorria! Não, você não."], 280);
+    b.greet("clique", () => (b.s.flags.photoDone ? ["Minha foto vai pro jornal do resort!", "Quer ver a foto? Ficou ótima."] : ["Shh! A onda tá vindo!", "Sorria! Não, você não.", "Mais uma. Só mais uma."]), 280);
     const flashAt = (x: number, y: number) => {
       const fl = b.glow(x, y, 160, 160, 0xffffff, 0.95, 5900);
       b.world.tweens.add({ targets: fl, alpha: 0, scale: 1.6, duration: b.reduced ? 10 : 380, onComplete: () => fl.destroy() });
@@ -676,7 +862,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const card = b.world.add.container(clique.x + 120, clique.topY - 60).setDepth(5900);
       const frame = b.world.add.rectangle(0, 0, 150, 170, 0xfffaf0).setStrokeStyle(6, 0x1d1830);
       const pic = b.world.add.tileSprite(0, -14, 126, 110, "sea-tile");
-      const txt = b.world.add.text(0, 62, "4:04", { fontFamily: "Arial Black, Arial, sans-serif", fontSize: "22px", color: "#1d1830" }).setOrigin(0.5);
+      const txt = b.world.add.text(0, 62, "4:04", { fontFamily: b.fonts.display, fontSize: "24px", color: "#1d1830" }).setOrigin(0.5);
       card.add([frame, pic, txt]);
       card.setAngle(-8);
       if (!b.reduced) {
@@ -692,6 +878,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("rock-a", 2820, 1330, { origin: [0.5, 1], flip: true, rect: [-100, -60, 200, 60] });
     b.prop("shell-big", 650, 860, { origin: [0.5, 1], circle: 30 });
     b.prop("shells", 900, 1320, { origin: [0.5, 1], depth: "floor" });
+    b.spot({ id: "shells", x: 900, y: 1350, r: 90, verb: "Escutar", script: "shells" });
     b.prop("shells", 2050, 1260, { origin: [0.5, 1], depth: "floor" });
     b.prop("sandcastle", 1100, 1280, { origin: [0.5, 1], rect: [-90, -50, 180, 50] });
     b.act("crabPop", async () => {
@@ -718,13 +905,49 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("lounge-a", 790, 1250, { origin: [0.5, 1], rect: [-92, -54, 184, 54] });
     for (let i = 0; i < 2; i += 1) {
       const crab = b.world.add.image(900 + i * 900, 1150 + i * 120, "crab-a").setOrigin(0.5, 1);
+      const lo = 700 + i * 700;
+      const hi = 1500 + i * 700;
       let x = crab.x;
       let dir = i ? -1 : 1;
+      let state: "walk" | "flee" | "hidden" = "walk";
+      let until = 0;
       b.onUpdate((t, dt) => {
-        x += dir * 60 * dt;
-        if (x > 1500 + i * 700) dir = -1;
-        if (x < 700 + i * 700) dir = 1;
-        crab.setX(x).setDepth(crab.y).setTexture(Math.floor(t / 160) % 2 ? "crab-a" : "crab-b");
+        const h = b.hero();
+        if (state === "hidden") {
+          if (t < until) return;
+          if (h && Math.abs(h.x - (lo + hi) / 2) < 500 && Math.abs(h.y - crab.y) < 300) {
+            until = t + 2000;
+            return;
+          }
+          x = lo + Math.random() * (hi - lo);
+          state = "walk";
+          crab.setVisible(true).setScale(1).setX(x);
+          if (!b.reduced) b.world.tweens.add({ targets: crab, scaleY: { from: 0.1, to: 1 }, duration: 220, ease: "Back.easeOut" });
+          return;
+        }
+        if (state === "walk" && h && Math.hypot(h.x - x, (h.y - crab.y) * 1.3) < 230) {
+          state = "flee";
+          until = t + 900;
+          dir = h.x < x ? 1 : -1;
+          b.fx.sfx("blipSoft", 0.25, 2.4);
+        }
+        const speed = state === "flee" ? 300 : 60;
+        x += dir * speed * dt;
+        if (x > hi) {
+          x = hi;
+          dir = -1;
+        }
+        if (x < lo) {
+          x = lo;
+          dir = 1;
+        }
+        crab.setX(x).setDepth(crab.y).setTexture(Math.floor(t / (state === "flee" ? 70 : 160)) % 2 ? "crab-a" : "crab-b");
+        if (state === "flee" && t > until) {
+          state = "hidden";
+          until = t + 6000 + Math.random() * 3000;
+          if (b.reduced) crab.setVisible(false);
+          else b.world.tweens.add({ targets: crab, scaleY: 0.05, duration: 200, onComplete: () => crab.setVisible(false) });
+        }
       });
     }
     const lento = b.npc("lento", 2500, 1330, { scale: 0.8, show: (st) => Boolean(st.flags.whistleReturned && !st.flags.ended), frames: s.flags.gotKey ? { normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" } : undefined });
@@ -836,17 +1059,53 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       ["tree-a", 2160, 1690, false],
       ["tree-b", 2560, 1700, true],
     ];
-    for (const [k, x, y, flip] of trees) b.prop(k, x, y, { origin: [0.5, 1], flip, rect: [-44, -26, 88, 26], anim: "sway", amp: 0.8 });
+    for (const [k, x, y, flip] of trees) {
+      const tr = b.prop(k, x, y, { origin: [0.5, 1], flip, rect: [-44, -26, 88, 26], anim: "sway", amp: 0.8 });
+      if (y <= 760) tr.setTint(0xc6d0e2);
+    }
+    let leafAt = 1500;
+    b.onUpdate((t) => {
+      if (b.reduced || t < leafAt) return;
+      leafAt = t + 1600 + Math.random() * 2200;
+      const [tx, ty] = trees[Math.floor(Math.random() * trees.length)].slice(1) as [number, number];
+      const leaf = b.world.add.image(tx + (Math.random() - 0.5) * 300, ty - 380 + Math.random() * 120, "leaf").setDepth(4650).setAngle(Math.random() * 180);
+      b.world.tweens.add({ targets: leaf, y: leaf.y + 260, x: leaf.x + (Math.random() - 0.5) * 140, angle: leaf.angle + 220, alpha: { from: 1, to: 0 }, duration: 3200, ease: "Sine.easeIn", onComplete: () => leaf.destroy() });
+    });
     b.prop("treehouse", 2480, 980, { origin: [0.5, 1] });
     b.block(2390, 950, 50, 30);
     b.block(2530, 950, 50, 30);
     b.prop("ruin-arch", 1650, 1062, { origin: [0.5, 1] });
+    const ghost = b.world.add.image(1720, 760, "ghost").setDepth(1061).setAlpha(0);
+    let ghostAt = 7000;
+    b.onUpdate((t) => {
+      if (b.reduced || t < ghostAt) return;
+      ghostAt = t + 11000 + Math.random() * 8000;
+      ghost.setPosition(1560 + Math.random() * 200, 800).setAlpha(0.9);
+      b.world.tweens.add({ targets: ghost, y: 700, duration: 700, yoyo: true, hold: 900, ease: "Sine.easeOut", onComplete: () => ghost.setAlpha(0) });
+    });
     b.block(1474, 1036, 34, 26);
     b.block(1794, 1036, 34, 26);
     b.prop("placard", 1500, 1160, { origin: [0.5, 1], circle: 16 });
     b.prop("statue-404", 2050, 840, { origin: [0.5, 1], rect: [-100, -44, 200, 44] });
     b.prop("placard", 2190, 920, { origin: [0.5, 1], circle: 16 });
     const dish = b.prop("dish", 1250, 780, { origin: [0.5, 1], rect: [-70, -30, 140, 30] });
+    const tip = b.glow(1250, 486, 46, 46, 0xef4f43, 0.5, 781);
+    const waves = b.g(782);
+    b.onUpdate((t) => {
+      tip.setAlpha(b.reduced ? 0.5 : Math.sin(t / 260) > 0.2 ? 0.85 : 0.2);
+      waves.clear();
+      if (b.reduced) return;
+      const k = (t % 4200) / 1400;
+      for (let i = 0; i < 3; i += 1) {
+        const v = k - i * 0.35;
+        if (v < 0 || v > 1) continue;
+        const r = 30 + v * 110;
+        waves.lineStyle(5, 0x9df0dc, (1 - v) * 0.7);
+        waves.beginPath();
+        waves.arc(1250, 520, r, Phaser.Math.DegToRad(-150), Phaser.Math.DegToRad(-30));
+        waves.strokePath();
+      }
+    });
     b.act("dishWobble", async () => {
       b.fx.sfx("bars", 0.4, 1.3);
       if (!b.reduced) b.world.tweens.add({ targets: dish, angle: { from: -5, to: 5 }, duration: 110, yoyo: true, repeat: 4, onComplete: () => dish.setAngle(0) });
@@ -859,6 +1118,17 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("carousel-horse", 1460, 1420, { origin: [0.5, 1], rect: [-50, -24, 100, 24] });
     b.spot({ id: "horse", x: 1460, y: 1460, r: 110, verb: "Examinar", script: "horse" });
     b.prop("ticket-booth", 2270, 1380, { origin: [0.5, 1], rect: [-140, -84, 280, 84], shadow: 300 });
+    const boothLight = b.glow(2270, 1018, 240, 90, 0xffe39a, 0.3, 1382);
+    b.onUpdate((t) => boothLight.setAlpha(b.reduced ? 0.3 : Math.floor(t / 500) % 4 === 0 ? 0.05 : 0.32));
+    b.act("ticketPrint", async () => {
+      b.fx.sfx("tick", 0.6, 1.2);
+      const tk = b.world.add.image(2270, 1250, "ticket").setDepth(1383).setScale(0.3);
+      if (b.reduced) tk.setScale(1).setY(1180);
+      else await new Promise<void>((r) => b.world.tweens.add({ targets: tk, scale: 1, y: 1180, angle: -8, duration: 380, ease: "Back.easeOut", onComplete: () => r() }));
+      b.fx.sfx("pick", 0.6);
+      await b.fx.wait(900);
+      b.world.tweens.add({ targets: tk, alpha: 0, y: 1140, duration: b.reduced ? 10 : 300, onComplete: () => tk.destroy() });
+    });
     b.prop("poster-ghost", 2270, 1184, { origin: [0.5, 0.5], scale: 0.5, depth: 1381 });
     b.prop("log", 2200, 1490, { origin: [0.5, 1], rect: [-110, -50, 220, 50] });
     b.prop("stump", 720, 1010, { origin: [0.5, 1], rect: [-66, -40, 132, 40] });
@@ -1045,7 +1315,15 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     ] as [number, number][]) {
       b.prop("lantern-post", x, y, { origin: [0.5, 1], circle: 14 });
       const lg = b.glow(x + 50, y - 200, 200, 200, 0xffc46b, 0.4, y + 1);
-      b.onUpdate((t) => lg.setAlpha(b.reduced ? 0.4 : 0.32 + Math.sin(t / 300 + x) * 0.06));
+      const pool = b.glow(x + 20, y + 6, 220, 70, 0xffc46b, 0.22, 1.4);
+      let flick = 1;
+      b.onUpdate((t) => {
+        if (b.reduced) return;
+        flick += (0.85 + Math.random() * 0.3 - flick) * 0.2;
+        const a = (0.3 + Math.sin(t / 300 + x) * 0.05) * flick;
+        lg.setAlpha(a);
+        pool.setAlpha(a * 0.6);
+      });
     }
     garland(b, [1150, 470], [1560, 450], 60, 4600);
     garland(b, [1940, 480], [2380, 490], 60, 4600);
@@ -1060,6 +1338,22 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.spot({ id: "bridge", x: 1090, y: 1030, r: 100, verb: "Olhar a água", script: "bridge" });
     b.spot({ id: "fall", x: 560, y: 650, r: 200, verb: (st) => (st.items.includes("remote") ? "Pausar a cachoeira" : "Examinar"), script: "fall", show: (st) => !st.flags.fallPaused, hint: "item" });
     b.spot({ id: "door", x: 560, y: 630, r: 160, verb: "Entrar", script: "stationDoor", show: (st) => Boolean(st.flags.fallPaused) });
+    b.spot({ id: "booth", x: 2140, y: 1430, r: 100, verb: "Comprar bilhete", script: "booth" });
+    const doorGlow = b.glow(560, 450, 240, 320, 0x9df0dc, 0.1, 302.5);
+    b.onUpdate((t) => {
+      const open = Boolean(b.s.flags.fallPaused);
+      const base = open ? 0.22 : 0.05;
+      doorGlow.setAlpha(b.reduced ? base : base + Math.max(0, Math.sin(t / 700)) * (open ? 0.16 : 0.05));
+    });
+    b.act("fallFlicker", async () => {
+      const scan = b.vars.fallScan as Phaser.GameObjects.TileSprite;
+      b.fx.sfx("bars", 0.35, 0.8);
+      for (let i = 0; i < 5; i += 1) {
+        scan.setAlpha(i % 2 ? 0 : 0.55);
+        await b.fx.wait(80);
+      }
+      scan.setAlpha(0);
+    });
     b.spot({ id: "placardArch", x: 1500, y: 1195, r: 110, verb: "Ler", script: "placardArch" });
     b.spot({ id: "placardStatue", x: 2190, y: 955, r: 110, verb: "Ler", script: "placardStatue" });
     b.spot({ id: "dish", x: 1250, y: 820, r: 130, verb: "Ler", script: "placardDish" });
@@ -1146,7 +1440,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("suitcases", 230, 860, { origin: [0.5, 1], rect: [-96, -70, 192, 70] });
     const sleeper = b.npc("mascot", 700, 640, { scale: 0.48, depth: 841, noShadow: true, frames: { normal: "sleep", look: "sleep", talk: "sleep" } });
     b.vars.sleeper = sleeper;
-    const zz = b.world.add.text(760, 560, "z", { fontFamily: "Arial Black, Arial, sans-serif", fontSize: "40px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 6 }).setDepth(842);
+    const zz = b.world.add.text(760, 560, "z", { fontFamily: b.fonts.display, fontSize: "44px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 6 }).setDepth(842);
     b.vars.zz = zz;
     b.onUpdate((t) => {
       const k = (t % 1800) / 1800;

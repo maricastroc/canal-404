@@ -6,7 +6,7 @@ export const INK = "#1d1830";
 export const INK_HEX = 0x1d1830;
 export const CREAM_HEX = 0xfbf5e6;
 
-export type Fonts = { display: string; body: string; hand: string };
+export type Fonts = { display: string; body: string; hand: string; round?: string };
 
 type TextOpts = {
   size: number;

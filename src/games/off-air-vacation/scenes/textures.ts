@@ -118,6 +118,33 @@ export function makeTextures(scene: Phaser.Scene) {
     g.fillTriangle(0, 15, 15, 11, 15, 19);
     g.fillTriangle(30, 15, 15, 11, 15, 19);
   });
+  gfx("leaf", 26, 16, (g) => {
+    g.fillStyle(0x1d1830, 1);
+    g.fillEllipse(13, 8, 26, 16);
+    g.fillStyle(0x6fbf4f, 1);
+    g.fillEllipse(13, 8, 20, 10);
+  });
+  gfx("ghost", 70, 80, (g) => {
+    g.fillStyle(0x1d1830, 1);
+    g.fillRoundedRect(4, 4, 62, 74, { tl: 31, tr: 31, bl: 6, br: 6 });
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillRoundedRect(9, 9, 52, 66, { tl: 26, tr: 26, bl: 4, br: 4 });
+    g.fillStyle(0x1d1830, 1);
+    g.fillEllipse(26, 34, 9, 13);
+    g.fillEllipse(44, 34, 9, 13);
+    g.fillEllipse(35, 52, 10, 8);
+  });
+  gfx("ticket", 90, 44, (g) => {
+    g.fillStyle(0x1d1830, 1);
+    g.fillRect(0, 0, 90, 44);
+    g.fillStyle(0xffe39a, 1);
+    g.fillRect(4, 4, 82, 36);
+    g.fillStyle(0xef4f43, 1);
+    g.fillRect(10, 12, 50, 6);
+    g.fillRect(10, 24, 36, 5);
+    g.fillStyle(0x1d1830, 1);
+    for (let i = 0; i < 4; i += 1) g.fillCircle(72, 10 + i * 8, 2);
+  });
   gfx("confetti", 18, 10, (g) => {
     g.fillStyle(0xffffff, 1);
     g.fillRect(0, 0, 18, 10);

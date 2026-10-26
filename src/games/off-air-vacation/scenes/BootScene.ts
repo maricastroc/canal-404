@@ -19,18 +19,18 @@ const DECO = [
 ];
 
 const FOLK_FRAMES: Record<string, string[]> = {
-  bigodes: ["normal", "look", "talk", "surprised", "happy"],
+  bigodes: ["normal", "look", "talk", "surprised", "happy", "blink", "gaze-l", "gaze-r"],
   marola: ["sad", "look", "talk", "normal", "talk-w", "happy", "look-w"],
-  tilt: ["normal", "look", "talk", "sad", "happy", "surprised", "off"],
+  tilt: ["normal", "look", "talk", "sad", "happy", "surprised", "off", "blink"],
   marisa: ["normal", "look", "talk", "happy"],
   psiu: ["normal", "look", "talk", "happy", "sad"],
   lento: ["walk-a", "walk-b", "talk", "walk-a-nokey", "walk-b-nokey", "talk-nokey", "happy-nokey"],
   mascot: ["sleep", "surprised", "excited", "happy"],
-  capi: ["normal", "look", "talk", "happy", "surprised", "shake-a", "shake-b"],
-  clique: ["normal", "look", "talk", "happy", "sad", "surprised", "shoot"],
+  capi: ["normal", "look", "talk", "happy", "surprised", "shake-a", "shake-b", "blink"],
+  clique: ["normal", "look", "talk", "happy", "sad", "surprised", "shoot", "blink"],
   cavuca: ["walk-a", "walk-b", "look", "talk", "happy", "surprised"],
-  chiado: ["normal", "look", "happy", "surprised"],
-  placar: ["normal", "look", "talk", "happy", "surprised", "sad"],
+  chiado: ["normal", "look", "happy", "surprised", "blink"],
+  placar: ["normal", "look", "talk", "happy", "surprised", "sad", "blink"],
 };
 
 const FACES = [
@@ -49,7 +49,7 @@ hotel island item-cartridge item-key item-net item-order item-poster item-remote
 lobby-banner lobby-floor lobby-wall lobby-window-a lobby-window-b log lounge-a lounge-b luggage-cart map-island monitor-wall mug mushrooms neon-sign net-pole
 nightstand palm-b palm pier pinball placard plant-small plant-tall pool poster-club poster-ghost poster-summer poster-surf poster-tilt prize-counter rock-a
 rock-b room-floor room-wall rug-lobby ruin-arch sand sandcastle shed shell-big shells signpost sofa station-floor station-wall station-window statue-404 stone
-stool stump suitcases flamingo-look flamingo-empty-look chips records poster-pijama surf-a surf-b surf-c tape-deck ticket-booth towel tree-a tree-b tree-c treehouse tv-lobby umbrella-a umbrella-b waterfall-tile wave-sign`
+stool stump suitcases guest-book radio flamingo-look flamingo-empty-look chips records poster-pijama surf-a surf-b surf-c tape-deck ticket-booth towel tree-a tree-b tree-c treehouse tv-lobby umbrella-a umbrella-b waterfall-tile wave-sign`
   .split(/\s+/)
   .filter(Boolean);
 
