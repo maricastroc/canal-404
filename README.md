@@ -1,8 +1,58 @@
 # CANAL 404
 
+![Canal 404: six games in one channel](docs/screenshots/banner.webp)
+
 A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and six complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama** and **Férias Fora do Ar**.
 
 The code, file names and ids are in English. Everything the visitor reads on screen is in Brazilian Portuguese.
+
+## Screenshots
+
+### The portal
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/portal-home.webp" alt="Broadcast room with the TV, arcade cabinet, radio and the 404 mascot"></td>
+    <td width="50%"><img src="docs/screenshots/portal-catalog.webp" alt="Game catalog with category filters and game cards"></td>
+  </tr>
+  <tr>
+    <td align="center">Broadcast room (<code>/</code>)</td>
+    <td align="center">Game catalog (<code>/games</code>)</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/portal-characters.webp" alt="Character select with the channel cast"></td>
+    <td width="50%"><img src="docs/screenshots/portal-extras.webp" alt="Extras page with posters, music, achievements and secrets"></td>
+  </tr>
+  <tr>
+    <td align="center">Characters (<code>/characters</code>)</td>
+    <td align="center">Extras (<code>/extras</code>)</td>
+  </tr>
+</table>
+
+### The games
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/dead-end-street.webp" alt="Rua Sem Saída: a tire hits the flamingo and the trash can lids"></td>
+    <td width="33%"><img src="docs/screenshots/bad-ideas-lab.webp" alt="Laboratório de Péssimas Ideias: the machine works and rings the bell"></td>
+    <td width="33%"><img src="docs/screenshots/food-fight.webp" alt="Guerra de Lanche: the rival tables fight each other"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Rua Sem Saída</b></td>
+    <td align="center"><b>Laboratório de Péssimas Ideias</b></td>
+    <td align="center"><b>Guerra de Lanche</b></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/operation-recess.webp" alt="Operação: Recreio: the Inspetor do Silêncio boss fight begins"></td>
+    <td width="33%"><img src="docs/screenshots/pajama-war.webp" alt="Guerra do Pijama: a knockout in the living room arena"></td>
+    <td width="33%"><img src="docs/screenshots/off-air-vacation.webp" alt="Férias Fora do Ar: the master remote pauses the sea"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Operação: Recreio</b></td>
+    <td align="center"><b>Guerra do Pijama</b></td>
+    <td align="center"><b>Férias Fora do Ar</b></td>
+  </tr>
+</table>
 
 ## Running
 
