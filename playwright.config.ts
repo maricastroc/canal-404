@@ -5,16 +5,16 @@ const port = Number(process.env.PORT ?? 3000);
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
+  timeout: ci ? 180_000 : 60_000,
+  expect: { timeout: ci ? 30_000 : 15_000 },
   fullyParallel: true,
   forbidOnly: ci,
   retries: ci ? 1 : 0,
-  workers: ci ? 2 : 3,
+  workers: ci ? 1 : 3,
   reporter: ci ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: `http://localhost:${port}`,
-    trace: "retain-on-failure",
+    trace: ci ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [

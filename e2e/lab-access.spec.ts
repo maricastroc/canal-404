@@ -2,15 +2,15 @@ import type { Page } from "@playwright/test";
 import { PART_ORDER, type PartType } from "../src/games/bad-ideas-lab/config";
 import { LEVELS } from "../src/games/bad-ideas-lab/levels";
 import { poseText } from "../src/games/bad-ideas-lab/narration";
-import { hear, key, listen, said } from "./announcer";
-import { expect, openGame, stage, test } from "./fixtures";
+import { hear, key, listen, ready, said } from "./announcer";
+import { expect, openGame, simTime, stage, test } from "./fixtures";
 
 const LAB = { slug: "bad-ideas-lab", title: "Laboratório de Péssimas Ideias" };
 
 async function startLevel(page: Page, n: number) {
   const intro = await openGame(page, LAB.slug, LAB.title);
   await listen(page);
-  await hear(page, () => intro.getByRole("button", { name: `Jogar fase ${n}` }).click(), new RegExp(`^Fase ${n} de 6`), 15_000);
+  await hear(page, () => intro.getByRole("button", { name: `Jogar fase ${n}` }).click(), new RegExp(`^Fase ${n} de 6`), simTime(15_000));
   await stage(page).focus();
 }
 
@@ -19,7 +19,7 @@ async function winTutorial(page: Page) {
   await key(page, "Enter", /Rampa no lugar certo/);
   await key(page, "Space", /Máquina ligada/);
   const result = page.getByRole("dialog", { name: /^Vitória/ });
-  await expect(result).toBeVisible({ timeout: 30_000 });
+  await expect(result).toBeVisible({ timeout: simTime(30_000) });
   return result;
 }
 
@@ -39,7 +39,7 @@ test("level 2 can be explored and solved from the announcements alone", async ({
   test.setTimeout(240_000);
   await startLevel(page, 1);
   const won = await winTutorial(page);
-  await hear(page, () => won.getByRole("button", { name: /Próxima fase/ }).click(), /^Fase 2 de 6: Bom dia, Pixel/, 15_000);
+  await hear(page, () => won.getByRole("button", { name: /Próxima fase/ }).click(), /^Fase 2 de 6: Bom dia, Pixel/, simTime(15_000));
   await expect(stage(page)).toBeFocused();
 
   const description = await key(page, "d", /^Fase 2 de 6/);
@@ -47,10 +47,10 @@ test("level 2 can be explored and solved from the announcements alone", async ({
   expect(description).toMatch(/A ponta de baixo fica dentro da área de montagem/);
   expect(description).toContain("O sino é o objetivo");
 
-  const dry = await hear(page, () => page.keyboard.press("Space"), /Tentativa 1\./, 30_000);
+  const dry = await hear(page, () => page.keyboard.press("Space"), /Tentativa 1\./, simTime(30_000));
   expect(dry).toMatch(/tocou na prateleira de cima/);
   expect(dry).toMatch(/O mais perto que chegou do sino foi \d+ passos/);
-  await page.waitForTimeout(1_700);
+  await ready(page);
 
   let held = await key(page, "1", /^Rampa na mão/);
   for (let i = 0; i < 7 && !held.includes("descendo para a direita, 15 graus"); i += 1) held = await key(page, "r", /^Girou/);
@@ -81,15 +81,15 @@ test("level 2 can be explored and solved from the announcements alone", async ({
       last = await key(page, "ArrowDown", /prateleira de cima/);
       continue;
     }
-    const outcome = await hear(page, () => page.keyboard.press("Space"), /^(Não deu|Funcionou)/, 30_000);
+    const outcome = await hear(page, () => page.keyboard.press("Space"), /^(Não deu|Funcionou)/, simTime(30_000));
     if (outcome.startsWith("Funcionou")) {
       expect(outcome).toMatch(/tocou .*na rampa/);
-      await expect(page.getByRole("dialog", { name: /^Vitória/ })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole("dialog", { name: /^Vitória/ })).toBeVisible({ timeout: simTime(15_000) });
       await test.info().attach("anúncios", { body: (await said(page)).join("\n"), contentType: "text/plain" });
       return;
     }
     expect(outcome).toMatch(/Tentativa \d+\./);
-    await page.waitForTimeout(1_700);
+    await ready(page);
     below += 1;
     last = await key(page, "s", /prateleira de cima|Peça 1/);
     last = await key(page, "i", /^Rampa montada/);
@@ -148,10 +148,10 @@ test("queries describe the scene without moving anything", async ({ page }) => {
 
 test("focus stays on the game after a failed try and moves through the result dialog", async ({ page }) => {
   await startLevel(page, 1);
-  const report = await hear(page, () => page.keyboard.press("Space"), /^Não deu\. Tentativa 1\./, 30_000);
+  const report = await hear(page, () => page.keyboard.press("Space"), /^Não deu\. Tentativa 1\./, simTime(30_000));
   expect(report).toMatch(/Parou|Saiu da garagem/);
-  await page.waitForTimeout(1_700);
   await expect(stage(page)).toBeFocused();
+  await ready(page);
   await key(page, "l", /^Tentativa 1\./);
   const result = await winTutorial(page);
   await expect(result.locator(":focus")).toHaveCount(1);
@@ -205,12 +205,12 @@ test("every level can be finished with the keyboard by following the spoken coor
       }
       await key(page, "Enter", /colocad|lugar certo/);
     }
-    const outcome = await hear(page, () => page.keyboard.press("Space"), /^(Não deu|Funcionou)/, 40_000);
+    const outcome = await hear(page, () => page.keyboard.press("Space"), /^(Não deu|Funcionou)/, simTime(40_000));
     expect(outcome, `${level.id}: ${outcome}`).toMatch(/^Funcionou/);
     const result = page.getByRole("dialog", { name: /^Vitória/ });
-    await expect(result).toBeVisible({ timeout: 15_000 });
+    await expect(result).toBeVisible({ timeout: simTime(15_000) });
     if (index === LEVELS.length - 1) break;
-    await hear(page, () => result.getByRole("button", { name: /Próxima fase/ }).click(), new RegExp(`^Fase ${index + 2} de 6`), 15_000);
+    await hear(page, () => result.getByRole("button", { name: /Próxima fase/ }).click(), new RegExp(`^Fase ${index + 2} de 6`), simTime(15_000));
     await expect(stage(page)).toBeFocused();
   }
 });

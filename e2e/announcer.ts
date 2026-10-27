@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { simTime } from "./fixtures";
 
 type Spoken = { __said: string[] };
 
@@ -24,7 +25,7 @@ export async function said(page: Page) {
   return page.evaluate(() => (window as unknown as Spoken).__said);
 }
 
-export async function hear(page: Page, action: () => Promise<unknown>, match: RegExp = /./, timeout = 5_000) {
+export async function hear(page: Page, action: () => Promise<unknown>, match: RegExp = /./, timeout = simTime(5_000)) {
   const before = (await said(page)).length;
   await action();
   let heard = "";
@@ -43,4 +44,15 @@ export async function hear(page: Page, action: () => Promise<unknown>, match: Re
 
 export async function key(page: Page, name: string, match: RegExp = /./) {
   return hear(page, () => page.keyboard.press(name), match);
+}
+
+export async function ready(page: Page, timeout = simTime(20_000)) {
+  const end = Date.now() + timeout;
+  for (;;) {
+    try {
+      return await hear(page, () => page.keyboard.press("c"), /Nada para cancelar/, 1_000);
+    } catch (error) {
+      if (Date.now() > end) throw error;
+    }
+  }
 }

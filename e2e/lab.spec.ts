@@ -1,4 +1,4 @@
-import { expect, openGame, stage, test } from "./fixtures";
+import { expect, openGame, simTime, stage, test } from "./fixtures";
 
 const LAB = { slug: "bad-ideas-lab", title: "Laboratório de Péssimas Ideias" };
 
@@ -20,7 +20,7 @@ test("wins the first Laboratório level with the keyboard only", async ({ page }
   await page.keyboard.press("Space");
 
   const result = page.getByRole("dialog", { name: /^Vitória/ });
-  await expect(result).toBeVisible({ timeout: 30_000 });
+  await expect(result).toBeVisible({ timeout: simTime(30_000) });
   await expect(result.getByRole("img", { name: "3 de 3 estrelas" })).toBeVisible();
 
   await result.getByRole("button", { name: "Escolher fase" }).click();

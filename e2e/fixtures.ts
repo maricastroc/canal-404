@@ -2,6 +2,12 @@ import { test as base, expect, type Page } from "@playwright/test";
 
 type Problems = { list: string[]; allow: (pattern: RegExp) => void };
 
+const SLOW = Number(process.env.E2E_SLOW ?? (process.env.CI ? 3 : 1));
+
+export function simTime(ms: number) {
+  return ms * SLOW;
+}
+
 const IGNORED = [/Download the React DevTools/, /\[HMR\]/, /\[Fast Refresh\]/, /favicon\.ico/];
 
 export const test = base.extend<{ problems: Problems }>({
@@ -33,7 +39,7 @@ export { expect };
 export async function openGame(page: Page, slug: string, title: string) {
   await page.goto(`/play/${slug}`);
   const intro = page.getByRole("dialog", { name: `${title}: tela de apresentação` });
-  await expect(intro).toBeVisible({ timeout: 45_000 });
+  await expect(intro).toBeVisible({ timeout: simTime(45_000) });
   return intro;
 }
 

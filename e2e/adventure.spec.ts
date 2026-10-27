@@ -1,4 +1,4 @@
-import { expect, openGame, test } from "./fixtures";
+import { expect, openGame, simTime, test } from "./fixtures";
 
 const GAME = { slug: "off-air-vacation", title: "Férias Fora do Ar", key: "canal404:off-air-vacation:v1" };
 
@@ -8,7 +8,7 @@ test("saves the adventure and offers to continue it after a reload", async ({ pa
   await intro.getByRole("button", { name: /Começar aventura/ }).click();
   await expect(intro).toBeHidden();
 
-  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), GAME.key), { timeout: 30_000 }).not.toBeNull();
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), GAME.key), { timeout: simTime(30_000) }).not.toBeNull();
 
   await page.reload();
   const again = await openGame(page, GAME.slug, GAME.title);
@@ -27,6 +27,6 @@ test("starts over only after confirming", async ({ page }) => {
   await confirm.getByRole("button", { name: /Sim, nova aventura/ }).click();
   await expect(intro).toBeHidden();
   await expect
-    .poll(() => page.evaluate((key) => JSON.parse(window.localStorage.getItem(key) ?? "{}").area ?? null, GAME.key), { timeout: 30_000 })
+    .poll(() => page.evaluate((key) => JSON.parse(window.localStorage.getItem(key) ?? "{}").area ?? null, GAME.key), { timeout: simTime(30_000) })
     .not.toBe("beach");
 });
