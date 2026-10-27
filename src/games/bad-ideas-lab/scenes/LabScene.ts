@@ -22,7 +22,34 @@ import {
   type PartType,
 } from "../config";
 import { LEVELS, type LevelDef } from "../levels";
-import { ballInSensor, goalLayout, partPoly, placementIssue, type PlacedPart, type Sensor } from "../geometry";
+import { ballInSensor, goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Sensor, type Vec } from "../geometry";
+import {
+  areaCoordinates,
+  ballNoun,
+  capitalize,
+  conflictText,
+  describeHeld,
+  describeLandmark,
+  describeLevel,
+  describeRun,
+  levelLandmarks,
+  moveMessage,
+  partLandmark,
+  partNoun,
+  pathRelation,
+  pathText,
+  poseText,
+  referenceRelation,
+  relation,
+  sceneOrder,
+  stopLandmark,
+  the,
+  type Direction,
+  type Landmark,
+  type Noun,
+  type RunOutcome,
+  type SceneInfo,
+} from "../narration";
 import { addIcon } from "../icons";
 import { LAB_SFX, type LabSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
@@ -49,7 +76,9 @@ type Carry = {
 
 type Press = { part: Part; x: number; y: number; offsetX: number; offsetY: number };
 
-type Issue = ReturnType<typeof placementIssue>;
+type Issue = Conflict["issue"] | null;
+
+type RunTrack = { touches: string[]; launches: string[]; winds: string[] };
 
 const ISSUE_TEXT: Record<Exclude<Issue, null>, string> = {
   outside: "Coloque dentro da área tracejada",
@@ -127,6 +156,20 @@ export class LabScene extends Phaser.Scene {
   private runNudgeTimer?: Phaser.Time.TimerEvent;
   private moodTimer?: Phaser.Time.TimerEvent;
   private bulb!: Phaser.GameObjects.Image;
+  private landmarks: Landmark[] = [];
+  private ball!: Noun;
+  private referenceId: string | null = null;
+  private browseIndex = -1;
+  private attempts = 0;
+  private track: RunTrack = { touches: [], launches: [], winds: [] };
+  private bodyRefs = new Map<number, string>();
+  private lastReport = "";
+  private lastPath: Vec[] = [];
+  private lastStop: Vec | null = null;
+  private announcedValid = true;
+  private announcedPath: string | null = null;
+  private moveTimer?: Phaser.Time.TimerEvent;
+  private handledKeys = new WeakSet<KeyboardEvent>();
 
   constructor() {
     super("lab");
@@ -160,6 +203,17 @@ export class LabScene extends Phaser.Scene {
     this.guideArrow = null;
     this.demo = null;
     this.demoTween = null;
+    this.referenceId = null;
+    this.browseIndex = -1;
+    this.attempts = 0;
+    this.track = { touches: [], launches: [], winds: [] };
+    this.bodyRefs = new Map();
+    this.lastReport = "";
+    this.lastPath = [];
+    this.lastStop = null;
+    this.announcedValid = true;
+    this.announcedPath = null;
+    this.handledKeys = new WeakSet();
   }
 
   create() {
@@ -167,6 +221,8 @@ export class LabScene extends Phaser.Scene {
     this.levelIndex = Phaser.Math.Clamp((this.registry.get("level") as number | undefined) ?? 0, 0, LEVELS.length - 1);
     this.level = LEVELS[this.levelIndex];
     const level = this.level;
+    this.landmarks = levelLandmarks(level);
+    this.ball = ballNoun(level);
     const engine = this.matter.world.engine;
     engine.positionIterations = 10;
     engine.velocityIterations = 8;
@@ -242,11 +298,11 @@ export class LabScene extends Phaser.Scene {
     this.mode = "build";
     this.hud.setEnabled(true);
     const level = this.level;
-    const intro = `Fase ${this.levelIndex + 1} de ${LEVELS.length}: ${level.title}. ${level.goalText} Na caixa: ${this.inventoryText()}.`;
+    const intro = describeLevel(this.sceneInfo(), this.levelIndex, LEVELS.length, this.inventoryText());
     const how = level.guide
-      ? "Arraste a rampa até a marca tracejada. No teclado, aperte 1 e depois Enter. Depois, aperte espaço para ligar a máquina."
-      : `Arraste uma peça para a área tracejada ou aperte ${this.keyRange()}. Espaço liga a máquina.`;
-    this.announce(`${intro} ${how}`);
+      ? "Uma marca tracejada mostra onde vai a rampa. Arraste a rampa até a marca. No teclado, aperte 1: a rampa já aparece em cima da marca. Depois aperte Enter para colocar e espaço para ligar a máquina."
+      : `Arraste uma peça para a área de montagem ou aperte ${this.keyRange()} para pegar uma. Setas movem, Enter coloca, espaço liga a máquina.`;
+    this.announce(`${intro} ${how} Para consultar: D descreve a fase, O passa pelos objetos, I diz onde está a peça, L repete o último resultado.`);
     this.time.delayedCall(350, () => this.say(level.story, 4600));
     if (level.guide) {
       this.demoTimer = this.time.delayedCall(700, () => this.startDemo());
@@ -385,8 +441,80 @@ export class LabScene extends Phaser.Scene {
     this.ctx.audio.play(LAB_SFX[name], { volume: Phaser.Math.Clamp(volume, 0.05, 1.2) });
   }
 
-  private announce(message: string) {
-    this.ctx.onEvent({ type: "announce", message });
+  private announce(message: string, transient = false) {
+    this.moveTimer?.remove();
+    this.moveTimer = undefined;
+    this.ctx.onEvent({ type: "announce", message, transient, fresh: !transient });
+  }
+
+  private nounOf(part: Part): Noun {
+    const same = this.parts.filter((p) => p.view.type === part.view.type);
+    return partNoun(part.view.type, same.indexOf(part) + 1, same.length);
+  }
+
+  private landmarkOf(part: Part) {
+    const v = part.view;
+    return partLandmark(part.id, v.type, v.x, v.y, v.rot, this.nounOf(part));
+  }
+
+  private sceneInfo(withStop = true): SceneInfo {
+    const landmarks = [...this.landmarks, ...this.parts.map((p) => this.landmarkOf(p))];
+    if (withStop && this.lastStop) landmarks.push(stopLandmark(this.lastStop, this.ball));
+    return { level: this.level, landmarks, ball: this.ball };
+  }
+
+  private activePart() {
+    return this.carry?.part ?? this.selected;
+  }
+
+  private reference(part: Part | null) {
+    if (!this.referenceId || (part && this.referenceId === `part-${part.id}`)) return null;
+    return this.sceneInfo().landmarks.find((l) => l.id === this.referenceId) ?? null;
+  }
+
+  private conflictFor(part: Part, x = part.view.x, y = part.view.y, rot = part.view.rot): Conflict | null {
+    const others = this.parts.filter((p) => p !== part).map((p) => this.placedOf(p));
+    return placementConflict(this.level, others, { type: part.view.type, x, y, rot });
+  }
+
+  private conflictWords(part: Part) {
+    const c = this.conflictFor(part);
+    if (!c) return null;
+    const others = this.parts.filter((p) => p !== part).map((p) => this.nounOf(p));
+    return conflictText(c, this.sceneInfo().landmarks, others);
+  }
+
+  private placeWords(part: Part) {
+    const v = part.view;
+    const poly = partPoly(v.type, v.x, v.y, v.rot);
+    return referenceRelation(poly, { x: v.x, y: v.y }, this.sceneInfo(), this.reference(part), `part-${part.id}`);
+  }
+
+  private pathWords(part: Part) {
+    const v = part.view;
+    return pathText(pathRelation(partPoly(v.type, v.x, v.y, v.rot), this.lastPath), this.ball);
+  }
+
+  private partState(part: Part) {
+    const conflict = this.conflictWords(part);
+    return conflict ? `Não cabe: ${conflict}.` : "Pode colocar aqui.";
+  }
+
+  private heldDetail(part: Part) {
+    const v = part.view;
+    const held = this.carry?.part === part;
+    return describeHeld({
+      name: this.nounOf(part),
+      type: v.type,
+      rot: v.rot,
+      center: { x: v.x, y: v.y },
+      held,
+      conflict: held ? this.conflictWords(part) : null,
+      info: this.sceneInfo(),
+      reference: this.reference(part),
+      skipId: `part-${part.id}`,
+      path: this.lastPath,
+    });
   }
 
   private say(text: string, duration = 2400) {
@@ -448,21 +576,8 @@ export class LabScene extends Phaser.Scene {
     this.hud.setUsed(this.parts.length, this.level.par);
   }
 
-  private describe(view: PartView) {
-    const def = PARTS[view.type];
-    const a = view.angle;
-    switch (view.type) {
-      case "ramp":
-        return a === 0 ? "rampa reta" : `rampa descendo para a ${a > 0 ? "direita" : "esquerda"}, ${Math.abs(a)} graus`;
-      case "spring":
-        return a === 0 ? "mola apontando para cima" : `mola apontando para cima e para a ${a > 0 ? "direita" : "esquerda"}, ${Math.abs(a)} graus`;
-      case "fan":
-        return `ventilador soprando para a ${view.facing > 0 ? "direita" : "esquerda"}`;
-      case "belt":
-        return `esteira levando para a ${view.facing > 0 ? "direita" : "esquerda"}`;
-      default:
-        return def.name;
-    }
+  private describe(part: Part) {
+    return `${this.nounOf(part).word}, ${poseText(part.view.type, part.view.rot)}`;
   }
 
   private placedOf(part: Part): PlacedPart {
@@ -470,8 +585,7 @@ export class LabScene extends Phaser.Scene {
   }
 
   private issueFor(part: Part, x = part.view.x, y = part.view.y, rot = part.view.rot): Issue {
-    const others = this.parts.filter((p) => p !== part).map((p) => this.placedOf(p));
-    return placementIssue(this.level, others, { type: part.view.type, x, y, rot });
+    return this.conflictFor(part, x, y, rot)?.issue ?? null;
   }
 
   private findSpot(part: Part, cx: number, cy: number) {
@@ -513,14 +627,16 @@ export class LabScene extends Phaser.Scene {
     }
   }
 
-  private select(part: Part, announce = true) {
+  private select(part: Part, announce = true, prefix = "") {
     if (this.selected && this.selected !== part) this.selected.view.setLook("idle");
     this.selected = part;
     part.view.setLook("selected");
     this.placeToolbar(part);
     if (announce) {
       const index = this.parts.indexOf(part) + 1;
-      this.announce(`Peça ${index} de ${this.parts.length}: ${this.describe(part.view)}. Setas movem, R gira, X guarda na caixa.`);
+      this.announce(
+        `${prefix}Peça ${index} de ${this.parts.length}: ${this.describe(part)}, ${this.placeWords(part)}. Setas ou Enter movem, R gira, X guarda na caixa, I dá mais detalhes.`,
+      );
     }
   }
 
@@ -561,6 +677,8 @@ export class LabScene extends Phaser.Scene {
     this.hud.pulseRun(false);
     this.updateCarryLook();
     this.refreshGuide();
+    this.announcedValid = !this.conflictFor(part);
+    this.announcedPath = this.pathWords(part);
   }
 
   private updateCarryLook() {
@@ -582,9 +700,6 @@ export class LabScene extends Phaser.Scene {
     } else {
       this.hud.hideTag();
     }
-    if (c.via === "keyboard" && issue !== this.lastIssue) {
-      this.announce(issue ? ISSUE_TEXT[issue] + "." : "Pode colocar aqui.");
-    }
     this.lastIssue = issue;
   }
 
@@ -599,16 +714,19 @@ export class LabScene extends Phaser.Scene {
     this.updateCarryLook();
   }
 
-  private dropCarry(): boolean {
+  private dropCarry(quiet = false): string | null {
     const c = this.carry;
-    if (!c) return true;
+    if (!c) return null;
     const v = c.part.view;
     this.snapToGuide(c.part);
-    const issue = this.issueFor(c.part);
-    if (issue) {
+    const conflict = this.conflictWords(c.part);
+    if (conflict) {
       this.sfx("invalid", 0.8);
-      this.announce(`${ISSUE_TEXT[issue]}.`);
-      return false;
+      if (!quiet) {
+        const name = capitalize(the(this.nounOf(c.part)));
+        this.announce(`Não dá para colocar aqui: ${conflict}. ${name} continua na mão. Mova com as setas ou aperte C para cancelar.`);
+      }
+      return null;
     }
     this.carry = null;
     v.setDepthLift(false);
@@ -620,26 +738,31 @@ export class LabScene extends Phaser.Scene {
     this.select(c.part, false);
     this.refreshGuide();
     const guided = this.level.guide && this.atGuide(c.part);
+    let message: string;
     if (guided) {
       this.say("Isso! Agora aperte LIGAR.", 3200);
-      this.announce("Rampa no lugar certo. Agora aperte espaço para ligar a máquina.");
+      message = "Rampa no lugar certo. Agora aperte espaço para ligar a máquina.";
     } else {
-      this.announce(`Peça colocada: ${this.describe(v)}. ${this.parts.length} ${this.parts.length === 1 ? "peça usada" : "peças usadas"}.`);
+      const name = this.nounOf(c.part);
+      const used = `${this.parts.length} ${this.parts.length === 1 ? "peça usada" : "peças usadas"}`;
+      message = `${capitalize(name.word)} colocad${name.female ? "a" : "o"}: ${poseText(v.type, v.rot)}, ${this.placeWords(c.part)}. ${used}.`;
     }
+    if (!quiet) this.announce(message);
     this.scheduleRunNudge();
-    return true;
+    return message;
   }
 
   private cancelCarry(silent = false) {
     const c = this.carry;
     if (!c) return;
+    const name = capitalize(the(this.nounOf(c.part)));
     this.carry = null;
     this.hud.hideTag();
     if (c.isNew || !c.origin) {
       this.destroyPart(c.part);
       if (!silent) {
         this.sfx("remove", 0.7);
-        this.announce("Peça devolvida para a caixa.");
+        this.announce(`Cancelado. ${name} voltou para a caixa.`);
       }
       return;
     }
@@ -649,15 +772,21 @@ export class LabScene extends Phaser.Scene {
     v.setLook("idle");
     this.refreshGuide();
     if (!silent) {
+      this.select(c.part, false);
       this.sfx("invalid", 0.7);
-      this.announce("A peça voltou para onde estava.");
+      this.announce(`Cancelado. ${name} voltou para onde estava: ${this.placeWords(c.part)}.`);
     }
   }
 
-  private settleCarry() {
-    if (!this.carry) return;
-    if (this.issueFor(this.carry.part)) this.cancelCarry(true);
-    else this.dropCarry();
+  private settleCarry(): string | null {
+    const c = this.carry;
+    if (!c) return null;
+    const conflict = this.conflictWords(c.part);
+    if (!conflict) return this.dropCarry(true);
+    const name = capitalize(the(this.nounOf(c.part)));
+    const back = c.isNew || !c.origin ? "para a caixa" : "para onde estava";
+    this.cancelCarry(true);
+    return `${name} não cabia onde estava (${conflict}) e voltou ${back}.`;
   }
 
   private onSlotDown(type: PartType, pointer: Phaser.Input.Pointer) {
@@ -665,7 +794,8 @@ export class LabScene extends Phaser.Scene {
     this.bubble.hide();
     this.stopDemo();
     this.pickedOnce = true;
-    this.settleCarry();
+    const settled = this.settleCarry();
+    if (settled) this.announce(settled);
     if (this.remaining(type) <= 0) {
       this.sfx("invalid", 0.7);
       this.say(`Acabaram as ${PARTS[type].plural}!`, 1600);
@@ -684,10 +814,11 @@ export class LabScene extends Phaser.Scene {
     this.bubble.hide();
     this.stopDemo();
     this.pickedOnce = true;
-    this.settleCarry();
+    const settled = this.settleCarry();
+    const before = settled ? `${settled} ` : "";
     if (this.remaining(type) <= 0) {
       this.sfx("invalid", 0.7);
-      this.announce(`Acabaram as ${PARTS[type].plural}.`);
+      this.announce(`${before}Acabaram as ${PARTS[type].plural}.`);
       return;
     }
     const b = this.level.build;
@@ -702,16 +833,21 @@ export class LabScene extends Phaser.Scene {
     this.sfx("pick", 0.8);
     this.beginCarry(part, "keyboard", { isNew: true, origin: null });
     const onGuide = guide && this.atGuide(part);
+    const name = this.nounOf(part);
     this.announce(
-      onGuide
-        ? "Rampa na mão, já em cima da marca. Aperte Enter para colocar."
-        : `${PARTS[type].name} na mão: ${this.describe(part.view)}. Use as setas para mover, R para girar e Enter para colocar.`,
+      before +
+        (onGuide
+          ? "Rampa na mão, já em cima da marca. Aperte Enter para colocar."
+          : `${capitalize(name.word)} na mão: ${poseText(type, part.view.rot)}. ${this.partState(part)} ${capitalize(this.placeWords(part))}. Setas movem, R gira, Enter coloca, C cancela.`),
     );
   }
 
   private onPartDown(part: Part, pointer: Phaser.Input.Pointer) {
     if (this.mode !== "build") return;
-    if (this.carry && this.carry.part !== part) this.settleCarry();
+    if (this.carry && this.carry.part !== part) {
+      const settled = this.settleCarry();
+      if (settled) this.announce(settled);
+    }
     if (this.carry) return;
     this.bubble.hide();
     this.press = { part, x: pointer.worldX, y: pointer.worldY, offsetX: part.view.x - pointer.worldX, offsetY: part.view.y - pointer.worldY };
@@ -755,21 +891,24 @@ export class LabScene extends Phaser.Scene {
         return;
       }
       if (this.hud.isOverTray(v.x, v.y)) {
+        const name = capitalize(the(this.nounOf(c.part)));
         this.carry = null;
         this.hud.hideTag();
         this.destroyPart(c.part);
         this.sfx("remove", 0.8);
-        this.announce("Peça devolvida para a caixa.");
+        this.announce(`${name} voltou para a caixa.`);
         return;
       }
       this.snapToGuide(c.part);
       const issue = this.issueFor(c.part);
       if (!issue) this.dropCarry();
       else {
+        const conflict = this.conflictWords(c.part);
+        const name = capitalize(the(this.nounOf(c.part)));
         this.cancelCarry(true);
         this.sfx("invalid", 0.8);
         this.say(ISSUE_TEXT[issue] + "!", 1500);
-        this.announce(`${ISSUE_TEXT[issue]}. ${c.isNew ? "A peça voltou para a caixa." : "A peça voltou para onde estava."}`);
+        this.announce(`Não cabe ali: ${conflict}. ${name} voltou ${c.isNew ? "para a caixa" : "para onde estava"}.`);
       }
       return;
     }
@@ -797,10 +936,14 @@ export class LabScene extends Phaser.Scene {
     } else {
       const issue = this.issueFor(part, v.x, v.y, next);
       if (issue) {
+        const was = v.rot;
+        v.setPose(v.x, v.y, next);
+        const conflict = this.conflictWords(part);
+        v.setPose(v.x, v.y, was);
         this.sfx("invalid", 0.7);
         this.hud.showTag(ISSUE_TEXT[issue], v.x, v.y - 70);
         this.time.delayedCall(1100, () => !this.carry && this.hud.hideTag());
-        this.announce(`Não dá para girar aqui: ${ISSUE_TEXT[issue].toLowerCase()}.`);
+        this.announce(`Não dá para girar aqui: nessa posição, ${the(this.nounOf(part))} ${conflict}.`);
         return;
       }
       v.setPose(v.x, v.y, next);
@@ -808,36 +951,116 @@ export class LabScene extends Phaser.Scene {
     }
     v.pulse();
     this.sfx("rotate", 0.8);
-    this.announce(this.describe(v) + ".");
+    const state = this.carry ? ` ${this.partState(part)}` : "";
+    if (this.carry) this.announcedValid = !this.conflictFor(part);
+    this.announce(`Girou: ${poseText(v.type, v.rot)}.${state} ${capitalize(this.placeWords(part))}.`);
   }
 
   private removeActive() {
     if (this.mode !== "build") return;
-    if (this.carry) {
-      const part = this.carry.part;
-      this.carry = null;
-      this.hud.hideTag();
-      this.destroyPart(part);
-    } else if (this.selected) {
-      this.destroyPart(this.selected);
-    } else {
+    const part = this.activePart();
+    if (!part) {
+      this.announce("Nenhuma peça na mão nem escolhida para guardar.");
       return;
     }
+    const name = capitalize(the(this.nounOf(part)));
+    const type = part.view.type;
+    if (this.carry) {
+      this.carry = null;
+      this.hud.hideTag();
+    }
+    this.destroyPart(part);
     this.sfx("remove", 0.8);
-    this.announce("Peça devolvida para a caixa.");
+    const left = this.remaining(type);
+    this.announce(`${name} voltou para a caixa. Na caixa: ${left} ${(left === 1 ? PARTS[type].name : PARTS[type].plural).toLowerCase()}.`);
+  }
+
+  private cancelActive() {
+    if (this.mode !== "build") return;
+    if (this.carry) {
+      this.cancelCarry();
+      return;
+    }
+    this.announce(this.selected ? "Nada para cancelar: a peça escolhida já está montada. X guarda ela na caixa." : "Nada para cancelar.");
   }
 
   private selectNext() {
     if (this.mode !== "build") return;
-    this.settleCarry();
+    const settled = this.settleCarry();
+    const before = settled ? `${settled} ` : "";
     if (!this.parts.length) {
-      this.announce("Nenhuma peça montada ainda.");
+      this.announce(`${before}Nenhuma peça montada ainda.`);
       return;
     }
     const i = this.selected ? this.parts.indexOf(this.selected) : -1;
     const next = this.parts[(i + 1) % this.parts.length];
     this.sfx("nudge", 0.8);
-    this.select(next);
+    this.select(next, true, before);
+  }
+
+  private remainingText() {
+    const items = this.slotTypes
+      .map((t) => ({ t, n: this.remaining(t) }))
+      .filter(({ n }) => n > 0)
+      .map(({ t, n }) => `${n} ${(n === 1 ? PARTS[t].name : PARTS[t].plural).toLowerCase()}`);
+    if (!items.length) return "nada";
+    if (items.length === 1) return items[0];
+    return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+  }
+
+  private describeLevelNow() {
+    const placed = this.parts.length ? ` Peças montadas: ${this.parts.map((p) => this.describe(p)).join("; ")}.` : "";
+    this.announce(`${describeLevel(this.sceneInfo(), this.levelIndex, LEVELS.length, this.remainingText())}${placed}`);
+  }
+
+  private browse(dir: 1 | -1) {
+    const info = this.sceneInfo();
+    const items = [...sceneOrder(this.level, info.landmarks), ...info.landmarks.filter((l) => l.role === "part" || l.role === "stop")];
+    const current = this.referenceId ? items.findIndex((l) => l.id === this.referenceId) : -1;
+    const from = current >= 0 ? current : Math.min(this.browseIndex, items.length - 1);
+    const i = from < 0 ? (dir > 0 ? 0 : items.length - 1) : (from + dir + items.length) % items.length;
+    const lm = items[i];
+    this.referenceId = lm.id;
+    this.browseIndex = i;
+    const active = this.activePart();
+    let extra = "";
+    if (active && lm.id !== `part-${active.id}`) {
+      const v = active.view;
+      extra =
+        lm.role === "area"
+          ? ` Sua peça fica ${areaCoordinates({ x: v.x, y: v.y }, this.level.build)}.`
+          : ` Sua peça fica ${relation(partPoly(v.type, v.x, v.y, v.rot), lm).text}.`;
+    }
+    this.announce(`${i + 1} de ${items.length}. ${describeLandmark(lm, info)}${extra}`);
+  }
+
+  private describeActive() {
+    const part = this.activePart();
+    if (!part) {
+      const pick = `Aperte ${this.keyRange()} para pegar uma peça`;
+      this.announce(`Nenhuma peça na mão. ${pick}${this.parts.length ? " ou S para escolher uma peça montada" : ""}.`);
+      return;
+    }
+    this.announce(this.heldDetail(part));
+  }
+
+  private query(key: string, shift: boolean) {
+    switch (key) {
+      case "d":
+        this.describeLevelNow();
+        return true;
+      case "o":
+        this.browse(shift ? -1 : 1);
+        return true;
+      case "i":
+        this.describeActive();
+        return true;
+      case "l":
+        this.announce(this.lastReport || "Ainda não teve nenhuma tentativa. Aperte espaço para ligar a máquina.");
+        return true;
+      default:
+        return false;
+    }
   }
 
   private clearAll() {
@@ -872,19 +1095,25 @@ export class LabScene extends Phaser.Scene {
     this.input.on("pointerupoutside", () => this.onPointerUp());
     this.input.on("pointerdown", (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.mode === "build" && over.length === 0) {
-        this.settleCarry();
+        const settled = this.settleCarry();
+        if (settled) this.announce(settled);
         this.deselect();
       }
     });
   }
 
   private onKey(event: KeyboardEvent) {
+    if (this.handledKeys.has(event)) return;
+    this.handledKeys.add(event);
     const key = event.key.toLowerCase();
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (key === "escape" || key === "p") {
       this.ctx.onEvent({ type: "pause-request" });
       return;
     }
-    if (this.mode === "attract" || this.mode === "done") return;
+    if (this.mode === "attract") return;
+    if (!event.repeat && this.query(key, event.shiftKey)) return;
+    if (this.mode === "done") return;
     if (key === " " || key === "spacebar") {
       event.preventDefault();
       if (!event.repeat) this.toggleRun();
@@ -895,29 +1124,58 @@ export class LabScene extends Phaser.Scene {
       if (!event.repeat) this.pickWithKeyboard(Number(key) - 1);
       return;
     }
-    const arrows: Record<string, [number, number]> = {
-      arrowleft: [-1, 0],
-      arrowright: [1, 0],
-      arrowup: [0, -1],
-      arrowdown: [0, 1],
+    const arrows: Record<string, [number, number, Direction]> = {
+      arrowleft: [-1, 0, "left"],
+      arrowright: [1, 0, "right"],
+      arrowup: [0, -1, "up"],
+      arrowdown: [0, 1, "down"],
     };
     const move = arrows[key];
     if (move) {
       event.preventDefault();
-      if (!this.carry && this.selected) this.beginCarry(this.selected, "keyboard");
+      const started = !this.carry && Boolean(this.selected);
+      if (started && this.selected) this.beginCarry(this.selected, "keyboard");
       const c = this.carry;
       if (!c) {
         this.announce(`Pegue uma peça com ${this.slotTypes.length === 1 ? "a tecla 1" : `as teclas de 1 a ${this.slotTypes.length}`}, ou selecione uma peça montada com S.`);
         return;
       }
       c.via = "keyboard";
-      const step = GRID * (event.shiftKey ? 3 : 1);
+      const amount = event.shiftKey ? 3 : 1;
+      const step = GRID * amount;
       const b = this.level.build;
       const v = c.part.view;
-      const nx = Phaser.Math.Clamp(v.x + move[0] * step, b.x, b.x + b.w);
-      const ny = Phaser.Math.Clamp(v.y + move[1] * step, b.y, b.y + b.h);
+      const tx = v.x + move[0] * step;
+      const ty = v.y + move[1] * step;
+      const nx = Phaser.Math.Clamp(tx, b.x, b.x + b.w);
+      const ny = Phaser.Math.Clamp(ty, b.y, b.y + b.h);
       this.sfx("nudge", 0.5, 45);
       this.moveCarry(nx, ny);
+      const part = c.part;
+      const hitEdge = nx !== tx || ny !== ty;
+      const report = () => {
+        if (this.carry?.part !== part) return;
+        const conflict = this.conflictWords(part);
+        const path = this.pathWords(part);
+        const message = moveMessage({
+          dir: move[2],
+          amount,
+          hitEdge,
+          conflict,
+          becameValid: !conflict && !this.announcedValid,
+          place: this.placeWords(part),
+          path: path !== this.announcedPath ? (path ?? `Fora do caminho da última ${this.ball.word}.`) : null,
+        });
+        this.announcedValid = !conflict;
+        this.announcedPath = path;
+        this.announce(started ? `Movendo ${the(this.nounOf(part))}. ${message}` : message, true);
+      };
+      if (event.repeat) {
+        this.moveTimer?.remove();
+        this.moveTimer = this.time.delayedCall(220, report);
+      } else {
+        report();
+      }
       return;
     }
     switch (key) {
@@ -928,10 +1186,19 @@ export class LabScene extends Phaser.Scene {
       case "q":
         this.rotateActive(-1);
         break;
-      case "enter":
+      case "enter": {
         event.preventDefault();
+        if (event.repeat) break;
+        const picked = this.selected;
         if (this.carry) this.dropCarry();
-        else if (this.selected) this.beginCarry(this.selected, "keyboard");
+        else if (picked) {
+          this.beginCarry(picked, "keyboard");
+          this.announce(`${capitalize(this.nounOf(picked).word)} na mão. Setas movem, R gira, Enter coloca, C cancela.`);
+        } else this.announce(`Nenhuma peça na mão. Aperte ${this.keyRange()} para pegar uma.`);
+        break;
+      }
+      case "c":
+        this.cancelActive();
         break;
       case "delete":
       case "backspace":
@@ -957,6 +1224,8 @@ export class LabScene extends Phaser.Scene {
       for (const pair of event.pairs) {
         const other = pair.bodyA === ball ? pair.bodyB : pair.bodyB === ball ? pair.bodyA : null;
         if (!other) continue;
+        const ref = this.bodyRefs.get(other.id);
+        if (ref) this.track.touches.push(ref);
         const spring = this.springs.get(other.id);
         if (spring) {
           const v = spring.view;
@@ -965,6 +1234,7 @@ export class LabScene extends Phaser.Scene {
           const ny = -Math.cos(a);
           if ((ball.position.x - v.x) * nx + (ball.position.y - v.y) * ny > 0) {
             this.matter.body.setVelocity(ball, { x: nx * SPRING_SPEED, y: ny * SPRING_SPEED });
+            this.track.launches.push(`part-${spring.id}`);
             v.squash();
             this.sfx("boing", 1, 120);
             this.word("BOING!", v.x + nx * 60, v.y + ny * 60 - 30, "#f06ba8", 46);
@@ -993,7 +1263,17 @@ export class LabScene extends Phaser.Scene {
     });
   }
 
-  private addStatic(x: number, y: number, w: number, h: number, angleDeg: number, kind: LabSfx, surface = true, extra: Phaser.Types.Physics.Matter.MatterBodyConfig = {}) {
+  private addStatic(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    angleDeg: number,
+    kind: LabSfx,
+    ref: string,
+    surface = true,
+    extra: Phaser.Types.Physics.Matter.MatterBodyConfig = {},
+  ) {
     const body = this.matter.add.rectangle(x, y, w, h, {
       isStatic: true,
       angle: Phaser.Math.DegToRad(angleDeg),
@@ -1002,6 +1282,7 @@ export class LabScene extends Phaser.Scene {
     });
     this.bodies.push(body);
     this.kinds.set(body.id, kind);
+    this.bodyRefs.set(body.id, ref);
     return body;
   }
 
@@ -1011,7 +1292,19 @@ export class LabScene extends Phaser.Scene {
   }
 
   private startRun() {
-    this.settleCarry();
+    let placed = "";
+    if (this.carry) {
+      const part = this.carry.part;
+      const conflict = this.conflictWords(part);
+      if (conflict) {
+        this.sfx("invalid", 0.8);
+        this.announce(
+          `A máquina não ligou: ${the(this.nounOf(part))} na mão não cabe aí, ${conflict}. Mova a peça, aperte Enter para colocar ou C para cancelar.`,
+        );
+        return;
+      }
+      placed = `${this.dropCarry(true) ?? ""} `;
+    }
     this.press = null;
     this.deselect();
     this.hud.hideTag();
@@ -1030,18 +1323,20 @@ export class LabScene extends Phaser.Scene {
     this.trailGfx.clear();
 
     const level = this.level;
-    this.addStatic(W / 2, FLOOR_Y + 60, W + 200, 120, 0, "tap", true, { friction: 0.02 });
-    this.addStatic(-30, H / 2, 60, H * 2, 0, "tap", false);
-    this.addStatic(W + 30, H / 2, 60, H * 2, 0, "tap", false);
-    const layout = goalLayout(level.goal);
-    for (const b of [...level.blocks, ...layout.blocks]) {
+    this.attempts += 1;
+    this.track = { touches: [], launches: [], winds: [] };
+    this.bodyRefs.clear();
+    this.addStatic(W / 2, FLOOR_Y + 60, W + 200, 120, 0, "tap", "floor", true, { friction: 0.02 });
+    this.addStatic(-30, H / 2, 60, H * 2, 0, "tap", "edge", false);
+    this.addStatic(W + 30, H / 2, 60, H * 2, 0, "tap", "edge", false);
+    sceneBlocks(level).forEach((b, i) => {
       const kind: LabSfx = b.kind === "metal" || b.kind === "pole" ? "clink" : "tap";
-      this.addStatic(b.x, b.y, b.w, b.h, b.angle ?? 0, kind);
-    }
+      this.addStatic(b.x, b.y, b.w, b.h, b.angle ?? 0, kind, `block-${i}`);
+    });
     for (const part of this.parts) {
       const v = part.view;
       const kind: LabSfx = v.type === "belt" ? "clack" : v.type === "fan" ? "clink" : "tap";
-      const body = this.addStatic(v.x, v.y, v.def.w, v.def.h, v.angle, kind);
+      const body = this.addStatic(v.x, v.y, v.def.w, v.def.h, v.angle, kind, `part-${part.id}`);
       if (v.type === "spring") this.springs.set(body.id, part);
       if (v.type === "belt") this.belts.set(body.id, part);
       v.setRunning(true);
@@ -1076,12 +1371,23 @@ export class LabScene extends Phaser.Scene {
       }
     });
     this.say("Lá vai!", 1100);
-    this.announce("Máquina ligada! Espaço desliga.");
+    this.announce(`${placed}Máquina ligada${this.parts.length ? "" : ", sem nenhuma peça"}! Espaço desliga.`);
+  }
+
+  private runReport(outcome: RunOutcome) {
+    const ball = this.ballBody;
+    const end = ball ? { x: ball.position.x, y: ball.position.y } : { x: this.ballImg.x, y: this.ballImg.y };
+    const path = this.trail.map(([x, y]) => ({ x, y }));
+    const report = describeRun({ attempt: this.attempts, ...this.track, path, end, outcome }, this.sceneInfo(false));
+    this.lastPath = [...path, end];
+    this.lastStop = outcome === "stopped" || outcome === "timeout" || outcome === "cancelled" ? end : null;
+    this.lastReport = report;
+    return report;
   }
 
   private stopRun() {
     this.sfx("stop", 0.8);
-    this.announce("Máquina desligada.");
+    this.announce(`Máquina desligada. ${this.runReport("cancelled")}`);
     this.endRun();
   }
 
@@ -1196,6 +1502,8 @@ export class LabScene extends Phaser.Scene {
         const k = 1 - 0.5 * ((dx - 48) / FAN_REACH);
         this.matter.body.applyForce(ball, ball.position, { x: f * ball.mass * FAN_ACCEL * k, y: 0 });
         inside = true;
+        const ref = `part-${part.id}`;
+        if (!this.track.winds.includes(ref)) this.track.winds.push(ref);
       }
     }
     if (inside && !this.inWind) this.sfx("whoosh", 0.9, 400);
@@ -1216,19 +1524,23 @@ export class LabScene extends Phaser.Scene {
       return;
     }
     if (y > H + 100 || x < -100 || x > W + 100) {
-      this.fail("A bolinha saiu da garagem.", true);
+      this.fail("out");
       return;
     }
     this.rest = ball.speed < 0.15 ? this.rest + 1 : 0;
     if (this.rest > 120) {
-      this.fail(this.level.ball === "orange" ? "A laranja parou no caminho." : "A bolinha parou no caminho.");
+      this.fail("stopped");
       return;
     }
-    if (this.runSteps >= MAX_STEPS) this.fail("A bolinha demorou demais.");
+    if (this.runSteps >= MAX_STEPS) this.fail("timeout");
   }
 
-  private fail(reason: string, out = false) {
+  private fail(outcome: "out" | "stopped" | "timeout") {
     if (this.mode !== "running") return;
+    const out = outcome === "out";
+    const ball = capitalize(the(this.ball));
+    const reason = out ? `${ball} saiu da garagem.` : outcome === "stopped" ? `${ball} parou no caminho.` : `${ball} demorou demais.`;
+    const report = this.runReport(outcome);
     this.mode = "done";
     this.fails += 1;
     this.sfx("slide", 0.9);
@@ -1242,7 +1554,8 @@ export class LabScene extends Phaser.Scene {
     const lineText = offGuide ? "Quase! Coloque a rampa em cima da marca." : showHint ? `Psiu! ${level.hint}` : `${line} ${reason}`;
     this.say(lineText, showHint || offGuide ? 5200 : 2400);
     if (showHint) this.showBulb();
-    this.announce(`Não deu. ${reason} ${offGuide ? "Coloque a rampa em cima da marca tracejada." : showHint ? `Dica da Lina: ${level.hint}` : "Mude as peças e tente de novo."}`);
+    const advice = offGuide ? "Coloque a rampa em cima da marca tracejada." : showHint ? `Dica da Lina: ${level.hint}` : "Mude as peças e tente de novo.";
+    this.announce(`Não deu. ${report} ${advice}${this.fails === 1 ? " L repete este resultado." : ""}`);
     if (this.fails >= 2) this.hud.pulseHint(!showHint);
     const bx = Phaser.Math.Clamp(this.ballImg.x, 80, W - 80);
     const by = Phaser.Math.Clamp(this.ballImg.y, 120, FLOOR_Y);
@@ -1265,6 +1578,7 @@ export class LabScene extends Phaser.Scene {
 
   private success() {
     if (this.mode !== "running") return;
+    this.announce(`Funcionou! ${this.runReport("success")}`);
     this.mode = "done";
     this.finishing = true;
     this.hud.setDone();

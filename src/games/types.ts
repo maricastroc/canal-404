@@ -18,7 +18,7 @@ export type StartOptions = { level?: number; next?: boolean; fresh?: boolean };
 
 export type GameEvent =
   | { type: "score"; score: number }
-  | { type: "announce"; message: string }
+  | { type: "announce"; message: string; transient?: boolean; fresh?: boolean }
   | { type: "pause-request" }
   | { type: "achievement"; id: string }
   | { type: "launch" }

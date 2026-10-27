@@ -15,6 +15,7 @@ import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { getGameRecord, recordGameResult, recordGameStart, recordLevelResult, unlockAchievement } from "@/lib/progress/store";
 import { computeLevelProgress } from "./levelProgress";
 import { LoadingScreen, pickTip } from "./LoadingScreen";
+import { useAnnouncer } from "./useAnnouncer";
 import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
@@ -31,7 +32,6 @@ export function GameShell({ slug }: { slug: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<GameInstance | null>(null);
   const stageStateRef = useRef<Stage>("loading");
-  const lastAnnounce = useRef(0);
   const [stage, setStageState] = useState<Stage>("loading");
   const setStage = useCallback((next: Stage) => {
     stageStateRef.current = next;
@@ -41,7 +41,7 @@ export function GameShell({ slug }: { slug: string }) {
   const [leaving, setLeaving] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
-  const [announcement, setAnnouncement] = useState("");
+  const { regions, announce } = useAnnouncer();
   const [score, setScore] = useState(0);
   const [result, setResult] = useState<{ result: GameResult; isRecord: boolean; note: string } | null>(null);
   const progressState = useProgress();
@@ -122,13 +122,9 @@ export function GameShell({ slug }: { slug: string }) {
               case "score":
                 setScore(event.score);
                 break;
-              case "announce": {
-                const now = performance.now();
-                const merge = now - lastAnnounce.current < 400;
-                lastAnnounce.current = now;
-                setAnnouncement((prev) => (merge ? `${prev} ${event.message}` : event.message));
+              case "announce":
+                announce(event.message, { transient: event.transient, fresh: event.fresh });
                 break;
-              }
               case "pause-request":
                 if (stageStateRef.current === "playing") {
                   instanceRef.current?.pause();
@@ -169,7 +165,7 @@ export function GameShell({ slug }: { slug: string }) {
                 });
                 setResult({ result: r, isRecord, note });
                 const levelText = r.level ? `${word === "arena" ? "Arena" : "Fase"} ${r.level.index + 1}, ${r.level.title}: ` : "";
-                setAnnouncement(
+                announce(
                   r.won
                     ? `${levelText}vitória! ${r.score} pontos, ${r.stars} estrelas.${isRecord ? " Melhor resultado!" : ""}`
                     : `${levelText}fim de jogo. ${r.score} pontos.`,
@@ -199,7 +195,7 @@ export function GameShell({ slug }: { slug: string }) {
       instance?.destroy();
       instanceRef.current = null;
     };
-  }, [slug, attempt, setStage]);
+  }, [slug, attempt, setStage, announce]);
 
   useEffect(() => {
     const audio = getAudio();
@@ -408,9 +404,14 @@ export function GameShell({ slug }: { slug: string }) {
           )}
         </div>
       </div>
-      <p className="sr-only" aria-live="polite" aria-atomic="true">
-        {announcement}
-      </p>
+      <div className="sr-only" data-testid="game-announcer">
+        <p aria-live="polite" aria-atomic="true">
+          {regions[0]}
+        </p>
+        <p aria-live="polite" aria-atomic="true">
+          {regions[1]}
+        </p>
+      </div>
     </div>
   );
 }

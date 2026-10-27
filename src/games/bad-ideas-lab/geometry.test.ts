@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { FLOOR_Y, H, PARTS, PART_ORDER, W, partAngle, partFacing, type PartType } from "./config";
-import { ballInSensor, partPoly, placementIssue, pointInPoly, polyInsideRect, polysOverlap, rectPoly, type PlacedPart } from "./geometry";
+import {
+  ballInSensor,
+  columnSpan,
+  partPoly,
+  placementConflict,
+  placementIssue,
+  pointInPoly,
+  polyBox,
+  polyInsideRect,
+  polysOverlap,
+  rectPoly,
+  sceneBlocks,
+  type PlacedPart,
+} from "./geometry";
 import { LEVELS } from "./levels";
 
 const SOLUTIONS: Record<string, PlacedPart[]> = {
@@ -48,6 +61,15 @@ describe("polygon helpers", () => {
     const b = rectPoly(100, 0, 100, 20);
     expect(polysOverlap(a, b)).toBe(false);
     expect(polysOverlap(a, rectPoly(102, 0, 100, 20), 4)).toBe(true);
+  });
+
+  it("measures boxes and vertical spans of tilted shapes", () => {
+    expect(polyBox(rectPoly(100, 50, 40, 20))).toEqual({ left: 80, right: 120, top: 40, bottom: 60 });
+    const tilted = rectPoly(0, 0, 200, 20, 45);
+    const span = columnSpan(tilted, 0)!;
+    expect(span.top).toBeCloseTo(-14.14, 1);
+    expect(span.bottom).toBeCloseTo(14.14, 1);
+    expect(columnSpan(tilted, 500)).toBeNull();
   });
 
   it("checks points and polygons against shapes", () => {
@@ -98,6 +120,16 @@ describe("placement rules", () => {
     const finale = LEVELS.find((l) => l.id === "finale")!;
     expect(placementIssue(pixel, [], { type: "spring", x: 540, y: 360, rot: 2 })).toBe("blocked");
     expect(placementIssue(finale, [], { type: "spring", x: 360, y: 340, rot: 2 })).toBe("blocked");
+  });
+
+  it("says which block, edge or part is in the way", () => {
+    const pixel = LEVELS.find((l) => l.id === "pixel")!;
+    const conflict = placementConflict(pixel, [], { type: "spring", x: 540, y: 360, rot: 2 });
+    expect(conflict).toEqual({ issue: "blocked", block: 0 });
+    expect(sceneBlocks(pixel)[0]).toBe(pixel.blocks[0]);
+    expect(placementConflict(level, [], { type: "ramp", x: level.build.x, y: level.build.y, rot: 3 })).toEqual({ issue: "outside", edges: ["left", "top"] });
+    const first: PlacedPart = { type: "ramp", x: 680, y: 560, rot: 3 };
+    expect(placementConflict(level, [first], { ...first, x: first.x + 20 })).toEqual({ issue: "crowded", other: 0 });
   });
 
   it("accepts the tutorial ramp on its guide mark", () => {

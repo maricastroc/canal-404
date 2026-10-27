@@ -129,17 +129,79 @@ function rectAsPoly(r: Rect): Poly {
   return rectPoly(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h);
 }
 
-export function placementIssue(
-  level: { blocks: Block[]; goal: Goal; build: Rect; pipe: { x: number; y: number } },
-  others: PlacedPart[],
-  part: PlacedPart,
-): "outside" | "blocked" | "crowded" | null {
+export type Box = { left: number; right: number; top: number; bottom: number };
+
+export function polyBox(poly: Poly): Box {
+  return {
+    left: Math.min(...poly.map((p) => p.x)),
+    right: Math.max(...poly.map((p) => p.x)),
+    top: Math.min(...poly.map((p) => p.y)),
+    bottom: Math.max(...poly.map((p) => p.y)),
+  };
+}
+
+export function columnSpan(poly: Poly, x: number): { top: number; bottom: number } | null {
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (let i = 0; i < poly.length; i += 1) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const lo = Math.min(a.x, b.x);
+    const hi = Math.max(a.x, b.x);
+    if (x < lo || x > hi) continue;
+    if (hi - lo < 1e-6) {
+      top = Math.min(top, a.y, b.y);
+      bottom = Math.max(bottom, a.y, b.y);
+      continue;
+    }
+    const y = a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+  }
+  return top <= bottom ? { top, bottom } : null;
+}
+
+export function sensorPoly(s: Sensor): Poly {
+  return s.kind === "circle" ? rectPoly(s.x, s.y, s.r * 2, s.r * 2) : rectAsPoly(s);
+}
+
+export function sceneBlocks(level: { blocks: Block[]; goal: Goal }): Block[] {
+  return [...level.blocks, ...goalLayout(level.goal).blocks];
+}
+
+export type Edge = "left" | "right" | "top" | "bottom";
+
+export type Conflict =
+  | { issue: "outside"; edges: Edge[] }
+  | { issue: "blocked"; block: number }
+  | { issue: "blocked"; near: "goal" | "pipe" }
+  | { issue: "crowded"; other: number };
+
+type PlacementLevel = { blocks: Block[]; goal: Goal; build: Rect; pipe: { x: number; y: number } };
+
+export function placementConflict(level: PlacementLevel, others: PlacedPart[], part: PlacedPart): Conflict | null {
   const poly = partPoly(part.type, part.x, part.y, part.rot);
-  if (!polyInsideRect(poly, level.build)) return "outside";
-  const layout = goalLayout(level.goal);
-  for (const b of [...level.blocks, ...layout.blocks]) if (polysOverlap(poly, blockPoly(b), 2)) return "blocked";
-  if (polysOverlap(poly, rectAsPoly(layout.keepOut))) return "blocked";
-  if (polysOverlap(poly, rectAsPoly(pipeKeepOut(level.pipe.x, level.pipe.y)))) return "blocked";
-  for (const o of others) if (polysOverlap(poly, partPoly(o.type, o.x, o.y, o.rot), 4)) return "crowded";
+  if (!polyInsideRect(poly, level.build)) {
+    const box = polyBox(poly);
+    const r = level.build;
+    const edges: Edge[] = [];
+    if (box.left < r.x) edges.push("left");
+    if (box.right > r.x + r.w) edges.push("right");
+    if (box.top < r.y) edges.push("top");
+    if (box.bottom > r.y + r.h) edges.push("bottom");
+    return { issue: "outside", edges };
+  }
+  const blocks = sceneBlocks(level);
+  for (let i = 0; i < blocks.length; i += 1) if (polysOverlap(poly, blockPoly(blocks[i]), 2)) return { issue: "blocked", block: i };
+  if (polysOverlap(poly, rectAsPoly(goalLayout(level.goal).keepOut))) return { issue: "blocked", near: "goal" };
+  if (polysOverlap(poly, rectAsPoly(pipeKeepOut(level.pipe.x, level.pipe.y)))) return { issue: "blocked", near: "pipe" };
+  for (let i = 0; i < others.length; i += 1) {
+    const o = others[i];
+    if (polysOverlap(poly, partPoly(o.type, o.x, o.y, o.rot), 4)) return { issue: "crowded", other: i };
+  }
   return null;
+}
+
+export function placementIssue(level: PlacementLevel, others: PlacedPart[], part: PlacedPart): "outside" | "blocked" | "crowded" | null {
+  return placementConflict(level, others, part)?.issue ?? null;
 }

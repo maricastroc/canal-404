@@ -12,7 +12,7 @@ test("wins the first Laboratório level with the keyboard only", async ({ page }
   await expect(intro).toBeHidden();
   const game = stage(page);
   await game.focus();
-  const live = page.locator("p[aria-live=polite][aria-atomic=true]");
+  const live = page.getByTestId("game-announcer");
 
   await page.keyboard.press("1");
   await expect(live).toContainText("Aperte Enter para colocar");
@@ -37,7 +37,7 @@ test("gives a hint and pauses from the keyboard", async ({ page }) => {
   const intro = await openGame(page, LAB.slug, LAB.title);
   await intro.getByRole("button", { name: "Jogar fase 1" }).click();
   await stage(page).focus();
-  const live = page.locator("p[aria-live=polite][aria-atomic=true]");
+  const live = page.getByTestId("game-announcer");
   await page.keyboard.press("h");
   await expect(live).toContainText("Dica da Lina: Arraste a rampa até a marca tracejada.");
   await page.keyboard.press("Escape");
