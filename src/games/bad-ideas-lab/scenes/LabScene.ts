@@ -89,6 +89,8 @@ const ISSUE_TEXT: Record<Exclude<Issue, null>, string> = {
 const FAIL_LINES = ["Quase!", "Opa! Não foi dessa vez.", "Faltou pouco!", "Hmm... mais um ajuste."];
 const CONFETTI = [0xffc83d, 0xf06ba8, 0x63d6c1, 0x7b62c4, 0xff8a3d, 0x8fd4f7];
 const MAX_STEPS = Math.round(RUN_TIMEOUT / STEP_MS);
+const REST_STEPS = 50;
+const RESET_MS = 900;
 
 function wrapLines(text: string, max = 30) {
   const lines: string[] = [];
@@ -138,6 +140,8 @@ export class LabScene extends Phaser.Scene {
   private trail: [number, number][] = [];
   private trailGfx!: Phaser.GameObjects.Graphics;
   private fails = 0;
+  private runs = 0;
+  private resetTimer: Phaser.Time.TimerEvent | null = null;
   private lina!: Phaser.GameObjects.Image;
   private bubble!: Bubble;
   private slotTypes: PartType[] = [];
@@ -193,6 +197,7 @@ export class LabScene extends Phaser.Scene {
     this.inWind = false;
     this.trail = [];
     this.fails = 0;
+    this.runs = 0;
     this.lastSound = new Map();
     this.lastIssue = undefined;
     this.finishing = false;
@@ -1094,6 +1099,10 @@ export class LabScene extends Phaser.Scene {
     this.input.on("pointerup", () => this.onPointerUp());
     this.input.on("pointerupoutside", () => this.onPointerUp());
     this.input.on("pointerdown", (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (this.mode === "done" && this.resetTimer && !this.finishing) {
+        this.resetAfterFail();
+        return;
+      }
       if (this.mode === "build" && over.length === 0) {
         const settled = this.settleCarry();
         if (settled) this.announce(settled);
@@ -1113,7 +1122,10 @@ export class LabScene extends Phaser.Scene {
     }
     if (this.mode === "attract") return;
     if (!event.repeat && this.query(key, event.shiftKey)) return;
-    if (this.mode === "done") return;
+    if (this.mode === "done") {
+      if (this.resetTimer && !this.finishing) this.resetAfterFail();
+      return;
+    }
     if (key === " " || key === "spacebar") {
       event.preventDefault();
       if (!event.repeat) this.toggleRun();
@@ -1315,6 +1327,7 @@ export class LabScene extends Phaser.Scene {
     this.bubble.hide();
     this.ranOnce = true;
     this.mode = "running";
+    this.runs += 1;
     this.guideGfx?.setVisible(false);
     this.guideArrow?.setVisible(false);
     this.hud.setRunning(true);
@@ -1528,7 +1541,7 @@ export class LabScene extends Phaser.Scene {
       return;
     }
     this.rest = ball.speed < 0.15 ? this.rest + 1 : 0;
-    if (this.rest > 120) {
+    if (this.rest > REST_STEPS) {
       this.fail("stopped");
       return;
     }
@@ -1560,6 +1573,7 @@ export class LabScene extends Phaser.Scene {
     const bx = Phaser.Math.Clamp(this.ballImg.x, 80, W - 80);
     const by = Phaser.Math.Clamp(this.ballImg.y, 120, FLOOR_Y);
     this.time.delayedCall(520, () => {
+      if (this.mode !== "done") return;
       this.sfx("poof", 0.9);
       this.word(out ? "TCHAU!" : "PUF!", bx, by - 70, "#fbf5e6", 50);
       if (!out) {
@@ -1569,11 +1583,15 @@ export class LabScene extends Phaser.Scene {
         this.ballImg.setVisible(false);
       }
     });
-    this.time.delayedCall(1400, () => {
-      if (this.mode !== "done" || this.finishing) return;
-      this.mode = "running";
-      this.endRun();
-    });
+    this.resetTimer = this.time.delayedCall(RESET_MS, () => this.resetAfterFail());
+  }
+
+  private resetAfterFail() {
+    this.resetTimer?.remove();
+    this.resetTimer = null;
+    if (this.mode !== "done" || this.finishing) return;
+    this.mode = "running";
+    this.endRun();
   }
 
   private success() {
@@ -1608,7 +1626,7 @@ export class LabScene extends Phaser.Scene {
     const total = Object.values(level.inventory).reduce((a, b) => a + (b ?? 0), 0);
     const saved = total - used;
     const stars = used <= level.par ? 3 : used === level.par + 1 ? 2 : 1;
-    const firstTry = this.fails === 0;
+    const firstTry = this.runs === 1;
     const breakdown = [
       { label: "Máquina funcionou", value: 1000 },
       { label: saved === 1 ? "Sobrou 1 peça" : `Sobraram ${saved} peças`, value: saved * 150 },

@@ -35,6 +35,12 @@ const SLOT_H = 92;
 const TRAY_PAD = 16;
 const GAP = 12;
 const TRAY_BOTTOM = 12;
+const CARD_TOP = 22;
+const CARD_H = 134;
+const LEVEL_CARD_W = 560;
+const PARTS_CARD_W = 330;
+const CLEARANCE = 10;
+const MIN_FIT = 0.85;
 
 function drawButtonBg(g: Phaser.GameObjects.Graphics, w: number, h: number, fill: number) {
   g.clear();
@@ -74,6 +80,7 @@ export class LabHud {
   private runPulse?: Phaser.Tweens.Tween;
   private runArrow: Phaser.GameObjects.Container;
   private runPulseOn = false;
+  private build: LevelDef["build"];
   private enabled = true;
   private running = false;
 
@@ -87,9 +94,10 @@ export class LabHud {
     private reduced: boolean,
     private handlers: Handlers,
   ) {
+    this.build = level.build;
     const lg = scene.add.graphics();
-    const cardW = 560;
-    const cardH = 134;
+    const cardW = LEVEL_CARD_W;
+    const cardH = CARD_H;
     paper(lg, 0, 0, cardW, cardH, 22);
     const kicker = cartoonText(scene, 22, 12, `FASE ${index + 1} DE ${total}`, { size: 24, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
     const title = cartoonText(scene, 20, 40, level.title.toUpperCase(), { size: 42, color: INK, font: fonts.display, stroke: 0, shadow: false });
@@ -97,10 +105,10 @@ export class LabHud {
     fitText(title, cardW - 40, 42, 26);
     const goal = scene.add.text(22, 90, level.goalText, { fontFamily: fonts.hand, fontSize: "27px", color: "#3a3157", padding: { x: 2, y: 2 } });
     fitText(goal, cardW - 40, 27, 18);
-    this.levelCard = scene.add.container(24, 22, [lg, kicker, title, goal]).setDepth(20);
+    this.levelCard = scene.add.container(24, CARD_TOP, [lg, kicker, title, goal]).setDepth(20);
 
     const pg = scene.add.graphics();
-    const pw = 330;
+    const pw = PARTS_CARD_W;
     darkPanel(pg, -pw, 0, pw, cardH);
     const plabel = cartoonText(scene, -pw + 20, 12, "PEÇAS", { size: 24, color: "#9df0dc", font: fonts.display, shadow: false, stroke: 0.16 });
     this.usedText = cartoonText(scene, -pw + 20, 86, "0", { size: 64, color: "#ffc83d", font: fonts.display }).setOrigin(0, 0.5);
@@ -111,7 +119,7 @@ export class LabHud {
       this.stars.push(s);
       children.push(s);
     }
-    this.partsCard = scene.add.container(W - 24, 22, children).setDepth(20);
+    this.partsCard = scene.add.container(W - 24, CARD_TOP, children).setDepth(20);
 
     const buttonsW = 128 + 160 + 210 + GAP * 2;
     this.trayW = TRAY_PAD * 2 + slotTypes.length * SLOT_W + (slotTypes.length - 1) * GAP + 28 + buttonsW;
@@ -221,9 +229,21 @@ export class LabHud {
   layout(displayScale: number) {
     this.uiScale = Phaser.Math.Clamp(displayScale * 0.55, 1, 1.75);
     const s = this.uiScale;
-    this.levelCard.setScale(Math.min(s, 1.3));
-    this.partsCard.setScale(Math.min(s, 1.3));
-    const ts = Math.min(Math.min(s, 1.4), (W - 24) / this.trayW);
+    const b = this.build;
+    const cardFit = (left: number, width: number, scale: number) => {
+      const right = left + width * scale;
+      if (b.x > right || b.x + b.w < left) return scale;
+      return Math.max(MIN_FIT, Math.min(scale, (b.y - CARD_TOP - 2) / CARD_H));
+    };
+    const cs = Math.min(s, 1.3);
+    this.levelCard.setScale(cardFit(24, LEVEL_CARD_W, cs));
+    this.partsCard.setScale(cardFit(W - 24 - PARTS_CARD_W * cs, PARTS_CARD_W, cs));
+    let ts = Math.min(Math.min(s, 1.4), (W - 24) / this.trayW);
+    const half = (this.trayW / 2) * ts;
+    if (b.x < W / 2 + half && b.x + b.w > W / 2 - half) {
+      const room = (H - TRAY_BOTTOM - (b.y + b.h) - CLEARANCE) / (SLOT_H + TRAY_PAD * 2);
+      ts = Math.max(MIN_FIT, Math.min(ts, room));
+    }
     this.tray.setScale(ts);
     this.toolbar.setScale(Math.min(s, 1.5));
     if (this.runPulseOn) this.pulseRun(true);
