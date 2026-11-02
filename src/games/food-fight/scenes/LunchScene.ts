@@ -65,6 +65,24 @@ function bezier(a: Pt, c: Pt, b: Pt, k: number): Pt {
   return { x: u * u * a.x + 2 * u * k * c.x + k * k * b.x, y: u * u * a.y + 2 * u * k * c.y + k * k * b.y };
 }
 
+const SAVE_KEY = "canal404:food-fight:v1";
+
+function tutorialSeen() {
+  try {
+    return JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}").tutorialDone === true;
+  } catch {
+    return false;
+  }
+}
+
+function rememberTutorial() {
+  try {
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, tutorialDone: true }));
+  } catch {
+    return;
+  }
+}
+
 export class LunchScene extends Phaser.Scene {
   private ctx!: GameHostContext;
   private mode: Mode = "attract";
@@ -242,7 +260,7 @@ export class LunchScene extends Phaser.Scene {
 
   begin() {
     if (this.mode !== "attract") return;
-    if (this.registry.get("tutorialDone")) this.countdown();
+    if (this.registry.get("tutorialDone") || tutorialSeen()) this.countdown();
     else this.startTutorial();
   }
 
@@ -409,6 +427,7 @@ export class LunchScene extends Phaser.Scene {
     this.tutorial = null;
     this.tutorialRival = null;
     this.registry.set("tutorialDone", true);
+    rememberTutorial();
     this.hud.pulseDuck(false);
     this.hud.hidePointer();
     for (const r of this.rivals) if (r.visible && r.state !== "lowering") r.lower(() => (r.readyAt = this.t + 400));
@@ -417,6 +436,16 @@ export class LunchScene extends Phaser.Scene {
 
   private countdown() {
     this.mode = "tutorial";
+    this.hitScore = 0;
+    this.comboScore = 0;
+    this.interruptScore = 0;
+    this.lunchLadyPenalty = 0;
+    this.hits = 0;
+    this.streak = 0;
+    this.bestStreak = 0;
+    this.interrupts = 0;
+    this.hud.setStreak(0);
+    this.updateScore();
     this.hud.setTimer(ROUND_MS, ROUND_MS, false);
     this.hud.flash("PREPARE-SE!", "#ffc83d", 700, "Defenda a mesa até o sinal tocar");
     this.sfx("beep", 0.8);
@@ -697,7 +726,8 @@ export class LunchScene extends Phaser.Scene {
     let score = 0;
     for (const r of this.rivals) {
       if (!r.targetable) continue;
-      const u = r.urgency(this.t);
+      const shield = this.lunchLady.covers(r.face(), 30) && r.state !== "windup";
+      const u = r.urgency(this.t) * (shield ? 0.4 : 1);
       if (u > score) {
         score = u;
         best = r;
@@ -794,7 +824,13 @@ export class LunchScene extends Phaser.Scene {
       else this.rivalHit(target.rival, food);
       return;
     }
-    if (target.kind === "rival" && (target.rival.state === "lowering" || target.rival.state === "hidden")) {
+    const escaped = target.kind === "rival" && (target.rival.state === "lowering" || target.rival.state === "hidden");
+    if (target.kind !== "lunchLady" && this.lunchLady.covers(to)) {
+      this.lunchLadyHit();
+      if (escaped) this.announce("O lanche passou por cima e acertou a tia!");
+      return;
+    }
+    if (escaped && target.kind === "rival") {
       this.word("ESCAPOU!", to.x, to.y - 40, "#fbf5e6", target.rival.slot.row === "back" ? 28 : 34);
     }
     if (target.kind === "lunchLady" && this.lunchLady.active) {
@@ -838,6 +874,8 @@ export class LunchScene extends Phaser.Scene {
 
   private blocked(r: Rival, food: Food, at: Pt) {
     r.block();
+    this.streak = 0;
+    this.hud.setStreak(0);
     this.sfx("clang", 0.9);
     const back = r.slot.row === "back";
     this.word("TÓIM!", r.slot.x, r.top() - 40, "#fbf5e6", back ? 34 : 42);

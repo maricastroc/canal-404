@@ -352,6 +352,13 @@ export class LunchLady {
     return { x: this.img.x, y: this.img.y - 150 };
   }
 
+  covers(at: { x: number; y: number }, margin = 0) {
+    if (!this.active) return false;
+    const halfW = (this.img.displayWidth * 0.42) + margin;
+    const top = this.img.y - this.img.displayHeight;
+    return Math.abs(at.x - this.img.x) < halfW && at.y > top - margin && at.y < this.img.y + 40;
+  }
+
   update(delta: number) {
     if (!this.active) return;
     this.img.x -= this.speed * delta * (this.angry ? 1.6 : 1);
