@@ -1,41 +1,47 @@
+import { COVERS } from "@/components/art/Covers";
+import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { Feather, Head, Pillow } from "@/components/art/PajamaWarArt";
+import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { P } from "@/lib/palette";
 
-export type ChannelId = "street" | "pajama" | "bars" | "cartoon" | "lost" | "tape";
+export type ChannelId = string;
 
 export type Channel = {
   id: ChannelId;
   number: string;
   name: string;
+  game?: GameMeta;
   cta?: { href: string; label: string; context: string; play?: boolean };
 };
 
-export const CHANNELS: Record<ChannelId, Channel> = {
-  street: {
-    id: "street",
-    number: "03",
-    name: "Jogo da semana: Rua Sem Saída",
-    cta: { href: "/play/dead-end-street", label: "Jogar agora", context: "Rua Sem Saída, o jogo da semana", play: true },
-  },
-  pajama: {
-    id: "pajama",
-    number: "05",
-    name: "Estreia: Guerra do Pijama",
-    cta: { href: "/play/pajama-war", label: "Jogar agora", context: "Guerra do Pijama, o jogo novo", play: true },
-  },
-  bars: { id: "bars", number: "07", name: "Fora do ar: barras coloridas" },
-  cartoon: {
+const GAME_CHANNELS: Channel[] = PLAYABLE.map((game, i) => ({
+  id: game.slug,
+  number: String(i + 1).padStart(2, "0"),
+  name: game.title,
+  game,
+  cta: { href: `/play/${game.slug}`, label: "Jogar agora", context: game.title, play: true },
+}));
+
+const SPECIAL_CHANNELS: Channel[] = [
+  { id: "bars", number: String(GAME_CHANNELS.length + 1).padStart(2, "0"), name: "Fora do ar: barras coloridas" },
+  {
     id: "cartoon",
-    number: "09",
+    number: String(GAME_CHANNELS.length + 2).padStart(2, "0"),
     name: "Desenho: 404 e o Controle Perdido",
     cta: { href: "/characters", label: "Personagens", context: "conhecer a turma do CANAL 404" },
   },
-  lost: { id: "lost", number: "00", name: "Transmissão perdida" },
-  tape: { id: "tape", number: "AV", name: "Fita misteriosa no videocassete" },
-};
+  { id: "lost", number: "00", name: "Transmissão perdida" },
+  { id: "tape", number: "AV", name: "Fita misteriosa no videocassete" },
+];
 
-export const CHANNEL_ORDER: ChannelId[] = ["street", "pajama", "bars", "cartoon"];
+export const CHANNELS: Record<ChannelId, Channel> = Object.fromEntries([...GAME_CHANNELS, ...SPECIAL_CHANNELS].map((c) => [c.id, c]));
+
+export const CHANNEL_ORDER: ChannelId[] = [...GAME_CHANNELS.map((c) => c.id), "bars", "cartoon"];
+
+export function isRegularChannel(id: ChannelId) {
+  return CHANNEL_ORDER.includes(id);
+}
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
@@ -85,12 +91,6 @@ function StreetScreen() {
           SEM SAÍDA
         </text>
       </g>
-      <g transform="rotate(-6 50 22)">
-        <rect x="10" y="12" width="96" height="22" rx="4" fill={P.tomato} stroke={P.ink} strokeWidth="3" />
-        <text x="58" y="29" textAnchor="middle" fontSize="12.5" fill={P.white} style={display} letterSpacing="0.5">
-          JOGO DA SEMANA
-        </text>
-      </g>
     </svg>
   );
 }
@@ -112,17 +112,34 @@ function PajamaScreen() {
       <Feather x={120} y={120} rotate={20} s={1.1} />
       <Head who="lia" x={20} y={66} size={92} face="fierce" rotate={-6} />
       <Head who="bia" x={186} y={70} size={88} face="ouch" rotate={8} flip />
-      <rect y="208" width="294" height="38" fill={P.plum900} />
-      <text x="147" y="234" textAnchor="middle" fontSize="22" fill={P.bubblegum} stroke={P.ink} strokeWidth="5" paintOrder="stroke" style={display}>
-        GUERRA DO PIJAMA
-      </text>
-      <g transform="rotate(-10 238 52)">
-        <rect x="198" y="38" width="82" height="28" rx="4" fill={P.sun} stroke={P.ink} strokeWidth="3.5" />
-        <text x="239" y="59" textAnchor="middle" fontSize="17" fill={P.ink} style={display}>
-          ESTREIA
-        </text>
-      </g>
     </svg>
+  );
+}
+
+function ChannelLogo({ game }: { game: GameMeta }) {
+  const Logo = GAME_LOGOS[game.slug];
+  if (!Logo) return null;
+  return (
+    <>
+      <div className="absolute inset-x-0 top-0 h-[46%] bg-gradient-to-b from-plum-950/55 to-transparent" />
+      <div className="absolute left-1/2 top-[7%] w-[62%] -translate-x-1/2 drop-shadow-[0_3px_0_rgba(29,24,48,0.6)]">
+        <Logo className="w-full" />
+      </div>
+    </>
+  );
+}
+
+function GameScreen({ game }: { game: GameMeta }) {
+  const Cover = COVERS[game.slug];
+  return (
+    <div className="absolute inset-0 bg-plum-900">
+      {Cover && (
+        <div className="absolute inset-0">
+          <Cover decorative />
+        </div>
+      )}
+      <ChannelLogo game={game} />
+    </div>
   );
 }
 
@@ -217,10 +234,15 @@ function TapeScreen() {
 
 export function ChannelContent({ id }: { id: ChannelId }) {
   switch (id) {
-    case "street":
+    case "dead-end-street":
       return <StreetScreen />;
-    case "pajama":
-      return <PajamaScreen />;
+    case "pajama-war":
+      return (
+        <>
+          <PajamaScreen />
+          <ChannelLogo game={CHANNELS[id].game!} />
+        </>
+      );
     case "bars":
       return <BarsScreen />;
     case "cartoon":
@@ -230,4 +252,6 @@ export function ChannelContent({ id }: { id: ChannelId }) {
     case "tape":
       return <TapeScreen />;
   }
+  const game = CHANNELS[id]?.game;
+  return game ? <GameScreen game={game} /> : <BarsScreen />;
 }

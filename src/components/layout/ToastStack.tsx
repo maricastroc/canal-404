@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useSound } from "@/lib/audio/hooks";
@@ -60,6 +61,15 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
         </p>
         <p className="mt-1 font-display text-lg leading-tight text-ink">{toast.title}</p>
         <p className="text-sm leading-snug text-ink-soft [@media(max-height:520px)]:hidden">{toast.description}</p>
+        {toast.kind !== "info" && (
+          <Link
+            href={isSecret ? "/extras#secrets" : "/extras#achievements"}
+            onClick={() => dismissToast(toast.id)}
+            className="mt-1 inline-block font-display text-xs uppercase tracking-wide text-plum-700 underline decoration-2 underline-offset-2 hover:text-ink"
+          >
+            {isSecret ? "Ver segredos" : "Ver conquistas"}
+          </Link>
+        )}
       </div>
       <button
         type="button"

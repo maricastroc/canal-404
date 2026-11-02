@@ -7,6 +7,7 @@ import { GameCover } from "@/components/art/Covers";
 import { GAME_LOGOS, GameHowToPanel } from "@/components/art/GameLogos";
 import { ArrowLeftIcon, PlayIcon } from "@/components/art/Icons";
 import { GameStats } from "@/components/catalog/GameStats";
+import { WeeklyPlayLink } from "@/components/catalog/WeeklyPlayLink";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkLink, PaperPanel, Tag } from "@/components/ui/Primitives";
@@ -150,13 +151,11 @@ export default async function GamePage({ params }: PageProps<"/games/[slug]">) {
               Hmm... parece que esse jogo ainda está fora do ar.
             </SpeechBubble>
             <p className="mt-4 text-lg leading-snug text-cream-2">
-              Ele ainda está sendo desenhado. Enquanto isso, a Rua Sem Saída está no ar e a sala de transmissão tem muita coisa
-              escondida.
+              Ele ainda está sendo desenhado. Enquanto isso, o jogo da semana está no ar e a sala de transmissão tem muita
+              coisa escondida.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <InkLink href="/play/dead-end-street" tone="sun">
-                <PlayIcon className="size-5 text-ink" /> Jogar Rua Sem Saída
-              </InkLink>
+              <WeeklyPlayLink tone="sun" exclude={game.slug} />
               <InkLink href="/" tone="mint">
                 Explorar a sala
               </InkLink>

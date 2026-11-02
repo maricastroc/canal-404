@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { MouseEvent } from "react";
+import { PLAYABLE } from "@/games/registry";
 import { P } from "@/lib/palette";
 import { spotStyle, SPOTS, type Spot } from "../layout";
 
@@ -130,7 +131,7 @@ function AttractScreen({ active }: { active: boolean }) {
             INSIRA FICHA
           </p>
         )}
-        <p className="font-display text-[clamp(6px,0.62vw,11px)] leading-none text-plum-300">5 JOGOS NA MEMÓRIA</p>
+        <p className="font-display text-[clamp(6px,0.62vw,11px)] leading-none text-plum-300">{PLAYABLE.length} JOGOS NA MEMÓRIA</p>
       </div>
       <div className="pointer-events-none absolute inset-0 scanlines opacity-60" />
       {active && <div className="pointer-events-none absolute inset-0 bg-white" style={{ animation: "flash-out 420ms ease-out both" }} />}
@@ -150,7 +151,7 @@ export function Arcade({
   onHoverSound: () => void;
 }) {
   const spot = SPOTS.arcade;
-  const hint = "Todos os jogos moram dentro do fliperama. Até os que ainda não ficaram prontos.";
+  const hint = `Os ${PLAYABLE.length} jogos do canal moram dentro do fliperama. Insere uma ficha!`;
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
     event.preventDefault();

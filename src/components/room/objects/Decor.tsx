@@ -331,9 +331,10 @@ export function ControllersArt() {
   );
 }
 
-function Cart({ x, y, r, color, label }: { x: number; y: number; r: number; color: string; label: string }) {
+function Cart({ x, y, r, color, label, lit = false }: { x: number; y: number; r: number; color: string; label: string; lit?: boolean }) {
   return (
     <g transform={`translate(${x} ${y}) rotate(${r})`}>
+      {lit && <rect x="-34" y="-26" width="68" height="56" rx="14" fill={P.sun} opacity="0.55" style={{ filter: "blur(5px)" }} />}
       <path d="M-26 -18 L26 -18 L26 14 L18 22 L-26 22 Z" fill={P.steelDeep} {...thin} />
       <rect x="-20" y="-12" width="40" height="22" rx="3" fill={color} stroke={P.ink} strokeWidth="3" />
       <text x="0" y="4" textAnchor="middle" fontSize="10" fill={P.ink} style={display}>
@@ -344,13 +345,13 @@ function Cart({ x, y, r, color, label }: { x: number; y: number; r: number; colo
   );
 }
 
-export function CartridgesArt() {
+export function CartridgesArt({ lit = [] }: { lit?: boolean[] }) {
   return (
     <svg viewBox="0 0 166 78" className="h-full w-full" overflow="visible" aria-hidden>
       <g>
-        <Cart x={34} y={46} r={-18} color={P.tomato} label="RUA" />
-        <Cart x={84} y={40} r={8} color={P.plum300} label="LAB" />
-        <Cart x={134} y={48} r={24} color={P.mint} label="???" />
+        <Cart x={34} y={46} r={-18} color={P.tomato} label="RUA" lit={lit[0]} />
+        <Cart x={84} y={40} r={8} color={P.plum300} label="LAB" lit={lit[1]} />
+        <Cart x={134} y={48} r={24} color={P.mint} label="???" lit={lit[2]} />
       </g>
     </svg>
   );
@@ -519,7 +520,7 @@ export function PosterDreamArt() {
   );
 }
 
-export function TrophyArt({ shine }: { shine: boolean }) {
+export function TrophyArt({ shine, record = false }: { shine: boolean; record?: boolean }) {
   return (
     <svg viewBox="0 0 84 122" className="h-full w-full" overflow="visible" aria-hidden>
       <g>
@@ -536,6 +537,12 @@ export function TrophyArt({ shine }: { shine: boolean }) {
         <text x="42" y="106" textAnchor="middle" fontSize="9" fill={P.ink} style={display}>
           2004
         </text>
+        {record && (
+          <g>
+            <path d="M42 26 L46 35 L56 36 L48 42 L51 52 L42 46 L33 52 L36 42 L28 36 L38 35 Z" fill={P.white} stroke={P.ink} strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M74 64 Q75 69 80 70 Q75 71 74 76 Q73 71 68 70 Q73 69 74 64 Z" fill={P.white} stroke={P.ink} strokeWidth="1.8" />
+          </g>
+        )}
         {shine && (
           <g style={{ animation: "pop-in 0.5s ease-out both" }}>
             <path d="M70 0 Q72 8 80 10 Q72 12 70 20 Q68 12 60 10 Q68 8 70 0 Z" fill={P.white} stroke={P.ink} strokeWidth="2" />

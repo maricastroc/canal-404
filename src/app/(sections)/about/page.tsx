@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { WeeklyPlayLink } from "@/components/catalog/WeeklyPlayLink";
 import { Sparkle, Squiggle } from "@/components/art/Badges";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
@@ -149,9 +150,7 @@ export default function AboutPage() {
           <InkLink href="/" tone="sun">
             Voltar para a sala
           </InkLink>
-          <InkLink href="/play/dead-end-street" tone="mint">
-            Jogar Rua Sem Saída
-          </InkLink>
+          <WeeklyPlayLink tone="mint" />
         </div>
       </PaperPanel>
     </div>

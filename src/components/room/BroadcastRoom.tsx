@@ -35,8 +35,11 @@ import {
   type CatMood,
   type SkyPeriod,
 } from "./objects/Decor";
-import { Tv } from "./objects/Tv";
-import { CHANNEL_ORDER, CHANNELS, type ChannelId } from "./objects/TvChannels";
+import { Tv, type TvBadge } from "./objects/Tv";
+import { CHANNEL_ORDER, CHANNELS, isRegularChannel, type ChannelId } from "./objects/TvChannels";
+import { useSchedule } from "@/components/catalog/useSchedule";
+import { PLAYABLE, type GameMeta } from "@/games/registry";
+import { bestRecord, FALLBACK_WEEKLY, plays, unplayedGames } from "@/lib/schedule";
 import { RoomBackdrop } from "./RoomBackdrop";
 import { RoomButton } from "./RoomObject";
 import { useMascotDirector } from "./useMascotDirector";
@@ -58,12 +61,16 @@ const BOOK_TIPS = [
   "Última página: 'Se der errado, culpe o Déco.' — assinado, Lina.",
 ];
 
-const CARTRIDGE_LINES = [
-  "Cartucho RUA: Rua Sem Saída. Tá até gasto de tanto jogar.",
-  "Cartucho LAB: Laboratório de Péssimas Ideias. A Lina terminou! Dá pra jogar no fliperama.",
-  "Cartucho LAN: Guerra de Lanche. Ainda tem pudim grudado nele.",
-  "Cartucho ???: esse não tem nome. Às vezes ele esquenta sozinho.",
-];
+const CARTRIDGE_LINES: Record<string, string> = {
+  "dead-end-street": "Cartucho RUA: Rua Sem Saída. Tá até gasto de tanto jogar.",
+  "bad-ideas-lab": "Cartucho LAB: Laboratório de Péssimas Ideias. A Lina jura que nenhuma máquina explodiu. Ainda.",
+  "food-fight": "Cartucho LAN: Guerra de Lanche. Ainda tem pudim grudado nele.",
+  "operation-recess": "Cartucho REC: Operação: Recreio. Tem uma espada de papelão desenhada na etiqueta.",
+  "pajama-war": "Cartucho PIJ: Guerra do Pijama. Cheira a travesseiro. Não pergunte.",
+  "off-air-vacation": "Cartucho FÉR: Férias Fora do Ar. Veio com areia dentro.",
+};
+
+const CART_TAGS = ["dead-end-street", "bad-ideas-lab"];
 
 function periodFor(hour: number): SkyPeriod {
   if (hour >= 6 && hour < 12) return "morning";
@@ -96,8 +103,10 @@ export function BroadcastRoom() {
   const [wiggle, setWiggle] = useState(0);
   const pokes = useRef<number[]>([]);
 
-  const [channel, setChannel] = useState<ChannelId>("street");
-  const [lastRegular, setLastRegular] = useState<ChannelId>("street");
+  const schedule = useSchedule();
+  const [channel, setChannel] = useState<ChannelId>(FALLBACK_WEEKLY.slug);
+  const [lastRegular, setLastRegular] = useState<ChannelId>(FALLBACK_WEEKLY.slug);
+  const tuned = useRef(false);
   const [switching, setSwitching] = useState(false);
   const [osd, setOsd] = useState(false);
   const [knobAngle, setKnobAngle] = useState(0);
@@ -131,22 +140,31 @@ export function BroadcastRoom() {
   }, []);
 
   useEffect(() => {
+    if (!schedule.hydrated || tuned.current) return;
+    tuned.current = true;
+    setChannel(schedule.weekly.slug);
+    setLastRegular(schedule.weekly.slug);
+  }, [schedule.hydrated, schedule.weekly]);
+
+  useEffect(() => {
     if (!hydrated || greeted.current) return;
     greeted.current = true;
     const returning = progress.visits > 1;
+    const unplayed = unplayedGames(progress);
+    const best = bestRecord(progress);
+    const text = !returning
+      ? "Ei! Visitante novo! Pode mexer em tudo da sala. Quase tudo faz alguma coisa."
+      : unplayed.length > 0 && unplayed.length < PLAYABLE.length
+        ? `Ei! Você voltou! Ainda tem programa inédito pra você: ${unplayed[0].title}. Gira o botão da TV!`
+        : unplayed.length === 0 && best
+          ? `Ei! Você voltou! Já viu todos os programas. Seu melhor recorde é em ${best.game.title}. Dá pra bater?`
+          : "Ei! Você voltou! Bora jogar alguma coisa?";
     const timer = window.setTimeout(() => {
-      say({
-        text: returning
-          ? "Ei! Você voltou! Bora jogar alguma coisa?"
-          : "Ei! Visitante novo! Pode mexer em tudo da sala. Quase tudo faz alguma coisa.",
-        expression: returning ? "happy" : "excited",
-        duration: 9000,
-        announce: false,
-      });
+      say({ text, expression: returning ? "happy" : "excited", duration: 9000, announce: false });
       poke();
     }, 450);
     return () => window.clearTimeout(timer);
-  }, [hydrated, progress.visits, say, poke]);
+  }, [hydrated, progress, say, poke]);
 
   const lookAtSpot = useCallback((spot: Spot) => {
     const target = spotCenter(spot);
@@ -207,8 +225,36 @@ export function BroadcastRoom() {
     [play, reduced],
   );
 
+  const badgeFor = useCallback(
+    (id: ChannelId): TvBadge => {
+      const game = CHANNELS[id]?.game;
+      if (!game) return null;
+      if (game.slug === schedule.weekly.slug) return "weekly";
+      return schedule.state(game) === "unplayed" ? "new" : null;
+    },
+    [schedule],
+  );
+
+  const channelLine = useCallback(
+    (id: ChannelId) => {
+      const info = CHANNELS[id];
+      const game = info?.game;
+      if (!game) {
+        if (id === "bars") return `Canal ${info.number}: fora do ar. Relaxa, isso é normal aqui.`;
+        if (id === "cartoon") return `Canal ${info.number}: reprise do meu desenho! Eu tô ótimo nesse episódio.`;
+        return info?.name ?? "";
+      }
+      const badge = badgeFor(id);
+      if (badge === "weekly") return `Canal ${info.number}: o jogo da semana! ${game.title}.`;
+      if (badge === "new") return `Canal ${info.number}: ${game.title}. Inédito pra você! ${game.tagline}`;
+      return `Canal ${info.number}: reprise de ${game.title}. ${game.tagline}`;
+    },
+    [badgeFor],
+  );
+
   const handleKnob = useCallback(() => {
     poke();
+    tuned.current = true;
     turns.current += 1;
     setKnobAngle((a) => a + 45);
     const now = Date.now();
@@ -218,7 +264,7 @@ export function BroadcastRoom() {
     if (turns.current % 9 === 8) {
       next = "lost";
     } else {
-      const base = channel === "lost" || channel === "tape" ? lastRegular : channel;
+      const base = isRegularChannel(channel) ? channel : lastRegular;
       next = CHANNEL_ORDER[(CHANNEL_ORDER.indexOf(base) + 1) % CHANNEL_ORDER.length];
       setLastRegular(next);
     }
@@ -227,15 +273,42 @@ export function BroadcastRoom() {
       unlockSecret("lost-channel");
       say({ text: "Peraí... que canal é esse? Eu nunca vi esse canal. Eu SOU o canal!", expression: "surprised", duration: 6500 });
     } else {
-      const lines: Partial<Record<ChannelId, string>> = {
-        street: "Canal 3: o jogo da semana! Rua Sem Saída.",
-        pajama: "Canal 5: estreia da Guerra do Pijama! Travesseiro voando pra todo lado.",
-        bars: "Canal 7: fora do ar. Relaxa, isso é normal aqui.",
-        cartoon: "Canal 9: reprise do meu desenho! Eu tô ótimo nesse episódio.",
-      };
-      say({ text: lines[next] ?? CHANNELS[next].name, expression: next === "bars" ? "confused" : "happy", duration: 4200 });
+      say({ text: channelLine(next), expression: next === "bars" ? "confused" : badgeFor(next) === "new" ? "excited" : "happy", duration: 4200 });
     }
-  }, [channel, lastRegular, poke, say, tuneTo]);
+  }, [badgeFor, channel, channelLine, lastRegular, poke, say, tuneTo]);
+
+  const suggestion = useMemo(() => {
+    const current = CHANNELS[channel]?.game;
+    return schedule.next(current ? [current.slug] : []);
+  }, [channel, schedule]);
+
+  const tuneSuggestion = useCallback(() => {
+    if (!suggestion) return;
+    poke();
+    tuned.current = true;
+    setKnobAngle((a) => a + 45);
+    setLastRegular(suggestion.game.slug);
+    tuneTo(suggestion.game.slug);
+    say({ text: channelLine(suggestion.game.slug), expression: suggestion.reason === "unplayed" ? "excited" : "happy", duration: 4200 });
+  }, [channelLine, poke, say, suggestion, tuneTo]);
+
+  const records = useMemo(() => (hydrated ? bestRecord(progress) : null), [hydrated, progress]);
+  const playedCarts = useMemo(
+    () => (hydrated ? [...CART_TAGS.map((slug) => plays(progress, slug) > 0), unplayedGames(progress).length === 0] : [false, false, false]),
+    [hydrated, progress],
+  );
+  const cartridgeLine = useCallback(() => {
+    const games: GameMeta[] = PLAYABLE;
+    const index = counters.current.cart++ % (games.length + 1);
+    if (index === games.length) {
+      return playedCarts[2]
+        ? "Cartucho ???: tá quentinho. Acho que ele esquenta quando alguém joga tudo do canal..."
+        : "Cartucho ???: esse não tem nome. Às vezes ele esquenta sozinho.";
+    }
+    const game = games[index];
+    const line = CARTRIDGE_LINES[game.slug] ?? `Cartucho de ${game.title}.`;
+    return hydrated && plays(progress, game.slug) === 0 ? `${line} Você ainda não jogou esse!` : line;
+  }, [hydrated, playedCarts, progress]);
 
   useEffect(() => {
     let buffer = "";
@@ -316,7 +389,7 @@ export function BroadcastRoom() {
     setLightsOn(next);
     if (!next) {
       unlockSecret("blackout");
-      say({ text: "Ei, quem apagou a luz? ...Peraí, tem alguma coisa escrita na parede!", expression: "surprised", duration: 5200 });
+      say({ text: "Ei, quem apagou a luz? ...Peraí, tá escrito na parede: O CANAL NUNCA SAIU DO AR.", expression: "surprised", duration: 6200 });
     } else {
       say({ text: "Luz de volta! Que susto.", expression: "happy", duration: 2600 });
     }
@@ -520,11 +593,17 @@ export function BroadcastRoom() {
           onActivate={() => {
             setShine(true);
             window.setTimeout(() => setShine(false), 1200);
-            say2("Melhor Canal de 2004! O único concorrente era a gente mesmo. Ganhamos de lavada.", "excited", "achievement");
+            say2(
+              records
+                ? `Melhor Canal de 2004! E agora tem seu nome na base: ${records.score.toLocaleString("pt-BR")} pontos em ${records.game.title}.`
+                : "Melhor Canal de 2004! O único concorrente era a gente mesmo. Ganhamos de lavada.",
+              "excited",
+              "achievement",
+            );
           }}
           z={7}
         >
-          <TrophyArt shine={shine} />
+          <TrophyArt shine={shine} record={Boolean(records)} />
         </RoomButton>
 
         <RoomButton
@@ -619,6 +698,12 @@ export function BroadcastRoom() {
 
         <Tv
           channel={channel}
+          badge={badgeFor(channel)}
+          next={
+            suggestion && CHANNELS[suggestion.game.slug]
+              ? { number: CHANNELS[suggestion.game.slug].number, name: suggestion.game.title, onTune: tuneSuggestion }
+              : null
+          }
           switching={switching}
           osd={osd}
           knobAngle={knobAngle}
@@ -751,12 +836,12 @@ export function BroadcastRoom() {
           onHoverSound={hover}
           onActivate={() => {
             setCartsShuffle((n) => n + 1);
-            say2(CARTRIDGE_LINES[counters.current.cart++ % CARTRIDGE_LINES.length], "happy", "click");
+            say2(cartridgeLine(), "happy", "click");
           }}
           z={19}
         >
           <span key={cartsShuffle} className="block h-full w-full" style={{ animation: cartsShuffle ? "hop 0.4s ease-out" : undefined }}>
-            <CartridgesArt />
+            <CartridgesArt lit={playedCarts} />
           </span>
         </RoomButton>
 

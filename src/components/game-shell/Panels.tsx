@@ -8,6 +8,7 @@ import { GAME_CAST } from "@/components/art/GameCast";
 import { PlayIcon, RestartIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { LockIcon } from "@/components/art/Icons";
+import { NextProgram } from "@/components/catalog/NextProgram";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
@@ -413,6 +414,7 @@ export function ResultPanel({
         </div>
       </dl>
       {recordNote && <p className="mt-2 text-sm text-ink-soft">{recordNote}</p>}
+      {!onNext && <NextProgram current={game.slug} />}
       <div className="mt-5 flex flex-wrap gap-3">
         {onNext ? (
           <InkButton ref={mainRef} tone="sun" onClick={onNext}>

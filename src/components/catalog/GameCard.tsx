@@ -6,6 +6,14 @@ import { Tag, type Tone } from "@/components/ui/Primitives";
 import { useSound } from "@/lib/audio/hooks";
 import { CATEGORY_LABELS, type GameMeta } from "@/games/registry";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
+import type { ProgramState } from "@/lib/schedule";
+import { useSchedule } from "./useSchedule";
+
+const STICKERS: Record<ProgramState, { label: string; spoken: string; className: string }> = {
+  unplayed: { label: "Inédito!", spoken: "Inédito: você ainda não jogou.", className: "bg-sun" },
+  rerun: { label: "Reprise", spoken: "Reprise: você já jogou.", className: "bg-plum-300" },
+  saved: { label: "Aventura salva", spoken: "Aventura salva: continue de onde parou.", className: "bg-mint" },
+};
 
 const categoryTone: Record<GameMeta["category"], Tone> = {
   action: "tangerine",
@@ -20,6 +28,10 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
   const hydrated = useHydrated();
   const record = hydrated ? progress.games[game.slug] : undefined;
   const available = game.status === "available";
+  const schedule = useSchedule();
+  const state = available ? schedule.state(game) : null;
+  const sticker = state ? STICKERS[state] : null;
+  const weekly = available && schedule.hydrated && schedule.weekly.slug === game.slug;
   const tilt = index % 3 === 0 ? "-rotate-1" : index % 3 === 1 ? "rotate-1" : "-rotate-[0.5deg]";
 
   return (
@@ -44,17 +56,32 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
             </div>
           </>
         )}
-        {available && (
+        {sticker && (
           <span
             aria-hidden
-            className="absolute left-2 top-2 -rotate-6 rounded-md border-[3px] border-ink bg-lime px-2 py-0.5 font-display text-xs uppercase tracking-wider text-ink shadow-[var(--shadow-ink-sm)]"
+            data-sticker={state}
+            className={`absolute left-2 top-2 -rotate-6 rounded-md border-[3px] border-ink px-2 py-0.5 font-display text-xs uppercase tracking-wider text-ink shadow-[var(--shadow-ink-sm)] ${sticker.className}`}
           >
-            Jogável!
+            {sticker.label}
+          </span>
+        )}
+        {weekly && (
+          <span
+            aria-hidden
+            className="absolute -right-9 top-4 w-40 rotate-[28deg] border-y-[3px] border-ink bg-tomato py-0.5 text-center font-display text-[11px] uppercase tracking-widest text-cream shadow-[0_3px_0_0_var(--color-ink)]"
+          >
+            Jogo da semana
           </span>
         )}
       </div>
       <div className="flex flex-1 flex-col items-center gap-1.5 px-1 pb-1 pt-3 text-center">
         <h2 className="font-display text-[1.35rem] uppercase leading-none tracking-wide text-ink">{game.title}</h2>
+        {(sticker || weekly) && (
+          <span className="sr-only">
+            {weekly ? "Jogo da semana. " : ""}
+            {sticker?.spoken}
+          </span>
+        )}
         <p className="text-sm leading-snug text-ink-soft">{game.tagline}</p>
         <div className="mt-auto flex flex-wrap items-center justify-center gap-1.5 pt-2">
           <Tag tone={categoryTone[game.category]}>{CATEGORY_LABELS[game.category]}</Tag>

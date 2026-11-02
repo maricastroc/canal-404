@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { MenuIcon } from "@/components/art/Icons";
 import { Logo } from "@/components/art/Logo";
 import { useSound } from "@/lib/audio/hooks";
-import { isActive, NAV_ITEMS } from "./nav";
+import { isActive } from "./nav";
+import { useNavItems } from "./useNavItems";
 import { NavIcon } from "./NavIcon";
 import { SoundToggle } from "./SoundToggle";
 import { VisitorCounter } from "./VisitorCounter";
@@ -56,7 +57,8 @@ export function TopBar({ className = "" }: { className?: string }) {
     };
   }, [open]);
 
-  const navItems = NAV_ITEMS.filter((item) => item.href !== "/games/dead-end-street");
+  const allItems = useNavItems();
+  const navItems = allItems.filter((item) => !item.weekly);
 
   return (
     <header className={`on-dark relative z-50 border-b-[3px] border-ink bg-plum-800 ${className}`}>
@@ -128,7 +130,7 @@ export function TopBar({ className = "" }: { className?: string }) {
               className="paper fixed inset-x-3 top-[5.2rem] z-50 max-h-[calc(100svh-6rem)] overflow-y-auto border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly md:hidden"
             >
               <ul className="flex flex-col gap-3">
-                {NAV_ITEMS.map((item, i) => {
+                {allItems.map((item, i) => {
                   const active = isActive(pathname, item.href);
                   return (
                     <li key={item.href} className={i % 2 ? "rotate-1" : "-rotate-1"}>
