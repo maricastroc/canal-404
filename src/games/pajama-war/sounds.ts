@@ -33,6 +33,12 @@ export const PAJAMA_SFX = {
       { kind: "noise", duration: 0.2, delay: 0.55, gain: 0.1, filter: { type: "lowpass", from: 900 } },
     ],
   },
+  warn: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 520, to: 620, duration: 0.07, gain: 0.06 },
+      { kind: "tone", wave: "triangle", from: 760, to: 900, duration: 0.09, delay: 0.09, gain: 0.07 },
+    ],
+  },
   ready: {
     layers: [{ kind: "tone", wave: "sine", from: 700, to: 1100, duration: 0.05, gain: 0.03 }],
   },

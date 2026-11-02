@@ -22,6 +22,16 @@ const fmt = (ms: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
+const HIDE_MS = 8000;
+
+function heartsText(hp: number) {
+  const whole = Math.floor(hp / 2);
+  const half = hp % 2 === 1;
+  if (whole === 0) return "Resta meio coração";
+  const hearts = `${whole} ${whole === 1 ? "coração" : "corações"}`;
+  return `${whole === 1 ? "Resta" : "Restam"} ${hearts}${half ? " e meio" : ""}`;
+}
+
 export class ArenaScene extends Phaser.Scene {
   private ctx!: GameHostContext;
   private levelIndex = 0;
@@ -33,6 +43,8 @@ export class ArenaScene extends Phaser.Scene {
   private brains = new Map<Fighter, Brain>();
   private targets = new Map<Fighter, Fighter | null>();
   private pillows: Pillow[] = [];
+  private engagedAt = 0;
+  private truce = false;
   private room!: Room;
   private hud: PajamaHud | null = null;
   private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
@@ -74,6 +86,8 @@ export class ArenaScene extends Phaser.Scene {
     this.brains = new Map();
     this.targets = new Map();
     this.pillows = [];
+    this.engagedAt = 0;
+    this.truce = false;
     this.hud = null;
     this.freezeUntil = 0;
     this.heatStage = 0;
@@ -206,6 +220,7 @@ export class ArenaScene extends Phaser.Scene {
     this.time.delayedCall(950, () => {
       if (this.mode !== "intro") return;
       this.mode = "play";
+      this.engagedAt = this.t;
       hud.flash("JÁ!", "#ffc83d", 520);
       this.sfx("go", 0.9);
       this.showYou();
@@ -535,7 +550,7 @@ export class ArenaScene extends Phaser.Scene {
 
     if (active) {
       const warm = this.mode === "play" ? Phaser.Math.Clamp(this.matchTime / 15000, 0, 1) : 1;
-      const view: BrainView = { fighters: this.fighters, pillows: this.pillows, room: this.room, heat, warm, playerSafeUntil: this.playerSafeUntil, targets: this.targets };
+      const view: BrainView = { fighters: this.fighters, pillows: this.pillows, room: this.room, heat, warm, playerSafeUntil: this.playerSafeUntil, targets: this.targets, hider: this.watchHiding(t) };
       for (const f of this.fighters) {
         if (!f.alive) {
           f.update(t, dt, 0, 0);
@@ -702,7 +717,7 @@ export class ArenaScene extends Phaser.Scene {
         continue;
       }
       let hit = false;
-      for (const f of this.fighters) {
+      for (const f of this.mode === "over" ? [] : this.fighters) {
         if (!f.alive || f === p.owner || p.z < 8) continue;
         const dx = (p.x - f.x) / BODY.rx;
         const dy = (p.y - f.y) / BODY.ry;
@@ -755,7 +770,22 @@ export class ArenaScene extends Phaser.Scene {
     this.pillows = this.pillows.filter((p) => p.alive);
   }
 
+  private watchHiding(t: number) {
+    const p = this.player;
+    const foes = this.fighters.filter((f) => f.alive && !f.isPlayer);
+    const hiding = this.mode === "play" && Boolean(p?.alive) && foes.length === 2 && t - this.engagedAt > HIDE_MS;
+    if (hiding && !this.truce) {
+      const lines = ["ESCONDIDO?", "VEM BRINCAR!"];
+      foes.forEach((f, i) => this.word(lines[i % lines.length], f.x, f.top - 40, "#ff8a3d", 34));
+      this.sfx("warn", 0.8);
+      this.ctx.onEvent({ type: "announce", message: "Trégua! Os outros dois vão atrás de você. Acerte alguém para desfazer." });
+    }
+    this.truce = hiding;
+    return hiding ? p : null;
+  }
+
   private missed(p: Pillow) {
+    if (p.owner.isPlayer && p.nearFoe) this.engagedAt = this.t;
     if (p.hitSomeone || this.mode !== "play") return;
     const now = this.time.now;
     const pl = this.player;
@@ -775,11 +805,14 @@ export class ArenaScene extends Phaser.Scene {
       this.tweens.add({ targets: img, scale: 1, duration: 120, ease: "Back.easeOut" });
     }
     this.alerts.push({ f, img, until: t + this.aiWindup + 60 });
+    this.sfx("warn", 0.7);
+    this.ctx.onEvent({ type: "announce", message: `${KID_INFO[f.kid].name} vai jogar em você!`, transient: true });
   }
 
   private onHit(p: Pillow, f: Fighter) {
     const owner = p.owner;
     owner.hits += 1;
+    if (owner.isPlayer) this.engagedAt = this.t;
     p.hitSomeone = true;
     if (f.isPlayer) this.playerSafeUntil = Math.max(this.playerSafeUntil, this.t + 1000);
     const playerInvolved = f.isPlayer || owner.isPlayer;
@@ -810,6 +843,8 @@ export class ArenaScene extends Phaser.Scene {
       return;
     }
     this.hud?.setHp(f.kid, f.hp, "hit");
+    if (f.isPlayer && f.alive) this.ctx.onEvent({ type: "announce", message: `Acertaram você! ${heartsText(f.hp)}.` });
+    if (owner.isPlayer) this.ctx.onEvent({ type: "score", score: owner.hits * SCORE.hit + owner.kos * SCORE.ko });
     if (!f.alive) this.onKo(f, owner);
   }
 
@@ -874,6 +909,7 @@ export class ArenaScene extends Phaser.Scene {
     for (const f of this.fighters) {
       f.vx = 0;
       f.vy = 0;
+      f.cancelThrow();
     }
     const placement = won ? 1 : others.length === 1 ? 2 : 3;
     const winner = won ? p : others.length === 1 ? others[0] : null;

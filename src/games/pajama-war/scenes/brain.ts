@@ -10,7 +10,9 @@ const STYLE: Record<KidId, { near: number; far: number; dodge: number; retreatAt
   bia: { near: 360, far: 560, dodge: 0.38, retreatAt: 2, strafe: 0.65, lead: 0.6 },
 };
 
-export type BrainView = { fighters: Fighter[]; pillows: Pillow[]; room: Room; heat: number; warm: number; playerSafeUntil: number; targets: Map<Fighter, Fighter | null> };
+export type BrainView = { fighters: Fighter[]; pillows: Pillow[]; room: Room; heat: number; warm: number; playerSafeUntil: number; targets: Map<Fighter, Fighter | null>; hider: Fighter | null };
+
+const HIDER_PULL = 3.4;
 
 export class Brain {
   target: Fighter | null = null;
@@ -24,6 +26,7 @@ export class Brain {
   private retreating = false;
   private wander = { x: 0, y: 0, until: 0 };
   private last = { x: 0, y: 0, at: 0 };
+  private hiderSeen: Fighter | null = null;
   private style: (typeof STYLE)[KidId];
 
   constructor(
@@ -44,6 +47,7 @@ export class Brain {
       let score = 900 / (dist + 250);
       if (o === me.hurtBy && t - me.lastHurtAt < 4000) score += o.isPlayer ? 0.55 : 0.9;
       if (o.hp > me.hp + 2) score += 0.2;
+      if (o === v.hider) score += HIDER_PULL;
       let piled = 0;
       for (const [who, tg] of v.targets) if (who !== me && tg === o) piled += 1;
       score -= piled * (o.isPlayer ? 1.7 : 1.25);
@@ -60,6 +64,10 @@ export class Brain {
   think(t: number, dt: number, v: BrainView): { mx: number; my: number; angle: number | null; target: Fighter | null } {
     const me = this.me;
     const b = v.room.def.bounds;
+    if (v.hider !== this.hiderSeen) {
+      this.hiderSeen = v.hider;
+      this.retargetAt = 0;
+    }
     if (!this.target || !this.target.alive || t >= this.retargetAt) this.pickTarget(t, v);
     v.targets.set(me, this.target);
     const tg = this.target;
@@ -191,7 +199,7 @@ export class Brain {
     if (tg && me.canThrow(t) && t >= this.hesitateUntil) {
       let victim: Fighter | null = tg;
       if (tg.isPlayer && t < v.playerSafeUntil) {
-        victim = v.fighters.find((o) => o !== me && o.alive && !o.isPlayer && Math.hypot(o.x - me.x, o.y - me.y) < PILLOW.range * 0.8) ?? null;
+        victim = v.hider ? null : v.fighters.find((o) => o !== me && o.alive && !o.isPlayer && Math.hypot(o.x - me.x, o.y - me.y) < PILLOW.range * 0.8) ?? null;
       }
       const dist = victim ? Math.hypot(victim.x - me.x, victim.y - me.y) : Infinity;
       const reach = PILLOW.range * 0.92;

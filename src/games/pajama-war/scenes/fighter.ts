@@ -108,6 +108,10 @@ export class Fighter {
     return true;
   }
 
+  cancelThrow() {
+    this.windupUntil = 0;
+  }
+
   hurt(t: number, fromX: number, fromY: number, dirX: number, dirY: number, by: Fighter | null) {
     if (!this.alive || t < this.invulnUntil) return false;
     this.hp -= 1;
