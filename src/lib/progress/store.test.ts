@@ -45,6 +45,42 @@ describe("progress store", () => {
       expect(store.getSnapshot()).toEqual(store.DEFAULT_STATE);
     });
 
+    it("backs up a corrupted save before it gets overwritten", async () => {
+      const store = await loadStore("{not json");
+      store.registerVisit();
+      const backups = Object.keys(window.localStorage).filter((k) => k.startsWith(`${KEY}:backup:unreadable:`));
+      expect(backups).toHaveLength(1);
+      expect(window.localStorage.getItem(backups[0])).toBe("{not json");
+      expect(stored().visits).toBe(1);
+    });
+
+    it("backs up a save from another version before it gets overwritten", async () => {
+      const raw = JSON.stringify({ version: 2, visits: 9 });
+      const store = await loadStore(raw);
+      store.registerVisit();
+      const backups = Object.keys(window.localStorage).filter((k) => k.startsWith(`${KEY}:backup:v2:`));
+      expect(backups.map((k) => window.localStorage.getItem(k))).toEqual([raw]);
+    });
+
+    it("cleans up a damaged save without losing the valid parts", async () => {
+      const store = await loadStore({
+        version: 1,
+        visits: "três",
+        settings: { sfx: "sim", music: true },
+        secrets: { cat: 5, ghost: 7, pizza: "ontem" },
+        achievements: { "radio-on": 3, "no-such-thing": 1 },
+        games: { "food-fight": { highScore: 900, plays: "x", levels: { a: { stars: 2 } } }, broken: 4 },
+        counters: { tv: 2, bad: null },
+      });
+      const state = store.getSnapshot();
+      expect(state.visits).toBe(0);
+      expect(state.settings).toEqual({ sfx: true, music: true, track: "theme" });
+      expect(state.secrets).toEqual({ cat: 5 });
+      expect(state.achievements).toEqual({ "radio-on": 3 });
+      expect(state.games).toEqual({ "food-fight": { highScore: 900, bestStars: 0, plays: 0, wins: 0, lastScore: 0, levels: { a: { stars: 2, score: 0 } } } });
+      expect(state.counters).toEqual({ tv: 2 });
+    });
+
     it("serves the default state on the server", async () => {
       const store = await loadStore({ version: 1, visits: 4 });
       expect(store.getServerSnapshot()).toBe(store.DEFAULT_STATE);
@@ -164,6 +200,14 @@ describe("progress store", () => {
       expect(store.getGameRecord("food-fight").plays).toBe(2);
     });
 
+    it("remembers when each game was last played", async () => {
+      vi.spyOn(Date, "now").mockReturnValue(1234);
+      const store = await loadStore();
+      store.recordGameStart("pajama-war");
+      expect(store.getGameRecord("pajama-war").lastPlayedAt).toBe(1234);
+      expect(stored().games["pajama-war"].lastPlayedAt).toBe(1234);
+    });
+
     it("keeps the best score and reports a new record", async () => {
       const store = await loadStore();
       expect(store.recordGameResult("food-fight", { score: 500, stars: 2, won: true }).isRecord).toBe(true);
@@ -234,6 +278,16 @@ describe("progress store", () => {
   });
 
   describe("reset", () => {
+    it("also erases game saves and backups but keeps other sites' data", async () => {
+      const store = await loadStore({ version: 1, visits: 2 });
+      window.localStorage.setItem("canal404:off-air-vacation:v1", "{}");
+      window.localStorage.setItem("canal404:pajama-war:v1", "{}");
+      window.localStorage.setItem(`${KEY}:backup:v1:1`, "{}");
+      window.localStorage.setItem("outro-site", "fica");
+      store.resetProgress();
+      expect(Object.keys(window.localStorage).sort()).toEqual([KEY, "outro-site"]);
+    });
+
     it("erases games, secrets and counters but keeps the visitor, settings and first visit", async () => {
       const store = await loadStore({
         version: 1,

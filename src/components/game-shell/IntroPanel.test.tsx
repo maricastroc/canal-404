@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { freshState } from "@/games/off-air-vacation/save";
 import { getGame } from "@/games/registry";
 import { IntroPanel } from "./Panels";
 
@@ -59,15 +60,22 @@ describe("IntroPanel", () => {
   });
 
   it("offers to continue a saved adventure", async () => {
-    window.localStorage.setItem("canal404:off-air-vacation:v1", "{}");
+    window.localStorage.setItem("canal404:off-air-vacation:v1", JSON.stringify(freshState()));
     const { onPlay } = renderIntro("off-air-vacation");
     expect(screen.getByText("Sua aventura está salva. Continue de onde parou.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Continuar aventura/ }));
     expect(onPlay).toHaveBeenCalled();
   });
 
+  it("starts over instead of offering to continue a save it cannot read", async () => {
+    window.localStorage.setItem("canal404:off-air-vacation:v1", JSON.stringify({ v: 99 }));
+    renderIntro("off-air-vacation");
+    expect(screen.queryByRole("button", { name: /Continuar aventura/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Começar aventura/ })).toBeInTheDocument();
+  });
+
   it("asks before erasing a saved adventure", async () => {
-    window.localStorage.setItem("canal404:off-air-vacation:v1", "{}");
+    window.localStorage.setItem("canal404:off-air-vacation:v1", JSON.stringify(freshState()));
     const { onNew } = renderIntro("off-air-vacation");
     await userEvent.click(screen.getByRole("button", { name: /Nova aventura/ }));
     const confirm = screen.getByRole("alertdialog", { name: "Começar uma nova aventura" });

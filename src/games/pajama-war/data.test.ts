@@ -64,6 +64,20 @@ describe("Guerra do Pijama stats", () => {
     expect(loadStats()).toEqual({ wins: { lia: 0, nico: 3, bia: 0 }, matches: 0, bestTime: 0, lastKid: null });
   });
 
+  it("upgrade a save written before versions existed", () => {
+    const old = JSON.stringify({ wins: { lia: 4 }, matches: 6, lastKid: "lia" });
+    window.localStorage.setItem(KEY, old);
+    expect(loadStats()).toEqual({ wins: { lia: 4, nico: 0, bia: 0 }, matches: 6, bestTime: 0, lastKid: "lia" });
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toMatchObject({ version: 1, matches: 6 });
+    const backups = Object.keys(window.localStorage).filter((k) => k.startsWith(`${KEY}:backup:v0:`));
+    expect(backups.map((k) => window.localStorage.getItem(k))).toEqual([old]);
+  });
+
+  it("write the save version", () => {
+    saveStats({ wins: { lia: 0, nico: 1, bia: 0 }, matches: 1, bestTime: 0, lastKid: "nico" });
+    expect(JSON.parse(window.localStorage.getItem(KEY)!).version).toBe(1);
+  });
+
   it("recover from a corrupted save", () => {
     window.localStorage.setItem(KEY, "oops");
     expect(loadStats().matches).toBe(0);

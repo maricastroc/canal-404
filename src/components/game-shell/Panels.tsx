@@ -3,6 +3,7 @@
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
+import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
 import { PlayIcon, RestartIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
@@ -118,14 +119,6 @@ function CastPair({ game, happy }: { game: GameMeta; happy?: boolean }) {
   );
 }
 
-function hasStoredSave(key: string) {
-  try {
-    return Boolean(window.localStorage.getItem(key));
-  } catch {
-    return false;
-  }
-}
-
 function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
   return (
     <span role="img" aria-label={`${count} de ${total} estrelas`} className="inline-flex gap-0.5">
@@ -156,7 +149,7 @@ export function IntroPanel({
   onNew?: () => void;
 }) {
   const playRef = useAutoFocus<HTMLButtonElement>();
-  const [saved] = useState(() => (game.resumable ? hasStoredSave(game.resumable) : false));
+  const [saved] = useState(() => (game.resumable ? canResume(game.slug, game.resumable) : false));
   const [confirming, setConfirming] = useState(false);
   const resume = Boolean(game.resumable && saved);
   const leveled = Boolean(game.levels && levels);

@@ -37,16 +37,20 @@ function mount(ctx: GameHostContext): GameInstance {
     else game.scene.start("world", data);
   };
 
-  const fresh = () => {
-    clearState();
+  const begin = () => {
     game.registry.set("state", freshState());
     open({ mode: "play", area: "lobby", spawn: "start", intro: true });
+  };
+
+  const fresh = () => {
+    clearState();
+    begin();
   };
 
   const resume = () => {
     const saved = loadState();
     if (!saved) {
-      fresh();
+      begin();
       return;
     }
     game.registry.set("state", saved);

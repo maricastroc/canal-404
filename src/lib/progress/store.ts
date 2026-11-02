@@ -6,6 +6,7 @@ import {
   type AchievementId,
   type SecretId,
 } from "./definitions";
+import { finite, isRecord, readVersioned, type Json, type MigrationSpec } from "./migrate";
 
 export type LevelRecord = { stars: number; score: number };
 
@@ -16,6 +17,7 @@ export type GameRecord = {
   wins: number;
   lastScore: number;
   levels?: Record<string, LevelRecord>;
+  lastPlayedAt?: number;
 };
 
 export type Settings = {
@@ -45,6 +47,9 @@ export type Toast = {
 };
 
 const STORAGE_KEY = "canal404:progress:v1";
+const DATA_PREFIX = "canal404:";
+const SECRET_SET = new Set<string>(SECRETS.map((s) => s.id));
+const ACHIEVEMENT_SET = new Set<string>(ACHIEVEMENTS.map((a) => a.id));
 
 export const DEFAULT_STATE: ProgressState = {
   version: 1,
@@ -75,23 +80,82 @@ let toasts: Toast[] = [];
 let toastSeq = 0;
 const toastListeners = new Set<() => void>();
 
+function numbers(value: unknown, keep: (key: string) => boolean = () => true) {
+  const out: Record<string, number> = {};
+  if (!isRecord(value)) return out;
+  for (const [key, v] of Object.entries(value)) if (keep(key) && typeof v === "number" && Number.isFinite(v)) out[key] = v;
+  return out;
+}
+
+function normalizeRecord(value: unknown): GameRecord | null {
+  if (!isRecord(value)) return null;
+  const record: GameRecord = {
+    highScore: finite(value.highScore, 0),
+    bestStars: finite(value.bestStars, 0),
+    plays: finite(value.plays, 0),
+    wins: finite(value.wins, 0),
+    lastScore: finite(value.lastScore, 0),
+  };
+  if (isRecord(value.levels)) {
+    const levels: Record<string, LevelRecord> = {};
+    for (const [id, level] of Object.entries(value.levels)) {
+      if (isRecord(level)) levels[id] = { stars: finite(level.stars, 0), score: finite(level.score, 0) };
+    }
+    record.levels = levels;
+  }
+  if (typeof value.lastPlayedAt === "number" && Number.isFinite(value.lastPlayedAt)) record.lastPlayedAt = value.lastPlayedAt;
+  return record;
+}
+
+function normalizeProgress(value: Json): ProgressState {
+  const settings = isRecord(value.settings) ? value.settings : {};
+  const games: Record<string, GameRecord> = {};
+  if (isRecord(value.games)) {
+    for (const [slug, record] of Object.entries(value.games)) {
+      const normalized = normalizeRecord(record);
+      if (normalized) games[slug] = normalized;
+    }
+  }
+  const time = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  return {
+    version: 1,
+    visitorNumber: finite(value.visitorNumber, DEFAULT_STATE.visitorNumber),
+    visits: finite(value.visits, 0),
+    firstVisitAt: time(value.firstVisitAt),
+    lastVisitAt: time(value.lastVisitAt),
+    settings: {
+      sfx: typeof settings.sfx === "boolean" ? settings.sfx : DEFAULT_STATE.settings.sfx,
+      music: typeof settings.music === "boolean" ? settings.music : DEFAULT_STATE.settings.music,
+      track: typeof settings.track === "string" ? settings.track : DEFAULT_STATE.settings.track,
+    },
+    secrets: numbers(value.secrets, (id) => SECRET_SET.has(id)),
+    achievements: numbers(value.achievements, (id) => ACHIEVEMENT_SET.has(id)),
+    games,
+    counters: numbers(value.counters),
+  };
+}
+
+export const PROGRESS_SPEC: MigrationSpec<ProgressState> = {
+  version: 1,
+  normalize: normalizeProgress,
+};
+
 function readStorage(): ProgressState {
+  const loaded = readVersioned(STORAGE_KEY, PROGRESS_SPEC);
+  return loaded.status === "ok" ? loaded.value : DEFAULT_STATE;
+}
+
+function clearGameData() {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw) as Partial<ProgressState>;
-    if (parsed.version !== 1) return DEFAULT_STATE;
-    return {
-      ...DEFAULT_STATE,
-      ...parsed,
-      settings: { ...DEFAULT_STATE.settings, ...parsed.settings },
-      secrets: { ...parsed.secrets },
-      achievements: { ...parsed.achievements },
-      games: { ...parsed.games },
-      counters: { ...parsed.counters },
-    };
+    const storage = window.localStorage;
+    const keys: string[] = [];
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i);
+      if (key && key.startsWith(DATA_PREFIX) && key !== STORAGE_KEY) keys.push(key);
+    }
+    for (const key of keys) storage.removeItem(key);
   } catch {
-    return DEFAULT_STATE;
+    return;
   }
 }
 
@@ -245,7 +309,7 @@ export function recordGameStart(slug: string) {
   const current = state.games[slug] ?? EMPTY_RECORD;
   commit({
     ...state,
-    games: { ...state.games, [slug]: { ...current, plays: current.plays + 1 } },
+    games: { ...state.games, [slug]: { ...current, plays: current.plays + 1, lastPlayedAt: Date.now() } },
   });
 }
 
@@ -298,6 +362,7 @@ export function recordLevelResult(
 
 export function resetProgress() {
   ensureLoaded();
+  clearGameData();
   commit({
     ...DEFAULT_STATE,
     visitorNumber: state.visitorNumber,

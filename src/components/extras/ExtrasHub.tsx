@@ -232,7 +232,7 @@ export function ExtrasHub() {
         {confirming ? (
           <>
             <p className="w-full font-hand text-xl text-cream-2">
-              Isso apaga segredos, conquistas e recordes salvos neste navegador. Tem certeza?
+              Isso apaga segredos, conquistas, recordes de cada jogo e aventuras salvas neste navegador. Tem certeza?
             </p>
             <InkButton
               tone="tomato"
