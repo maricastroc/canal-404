@@ -15,10 +15,11 @@ import { buildWorld, cx, cy, type World } from "./world";
 type Mode = "attract" | "play" | "ko" | "won";
 type Lesson = "walk" | "jump" | "attack";
 type Chip = { box: Phaser.GameObjects.Container; lift: number; dx: number; leaving: boolean };
-type Checkpoint = { level: number; col: number; score: number; kills: number; stickers: number };
+type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 const OUCH = ["AI!", "UI!", "OPA!"];
+const EXTRAS_CAP = 20;
 const HIT_WORDS = ["POW!", "TOMA!", "PAF!", "BOING!"];
 const learned = new Set<Lesson>();
 
@@ -48,6 +49,8 @@ export class StageScene extends Phaser.Scene {
   private kills = 0;
   private killScore = 0;
   private stickers = 0;
+  private extras = 0;
+  private resumed = false;
   private hits = 0;
   private invulnUntil = 0;
   private safe = { x: 0, y: 0 };
@@ -89,6 +92,8 @@ export class StageScene extends Phaser.Scene {
     this.kills = 0;
     this.killScore = 0;
     this.stickers = 0;
+    this.extras = 0;
+    this.resumed = false;
     this.hits = 0;
     this.invulnUntil = 0;
     this.lookAhead = 0;
@@ -157,9 +162,13 @@ export class StageScene extends Phaser.Scene {
     if (resume) {
       this.score = resume.score;
       this.kills = resume.kills;
-      this.killScore = Math.max(0, resume.score - resume.stickers * SCORE.sticker);
+      this.killScore = resume.killScore;
       this.stickers = resume.stickers;
+      this.extras = resume.extras;
+      this.hits = resume.hits;
+      this.resumed = true;
       for (const b of this.bells) if (b.x <= cx(resume.col) + TILE) b.ring(this, true);
+      this.ctx.onEvent({ type: "score", score: this.score });
     }
     for (const e of this.level.enemies) {
       if (resume && e.col < startCol + 4) continue;
@@ -480,6 +489,12 @@ export class StageScene extends Phaser.Scene {
     return new Phaser.Geom.Rectangle(b.x + 6, b.y + 10, b.width - 12, b.height - 14);
   }
 
+  private addExtra() {
+    if (this.extras >= EXTRAS_CAP) return;
+    this.extras += 1;
+    this.addScore(SCORE.wave);
+  }
+
   private addScore(n: number) {
     this.score += n;
     this.hud.setScore(this.score);
@@ -546,6 +561,7 @@ export class StageScene extends Phaser.Scene {
     this.hero.body.setVelocityX(0);
     this.sfx("lose", 1);
     const cp = this.registry.get("checkpoint") as Checkpoint | null;
+    if (cp) cp.hits = this.hits;
     this.hud.flash("VOCÊ FOI PEGO!", "#ef4f43", 1200, cp ? "Você volta do último sino." : "Tenta de novo!");
     this.announce("Você foi pego pelos monitores!");
     const result: GameResult = {
@@ -555,6 +571,7 @@ export class StageScene extends Phaser.Scene {
       breakdown: this.breakdown(false),
       level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
       copy: { title: "Pego!", text: cp ? "Jogue de novo para voltar do último sino." : "Os monitores te levaram pra sala. Tenta de novo!" },
+      ...(cp ? { restartLabel: "Voltar ao sino" } : {}),
       summary: `Monitores: ${this.kills}. Figurinhas: ${this.stickers}.`,
     };
     this.time.delayedCall(1500, () => this.ctx.onEvent({ type: "finished", result }));
@@ -564,10 +581,11 @@ export class StageScene extends Phaser.Scene {
     const rows = [
       { label: `Monitores (${this.kills})`, value: this.killScore },
       { label: `Figurinhas (${this.stickers})`, value: this.stickers * SCORE.sticker },
+      { label: `Ondas e bolas (${this.extras})`, value: this.extras * SCORE.wave },
     ];
     if (won) {
       rows.push({ label: "Fase concluída", value: SCORE.phase });
-      rows.push({ label: `Corações (${this.hearts})`, value: this.hearts * SCORE.heart });
+      if (!this.resumed) rows.push({ label: `Corações (${this.hearts})`, value: this.hearts * SCORE.heart });
       if (this.boss) rows.push({ label: "Inspetor vencido", value: SCORE.boss });
     }
     return rows.filter((r, i) => i === 0 || r.value !== 0);
@@ -582,7 +600,7 @@ export class StageScene extends Phaser.Scene {
     this.hero.body.setVelocity(0, this.hero.body.velocity.y);
     this.hero.cheer();
     this.registry.set("checkpoint", null);
-    const bonus = SCORE.phase + this.hearts * SCORE.heart + (this.boss ? SCORE.boss : 0);
+    const bonus = SCORE.phase + (this.resumed ? 0 : this.hearts * SCORE.heart) + (this.boss ? SCORE.boss : 0);
     this.score += bonus;
     this.hud.setScore(this.score);
     this.ctx.onEvent({ type: "score", score: this.score });
@@ -671,6 +689,7 @@ export class StageScene extends Phaser.Scene {
     this.gate = this.add.zone(this.arena.left - 20, FLOOR_Y - 400, 40, 800);
     this.physics.add.existing(this.gate, true);
     this.physics.add.collider(this.hero.rect, this.gate);
+    for (const e of this.enemies) if (!e.dead && e.x < this.arena.left) e.leave();
     const g = this.add.graphics().setDepth(8);
     g.fillStyle(0x55301e, 1);
     g.fillRect(this.arena.left - 40, 60, 40, FLOOR_Y - 60);
@@ -827,7 +846,7 @@ export class StageScene extends Phaser.Scene {
       this.sfx("bell", 0.9);
       this.word("SALVO!", bell.x, FLOOR_Y - 260, "#63d6c1", 44);
       const col = Math.round((bell.x - TILE / 2) / TILE);
-      this.registry.set("checkpoint", { level: this.levelIndex, col, score: this.score, kills: this.kills, stickers: this.stickers } satisfies Checkpoint);
+      this.registry.set("checkpoint", { level: this.levelIndex, col, score: this.score, kills: this.kills, killScore: this.killScore, stickers: this.stickers, extras: this.extras, hits: this.hits } satisfies Checkpoint);
       this.announce("Sino tocado! Se for pego, você volta daqui.");
     }
 
@@ -885,14 +904,14 @@ export class StageScene extends Phaser.Scene {
       if (w.alive && !w.big && Phaser.Geom.Intersects.RectangleToRectangle(atk, w.box())) {
         w.kill();
         this.sfx("pop", 0.8);
-        this.addScore(SCORE.wave);
+        this.addExtra();
         this.word("PLIM!", w.img.x, w.img.y - 40, "#9df0dc", 32);
       }
     }
     for (const b of this.balls) {
       if (b.harmful && Phaser.Geom.Intersects.RectangleToRectangle(atk, b.box())) {
         b.kick(this.hero.facing);
-        this.addScore(SCORE.wave);
+        this.addExtra();
         this.word("CHUTE!", b.img.x, b.img.y - 50, "#fbf5e6", 34);
       }
     }

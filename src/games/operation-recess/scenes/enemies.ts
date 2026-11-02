@@ -207,6 +207,13 @@ export abstract class Enemy {
     this.shadow.destroy();
   }
 
+  leave() {
+    if (this.dead) return;
+    this.dead = true;
+    this.body.enable = false;
+    this.api.scene.tweens.add({ targets: [this.sprite, this.shadow], alpha: 0, duration: this.api.reduced ? 150 : 400, onComplete: () => this.destroy() });
+  }
+
   update(t: number, dt: number, hero: HeroView) {
     this.t = t;
     if (this.dead) return;
@@ -690,8 +697,10 @@ export class ShieldMonitor extends Enemy {
         return;
       case "recover":
         this.body.setVelocityX(0);
-        if (t >= this.until) this.state = "open";
-        this.until = Math.max(this.until, t + 300);
+        if (t >= this.until) {
+          this.state = "open";
+          this.until = t + 300;
+        }
         return;
     }
   }
