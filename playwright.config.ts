@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const ci = Boolean(process.env.CI);
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env.PORT ?? 4404);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -21,13 +21,22 @@ export default defineConfig({
     {
       name: "desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, channel: ci ? undefined : "chrome" },
-      testIgnore: /mobile\.spec\.ts/,
+      testIgnore: /(mobile|visual)\.spec\.ts/,
     },
     {
       name: "mobile",
       use: { ...devices["Pixel 7"], channel: ci ? undefined : "chrome" },
       testMatch: /mobile\.spec\.ts/,
     },
+    ...(process.env.VISUAL
+      ? [
+          {
+            name: "visual",
+            use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+            testMatch: /visual\.spec\.ts/,
+          },
+        ]
+      : []),
   ],
   webServer: {
     command: ci ? `npm run build && npm run start -- -p ${port}` : `npm run dev -- -p ${port}`,

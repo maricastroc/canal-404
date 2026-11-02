@@ -11,7 +11,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "og": "node scripts/og-images.mjs"
+    "og": "node scripts/og-images.mjs",
+    "test:visual": "VISUAL=1 playwright test --project=visual",
+    "test:visual:update": "sh scripts/visual-docker.sh",
+    "test:visual:check": "sh scripts/visual-docker.sh check"
   },
   "dependencies": {
     "lucide": "^1.61.0",

@@ -98,9 +98,19 @@ npm run test:e2e
 - **Laboratório:** placement rules, and a known solution for every level that must stay buildable.
 - **Components:** the game intro (level picker, locked levels, continuing or restarting an adventure), the catalog filters and the character tabs, queried by role and accessible name.
 
-`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses the dev server on port 3000 (or starts one); set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch.
+`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch.
 
-`npm run typecheck` and `npm run lint` complete the checks. GitHub Actions runs all of them on every push to `main` and on pull requests; there the end-to-end tests run against a production build.
+A performance budget (`e2e/performance.spec.ts`) runs against production builds: each portal page must stay under 1.3 MB of JavaScript, and the game engine may only load on the play page.
+
+Visual regression tests compare the portal pages with approved screenshots in `e2e/visual.spec.ts-snapshots`, rendered on Linux inside the official Playwright Docker image so they match CI. After an intended visual change, refresh them (requires Docker):
+
+```bash
+npm run test:visual:update
+```
+
+`npm run test:visual:check` runs the same comparison locally in Docker.
+
+`npm run typecheck` and `npm run lint` complete the checks. GitHub Actions runs all of them on every push to `main` and on pull requests; there the end-to-end and performance tests run against a production build, and the visual tests run in the Playwright container.
 
 ## Stack
 

@@ -45,3 +45,23 @@ jobs:
           name: playwright-report
           path: playwright-report
           retention-days: 7
+
+  visual:
+    name: Visual regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run test:visual
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-report
+          path: playwright-report
+          retention-days: 7
