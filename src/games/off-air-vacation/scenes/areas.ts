@@ -4,9 +4,21 @@ import type { FolkKey, State } from "../save";
 import type { ResortSfx } from "../sounds";
 import type { Mood } from "../story";
 import type { Fonts } from "../../kit/ui";
+import { splashAt, type CritterDef, type ResidentDef } from "./life";
 import type { Npc, NpcOpts } from "./npc";
 
 export type Show = (s: State) => boolean;
+export type React = "wobble" | "rustle" | "spin" | "jingle" | "bounce";
+export type NearOpts = {
+  enter?: (t: number) => void;
+  leave?: (t: number) => void;
+  stay?: (t: number) => void;
+  cooldown?: number;
+  minSpeed?: number;
+  zone?: (x: number, y: number) => boolean;
+  at?: () => [number, number];
+};
+export type Surface = { kind: "sand" | "wood" | "grass" | "dirt" | "water" | "tile"; splash?: [number, number]; gone?: (x: number, y: number) => boolean; color?: number };
 export type PropOpts = {
   origin?: [number, number];
   scale?: number;
@@ -22,6 +34,9 @@ export type PropOpts = {
   alpha?: number;
   key2?: (s: State) => string;
   shadow?: number;
+  react?: React;
+  reactR?: number;
+  occlude?: [number, number, number?];
 };
 export type SpotDef = {
   id: string;
@@ -54,7 +69,13 @@ export type Builder = {
   glow(x: number, y: number, w: number, h: number, color: number, alpha: number, depth?: number): Phaser.GameObjects.Image;
   onUpdate(fn: (t: number, dt: number) => void): void;
   ambient(sounds: [ResortSfx, number][], min: number, max: number): void;
-  kickable(key: string, x: number, y: number): void;
+  kickable(key: string, x: number, y: number, water?: (x: number, y: number) => boolean): void;
+  near(x: number, y: number, r: number, opts: NearOpts): void;
+  critter(def: CritterDef): Phaser.GameObjects.Image;
+  resident(def: ResidentDef): Phaser.GameObjects.Image;
+  surface(fn: (x: number, y: number) => Surface | null): void;
+  announce(message: string): void;
+  pushHero(x: number, y: number): boolean;
   arrow(x: number, y: number, angle: number): void;
   frame(rect: [number, number, number, number], zone: [number, number, number, number]): void;
   fonts: Fonts;
@@ -117,6 +138,32 @@ function band(g: Phaser.GameObjects.Graphics, points: [number, number][], width:
   pass(width, color);
   if (light) pass(width * 0.4, light, 0.5);
   return pts;
+}
+
+type Pt = { x: number; y: number };
+
+export function polyDistance(pts: Pt[], x: number, y: number) {
+  let best = Infinity;
+  let bx = 0;
+  let by = 0;
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const a = pts[i];
+    const c = pts[i + 1];
+    if (Math.min(a.x, c.x) - 160 > x || Math.max(a.x, c.x) + 160 < x || Math.min(a.y, c.y) - 160 > y || Math.max(a.y, c.y) + 160 < y) continue;
+    const vx = c.x - a.x;
+    const vy = c.y - a.y;
+    const l2 = vx * vx + vy * vy || 1;
+    const k = Math.max(0, Math.min(1, ((x - a.x) * vx + (y - a.y) * vy) / l2));
+    const px = a.x + vx * k;
+    const py = a.y + vy * k;
+    const d = Math.hypot(x - px, y - py);
+    if (d < best) {
+      best = d;
+      bx = px;
+      by = py;
+    }
+  }
+  return { d: best, x: bx, y: by };
 }
 
 function garland(b: Builder, from: [number, number], to: [number, number], sag: number, depth: number) {
@@ -210,18 +257,27 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.glow(1200, 220, 420, 260, 0xffe39a, 0.35, 4999);
     b.prop("rug-lobby", 1200, 940, { origin: [0.5, 0.5], depth: "floor" });
     b.prop("doormat", 1200, 1246, { origin: [0.5, 1], depth: "floor" });
-    b.prop("sofa", 520, 880, { origin: [0.5, 1], rect: [-176, -86, 352, 86] });
-    b.prop("plant-tall", 330, 670, { origin: [0.5, 1], rect: [-52, -40, 104, 40], anim: "sway", amp: 1.5 });
-    b.prop("plant-tall", 2100, 690, { origin: [0.5, 1], rect: [-52, -40, 104, 40], anim: "sway", amp: 1.5, flip: true });
-    b.prop("plant-small", 880, 760, { origin: [0.5, 1], rect: [-40, -28, 80, 28] });
-    b.prop("plant-small", 1530, 760, { origin: [0.5, 1], rect: [-40, -28, 80, 28], flip: true });
-    const cases = b.prop("suitcases", 1660, 820, { origin: [0.5, 1], rect: [-96, -70, 192, 70] });
+    b.prop("sofa", 520, 880, { origin: [0.5, 1], rect: [-176, -86, 352, 86], react: "bounce" });
+    b.prop("plant-tall", 330, 670, { origin: [0.5, 1], rect: [-52, -40, 104, 40], anim: "sway", amp: 1.5, react: "rustle" });
+    b.prop("plant-tall", 2100, 690, { origin: [0.5, 1], rect: [-52, -40, 104, 40], anim: "sway", amp: 1.5, flip: true, react: "rustle" });
+    b.prop("plant-small", 880, 760, { origin: [0.5, 1], rect: [-40, -28, 80, 28], react: "rustle" });
+    b.prop("plant-small", 1530, 760, { origin: [0.5, 1], rect: [-40, -28, 80, 28], flip: true, react: "rustle" });
+    const cases = b.prop("suitcases", 1660, 820, { origin: [0.5, 1], rect: [-96, -70, 192, 70], react: "jingle" });
     b.act("suitcaseWiggle", async () => {
       b.fx.sfx("kick", 0.5, 1.3);
       if (!b.reduced) b.world.tweens.add({ targets: cases, angle: { from: -4, to: 4 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => cases.setAngle(0) });
       await b.fx.wait(450);
     });
     b.prop("tv-lobby", 1880, 700, { origin: [0.5, 1], rect: [-110, -70, 220, 70] });
+    b.near(1880, 760, 260, {
+      cooldown: 12000,
+      enter: () => {
+        if (tvBusy || b.reduced) return;
+        paintBars(true);
+        b.fx.sfx("bars", 0.15, 1.8);
+        b.world.time.delayedCall(220, () => !tvBusy && paintBars(false));
+      },
+    });
     const tv = b.world.add.tileSprite(1880 - 120 + 46 + 4, 700 - 250 + 44 + 4, 112, 94, "static").setOrigin(0, 0).setDepth(701).setAlpha(0.9);
     const tvBars = b.g(702);
     const tvShow = b.world.add.image(tv.x + 56, tv.y + 50, "face-mascot-normal").setDepth(703).setVisible(false);
@@ -258,7 +314,18 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       tv.setAlpha(0.9);
       tvBusy = false;
     });
-    b.prop("luggage-cart", 260, 1110, { origin: [0.5, 1], rect: [-100, -50, 200, 50] });
+    b.prop("luggage-cart", 260, 1110, { origin: [0.5, 1], rect: [-100, -50, 200, 50], react: "wobble" });
+    b.critter({ frames: ["kitten-a", "kitten-b"], rest: "kitten-sit", x: 900, y: 1060, bounds: [700, 900, 1700, 1160], mode: "walk", react: "follow", r: 240, scale: 0.78, speed: 70, sound: ["meow", 0.35, 1.5], faceLeft: false });
+    const bellGlow = b.glow(1360, 430, 130, 110, 0xffe39a, 0, 652);
+    b.near(1360, 720, 170, {
+      cooldown: 9000,
+      enter: () => {
+        b.fx.sfx("bell", 0.18, 1.6);
+        bellGlow.setAlpha(0.6);
+        b.world.tweens.add({ targets: bellGlow, alpha: 0, duration: b.reduced ? 10 : 700 });
+        if (!b.reduced) b.world.tweens.add({ targets: bell, angle: { from: -4, to: 4 }, duration: 80, yoyo: true, repeat: 1, onComplete: () => bell.setAngle(0) });
+      },
+    });
     b.spot({ id: "bigodes", x: 1200, y: 700, r: 200, verb: "Conversar", script: "bigodes" });
     b.spot({ id: "bell", x: 1380, y: 700, r: 90, verb: "Tocar", script: "bell" });
     b.spot({ id: "guestbook", x: 1040, y: 700, r: 90, verb: "Ler", script: "guestbook" });
@@ -360,28 +427,52 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         water.strokePath();
       }
     });
-    b.prop("lifeguard-chair", 790, 1500, { origin: [0.5, 1], rect: [-90, -44, 180, 44], shadow: 150 });
+    b.prop("lifeguard-chair", 790, 1500, { origin: [0.5, 1], rect: [-90, -44, 180, 44], shadow: 150, occlude: [0.95, 0.4, 0.4] });
     b.npc("marola", 790, 1292, {
       scale: 0.78,
       depth: 1501,
       noShadow: true,
       frames: s.flags.whistleReturned ? { normal: "normal", talk: "talk-w", look: "look-w", happy: "happy", sad: "normal", surprised: "talk-w" } : undefined,
     });
-    b.prop("umbrella-a", 1110, 1760, { origin: [0.5, 1], anim: "sway", amp: 1, circle: 18, shadow: 70 });
-    b.prop("umbrella-b", 1720, 1760, { origin: [0.5, 1], anim: "sway", amp: 1, circle: 18, shadow: 70 });
-    b.prop("lounge-a", 960, 1800, { origin: [0.5, 1], rect: [-92, -54, 184, 54] });
+    b.prop("umbrella-a", 1110, 1760, { origin: [0.5, 1], anim: "sway", amp: 1, circle: 18, shadow: 70, react: "rustle", reactR: 90, occlude: [0.98, 0.55, 0.45] });
+    b.prop("umbrella-b", 1720, 1760, { origin: [0.5, 1], anim: "sway", amp: 1, circle: 18, shadow: 70, react: "rustle", reactR: 90, occlude: [0.98, 0.55, 0.45] });
+    b.prop("lounge-a", 960, 1800, { origin: [0.5, 1], rect: [-92, -54, 184, 54], react: "bounce" });
     const towel = b.prop("towel", 960, 1768, { origin: [0.5, 1], depth: 1801, scale: 0.8 });
-    b.prop("lounge-b", 1260, 1810, { origin: [0.5, 1], rect: [-92, -54, 184, 54] });
-    b.prop("lounge-a", 1860, 1800, { origin: [0.5, 1], flip: true, rect: [-92, -54, 184, 54] });
-    b.kickable("beachball", 1500, 1680);
+    b.prop("lounge-b", 1260, 1810, { origin: [0.5, 1], rect: [-92, -54, 184, 54], react: "bounce" });
+    b.prop("lounge-a", 1860, 1800, { origin: [0.5, 1], flip: true, rect: [-92, -54, 184, 54], react: "bounce" });
+    const inPool = (x: number, y: number) => x > 884 && x < 1600 && y > 1164 && y < 1560 && !(x > 1640 && y < 1520);
+    b.kickable("beachball", 1500, 1680, inPool);
+    for (let i = 0; i < 3; i += 1) b.critter({ frames: ["fish-a", "fish-b"], x: 1050 + i * 180, y: 1260 + (i % 2) * 140, bounds: [970, 1220, 1510, 1500], mode: "swim", react: "dive", r: 300, scale: 0.42, depth: 1.52, alpha: 0.72, speed: 46, sound: ["plop", 0.15, 1.6], away: [4000, 7000] });
+    b.critter({ frames: ["butterfly-a", "butterfly-b"], x: 2620, y: 1300, bounds: [2420, 1100, 2760, 1480], mode: "flutter", react: "fly", r: 170, scale: 0.55, depth: 4800, speed: 70, sound: ["flutter", 0.4, 1], away: [5000, 9000] });
+    b.critter({ frames: ["butterfly-a", "butterfly-b"], x: 300, y: 950, bounds: [120, 860, 620, 1100], mode: "flutter", react: "fly", r: 170, scale: 0.5, depth: 4800, speed: 60, sound: ["flutter", 0.4, 1.2], away: [5000, 9000] });
+    b.prop("lounge-b", 2400, 1730, { origin: [0.5, 1], rect: [-92, -54, 184, 54] });
+    b.resident({
+      frames: ["coaxo-a", "coaxo-b"],
+      x: 2400,
+      y: 1731,
+      lift: 46,
+      scale: 0.62,
+      name: "Seu Coaxo",
+      lines: ["Sol de 2004. Bronzeia igual.", "Mergulho? Só depois da digestão. Desde 2004.", "Não conta pro salva-vidas que eu tô sem touca.", "Coaxo. Quer dizer: boa tarde."],
+      sound: ["croak", 0.5, 1],
+      r: 280,
+    });
+    b.surface((x, y) => {
+      if (x > 880 && x < 1600 && y > 1150 && y < 1570 && !(x > 920 && x < 1563 && y > 1190 && y < 1532)) {
+        const cx = Phaser.Math.Clamp(x, 940, 1545);
+        const cy = Phaser.Math.Clamp(y, 1205, 1520);
+        return { kind: "tile", splash: Math.random() < 0.5 ? [cx, cy] : undefined };
+      }
+      return null;
+    });
     for (const [x, y, k, flip] of [
       [236, 1060, "palm", false],
       [2570, 1880, "palm", true],
       [2200, 1880, "palm-b", false],
     ] as [number, number, string, boolean][]) {
-      b.prop(k, x, y, { origin: [0.5, 1], flip, anim: "sway", amp: 2, circle: 30, shadow: 120 });
+      b.prop(k, x, y, { origin: [0.5, 1], flip, anim: "sway", amp: 2, circle: 30, shadow: 120, react: "rustle", reactR: 80 });
     }
-    b.prop("juice-bar", 380, 1740, { origin: [0.5, 1], rect: [-255, -150, 510, 150], shadow: 540 });
+    b.prop("juice-bar", 380, 1740, { origin: [0.5, 1], rect: [-255, -150, 510, 150], shadow: 540, occlude: [0.96, 0.3, 0.46] });
     const capi = b.npc("capi", 380, 1592, { scale: 0.76, depth: 1560, noShadow: true });
     b.greet("capi", ["Suquinho?", "Psst. Tenho uma fofoca.", "Hoje o suco é de manga. Ontem também."], 340);
     let shakeAt = 4000;
@@ -399,17 +490,17 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       }
       b.fx.sfx("pick", 0.7);
     });
-    b.prop("shed", 2480, 1300, { origin: [0.5, 1], rect: [-160, -110, 320, 110] });
+    b.prop("shed", 2480, 1300, { origin: [0.5, 1], rect: [-160, -110, 320, 110], occlude: [0.96, 0.3, 0.46] });
     b.prop("poster-summer", 2346, 1140, { origin: [0.5, 0.5], scale: 0.4, depth: 1301 });
-    b.prop("net-pole", 2710, 1300, { origin: [0.5, 1], circle: 12, show: (st) => !st.items.includes("net") });
-    b.prop("signpost", 560, 1150, { origin: [0.5, 1], circle: 22, shadow: 60 });
-    b.prop("hedge", 200, 890, { origin: [0.5, 1], rect: [-140, -60, 280, 60] });
-    b.prop("hibiscus", 1817, 880, { origin: [0.5, 1], rect: [-40, -50, 80, 50], scale: 0.5 });
-    b.prop("hibiscus", 2620, 1440, { origin: [0.5, 1], rect: [-120, -60, 240, 60] });
-    b.prop("hedge", 2620, 1958, { origin: [0.5, 1], rect: [-140, -60, 280, 60] });
-    b.prop("hedge", 400, 1958, { origin: [0.5, 1], rect: [-140, -60, 280, 60] });
-    b.prop("hibiscus", 1000, 1958, { origin: [0.5, 1], rect: [-120, -60, 240, 60] });
-    b.prop("hibiscus", 2700, 1000, { origin: [0.5, 1], rect: [-80, -40, 160, 40], scale: 0.65 });
+    b.prop("net-pole", 2710, 1300, { origin: [0.5, 1], circle: 12, show: (st) => !st.items.includes("net"), react: "wobble" });
+    b.prop("signpost", 560, 1150, { origin: [0.5, 1], circle: 22, shadow: 60, react: "wobble" });
+    b.prop("hedge", 200, 890, { origin: [0.5, 1], rect: [-140, -60, 280, 60], react: "rustle" });
+    b.prop("hibiscus", 1817, 880, { origin: [0.5, 1], rect: [-40, -50, 80, 50], scale: 0.5, react: "rustle" });
+    b.prop("hibiscus", 2620, 1440, { origin: [0.5, 1], rect: [-120, -60, 240, 60], react: "rustle" });
+    b.prop("hedge", 2620, 1958, { origin: [0.5, 1], rect: [-140, -60, 280, 60], react: "rustle" });
+    b.prop("hedge", 400, 1958, { origin: [0.5, 1], rect: [-140, -60, 280, 60], react: "rustle" });
+    b.prop("hibiscus", 1000, 1958, { origin: [0.5, 1], rect: [-120, -60, 240, 60], react: "rustle" });
+    b.prop("hibiscus", 2700, 1000, { origin: [0.5, 1], rect: [-80, -40, 160, 40], scale: 0.65, react: "rustle" });
     const poolLento = b.npc("lento", 2300, 1800, { scale: 0.8, show: (st) => Boolean(st.flags.ended), frames: s.flags.gotKey ? { normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" } : { normal: "walk-a", look: "walk-b", talk: "talk", happy: "talk", surprised: "talk" } });
     b.act("lentoKeyless", () => poolLento?.setFrames({ normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" }));
     b.spot({ id: "lento", x: 2300, y: 1840, r: 160, verb: "Conversar", script: "lento", show: (st) => Boolean(st.flags.ended) });
@@ -442,16 +533,16 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.act("marolaBark", () => b.bark("marola", b.s.flags.whistleReturned ? "Leu? Leia de novo!" : "...sem apito eu só faço cara feia."));
     b.greet("marola", ["Olho na borda, recruta!", "Sempre alerta!"], 280);
     b.greet("lento", ["Cheguei... quase."], 260);
-    let edgeAt = 0;
-    b.onUpdate((t) => {
-      const h = b.hero();
-      if (!h || h.busy || t < edgeAt || h.speed < 330) return;
-      const nearRim = h.x > 860 && h.x < 1640 && h.y > 1130 && h.y < 1610;
-      if (!nearRim) return;
-      edgeAt = t + 9000;
-      b.npcOf("marola")?.setMood(b.s.flags.whistleReturned ? "happy" : "look", 1200, t);
-      if (b.s.flags.whistleReturned) b.fx.sfx("whistle", 0.7);
-      b.bark("marola", b.s.flags.whistleReturned ? "SEM CORRER NA BORDA!" : "Ei! Devagar aí!");
+    const onRim = (x: number, y: number) => x > 880 && x < 1600 && y > 1150 && y < 1570 && !(x > 935 && x < 1548 && y > 1205 && y < 1517);
+    b.near(0, 0, 0, {
+      zone: onRim,
+      cooldown: 20000,
+      minSpeed: 200,
+      enter: (t) => {
+        b.npcOf("marola")?.setMood(b.s.flags.whistleReturned ? "happy" : "look", 1200, t);
+        if (b.s.flags.whistleReturned) b.fx.sfx("whistle", 0.7);
+        b.bark("marola", b.s.flags.whistleReturned ? "SEM CORRER NA BORDA!" : "Ei! Devagar aí!");
+      },
     });
     b.spot({ id: "poster", x: 2346, y: 1340, r: 120, verb: "Examinar", script: "poster:summer", hint: "item" });
     b.spot({ id: "signpost", x: 560, y: 1190, r: 110, verb: "Ler", script: "signpost" });
@@ -465,8 +556,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.frame([625, 60, 1150, 740], [480, 800, 1340, 340]);
     b.frame([1860, 140, 780, 660], [1820, 800, 980, 340]);
     b.frame([606, 886, 1548, 988], [620, 1140, 1520, 760]);
-    b.spawn("hotel", 1200, 880, "f");
-    b.spawn("arcade", 2250, 880, "f");
+    b.spawn("hotel", 1200, 965, "f");
+    b.spawn("arcade", 2250, 965, "f");
     b.spawn("west", 130, 1250, "s", 1);
     b.spawn("east", 2670, 1550, "s", -1);
     b.spawn("party", POOL.party.player[0], POOL.party.player[1], "f");
@@ -547,6 +638,13 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         }
       });
       b.glow(x, 560, 220, 100, colors[idx], 0.25, 0.6);
+      b.near(x, 640, 150, {
+        cooldown: 8000,
+        enter: (t) => {
+          bursts.set(script, t + 260);
+          b.fx.sfx(idx === 3 ? "arcadeBoop" : "arcadeBeep", 0.3, 1.2 + idx * 0.1);
+        },
+      });
       b.spot({ id: script, x, y: 610, r: 100, verb: idx === 3 ? "Examinar" : "Jogar", script });
       b.act(`burst:${script}`, async () => {
         bursts.set(script, b.world.time.now + 500);
@@ -593,14 +691,20 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     });
     const records = b.prop("records", 300, 112, { origin: [0.5, 0.5], depth: "wall", scale: 0.9 });
     const chase = b.g(2.9);
-    let near = false;
+    let close = false;
+    b.near(300, 600, 340, {
+      enter: () => {
+        close = true;
+        b.fx.sfx("arcadeBeep", 0.35, 1.5);
+      },
+      leave: () => {
+        close = false;
+        chase.clear();
+      },
+    });
     b.onUpdate((t) => {
-      const h = b.hero();
-      const close = Boolean(h && Math.hypot(h.x - 300, h.y - 600) < 340);
-      if (close && !near) b.fx.sfx("arcadeBeep", 0.35, 1.5);
-      near = close;
-      chase.clear();
       if (!close) return;
+      chase.clear();
       const step = Math.floor(t / 120);
       const pts: [number, number][] = [];
       for (let i = 0; i < 14; i += 1) pts.push([164 + i * 21, 12]);
@@ -637,7 +741,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       placar?.setMood("happy", 1500, b.world.time.now);
       await b.fx.wait(700);
     });
-    b.prop("claw", 1410, 530, { origin: [0.5, 1] });
+    b.prop("claw", 1410, 530, { origin: [0.5, 1], react: "jingle", reactR: 110 });
     b.spot({ id: "claw", x: 1410, y: 610, r: 100, verb: "Jogar", script: "claw" });
     b.block(110, 470, 1880, 70);
     b.npc("tilt", 1000, 548, { scale: 0.95, depth: 548, bob: 0.008 });
@@ -655,13 +759,13 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.spot({ id: "gold", x: 1842, y: 610, r: 120, verb: (st) => (st.tokens.length >= 3 && !st.secrets.includes("machine") ? "Colocar fichas" : "Examinar"), script: "goldMachine", show: (st) => Boolean(st.flags.curtainOpen) });
     b.prop("prize-counter", 1640, 1010, { origin: [0.5, 1], rect: [-210, -130, 420, 130] });
     b.spot({ id: "prizes", x: 1640, y: 1060, r: 170, verb: "Examinar", script: "prizes" });
-    b.prop("pinball", 500, 900, { origin: [0.5, 1], rect: [-110, -70, 220, 70] });
+    b.prop("pinball", 500, 900, { origin: [0.5, 1], rect: [-110, -70, 220, 70], react: "jingle" });
     b.spot({ id: "pinball", x: 500, y: 950, r: 130, verb: "Jogar", script: "pinball" });
-    b.prop("air-hockey", 1000, 960, { origin: [0.5, 1], rect: [-140, -70, 280, 70] });
+    b.prop("air-hockey", 1000, 960, { origin: [0.5, 1], rect: [-140, -70, 280, 70], react: "jingle" });
     b.spot({ id: "hockey", x: 1000, y: 1010, r: 140, verb: "Jogar", script: "hockey" });
-    b.prop("stool", 300, 760, { origin: [0.5, 1], circle: 18 });
-    b.prop("stool", 620, 790, { origin: [0.5, 1], circle: 18 });
-    b.prop("stool", 1300, 760, { origin: [0.5, 1], circle: 18 });
+    b.prop("stool", 300, 760, { origin: [0.5, 1], circle: 18, react: "spin" });
+    b.prop("stool", 620, 790, { origin: [0.5, 1], circle: 18, react: "spin" });
+    b.prop("stool", 1300, 760, { origin: [0.5, 1], circle: 18, react: "spin" });
     b.spot({ id: "poster", x: 1615, y: 620, r: 110, verb: "Examinar", script: "poster:tilt", hint: "item" });
     b.spot({ id: "records", x: 300, y: 600, r: 90, verb: "Ler", script: "records" });
     b.spot({ id: "posterPijama", x: 776, y: 594, r: 80, verb: "Examinar", script: "posterPijama" });
@@ -712,9 +816,14 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     const shore = b.g(0.3);
     const notch = b.g(0.32);
     b.vars.notch = notch;
+    const tideAt = (t: number) => (b.vars.seaPaused || b.vars.seaFrozen ? 0.7 : (Math.sin((t / 7000) * Math.PI * 2) + 1) / 2);
+    const waterline = (x: number, t: number) => {
+      const paused = Boolean(b.vars.seaPaused || b.vars.seaFrozen);
+      return 600 + tideAt(t) * 40 + Math.sin(x / 140 + (paused ? 0 : t / 900)) * 8;
+    };
     const drawShore = (t: number) => {
       const paused = Boolean(b.vars.seaPaused || b.vars.seaFrozen);
-      const p = paused ? 0.7 : (Math.sin((t / 7000) * Math.PI * 2) + 1) / 2;
+      const p = tideAt(t);
       shore.clear();
       shore.fillStyle(0xe3bd7c, 1);
       shore.beginPath();
@@ -755,16 +864,34 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     const pausedNow = Boolean(s.flags.seaPaused && !s.flags.gotOrder);
     b.vars.seaPaused = pausedNow;
     paintNotch(pausedNow);
+    const onPier = (x: number, y: number) => x > 2318 && x < 2482 && y > 230 && y < 790;
+    const inNotch = (x: number, y: number) => Boolean(b.vars.seaPaused) && x > 1090 && x < 1410 && y > 470;
+    const dryFrom = (x: number) => waterline(x, b.world.time.now) + 30;
     b.blocker((x, y) => {
-      if (y >= 640) return false;
-      if (x > 2318 && x < 2482 && y > 230) return false;
-      if (b.vars.seaPaused && x > 1090 && x < 1410 && y > 470) return false;
+      if (y >= dryFrom(x)) return false;
+      if (onPier(x, y) || inNotch(x, y)) return false;
       return true;
+    });
+    let washAt = 0;
+    b.onUpdate((t) => {
+      const h = b.hero();
+      if (!h || onPier(h.x, h.y) || inNotch(h.x, h.y)) return;
+      const limit = dryFrom(h.x);
+      if (h.y >= limit) return;
+      if (b.pushHero(h.x, limit + 1) && t > washAt) {
+        washAt = t + 2500;
+        b.fx.sfx("ripple", 0.5, 0.8);
+        splashAt(b, h.x, limit - 10, 0.8);
+      }
+    });
+    b.surface((x, y) => {
+      if (onPier(x, y)) return { kind: "wood" };
+      return { kind: "sand", gone: (fx, fy) => fy < waterline(fx, b.world.time.now) + 14 };
     });
     b.prop("pier", 2400, 770, { origin: [0.5, 1], depth: 0.35 });
     b.prop("bottle", 1250, 540, { origin: [0.5, 1], depth: 541, show: (st) => Boolean(st.flags.seaPaused && !st.flags.gotOrder) });
-    b.prop("wave-sign", 1050, 720, { origin: [0.5, 1], circle: 18 });
-    b.prop("kiosk", 1960, 930, { origin: [0.5, 1], rect: [-262, -170, 524, 170], shadow: 560 });
+    b.prop("wave-sign", 1050, 720, { origin: [0.5, 1], circle: 18, react: "wobble" });
+    b.prop("kiosk", 1960, 930, { origin: [0.5, 1], rect: [-262, -170, 524, 170], shadow: 560, occlude: [0.96, 0.32, 0.46] });
     const radio = b.prop("radio", 2100, 742, { origin: [0.5, 1], depth: 931, scale: 0.9 });
     b.act("radioTune", async () => {
       b.fx.sfx("bars", 0.35, 1.4);
@@ -782,9 +909,9 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     });
     b.prop("poster-surf", 1752, 800, { origin: [0.5, 0.5], scale: 0.42, depth: 931 });
     const boards = [
-      b.prop("surf-a", 2600, 940, { origin: [0.5, 1], angle: -6 }),
-      b.prop("surf-b", 2670, 950, { origin: [0.5, 1], angle: 4 }),
-      b.prop("surf-c", 2740, 940, { origin: [0.5, 1], angle: -3 }),
+      b.prop("surf-a", 2600, 940, { origin: [0.5, 1], angle: -6, react: "wobble", reactR: 60 }),
+      b.prop("surf-b", 2670, 950, { origin: [0.5, 1], angle: 4, react: "wobble", reactR: 60 }),
+      b.prop("surf-c", 2740, 940, { origin: [0.5, 1], angle: -3, react: "wobble", reactR: 60 }),
     ];
     b.act("surfWobble", async () => {
       b.fx.sfx("kick", 0.6, 0.7);
@@ -797,8 +924,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       b.fx.sfx("kick", 0.4, 1.2);
     });
     b.block(2550, 905, 240, 45);
-    b.prop("umbrella-b", 1330, 990, { origin: [0.5, 1], circle: 18, anim: "sway", amp: 1, shadow: 70 });
-    b.prop("deckchair", 1420, 1040, { origin: [0.5, 1], rect: [-70, -40, 140, 40] });
+    b.prop("umbrella-b", 1330, 990, { origin: [0.5, 1], circle: 18, anim: "sway", amp: 1, shadow: 70, react: "rustle", reactR: 90, occlude: [0.98, 0.55, 0.45] });
+    b.prop("deckchair", 1420, 1040, { origin: [0.5, 1], rect: [-70, -40, 140, 40], react: "bounce" });
     const marisa = b.npc("marisa", 1570, 1030, { scale: 0.85 });
     b.prop("chips", 1452, 1000, { origin: [0.5, 1], depth: 1042, scale: 0.8 });
     b.greet("marisa", () => {
@@ -808,19 +935,13 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       if (f.seaPaused) return ["O mar parou! Que silêncio bom.", "Aproveita e vê o que ele deixou."];
       return ["Olha a distância!", "Tô de férias. Não incomode.", "Já viu o farol? Ele pisca esquisito."];
     }, 260);
-    let guardAt = 0;
     const guard = async (t: number) => {
-      guardAt = t + 6000;
       marisa?.playSeq(["happy", "talk", "happy", "normal"], 180, t);
       b.fx.sfx("gull", 0.7);
       b.bark("marisa", "Minhas batatinhas!", null);
       if (marisa && !b.reduced) b.world.tweens.add({ targets: marisa.sprite, y: marisa.y - 26, duration: 140, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
     };
-    b.onUpdate((t) => {
-      const h = b.hero();
-      if (!h || h.busy || t < guardAt) return;
-      if (Math.hypot(h.x - 1452, (h.y - 1060) * 1.2) < 130) void guard(t);
-    });
+    b.near(1452, 1060, 120, { cooldown: 6000, enter: (t) => void guard(t) });
     b.act("marisaGuard", () => guard(b.world.time.now));
     const clique = b.npc("clique", 880, 830, { scale: 0.82 });
     b.circleBlock(880, 824, 34);
@@ -876,7 +997,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("rock-a", 520, 790, { origin: [0.5, 1], rect: [-100, -60, 200, 60] });
     b.prop("rock-b", 700, 730, { origin: [0.5, 1], rect: [-66, -40, 132, 40] });
     b.prop("rock-a", 2820, 1330, { origin: [0.5, 1], flip: true, rect: [-100, -60, 200, 60] });
-    b.prop("shell-big", 650, 860, { origin: [0.5, 1], circle: 30 });
+    b.prop("shell-big", 650, 860, { origin: [0.5, 1], rect: [-62, -34, 124, 34] });
     b.prop("shells", 900, 1320, { origin: [0.5, 1], depth: "floor" });
     b.spot({ id: "shells", x: 900, y: 1350, r: 90, verb: "Escutar", script: "shells" });
     b.prop("shells", 2050, 1260, { origin: [0.5, 1], depth: "floor" });
@@ -899,70 +1020,44 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       [236, 1440, "palm-b", false],
       [2600, 1490, "palm", true],
     ] as [number, number, string, boolean][]) {
-      b.prop(k, x, y, { origin: [0.5, 1], flip, anim: "sway", amp: 2, circle: 30, shadow: 120 });
+      b.prop(k, x, y, { origin: [0.5, 1], flip, anim: "sway", amp: 2, circle: 30, shadow: 120, react: "rustle", reactR: 80 });
     }
-    b.prop("umbrella-a", 700, 1200, { origin: [0.5, 1], circle: 18, anim: "sway", amp: 1, shadow: 70 });
-    b.prop("lounge-a", 790, 1250, { origin: [0.5, 1], rect: [-92, -54, 184, 54] });
+    b.prop("umbrella-a", 700, 1200, { origin: [0.5, 1], circle: 18, anim: "sway", amp: 1, shadow: 70, react: "rustle", reactR: 90, occlude: [0.98, 0.55, 0.45] });
+    b.prop("lounge-a", 790, 1250, { origin: [0.5, 1], rect: [-92, -54, 184, 54], react: "bounce" });
     for (let i = 0; i < 2; i += 1) {
-      const crab = b.world.add.image(900 + i * 900, 1150 + i * 120, "crab-a").setOrigin(0.5, 1);
-      const lo = 700 + i * 700;
-      const hi = 1500 + i * 700;
-      let x = crab.x;
-      let dir = i ? -1 : 1;
-      let state: "walk" | "flee" | "hidden" = "walk";
-      let until = 0;
-      b.onUpdate((t, dt) => {
-        const h = b.hero();
-        if (state === "hidden") {
-          if (t < until) return;
-          if (h && Math.abs(h.x - (lo + hi) / 2) < 500 && Math.abs(h.y - crab.y) < 300) {
-            until = t + 2000;
-            return;
-          }
-          x = lo + Math.random() * (hi - lo);
-          state = "walk";
-          crab.setVisible(true).setScale(1).setX(x);
-          if (!b.reduced) b.world.tweens.add({ targets: crab, scaleY: { from: 0.1, to: 1 }, duration: 220, ease: "Back.easeOut" });
-          return;
-        }
-        if (state === "walk" && h && Math.hypot(h.x - x, (h.y - crab.y) * 1.3) < 230) {
-          state = "flee";
-          until = t + 900;
-          dir = h.x < x ? 1 : -1;
-          b.fx.sfx("blipSoft", 0.25, 2.4);
-        }
-        const speed = state === "flee" ? 300 : 60;
-        x += dir * speed * dt;
-        if (x > hi) {
-          x = hi;
-          dir = -1;
-        }
-        if (x < lo) {
-          x = lo;
-          dir = 1;
-        }
-        crab.setX(x).setDepth(crab.y).setTexture(Math.floor(t / (state === "flee" ? 70 : 160)) % 2 ? "crab-a" : "crab-b");
-        if (state === "flee" && t > until) {
-          state = "hidden";
-          until = t + 6000 + Math.random() * 3000;
-          if (b.reduced) crab.setVisible(false);
-          else b.world.tweens.add({ targets: crab, scaleY: 0.05, duration: 200, onComplete: () => crab.setVisible(false) });
-        }
-      });
+      const y = 1150 + i * 120;
+      b.critter({ frames: ["crab-a", "crab-b"], x: 900 + i * 900, y, bounds: [700 + i * 700, y - 30, 1500 + i * 700, y + 30], mode: "walk", react: "flee", r: 230, scale: 1, speed: 60, sound: ["blipSoft", 0.25, 2.4], away: [6000, 9000] });
     }
+    for (let i = 0; i < 3; i += 1) {
+      b.critter({ frames: ["gull-sit", "gull-peck"], flyFrames: ["gull-a", "gull-b"], rest: "gull-sit", x: 2350 + i * 50, y: 420 + i * 120, bounds: [2340, 330, 2460, 720], mode: "walk", react: "fly", r: 220, scale: 0.5, speed: 25, sound: ["gull", 0.45, 1 + i * 0.1], away: [7000, 11000], faceLeft: false });
+    }
+    b.resident({
+      frames: ["siri-a", "siri-b"],
+      x: 1720,
+      y: 1430,
+      scale: 0.62,
+      block: 40,
+      name: "Seu Siri",
+      lines: ["Cuidado com o meu castelo! Ah, eu não tenho castelo.", "Sol de 2004. Bronzeia igual.", "Andar de lado é uma escolha de vida.", "A onda das 4:04 é minha favorita. É a única."],
+      sound: ["blipSoft", 0.5, 1.7],
+      r: 280,
+    });
     const lento = b.npc("lento", 2500, 1330, { scale: 0.8, show: (st) => Boolean(st.flags.whistleReturned && !st.flags.ended), frames: s.flags.gotKey ? { normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" } : undefined });
     if (lento) {
       b.vars.lento = lento;
       let lx = 2500;
       let ld = -1;
+      b.blocker((x, y) => Math.hypot(x - lento.x, (y - lento.y) * 1.4) < 56);
       b.onUpdate((t, dt) => {
-        if (b.vars.lentoTalking) return;
+        if (b.vars.lentoTalking || !lento.idle) return;
+        const h = b.hero();
+        if (h && Math.hypot(h.x - lento.x, h.y - lento.y) < 140) return;
         lx += ld * 9 * dt;
         if (lx < 500) ld = 1;
         if (lx > 2600) ld = -1;
         lento.moveTo(lx, 1330);
         lento.sprite.setFlipX(ld > 0);
-        if (!lento.sprite.texture.key.includes("talk")) lento.sprite.setTexture(`lento-${Math.floor(t / 700) % 2 ? "walk-a" : "walk-b"}${b.s.flags.gotKey ? "-nokey" : ""}`);
+        lento.walkFrame(`${Math.floor(t / 700) % 2 ? "walk-a" : "walk-b"}${b.s.flags.gotKey ? "-nokey" : ""}`, t);
       });
       b.spot({ id: "lento", x: 2500, y: 1380, r: 170, verb: "Conversar", script: "lento", show: (st) => Boolean(st.flags.whistleReturned && !st.flags.ended), at: () => [lento.x, lento.y + 50] });
     }
@@ -979,7 +1074,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.spot({ id: "clique", x: 880, y: 890, r: 160, verb: "Conversar", script: "clique" });
     b.spot({ id: "chips", x: 1452, y: 1090, r: 100, verb: "Examinar", script: "chips" });
     b.greet("lento", ["Boa... tarde...", "Sem... pressa..."], 260);
-    b.exit(0, 1000, 44, 420, "pool", "east");
+    b.exit(0, 1130, 30, 180, "pool", "east");
     b.frame([0, 0, 3000, 680], [0, 640, 3000, 260]);
     b.frame([1674, 475, 572, 455], [1500, 900, 900, 380]);
     b.arrow(70, 1220, 180);
@@ -1002,7 +1097,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     shade.fillStyle(0x1f4030, 0.55);
     shade.fillRect(0, 0, 2800, 520);
     const ground = b.g(0.2);
-    band(ground, [[2800, 1150], [2400, 1180], [2000, 1090], [1650, 1020], [1300, 1040], [1050, 1010], [820, 880], [600, 690]], 150, 0xb8895a, INK, 0xd4a774);
+    const trail = band(ground, [[2800, 1150], [2400, 1180], [2000, 1090], [1650, 1020], [1300, 1040], [1050, 1010], [820, 880], [600, 690]], 150, 0xb8895a, INK, 0xd4a774);
     const water = b.g(0.25);
     const stream = band(water, [[600, 640], [900, 860], [1120, 1010], [1250, 1250], [1220, 1500], [1300, 1720]], 110, 0x3fa9dc, INK, 0x8fe3ff);
     const foam = b.g(0.26);
@@ -1016,14 +1111,23 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         foam.lineBetween(a.x + (c.x - a.x) * k - 10, a.y + (c.y - a.y) * k, a.x + (c.x - a.x) * k + 10, a.y + (c.y - a.y) * k);
       }
     });
-    b.blocker((x, y) => {
-      if (x > 850 && x < 1330 && y > 985 && y < 1070) return false;
-      for (let i = 0; i < stream.length; i += 2) {
-        const p = stream[i];
-        if (Math.abs(p.x - x) < 64 && Math.abs(p.y - y) < 40) return true;
-      }
-      return false;
+    const onBridge = (x: number, y: number) => x > 850 && x < 1330 && y > 985 && y < 1070;
+    const wet = (x: number, y: number) => polyDistance(stream, x, y).d < 52;
+    b.blocker((x, y) => !onBridge(x, y) && polyDistance(stream, x, y).d < 74);
+    b.surface((x, y) => {
+      if (onBridge(x, y)) return { kind: "wood" };
+      const w = polyDistance(stream, x, y);
+      if (w.d < 112) return { kind: "grass", splash: Math.random() < 0.6 ? [w.x + (x - w.x) * 0.25, w.y + (y - w.y) * 0.25] : undefined };
+      if (polyDistance(trail, x, y).d < 70) return { kind: "dirt", color: 0xc9a173 };
+      return null;
     });
+    for (const [fx, fy] of [
+      [820, 760],
+      [1330, 1300],
+      [1150, 1600],
+    ] as [number, number][])
+      b.critter({ frames: ["frog-a", "frog-b"], x: fx, y: fy, bounds: [fx - 130, fy - 80, fx + 130, fy + 80], mode: "hop", react: "hop", r: 210, scale: 0.42, sound: ["croak", 0.4, 1], water: wet, away: [5000, 9000] });
+    b.critter({ frames: ["butterfly-a", "butterfly-b"], x: 2300, y: 1250, bounds: [1900, 1150, 2650, 1500], mode: "flutter", react: "fly", r: 170, scale: 0.5, depth: 4800, speed: 60, sound: ["flutter", 0.4, 1.1], away: [5000, 9000] });
     b.prop("boardwalk", 1090, 1090, { origin: [0.5, 1], depth: 0.4 });
     b.prop("cliff", 560, 620, { origin: [0.5, 1], depth: 300 });
     b.block(290, 300, 540, 288);
@@ -1060,7 +1164,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       ["tree-b", 2560, 1700, true],
     ];
     for (const [k, x, y, flip] of trees) {
-      const tr = b.prop(k, x, y, { origin: [0.5, 1], flip, rect: [-44, -26, 88, 26], anim: "sway", amp: 0.8 });
+      const tr = b.prop(k, x, y, { origin: [0.5, 1], flip, rect: [-44, -26, 88, 26], anim: "sway", amp: 0.8, react: "rustle", reactR: 110 });
       if (y <= 760) tr.setTint(0xc6d0e2);
     }
     let leafAt = 1500;
@@ -1071,7 +1175,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const leaf = b.world.add.image(tx + (Math.random() - 0.5) * 300, ty - 380 + Math.random() * 120, "leaf").setDepth(4650).setAngle(Math.random() * 180);
       b.world.tweens.add({ targets: leaf, y: leaf.y + 260, x: leaf.x + (Math.random() - 0.5) * 140, angle: leaf.angle + 220, alpha: { from: 1, to: 0 }, duration: 3200, ease: "Sine.easeIn", onComplete: () => leaf.destroy() });
     });
-    b.prop("treehouse", 2480, 980, { origin: [0.5, 1] });
+    b.prop("treehouse", 2480, 980, { origin: [0.5, 1], occlude: [0.98, 0.12, 0.4] });
     b.block(2390, 950, 50, 30);
     b.block(2530, 950, 50, 30);
     b.prop("ruin-arch", 1650, 1062, { origin: [0.5, 1] });
@@ -1086,7 +1190,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.block(1474, 1036, 34, 26);
     b.block(1794, 1036, 34, 26);
     b.prop("placard", 1500, 1160, { origin: [0.5, 1], circle: 16 });
-    b.prop("statue-404", 2050, 840, { origin: [0.5, 1], rect: [-100, -44, 200, 44] });
+    b.prop("statue-404", 2050, 840, { origin: [0.5, 1], rect: [-100, -44, 200, 44], occlude: [0.96, 0.3, 0.42] });
     b.prop("placard", 2190, 920, { origin: [0.5, 1], circle: 16 });
     const dish = b.prop("dish", 1250, 780, { origin: [0.5, 1], rect: [-70, -30, 140, 30] });
     const tip = b.glow(1250, 486, 46, 46, 0xef4f43, 0.5, 781);
@@ -1117,7 +1221,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     });
     b.prop("carousel-horse", 1460, 1420, { origin: [0.5, 1], rect: [-50, -24, 100, 24] });
     b.spot({ id: "horse", x: 1460, y: 1460, r: 110, verb: "Examinar", script: "horse" });
-    b.prop("ticket-booth", 2270, 1380, { origin: [0.5, 1], rect: [-140, -84, 280, 84], shadow: 300 });
+    b.prop("ticket-booth", 2270, 1380, { origin: [0.5, 1], rect: [-140, -84, 280, 84], shadow: 300, occlude: [0.96, 0.3, 0.44] });
     const boothLight = b.glow(2270, 1018, 240, 90, 0xffe39a, 0.3, 1382);
     b.onUpdate((t) => boothLight.setAlpha(b.reduced ? 0.3 : Math.floor(t / 500) % 4 === 0 ? 0.05 : 0.32));
     b.act("ticketPrint", async () => {
@@ -1134,22 +1238,25 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("stump", 720, 1010, { origin: [0.5, 1], rect: [-66, -40, 132, 40] });
     b.npc("psiu", 720, 952, { scale: 0.8, depth: 1011, noShadow: true });
     b.greet("psiu", ["Psiu.", "...psiu?"], 240);
-    const cav = b.npc("cavuca", 1980, 1160, { scale: 0.78 });
+    const cav = b.npc("cavuca", 1980, 1160, { scale: 0.78, notice: 220 });
     if (cav) {
       let ang = 1.2;
       let stepAt = 0;
       let foot = 0;
+      b.blocker((x, y) => Math.hypot(x - cav.x, (y - cav.y) * 1.4) < 52);
       b.onUpdate((t, dt) => {
-        if (b.vars.talking === "cavuca") return;
+        if (b.vars.talking === "cavuca" || !cav.idle) return;
+        const h = b.hero();
+        if (h && Math.hypot(h.x - cav.x, (h.y - cav.y) * 1.3) < 220) return;
         ang += dt * 0.22;
         const nx = 1980 + Math.cos(ang) * 140;
         const ny = 1118 + Math.sin(ang) * 46;
         cav.sprite.setFlipX(-Math.sin(ang) < 0);
         cav.moveTo(nx, ny);
-        if (t > stepAt && !cav.busy) {
+        if (t > stepAt) {
           stepAt = t + 340;
           foot = 1 - foot;
-          cav.sprite.setTexture(foot ? "cavuca-walk-b" : "cavuca-walk-a");
+          cav.walkFrame(foot ? "walk-b" : "walk-a", t);
         }
       });
       b.spot({ id: "cavuca", x: 1980, y: 1160, r: 170, verb: "Conversar", script: "cavuca", at: () => [cav.x, cav.y + 50] });
@@ -1283,7 +1390,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       await b.fx.wait(1600);
       g.destroy();
     });
-    const mush = b.prop("mushrooms", 420, 1190, { origin: [0.5, 1], rect: [-44, -16, 104, 16], shadow: 120 });
+    const mush = b.prop("mushrooms", 420, 1190, { origin: [0.5, 1], rect: [-44, -16, 104, 16], shadow: 120, react: "bounce" });
     b.act("mushGlow", async () => {
       const gl = b.glow(430, 1150, 260, 200, 0xff8fc4, 0.7, 1191);
       b.fx.sfx("quest", 0.45, 1.25);
@@ -1297,15 +1404,18 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       mush.clearTint();
       b.world.tweens.add({ targets: gl, alpha: 0, duration: 300, onComplete: () => gl.destroy() });
     });
-    b.prop("mushrooms", 1900, 1300, { origin: [0.5, 1], flip: true, rect: [-60, -16, 104, 16], shadow: 120 });
+    b.prop("mushrooms", 1900, 1300, { origin: [0.5, 1], flip: true, rect: [-60, -16, 104, 16], shadow: 120, react: "bounce" });
     for (const [x, y] of [
       [600, 1420],
       [1900, 1240],
       [2560, 1640],
       [1540, 760],
       [180, 1100],
+      [1390, 1180],
+      [1060, 1350],
+      [800, 1000],
     ] as [number, number][])
-      b.prop("fern", x, y, { origin: [0.5, 1], anim: "sway", amp: 1.5 });
+      b.prop("fern", x, y, { origin: [0.5, 1], anim: "sway", amp: 1.5, react: "rustle", reactR: 80 });
     for (const [x, y] of [
       [2600, 1270],
       [2010, 1230],
@@ -1313,7 +1423,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       [960, 960],
       [740, 770],
     ] as [number, number][]) {
-      b.prop("lantern-post", x, y, { origin: [0.5, 1], circle: 14 });
+      b.prop("lantern-post", x, y, { origin: [0.5, 1], circle: 14, react: "wobble", reactR: 60 });
       const lg = b.glow(x + 50, y - 200, 200, 200, 0xffc46b, 0.4, y + 1);
       const pool = b.glow(x + 20, y + 6, 220, 70, 0xffc46b, 0.22, 1.4);
       let flick = 1;
@@ -1331,7 +1441,25 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const fx = 200 + Math.random() * 2400;
       const fy = 700 + Math.random() * 900;
       const ff = b.glow(fx, fy, 30, 30, 0xd8ff7a, 0.8, 4700);
-      b.onUpdate((t) => ff.setPosition(fx + Math.sin(t / 1300 + i) * 40, fy + Math.cos(t / 1700 + i * 2) * 30).setAlpha(b.reduced ? 0.6 : 0.3 + Math.max(0, Math.sin(t / 400 + i * 3)) * 0.6));
+      let ox = 0;
+      let oy = 0;
+      b.onUpdate((t, dt) => {
+        const bx = fx + Math.sin(t / 1300 + i) * 40;
+        const by = fy + Math.cos(t / 1700 + i * 2) * 30;
+        const h = b.hero();
+        if (h && !b.reduced) {
+          const dx = bx + ox - h.x;
+          const dy = by + oy - (h.y - 110);
+          const d = Math.hypot(dx, dy);
+          if (d < 170) {
+            ox += (dx / (d || 1)) * 260 * dt;
+            oy += (dy / (d || 1)) * 260 * dt;
+          }
+        }
+        ox *= 1 - Math.min(1, dt * 0.4);
+        oy *= 1 - Math.min(1, dt * 0.4);
+        ff.setPosition(bx + ox, by + oy).setAlpha(b.reduced ? 0.6 : 0.3 + Math.max(0, Math.sin(t / 400 + i * 3)) * 0.6);
+      });
     }
     b.spot({ id: "psiu", x: 720, y: 1060, r: 170, verb: "Conversar", script: "psiu" });
     b.spot({ id: "mushrooms", x: 430, y: 1240, r: 100, verb: "Examinar", script: "mushrooms" });
@@ -1391,9 +1519,52 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("calendar", 1720, 300, { origin: [0.5, 0.5], depth: "wall" });
     b.prop("console", 1000, 770, { origin: [0.5, 1], rect: [-450, -170, 900, 170] });
     b.prop("mug", 1300, 548, { origin: [0.5, 1], depth: 771 });
-    b.prop("big-button", 1660, 780, { origin: [0.5, 1], rect: [-110, -90, 220, 90] });
-    b.prop("tape-deck", 330, 780, { origin: [0.5, 1], rect: [-150, -80, 300, 80] });
-    b.prop("chair", 1000, 920, { origin: [0.5, 1], circle: 40 });
+    b.surface(() => ({ kind: "tile" }));
+    const button = b.prop("big-button", 1660, 780, { origin: [0.5, 1], rect: [-110, -90, 220, 90] });
+    const buttonGlow = b.glow(1660, 690, 300, 220, 0xef4f43, 0, 781);
+    let buttonNear = false;
+    b.near(1660, 860, 260, {
+      enter: () => {
+        buttonNear = true;
+        b.fx.sfx("blip", 0.4, 0.7);
+        if (!b.reduced) b.world.tweens.add({ targets: button, scaleY: { from: 0.94, to: 1 }, scaleX: { from: 1.04, to: 1 }, duration: 260, ease: "Back.easeOut" });
+      },
+      leave: () => {
+        buttonNear = false;
+      },
+    });
+    b.onUpdate((t) => buttonGlow.setAlpha(buttonNear ? (b.reduced ? 0.35 : 0.22 + Math.max(0, Math.sin(t / 220)) * 0.3) : Math.max(0, buttonGlow.alpha - 0.02)));
+    b.prop("tape-deck", 330, 780, { origin: [0.5, 1], rect: [-150, -80, 300, 80], react: "jingle" });
+    b.prop("chair", 1000, 920, { origin: [0.5, 1], circle: 40, react: "spin", reactR: 90 });
+    const cams = [650, 1000, 1350].map((cx) => {
+      const bg = b.world.add.rectangle(0, 0, 292, 168, 0xffc83d, 0.92);
+      const src = b.world.textures.get("deco-idle-f").getSourceImage() as HTMLImageElement;
+      const k = Math.min(138 / (src.height - 21), 250 / src.width);
+      const face = b.world.add.image(0, 84, "deco-idle-f").setOrigin(0.5, 1 - 11 / src.height).setScale(k);
+      const tag = b.world.add.text(-136, -78, "AQUI", { fontFamily: b.fonts.display, fontSize: "20px", color: "#1d1830" });
+      const live = b.world.add.text(136, -78, "● AO VIVO", { fontFamily: b.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
+      const scan = b.world.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
+      const noise = b.world.add.tileSprite(0, 0, 292, 168, "static").setAlpha(0);
+      const cont = b.world.add.container(cx, 403, [bg, face, tag, live, scan, noise]).setDepth(2.45).setAlpha(0);
+      return { cont, face, noise, cx, on: false, until: 0 };
+    });
+    b.onUpdate((t) => {
+      const h = b.hero();
+      const busy = Boolean(b.vars.feeds);
+      for (const c of cams) {
+        const want = !busy && Boolean(h) && Math.abs((h?.x ?? -9999) - c.cx) < 175;
+        if (want && !c.on) {
+          c.on = true;
+          c.until = t + 260;
+          b.fx.sfx("bars", 0.12, 1.9);
+        }
+        if (!want && c.on) c.on = false;
+        const target = c.on ? 1 : 0;
+        c.cont.setAlpha(c.cont.alpha + (target - c.cont.alpha) * 0.2);
+        c.noise.setAlpha(t < c.until ? 0.85 : 0).setTilePosition(Math.random() * 200, Math.random() * 200);
+        if (h && c.on) c.face.setFlipX(h.x < c.cx);
+      }
+    });
     b.prop("cables", 440, 1000, { origin: [0.5, 0.5], depth: "floor" });
     b.glow(1000, 300, 1200, 600, 0x5cf0ff, 0.12, 0.6);
     b.spot({ id: "console", x: 1000, y: 830, r: 220, verb: (st) => (st.items.includes("order") ? "Entregar a ordem" : "Examinar"), script: "console" });
@@ -1432,16 +1603,35 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("frame-sunset", 1130, 210, { origin: [0.5, 0.5], depth: "wall", angle: -4 });
     b.prop("rug-lobby", 960, 960, { origin: [0.5, 0.5], depth: "floor", scale: 0.62 });
     b.prop("bed", 900, 840, { origin: [0.5, 1], rect: [-280, -330, 560, 330] });
-    b.prop("nightstand", 1340, 800, { origin: [0.5, 1], rect: [-74, -50, 148, 50] });
+    b.prop("nightstand", 1340, 800, { origin: [0.5, 1], rect: [-74, -50, 148, 50], react: "wobble" });
     b.prop("cartridge", 1340, 664, { origin: [0.5, 1], depth: 801, show: (st) => !st.items.includes("cartridge") });
     b.prop("tv-lobby", 1680, 800, { origin: [0.5, 1], rect: [-110, -70, 220, 70] });
     const tv = b.world.add.tileSprite(1680 - 120 + 50, 800 - 250 + 48, 112, 94, "static").setOrigin(0, 0).setDepth(801).setAlpha(0.9);
     b.onUpdate(() => tv.setTilePosition(Math.random() * 200, Math.random() * 200));
-    b.prop("suitcases", 230, 860, { origin: [0.5, 1], rect: [-96, -70, 192, 70] });
+    b.prop("suitcases", 230, 860, { origin: [0.5, 1], rect: [-96, -70, 192, 70], react: "jingle" });
     const sleeper = b.npc("mascot", 700, 640, { scale: 0.48, depth: 841, noShadow: true, frames: { normal: "sleep", look: "sleep", talk: "sleep" } });
     b.vars.sleeper = sleeper;
     const zz = b.world.add.text(760, 560, "z", { fontFamily: b.fonts.display, fontSize: "44px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 6 }).setDepth(842);
     b.vars.zz = zz;
+    const mumbles = ["...só mais cinco anos...", "zzz... canal 404... zzz", "...não troca de canal...", "...ninguém aperta o botão..."];
+    let mumble = 0;
+    b.near(700, 900, 320, {
+      cooldown: 14000,
+      minSpeed: 120,
+      enter: (t) => {
+        const m = b.npcOf("mascot");
+        if (!m || m !== sleeper || !m.sprite.visible) return;
+        mumble = (mumble + 1) % mumbles.length;
+        b.bark("mascot", mumbles[mumble], "snore");
+        if (!b.reduced) b.world.tweens.add({ targets: m.sprite, angle: { from: -3, to: 3 }, duration: 120, yoyo: true, repeat: 2, onComplete: () => m.sprite.setAngle(0) });
+        zz.setAlpha(0);
+        void t;
+      },
+    });
+    b.blocker((x, y) => {
+      const m = b.npcOf("mascot");
+      return Boolean(m && m !== sleeper && m.sprite.visible && Math.hypot(x - m.x, (y - m.y) * 1.4) < 52);
+    });
     b.onUpdate((t) => {
       const k = (t % 1800) / 1800;
       zz.setPosition(760 + Math.sin(k * 6) * 10, 560 - k * 80).setAlpha(sleeper?.sprite.visible ? 1 - k : 0).setScale(0.6 + k * 0.8);

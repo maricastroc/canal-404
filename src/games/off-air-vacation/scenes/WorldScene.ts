@@ -9,7 +9,8 @@ import { DialogBox } from "../ui/dialog";
 import { ResortHud } from "../ui/hud";
 import { Journal, pinUi, type Tab } from "../ui/journal";
 import { cartoonText } from "../../kit/ui";
-import { AREAS, POOL, type Builder, type PropOpts, type Show, type SpotDef } from "./areas";
+import { AREAS, POOL, type Builder, type NearOpts, type PropOpts, type React, type Show, type SpotDef, type Surface } from "./areas";
+import { critter, dustAt, footprint, resident, splashAt, type CritterDef, type ResidentDef } from "./life";
 import { Npc, type NpcOpts } from "./npc";
 import { findPath } from "./path";
 import { Player } from "./player";
@@ -21,7 +22,9 @@ type Rect = { x: number; y: number; w: number; h: number; show?: Show };
 type Circle = { x: number; y: number; r: number; show?: Show };
 type Exit = Rect & { to: AreaId; spawn: string };
 type PropRec = { img: Phaser.GameObjects.Image; opts: PropOpts; key: string };
-type Kick = { img: Phaser.GameObjects.Image; vx: number; vy: number };
+type Kick = { img: Phaser.GameObjects.Image; vx: number; vy: number; next: number; home: [number, number]; water?: (x: number, y: number) => boolean; floating: number };
+type Near = NearOpts & { x: number; y: number; r: number; inside: boolean; next: number };
+type Reactive = { img: Phaser.GameObjects.Image; kind: React; r: number; band: [number, number]; inside: boolean; next: number; sx: number; sy: number; angle: number };
 
 const TOUCH_UI = typeof window !== "undefined" && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
 const SPEAKER_COLOR: Record<Speaker, number> = {
@@ -94,6 +97,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private frames: { rect: [number, number, number, number]; zone: [number, number, number, number] }[] = [];
   private areaActions = new Map<string, () => Promise<void> | void>();
   private greets: { who: FolkKey; lines: string[] | (() => string[]); r: number; inside: boolean; next: number; i: number }[] = [];
+  private nears: Near[] = [];
+  private reactive: Reactive[] = [];
+  private surfaces: ((x: number, y: number) => Surface | null)[] = [];
+  private stepSide = 1;
   fx = {
     vhs: (label: string, ms: number) => {
       this.hud.vhsOn(true, label);
@@ -101,8 +108,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
     },
     flash: (alpha = 0.6) => {
       if (this.reduced) return;
-      this.cameras.main.flash(180, 255, 255, 255, false);
-      void alpha;
+      const veil = this.add.rectangle(0, 0, W, H, 0xffffff, alpha).setOrigin(0, 0).setScrollFactor(0).setDepth(9500);
+      this.tweens.add({ targets: veil, alpha: 0, duration: 220, ease: "Quad.easeOut", onComplete: () => veil.destroy() });
     },
     shake: (ms = 200, i = 0.004) => {
       if (!this.reduced) this.cameras.main.shake(ms, i);
@@ -152,6 +159,9 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.frames = [];
     this.areaActions = new Map();
     this.greets = [];
+    this.nears = [];
+    this.reactive = [];
+    this.surfaces = [];
   }
 
   create() {
@@ -185,7 +195,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.player = new Player(this, x, y, this.reduced);
       this.player.dir = sp ? sp[2] : this.s.dir;
       this.player.facing = sp ? sp[3] : this.s.facing;
-      this.player.onStep = () => this.sfx(this.area === "beach" ? "stepSand" : this.area === "forest" ? "step" : this.area === "station" || this.area === "lobby" || this.area === "room404" ? "stepWood" : "step", 0.5);
+      this.player.onStep = () => this.onStep();
       this.player.sync(0);
       this.unstick();
       const [cx0, cy0] = this.cameraTarget(this.player);
@@ -272,6 +282,11 @@ export class WorldScene extends Phaser.Scene implements Builder {
         this.tweens.add({ targets: img, scale: (opts.scale ?? 1) * (1 + amp / 50), duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       }
     }
+    if (opts.react) {
+      const w = img.displayWidth;
+      const kind = opts.react === "wobble" && opts.anim ? "rustle" : opts.react;
+      this.reactive.push({ img, kind, r: opts.reactR ?? Math.max(70, w * 0.5), band: [y - Math.max(60, img.displayHeight * 0.25), y + 70], inside: false, next: 0, sx: img.scaleX, sy: img.scaleY, angle: img.angle });
+    }
     this.props.push({ img, opts, key });
     return img;
   }
@@ -280,6 +295,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     if (opts.show && !opts.show(this.s)) return null;
     const n = new Npc(this, id, x, y, opts, this.reduced, !opts.noShadow);
     n.font = this.ctx.fonts.display;
+    if (opts.mood) n.setMood(opts.mood);
     this.npcs.set(id, n);
     return n;
   }
@@ -321,9 +337,38 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.ambientAt = 800 + Math.random() * min;
   }
 
-  kickable(key: string, x: number, y: number) {
+  kickable(key: string, x: number, y: number, water?: (x: number, y: number) => boolean) {
     const img = this.add.image(x, y, key).setOrigin(0.5, 0.85).setDepth(y);
-    this.kicks.push({ img, vx: 0, vy: 0 });
+    this.kicks.push({ img, vx: 0, vy: 0, next: 0, home: [x, y], water, floating: 0 });
+  }
+
+  near(x: number, y: number, r: number, opts: NearOpts) {
+    this.nears.push({ ...opts, x, y, r, inside: false, next: 0 });
+  }
+
+  critter(def: CritterDef) {
+    return critter(this, def);
+  }
+
+  resident(def: ResidentDef) {
+    return resident(this, def);
+  }
+
+  surface(fn: (x: number, y: number) => Surface | null) {
+    this.surfaces.push(fn);
+  }
+
+  announce(message: string) {
+    if (this.mode === "play") this.ctx.onEvent({ type: "announce", message });
+  }
+
+  pushHero(x: number, y: number) {
+    const p = this.player;
+    if (!p || this.blocked(x, y)) return false;
+    p.x = x;
+    p.y = y;
+    p.sync(this.time.now);
+    return true;
   }
 
   arrow(x: number, y: number, angle: number) {
@@ -638,6 +683,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       discover: (id) => {
         if (this.s.found.includes(id)) return;
         this.s.found.push(id);
+        this.sfx("discover", 0.7);
         this.hud.toast("Descoberta", FOUND_TEXT[id] ?? id, "ui-bulb", 0x9df0dc);
         this.save();
       },
@@ -976,14 +1022,15 @@ export class WorldScene extends Phaser.Scene implements Builder {
   }
 
   private collectTall() {
-    const canopy: Record<string, [number, number]> = { "tree-a": [0.9, 0.36], "tree-b": [0.9, 0.36], "tree-c": [0.9, 0.36], palm: [0.98, 0.66], "palm-b": [0.98, 0.66], "ruin-arch": [0.98, 0.55] };
+    const canopy: Record<string, [number, number, number]> = { "tree-a": [0.9, 0.36, 0.3], "tree-b": [0.9, 0.36, 0.3], "tree-c": [0.9, 0.36, 0.3], palm: [0.98, 0.66, 0.3], "palm-b": [0.98, 0.66, 0.3], "ruin-arch": [0.98, 0.55, 0.3] };
     for (const pr of this.props) {
-      const c = canopy[pr.key];
+      const c = pr.opts.occlude ?? canopy[pr.key];
       if (!c) continue;
       const img = pr.img;
       const h = img.displayHeight;
       const w = img.displayWidth;
-      this.tall.push({ img, x0: img.x - w * 0.3, x1: img.x + w * 0.3, y0: img.y - h * c[0], y1: img.y - h * c[1], alpha: img.alpha });
+      const wf = c[2] ?? 0.42;
+      this.tall.push({ img, x0: img.x - w * wf, x1: img.x + w * wf, y0: img.y - h * c[0], y1: img.y - h * c[1], alpha: img.alpha });
     }
   }
 
@@ -1206,7 +1253,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   update(time: number, delta: number) {
     const dt = Math.min(delta, 50) / 1000;
     for (const u of this.updaters) u(time, dt);
-    for (const [, n] of this.npcs) n.update(time, this.player?.x ?? 0);
+    for (const [, n] of this.npcs) n.update(time, this.player?.x ?? 0, this.mode === "play" ? (this.player?.y ?? Infinity) : Infinity);
     this.dialog.update(time, dt);
     this.journal.update(time);
     if (this.ambientSet && this.mode !== "attract" && time > this.ambientAt) {
@@ -1295,33 +1342,13 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       p.update(time, dt, mx, my, () => false);
     } else p.update(time, dt, mx, my, this.blocked);
-    for (const kb of this.kicks) {
-      const dx = kb.img.x - p.x;
-      const dy = (kb.img.y - p.y) * 1.6;
-      const d = Math.hypot(dx, dy);
-      if (d < 60 && p.moving) {
-        kb.vx += (dx / (d || 1)) * 380 + p.vx * 0.6;
-        kb.vy += (dy / (d || 1)) * 200 + p.vy * 0.5;
-        this.sfx("kick", 0.5);
-      }
-      if (Math.abs(kb.vx) + Math.abs(kb.vy) > 4) {
-        const nx = kb.img.x + kb.vx * dt;
-        const ny = kb.img.y + kb.vy * dt;
-        if (this.blocked(nx, ny)) {
-          kb.vx *= -0.6;
-          kb.vy *= -0.6;
-        } else kb.img.setPosition(nx, ny);
-        const f = Math.exp(-dt * 1.5);
-        kb.vx *= f;
-        kb.vy *= f;
-        kb.img.angle += kb.vx * dt * 1.2;
-        kb.img.setDepth(kb.img.y);
-      }
-    }
+    for (const kb of this.kicks) this.updateKick(kb, p, time, dt);
     this.updateCamera(dt);
     this.fadeTall(dt);
     this.updateArrows(dt);
     this.updateGreets(time);
+    this.updateNear(time);
+    this.updateReactive(time);
     let best: SpotDef | null = null;
     let bestD = Infinity;
     for (const sp of this.spots) {
@@ -1442,6 +1469,137 @@ export class WorldScene extends Phaser.Scene implements Builder {
         this.bark(g.who, lines[g.i]);
       }
       g.inside = inside;
+    }
+  }
+
+  private updateNear(time: number) {
+    const h = this.hero();
+    for (const n of this.nears) {
+      let inside = false;
+      if (h) {
+        const [nx, ny] = n.at ? n.at() : [n.x, n.y];
+        inside = n.zone ? n.zone(h.x, h.y) : Math.hypot(h.x - nx, (h.y - ny) * 1.25) < (n.inside ? n.r * 1.15 : n.r);
+      }
+      if (inside && !n.inside) {
+        if (h && !h.busy && time >= n.next && h.speed >= (n.minSpeed ?? 0)) {
+          n.inside = true;
+          n.next = time + (n.cooldown ?? 0);
+          n.enter?.(time);
+        }
+      } else if (!inside && n.inside) {
+        n.inside = false;
+        n.leave?.(time);
+      }
+      if (n.inside && n.stay) n.stay(time);
+    }
+  }
+
+  private updateReactive(time: number) {
+    const p = this.player;
+    if (!p || this.mode !== "play") return;
+    const moving = p.moving;
+    for (const r of this.reactive) {
+      if (!r.img.visible) continue;
+      const dx = Math.abs(p.x - r.img.x);
+      const inside = dx < r.r && p.y > r.band[0] && p.y < r.band[1];
+      if (inside && !r.inside && moving && time >= r.next) {
+        r.next = time + 1400;
+        this.react(r, p.x < r.img.x ? 1 : -1);
+      }
+      r.inside = inside;
+    }
+  }
+
+  private react(r: Reactive, side: number) {
+    const img = r.img;
+    const sound: Record<React, ResortSfx> = { wobble: "wobble", rustle: "rustle", spin: "creak", jingle: "jingle", bounce: "kick" };
+    this.sfx(sound[r.kind], r.kind === "bounce" ? 0.35 : 0.6, 0.9 + Math.random() * 0.25);
+    if (this.reduced) return;
+    if (r.kind === "rustle") {
+      this.tweens.add({ targets: img, scaleX: r.sx * 0.94, scaleY: r.sy * 1.05, duration: 90, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: () => img.setScale(r.sx, r.sy) });
+      for (let i = 0; i < 2; i += 1) {
+        const leaf = this.add.image(img.x + (Math.random() - 0.5) * img.displayWidth * 0.6, img.y - img.displayHeight * (0.4 + Math.random() * 0.4), "leaf").setDepth(img.depth + 1).setAngle(Math.random() * 180);
+        this.tweens.add({ targets: leaf, y: img.y - 10, x: leaf.x + side * 40 * Math.random(), angle: leaf.angle + 200, alpha: 0, duration: 1100, ease: "Sine.easeIn", onComplete: () => leaf.destroy() });
+      }
+    } else if (r.kind === "wobble" || r.kind === "jingle") {
+      const amp = r.kind === "jingle" ? 3 : 5;
+      this.tweens.add({ targets: img, angle: { from: r.angle - side * amp, to: r.angle + side * amp }, duration: r.kind === "jingle" ? 60 : 110, yoyo: true, repeat: r.kind === "jingle" ? 4 : 2, ease: "Sine.easeInOut", onComplete: () => img.setAngle(r.angle) });
+    } else if (r.kind === "spin") {
+      this.tweens.add({ targets: img, angle: r.angle - side * 360, duration: 700, ease: "Cubic.easeOut", onComplete: () => img.setAngle(r.angle) });
+    } else if (r.kind === "bounce") {
+      this.tweens.add({ targets: img, scaleY: r.sy * 0.9, scaleX: r.sx * 1.06, duration: 80, yoyo: true, ease: "Quad.easeOut", onComplete: () => img.setScale(r.sx, r.sy) });
+    }
+  }
+
+  private onStep() {
+    const p = this.player;
+    if (!p) return;
+    this.stepSide = -this.stepSide;
+    let surf: Surface | null = null;
+    for (const f of this.surfaces) {
+      surf = f(p.x, p.y);
+      if (surf) break;
+    }
+    const kind = surf?.kind ?? (this.area === "beach" ? "sand" : this.area === "station" || this.area === "lobby" || this.area === "room404" || this.area === "arcade" ? "wood" : "grass");
+    const sound: Record<Surface["kind"], ResortSfx> = { sand: "stepSand", wood: "stepWood", grass: "step", dirt: "step", water: "ripple", tile: "step" };
+    this.sfx(sound[kind], kind === "water" ? 0.35 : 0.5, kind === "dirt" ? 0.8 : 1);
+    if (kind === "sand") footprint(this, p.x, p.y, p.facing, p.dir, this.stepSide, surf?.gone);
+    else if (kind === "dirt" && this.stepSide > 0) dustAt(this, p.x, p.y, surf?.color);
+    if (surf?.splash) {
+      const [sx, sy] = surf.splash;
+      splashAt(this, sx, sy, 0.55);
+    }
+  }
+
+  private updateKick(kb: Kick, p: Player, time: number, dt: number) {
+    const img = kb.img;
+    if (kb.floating) {
+      img.setY(img.y + Math.sin(time / 300) * 0.4).setAngle(img.angle + dt * 20);
+      img.x += kb.vx * dt;
+      kb.vx *= Math.exp(-dt * 0.6);
+      if (time > kb.floating) {
+        kb.floating = 0;
+        img.setAlpha(0).setPosition(kb.home[0], kb.home[1]).setDepth(kb.home[1]);
+        this.tweens.add({ targets: img, alpha: 1, duration: this.reduced ? 10 : 400 });
+      }
+      return;
+    }
+    const dx = img.x - p.x;
+    const dy = (img.y - p.y) * 1.6;
+    const d = Math.hypot(dx, dy);
+    if (d < 60 && p.moving && time >= kb.next) {
+      kb.next = time + 320;
+      kb.vx += (dx / (d || 1)) * 380 + p.vx * 0.6;
+      kb.vy += (dy / (d || 1)) * 200 + p.vy * 0.5;
+      const sp = Math.hypot(kb.vx, kb.vy);
+      if (sp > 720) {
+        kb.vx *= 720 / sp;
+        kb.vy *= 720 / sp;
+      }
+      this.sfx("kick", 0.5);
+    }
+    if (Math.abs(kb.vx) + Math.abs(kb.vy) > 4) {
+      const nx = img.x + kb.vx * dt;
+      const ny = img.y + kb.vy * dt;
+      if (kb.water?.(nx, ny) && Math.hypot(kb.vx, kb.vy) > 120) {
+        img.setPosition(nx + kb.vx * 0.12, ny + kb.vy * 0.12).setDepth(1.6);
+        kb.floating = time + 25000;
+        kb.vx *= 0.3;
+        kb.vy = 0;
+        splashAt(this, nx, ny, 1);
+        this.sfx("splash", 0.6);
+        this.word("SPLASH!", nx, ny - 80, "#9fd4ff");
+        return;
+      }
+      if (this.blocked(nx, ny)) {
+        kb.vx *= -0.6;
+        kb.vy *= -0.6;
+      } else img.setPosition(nx, ny);
+      const f = Math.exp(-dt * 1.5);
+      kb.vx *= f;
+      kb.vy *= f;
+      img.angle += kb.vx * dt * 1.2;
+      img.setDepth(img.y);
     }
   }
 

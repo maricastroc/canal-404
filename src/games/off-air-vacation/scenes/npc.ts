@@ -3,7 +3,34 @@ import { CHAR_RES } from "../config";
 import type { FolkKey } from "../save";
 import type { Mood } from "../story";
 
-export type NpcOpts = { scale?: number; flip?: boolean; depth?: number; frames?: Partial<Record<Mood, string>>; idle?: string; look?: string; bob?: number; follow?: boolean };
+export type NpcOpts = { scale?: number; flip?: boolean; depth?: number; frames?: Partial<Record<Mood, string>>; idle?: string; look?: string; bob?: number; follow?: boolean; notice?: number };
+
+const NO_TURN = new Set(["tilt", "mascot", "lento"]);
+
+export function barkBubble(scene: Phaser.Scene, text: string, font: string, reduced: boolean) {
+  const t = scene.add.text(0, 0, text, { fontFamily: font, fontSize: "28px", fontStyle: "700", color: "#1d1830", align: "center", wordWrap: { width: 380 }, padding: { x: 2, y: 4 } }).setOrigin(0.5, 1);
+  const w = t.width + 40;
+  const h = t.height + 22;
+  const g = scene.add.graphics();
+  g.fillStyle(0x1d1830, 1);
+  g.fillRoundedRect(-w / 2 + 4, -h + 5, w, h, 18);
+  g.fillStyle(0xfbf5e6, 1);
+  g.fillRoundedRect(-w / 2, -h, w, h, 18);
+  g.lineStyle(5, 0x1d1830, 1);
+  g.strokeRoundedRect(-w / 2, -h, w, h, 18);
+  g.fillStyle(0xfbf5e6, 1);
+  g.fillTriangle(-12, -2, 12, -2, 0, 18);
+  g.lineStyle(5, 0x1d1830, 1);
+  g.lineBetween(-12, 0, 0, 18);
+  g.lineBetween(12, 0, 0, 18);
+  t.setY(-11);
+  const box = scene.add.container(0, 0, [g, t]).setDepth(5860);
+  if (!reduced) {
+    box.setScale(0.4);
+    scene.tweens.add({ targets: box, scale: 1, duration: 180, ease: "Back.easeOut" });
+  }
+  return box;
+}
 
 const DEFAULT_FRAMES: Record<FolkKey, Partial<Record<Mood, string>>> = {
   bigodes: { normal: "normal", talk: "talk", look: "look", happy: "happy", surprised: "surprised", sad: "look" },
@@ -38,6 +65,7 @@ export class Npc {
   private lookUntil = 0;
   private talking = false;
   private talkFlip = false;
+  private noticing = false;
   private base: number;
   x: number;
   y: number;
@@ -124,28 +152,18 @@ export class Npc {
 
   bark(text: string, font: string, time: number) {
     this.barkBox?.destroy();
-    const t = this.scene.add.text(0, 0, text, { fontFamily: font, fontSize: "28px", fontStyle: "700", color: "#1d1830", align: "center", wordWrap: { width: 380 }, padding: { x: 2, y: 4 } }).setOrigin(0.5, 1);
-    const w = t.width + 40;
-    const h = t.height + 22;
-    const g = this.scene.add.graphics();
-    g.fillStyle(0x1d1830, 1);
-    g.fillRoundedRect(-w / 2 + 4, -h + 5, w, h, 18);
-    g.fillStyle(0xfbf5e6, 1);
-    g.fillRoundedRect(-w / 2, -h, w, h, 18);
-    g.lineStyle(5, 0x1d1830, 1);
-    g.strokeRoundedRect(-w / 2, -h, w, h, 18);
-    g.fillStyle(0xfbf5e6, 1);
-    g.fillTriangle(-12, -2, 12, -2, 0, 18);
-    g.lineStyle(5, 0x1d1830, 1);
-    g.lineBetween(-12, 0, 0, 18);
-    g.lineBetween(12, 0, 0, 18);
-    t.setY(-11);
-    this.barkBox = this.scene.add.container(this.x, this.topY - 30, [g, t]).setDepth(5860);
+    this.barkBox = barkBubble(this.scene, text, font, this.reduced).setPosition(this.x, this.topY - 30);
     this.barkUntil = time + 2200 + text.length * 25;
-    if (!this.reduced) {
-      this.barkBox.setScale(0.4);
-      this.scene.tweens.add({ targets: this.barkBox, scale: 1, duration: 180, ease: "Back.easeOut" });
-    }
+  }
+
+  walkFrame(frame: string, time: number) {
+    if (this.talking || this.seq || time < this.holdUntil || this.noticing) return;
+    const k = `${this.id}-${frame}`;
+    if (this.sprite.texture.key !== k) this.sprite.setTexture(k);
+  }
+
+  get idle() {
+    return !this.talking && !this.seq;
   }
 
   playSeq(keys: string[], step: number, time: number) {
@@ -165,7 +183,7 @@ export class Npc {
     return this.sprite.y - this.sprite.displayHeight;
   }
 
-  update(time: number, playerX: number) {
+  update(time: number, playerX: number, playerY = Infinity) {
     if (this.seq) {
       const i = Math.floor((time - this.seq.start) / this.seq.step);
       if (i >= this.seq.keys.length) {
@@ -197,6 +215,25 @@ export class Npc {
         this.sprite.setTexture(this.blinkKey);
       }
       if (this.blinkUntil) return this.tail(time, playerX);
+    }
+    const noticeR = this.opts.notice ?? 360;
+    const close = noticeR > 0 && Math.hypot(playerX - this.x, (playerY - this.y) * 1.3) < noticeR;
+    if (!this.opts.follow && !this.talking && !this.seq && time >= this.holdUntil) {
+      if (close) {
+        if (!this.noticing) {
+          this.noticing = true;
+          this.lookUntil = 0;
+          if (this.mood === "normal") this.sprite.setTexture(this.key("look"));
+        }
+        if (!NO_TURN.has(this.id)) this.sprite.setFlipX(playerX < this.x);
+        return this.tail(time, playerX);
+      }
+      if (this.noticing) {
+        this.noticing = false;
+        this.nextLook = time + 1800 + Math.random() * 2000;
+        this.sprite.setTexture(this.key(this.mood));
+        if (!NO_TURN.has(this.id)) this.sprite.setFlipX(Boolean(this.opts.flip));
+      }
     }
     if (this.opts.follow && !this.talking && !this.seq && time >= this.holdUntil && this.mood === "normal") {
       const dx = playerX - this.x;

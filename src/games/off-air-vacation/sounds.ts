@@ -113,6 +113,37 @@ export const RESORT_SFX = {
       { kind: "tone", wave: "sawtooth", from: 900, to: 500, duration: 0.22, delay: 0.12, gain: 0.03, filter: { type: "lowpass", frequency: 1800 } },
     ],
   },
+  rustle: { layers: [{ kind: "noise", duration: 0.16, gain: 0.04, attack: 0.02, filter: { type: "bandpass", from: 3200, to: 2200, q: 0.9 } }] },
+  wobble: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 300, to: 220, duration: 0.07, gain: 0.05 },
+      { kind: "tone", wave: "triangle", from: 260, to: 200, duration: 0.07, delay: 0.09, gain: 0.035 },
+    ],
+  },
+  creak: { layers: [{ kind: "tone", wave: "sawtooth", from: 420, to: 260, duration: 0.24, gain: 0.018, filter: { type: "lowpass", frequency: 1400 } }] },
+  jingle: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 2637, duration: 0.12, gain: 0.03 },
+      { kind: "tone", wave: "sine", from: 3136, duration: 0.12, delay: 0.05, gain: 0.025 },
+      { kind: "tone", wave: "sine", from: 2349, duration: 0.14, delay: 0.1, gain: 0.02 },
+    ],
+  },
+  ripple: { layers: [{ kind: "noise", duration: 0.22, gain: 0.035, attack: 0.02, filter: { type: "lowpass", from: 1400, to: 500 } }] },
+  plop: { layers: [{ kind: "tone", wave: "sine", from: 620, to: 180, duration: 0.12, gain: 0.06, glide: "exp" }] },
+  croak: { layers: [{ kind: "tone", wave: "square", from: 150, to: 110, duration: 0.18, gain: 0.025, vibrato: { rate: 28, depth: 30 }, filter: { type: "lowpass", frequency: 900 } }] },
+  flutter: { layers: [{ kind: "noise", duration: 0.12, gain: 0.025, filter: { type: "bandpass", from: 4200, q: 2 } }] },
+  chirp: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 2200, to: 3000, duration: 0.06, gain: 0.03 },
+      { kind: "tone", wave: "sine", from: 2600, to: 3400, duration: 0.06, delay: 0.08, gain: 0.025 },
+    ],
+  },
+  discover: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 784, duration: 0.08, gain: 0.05 },
+      { kind: "tone", wave: "triangle", from: 1175, duration: 0.14, delay: 0.08, gain: 0.05 },
+    ],
+  },
 } satisfies Record<string, SoundRecipe>;
 
 export type ResortSfx = keyof typeof RESORT_SFX;
