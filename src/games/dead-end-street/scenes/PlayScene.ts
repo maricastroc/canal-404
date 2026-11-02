@@ -637,6 +637,7 @@ export class PlayScene extends Phaser.Scene {
 
   private tryFire() {
     if (this.phase !== "ready" || !this.current || !this.readyImage) return;
+    if (this.pendingWave !== null || this.finishing) return;
     if (this.aimPower < MIN_POWER) return;
     const def = this.current;
     const pos = this.pulledPosition();
@@ -836,6 +837,18 @@ export class PlayScene extends Phaser.Scene {
     if (this.phase !== "flying") this.time.delayedCall(700, () => this.startInterlude());
   }
 
+  private clearSpent() {
+    const gone = this.spent;
+    this.spent = [];
+    for (const obj of gone) {
+      if (!obj.active) continue;
+      obj.setStatic(true);
+      obj.setSensor(true);
+      this.fx.burst(this.fx.puff, 6, obj.x, obj.y);
+      this.tweens.add({ targets: obj, alpha: 0, scale: 0.6, duration: this.ctx.reducedMotion ? 80 : 260, onComplete: () => obj.destroy() });
+    }
+  }
+
   private startInterlude() {
     if (this.pendingWave === null || this.finishing || this.phase === "over") return;
     const w = this.pendingWave;
@@ -852,6 +865,7 @@ export class PlayScene extends Phaser.Scene {
     this.hud.showBanner(`RODADA ${w + 1} DE ${WAVES.length}`, def.title, def.subtitle, 1500);
     if (def.arlindo) this.time.delayedCall(250, () => this.arlindo.shout(def.arlindo!, 1500));
     this.cat.comeBack();
+    this.clearSpent();
     this.ctx.onEvent({ type: "announce", message: `Rodada ${w + 1} de ${WAVES.length}: ${def.title}. ${def.subtitle}.` });
     this.targets
       .filter((t) => t.def.wave === w + 1)
@@ -957,6 +971,17 @@ export class PlayScene extends Phaser.Scene {
       this.arlindo.shout("E NÃO VOLTEM!", 2000);
       this.tweens.add({ targets: [this.deco, this.lina], scaleY: 0.92, angle: -4, duration: 400, ease: "Sine.easeOut" });
     }
+    const knocked = this.targets.filter((t) => t.hit).length;
+    const messy = this.props.filter((p) => p.messy).length;
+    const nextStar = stars === 1 ? SCORE.twoStars : stars === 2 ? SCORE.threeStars : 0;
+    const summary = [
+      `Lançamentos: ${this.shot} de ${this.ammo.length}.`,
+      `Alvos: ${knocked} de ${TARGETS.length}.`,
+      `Bagunça: ${messy} de ${this.props.length} coisas fora do lugar.`,
+      nextStar ? `Faltaram ${nextStar - this.score} pontos para a próxima estrela.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     const result: GameResult = {
       won,
       score: this.score,
@@ -967,8 +992,9 @@ export class PlayScene extends Phaser.Scene {
         { label: "Bagunça no quintal", value: this.messScore },
         { label: "Combos", value: this.comboScore },
         { label: "Munição de sobra", value: ammoBonus },
-      ],
+      ].filter((row, i) => i === 0 || row.value !== 0),
       achievements,
+      summary,
     };
     this.time.delayedCall(won ? 900 : 300, () => this.ctx.onEvent({ type: "finished", result }));
   }
