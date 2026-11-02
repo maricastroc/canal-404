@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/site";
 import { CharacterSelect } from "@/components/characters/CharacterSelect";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Personagens",
   description: "Conheça o 404, a Lina, o Bruno, o Déco e a Mila — a turma do CANAL 404.",
-};
+  path: "/characters",
+});
 
 export default function CharactersPage() {
   return (

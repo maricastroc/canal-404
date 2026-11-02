@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Baloo_2, Fredoka, Patrick_Hand } from "next/font/google";
 import localFont from "next/font/local";
 import { AppProviders } from "@/components/layout/AppProviders";
+import { SITE_NAME, SITE_TITLE, SITE_URL, pageMetadata } from "@/lib/site";
 import "./globals.css";
 
 const luckiest = localFont({
@@ -35,14 +36,14 @@ const patrick = Patrick_Hand({
   display: "swap",
 });
 
+const DESCRIPTION =
+  "O canal saiu do ar, mas o portal de jogos continua funcionando. Explore a sala de transmissão, descubra segredos e jogue os jogos do canal.";
+
 export const metadata: Metadata = {
-  title: {
-    default: "CANAL 404 — Desenhos. Jogos. Bagunça.",
-    template: "%s · CANAL 404",
-  },
-  description:
-    "O canal saiu do ar, mas o portal de jogos continua funcionando. Explore a sala de transmissão, descubra segredos e jogue os jogos do canal.",
-  applicationName: "CANAL 404",
+  ...pageMetadata({ description: DESCRIPTION, path: "/" }),
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: "%s · CANAL 404" },
+  applicationName: SITE_NAME,
 };
 
 export const viewport: Viewport = {

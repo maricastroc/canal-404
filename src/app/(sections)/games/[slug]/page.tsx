@@ -14,6 +14,7 @@ import { InkLink, PaperPanel, Tag } from "@/components/ui/Primitives";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 import { CATEGORY_LABELS, GAMES, getGame } from "@/games/registry";
 import { CHARACTERS } from "@/lib/characters";
+import { ogImage, pageMetadata } from "@/lib/site";
 
 export function generateStaticParams() {
   return GAMES.map((g) => ({ slug: g.slug }));
@@ -24,7 +25,8 @@ export const dynamicParams = false;
 export async function generateMetadata({ params }: PageProps<"/games/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const game = getGame(slug);
-  return { title: game?.title ?? "Jogo", description: game?.tagline };
+  if (!game) return { title: "Jogo" };
+  return pageMetadata({ title: game.title, description: game.tagline, path: `/games/${game.slug}`, image: ogImage(game.slug, `${game.title}: ${game.tagline}`) });
 }
 
 const accentBg: Record<string, string> = {

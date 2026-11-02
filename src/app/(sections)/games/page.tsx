@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/site";
 import { Sparkle, Squiggle } from "@/components/art/Badges";
 import { GameCatalog } from "@/components/catalog/GameCatalog";
 import { PageTitle, PaperPanel } from "@/components/ui/Primitives";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Catálogo de jogos",
   description: "Todos os jogos do CANAL 404: Rua Sem Saída, Laboratório de Péssimas Ideias, Guerra de Lanche, Operação: Recreio, Guerra do Pijama e Férias Fora do Ar.",
-};
+  path: "/games",
+});
 
 export default function GamesPage() {
   return (

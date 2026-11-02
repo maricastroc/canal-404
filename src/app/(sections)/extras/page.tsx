@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/site";
 import { ExtrasHub } from "@/components/extras/ExtrasHub";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Extras",
   description: "Pôsteres para baixar, trilhas sonoras, conquistas e segredos do CANAL 404.",
-};
+  path: "/extras",
+});
 
 export default function ExtrasPage() {
   return (

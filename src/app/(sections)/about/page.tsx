@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import { WeeklyPlayLink } from "@/components/catalog/WeeklyPlayLink";
+import { pageMetadata } from "@/lib/site";
 import { Sparkle, Squiggle } from "@/components/art/Badges";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkLink, PaperPanel } from "@/components/ui/Primitives";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Sobre o canal",
   description: "A história (mais ou menos verdadeira) do CANAL 404, o canal de desenhos que saiu do ar mas esqueceu o portal ligado.",
-};
+  path: "/about",
+});
 
 const TIMELINE = [
   {

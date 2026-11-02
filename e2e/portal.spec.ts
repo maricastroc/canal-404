@@ -70,3 +70,15 @@ test("shows the off-air page for an unknown address", async ({ page, problems })
   await page.getByRole("link", { name: "Ver os jogos" }).click();
   await expect(page).toHaveURL("/games");
 });
+
+for (const path of ["/", "/games/food-fight"]) {
+  test(`shares a preview card for ${path}`, async ({ page, request }) => {
+    await page.goto(path);
+    const image = await page.locator('meta[property="og:image"]').getAttribute("content");
+    expect(image).toMatch(/\/og\/[a-z0-9-]+\.png$/);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+    const response = await request.get(new URL(image!).pathname);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("image/png");
+  });
+}
