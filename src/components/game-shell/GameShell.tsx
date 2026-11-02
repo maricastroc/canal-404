@@ -13,6 +13,7 @@ import type { GameInstance, GameResult, LoadStage } from "@/games/types";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { getGameRecord, recordGameResult, recordGameStart, recordLevelResult, unlockAchievement } from "@/lib/progress/store";
+import { errorMessage, isStaleChunkError, track } from "@/lib/telemetry";
 import { computeLevelProgress } from "./levelProgress";
 import { LoadingScreen, pickTip } from "./LoadingScreen";
 import { useAnnouncer } from "./useAnnouncer";
@@ -47,6 +48,10 @@ export function GameShell({ slug }: { slug: string }) {
   const progressState = useProgress();
   const [highScore, setHighScore] = useState(0);
   const [attempt, setAttempt] = useState(0);
+  const runRef = useRef<{ level: string; attempt: number; startedAt: number } | null>(null);
+  const attemptsRef = useRef(new Map<string, number>());
+  const lastLevelRef = useRef("-");
+  const loadErrorRef = useRef<unknown>(null);
   const hydrated = useHydrated();
   const [tipSeed] = useState(() => Math.floor(Math.random() * 1000));
   const tip = pickTip(hydrated ? tipSeed : 0, game.tips);
@@ -136,6 +141,18 @@ export function GameShell({ slug }: { slug: string }) {
                 break;
               case "finished": {
                 const r = event.result;
+                const run = runRef.current;
+                runRef.current = null;
+                track({
+                  name: "game_finish",
+                  game: slug,
+                  level: r.level?.id ?? run?.level ?? "-",
+                  attempt: run?.attempt ?? 1,
+                  won: r.won,
+                  score: r.score,
+                  stars: r.stars,
+                  seconds: run ? (performance.now() - run.startedAt) / 1000 : 0,
+                });
                 let isRecord: boolean;
                 let note: string;
                 const word = getGame(slug)?.levelWord ?? "fase";
@@ -179,8 +196,11 @@ export function GameShell({ slug }: { slug: string }) {
           },
         });
         instanceRef.current = instance;
-      } catch {
+      } catch (error) {
         window.clearInterval(creep);
+        console.error(error);
+        loadErrorRef.current = error;
+        track({ name: "game_load_error", game: slug, message: errorMessage(error) });
         if (!cancelled) {
           setStage("error");
           setShowLoader(false);
@@ -232,9 +252,41 @@ export function GameShell({ slug }: { slug: string }) {
 
   const focusGame = () => window.setTimeout(() => stageRef.current?.focus(), 40);
 
+  const abandonRun = useCallback(() => {
+    const run = runRef.current;
+    if (!run) return;
+    runRef.current = null;
+    track({
+      name: "game_abandon",
+      game: slug,
+      level: run.level,
+      attempt: run.attempt,
+      seconds: (performance.now() - run.startedAt) / 1000,
+      paused: stageStateRef.current === "paused",
+    });
+  }, [slug]);
+
+  useEffect(() => {
+    window.addEventListener("pagehide", abandonRun);
+    return () => {
+      window.removeEventListener("pagehide", abandonRun);
+      abandonRun();
+    };
+  }, [abandonRun]);
+
+  const beginRun = (level: string, fresh: boolean) => {
+    abandonRun();
+    lastLevelRef.current = level;
+    const n = (attemptsRef.current.get(level) ?? 0) + 1;
+    attemptsRef.current.set(level, n);
+    runRef.current = { level, attempt: n, startedAt: performance.now() };
+    track({ name: "game_start", game: slug, level, attempt: n, fresh });
+  };
+
   const start = (level?: number, next = false, fresh = false) => {
     play("confirm");
     recordGameStart(slug);
+    beginRun(game.levels ? (game.levels[level ?? 0]?.id ?? String(level ?? 0)) : "-", fresh);
     setScore(0);
     setResult(null);
     instanceRef.current?.start(fresh ? { fresh } : level === undefined ? undefined : next ? { level, next } : { level });
@@ -259,6 +311,7 @@ export function GameShell({ slug }: { slug: string }) {
   const restart = () => {
     play("confirm");
     recordGameStart(slug);
+    beginRun(lastLevelRef.current, false);
     setResult(null);
     setScore(0);
     instanceRef.current?.restart();
@@ -269,6 +322,7 @@ export function GameShell({ slug }: { slug: string }) {
   const alt = () => {
     play("confirm");
     recordGameStart(slug);
+    beginRun(lastLevelRef.current, false);
     setResult(null);
     setScore(0);
     instanceRef.current?.alt?.();
@@ -384,6 +438,10 @@ export function GameShell({ slug }: { slug: string }) {
             <ErrorPanel
               key="error"
               onRetry={() => {
+                if (isStaleChunkError(loadErrorRef.current)) {
+                  window.location.reload();
+                  return;
+                }
                 setProgress(0.04);
                 setLeaving(false);
                 setShowLoader(true);

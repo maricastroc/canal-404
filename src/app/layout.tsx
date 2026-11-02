@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Baloo_2, Fredoka, Patrick_Hand } from "next/font/google";
 import localFont from "next/font/local";
+import Script from "next/script";
 import { AppProviders } from "@/components/layout/AppProviders";
 import { SITE_NAME, SITE_TITLE, SITE_URL, pageMetadata } from "@/lib/site";
 import "./globals.css";
@@ -36,6 +37,9 @@ const patrick = Patrick_Hand({
   display: "swap",
 });
 
+const UMAMI_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC ?? "https://cloud.umami.is/script.js";
+
 const DESCRIPTION =
   "O canal saiu do ar, mas o portal de jogos continua funcionando. Explore a sala de transmissão, descubra segredos e jogue os jogos do canal.";
 
@@ -67,6 +71,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Pular para o conteúdo
         </a>
         <AppProviders>{children}</AppProviders>
+        {UMAMI_ID && <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} data-do-not-track="true" data-exclude-search="true" strategy="afterInteractive" />}
       </body>
     </html>
   );

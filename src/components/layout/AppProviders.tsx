@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { getAudio } from "@/lib/audio/engine";
 import { useProgress } from "@/lib/progress/hooks";
 import { registerVisit } from "@/lib/progress/store";
+import { reportError } from "@/lib/telemetry";
 import { ToastStack } from "./ToastStack";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,17 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     registerVisit();
+  }, []);
+
+  useEffect(() => {
+    const onError = (event: ErrorEvent) => reportError("window", event.error ?? event.message);
+    const onRejection = (event: PromiseRejectionEvent) => reportError("promise", event.reason);
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
   }, []);
 
   useEffect(() => {

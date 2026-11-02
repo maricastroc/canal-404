@@ -67,7 +67,18 @@ Open `http://localhost:3000`. For a production build:
 npm run build && npm start
 ```
 
-There are no external services, sign-ins or API keys. Progress, high scores, secrets and preferences live in the browser's `localStorage` (key `canal404:progress:v1`).
+There are no sign-ins or required API keys. Progress, high scores, secrets and preferences live in the browser's `localStorage` (key `canal404:progress:v1`, plus one key per game that saves its own state). Saves carry a schema version and are migrated, never silently discarded ([decision 0001](docs/decisions/0001-save-versioning.md)).
+
+Optional settings live in `.env.local` (see `.env.example`):
+
+- `NEXT_PUBLIC_SITE_URL`: the public address used in share previews, the sitemap and canonical links.
+- `NEXT_PUBLIC_UMAMI_WEBSITE_ID`: turns on cookieless gameplay analytics with Umami ([decision 0002](docs/decisions/0002-privacy-first-telemetry.md)). Without it, no event leaves the browser.
+
+Share images live in `public/og/`. After changing a cover, logo or the room, regenerate them with the dev server running:
+
+```bash
+npm run og
+```
 
 ## Testing
 
