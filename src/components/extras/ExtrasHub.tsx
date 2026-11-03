@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KeyholeBadge, LockedBadge, StarBadge } from "@/components/art/Badges";
 import { ImagesIcon, KeyIcon, LockIcon, PauseIcon, PlayIcon, RadioIcon, TrophyIcon } from "@/components/art/Icons";
+import { PlayerCard } from "@/components/competition/PlayerCard";
 import { InkButton } from "@/components/ui/Primitives";
 import { getAudio } from "@/lib/audio/engine";
 import { useMusicState, useSound } from "@/lib/audio/hooks";
@@ -105,6 +106,11 @@ export function ExtrasHub() {
           ))}
         </div>
       </nav>
+
+      <section aria-labelledby="membership" className="mt-14">
+        <SectionTitle id="membership">Carteirinha do placar</SectionTitle>
+        <PlayerCard />
+      </section>
 
       <section aria-labelledby="posters" className="mt-14">
         <SectionTitle id="posters" count={`${POSTERS.filter((po) => hydrated && po.unlock.check(p)).length}/${POSTERS.length} liberados`}>

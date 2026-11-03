@@ -1596,6 +1596,8 @@ export class LabScene extends Phaser.Scene {
 
   private success() {
     if (this.mode !== "running") return;
+    const steps = this.runSteps;
+    const replay = this.parts.map((p) => ({ type: p.view.type, x: p.view.x, y: p.view.y, rot: p.view.rot }));
     this.announce(`Funcionou! ${this.runReport("success")}`);
     this.mode = "done";
     this.finishing = true;
@@ -1643,6 +1645,8 @@ export class LabScene extends Phaser.Scene {
       score,
       stars,
       breakdown,
+      stats: { parts: used, inventory: total, par: level.par, runs: this.runs, steps },
+      replay: { kind: "lab-placements", version: 1, parts: replay },
       achievements,
       level: { index: this.levelIndex, id: level.id, title: level.title, total: LEVELS.length },
       copy: { title: "Funcionou!", text: level.win },

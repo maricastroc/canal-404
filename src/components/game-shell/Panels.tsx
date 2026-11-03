@@ -15,6 +15,8 @@ import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
 import type { GameResult } from "@/games/types";
 import { useSound } from "@/lib/audio/hooks";
+import type { JoinOutcome } from "@/lib/competition/client";
+import { BoardLine, type BoardState } from "./BoardLine";
 
 function useAutoFocus<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -312,6 +314,8 @@ export function ResultPanel({
   result,
   isRecord,
   recordNote,
+  board,
+  onJoin,
   onRestart,
   onNext,
   onLevels,
@@ -321,6 +325,8 @@ export function ResultPanel({
   result: GameResult;
   isRecord: boolean;
   recordNote: string;
+  board?: BoardState | null;
+  onJoin?: (nickname: string) => Promise<JoinOutcome>;
   onRestart: () => void;
   onNext?: () => void;
   onLevels?: () => void;
@@ -414,6 +420,7 @@ export function ResultPanel({
         </div>
       </dl>
       {recordNote && <p className="mt-2 text-sm text-ink-soft">{recordNote}</p>}
+      {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
       {!onNext && <NextProgram current={game.slug} />}
       <div className="mt-5 flex flex-wrap gap-3">
         {onNext ? (

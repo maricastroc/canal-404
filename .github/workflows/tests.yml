@@ -11,8 +11,25 @@ concurrency:
 
 jobs:
   checks:
-    name: Types, lint and unit tests
+    name: Types, lint, unit and database tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: canal404
+          POSTGRES_PASSWORD: canal404
+          POSTGRES_DB: canal404_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U canal404"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql://canal404:canal404@localhost:5432/canal404_test
+      REQUIRE_DB_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +45,24 @@ jobs:
     name: End-to-end tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: canal404
+          POSTGRES_PASSWORD: canal404
+          POSTGRES_DB: canal404_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U canal404"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql://canal404:canal404@localhost:5432/canal404_e2e
+      COMPETITION_SECRET: ci-only-competition-secret-not-used-anywhere-else
+      E2E_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +70,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run db:deploy
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
         env:

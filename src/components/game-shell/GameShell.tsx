@@ -10,6 +10,7 @@ import { useSound } from "@/lib/audio/hooks";
 import { GAME_LOADERS } from "@/games/loaders";
 import { getGame } from "@/games/registry";
 import type { GameInstance, GameResult, LoadStage } from "@/games/types";
+import { connect, getCompetition, join, requestTicket, submitResult, type SubmitOutcome } from "@/lib/competition/client";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { getGameRecord, recordGameResult, recordGameStart, recordLevelResult, unlockAchievement } from "@/lib/progress/store";
@@ -17,9 +18,21 @@ import { errorMessage, isStaleChunkError, track } from "@/lib/telemetry";
 import { computeLevelProgress } from "./levelProgress";
 import { LoadingScreen, pickTip } from "./LoadingScreen";
 import { useAnnouncer } from "./useAnnouncer";
+import type { BoardState } from "./BoardLine";
 import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
+
+type PendingRun = { ticket: Promise<string | null> | null; result: GameResult };
+
+function submitLabel(outcome: SubmitOutcome) {
+  if (outcome.kind === "accepted") {
+    if (!outcome.response.run.eligible) return "ineligible" as const;
+    return outcome.response.board?.improved ? ("record" as const) : ("accepted" as const);
+  }
+  if (outcome.kind === "not-joined") return "not_joined" as const;
+  return outcome.kind;
+}
 
 function cssFont(variable: string, fallback: string) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
@@ -48,7 +61,10 @@ export function GameShell({ slug }: { slug: string }) {
   const progressState = useProgress();
   const [highScore, setHighScore] = useState(0);
   const [attempt, setAttempt] = useState(0);
-  const runRef = useRef<{ level: string; attempt: number; startedAt: number } | null>(null);
+  const runRef = useRef<{ level: string; attempt: number; startedAt: number; ticket: Promise<string | null> | null } | null>(null);
+  const [board, setBoard] = useState<BoardState | null>(null);
+  const boardSeqRef = useRef(0);
+  const pendingRef = useRef<PendingRun | null>(null);
   const attemptsRef = useRef(new Map<string, number>());
   const lastLevelRef = useRef("-");
   const loadErrorRef = useRef<unknown>(null);
@@ -57,6 +73,53 @@ export function GameShell({ slug }: { slug: string }) {
   const tip = pickTip(hydrated ? tipSeed : 0, game.tips);
   const levelRecords = progressState.games[slug]?.levels;
   const levelProgress = computeLevelProgress(game.levels, hydrated ? levelRecords : undefined);
+
+  const sendToBoard = useCallback(
+    (pending: PendingRun) => {
+      const competition = getCompetition();
+      if (!pending.result.stats || competition.status === "unconfigured") {
+        setBoard(null);
+        return;
+      }
+      const seq = boardSeqRef.current;
+      if (competition.status === "online" && !competition.player) {
+        pendingRef.current = pending;
+        setBoard({ phase: "join" });
+        track({ name: "board_submit", game: slug, outcome: "not_joined" });
+        return;
+      }
+      setBoard({ phase: "sending" });
+      void submitResult(pending.ticket, pending.result).then((outcome) => {
+        if (boardSeqRef.current !== seq) return;
+        track({ name: "board_submit", game: slug, outcome: submitLabel(outcome) });
+        if (outcome.kind === "not-joined") {
+          pendingRef.current = pending;
+          setBoard({ phase: "join" });
+          return;
+        }
+        if (outcome.kind === "unranked" && outcome.why === "unconfigured") {
+          setBoard(null);
+          return;
+        }
+        if (outcome.kind === "accepted" && outcome.response.board?.improved) play("achievement");
+        setBoard({ phase: "done", outcome });
+      });
+    },
+    [slug, play, setBoard],
+  );
+
+  const joinBoard = useCallback(
+    async (nickname: string) => {
+      const outcome = await join(nickname);
+      const pending = pendingRef.current;
+      if (outcome.ok && pending) {
+        pendingRef.current = null;
+        sendToBoard(pending);
+      }
+      return outcome;
+    },
+    [sendToBoard],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -180,6 +243,7 @@ export function GameShell({ slug }: { slug: string }) {
                 r.achievements?.forEach((id) => {
                   if (ACHIEVEMENTS.some((a) => a.id === id)) unlockAchievement(id as AchievementId);
                 });
+                sendToBoard({ ticket: run?.ticket ?? null, result: r });
                 setResult({ result: r, isRecord, note });
                 const levelText = r.level ? `${word === "arena" ? "Arena" : "Fase"} ${r.level.index + 1}, ${r.level.title}: ` : "";
                 announce(
@@ -215,12 +279,16 @@ export function GameShell({ slug }: { slug: string }) {
       instance?.destroy();
       instanceRef.current = null;
     };
-  }, [slug, attempt, setStage, announce]);
+  }, [slug, attempt, setStage, announce, sendToBoard]);
 
   useEffect(() => {
     const audio = getAudio();
     audio.duckMusic(0.35);
     return () => audio.duckMusic(1);
+  }, []);
+
+  useEffect(() => {
+    void connect();
   }, []);
 
   useEffect(() => {
@@ -279,7 +347,11 @@ export function GameShell({ slug }: { slug: string }) {
     lastLevelRef.current = level;
     const n = (attemptsRef.current.get(level) ?? 0) + 1;
     attemptsRef.current.set(level, n);
-    runRef.current = { level, attempt: n, startedAt: performance.now() };
+    const ticket = getCompetition().status === "unconfigured" ? null : requestTicket(slug, game.levels ? level : null);
+    runRef.current = { level, attempt: n, startedAt: performance.now(), ticket };
+    boardSeqRef.current += 1;
+    pendingRef.current = null;
+    setBoard(null);
     track({ name: "game_start", game: slug, level, attempt: n, fresh });
   };
 
@@ -424,6 +496,8 @@ export function GameShell({ slug }: { slug: string }) {
               result={result.result}
               isRecord={result.isRecord}
               recordNote={result.note}
+              board={board}
+              onJoin={joinBoard}
               onRestart={restart}
               onNext={
                 result.result.level && result.result.won && result.result.level.index + 1 < result.result.level.total

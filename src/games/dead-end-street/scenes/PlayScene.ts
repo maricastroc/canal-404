@@ -131,6 +131,7 @@ export class PlayScene extends Phaser.Scene {
   private holdSince = 0;
   private aimAnnounce?: Phaser.Time.TimerEvent;
   private bandSnap = 0;
+  private playMs = 0;
 
   constructor() {
     super("play");
@@ -176,6 +177,7 @@ export class PlayScene extends Phaser.Scene {
     this.launches = 0;
     this.charged = false;
     this.bandSnap = 0;
+    this.playMs = 0;
   }
 
   create() {
@@ -993,6 +995,16 @@ export class PlayScene extends Phaser.Scene {
         { label: "Combos", value: this.comboScore },
         { label: "Munição de sobra", value: ammoBonus },
       ].filter((row, i) => i === 0 || row.value !== 0),
+      stats: {
+        targets: knocked,
+        targetPoints: this.targetScore,
+        waves: Math.round(this.waveScore / SCORE.waveBonus),
+        mess: messy,
+        combos: Math.round(this.comboScore / SCORE.comboBonus),
+        launches: this.launches,
+        ammoLeft: unused,
+        timeMs: Math.round(this.playMs),
+      },
       achievements,
       summary,
     };
@@ -1101,6 +1113,7 @@ export class PlayScene extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     if (this.phase !== "attract" && this.phase !== "over") {
+      this.playMs += delta;
       this.handleHeldKeys();
     }
     if (this.phase !== "attract") {

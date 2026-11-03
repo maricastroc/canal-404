@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: canal404-postgres
+    environment:
+      POSTGRES_USER: canal404
+      POSTGRES_PASSWORD: canal404
+      POSTGRES_DB: canal404
+    ports:
+      - "54404:5432"
+    volumes:
+      - canal404-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U canal404 -d canal404"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  canal404-db:

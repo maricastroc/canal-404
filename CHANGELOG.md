@@ -4,6 +4,14 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Placar do canal (Stage 2.1)
+- Every game now reports structured stats with its result (launches, parts, hits, throws, energy, time and more), without any change to how it plays or scores.
+- A scoreboard backend in the portal itself: PostgreSQL with Prisma, anonymous players with a nickname and no account, signed run tickets, results recomputed and checked on the server, personal records that stay correct under concurrent submissions, rate limits and a daily cleanup ([decision 0003](docs/decisions/0003-competition-backend.md), [decision 0004](docs/decisions/0004-result-validation.md)).
+- Each game has its own ranking rule and tie-break: fewer parts and a faster machine in the Laboratório, fewer hits and a faster clear in Operação: Recreio, more energy and a faster win in Guerra do Pijama, and points with explicit tie-breaks in the others.
+- After a match, a "Placar do canal" line offers to join with a nickname, then shows the new personal record or your best and your position. When the board is down, the result waits in the browser and is sent later; the game never waits for the network.
+- Extras has a membership card ("Carteirinha do placar") to choose or change the nickname, see what is stored, and leave the board, which deletes everything on the server.
+- Without a configured database the board shows "Em breve" and nothing else changes. Setup: [`docs/backend-setup.md`](docs/backend-setup.md).
+
 ### Games
 - **Férias Fora do Ar** now reacts to Déco just walking around:
   - Plants, umbrellas, suitcases, lanterns and other props rustle, wobble or jingle as he brushes past.
@@ -58,6 +66,7 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 - "Apagar meu progresso" also erases saved adventures and per-game records.
 
 ### Infrastructure
+- Server and database tests (Postgres in CI), browser tests for the scoreboard with and without the backend, and axe accessibility checks for the new panels.
 - Privacy-first gameplay events (start, finish, abandon, load errors) through one module, sent to Umami only when it's configured ([decision 0002](docs/decisions/0002-privacy-first-telemetry.md)).
 - Visual regression tests for the portal pages, rendered in the Playwright Linux container so they match CI.
 - A JavaScript budget per portal page.

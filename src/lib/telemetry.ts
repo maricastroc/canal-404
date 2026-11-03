@@ -6,6 +6,7 @@ export type TelemetryEvent =
   | { name: "game_finish"; game: string; level: string; attempt: number; won: boolean; score: number; stars: number; seconds: number }
   | { name: "game_abandon"; game: string; level: string; attempt: number; seconds: number; paused: boolean }
   | { name: "game_load_error"; game: string; message: string }
+  | { name: "board_submit"; game: string; outcome: "record" | "accepted" | "ineligible" | "rejected" | "queued" | "unranked" | "not_joined" }
   | { name: "client_error"; source: string; message: string };
 
 type Sink = (name: string, props: Props) => void;

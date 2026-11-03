@@ -69,10 +69,13 @@ npm run build && npm start
 
 There are no sign-ins or required API keys. Progress, high scores, secrets and preferences live in the browser's `localStorage` (key `canal404:progress:v1`, plus one key per game that saves its own state). Saves carry a schema version and are migrated, never silently discarded ([decision 0001](docs/decisions/0001-save-versioning.md)).
 
+The channel's scoreboard ("Placar do canal") is optional. With a PostgreSQL database and a secret configured, players can pick a nickname (no account) and send results that the server checks before ranking them on global boards; without them, the portal says the board is coming soon and everything else works the same. Setup for Neon, Vercel and local Docker is in [`docs/backend-setup.md`](docs/backend-setup.md); the design is in [decision 0003](docs/decisions/0003-competition-backend.md) and the ranking and validation rules in [decision 0004](docs/decisions/0004-result-validation.md).
+
 Optional settings live in `.env.local` (see `.env.example`):
 
 - `NEXT_PUBLIC_SITE_URL`: the public address used in share previews, the sitemap and canonical links.
 - `NEXT_PUBLIC_UMAMI_WEBSITE_ID`: turns on cookieless gameplay analytics with Umami ([decision 0002](docs/decisions/0002-privacy-first-telemetry.md)). Without it, no event leaves the browser.
+- `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `COMPETITION_SECRET`, `CRON_SECRET`: turn on the scoreboard (see [`docs/backend-setup.md`](docs/backend-setup.md)).
 
 Share images live in `public/og/`. After changing a cover, logo or the room, regenerate them with the dev server running:
 
@@ -98,7 +101,9 @@ npm run test:e2e
 - **Laboratório:** placement rules, and a known solution for every level that must stay buildable.
 - **Components:** the game intro (level picker, locked levels, continuing or restarting an adventure), the catalog filters and the character tabs, queried by role and accessible name.
 
-`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch.
+With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests: ranking and tie-break rules for every game, result validation, signed tickets, nicknames, idempotent and concurrent submissions, rate limits, retention, the API routes and how they behave when the database is missing or down.
+
+`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch. The scoreboard tests win a Laboratório level, join with a nickname, check the record and the "Seu melhor" line on a second try, leave the board, and play with the board down or not configured; the new panels pass an axe accessibility check.
 
 A performance budget (`e2e/performance.spec.ts`) runs against production builds: each portal page must stay under 1.3 MB of JavaScript, and the game engine may only load on the play page.
 
@@ -121,7 +126,8 @@ npm run test:visual:update
 - Lucide icons (`lucide-react` in the portal, Lucide icon nodes rendered to textures inside the games)
 - Hand-made SVG for every illustration
 - Web Audio API for sound effects and live-synthesized music
-- Vitest and Testing Library for unit and component tests, Playwright for end-to-end tests
+- PostgreSQL with Prisma 7 (driver adapter `@prisma/adapter-pg`) and zod for the optional scoreboard API in Route Handlers
+- Vitest and Testing Library for unit and component tests, Playwright and axe for end-to-end tests
 
 ## Routes
 
@@ -132,8 +138,9 @@ npm run test:visual:update
 | `/games/[slug]` | Game page (playable or "off the air") |
 | `/play/[slug]` | Real loading screen, intro, match, pause and results |
 | `/characters` | Character select with reactions |
-| `/extras` | Downloadable posters (PNG), music, achievements and secrets |
+| `/extras` | Scoreboard membership card, downloadable posters (PNG), music, achievements and secrets |
 | `/about` | The channel's fictional history |
+| `/api/*` | Scoreboard API: `status`, `players`, `players/me`, `runs/tickets`, `runs`, `leaderboards`, `cron/cleanup` |
 
 Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama) and `off-air-vacation` (Férias Fora do Ar).
 
@@ -162,9 +169,13 @@ src/
     food-fight/          cafeteria food fight (scenes, rivals, sounds)
     operation-recess/    side-scrolling action platformer (phases, hero, enemies, boss, sounds)
     pajama-war/          three-way pillow fight (arenas, fighters, AI, pillows, sounds)
+    competition/         nickname form and the scoreboard membership card
   lib/
     audio/               Web Audio engine, effects and music
+    competition/         ranking rules, nickname filter and the browser client for the scoreboard
     progress/            persistence, secrets and achievements
+  server/                scoreboard backend: database, identity, tickets, submissions, boards, limits
+prisma/                  schema and versioned migrations
 public/assets/<slug>/    SVG art for each game
 ```
 
@@ -177,7 +188,7 @@ Games are independent from the portal. Each one exports a `GameModule` with `mou
 3. Add the loader in `src/games/loaders.ts`.
 4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`.
 
-The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements and screen-reader announcements. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`.
+The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements, screen-reader announcements and the scoreboard. To compete, a game reports integer `stats` in its result and gets a rule in `src/lib/competition/rules.ts` that recomputes its score from them. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`.
 
 ## Rua Sem Saída (`dead-end-street`)
 

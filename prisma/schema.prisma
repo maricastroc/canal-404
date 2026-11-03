@@ -1,0 +1,132 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PlayerStatus {
+  active
+  hidden
+  banned
+}
+
+enum Verification {
+  replayed
+  checked
+  rejected
+}
+
+enum AchievementSource {
+  verified
+  reported
+}
+
+model Player {
+  id           String              @id @default(uuid()) @db.Uuid
+  tokenHash    String              @unique @map("token_hash") @db.Char(64)
+  nickname     String              @db.VarChar(16)
+  nicknameKey  String              @map("nickname_key") @db.VarChar(32)
+  tag          String              @db.Char(4)
+  status       PlayerStatus        @default(active)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt   DateTime            @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  renamedAt    DateTime?           @map("renamed_at") @db.Timestamptz(3)
+  runs         Run[]
+  bests        PersonalBest[]
+  achievements PlayerAchievement[]
+
+  @@index([lastSeenAt])
+  @@map("players")
+}
+
+model Run {
+  id           String          @id @default(uuid()) @db.Uuid
+  ticketId     String          @unique @map("ticket_id") @db.Uuid
+  playerId     String          @map("player_id") @db.Uuid
+  player       Player          @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  game         String          @db.VarChar(32)
+  level        String          @db.VarChar(32)
+  board        String?         @db.VarChar(64)
+  challengeId  String?         @map("challenge_id") @db.Char(10)
+  challenge    DailyChallenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  won          Boolean
+  score        Int
+  stars        Int             @db.SmallInt
+  stats        Json
+  replay       Json?
+  rank1        Int
+  rank2        Int
+  rank3        Int
+  verification Verification
+  eligible     Boolean
+  flags        String[]        @default([])
+  rulesVersion Int             @map("rules_version") @db.SmallInt
+  startedAt    DateTime        @map("started_at") @db.Timestamptz(3)
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  best         PersonalBest?
+
+  @@index([playerId, createdAt])
+  @@index([board, createdAt])
+  @@index([createdAt])
+  @@map("runs")
+}
+
+model PersonalBest {
+  playerId   String   @map("player_id") @db.Uuid
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  board      String   @db.VarChar(64)
+  runId      String   @unique @map("run_id") @db.Uuid
+  run        Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  rank1      Int
+  rank2      Int
+  rank3      Int
+  score      Int
+  stars      Int      @db.SmallInt
+  stats      Json
+  achievedAt DateTime @map("achieved_at") @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([playerId, board])
+  @@index([board, rank1(sort: Desc), rank2(sort: Desc), rank3(sort: Desc), achievedAt])
+  @@map("personal_bests")
+}
+
+model DailyChallenge {
+  id           String   @id @db.Char(10)
+  game         String   @db.VarChar(32)
+  level        String   @db.VarChar(32)
+  seed         Int
+  variant      Json
+  rulesVersion Int      @map("rules_version") @db.SmallInt
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  runs         Run[]
+
+  @@map("daily_challenges")
+}
+
+model PlayerAchievement {
+  playerId    String            @map("player_id") @db.Uuid
+  player      Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  achievement String            @db.VarChar(48)
+  source      AchievementSource
+  runId       String?           @map("run_id") @db.Uuid
+  unlockedAt  DateTime          @default(now()) @map("unlocked_at") @db.Timestamptz(3)
+
+  @@id([playerId, achievement])
+  @@index([achievement])
+  @@map("player_achievements")
+}
+
+model RateLimit {
+  key         String   @db.VarChar(96)
+  windowStart DateTime @map("window_start") @db.Timestamptz(3)
+  count       Int      @default(1)
+
+  @@id([key, windowStart])
+  @@index([windowStart])
+  @@map("rate_limits")
+}

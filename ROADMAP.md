@@ -28,19 +28,37 @@ Canal 404 grows in small, verifiable deliveries. Player experience drives the or
 
 ## Stage 2: Competition and coming back
 
-Depends on Stage 1's structured results and telemetry.
+Plan, dependencies and per-game feasibility: [`docs/stage-2-plan.md`](docs/stage-2-plan.md).
 
-- [ ] Structured results: every game reports numbers (time, hits, throws, kills, attempts) next to the human-readable breakdown.
-- [ ] Fixed-step clocks and seeded gameplay randomness in Rua Sem Saída, Guerra de Lanche, Operação: Recreio and Guerra do Pijama.
-- [ ] Headless Laboratório simulation shared by the browser and the server: fresh engine per run, canonical part order, no trigonometry in the step loop, golden step counts in tests.
-- [ ] Backend: database, anonymous player identity (a nickname plus a device key, no account), rate limits.
-- [ ] Global rankings per game with per-game validation:
-  - Laboratório is validated by server replay.
-  - Rua Sem Saída is validated by replaying the launch log.
-  - Lanche, Recreio and Pijama are validated with plausibility bounds and event logs.
-  - Every game has clear tie-break rules.
-- [ ] Daily program: a seeded challenge per day in a different game, with its own ranking.
-- [ ] Cross-game discoveries: achievements for unexpected actions, secrets that reference other shows, a room that changes as the player progresses.
+### 2.1 Foundation
+
+- [x] Structured results: every game reports integer stats (time, hits, throws, launches, parts, energy…) next to the human-readable breakdown; the Laboratório also sends the machine it built.
+- [x] Backend in Next.js Route Handlers with Prisma 7 and PostgreSQL (Neon in production, Docker locally), versioned migrations and `CHECK` constraints ([0003](docs/decisions/0003-competition-backend.md)).
+- [x] Anonymous identity: a nickname plus a server key in an `httpOnly` cookie, nickname filter, "Sair do placar" deletes everything.
+- [x] Signed run tickets, idempotent submissions, concurrent-safe personal records, rate limits, retention job, clear 503s when the database is missing or down.
+- [x] Ranking and tie-break rules for every game, recomputed on the server from the stats, with plausibility checks ([0004](docs/decisions/0004-result-validation.md)).
+- [x] Shell integration: tickets on start, results sent on finish, an offline outbox, a "Placar do canal" line in the result panel and a membership card in Extras.
+- [x] Tests: rules and tie-breaks, nicknames, tickets, database persistence and concurrency, API routes, browser flows with and without the backend, axe checks; CI runs them against Postgres.
+- [ ] Production database and secrets on Vercel ([setup](docs/backend-setup.md)).
+
+### 2.2 Competition
+
+- [ ] Record arcade: per-game boards with the rule explained, personal record, position, loading, error and empty states, reachable from the room's arcade cabinet.
+- [ ] Personal vs global comparison and a short record vignette in the result panel; mascot reactions.
+- [ ] Headless Laboratório simulation shared by the browser and the server: `matter-js` outside Phaser, fresh engine per run, canonical part order, no trigonometry differences in the step loop, golden step counts in tests, equivalence tests against the current scene.
+- [ ] Server replay of Laboratório results before they enter the board.
+- [ ] Rua Sem Saída launch log replay, if the timers can move to step counters without changing the game.
+
+### 2.3 Daily program
+
+- [ ] A daily challenge per day in São Paulo time, stored the first time it is requested, with its own board and day-change handling.
+- [ ] Formats built on existing mechanics: Laboratório twists, Rua Sem Saída layouts, Operação: Recreio goals; Guerra do Pijama and Guerra de Lanche only after seeding their randomness.
+- [ ] A TV channel and mascot lines for the "Programa especial do dia".
+
+### 2.4 Shared achievements
+
+- [ ] Cross-game achievements and secrets that reference other shows, confirmed by the server when they come from validated runs.
+- [ ] Room changes, TV announcements, sounds and toasts for them.
 
 ## Stage 3: Player-made levels
 

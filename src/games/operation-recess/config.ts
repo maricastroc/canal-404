@@ -32,6 +32,8 @@ export const HIT_STOP_MS = 60;
 
 export const ATTACK = { windup: 55, active: 135, cooldown: 290, reach: 180, lunge: 140 };
 
+export const EXTRAS_CAP = 20;
+
 export const SCORE = { common: 100, whistle: 150, shield: 200, sticker: 50, wave: 10, phase: 500, heart: 100, boss: 1500 };
 
 export const ZOOM = 1.22;

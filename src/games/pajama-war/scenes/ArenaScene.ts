@@ -968,6 +968,16 @@ export class ArenaScene extends Phaser.Scene {
       score,
       stars,
       breakdown: rows.filter((r, i) => i === 0 || r.value !== 0),
+      stats: {
+        hits,
+        kos,
+        throws: p.throws,
+        hp: p.alive ? p.hp : 0,
+        damageTaken: this.damageTaken,
+        place: placement,
+        timeMs: Math.round(this.matchTime),
+        kid: KIDS.indexOf(p.kid),
+      },
       achievements,
       level: { index: this.levelIndex, id: arena.id, title: arena.title, total: ARENAS.length },
       copy: won

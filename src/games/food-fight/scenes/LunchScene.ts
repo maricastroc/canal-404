@@ -132,6 +132,7 @@ export class LunchScene extends Phaser.Scene {
   private trayHinted = false;
   private interrupts = 0;
   private interruptScore = 0;
+  private throws = 0;
   private brawlDone = false;
   private brawlUntil = 0;
   private brawlNext = 0;
@@ -180,6 +181,7 @@ export class LunchScene extends Phaser.Scene {
     this.trayHinted = false;
     this.interrupts = 0;
     this.interruptScore = 0;
+    this.throws = 0;
     this.brawlDone = false;
     this.brawlUntil = 0;
     this.brawlNext = 0;
@@ -444,6 +446,7 @@ export class LunchScene extends Phaser.Scene {
     this.streak = 0;
     this.bestStreak = 0;
     this.interrupts = 0;
+    this.throws = 0;
     this.hud.setStreak(0);
     this.updateScore();
     this.hud.setTimer(ROUND_MS, ROUND_MS, false);
@@ -795,6 +798,7 @@ export class LunchScene extends Phaser.Scene {
       return;
     }
     this.refreshAmmo(false);
+    this.throws += 1;
     this.throwReadyAt = this.t + THROW_GAP_MS;
     this.setPose("throw", 220);
     this.sfx("throw", 0.8);
@@ -1105,6 +1109,19 @@ export class LunchScene extends Phaser.Scene {
       score,
       stars,
       breakdown: rows,
+      stats: {
+        hits: this.hits,
+        hitPoints: this.hitScore,
+        interrupts: this.interrupts,
+        interruptPoints: this.interruptScore,
+        comboPoints: this.comboScore,
+        lives: this.lives,
+        hitsTaken: this.hitsTaken,
+        lunchLadyHits: Math.round(this.lunchLadyPenalty / SCORE.lunchLadyPenalty),
+        bestStreak: this.bestStreak,
+        throws: this.throws,
+        timeMs: Math.round(this.roundT),
+      },
       achievements,
       copy: won
         ? { title: "Sinal!", text: "A mesa resistiu até o fim do recreio." }

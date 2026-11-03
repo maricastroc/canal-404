@@ -1,7 +1,9 @@
 import {
   ArrowLeft,
   CircleHelp,
+  Dices,
   Download,
+  IdCard,
   Gamepad2,
   Gift,
   House,
@@ -10,14 +12,17 @@ import {
   Lock,
   Menu,
   Pause,
+  PencilLine,
   Play,
   Radio,
   RadioTower,
   RotateCcw,
   Smile,
   Star,
+  Trash2,
   Trophy,
   Users,
+  WifiOff,
   Volume2,
   VolumeX,
   X,
@@ -53,6 +58,11 @@ export const RadioIcon = make(Radio);
 export const TrophyIcon = make(Trophy);
 export const KeyIcon = make(KeyRound);
 export const UsersIcon = make(Users);
+export const DiceIcon = make(Dices);
+export const CardIcon = make(IdCard);
+export const TrashIcon = make(Trash2);
+export const OfflineIcon = make(WifiOff);
+export const PencilIcon = make(PencilLine);
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

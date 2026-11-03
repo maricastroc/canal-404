@@ -1,10 +1,18 @@
 import type { SoundRecipe } from "@/lib/audio/types";
 
+export type GameStats = Record<string, number>;
+
+export type PlacedPartReplay = { type: string; x: number; y: number; rot: number };
+
+export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] };
+
 export type GameResult = {
   won: boolean;
   score: number;
   stars: number;
   breakdown: { label: string; value: number }[];
+  stats?: GameStats;
+  replay?: GameReplay;
   achievements?: string[];
   level?: { index: number; id: string; title: string; total: number };
   copy?: { title: string; text: string };

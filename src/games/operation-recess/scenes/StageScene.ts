@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { ARENA_ZOOM, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
+import { ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
 import { LEVELS, type LevelDef } from "../levels";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
@@ -19,7 +19,6 @@ type Checkpoint = { level: number; col: number; score: number; kills: number; ki
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 const OUCH = ["AI!", "UI!", "OPA!"];
-const EXTRAS_CAP = 20;
 const HIT_WORDS = ["POW!", "TOMA!", "PAF!", "BOING!"];
 const learned = new Set<Lesson>();
 
@@ -569,6 +568,7 @@ export class StageScene extends Phaser.Scene {
       score: this.score,
       stars: 0,
       breakdown: this.breakdown(false),
+      stats: this.resultStats(false),
       level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
       copy: { title: "Pego!", text: cp ? "Jogue de novo para voltar do último sino." : "Os monitores te levaram pra sala. Tenta de novo!" },
       ...(cp ? { restartLabel: "Voltar ao sino" } : {}),
@@ -589,6 +589,20 @@ export class StageScene extends Phaser.Scene {
       if (this.boss) rows.push({ label: "Inspetor vencido", value: SCORE.boss });
     }
     return rows.filter((r, i) => i === 0 || r.value !== 0);
+  }
+
+  private resultStats(won: boolean) {
+    return {
+      kills: this.kills,
+      killPoints: this.killScore,
+      stickers: this.stickers,
+      extras: this.extras,
+      hits: this.hits,
+      hearts: this.hearts,
+      resumed: this.resumed ? 1 : 0,
+      boss: won && this.boss ? 1 : 0,
+      timeMs: Math.round(this.t),
+    };
   }
 
   private win() {
@@ -615,6 +629,7 @@ export class StageScene extends Phaser.Scene {
       score: this.score,
       stars,
       breakdown: this.breakdown(true),
+      stats: this.resultStats(true),
       achievements,
       level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
       copy: last ? { title: "Você conseguiu!", text: "O recreio está de volta!" } : { title: "Boa!", text: `${this.level.win} Próxima fase!` },

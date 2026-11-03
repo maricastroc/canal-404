@@ -24,7 +24,11 @@ const PAGES = [
   { path: "/about", name: "about" },
 ];
 
+const MEMBER = { id: "00000000-0000-4000-8000-000000000404", nickname: "Pato Veloz", tag: "0404", createdAt: "2026-10-23T15:00:00.000Z" };
+
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/status", (route) => route.fulfill({ json: { status: "online" } }));
+  await page.route("**/api/players/me", (route) => route.fulfill({ json: { player: MEMBER } }));
   await page.clock.setFixedTime(NOW);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addInitScript((progress) => {
