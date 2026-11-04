@@ -45,8 +45,9 @@ test("plays each of the five tapes and keeps the shelf, the VCR and the TV in sy
 test("swaps tapes directly and ejects back to the channel that was on", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: /^A seguir:/ })).toBeVisible();
-  const before = await channelNumber(page);
   await shelf(page).press("Enter");
+  await expect(dialog(page)).toBeVisible();
+  const before = await channelNumber(page);
   expect(await accessibilityViolations(page, '[role="dialog"]')).toEqual([]);
   await dialog(page).getByRole("button", { name: TAPES[3].button }).click();
   await expect(knob(page)).toHaveAccessibleName(/Fita: Karaokê do 404/);
@@ -75,8 +76,7 @@ test("zooms into a tape without restarting it and gives focus back", async ({ pa
   const big = zoom(page).getByTestId("tv-screen");
   await expect(big).toHaveAttribute("data-since", since!);
   await expect(big).toHaveAttribute("data-channel", "tape-karaoke");
-  const box = (await big.boundingBox())!;
-  expect(box.width).toBeGreaterThan(400);
+  await expect.poll(async () => (await big.boundingBox())?.width ?? 0).toBeGreaterThan(400);
   expect(await accessibilityViolations(page, '[role="dialog"]')).toEqual([]);
 
   await page.keyboard.press("Tab");
@@ -90,9 +90,11 @@ test("zooms into a tape without restarting it and gives focus back", async ({ pa
 
 test("zooms into a regular channel and keeps its play link", async ({ page }) => {
   await page.goto("/");
-  const play = page.getByRole("link", { name: /^Jogar agora.*, jogo da semana$/ });
-  const href = await play.getAttribute("href");
+  await expect(page.getByRole("link", { name: /^Jogar agora.*, jogo da semana$/ })).toBeVisible();
   await page.getByRole("button", { name: "Ver a TV de perto" }).click();
+  const big = zoom(page).getByTestId("tv-screen");
+  await expect(big).toHaveAttribute("data-channel", (await roomScreen(page).getAttribute("data-channel"))!);
+  const href = await roomScreen(page).locator("a[href^='/play/']").getAttribute("href");
   await expect(zoom(page).getByRole("link", { name: /^Jogar agora.*, jogo da semana$/ })).toHaveAttribute("href", href!);
   await zoom(page).getByRole("button", { name: "Voltar pra sala" }).click();
   await expect(zoom(page)).toBeHidden();
