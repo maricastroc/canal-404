@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { LEVELS } from "@/games/bad-ideas-lab/levels";
+import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
+import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
 import { BOARD_META, boardId, hasLevel, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
 
 function compare(a: RankKey, b: RankKey) {
@@ -129,45 +129,36 @@ describe("Rua Sem Saída", () => {
   });
 });
 
-function secondRamp() {
-  const level = LEVELS.find((l) => l.id === "pixel")!;
-  const first: PlacedPart = { type: "ramp", x: 620, y: 420, rot: 4 };
-  for (let y = level.build.y; y <= level.build.y + level.build.h; y += 20) {
-    for (let x = level.build.x; x <= level.build.x + level.build.w; x += 20) {
-      const part: PlacedPart = { type: "ramp", x, y, rot: 3 };
-      if (!placementConflict(level, [first], part)) return part;
-    }
-  }
-  throw new Error("no room for a second ramp");
-}
-
 describe("Laboratório", () => {
-  const SOLUTIONS: Record<string, { type: string; x: number; y: number; rot: number }[]> = {
-    test: [{ type: "ramp", x: 680, y: 560, rot: 4 }],
-    pixel: [{ type: "ramp", x: 620, y: 420, rot: 4 }],
-    toast: [{ type: "spring", x: 640, y: 640, rot: 3 }],
-    juice: [{ type: "fan", x: 160, y: 580, rot: 0 }],
-    remote: [
-      { type: "belt", x: 1140, y: 600, rot: 1 },
-      { type: "belt", x: 820, y: 640, rot: 1 },
-    ],
-    finale: [
-      { type: "spring", x: 580, y: 400, rot: 3 },
-      { type: "belt", x: 1380, y: 540, rot: 0 },
-    ],
-  };
+  const TWO_RAMPS: PlacedPart[] = [...SOLUTIONS.pixel, { type: "ramp", x: 660, y: 320, rot: 3 }];
+  const QUICKER: PlacedPart[] = [{ type: "ramp", x: 680, y: 480, rot: 4 }];
 
-  it("accepts the known solution of every level", () => {
-    for (const [level, parts] of Object.entries(SOLUTIONS)) ok(judgeRun("bad-ideas-lab", level, lab(level, parts, 300)));
+  it("replays the known solution of every level on the server", () => {
+    for (const [level, parts] of Object.entries(SOLUTIONS)) {
+      const verdict = ok(judgeRun("bad-ideas-lab", level, lab(level, parts, STEPS_BEFORE_EXTRACTION[level])));
+      expect(verdict).toMatchObject({ verification: "replayed", flags: [] });
+      expect(verdict.rank[1]).toBe(-STEPS_BEFORE_EXTRACTION[level]);
+    }
   });
 
-  it("ranks fewer parts first, then fewer simulation steps", () => {
-    const one = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 400)));
-    const two = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", [...SOLUTIONS.pixel, secondRamp()], 200)));
-    const faster = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 380)));
+  it("ranks fewer parts first, then the machine that reaches the goal in fewer steps", () => {
+    const one = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 256)));
+    const two = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", TWO_RAMPS, 256)));
+    const faster = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", QUICKER, 248)));
     expect(compare(one.rank, two.rank)).toBeLessThan(0);
     expect(compare(faster.rank, one.rank)).toBeLessThan(0);
-    expect(metricValues("bad-ideas-lab", one.rank)).toEqual([1, 400]);
+    expect(metricValues("bad-ideas-lab", one.rank)).toEqual([1, 256]);
+  });
+
+  it("ranks by the steps the server counted, not the steps the browser sent", () => {
+    const claimed = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 1)));
+    expect(metricValues("bad-ideas-lab", claimed.rank)).toEqual([1, 256]);
+    expect(claimed.flags).toEqual(["steps_mismatch"]);
+    expect(claimed.minElapsedMs).toBe(Math.round(256 * (1000 / 60)));
+  });
+
+  it("rejects a machine that can be built but does not reach the goal", () => {
+    expect(judgeRun("bad-ideas-lab", "pixel", lab("pixel", [{ type: "ramp", x: 620, y: 420, rot: 0 }], 300))).toMatchObject({ ok: false, reason: "replay_failed" });
   });
 
   it("leaves the first-try bonus out of the ranking", () => {
@@ -199,8 +190,8 @@ describe("Laboratório", () => {
     expect(judgeRun("bad-ideas-lab", "attic", lab("pixel", SOLUTIONS.pixel, 300))).toMatchObject({ ok: false, reason: "unknown_level" });
   });
 
-  it("needs the simulated time as the minimum time since the ticket", () => {
-    expect(ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 600))).minElapsedMs).toBe(10_000);
+  it("needs the replayed time as the minimum time since the ticket", () => {
+    expect(ok(judgeRun("bad-ideas-lab", "juice", lab("juice", SOLUTIONS.juice, 112))).minElapsedMs).toBe(Math.round(112 * (1000 / 60)));
   });
 });
 

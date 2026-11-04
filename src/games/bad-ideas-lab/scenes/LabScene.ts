@@ -1,28 +1,18 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import {
-  BALL_BODY,
-  BALL_R,
-  BELT_SPEED,
-  FAN_ACCEL,
-  FAN_HALF,
-  FAN_REACH,
   FLOOR_Y,
-  GRAVITY_Y,
   GRID,
   H,
   PARTS,
   PART_ORDER,
-  RUN_TIMEOUT,
-  SPRING_SPEED,
   STEP_MS,
-  SURFACE,
   W,
   partAngle,
   type PartType,
 } from "../config";
 import { LEVELS, type LevelDef } from "../levels";
-import { ballInSensor, goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Sensor, type Vec } from "../geometry";
+import { goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Vec } from "../geometry";
 import {
   areaCoordinates,
   ballNoun,
@@ -51,6 +41,7 @@ import {
   type SceneInfo,
 } from "../narration";
 import { addIcon } from "../icons";
+import { LabSim, type SimTarget } from "../sim";
 import { LAB_SFX, type LabSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
 import { LabHud } from "./hud";
@@ -88,8 +79,6 @@ const ISSUE_TEXT: Record<Exclude<Issue, null>, string> = {
 
 const FAIL_LINES = ["Quase!", "Opa! Não foi dessa vez.", "Faltou pouco!", "Hmm... mais um ajuste."];
 const CONFETTI = [0xffc83d, 0xf06ba8, 0x63d6c1, 0x7b62c4, 0xff8a3d, 0x8fd4f7];
-const MAX_STEPS = Math.round(RUN_TIMEOUT / STEP_MS);
-const REST_STEPS = 50;
 const RESET_MS = 900;
 
 function wrapLines(text: string, max = 30) {
@@ -124,18 +113,13 @@ export class LabScene extends Phaser.Scene {
   private selected: Part | null = null;
   private hud!: LabHud;
   private goal!: GoalView;
-  private sensor!: Sensor;
   private buildArea!: Phaser.GameObjects.Container;
   private pipe!: Phaser.GameObjects.Image;
   private ballImg!: Phaser.GameObjects.Image;
-  private ballBody: MatterJS.BodyType | null = null;
-  private bodies: MatterJS.BodyType[] = [];
-  private springs = new Map<number, Part>();
-  private belts = new Map<number, Part>();
-  private kinds = new Map<number, LabSfx>();
+  private sim: LabSim | null = null;
+  private simParts: Part[] = [];
+  private blockSounds: LabSfx[] = [];
   private acc = 0;
-  private runSteps = 0;
-  private rest = 0;
   private inWind = false;
   private trail: [number, number][] = [];
   private trailGfx!: Phaser.GameObjects.Graphics;
@@ -166,7 +150,6 @@ export class LabScene extends Phaser.Scene {
   private browseIndex = -1;
   private attempts = 0;
   private track: RunTrack = { touches: [], launches: [], winds: [] };
-  private bodyRefs = new Map<number, string>();
   private lastReport = "";
   private lastPath: Vec[] = [];
   private lastStop: Vec | null = null;
@@ -186,14 +169,10 @@ export class LabScene extends Phaser.Scene {
     this.carry = null;
     this.press = null;
     this.selected = null;
-    this.ballBody = null;
-    this.bodies = [];
-    this.springs = new Map();
-    this.belts = new Map();
-    this.kinds = new Map();
+    this.sim = null;
+    this.simParts = [];
+    this.blockSounds = [];
     this.acc = 0;
-    this.runSteps = 0;
-    this.rest = 0;
     this.inWind = false;
     this.trail = [];
     this.fails = 0;
@@ -212,7 +191,6 @@ export class LabScene extends Phaser.Scene {
     this.browseIndex = -1;
     this.attempts = 0;
     this.track = { touches: [], launches: [], winds: [] };
-    this.bodyRefs = new Map();
     this.lastReport = "";
     this.lastPath = [];
     this.lastStop = null;
@@ -228,11 +206,6 @@ export class LabScene extends Phaser.Scene {
     const level = this.level;
     this.landmarks = levelLandmarks(level);
     this.ball = ballNoun(level);
-    const engine = this.matter.world.engine;
-    engine.positionIterations = 10;
-    engine.velocityIterations = 8;
-    this.matter.world.autoUpdate = false;
-    this.matter.world.setGravity(0, GRAVITY_Y);
     const reduced = this.ctx.reducedMotion;
     const fonts = this.ctx.fonts;
 
@@ -240,7 +213,6 @@ export class LabScene extends Phaser.Scene {
     for (const b of level.blocks) drawBlock(this, b);
     const layout = goalLayout(level.goal);
     if (level.goal.type === "bell" || level.goal.type === "target") for (const b of layout.blocks) drawBlock(this, b);
-    this.sensor = layout.sensor;
     this.pipe = drawPipe(this, level);
     this.goal = buildGoal(this, level, fonts, {
       word: (text, x, y, color, size) => this.word(text, x, y, color, size),
@@ -274,7 +246,6 @@ export class LabScene extends Phaser.Scene {
     this.refreshHud();
 
     this.setupInput();
-    this.setupCollisions();
 
     this.applyScale();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyScale, this);
@@ -1229,73 +1200,42 @@ export class LabScene extends Phaser.Scene {
     }
   }
 
-  private setupCollisions() {
-    this.matter.world.on("collisionstart", (event: Phaser.Physics.Matter.Events.CollisionStartEvent) => {
-      const ball = this.ballBody;
-      if (this.mode !== "running" || !ball) return;
-      for (const pair of event.pairs) {
-        const other = pair.bodyA === ball ? pair.bodyB : pair.bodyB === ball ? pair.bodyA : null;
-        if (!other) continue;
-        const ref = this.bodyRefs.get(other.id);
-        if (ref) this.track.touches.push(ref);
-        const spring = this.springs.get(other.id);
-        if (spring) {
-          const v = spring.view;
-          const a = Phaser.Math.DegToRad(v.angle);
-          const nx = Math.sin(a);
-          const ny = -Math.cos(a);
-          if ((ball.position.x - v.x) * nx + (ball.position.y - v.y) * ny > 0) {
-            this.matter.body.setVelocity(ball, { x: nx * SPRING_SPEED, y: ny * SPRING_SPEED });
-            this.track.launches.push(`part-${spring.id}`);
-            v.squash();
-            this.sfx("boing", 1, 120);
-            this.word("BOING!", v.x + nx * 60, v.y + ny * 60 - 30, "#f06ba8", 46);
-            continue;
-          }
-        }
-        const speed = ball.speed;
-        if (speed < 2.2) continue;
-        const kind = this.kinds.get(other.id) ?? "tap";
-        this.sfx(kind, Phaser.Math.Clamp(speed / 12, 0.2, 1), 90);
-      }
-    });
-    this.matter.world.on("collisionactive", (event: Phaser.Physics.Matter.Events.CollisionActiveEvent) => {
-      const ball = this.ballBody;
-      if (this.mode !== "running" || !ball) return;
-      for (const pair of event.pairs) {
-        const other = pair.bodyA === ball ? pair.bodyB : pair.bodyB === ball ? pair.bodyA : null;
-        if (!other) continue;
-        const belt = this.belts.get(other.id);
-        if (belt && ball.position.y < belt.view.y) {
-          const target = belt.view.facing * BELT_SPEED;
-          this.matter.body.setVelocity(ball, { x: ball.velocity.x + (target - ball.velocity.x) * 0.25, y: ball.velocity.y });
-          this.sfx("clack", 0.5, 240);
-        }
-      }
-    });
+  private simRef(target: SimTarget) {
+    if (target.kind === "floor" || target.kind === "edge") return target.kind;
+    if (target.kind === "block") return `block-${target.index}`;
+    return `part-${this.simParts[target.index].id}`;
   }
 
-  private addStatic(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    angleDeg: number,
-    kind: LabSfx,
-    ref: string,
-    surface = true,
-    extra: Phaser.Types.Physics.Matter.MatterBodyConfig = {},
-  ) {
-    const body = this.matter.add.rectangle(x, y, w, h, {
-      isStatic: true,
-      angle: Phaser.Math.DegToRad(angleDeg),
-      ...(surface ? SURFACE : {}),
-      ...extra,
-    });
-    this.bodies.push(body);
-    this.kinds.set(body.id, kind);
-    this.bodyRefs.set(body.id, ref);
-    return body;
+  private simSound(target: SimTarget): LabSfx {
+    if (target.kind === "block") return this.blockSounds[target.index] ?? "tap";
+    if (target.kind !== "part") return "tap";
+    const type = this.simParts[target.index].view.type;
+    return type === "belt" ? "clack" : type === "fan" ? "clink" : "tap";
+  }
+
+  private onTouch(target: SimTarget, speed: number, launched: boolean) {
+    this.track.touches.push(this.simRef(target));
+    if (launched || speed < 2.2) return;
+    this.sfx(this.simSound(target), Phaser.Math.Clamp(speed / 12, 0.2, 1), 90);
+  }
+
+  private onLaunch(index: number, nx: number, ny: number) {
+    const part = this.simParts[index];
+    const v = part.view;
+    this.track.launches.push(`part-${part.id}`);
+    v.squash();
+    this.sfx("boing", 1, 120);
+    this.word("BOING!", v.x + nx * 60, v.y + ny * 60 - 30, "#f06ba8", 46);
+  }
+
+  private onWind(indices: number[]) {
+    for (const index of indices) {
+      const ref = `part-${this.simParts[index].id}`;
+      if (!this.track.winds.includes(ref)) this.track.winds.push(ref);
+    }
+    const inside = indices.length > 0;
+    if (inside && !this.inWind) this.sfx("whoosh", 0.9, 400);
+    this.inWind = inside;
   }
 
   toggleRun() {
@@ -1338,30 +1278,23 @@ export class LabScene extends Phaser.Scene {
     const level = this.level;
     this.attempts += 1;
     this.track = { touches: [], launches: [], winds: [] };
-    this.bodyRefs.clear();
-    this.addStatic(W / 2, FLOOR_Y + 60, W + 200, 120, 0, "tap", "floor", true, { friction: 0.02 });
-    this.addStatic(-30, H / 2, 60, H * 2, 0, "tap", "edge", false);
-    this.addStatic(W + 30, H / 2, 60, H * 2, 0, "tap", "edge", false);
-    sceneBlocks(level).forEach((b, i) => {
-      const kind: LabSfx = b.kind === "metal" || b.kind === "pole" ? "clink" : "tap";
-      this.addStatic(b.x, b.y, b.w, b.h, b.angle ?? 0, kind, `block-${i}`);
-    });
-    for (const part of this.parts) {
-      const v = part.view;
-      const kind: LabSfx = v.type === "belt" ? "clack" : v.type === "fan" ? "clink" : "tap";
-      const body = this.addStatic(v.x, v.y, v.def.w, v.def.h, v.angle, kind, `part-${part.id}`);
-      if (v.type === "spring") this.springs.set(body.id, part);
-      if (v.type === "belt") this.belts.set(body.id, part);
-      v.setRunning(true);
-    }
-    const ball = this.matter.add.circle(level.pipe.x, level.pipe.y, BALL_R, { ...BALL_BODY, label: "ball" });
-    this.matter.body.setVelocity(ball, { x: level.pipe.vx, y: level.pipe.vy });
-    this.ballBody = ball;
-    this.bodies.push(ball);
-    this.ballImg.setPosition(ball.position.x, ball.position.y).setAngle(0).setScale(1).setAlpha(1).setVisible(true);
+    this.blockSounds = sceneBlocks(level).map((b) => (b.kind === "metal" || b.kind === "pole" ? "clink" : "tap"));
+    this.simParts = [...this.parts];
+    for (const part of this.parts) part.view.setRunning(true);
+    this.sim?.destroy();
+    const sim = new LabSim(
+      level,
+      this.parts.map(({ view: v }) => ({ type: v.type, x: v.x, y: v.y, rot: v.rot })),
+      {
+        touch: (target, speed, launched) => this.onTouch(target, speed, launched),
+        launch: (index, nx, ny) => this.onLaunch(index, nx, ny),
+        belt: () => this.sfx("clack", 0.5, 240),
+        wind: (indices) => this.onWind(indices),
+      },
+    );
+    this.sim = sim;
+    this.ballImg.setPosition(sim.x, sim.y).setAngle(0).setScale(1).setAlpha(1).setVisible(true);
     this.acc = 0;
-    this.runSteps = 0;
-    this.rest = 0;
     this.inWind = false;
     const dir = level.pipe.flip ? -1 : 1;
     this.ballImg.setPosition(level.pipe.x - 8 * dir, level.pipe.y);
@@ -1388,8 +1321,8 @@ export class LabScene extends Phaser.Scene {
   }
 
   private runReport(outcome: RunOutcome) {
-    const ball = this.ballBody;
-    const end = ball ? { x: ball.position.x, y: ball.position.y } : { x: this.ballImg.x, y: this.ballImg.y };
+    const sim = this.sim;
+    const end = sim ? { x: sim.x, y: sim.y } : { x: this.ballImg.x, y: this.ballImg.y };
     const path = this.trail.map(([x, y]) => ({ x, y }));
     const report = describeRun({ attempt: this.attempts, ...this.track, path, end, outcome }, this.sceneInfo(false));
     this.lastPath = [...path, end];
@@ -1405,12 +1338,9 @@ export class LabScene extends Phaser.Scene {
   }
 
   private endRun() {
-    for (const b of this.bodies) this.matter.world.remove(b);
-    this.bodies = [];
-    this.springs.clear();
-    this.belts.clear();
-    this.kinds.clear();
-    this.ballBody = null;
+    this.sim?.destroy();
+    this.sim = null;
+    this.simParts = [];
     for (const p of this.parts) p.view.setRunning(false);
     const level = this.level;
     const dir = level.pipe.flip ? -1 : 1;
@@ -1503,49 +1433,14 @@ export class LabScene extends Phaser.Scene {
     });
   }
 
-  private applyFans(ball: MatterJS.BodyType) {
-    let inside = false;
-    for (const part of this.parts) {
-      const v = part.view;
-      if (v.type !== "fan") continue;
-      const f = v.facing;
-      const dx = (ball.position.x - v.x) * f;
-      const dy = Math.abs(ball.position.y - v.y);
-      if (dx > 40 && dx < 48 + FAN_REACH && dy < FAN_HALF) {
-        const k = 1 - 0.5 * ((dx - 48) / FAN_REACH);
-        this.matter.body.applyForce(ball, ball.position, { x: f * ball.mass * FAN_ACCEL * k, y: 0 });
-        inside = true;
-        const ref = `part-${part.id}`;
-        if (!this.track.winds.includes(ref)) this.track.winds.push(ref);
-      }
-    }
-    if (inside && !this.inWind) this.sfx("whoosh", 0.9, 400);
-    this.inWind = inside;
-  }
-
   private stepRun() {
-    const ball = this.ballBody;
-    if (!ball) return;
-    this.applyFans(ball);
-    this.matter.world.step(STEP_MS);
-    if (this.mode !== "running" || this.ballBody !== ball) return;
-    this.runSteps += 1;
-    const { x, y } = ball.position;
-    if (this.runSteps % 3 === 0) this.trail.push([x, y]);
-    if (ballInSensor(x, y, BALL_R, this.sensor)) {
-      this.success();
-      return;
-    }
-    if (y > H + 100 || x < -100 || x > W + 100) {
-      this.fail("out");
-      return;
-    }
-    this.rest = ball.speed < 0.15 ? this.rest + 1 : 0;
-    if (this.rest > REST_STEPS) {
-      this.fail("stopped");
-      return;
-    }
-    if (this.runSteps >= MAX_STEPS) this.fail("timeout");
+    const sim = this.sim;
+    if (!sim) return;
+    const outcome = sim.step();
+    if (this.mode !== "running" || this.sim !== sim) return;
+    if (sim.steps % 3 === 0) this.trail.push([sim.x, sim.y]);
+    if (outcome === "success") this.success();
+    else if (outcome) this.fail(outcome);
   }
 
   private fail(outcome: "out" | "stopped" | "timeout") {
@@ -1596,15 +1491,14 @@ export class LabScene extends Phaser.Scene {
 
   private success() {
     if (this.mode !== "running") return;
-    const steps = this.runSteps;
+    const steps = this.sim?.steps ?? 0;
     const replay = this.parts.map((p) => ({ type: p.view.type, x: p.view.x, y: p.view.y, rot: p.view.rot }));
     this.announce(`Funcionou! ${this.runReport("success")}`);
     this.mode = "done";
     this.finishing = true;
     this.hud.setDone();
     const level = this.level;
-    const ball = this.ballBody;
-    if (ball) this.ballImg.setPosition(ball.position.x, ball.position.y);
+    if (this.sim) this.ballImg.setPosition(this.sim.x, this.sim.y);
     for (const p of this.parts) p.view.setRunning(false);
     this.guideGfx?.setVisible(false);
     this.guideArrow?.setVisible(false);
@@ -1670,9 +1564,9 @@ export class LabScene extends Phaser.Scene {
       steps += 1;
     }
     if (steps === 6) this.acc = 0;
-    const ball = this.ballBody;
-    if (ball && this.mode === "running") {
-      this.ballImg.setPosition(ball.position.x, ball.position.y).setRotation(ball.angle);
+    const sim = this.sim;
+    if (sim && this.mode === "running") {
+      this.ballImg.setPosition(sim.x, sim.y).setRotation(sim.angle);
     }
   }
 }

@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
-import { GRAVITY_Y, H, W } from "./config";
+import { H, W } from "./config";
 import { LEVELS } from "./levels";
 import { BootScene } from "./scenes/BootScene";
 import { LabScene } from "./scenes/LabScene";
@@ -23,17 +23,6 @@ function mount(ctx: GameHostContext): GameInstance {
       keyboard: { target: ctx.keyboardTarget },
       touch: { capture: true },
       activePointers: 2,
-    },
-    physics: {
-      default: "matter",
-      matter: {
-        gravity: { x: 0, y: GRAVITY_Y },
-        restingThresh: 2,
-        restingThreshTangent: Math.sqrt(6),
-        autoUpdate: false,
-        enableSleeping: false,
-        debug: false,
-      },
     },
     banner: false,
     audio: { noAudio: true },

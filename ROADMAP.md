@@ -39,15 +39,16 @@ Plan, dependencies and per-game feasibility: [`docs/stage-2-plan.md`](docs/stage
 - [x] Ranking and tie-break rules for every game, recomputed on the server from the stats, with plausibility checks ([0004](docs/decisions/0004-result-validation.md)).
 - [x] Shell integration: tickets on start, results sent on finish, an offline outbox, a "Placar do canal" line in the result panel and a membership card in Extras.
 - [x] Tests: rules and tie-breaks, nicknames, tickets, database persistence and concurrency, API routes, browser flows with and without the backend, axe checks; CI runs them against Postgres.
-- [ ] Production database and secrets on Vercel ([setup](docs/backend-setup.md)).
+- [x] Production database and secrets on Vercel ([setup](docs/backend-setup.md)).
 
 ### 2.2 Competition
 
-- [ ] Record arcade: per-game boards with the rule explained, personal record, position, loading, error and empty states, reachable from the room's arcade cabinet.
-- [ ] Personal vs global comparison and a short record vignette in the result panel; mascot reactions.
-- [ ] Headless Laboratório simulation shared by the browser and the server: `matter-js` outside Phaser, fresh engine per run, canonical part order, no trigonometry differences in the step loop, golden step counts in tests, equivalence tests against the current scene.
-- [ ] Server replay of Laboratório results before they enter the board.
-- [ ] Rua Sem Saída launch log replay, if the timers can move to step counters without changing the game.
+- [x] Record arcade (`/records`): a cartridge per game, a level or arena picker, the top ten with nickname and tag, your place even outside the top, the house rule and how the channel checks each board, and loading, empty, no-signal and not-open-yet states. Reached from the menu, the trophy in the room, each game page, the result panel and the membership card.
+- [x] Personal vs global comparison in the result panel ("Recorde do canal: …"), a record stamp, a mascot reaction and a link to the full board.
+- [x] Headless Laboratório simulation shared by the browser and the server: pinned `matter-js` outside Phaser, a fresh engine per run, a fixed body order, deterministic trigonometry, golden step counts recorded from the old scene and equivalence tests against it ([0005](docs/decisions/0005-shared-lab-simulation.md)).
+- [x] Server replay of Laboratório results before they enter the board; replayed records are marked "máquina testada pelo canal".
+- [ ] Per-game bounds tuned with bot runs.
+- Moved to Stage 3: Rua Sem Saída launch log replay, because its timers have to move to step counters first.
 
 ### 2.3 Daily program
 
@@ -64,6 +65,7 @@ Plan, dependencies and per-game feasibility: [`docs/stage-2-plan.md`](docs/stage
 
 Depends on the headless simulation and the backend.
 
+- [ ] Rua Sem Saída replay: timers on step counters, a launch log in the result and a server replay.
 - [ ] Laboratório level editor inside the game's own workshop.
 - [ ] Publishing only levels with a solution proven by the server, with size and complexity limits and validated input.
 - [ ] Sharing by link, and playing other players' levels safely.

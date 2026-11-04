@@ -7,13 +7,15 @@ export type PublicPlayer = { id: string; nickname: string; tag: string; createdA
 
 export type BestView = { score: number; stars: number; metrics: number[]; achievedAt: string };
 
-export type BoardEntry = BestView & { position: number; nickname: string; tag: string; you: boolean };
+export type BoardEntry = BestView & { position: number; nickname: string; tag: string; you: boolean; verified: boolean };
 
-export type Standing = { position: number; total: number; best: BestView };
+export type Leader = { nickname: string; tag: string; metrics: number[]; you: boolean };
+
+export type Standing = { position: number; total: number; best: BestView; verified: boolean };
 
 export type BoardResult =
-  | (Standing & { id: string; improved: boolean; previous: BestView | null })
-  | { id: string; improved: false; previous: null; position: null; total: number; best: null };
+  | (Standing & { id: string; improved: boolean; previous: BestView | null; leader: Leader | null })
+  | { id: string; improved: false; previous: null; position: null; total: number; best: null; leader: Leader | null };
 
 export type SubmitResponse = {
   run: { id: string; verification: "checked" | "replayed"; eligible: boolean; ineligible?: IneligibleReason; score: number; stars: number };

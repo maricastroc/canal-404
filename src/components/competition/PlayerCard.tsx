@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CardIcon, OfflineIcon, PencilIcon, TrashIcon } from "@/components/art/Icons";
+import { CardIcon, OfflineIcon, PencilIcon, TrashIcon, TrophyIcon } from "@/components/art/Icons";
 import { Mascot404 } from "@/components/mascot/Mascot404";
-import { InkButton } from "@/components/ui/Primitives";
+import { InkButton, InkLink } from "@/components/ui/Primitives";
 import { useSound } from "@/lib/audio/hooks";
 import { join, leave, rename } from "@/lib/competition/client";
 import { useCompetition } from "@/lib/competition/hooks";
@@ -74,6 +74,9 @@ export function PlayerCard() {
         <div className="border-t-[3px] border-dashed border-ink/30 px-4 pb-4 pt-2">
           {player && mode === "view" ? (
             <div className="flex flex-wrap gap-2">
+              <InkLink href="/records" tone="sun" size="sm">
+                <TrophyIcon className="size-5" /> Ver recordes
+              </InkLink>
               <InkButton tone="mint" size="sm" onClick={() => setMode("rename")} disabled={status !== "online"}>
                 <PencilIcon className="size-5" /> Trocar apelido
               </InkButton>

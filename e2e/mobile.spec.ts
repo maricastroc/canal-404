@@ -15,7 +15,7 @@ test("navigates with the menu drawer", async ({ page }) => {
   await expect(menu).toBeHidden();
 });
 
-for (const path of ["/", "/games", "/characters", "/extras", "/about", "/games/food-fight"]) {
+for (const path of ["/", "/games", "/records", "/characters", "/extras", "/about", "/games/food-fight"]) {
   test(`fits the phone screen on ${path}`, async ({ page }) => {
     await page.goto(path);
     await page.waitForLoadState("networkidle");

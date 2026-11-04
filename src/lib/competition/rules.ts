@@ -1,6 +1,7 @@
-import { GRID, PARTS, RUN_TIMEOUT, STEP_MS, type PartType } from "@/games/bad-ideas-lab/config";
+import { GRID, PARTS, STEP_MS, type PartType } from "@/games/bad-ideas-lab/config";
 import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
+import { MAX_STEPS as LAB_MAX_STEPS, simulateLab } from "@/games/bad-ideas-lab/sim";
 import { AMMO, PROPS, SCORE as STREET_SCORE, TARGETS, WAVES } from "@/games/dead-end-street/config";
 import { ROUND_MS, RIVALS, SCORE as LUNCH_SCORE } from "@/games/food-fight/config";
 import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
@@ -16,7 +17,9 @@ export { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type 
 
 export type RunClaim = { won: boolean; score: number; stars: number; stats: GameStats; replay?: GameReplay };
 
-export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay";
+export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed";
+
+export type Verification = "checked" | "replayed";
 
 export type IneligibleReason = "practice" | "not_won" | "resumed" | "no_points";
 
@@ -30,7 +33,8 @@ export type Verdict =
       eligible: boolean;
       ineligible?: IneligibleReason;
       minElapsedMs: number;
-      verification: "checked";
+      verification: Verification;
+      flags: string[];
     }
   | { ok: false; reason: RejectReason; detail: string };
 
@@ -66,6 +70,7 @@ function settle(
   claim: RunClaim,
   computed: { won: boolean; score: number; stars: number; rank: RankKey; minElapsedMs: number },
   ineligible?: IneligibleReason,
+  check: { verification: Verification; flags: string[] } = { verification: "checked", flags: [] },
 ): Verdict {
   if (claim.won !== computed.won) return reject("inconsistent", "vitória não confere");
   if (claim.score !== computed.score) return reject("score_mismatch", "pontuação não confere");
@@ -79,7 +84,8 @@ function settle(
     eligible: !ineligible,
     ...(ineligible ? { ineligible } : {}),
     minElapsedMs: Math.max(0, Math.round(computed.minElapsedMs)),
-    verification: "checked",
+    verification: check.verification,
+    flags: check.flags,
   };
 }
 
@@ -141,8 +147,7 @@ const deadEndStreet: GameRule = {
   },
 };
 
-const LAB_MAX_STEPS = Math.round(RUN_TIMEOUT / STEP_MS);
-const LAB_PRACTICE = new Set(["test"]);
+const LAB_PRACTICE = new Set(BOARD_META["bad-ideas-lab"].practice);
 const PART_TYPES = new Set<string>(Object.keys(PARTS));
 
 function labPlacements(levelId: string, replay: GameReplay | undefined): { ok: true; parts: PlacedPart[] } | { ok: false; detail: string } {
@@ -186,12 +191,15 @@ const badIdeasLab: GameRule = {
     const machine = labPlacements(level, claim.replay);
     if (!machine.ok) return reject("bad_replay", machine.detail);
     if (machine.parts.length !== s.parts) return reject("inconsistent", "número de peças não confere");
+    const replay = simulateLab(def, machine.parts);
+    if (replay.outcome !== "success") return reject("replay_failed", `a máquina terminou em ${replay.outcome}`);
     const score = 1000 + (total - s.parts) * 150 + (s.runs === 1 ? 300 : 0);
     const stars = s.parts <= def.par ? 3 : s.parts === def.par + 1 ? 2 : 1;
     return settle(
       claim,
-      { won: true, score, stars, rank: [-s.parts, -s.steps, 0], minElapsedMs: s.steps * STEP_MS },
+      { won: true, score, stars, rank: [-s.parts, -replay.steps, 0], minElapsedMs: replay.steps * STEP_MS },
       LAB_PRACTICE.has(level) ? "practice" : undefined,
+      { verification: "replayed", flags: replay.steps === s.steps ? [] : ["steps_mismatch"] },
     );
   },
 };

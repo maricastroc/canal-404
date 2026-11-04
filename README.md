@@ -103,7 +103,7 @@ npm run test:e2e
 
 With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests: ranking and tie-break rules for every game, result validation, signed tickets, nicknames, idempotent and concurrent submissions, rate limits, retention, the API routes and how they behave when the database is missing or down.
 
-`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch. The scoreboard tests win a Laboratório level, join with a nickname, check the record and the "Seu melhor" line on a second try, leave the board, and play with the board down or not configured; the new panels pass an axe accessibility check.
+`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch. The scoreboard tests win a Laboratório level, join with a nickname, check that the server replayed the machine, the record and the "Seu melhor" line on a second try, leave the board, and play with the board down or not configured. The record arcade tests check the board, your place, the rules, switching games and levels, the empty, no-signal and not-open states and the trophy in the room; the new panels pass an axe accessibility check.
 
 A performance budget (`e2e/performance.spec.ts`) runs against production builds: each portal page must stay under 1.3 MB of JavaScript, and the game engine may only load on the play page.
 
@@ -135,7 +135,8 @@ npm run test:visual:update
 | --- | --- |
 | `/` | Broadcast room: TV with the game of the week and channels, arcade cabinet that opens the catalog, radio with music, the 404 mascot and objects hiding secrets |
 | `/games` | Catalog with category filters |
-| `/games/[slug]` | Game page (playable or "off the air") |
+| `/games/[slug]` | Game page (playable or "off the air"), with the game's champion when the scoreboard is on |
+| `/records` | Record arcade: every board with its rule, the top ten and your place (`?game=` and `?level=` pick the board) |
 | `/play/[slug]` | Real loading screen, intro, match, pause and results |
 | `/characters` | Character select with reactions |
 | `/extras` | Scoreboard membership card, downloadable posters (PNG), music, achievements and secrets |
@@ -170,6 +171,7 @@ src/
     operation-recess/    side-scrolling action platformer (phases, hero, enemies, boss, sounds)
     pajama-war/          three-way pillow fight (arenas, fighters, AI, pillows, sounds)
     competition/         nickname form and the scoreboard membership card
+    records/             record arcade and the champion strip on game pages
   lib/
     audio/               Web Audio engine, effects and music
     competition/         ranking rules, nickname filter and the browser client for the scoreboard
@@ -200,7 +202,7 @@ A physics puzzle in Lina's garage. The first level is a quick test: one ramp, a 
 
 Each level has a box of counted parts (ramps, springs, fans and conveyor belts) and a dashed build area. Parts can be dragged with mouse or finger, or placed with the keyboard: numbers pick, arrows move, R rotates, Enter places, Space runs the machine and H asks for a hint. When a run fails, the ball's path stays on screen, Lina reacts and, on the second failure, gives a hint. Stars depend on how many parts were used.
 
-The levels were calibrated in simulation with the same physics rules as the game (`config.ts`, `levels.ts` and `geometry.ts`): each one has tested solutions, and single-part shortcuts don't work.
+The physics lives in `sim.ts`, outside Phaser, so the browser and the server run the same simulation: a pinned `matter-js`, fixed 1/60 s steps and deterministic trigonometry (`trig.ts`), so a machine ends the same way in every browser. The scene only draws, plays sounds and narrates what the simulation reports. The server replays every machine sent to the board ([decision 0005](docs/decisions/0005-shared-lab-simulation.md)). The levels were calibrated with the same rules (`config.ts`, `levels.ts` and `geometry.ts`): each one has tested solutions (`solutions.ts`), and single-part shortcuts don't work.
 
 ## Guerra de Lanche (`food-fight`)
 

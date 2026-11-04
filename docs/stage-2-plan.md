@@ -65,7 +65,7 @@ Ties on all three numbers go to the earliest result. Each rule has a one-line ex
 | Game | 2.1 | Target | Status after Stage 2 |
 | --- | --- | --- | --- |
 | Laboratório | schema, placements checked with `geometry.ts`, inventory, score recomputed | server replay of the submitted machine with the shared simulation | **replayed**: a result is accepted only if the server's simulation reaches the goal |
-| Rua Sem Saída | score recomputed from stats, reachable target sums, ammo bounds, ticket timing | launch log with step indices, replayed after timers move to step counters | **checked** until the replay exists; the replay is planned in 2.2 if the extraction stays small, otherwise moved to Stage 3 |
+| Rua Sem Saída | score recomputed from stats, reachable target sums, ammo bounds, ticket timing | launch log with step indices, replayed after timers move to step counters | **checked**; the replay moved to Stage 3 (see 2.2 below) |
 | Guerra de Lanche, Operação: Recreio, Guerra do Pijama | score recomputed from stats, bounds from level data, ticket timing | the same, plus seeded randomness for daily challenges | **checked** (plausibility only) |
 | Férias Fora do Ar | score recomputed, minimum playtime | same | **checked** (plausibility only) |
 
@@ -101,6 +101,10 @@ The day is defined in `America/Sao_Paulo` and changes at 00:00 local time. The c
 - Personal vs global comparison in the result panel and a short record vignette.
 - Headless Laboratório simulation (`matter-js` outside Phaser, canonical body order, deterministic trigonometry in the step), equivalence tests against the current scene, server replay before accepting results.
 - Per-game bounds tuned with bot runs; Rua Sem Saída launch log if the timer refactor stays contained.
+
+**Status.** Shipped: the record arcade at `/records` (reached from the menu, the trophy in the room, each game page, the result panel and the membership card), the comparison with the channel record, a record stamp and a mascot reaction in the result panel, and the shared Laboratório simulation with server replay ([0005](decisions/0005-shared-lab-simulation.md)). Not shipped:
+- Rua Sem Saída replay. Shots end, targets appear and hit-stops run on `time.now`; moving them to step counters touches the feel of every throw and needs its own careful pass. It moves to Stage 3, next to the editor that also needs replays.
+- Bounds tuned with bot runs. The rules still use the bounds from the level data, which are loose on purpose; tuning them needs a bot per game and is kept on the roadmap.
 
 ### 2.3 Daily program
 - Daily challenge generator, daily tickets and boards, day change handling, a TV channel and mascot lines for the "Programa especial do dia".

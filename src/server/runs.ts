@@ -1,7 +1,7 @@
 import type { Player, Run } from "@/generated/prisma/client";
 import { boardId, judgeRun, RULES, type IneligibleReason, type RunClaim, type Verdict } from "@/lib/competition/rules";
 import type { BestView, SubmitResponse } from "@/lib/competition/types";
-import { bestView, standing } from "./boards";
+import { bestView, leaderOf, standing } from "./boards";
 import { isUniqueViolation, type Db } from "./db";
 import { HttpError } from "./http";
 import { LIMITS, consume, peek } from "./rate-limit";
@@ -18,6 +18,7 @@ export const REJECTION_TEXT: Record<string, string> = {
   inconsistent: "Os números dessa partida não fecham.",
   score_mismatch: "A pontuação não bate com o que aconteceu na partida.",
   bad_replay: "A máquina enviada não pode ser montada nessa fase.",
+  replay_failed: "O laboratório do canal montou essa máquina e a bolinha não chegou lá.",
   too_fast: "Essa partida terminou rápido demais para ser verdade.",
 };
 
@@ -37,6 +38,7 @@ async function outcomeOf(db: Db, run: Run, repeated: boolean): Promise<SubmitOut
   const game = run.game as Ticket["game"];
   const board = run.board ? await standing(db, game, run.board, run.playerId) : null;
   const isBest = board ? (await db.personalBest.findUnique({ where: { runId: run.id }, select: { runId: true } })) !== null : false;
+  const leader = run.board ? await leaderOf(db, game, run.board, run.playerId) : null;
   const ineligible = ineligibleOf(run);
   return {
     run: {
@@ -49,8 +51,8 @@ async function outcomeOf(db: Db, run: Run, repeated: boolean): Promise<SubmitOut
     },
     board: run.board
       ? board
-        ? { ...board, id: run.board, improved: isBest, previous: null }
-        : { id: run.board, improved: false, previous: null, position: null, total: await db.personalBest.count({ where: { board: run.board, player: { status: "active" } } }), best: null }
+        ? { ...board, id: run.board, improved: isBest, previous: null, leader }
+        : { id: run.board, improved: false, previous: null, position: null, total: await db.personalBest.count({ where: { board: run.board, player: { status: "active" } } }), best: null, leader }
       : null,
     repeated,
   };
@@ -113,7 +115,7 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
   if (elapsed + ELAPSED_SLACK_MS < verdict.minElapsedMs * ELAPSED_RATIO) return recordRejection(db, ticket, player, claim, "too_fast", now);
 
   const board = boardFor(ticket, verdict);
-  const flags = verdict.ineligible ? [`${INELIGIBLE_FLAG}${verdict.ineligible}`] : [];
+  const flags = [...verdict.flags, ...(verdict.ineligible ? [`${INELIGIBLE_FLAG}${verdict.ineligible}`] : [])];
   try {
     return await db.$transaction(async (tx) => {
       const run = await tx.run.create({
@@ -168,6 +170,7 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
         improved = changed > 0;
       }
       const place = board ? await standing(tx, ticket.game, board, player.id) : null;
+      const leader = board ? await leaderOf(tx, ticket.game, board, player.id) : null;
       return {
         run: {
           id: run.id,
@@ -179,8 +182,8 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
         },
         board: board
           ? place
-            ? { ...place, id: board, improved, previous }
-            : { id: board, improved: false as const, previous: null, position: null, total: await tx.personalBest.count({ where: { board, player: { status: "active" } } }), best: null }
+            ? { ...place, id: board, improved, previous, leader }
+            : { id: board, improved: false as const, previous: null, position: null, total: await tx.personalBest.count({ where: { board, player: { status: "active" } } }), best: null, leader }
           : null,
         repeated: false,
       };

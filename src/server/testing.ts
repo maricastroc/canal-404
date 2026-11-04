@@ -1,4 +1,6 @@
+import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
+import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { boardId, type GameSlug, type RunClaim } from "@/lib/competition/rules";
 import { getDb, type Db } from "./db";
 import { hashToken, newTag, newToken } from "./identity";
@@ -34,9 +36,11 @@ export function boardOf(game: GameSlug, level: string | null) {
   return boardId(game, level);
 }
 
-export function labClaim(level: string, parts: { type: string; x: number; y: number; rot: number }[], steps: number, runs = 2): RunClaim {
+export function labClaim(level: string, parts: PlacedPart[], options: { steps?: number; runs?: number } = {}): RunClaim {
   const def = LAB_LEVELS.find((l) => l.id === level)!;
   const total = Object.values(def.inventory).reduce((a, b) => a + (b ?? 0), 0);
+  const runs = options.runs ?? 2;
+  const steps = options.steps ?? simulateLab(def, parts).steps;
   return {
     won: true,
     score: 1000 + (total - parts.length) * 150 + (runs === 1 ? 300 : 0),

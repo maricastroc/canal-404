@@ -1,3 +1,4 @@
+import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { beforeEach, describe, expect, it } from "vitest";
 import { standing, topOfBoard } from "./boards";
 import { cleanup } from "./cleanup";
@@ -7,7 +8,7 @@ import { submitRun } from "./runs";
 import { boardOf, hasTestDb, labClaim, makePlayer, resetDb, streetClaim, testDb, ticketFor } from "./testing";
 
 const START = Date.UTC(2026, 10, 3, 15, 0, 0);
-const PIXEL = [{ type: "ramp", x: 620, y: 420, rot: 4 }];
+const PIXEL: PlacedPart[] = [{ type: "ramp", x: 620, y: 420, rot: 4 }];
 const STREET = boardOf("dead-end-street", null);
 
 async function rejectionOf(promise: Promise<unknown>) {
@@ -108,6 +109,26 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     expect(await standing(db, "dead-end-street", STREET, b.player.id)).toMatchObject({ position: 2, total: 3 });
   });
 
+  it("tells each submission who holds the channel record", async () => {
+    const champ = await makePlayer(db, "Campea");
+    const rival = await makePlayer(db, "Rival");
+    const first = await submitStreet(champ.player.id, { targetPoints: 900, combos: 3, mess: 0, launches: 4 }, START, champ.player);
+    expect(first.board?.leader).toMatchObject({ nickname: "Campea", you: true });
+    const second = await submitStreet(rival.player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START + 3000, rival.player);
+    expect(second.board?.leader).toMatchObject({ nickname: "Campea", tag: champ.player.tag, you: false });
+    expect(second.board).toMatchObject({ position: 2, verified: false });
+  });
+
+  it("marks Laboratório records as replayed by the server", async () => {
+    const { player } = await makePlayer(db);
+    const { ticket } = ticketFor("bad-ideas-lab", "pixel", player.id, START);
+    const outcome = await submitRun(db, { player, ticket, claim: labClaim("pixel", PIXEL), now: new Date(START + 20_000) });
+    expect(outcome.run.verification).toBe("replayed");
+    expect(outcome.board).toMatchObject({ verified: true, best: { metrics: [1, 256] } });
+    const top = await topOfBoard(db, "bad-ideas-lab", boardOf("bad-ideas-lab", "pixel"), 10, null);
+    expect(top.entries[0]).toMatchObject({ verified: true, metrics: [1, 256] });
+  });
+
   it("uses fewer launches to break a score tie", async () => {
     const a = await makePlayer(db, "Menos Tiros");
     const b = await makePlayer(db, "Mais Tiros");
@@ -135,10 +156,10 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
   it("keeps per-level boards apart and leaves practice levels off the board", async () => {
     const { player } = await makePlayer(db);
     const pixel = ticketFor("bad-ideas-lab", "pixel", player.id, START).ticket;
-    const outcome = await submitRun(db, { player, ticket: pixel, claim: labClaim("pixel", PIXEL, 300), now: new Date(START + 20_000) });
+    const outcome = await submitRun(db, { player, ticket: pixel, claim: labClaim("pixel", PIXEL), now: new Date(START + 20_000) });
     expect(outcome.board).toMatchObject({ id: boardOf("bad-ideas-lab", "pixel"), position: 1 });
     const practice = ticketFor("bad-ideas-lab", "test", player.id, START).ticket;
-    const tutorial = await submitRun(db, { player, ticket: practice, claim: labClaim("test", [{ type: "ramp", x: 680, y: 560, rot: 4 }], 300), now: new Date(START + 20_000) });
+    const tutorial = await submitRun(db, { player, ticket: practice, claim: labClaim("test", [{ type: "ramp", x: 680, y: 560, rot: 4 }]), now: new Date(START + 20_000) });
     expect(tutorial.board).toBeNull();
     expect(tutorial.run).toMatchObject({ eligible: false, ineligible: "practice" });
     expect(await db.personalBest.count()).toBe(1);

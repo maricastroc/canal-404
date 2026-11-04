@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  BadgeCheck,
   CircleHelp,
   Dices,
   Download,
@@ -63,6 +64,7 @@ export const CardIcon = make(IdCard);
 export const TrashIcon = make(Trash2);
 export const OfflineIcon = make(WifiOff);
 export const PencilIcon = make(PencilLine);
+export const VerifiedIcon = make(BadgeCheck);
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

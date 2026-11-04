@@ -19,6 +19,7 @@ const PAGES = [
   { path: "/", name: "room" },
   { path: "/games", name: "catalog" },
   { path: "/games/food-fight", name: "game-page" },
+  { path: "/records?game=bad-ideas-lab&level=pixel", name: "records" },
   { path: "/characters", name: "characters" },
   { path: "/extras", name: "extras" },
   { path: "/about", name: "about" },
@@ -26,9 +27,30 @@ const PAGES = [
 
 const MEMBER = { id: "00000000-0000-4000-8000-000000000404", nickname: "Pato Veloz", tag: "0404", createdAt: "2026-10-23T15:00:00.000Z" };
 
+const CHAMPIONS = ["Lina Turbo", "Zé Engenhoca", "Mila Chiclete", "Capitão Pudim", "Robô do Bairro", "Gato Pixel"];
+
+function board(url: URL) {
+  const game = url.searchParams.get("game");
+  const lab = game === "bad-ideas-lab";
+  const entries = CHAMPIONS.map((nickname, i) => ({
+    position: i + 1,
+    nickname,
+    tag: String(4270 + i * 13),
+    you: false,
+    verified: lab,
+    score: 1150,
+    stars: 3,
+    metrics: lab ? [1, 248 + i * 3] : [2400 - i * 120, 4 + (i % 3), 6 + i],
+    achievedAt: "2026-11-03T12:00:00.000Z",
+  }));
+  const best = { score: 1150, stars: 3, metrics: lab ? [1, 266] : [1200, 6, 3], achievedAt: "2026-11-03T12:00:00.000Z" };
+  return { board: { id: `${game}/all/v1`, game, level: null, explain: "", metrics: [] }, entries, total: 14, you: { nickname: MEMBER.nickname, tag: MEMBER.tag, standing: { position: 9, total: 14, verified: lab, best } } };
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/status", (route) => route.fulfill({ json: { status: "online" } }));
   await page.route("**/api/players/me", (route) => route.fulfill({ json: { player: MEMBER } }));
+  await page.route("**/api/leaderboards?*", (route) => route.fulfill({ json: board(new URL(route.request().url())) }));
   await page.clock.setFixedTime(NOW);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addInitScript((progress) => {

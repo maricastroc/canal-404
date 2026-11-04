@@ -78,9 +78,12 @@ test.describe("scoreboard with the backend", () => {
     const board = result.getByRole("region", { name: "Placar do canal" });
     await expect(board).toContainText("Quer ver seu nome no placar do canal?");
     await board.getByLabel("Seu apelido").fill(nickname());
+    const submitted = page.waitForResponse((r) => r.url().endsWith("/api/runs") && r.request().method() === "POST" && r.status() === 201);
     await board.getByRole("button", { name: "Entrar no placar" }).click();
+    expect((await (await submitted).json()).run).toMatchObject({ verification: "replayed", eligible: true });
     await expect(board.getByRole("status")).toContainText(/Novo recorde pessoal!|Primeiro lugar no placar!/, { timeout: simTime(15_000) });
     await expect(board.getByRole("status")).toContainText(/1 peça · \d+ passos\. Você está em \d+º de \d+\./);
+    await expect(board.getByRole("link", { name: "Ver o fliperama de recordes" })).toHaveAttribute("href", "/records?game=bad-ideas-lab&level=pixel");
 
     const axe = await new AxeBuilder({ page }).include('[aria-label="Placar do canal"]').analyze();
     expect(axe.violations).toEqual([]);

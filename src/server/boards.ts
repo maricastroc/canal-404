@@ -1,9 +1,9 @@
 import type { PersonalBest } from "@/generated/prisma/client";
-import type { BestView, BoardEntry, Standing } from "@/lib/competition/types";
+import type { BestView, BoardEntry, Leader, Standing } from "@/lib/competition/types";
 import { metricValues, type GameSlug, type RankKey } from "@/lib/competition/boards";
 import type { Db, Tx } from "./db";
 
-export type { BestView, BoardEntry, Standing };
+export type { BestView, BoardEntry, Leader, Standing };
 
 type BestRow = Pick<PersonalBest, "rank1" | "rank2" | "rank3" | "score" | "stars" | "achievedAt" | "runId">;
 
@@ -18,7 +18,10 @@ export function bestView(game: GameSlug, row: BestRow): BestView {
 const ORDER = [{ rank1: "desc" }, { rank2: "desc" }, { rank3: "desc" }, { achievedAt: "asc" }, { runId: "asc" }] as const;
 
 export async function standing(db: Db | Tx, game: GameSlug, board: string, playerId: string): Promise<Standing | null> {
-  const mine = await db.personalBest.findUnique({ where: { playerId_board: { playerId, board } }, include: { player: { select: { status: true } } } });
+  const mine = await db.personalBest.findUnique({
+    where: { playerId_board: { playerId, board } },
+    include: { player: { select: { status: true } }, run: { select: { verification: true } } },
+  });
   if (!mine) return null;
   const [r1, r2, r3] = rankOf(mine);
   const [ahead, visible] = await Promise.all([
@@ -39,16 +42,16 @@ export async function standing(db: Db | Tx, game: GameSlug, board: string, playe
     db.personalBest.count({ where: { board, player: { status: "active" } } }),
   ]);
   const total = visible + (mine.player.status === "active" ? 0 : 1);
-  return { position: ahead + 1, total, best: bestView(game, mine) };
+  return { position: ahead + 1, total, best: bestView(game, mine), verified: mine.run.verification === "replayed" };
 }
 
-export async function topOfBoard(db: Db, game: GameSlug, board: string, limit: number, playerId: string | null): Promise<{ entries: BoardEntry[]; total: number }> {
+export async function topOfBoard(db: Db | Tx, game: GameSlug, board: string, limit: number, playerId: string | null): Promise<{ entries: BoardEntry[]; total: number }> {
   const [rows, total] = await Promise.all([
     db.personalBest.findMany({
       where: { board, player: { status: "active" } },
       orderBy: [...ORDER],
       take: limit,
-      include: { player: { select: { nickname: true, tag: true } } },
+      include: { player: { select: { nickname: true, tag: true } }, run: { select: { verification: true } } },
     }),
     db.personalBest.count({ where: { board, player: { status: "active" } } }),
   ]);
@@ -58,6 +61,13 @@ export async function topOfBoard(db: Db, game: GameSlug, board: string, limit: n
     nickname: row.player.nickname,
     tag: row.player.tag,
     you: row.playerId === playerId,
+    verified: row.run.verification === "replayed",
   }));
   return { entries, total };
+}
+
+export async function leaderOf(db: Db | Tx, game: GameSlug, board: string, playerId: string | null): Promise<Leader | null> {
+  const { entries } = await topOfBoard(db, game, board, 1, playerId);
+  const top = entries[0];
+  return top ? { nickname: top.nickname, tag: top.tag, metrics: top.metrics, you: top.you } : null;
 }

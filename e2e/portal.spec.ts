@@ -2,6 +2,7 @@ import { expect, test } from "./fixtures";
 
 const SECTIONS = [
   { link: "Jogos", heading: "Catálogo de jogos", path: "/games" },
+  { link: "Recordes", heading: "Fliperama de recordes", path: "/records" },
   { link: "Personagens", heading: "Personagens do canal", path: "/characters" },
   { link: "Extras", heading: "Extras", path: "/extras" },
   { link: "Sobre", heading: "Sobre o canal", path: "/about" },

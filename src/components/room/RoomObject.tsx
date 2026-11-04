@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { forwardRef, type ReactNode } from "react";
 import { spotStyle, type Spot } from "./layout";
 
@@ -19,6 +20,11 @@ type CommonProps = {
 
 type ButtonProps = CommonProps & {
   onActivate: () => void;
+};
+
+type LinkProps = CommonProps & {
+  href: string;
+  onActivate?: () => void;
 };
 
 const base =
@@ -65,3 +71,34 @@ export const RoomButton = forwardRef<HTMLButtonElement, ButtonProps>(function Ro
     </button>
   );
 });
+
+export function RoomLink({ spot, href, label, hint, onHint, onHoverSound, hit = "shape", className = "", children, onActivate, z = 10 }: LinkProps) {
+  return (
+    <Link
+      href={href}
+      onClick={(event) => {
+        if (!onActivate || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+        event.preventDefault();
+        onActivate();
+      }}
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") {
+          onHoverSound?.();
+          if (hint) onHint?.(hint, spot);
+        }
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") onHint?.(null, spot);
+      }}
+      onFocus={() => {
+        if (hint) onHint?.(hint, spot);
+      }}
+      onBlur={() => onHint?.(null, spot)}
+      className={`${base} ${hitClass(hit)} ${className}`}
+      style={{ ...spotStyle(spot), zIndex: z }}
+    >
+      <span className="sr-only">{label}</span>
+      <span className={art}>{children}</span>
+    </Link>
+  );
+}

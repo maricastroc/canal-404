@@ -1,3 +1,4 @@
+import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ApiErrorBody, LeaderboardResponse, PublicPlayer } from "@/lib/competition/types";
 import { closeDb, type Db } from "@/server/db";
@@ -11,7 +12,8 @@ import { POST as submit } from "./runs/route";
 import { POST as ticket } from "./runs/tickets/route";
 import { GET as status } from "./status/route";
 
-const PIXEL = [{ type: "ramp", x: 620, y: 420, rot: 4 }];
+const JUICE: PlacedPart[] = [{ type: "fan", x: 160, y: 580, rot: 0 }];
+const QUICK_JUICE: PlacedPart[] = [{ type: "fan", x: 220, y: 580, rot: 0 }];
 
 async function body<T = Record<string, unknown>>(response: Response) {
   return (await response.json()) as T;
@@ -148,13 +150,13 @@ describe.skipIf(!hasTestDb)("competition API", () => {
 
   it("submits a run, answers with the board standing and accepts the retry", async () => {
     const { cookie } = await joinAs();
-    const { ticket: token } = await ticketAs(cookie, "bad-ideas-lab", "pixel");
-    const payload = { ticket: token, result: labClaim("pixel", PIXEL, 2) };
+    const { ticket: token } = await ticketAs(cookie, "bad-ideas-lab", "juice");
+    const payload = { ticket: token, result: labClaim("juice", JUICE) };
     const first = await submit(apiRequest("/api/runs", { method: "POST", body: payload, cookie }));
     expect(first.status).toBe(201);
     const data = await body(first);
-    expect(data.run).toMatchObject({ verification: "checked", eligible: true, score: 1150, stars: 3 });
-    expect(data.board).toMatchObject({ id: "bad-ideas-lab/pixel/v1", improved: true, position: 1, total: 1, best: { metrics: [1, 2] } });
+    expect(data.run).toMatchObject({ verification: "replayed", eligible: true, score: 1150, stars: 3 });
+    expect(data.board).toMatchObject({ id: "bad-ideas-lab/juice/v1", improved: true, position: 1, total: 1, best: { metrics: [1, 112] } });
     const retry = await submit(apiRequest("/api/runs", { method: "POST", body: payload, cookie }));
     expect(retry.status).toBe(200);
     expect((await body(retry)).repeated).toBe(true);
@@ -186,16 +188,20 @@ describe.skipIf(!hasTestDb)("competition API", () => {
   it("serves the board with the rule, metrics and the player's own standing", async () => {
     const a = await joinAs("Pato Veloz", "192.0.2.1");
     const b = await joinAs("Lina Turbo", "192.0.2.2");
-    for (const [who, steps] of [
-      [a.cookie, 150],
-      [b.cookie, 120],
+    for (const [who, machine] of [
+      [a.cookie, JUICE],
+      [b.cookie, QUICK_JUICE],
     ] as const) {
-      const { ticket: token } = await ticketAs(who, "bad-ideas-lab", "pixel");
-      await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: token, result: labClaim("pixel", PIXEL, steps) }, cookie: who }));
+      const { ticket: token } = await ticketAs(who, "bad-ideas-lab", "juice");
+      await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: token, result: labClaim("juice", machine) }, cookie: who }));
     }
-    const response = await boardGet(apiRequest("/api/leaderboards?game=bad-ideas-lab&level=pixel&limit=5", { cookie: a.cookie }));
+    const response = await boardGet(apiRequest("/api/leaderboards?game=bad-ideas-lab&level=juice&limit=5", { cookie: a.cookie }));
     const data = await body<LeaderboardResponse>(response);
-    expect(data.board).toMatchObject({ id: "bad-ideas-lab/pixel/v1", explain: expect.any(String), metrics: [{ label: "Peças" }, { label: "Passos da máquina" }] });
+    expect(data.board).toMatchObject({ id: "bad-ideas-lab/juice/v1", explain: expect.any(String), metrics: [{ label: "Peças" }, { label: "Passos da máquina" }] });
+    expect(data.entries.map((e) => e.metrics)).toEqual([
+      [1, 98],
+      [1, 112],
+    ]);
     expect(data.entries.map((e) => [e.nickname, e.you])).toEqual([
       ["Lina Turbo", false],
       ["Pato Veloz", true],

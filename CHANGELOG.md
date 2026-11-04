@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Fliperama de recordes (Stage 2.2)
+- A new "Fliperama de recordes" page shows the best of the channel in every game: a cartridge per game, a picker for each level or arena, the top ten with nickname and tag, and your own place even when you are outside the top. Each board explains its rule, its tie-breaks and how the channel checks results.
+- It opens from the new "Recordes" menu item, the trophy in the broadcast room, a "Quadro dos campeões" strip on each game page, the result panel and the membership card in Extras.
+- The result panel compares your best with the channel record ("Recorde do canal: Lina Turbo #0427 · 1 peça · 98 passos"), stamps "Recorde!" when you beat your own, has the 404 mascot react, and links to the full board.
+- Laboratório machines are now tested by the server before they enter the board: the channel builds the machine again with the same physics the game uses and only accepts it if the ball reaches the goal. Those records are marked "máquina testada pelo canal". The game plays exactly as before: every known solution takes the same number of steps ([decision 0005](docs/decisions/0005-shared-lab-simulation.md)).
+- Fix: small cartridge labels and other new text keep a readable contrast (checked with axe).
+
 ### Placar do canal (Stage 2.1)
 - Every game now reports structured stats with its result (launches, parts, hits, throws, energy, time and more), without any change to how it plays or scores.
 - A scoreboard backend in the portal itself: PostgreSQL with Prisma, anonymous players with a nickname and no account, signed run tickets, results recomputed and checked on the server, personal records that stay correct under concurrent submissions, rate limits and a daily cleanup ([decision 0003](docs/decisions/0003-competition-backend.md), [decision 0004](docs/decisions/0004-result-validation.md)).

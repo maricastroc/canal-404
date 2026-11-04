@@ -41,7 +41,7 @@ import { useSchedule } from "@/components/catalog/useSchedule";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { bestRecord, FALLBACK_WEEKLY, plays, unplayedGames } from "@/lib/schedule";
 import { RoomBackdrop } from "./RoomBackdrop";
-import { RoomButton } from "./RoomObject";
+import { RoomButton, RoomLink } from "./RoomObject";
 import { useMascotDirector } from "./useMascotDirector";
 import { unlockedTracks } from "@/lib/audio/unlocks";
 
@@ -348,6 +348,20 @@ export function BroadcastRoom() {
     window.setTimeout(() => router.push("/games"), reduced ? 0 : 480);
   }, [play, reduced, router, say]);
 
+  const handleTrophy = useCallback(() => {
+    play("achievement");
+    setShine(true);
+    say({
+      text: records
+        ? `Seu nome já está na base do troféu: ${records.score.toLocaleString("pt-BR")} pontos em ${records.game.title}. Bora ver o quadro dos campeões!`
+        : "Melhor Canal de 2004! Agora vamos ver quem manda no fliperama...",
+      expression: "excited",
+      duration: 2000,
+      announce: false,
+    });
+    window.setTimeout(() => router.push("/records"), reduced ? 0 : 520);
+  }, [play, reduced, records, router, say]);
+
   const tracks = useMemo(() => unlockedTracks(progress), [progress]);
 
   const toggleRadio = useCallback(() => {
@@ -584,27 +598,18 @@ export function BroadcastRoom() {
           <OnAirSign lit={music.playing} />
         </div>
 
-        <RoomButton
+        <RoomLink
           spot={SPOTS.trophy}
-          label="Troféu de 2004"
-          hint="Troféu de Melhor Canal de 2004."
+          href="/records"
+          label="Troféu de 2004: abrir o quadro dos campeões no fliperama de recordes"
+          hint="Troféu de Melhor Canal de 2004. O quadro dos campeões fica guardado aqui."
           onHint={onHint}
           onHoverSound={hover}
-          onActivate={() => {
-            setShine(true);
-            window.setTimeout(() => setShine(false), 1200);
-            say2(
-              records
-                ? `Melhor Canal de 2004! E agora tem seu nome na base: ${records.score.toLocaleString("pt-BR")} pontos em ${records.game.title}.`
-                : "Melhor Canal de 2004! O único concorrente era a gente mesmo. Ganhamos de lavada.",
-              "excited",
-              "achievement",
-            );
-          }}
+          onActivate={handleTrophy}
           z={7}
         >
           <TrophyArt shine={shine} record={Boolean(records)} />
-        </RoomButton>
+        </RoomLink>
 
         <RoomButton
           spot={SPOTS.lamp}

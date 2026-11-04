@@ -7,12 +7,14 @@ import { GameCover } from "@/components/art/Covers";
 import { GAME_LOGOS, GameHowToPanel } from "@/components/art/GameLogos";
 import { ArrowLeftIcon, PlayIcon } from "@/components/art/Icons";
 import { GameStats } from "@/components/catalog/GameStats";
+import { ChampionTicker } from "@/components/records/ChampionTicker";
 import { WeeklyPlayLink } from "@/components/catalog/WeeklyPlayLink";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkLink, PaperPanel, Tag } from "@/components/ui/Primitives";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 import { CATEGORY_LABELS, GAMES, getGame } from "@/games/registry";
+import { isGameSlug } from "@/lib/competition/boards";
 import { CHARACTERS } from "@/lib/characters";
 import { ogImage, pageMetadata } from "@/lib/site";
 
@@ -98,6 +100,7 @@ export default async function GamePage({ params }: PageProps<"/games/[slug]">) {
                   <PlayIcon className="size-7 text-ink" /> Jogar
                 </InkLink>
                 <GameStats slug={game.slug} levels={game.levels} levelWord={game.levelWord} />
+                {isGameSlug(game.slug) ? <ChampionTicker slug={game.slug} levelWord={game.levelWord} /> : null}
               </div>
             ) : (
               <div className="mt-5 rounded-xl border-[3px] border-dashed border-ink bg-cream-2 p-4">
