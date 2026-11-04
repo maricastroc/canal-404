@@ -1,6 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { expect, openGame, simTime, stage, test } from "./fixtures";
+import { accessibilityViolations, expect, openGame, simTime, stage, test } from "./fixtures";
 
 const LAB = { slug: "bad-ideas-lab", title: "Laboratório de Péssimas Ideias" };
 
@@ -85,8 +84,7 @@ test.describe("scoreboard with the backend", () => {
     await expect(board.getByRole("status")).toContainText(/1 peça · \d+ passos\. Você está em \d+º de \d+\./);
     await expect(board.getByRole("link", { name: "Ver o fliperama de recordes" })).toHaveAttribute("href", "/records?game=bad-ideas-lab&level=pixel");
 
-    const axe = await new AxeBuilder({ page }).include('[aria-label="Placar do canal"]').analyze();
-    expect(axe.violations).toEqual([]);
+    expect(await accessibilityViolations(page, '[aria-label="Placar do canal"]')).toEqual([]);
 
     await result.getByRole("button", { name: "Refazer fase" }).click();
     await expect(result).toBeHidden();
@@ -141,8 +139,7 @@ test.describe("scoreboard without the backend", () => {
     await page.goto("/extras");
     const card = page.getByTestId("player-card");
     await expect(card).toContainText("Em breve");
-    const axe = await new AxeBuilder({ page }).include('[data-testid="player-card"]').analyze();
-    expect(axe.violations).toEqual([]);
+    expect(await accessibilityViolations(page, '[data-testid="player-card"]')).toEqual([]);
   });
 
   test("explains the board is off the air when the status check fails", async ({ page, problems }) => {

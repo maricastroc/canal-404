@@ -1,6 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { accessibilityViolations, expect, test } from "./fixtures";
 
 const MEMBER = { id: "00000000-0000-4000-8000-000000000404", nickname: "Pato Veloz", tag: "0404", createdAt: "2026-10-23T15:00:00.000Z" };
 
@@ -49,8 +48,7 @@ test.describe("record arcade", () => {
     const rules = page.getByRole("region", { name: "Regras da casa" });
     await expect(rules).toContainText("Menos peças vence.");
     await expect(rules).toContainText("monta sua máquina de novo");
-    const axe = await new AxeBuilder({ page }).include("main").analyze();
-    expect(axe.violations).toEqual([]);
+    expect(await accessibilityViolations(page, "main")).toEqual([]);
   });
 
   test("switches games and levels from the cartridges", async ({ page }) => {
@@ -99,8 +97,7 @@ test.describe("record arcade", () => {
     await page.goto("/records?game=pajama-war");
     await expect(page.getByRole("region", { name: "Guerra do Pijama" })).toContainText("O fliperama ainda não abriu");
     await expect(page.getByRole("region", { name: "Seu lugar" })).toContainText("Quando o placar estrear");
-    const axe = await new AxeBuilder({ page }).include("main").analyze();
-    expect(axe.violations).toEqual([]);
+    expect(await accessibilityViolations(page, "main")).toEqual([]);
   });
 
   test("opens from the trophy in the broadcast room", async ({ page }) => {
