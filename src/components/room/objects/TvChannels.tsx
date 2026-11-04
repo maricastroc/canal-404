@@ -4,8 +4,8 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { Feather, Head, Pillow } from "@/components/art/PajamaWarArt";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { P } from "@/lib/palette";
-import { CartoonTapeScreen, KaraokeScreen, ResortVideoScreen, StreetAdScreen } from "./TapeScreens";
-import { TAPES } from "./tapes";
+import { TAPE_PROGRAMS } from "../tapes";
+import { TAPES, isTape } from "./tapes";
 
 export type ChannelId = string;
 
@@ -14,7 +14,7 @@ export type Channel = {
   number: string;
   name: string;
   game?: GameMeta;
-  cta?: { href: string; label: string; context: string; play?: boolean };
+  cta?: { href: string; label: string; context: string; play?: boolean; pill?: boolean };
   hint?: string;
 };
 
@@ -44,7 +44,7 @@ const TAPE_CHANNELS: Channel[] = TAPES.map((tape) => ({
   name: tape.name,
   ...(tape.id === "tape-street"
     ? {
-        cta: { href: "/play/dead-end-street", label: "Jogar agora", context: "Rua Sem Saída", play: true },
+        cta: { href: "/play/dead-end-street", label: "Jogar agora", context: "Rua Sem Saída", play: true, pill: true },
         hint: "Um comercial de 2004 da Rua Sem Saída. Clica na tela pra jogar.",
       }
     : {}),
@@ -176,7 +176,7 @@ function BarsScreen() {
         <rect x="40" y="200" width="44" height="40" fill="#f2efe6" />
         <rect x="126" y="200" width="44" height="40" fill={P.plum600} />
       </svg>
-      <div className="absolute left-1/2 top-[34%] -translate-x-1/2 -translate-y-1/2 rotate-[-3deg] border-[3px] border-ink bg-ink px-3 py-1 font-display text-[clamp(10px,1.3vw,22px)] tracking-wide text-cream">
+      <div className="absolute left-1/2 top-[34%] -translate-x-1/2 -translate-y-1/2 rotate-[-3deg] border-[3px] border-ink bg-ink px-3 py-1 font-display text-[max(10px,8.8cqw)] tracking-wide text-cream">
         SEM SINAL
       </div>
       <Mascot404 expression="static" className="absolute bottom-[4%] right-[6%] w-[22%]" />
@@ -205,7 +205,7 @@ function CartoonScreen() {
       <div className="absolute bottom-[16%] left-[10%] w-[36%]" style={{ animation: "screen-run 0.5s ease-in-out infinite alternate" }}>
         <Mascot404 pose="full" expression="excited" className="w-full" />
       </div>
-      <p className="absolute inset-x-0 bottom-[3%] text-center font-display text-[clamp(7px,0.85vw,14px)] tracking-wide text-sun">
+      <p className="absolute inset-x-0 bottom-[3%] text-center font-display text-[max(7px,5.8cqw)] tracking-wide text-sun">
         EP. 12 — O CONTROLE PERDIDO
       </p>
     </div>
@@ -216,33 +216,15 @@ function LostScreen() {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-[6%] bg-plum-950 px-[8%] text-center">
       <p
-        className="font-display text-[clamp(10px,1.5vw,24px)] leading-none text-mint"
+        className="font-display text-[max(10px,10.2cqw)] leading-none text-mint"
         style={{ animation: "glitch 2.2s steps(1) infinite" }}
       >
         TRANSMISSÃO PERDIDA
       </p>
-      <p className="font-hand text-[clamp(8px,1vw,16px)] leading-tight text-cream">31/12/2007 — 23:59</p>
-      <p className="font-hand text-[clamp(8px,1.05vw,17px)] leading-tight text-sun">
+      <p className="font-hand text-[max(8px,6.8cqw)] leading-tight text-cream">31/12/2007 — 23:59</p>
+      <p className="font-hand text-[max(8px,7.1cqw)] leading-tight text-sun">
         Se você está vendo isso, o canal nunca saiu do ar.
       </p>
-    </div>
-  );
-}
-
-function TapeScreen() {
-  return (
-    <div className="absolute inset-0 bg-[#2a3a6a]">
-      <div className="absolute inset-0 flex items-end justify-center pb-[14%]">
-        <div className="w-[38%]" style={{ animation: "screen-dance 0.6s ease-in-out infinite alternate" }}>
-          <Mascot404 pose="wave" expression="wink" className="w-full" />
-        </div>
-      </div>
-      <p className="absolute left-[7%] top-[7%] font-display text-[clamp(8px,1vw,16px)] text-cream">▶ PLAY</p>
-      <p className="absolute right-[7%] top-[7%] font-display text-[clamp(8px,1vw,16px)] text-cream">SP 0:04:04</p>
-      <p className="absolute inset-x-[6%] bottom-[4%] text-center font-hand text-[clamp(8px,1vw,16px)] leading-tight text-sun">
-        NÃO ERA PRA VOCÊ VER ISSO
-      </p>
-      <div className="absolute inset-x-0 h-[12%] bg-white/25 mix-blend-overlay" style={{ animation: "roll-bar 2.8s linear infinite" }} />
     </div>
   );
 }
@@ -264,16 +246,10 @@ export function ChannelContent({ id }: { id: ChannelId }) {
       return <CartoonScreen />;
     case "lost":
       return <LostScreen />;
-    case "tape":
-      return <TapeScreen />;
-    case "tape-cartoon":
-      return <CartoonTapeScreen />;
-    case "tape-street":
-      return <StreetAdScreen />;
-    case "tape-resort":
-      return <ResortVideoScreen />;
-    case "tape-karaoke":
-      return <KaraokeScreen />;
+  }
+  if (isTape(id)) {
+    const { Screen } = TAPE_PROGRAMS[id];
+    return <Screen />;
   }
   const game = CHANNELS[id]?.game;
   return game ? <GameScreen game={game} /> : <BarsScreen />;

@@ -50,7 +50,11 @@ export function stage(page: Page) {
 
 export async function settle(page: Page) {
   await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => animation.playState !== "running" || animation.effect?.getComputedTiming().iterations === Infinity),
+    document.getAnimations().every((animation) => {
+      if (animation.playState !== "running" || animation.effect?.getComputedTiming().iterations === Infinity) return true;
+      const target = animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
+      return target instanceof Element && target.closest("[data-testid=tv-screen] > [aria-hidden]") !== null;
+    }),
   );
 }
 

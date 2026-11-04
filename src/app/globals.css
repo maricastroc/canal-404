@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant tvset (@media (min-width: 768px) and (min-height: 560px));
+
 @theme {
   --color-ink: #1d1830;
   --color-ink-soft: #3a3157;
@@ -592,6 +594,21 @@ body {
   }
   to {
     transform: rotate(7deg) translateY(-6%);
+  }
+}
+
+@keyframes vcr-clunk {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  35% {
+    transform: translateY(3%) scale(1.04, 0.9);
+  }
+  70% {
+    transform: translateY(-2%) scale(0.98, 1.04);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
   }
 }
 

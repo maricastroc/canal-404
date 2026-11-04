@@ -18,6 +18,7 @@ import {
   Play,
   Radio,
   RadioTower,
+  Rewind,
   RotateCcw,
   Smile,
   Star,
@@ -28,6 +29,7 @@ import {
   Volume2,
   VolumeX,
   X,
+  ZoomIn,
   type LucideIcon,
 } from "lucide-react";
 
@@ -68,6 +70,8 @@ export const PencilIcon = make(PencilLine);
 export const VerifiedIcon = make(BadgeCheck);
 export const EjectIcon = make(Eject);
 export const CloseIcon = make(X);
+export const ZoomIcon = make(ZoomIn);
+export const RewindIcon = make(Rewind, true);
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

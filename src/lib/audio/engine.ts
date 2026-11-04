@@ -27,6 +27,7 @@ class AudioEngine {
   private step = 0;
   private nextTime = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private looping = true;
   private listeners = new Set<Listener>();
 
   get isUnlocked() {
@@ -93,7 +94,9 @@ class AudioEngine {
   }
 
   setSfxEnabled(enabled: boolean) {
+    if (this.sfxEnabled === enabled) return;
     this.sfxEnabled = enabled;
+    this.emit();
   }
 
   get sfxOn() {
@@ -233,10 +236,10 @@ class AudioEngine {
     };
   }
 
-  startMusic(trackId: string) {
+  startMusic(source: string | Track, options: { step?: number; at?: number; once?: boolean } = {}) {
     this.unlock();
     if (!this.ctx || !this.musicBus) return;
-    const track = trackById(trackId);
+    const track = typeof source === "string" ? trackById(source) : source;
     const lead = parseNotes(track.lead.notes);
     const bass = parseNotes(track.bass.notes);
     const pad = track.pad ? parseNotes(track.pad.notes) : [];
@@ -247,8 +250,20 @@ class AudioEngine {
       pad,
       length: Math.max(lead.length, bass.length, pad.length),
     };
-    this.step = 0;
-    this.nextTime = this.ctx.currentTime + 0.08;
+    this.looping = !options.once;
+    if (options.at !== undefined) {
+      const stepMs = 60000 / track.bpm / 4;
+      const step = Math.ceil((options.at + 30) / stepMs);
+      this.step = step % this.current.length;
+      this.nextTime = this.ctx.currentTime + (step * stepMs - options.at) / 1000;
+      if (!this.looping && step >= this.current.length) {
+        this.stopMusic();
+        return;
+      }
+    } else {
+      this.step = (options.step ?? 0) % this.current.length;
+      this.nextTime = this.ctx.currentTime + 0.08;
+    }
     const g = this.musicBus.gain;
     g.cancelScheduledValues(this.ctx.currentTime);
     g.setValueAtTime(g.value, this.ctx.currentTime);
@@ -289,6 +304,11 @@ class AudioEngine {
       this.playStep(this.step, this.nextTime + swing, stepDur);
       this.nextTime += stepDur;
       this.step = (this.step + 1) % this.current.length;
+      if (!this.looping && this.step === 0) {
+        if (this.timer) clearInterval(this.timer);
+        this.timer = null;
+        break;
+      }
     }
   }
 

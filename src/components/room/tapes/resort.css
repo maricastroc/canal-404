@@ -1,0 +1,191 @@
+@keyframes resort-wobble {
+  0%,
+  19%,
+  21.6%,
+  61%,
+  66.5%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateY(0.7%);
+  }
+  20.8% {
+    transform: translateY(-0.4%);
+  }
+  62% {
+    transform: translateX(-1.4%) skewX(2deg);
+  }
+  63.5% {
+    transform: translateX(1%) skewX(-1deg);
+  }
+  65% {
+    transform: translateX(-0.4%);
+  }
+}
+
+@keyframes resort-dropout {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 30%);
+  }
+  40% {
+    opacity: 0;
+    transform: translate(12%, 61%);
+  }
+  41% {
+    opacity: 0.9;
+    transform: translate(12%, 61%);
+  }
+  43% {
+    opacity: 0;
+    transform: translate(12%, 61%);
+  }
+  77% {
+    opacity: 0;
+    transform: translate(-18%, 23%);
+  }
+  78% {
+    opacity: 0.75;
+    transform: translate(-18%, 23%);
+  }
+  79.5% {
+    opacity: 0;
+    transform: translate(-18%, 23%);
+  }
+}
+
+@keyframes resort-tear {
+  0% {
+    transform: translateX(-2.5%) skewX(5deg);
+  }
+  12% {
+    transform: translateX(3%) skewX(-2deg);
+  }
+  26% {
+    transform: translate(-1%, 2.5%);
+  }
+  42% {
+    transform: translateX(1.8%) skewX(-4deg);
+  }
+  60% {
+    transform: translate(-2.2%, -1.5%);
+  }
+  78% {
+    transform: translateX(0.8%) skewX(2deg);
+  }
+  92%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes resort-cut {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes resort-pan {
+  from {
+    transform: translateX(3%) scale(1.08);
+  }
+  to {
+    transform: translateX(-3%) scale(1.08);
+  }
+}
+
+@keyframes resort-push {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1.16);
+  }
+}
+
+@keyframes resort-drift {
+  0% {
+    transform: scale(1.12) translate(-1.5%, 1%);
+  }
+  100% {
+    transform: scale(1.04) translate(1%, 0);
+  }
+}
+
+@keyframes resort-focus {
+  0% {
+    filter: blur(2px) brightness(1.2);
+  }
+  35% {
+    filter: blur(0.6px) brightness(1.1);
+  }
+  55% {
+    filter: blur(1.4px) brightness(1.05);
+  }
+  100% {
+    filter: none;
+  }
+}
+
+@keyframes resort-reframe {
+  0% {
+    transform: translate(5%, 4%) scale(1.08) rotate(1.5deg);
+  }
+  14% {
+    transform: translate(0, 0) scale(1.08);
+  }
+  100% {
+    transform: translate(-3%, 0) scale(1.08);
+  }
+}
+
+@keyframes resort-ball {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(104px, -52px) rotate(300deg);
+  }
+  64% {
+    transform: translate(124px, -68px) rotate(350deg);
+  }
+  82% {
+    transform: translate(132px, -64px) rotate(365deg);
+  }
+  100% {
+    transform: translate(140px, -70px) rotate(372deg);
+  }
+}
+
+@keyframes resort-glow {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  30% {
+    opacity: 0.6;
+  }
+  55% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes resort-beacon {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.9;
+  }
+}

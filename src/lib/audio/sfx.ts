@@ -184,16 +184,6 @@ export const SFX = {
       { kind: "noise", duration: 0.18, delay: 0.5, gain: 0.05, filter: { type: "highpass", from: 5000 } },
     ],
   },
-  karaoke: {
-    volume: 0.85,
-    layers: [
-      { kind: "tone", wave: "triangle", from: 392, duration: 0.22, gain: 0.12, vibrato: { rate: 5, depth: 6 } },
-      { kind: "tone", wave: "triangle", from: 440, duration: 0.22, delay: 0.26, gain: 0.12, vibrato: { rate: 5, depth: 6 } },
-      { kind: "tone", wave: "triangle", from: 494, duration: 0.22, delay: 0.52, gain: 0.12, vibrato: { rate: 5, depth: 6 } },
-      { kind: "tone", wave: "triangle", from: 587, duration: 0.7, delay: 0.78, gain: 0.12, vibrato: { rate: 5, depth: 10 } },
-      { kind: "tone", wave: "sine", from: 196, duration: 1.4, delay: 0.1, gain: 0.08 },
-    ],
-  },
 } satisfies Record<string, SoundRecipe>;
 
 export type SfxName = keyof typeof SFX;

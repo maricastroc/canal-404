@@ -19,11 +19,15 @@ export function useMascotDirector(idleAfter = 26000) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speaking = useRef<MascotExpression | null>(null);
   const sleeping = useRef(false);
 
   const say = useCallback((next: MascotLine) => {
     if (timer.current) clearTimeout(timer.current);
+    if (emoteTimer.current) clearTimeout(emoteTimer.current);
     sleeping.current = next.expression === "sleepy";
+    speaking.current = next.expression ?? "happy";
     setLine(next);
     setLineKey((k) => k + 1);
     setExpression(next.expression ?? "happy");
@@ -31,10 +35,18 @@ export function useMascotDirector(idleAfter = 26000) {
     const duration = next.duration ?? 5200;
     if (duration > 0) {
       timer.current = setTimeout(() => {
+        speaking.current = null;
         setLine(null);
         setExpression(sleeping.current ? "sleepy" : "neutral");
       }, duration);
     }
+  }, []);
+
+  const emote = useCallback((next: MascotExpression, duration = 2600) => {
+    if (emoteTimer.current) clearTimeout(emoteTimer.current);
+    sleeping.current = false;
+    setExpression(next);
+    emoteTimer.current = setTimeout(() => setExpression(speaking.current ?? "neutral"), duration);
   }, []);
 
   const setHint = useCallback((text: string | null) => {
@@ -59,9 +71,9 @@ export function useMascotDirector(idleAfter = 26000) {
 
   useEffect(() => {
     return () => {
-      [timer, idleTimer, hintTimer].forEach((t) => t.current && clearTimeout(t.current));
+      [timer, idleTimer, hintTimer, emoteTimer].forEach((t) => t.current && clearTimeout(t.current));
     };
   }, []);
 
-  return { line, lineKey, expression, hint, announcement, say, setHint, poke };
+  return { line, lineKey, expression, hint, announcement, say, emote, setHint, poke };
 }

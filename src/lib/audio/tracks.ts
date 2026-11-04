@@ -199,6 +199,58 @@ export const TRACKS: Track[] = [
   },
 ];
 
+export const KARAOKE_SONG: Track = {
+  id: "karaoke",
+  title: "Balada do Chuvisco",
+  station: "AV",
+  mood: "A fita do karaokê do 404. Ninguém pediu bis.",
+  bpm: 75,
+  lead: {
+    wave: "pulse",
+    gain: 0.11,
+    vibrato: 5,
+    notes: bars(
+      "C5 E5 G5 C6 G4 . . . G4 . . . G4 . . .",
+      "G4 - C5 - E5 - - D5 C5 - E5 - G5 - E5 -",
+      "A4 - B4 - C5 - - D5 E5 - C5 - E5 - A4 -",
+      "C5 - F5 - - - E5 - F5 - G5 A5 C6 - A5 -",
+      "B4 - D5 - D5 - G5 - F5 - E5 - G5 - D5 -",
+      "E5 - G5 - C6 - - - - - - - C#6 - - -",
+    ),
+  },
+  bass: {
+    wave: "triangle",
+    gain: 0.2,
+    notes: bars(
+      "C3 - - - G2 - - - A2 - - - B2 - - -",
+      "C3 - - - G3 - - - C3 - - - G3 - E3 -",
+      "A2 - - - E3 - - - A2 - - - E3 - C3 -",
+      "F2 - - - C3 - - - F2 - - - C3 - A2 -",
+      "G2 - - - D3 - - - G2 - - - B2 - D3 -",
+      "C3 - - - G2 - - - C2 - - - - - - -",
+    ),
+  },
+  pad: {
+    wave: "sine",
+    gain: 0.05,
+    notes: bars(
+      "E4 - - - D4 - - - C4 - - - D4 - - -",
+      "G4 - - - - - - - E4 - - - - - - -",
+      "E4 - - - - - - - C4 - - - - - - -",
+      "A4 - - - - - - - F4 - - - - - - -",
+      "B4 - - - - - - - F4 - - - - - - -",
+      "G4 - - - - - - - - - - - - - - -",
+    ),
+  },
+  drums: {
+    gain: 0.32,
+    kick: "x.......x.x.....",
+    snare: "....x.......x...",
+    hat: "x.x.x.x.x.x.x.x.",
+  },
+  unlock: { type: "default" },
+};
+
 const NOTE_INDEX: Record<string, number> = {
   C: 0,
   "C#": 1,

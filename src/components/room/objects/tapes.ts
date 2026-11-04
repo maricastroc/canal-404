@@ -58,7 +58,7 @@ export const TAPES: Tape[] = [
     note: "",
     name: "Fita misteriosa no videocassete",
     sticker: P.tomato,
-    insertLine: "Você colocou a fita proibida! Ah não, é o meu ensaio de dança...",
+    insertLine: "Peraí... essa fita não!",
     ejectLine: "Fita ejetada. Vamos fingir que nada aconteceu.",
     torn: "Não assis",
   },

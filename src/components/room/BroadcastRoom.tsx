@@ -4,11 +4,11 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Mascot404 } from "@/components/mascot/Mascot404";
+import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 import { getAudio } from "@/lib/audio/engine";
 import { useMusicState, useSound } from "@/lib/audio/hooks";
-import { TRACKS } from "@/lib/audio/tracks";
+import { KARAOKE_SONG, TRACKS } from "@/lib/audio/tracks";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { setSetting, unlockAchievement, unlockSecret } from "@/lib/progress/store";
 import { SCENE, SPOTS, spotCenter, spotStyle, type Spot } from "./layout";
@@ -39,7 +39,12 @@ import {
 import { Tv, type TvBadge } from "./objects/Tv";
 import { CHANNEL_ORDER, CHANNELS, isRegularChannel, type ChannelId } from "./objects/TvChannels";
 import { isTape, tapeById, type TapeId } from "./objects/tapes";
+import { TapeFlights, type Flight } from "./TapeFlights";
 import { TapeShelf } from "./TapeShelf";
+import { TvZoom } from "./TvZoom";
+import { BroadcastProvider, type Broadcast } from "./tapes/broadcast";
+import { useTapePlayback } from "./tapes/useTapePlayback";
+import type { TapeCue } from "./tapes/vhs";
 import { useSchedule } from "@/components/catalog/useSchedule";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { bestRecord, FALLBACK_WEEKLY, plays, unplayedGames } from "@/lib/schedule";
@@ -96,9 +101,10 @@ export function BroadcastRoom() {
   const progress = useProgress();
   const { play, hover } = useSound();
   const music = useMusicState();
+  const radioOn = music.playing && music.trackId !== KARAOKE_SONG.id;
   const director = useMascotDirector();
   const dockTarget = hydrated ? document.getElementById("mascot-dock") : null;
-  const { say, setHint, poke } = director;
+  const { say, emote, setHint, poke } = director;
 
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -112,7 +118,19 @@ export function BroadcastRoom() {
   const tuned = useRef(false);
   const [switching, setSwitching] = useState(false);
   const [shelfOpen, setShelfOpen] = useState(false);
+  const [shelfOrigin, setShelfOrigin] = useState<DOMRect | null>(null);
   const shelfButton = useRef<HTMLButtonElement>(null);
+  const [since, setSince] = useState(0);
+  const [take, setTake] = useState(0);
+  const [rewinding, setRewinding] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+  const tvScreen = useRef<HTMLDivElement>(null);
+  const zoomButton = useRef<HTMLButtonElement>(null);
+  const [flights, setFlights] = useState<Flight[]>([]);
+  const flightId = useRef(0);
+  const [vcrBump, setVcrBump] = useState(0);
+  const said = useRef(new Set<string>());
+  const rotations = useRef(new Map<string, number>());
   const [osd, setOsd] = useState(false);
   const [knobAngle, setKnobAngle] = useState(0);
   const [flash, setFlash] = useState(false);
@@ -179,8 +197,17 @@ export function BroadcastRoom() {
     setLook({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
   }, []);
 
+  const quietFocus = useRef(false);
+
+  const restoreFocus = useCallback((target: HTMLElement | null) => {
+    quietFocus.current = true;
+    target?.focus({ preventScroll: true });
+    quietFocus.current = false;
+  }, []);
+
   const onHint = useCallback(
     (text: string | null, spot: Spot) => {
+      if (text && quietFocus.current) return;
       setHint(text);
       if (text) lookAtSpot(spot);
     },
@@ -223,6 +250,8 @@ export function BroadcastRoom() {
       if (!opts.quiet) play("static");
       window.setTimeout(() => {
         setChannel(next);
+        setSince(performance.now());
+        setTake(0);
         setSwitching(false);
       }, reduced ? 0 : 280);
       window.setTimeout(() => setOsd(false), 1800);
@@ -259,6 +288,14 @@ export function BroadcastRoom() {
 
   const handleKnob = useCallback(() => {
     poke();
+    if (isTape(channel)) {
+      play("tapeOut");
+      if (!reduced) {
+        flightId.current += 1;
+        const id = flightId.current;
+        setFlights((list) => [...list, { id, tape: channel, to: "shelf", delay: 0 }]);
+      }
+    }
     tuned.current = true;
     turns.current += 1;
     setKnobAngle((a) => a + 45);
@@ -280,7 +317,7 @@ export function BroadcastRoom() {
     } else {
       say({ text: channelLine(next), expression: next === "bars" ? "confused" : badgeFor(next) === "new" ? "excited" : "happy", duration: 4200 });
     }
-  }, [badgeFor, channel, channelLine, lastRegular, poke, say, tuneTo]);
+  }, [badgeFor, channel, channelLine, lastRegular, play, poke, reduced, say, tuneTo]);
 
   const suggestion = useMemo(() => {
     const current = CHANNELS[channel]?.game;
@@ -372,7 +409,7 @@ export function BroadcastRoom() {
   const toggleRadio = useCallback(() => {
     poke();
     const engine = getAudio();
-    if (music.playing) {
+    if (radioOn) {
       engine.stopMusic();
       play("toggleOff");
       say({ text: "Rádio desligado. O silêncio também é uma trilha sonora. Uma bem chata.", expression: "neutral", duration: 4200 });
@@ -384,7 +421,7 @@ export function BroadcastRoom() {
     unlockAchievement("radio-on");
     const track = TRACKS.find((t) => t.id === id);
     say({ text: `Rádio 404 no ar! Tocando: ${track?.title}.`, expression: "happy", duration: 4200 });
-  }, [music.playing, play, poke, progress.settings.track, say, tracks]);
+  }, [radioOn, play, poke, progress.settings.track, say, tracks]);
 
   const nextStation = useCallback(() => {
     poke();
@@ -481,39 +518,144 @@ export function BroadcastRoom() {
 
   const playing = isTape(channel) ? channel : null;
 
+  const sayOnce = useCallback(
+    (key: string, text: string, expression: MascotExpression, duration = 4600) => {
+      if (said.current.has(key)) {
+        emote(expression);
+        return;
+      }
+      said.current.add(key);
+      say({ text, expression, duration });
+    },
+    [emote, say],
+  );
+
+  const flyTape = useCallback((tape: TapeId, to: Flight["to"], delay = 0) => {
+    flightId.current += 1;
+    const flight = { id: flightId.current, tape, to, delay };
+    setFlights((list) => [...list.filter((f) => f.tape !== tape), flight]);
+  }, []);
+
+  const startTape = useCallback(
+    (id: TapeId) => {
+      play("tapeIn");
+      setVcrBump((n) => n + 1);
+      tuneTo(id, { quiet: true });
+      if (id === "tape") unlockSecret("tape");
+      const tape = tapeById(id);
+      const mood: MascotExpression = id === "tape" ? "surprised" : id === "tape-resort" ? "confused" : id === "tape-karaoke" ? "wink" : "excited";
+      sayOnce(`insert:${id}`, tape.insertLine, mood, 5200);
+    },
+    [play, sayOnce, tuneTo],
+  );
+
+  const landTape = useCallback(
+    (flight: Flight) => {
+      setFlights((list) => list.filter((f) => f.id !== flight.id));
+      if (flight.to === "vcr") startTape(flight.tape);
+    },
+    [startTape],
+  );
+
   const openShelf = useCallback(() => {
     poke();
-    play("click");
+    play("whoosh", { volume: 0.35 });
+    setShelfOrigin(shelfButton.current?.getBoundingClientRect() ?? null);
     setShelfOpen(true);
-  }, [play, poke]);
+    sayOnce("shelf", "Ooh, a estante! Escolhe uma. A de etiqueta rasgada... melhor não.", "excited", 4200);
+  }, [play, poke, sayOnce]);
 
   const closeShelf = useCallback(() => {
     setShelfOpen(false);
-    window.setTimeout(() => shelfButton.current?.focus(), 0);
-  }, []);
+    window.setTimeout(() => restoreFocus(shelfButton.current), 0);
+  }, [restoreFocus]);
+
+  const dismissShelf = useCallback(() => {
+    play("whoosh", { volume: 0.22, pitch: 0.8 });
+    closeShelf();
+  }, [closeShelf, play]);
 
   const insertTape = useCallback(
     (id: TapeId) => {
       closeShelf();
       poke();
-      play("tapeIn");
-      tuneTo(id, { quiet: true });
-      const tape = tapeById(id);
-      if (id === "tape") unlockSecret("tape");
-      if (id === "tape-street") window.setTimeout(() => play("jingle"), 420);
-      if (id === "tape-karaoke") window.setTimeout(() => play("karaoke"), 420);
-      say({ text: tape.insertLine, expression: id === "tape" || id === "tape-resort" ? "surprised" : id === "tape-karaoke" ? "wink" : "excited", duration: 5200 });
+      play("pop", { volume: 0.5 });
+      if (reduced) {
+        startTape(id);
+        return;
+      }
+      if (playing) {
+        play("tapeOut");
+        flyTape(playing, "shelf");
+      }
+      flyTape(id, "vcr", playing ? 0.22 : 0.12);
     },
-    [closeShelf, play, poke, say, tuneTo],
+    [closeShelf, flyTape, play, playing, poke, reduced, startTape],
   );
 
-  const ejectTape = useCallback(() => {
-    if (!playing) return;
+  const ejectTape = useCallback(
+    (auto = false) => {
+      if (!playing) return;
+      poke();
+      play("tapeOut");
+      if (!reduced) flyTape(playing, "shelf");
+      setVcrBump((n) => n + 1);
+      tuneTo(lastRegular, { quiet: true });
+      if (!auto) sayOnce(`eject:${playing}`, tapeById(playing).ejectLine, "wink", 3400);
+    },
+    [flyTape, lastRegular, play, playing, poke, reduced, sayOnce, tuneTo],
+  );
+
+  const replay = useCallback(() => {
     poke();
-    play("tapeOut");
-    tuneTo(lastRegular, { quiet: true });
-    say({ text: tapeById(playing).ejectLine, expression: "wink", duration: 3400 });
-  }, [lastRegular, play, playing, poke, say, tuneTo]);
+    play("static", { volume: 0.4 });
+    setRewinding(true);
+    window.setTimeout(() => {
+      setSince(performance.now());
+      setTake((n) => n + 1);
+      setRewinding(false);
+    }, reduced ? 0 : 520);
+  }, [play, poke, reduced]);
+
+  const onCue = useCallback(
+    (cue: TapeCue, tape: TapeId) => {
+      if (cue.sound) play(cue.sound, { volume: 0.5 });
+      if (cue.mascot) {
+        const { expression, line } = cue.mascot;
+        const key = `cue:${tape}:${cue.at}`;
+        if (Array.isArray(line)) {
+          const turn = rotations.current.get(key) ?? 0;
+          rotations.current.set(key, turn + 1);
+          say({ text: line[turn % line.length], expression, duration: 4200 });
+        } else if (line) {
+          sayOnce(key, line, expression, 4600);
+        } else {
+          emote(expression);
+        }
+      }
+      if (cue.eject) ejectTape(true);
+    },
+    [ejectTape, emote, play, say, sayOnce],
+  );
+
+  useTapePlayback(playing, since, take, onCue);
+
+  const openZoom = useCallback(() => {
+    poke();
+    play("whoosh", { volume: 0.3, pitch: 1.15 });
+    setZoomed(true);
+  }, [play, poke]);
+
+  const closeZoom = useCallback(() => {
+    setZoomed(false);
+    window.setTimeout(() => restoreFocus(zoomButton.current), 0);
+  }, [restoreFocus]);
+
+  const tvOrigin = useCallback(() => tvScreen.current?.getBoundingClientRect() ?? null, []);
+
+  const broadcast = useMemo<Broadcast>(() => ({ since, take, zoomed, replay }), [since, take, zoomed, replay]);
+  const away = useMemo(() => flights.map((f) => f.tape), [flights]);
+  const vcrTape = playing && !flights.some((f) => f.tape === playing && f.to === "shelf") ? playing : null;
 
   const say2 = useCallback(
     (text: string, expression: Parameters<typeof say>[0]["expression"] = "happy", sound: Parameters<typeof play>[0] = "click") => {
@@ -549,8 +691,8 @@ export function BroadcastRoom() {
       [SPOTS.tv.x + 200, SPOTS.tv.y + 180, 300],
       [SPOTS.arcade.x + 140, SPOTS.arcade.y + 170, 230],
       [SPOTS.lava.x + 28, SPOTS.lava.y + 80, 150],
-      [SPOTS.radio.x + 120, SPOTS.radio.y + 60, music.playing ? 130 : 0],
-      [SPOTS.onAir.x + 75, SPOTS.onAir.y + 36, music.playing ? 110 : 0],
+      [SPOTS.radio.x + 120, SPOTS.radio.y + 60, radioOn ? 130 : 0],
+      [SPOTS.onAir.x + 75, SPOTS.onAir.y + 36, radioOn ? 110 : 0],
     ].filter(([, , r]) => r > 0);
     return holes
       .map(
@@ -558,12 +700,14 @@ export function BroadcastRoom() {
           `radial-gradient(ellipse ${Math.round(r * sx)}px ${Math.round(r * sy)}px at ${Math.round(BLEED + x * sx)}px ${Math.round(BLEED + y * sy)}px, transparent 25%, black 100%)`,
       )
       .join(", ");
-  }, [music.playing, sceneSize, BLEED]);
+  }, [radioOn, sceneSize, BLEED]);
 
   return (
+    <BroadcastProvider value={broadcast}>
     <div ref={stageRef} className="on-dark relative isolate h-full w-full">
       <div ref={sceneRef} className="room-scene relative mx-auto">
         <RoomBackdrop className="pointer-events-none absolute inset-0 h-full w-full" />
+        <TapeFlights flights={flights} onLand={landTape} />
 
         <RoomButton
           spot={SPOTS.window}
@@ -622,7 +766,7 @@ export function BroadcastRoom() {
         </RoomButton>
 
         <div aria-hidden className="pointer-events-none absolute z-[6]" style={spotStyle(SPOTS.onAir)}>
-          <OnAirSign lit={music.playing} />
+          <OnAirSign lit={radioOn} />
         </div>
 
         <RoomLink
@@ -653,17 +797,17 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.radio}
-          label={music.playing ? "Rádio 404: desligar a música" : "Rádio 404: ligar a música"}
-          pressed={music.playing}
-          hint={music.playing ? "Clica pra desligar o rádio." : "Liga o rádio! A trilha do canal toca aqui."}
+          label={radioOn ? "Rádio 404: desligar a música" : "Rádio 404: ligar a música"}
+          pressed={radioOn}
+          hint={radioOn ? "Clica pra desligar o rádio." : "Liga o rádio! A trilha do canal toca aqui."}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={toggleRadio}
           z={16}
         >
-          <RadioArt on={music.playing} />
+          <RadioArt on={radioOn} />
         </RoomButton>
-        {music.playing && (
+        {radioOn && (
           <>
             <div
               aria-hidden
@@ -729,6 +873,11 @@ export function BroadcastRoom() {
         </RoomButton>
 
         <Tv
+          screenRef={tvScreen}
+          zoomButtonRef={zoomButton}
+          zoomed={zoomed}
+          onZoom={openZoom}
+          rewinding={rewinding}
           channel={channel}
           badge={badgeFor(channel)}
           next={
@@ -757,7 +906,7 @@ export function BroadcastRoom() {
           onActivate={openShelf}
           z={13}
         >
-          <VhsArt inserted={playing} />
+          <VhsArt missing={[...(playing ? [playing] : []), ...away]} />
         </RoomButton>
 
         <RoomButton
@@ -767,11 +916,13 @@ export function BroadcastRoom() {
           hint={playing ? "Aperta pra ejetar a fita." : "O videocassete tá vazio. As fitas ficam na estante do lado."}
           onHint={onHint}
           onHoverSound={hover}
-          onActivate={playing ? ejectTape : openShelf}
+          onActivate={playing ? () => ejectTape() : openShelf}
           hit="box"
           z={11}
         >
-          <VcrArt playing={playing} />
+          <span key={vcrBump} className="block h-full w-full" style={vcrBump ? { animation: "vcr-clunk 0.26s ease-out" } : undefined}>
+            <VcrArt playing={vcrTape} />
+          </span>
         </RoomButton>
 
         <RoomButton
@@ -1021,18 +1172,37 @@ export function BroadcastRoom() {
       <TapeShelf
         open={shelfOpen}
         inserted={playing}
+        away={away}
+        origin={shelfOrigin}
         onPick={insertTape}
         onEject={() => {
           closeShelf();
           ejectTape();
         }}
-        onClose={closeShelf}
+        onClose={dismissShelf}
         onHoverSound={hover}
       />
+
+      {zoomed && (
+        <TvZoom
+          channel={channel}
+          badge={badgeFor(channel)}
+          switching={switching}
+          osd={osd}
+          flash={flash}
+          rewinding={rewinding}
+          onLaunch={launch}
+          onHoverSound={hover}
+          knobAngle={knobAngle}
+          getOrigin={tvOrigin}
+          onClose={closeZoom}
+        />
+      )}
 
       <p className="sr-only" aria-live="polite">
         {director.announcement}
       </p>
     </div>
+    </BroadcastProvider>
   );
 }

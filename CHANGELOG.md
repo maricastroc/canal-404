@@ -4,6 +4,33 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### TV de perto e fitas refeitas
+- **TV de perto.** The TV in the broadcast room can be watched up close: the button on the TV's frame, or a click on a tape's picture, brings the whole TV (just the screen, with a frame, on phones) to the middle of the screen, with the same program at the same moment. Text and subtitles grow with the screen. Escape or "Voltar pra sala" goes back, and focus returns to where it was.
+- **One clock per tape.** Every tape program follows one clock from the moment the tape went in, so zooming in or out never restarts it.
+- **The shelf.**
+  - The tape that is playing leaves a marked "No vídeo" gap on the shelf. Keyboard focus has its own look, so it can't be mistaken for the playing tape.
+  - The chosen tape is pulled off the shelf.
+  - The eject button looks like a VCR key and names the tape.
+- **Moving tapes.** The shelf zooms in from its spot and back. Tapes fly from the shelf into the VCR with a little bump, pop out and fly back to their own slot when ejected, and cross over when swapped directly. With reduced motion, nothing flies.
+- **Desenhos 03** gets a build-up to the sneeze, a close-up, a scarf, readable subtitles and recording glitches between shots.
+- **Rua S/ Saída** is now a fast commercial:
+  - Text slams in, with whip and zoom cuts.
+  - Game art: the slingshot, the shoe, the duck and the angry neighbour.
+  - It ends with "JOGUE JÁ!" pointing at the "Jogar agora" button.
+- **Férias 2004** is a found home video:
+  - Four camcorder shots, with a ticking date and time, small wobbles and dropouts.
+  - A close-up of a hotel window, where a TV is on by itself and the calendar says December 2004.
+  - One strange moment: the date jumps to 04 DEZ 2004 04:04:04 and every window shows 404.
+- **Karaokê** is now a show:
+  - A count-in on a closed curtain, then the four lines with a ball that lands on each syllable exactly when its note plays.
+  - Spotlights, faces for the key words, a cat with a cable, and a finale where the voice cracks.
+  - A score of 4,04, and a "Cantar de novo" button that rewinds the tape. "Balada do Chuvisco" plays once, in time with the picture. It pauses the room radio and gives it back afterwards, and it stays quiet when the sound is off.
+- **Não assista** is now a short comic scene:
+  - The 404 dances, notices the camera, stares, hides under a lampshade and covers the lens.
+  - The tape ends on a blue screen and the VCR ejects it by itself.
+  - The secret is still unlocked once, and the scene plays every time.
+- **The room mascot** reacts at key moments of each tape. Each line shows once per session; after that only his face changes.
+
 ### Estante de fitas
 - The VHS shelf in the broadcast room now opens a close-up of the shelf with five tapes, each a large button, so any of them can be put in the VCR.
 - Each tape plays its own program on the TV, separate from the regular channels: "Desenhos 03" is a recorded episode where the 404 catches static, "Rua S/ Saída" is an over-the-top 2004 commercial with a jingle and a button to play, "Férias 2004" is a home video from the resort with a detail that changes for a moment, and "Karaokê" has the 404 singing an original song with the lyrics on screen.

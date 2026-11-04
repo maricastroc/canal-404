@@ -400,7 +400,7 @@ export function BooksArt() {
 
 const TORN_LABEL = "M152 110 L152 46 L156 40 L159 47 L163 39 L166 45 L170 38 L174 44 L174 110 Z";
 
-export function VhsArt({ inserted }: { inserted: TapeId | null }) {
+export function VhsArt({ missing }: { missing: TapeId[] }) {
   const clip = useId();
   const upright = TAPES.filter((tape) => !tape.torn);
   const torn = TAPES.find((tape) => tape.torn)!;
@@ -414,7 +414,7 @@ export function VhsArt({ inserted }: { inserted: TapeId | null }) {
       <g>
         {upright.map((tape, i) => {
           const x = 6 + i * 34;
-          if (tape.id === inserted) return null;
+          if (missing.includes(tape.id)) return null;
           return (
             <g key={tape.id}>
               <rect x={x} y="18" width="30" height="100" rx="3" fill={P.ink} stroke={P.ink} strokeWidth="3" />
@@ -425,7 +425,7 @@ export function VhsArt({ inserted }: { inserted: TapeId | null }) {
             </g>
           );
         })}
-        {inserted !== torn.id && (
+        {!missing.includes(torn.id) && (
           <g transform="rotate(-10 172 70)">
             <rect x="146" y="14" width="34" height="104" rx="3" fill={P.inkSoft} stroke={P.ink} strokeWidth="3.5" />
             <path d={TORN_LABEL} fill={torn.sticker} />
