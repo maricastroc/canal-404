@@ -214,3 +214,17 @@ export function simulateLab(level: SimLevel, parts: readonly PlacedPart[]): SimR
   sim.destroy();
   return result;
 }
+
+export function traceLab(level: SimLevel, parts: readonly PlacedPart[]): SimResult & { touched: number[] } {
+  const touched = new Set<number>();
+  const sim = new LabSim(level, parts, {
+    touch: (target) => {
+      if (target.kind === "part") touched.add(target.index);
+    },
+    belt: (index) => touched.add(index),
+    wind: (indexes) => indexes.forEach((index) => touched.add(index)),
+  });
+  const result = sim.run();
+  sim.destroy();
+  return { ...result, touched: [...touched].sort((a, b) => a - b) };
+}

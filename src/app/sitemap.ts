@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { GAMES } from "@/games/registry";
 import { SITE_URL } from "@/lib/site";
 
-const SECTIONS = ["", "/games", "/records", "/characters", "/extras", "/about"];
+const SECTIONS = ["", "/games", "/mission", "/records", "/characters", "/extras", "/about"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const sections = SECTIONS.map((path) => ({

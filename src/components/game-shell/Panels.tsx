@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
-import { PlayIcon, RestartIcon, UsersIcon } from "@/components/art/Icons";
+import { MissionIcon, PlayIcon, RestartIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { LockIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
@@ -16,7 +16,11 @@ import type { GameMeta } from "@/games/registry";
 import type { GameResult } from "@/games/types";
 import { useSound } from "@/lib/audio/hooks";
 import type { JoinOutcome } from "@/lib/competition/client";
+import type { MissionState, MissionView } from "@/lib/missions/types";
 import { BoardLine, type BoardState } from "./BoardLine";
+import { MissionBrief, MissionLine } from "./MissionLine";
+
+export type IntroMission = { view: MissionView; state: MissionState | null };
 
 function useAutoFocus<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -142,6 +146,11 @@ export function IntroPanel({
   onToggleHelp,
   onPlay,
   onNew,
+  mission = null,
+  missionPending = false,
+  missionNotice = null,
+  onStartMission,
+  onSkipMission,
 }: {
   game: GameMeta;
   highScore: number;
@@ -150,6 +159,11 @@ export function IntroPanel({
   onToggleHelp: () => void;
   onPlay: (level?: number) => void;
   onNew?: () => void;
+  mission?: IntroMission | null;
+  missionPending?: boolean;
+  missionNotice?: string | null;
+  onStartMission?: () => void;
+  onSkipMission?: () => void;
 }) {
   const playRef = useAutoFocus<HTMLButtonElement>();
   const [saved] = useState(() => (game.resumable ? canResume(game.slug, game.resumable) : false));
@@ -169,7 +183,22 @@ export function IntroPanel({
         </div>
         <div className="hidden sm:block">{Cast ? <Cast mood="intro" /> : <CastPair game={game} />}</div>
       </div>
-      {leveled && game.levels && levels && (
+      {missionNotice ? (
+        <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
+          {missionNotice}{" "}
+          <a href="/mission" className="underline decoration-2 underline-offset-2">
+            Ver a missão de hoje
+          </a>
+          .
+        </p>
+      ) : null}
+      {mission ? <MissionBrief view={mission.view} state={mission.state} /> : null}
+      {missionPending ? (
+        <p role="status" className="mt-4 animate-pulse rounded-xl border-[3px] border-ink bg-plum-800 px-3 py-3 font-display uppercase tracking-wider text-sun">
+          Sintonizando a missão…
+        </p>
+      ) : null}
+      {!mission && !missionPending && leveled && game.levels && levels && (
         <div className="mt-5">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="font-display text-xl uppercase tracking-wide text-ink">Escolha a {word}</h2>
@@ -222,8 +251,17 @@ export function IntroPanel({
           </div>
         </div>
       ) : null}
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        {game.resumable && onNew ? (
+      <div className={`mt-5 flex flex-wrap items-center gap-3 ${missionPending ? "invisible" : ""}`}>
+        {mission ? (
+          <>
+            <InkButton ref={playRef} size="lg" tone="sun" onClick={onStartMission}>
+              <MissionIcon className="size-7 text-ink" /> Começar missão
+            </InkButton>
+            <InkButton tone="cream" onClick={onSkipMission}>
+              Jogar sem missão
+            </InkButton>
+          </>
+        ) : game.resumable && onNew ? (
           resume ? (
             <>
               <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay()}>
@@ -246,7 +284,7 @@ export function IntroPanel({
         <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="how-to-play-panel">
           {showHelp ? "Esconder instruções" : "Como jogar"}
         </InkButton>
-        {!leveled && (
+        {!leveled && !mission && (
           <p className="ml-auto rounded-lg border-[3px] border-ink bg-cream-2 px-3 py-1 font-display text-sm uppercase tracking-wide text-ink">
             Recorde: {highScore > 0 ? highScore.toLocaleString("pt-BR") : "—"}
           </p>
@@ -315,6 +353,7 @@ export function ResultPanel({
   isRecord,
   recordNote,
   board,
+  mission = null,
   onJoin,
   onRestart,
   onNext,
@@ -326,6 +365,7 @@ export function ResultPanel({
   isRecord: boolean;
   recordNote: string;
   board?: BoardState | null;
+  mission?: MissionView | null;
   onJoin?: (nickname: string) => Promise<JoinOutcome>;
   onRestart: () => void;
   onNext?: () => void;
@@ -420,18 +460,24 @@ export function ResultPanel({
         </div>
       </dl>
       {recordNote && <p className="mt-2 text-sm text-ink-soft">{recordNote}</p>}
+      {mission ? <MissionLine view={mission} board={board ?? null} /> : null}
       {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
       {!onNext && <NextProgram current={game.slug} />}
       <div className="mt-5 flex flex-wrap gap-3">
-        {onNext ? (
+        {onNext && !mission ? (
           <InkButton ref={mainRef} tone="sun" onClick={onNext}>
             <PlayIcon className="size-5 text-ink" /> Próxima {word}
           </InkButton>
         ) : null}
-        <InkButton ref={onNext ? undefined : mainRef} tone={onNext ? "mint" : "sun"} onClick={onRestart}>
+        <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "mint" : "sun"} onClick={onRestart}>
           {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
-          {result.restartLabel ?? (result.level && word === "fase" ? "Refazer fase" : "Jogar de novo")}
+          {mission ? "Tentar a missão de novo" : (result.restartLabel ?? (result.level && word === "fase" ? "Refazer fase" : "Jogar de novo"))}
         </InkButton>
+        {onNext && mission ? (
+          <InkButton tone="mint" onClick={onNext}>
+            <PlayIcon className="size-5 text-ink" /> Próxima {word}
+          </InkButton>
+        ) : null}
         {onAlt && result.alt ? (
           <InkButton tone="cream" onClick={onAlt}>
             {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}

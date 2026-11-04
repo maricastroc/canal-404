@@ -29,6 +29,16 @@ describe("run tickets", () => {
     expect(readTicket(SECRET, 12, NOW)).toEqual({ ok: false, problem: "invalid" });
   });
 
+  it("carries the mission day only when it was issued for a mission, and signs it", () => {
+    const plain = issueTicket(SECRET, { game: "food-fight", level: null, playerId: null, now: NOW });
+    expect(readTicket(SECRET, plain.token, NOW)).toMatchObject({ ok: true, ticket: { mission: null } });
+    const mission = issueTicket(SECRET, { game: "food-fight", level: null, playerId: null, now: NOW, mission: "2026-11-03" });
+    expect(readTicket(SECRET, mission.token, NOW)).toMatchObject({ ok: true, ticket: { mission: "2026-11-03" } });
+    const [body, signature] = plain.token.split(".");
+    const stamped = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, "base64url").toString()), m: "2026-11-03" })).toString("base64url");
+    expect(readTicket(SECRET, `${stamped}.${signature}`, NOW)).toEqual({ ok: false, problem: "invalid" });
+  });
+
   it("expires after the time to live and refuses tickets from the future", () => {
     const { token } = issueTicket(SECRET, { game: "dead-end-street", level: null, playerId: null, now: NOW });
     expect(readTicket(SECRET, token, NOW + TICKET_TTL_MS + 1)).toEqual({ ok: false, problem: "expired" });

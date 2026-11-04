@@ -1,7 +1,7 @@
 import { GRID, PARTS, STEP_MS, type PartType } from "@/games/bad-ideas-lab/config";
 import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
-import { MAX_STEPS as LAB_MAX_STEPS, simulateLab } from "@/games/bad-ideas-lab/sim";
+import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
 import { AMMO, PROPS, SCORE as STREET_SCORE, TARGETS, WAVES } from "@/games/dead-end-street/config";
 import { ROUND_MS, RIVALS, SCORE as LUNCH_SCORE } from "@/games/food-fight/config";
 import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
@@ -10,6 +10,7 @@ import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { ARENAS } from "@/games/pajama-war/arenas";
 import { HP, KIDS, SCORE as PAJAMA_SCORE, STATS as KID_STATS } from "@/games/pajama-war/config";
 import type { GameReplay, GameStats } from "@/games/types";
+import type { Evidence } from "@/lib/missions/goals";
 import { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type GameSlug, type Metric, type RankKey } from "./boards";
 
 export { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type GameSlug, type Metric, type RankKey };
@@ -35,6 +36,7 @@ export type Verdict =
       minElapsedMs: number;
       verification: Verification;
       flags: string[];
+      evidence: Evidence;
     }
   | { ok: false; reason: RejectReason; detail: string };
 
@@ -71,6 +73,7 @@ function settle(
   computed: { won: boolean; score: number; stars: number; rank: RankKey; minElapsedMs: number },
   ineligible?: IneligibleReason,
   check: { verification: Verification; flags: string[] } = { verification: "checked", flags: [] },
+  extra: Evidence = {},
 ): Verdict {
   if (claim.won !== computed.won) return reject("inconsistent", "vitória não confere");
   if (claim.score !== computed.score) return reject("score_mismatch", "pontuação não confere");
@@ -86,6 +89,7 @@ function settle(
     minElapsedMs: Math.max(0, Math.round(computed.minElapsedMs)),
     verification: check.verification,
     flags: check.flags,
+    evidence: { ...extra, won: computed.won ? 1 : 0, score: computed.score },
   };
 }
 
@@ -191,7 +195,7 @@ const badIdeasLab: GameRule = {
     const machine = labPlacements(level, claim.replay);
     if (!machine.ok) return reject("bad_replay", machine.detail);
     if (machine.parts.length !== s.parts) return reject("inconsistent", "número de peças não confere");
-    const replay = simulateLab(def, machine.parts);
+    const replay = traceLab(def, machine.parts);
     if (replay.outcome !== "success") return reject("replay_failed", `a máquina terminou em ${replay.outcome}`);
     const score = 1000 + (total - s.parts) * 150 + (s.runs === 1 ? 300 : 0);
     const stars = s.parts <= def.par ? 3 : s.parts === def.par + 1 ? 2 : 1;
@@ -200,6 +204,7 @@ const badIdeasLab: GameRule = {
       { won: true, score, stars, rank: [-s.parts, -replay.steps, 0], minElapsedMs: replay.steps * STEP_MS },
       LAB_PRACTICE.has(level) ? "practice" : undefined,
       { verification: "replayed", flags: replay.steps === s.steps ? [] : ["steps_mismatch"] },
+      { parts: s.parts, steps: replay.steps, untouched: s.parts - replay.touched.length },
     );
   },
 };
@@ -243,6 +248,7 @@ const foodFight: GameRule = {
     if (s.comboPoints % LUNCH_SCORE.comboStep !== 0 || s.comboPoints > (LUNCH_SCORE.comboStep * s.hits * Math.max(0, s.hits - 1)) / 2) {
       return reject("inconsistent", "sequências impossíveis");
     }
+    if (s.comboPoints < (LUNCH_SCORE.comboStep * s.bestStreak * Math.max(0, s.bestStreak - 1)) / 2) return reject("inconsistent", "sequência maior que os pontos de sequência");
     const score = Math.max(
       0,
       s.hitPoints +
@@ -253,7 +259,13 @@ const foodFight: GameRule = {
         s.lunchLadyHits * LUNCH_SCORE.lunchLadyPenalty,
     );
     const stars = won ? (score >= LUNCH_SCORE.threeStars ? 3 : score >= LUNCH_SCORE.twoStars ? 2 : 1) : 0;
-    return settle(claim, { won, score, stars, rank: [score, -s.hitsTaken, s.bestStreak], minElapsedMs: s.timeMs }, score > 0 ? undefined : "no_points");
+    return settle(
+      claim,
+      { won, score, stars, rank: [score, -s.hitsTaken, s.bestStreak], minElapsedMs: s.timeMs },
+      score > 0 ? undefined : "no_points",
+      undefined,
+      { bestStreak: s.bestStreak, hitsTaken: s.hitsTaken, lunchLadyHits: s.lunchLadyHits, interrupts: s.interrupts },
+    );
   },
 };
 

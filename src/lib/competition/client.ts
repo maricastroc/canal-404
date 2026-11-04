@@ -45,7 +45,7 @@ export function getServerCompetition() {
   return SERVER_STATE;
 }
 
-async function call<T>(path: string, init: { method?: string; body?: unknown } = {}, timeout = TIMEOUT_MS): Promise<Call<T>> {
+export async function apiCall<T>(path: string, init: { method?: string; body?: unknown } = {}, timeout = TIMEOUT_MS): Promise<Call<T>> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeout);
   try {
@@ -69,10 +69,10 @@ async function call<T>(path: string, init: { method?: string; body?: unknown } =
 }
 
 async function check(): Promise<CompetitionState> {
-  const status = await call<{ status: CompetitionStatus }>("/api/status", {}, 5000);
+  const status = await apiCall<{ status: CompetitionStatus }>("/api/status", {}, 5000);
   if (!status.ok) return { status: "offline", player: state.player };
   if (status.data.status !== "online") return { status: status.data.status, player: status.data.status === "unconfigured" ? null : state.player };
-  const me = await call<{ player: PublicPlayer | null }>("/api/players/me");
+  const me = await apiCall<{ player: PublicPlayer | null }>("/api/players/me");
   if (!me.ok) return { status: "offline", player: state.player };
   return { status: "online", player: me.data.player };
 }
@@ -94,15 +94,17 @@ export function connect(force = false): Promise<CompetitionState> {
   return inflight;
 }
 
-export async function requestTicket(game: string, level: string | null): Promise<string | null> {
+export type TicketGrant = { token: string; mission: string | null };
+
+export async function requestTicket(game: string, level: string | null, mission: string | null = null): Promise<TicketGrant | null> {
   const current = await connect();
   if (current.status !== "online") return null;
-  const response = await call<TicketResponse>("/api/runs/tickets", { method: "POST", body: { game, level } });
+  const response = await apiCall<TicketResponse>("/api/runs/tickets", { method: "POST", body: mission ? { game, level, mission } : { game, level } });
   if (!response.ok) {
     if (response.status === 0 || response.status >= 500) emit({ ...state, status: "offline" });
     return null;
   }
-  return response.data.ticket;
+  return { token: response.data.ticket, mission: response.data.mission ?? null };
 }
 
 type Claim = { won: boolean; score: number; stars: number; stats: Record<string, number>; replay?: GameResult["replay"] };
@@ -113,7 +115,7 @@ export function claimOf(result: GameResult): Claim | null {
 }
 
 async function send(ticket: string, claim: Claim): Promise<SubmitOutcome | "network"> {
-  const response = await call<SubmitResponse>("/api/runs", { method: "POST", body: { ticket, result: claim } }, 10_000);
+  const response = await apiCall<SubmitResponse>("/api/runs", { method: "POST", body: { ticket, result: claim } }, 10_000);
   if (response.ok) return { kind: "accepted", response: response.data };
   const code = response.error?.code;
   if (response.status === 0 || response.status >= 500) {
@@ -186,9 +188,9 @@ export async function flushOutbox() {
   return sent;
 }
 
-export async function submitResult(ticket: Promise<string | null> | null, result: GameResult): Promise<SubmitOutcome> {
+export async function submitResult(ticket: Promise<TicketGrant | null> | null, result: GameResult): Promise<SubmitOutcome> {
   const claim = claimOf(result);
-  const token = ticket ? await ticket : null;
+  const token = ticket ? ((await ticket)?.token ?? null) : null;
   if (!claim || !token) return { kind: "unranked", why: state.status === "unconfigured" ? "unconfigured" : "no-ticket" };
   if (!state.player) return { kind: "not-joined" };
   const outcome = await send(token, claim);
@@ -201,7 +203,7 @@ export async function submitResult(ticket: Promise<string | null> | null, result
 export type JoinOutcome = { ok: true; player: PublicPlayer } | { ok: false; message: string };
 
 async function identity(method: "POST" | "PATCH", nickname: string): Promise<JoinOutcome> {
-  const response = await call<{ player: PublicPlayer }>(method === "POST" ? "/api/players" : "/api/players/me", { method, body: { nickname } });
+  const response = await apiCall<{ player: PublicPlayer }>(method === "POST" ? "/api/players" : "/api/players/me", { method, body: { nickname } });
   if (response.ok) {
     checkedAt = Date.now();
     emit({ status: "online", player: response.data.player });
@@ -221,7 +223,7 @@ export function rename(nickname: string) {
 }
 
 export async function leave(): Promise<boolean> {
-  const response = await call<{ deleted: boolean }>("/api/players/me", { method: "DELETE" });
+  const response = await apiCall<{ deleted: boolean }>("/api/players/me", { method: "DELETE" });
   if (!response.ok) return false;
   writeOutbox([]);
   emit({ status: "online", player: null });
@@ -231,7 +233,7 @@ export async function leave(): Promise<boolean> {
 export async function fetchBoard(game: string, level: string | null, limit = 10): Promise<LeaderboardResponse | null> {
   const params = new URLSearchParams({ game, limit: String(limit) });
   if (level) params.set("level", level);
-  const response = await call<LeaderboardResponse>(`/api/leaderboards?${params}`);
+  const response = await apiCall<LeaderboardResponse>(`/api/leaderboards?${params}`);
   return response.ok ? response.data : null;
 }
 

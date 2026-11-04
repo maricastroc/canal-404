@@ -77,6 +77,23 @@ describe("competition client", () => {
     expect(Object.keys(sent.result).sort()).toEqual(["score", "stars", "stats", "won"]);
   });
 
+  it("asks for a mission ticket only when the run is a mission, and reports what the channel granted", async () => {
+    const calls = serve({
+      "GET /api/status": () => ({ status: 200, body: { status: "online" } }),
+      "GET /api/players/me": () => ({ status: 200, body: { player: PLAYER } }),
+      "POST /api/runs/tickets": (init) => {
+        const body = JSON.parse(String(init?.body)) as { mission?: string };
+        return { status: 201, body: { ticket: "t.sig", seed: 1, expiresAt: "x", mission: body.mission === "2026-11-04" ? "2026-11-04" : null } };
+      },
+    });
+    expect(await requestTicket("food-fight", null)).toEqual({ token: "t.sig", mission: null });
+    expect(await requestTicket("food-fight", null, "2026-11-04")).toEqual({ token: "t.sig", mission: "2026-11-04" });
+    expect(await requestTicket("food-fight", null, "2026-11-03")).toEqual({ token: "t.sig", mission: null });
+    const bodies = calls.filter((c) => c.path === "/api/runs/tickets").map((c) => c.body);
+    expect(bodies[0]).toEqual({ game: "food-fight", level: null });
+    expect(bodies[1]).toEqual({ game: "food-fight", level: null, mission: "2026-11-04" });
+  });
+
   it("asks for a nickname when nobody joined yet", async () => {
     serve({
       "GET /api/status": () => ({ status: 200, body: { status: "online" } }),

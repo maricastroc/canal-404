@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/site";
 import { Sparkle, Squiggle } from "@/components/art/Badges";
 import { GameCatalog } from "@/components/catalog/GameCatalog";
+import { MissionTeaser } from "@/components/missions/MissionTeaser";
 import { PageTitle, PaperPanel } from "@/components/ui/Primitives";
 
 export const metadata: Metadata = pageMetadata({
@@ -20,6 +21,7 @@ export default function GamesPage() {
       <p className="mx-auto mt-3 max-w-xl text-center text-lg leading-snug text-ink-soft">
         Seis jogos prontos para jogar. Escolha um e boa sorte!
       </p>
+      <MissionTeaser />
       <div className="mt-8">
         <GameCatalog />
       </div>

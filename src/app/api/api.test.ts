@@ -3,9 +3,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ApiErrorBody, LeaderboardResponse, PublicPlayer } from "@/lib/competition/types";
 import { closeDb, type Db } from "@/server/db";
 import { LIMITS } from "@/server/rate-limit";
-import { apiRequest, cookieFrom, hasTestDb, labClaim, resetDb, streetClaim, testDb } from "@/server/testing";
+import { missionDay } from "@/lib/missions/calendar";
+import type { MissionHistoryResponse, MissionTodayResponse } from "@/lib/missions/types";
+import { apiRequest, cookieFrom, hasTestDb, labClaim, resetDb, scheduleMission, streetClaim, testDb } from "@/server/testing";
 import { GET as cleanupGet } from "./cron/cleanup/route";
 import { GET as boardGet } from "./leaderboards/route";
+import { GET as missionHistoryGet } from "./missions/history/route";
+import { GET as missionTodayGet } from "./missions/today/route";
 import { DELETE as meDelete, GET as meGet, PATCH as mePatch } from "./players/me/route";
 import { POST as join } from "./players/route";
 import { POST as submit } from "./runs/route";
@@ -145,7 +149,52 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab" } }))).status).toBe(400);
     expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab", level: "attic" } }))).status).toBe(400);
     const issued = await ticketAs(undefined, "bad-ideas-lab", "pixel");
-    expect(issued).toEqual({ ticket: expect.any(String), seed: expect.any(Number), expiresAt: expect.any(String) });
+    expect(issued).toEqual({ ticket: expect.any(String), seed: expect.any(Number), expiresAt: expect.any(String), mission: null });
+  });
+
+  it("shows today's mission to anyone, and the player's part to the player", async () => {
+    const day = missionDay(new Date());
+    await scheduleMission(db, day, "lab-juice-fast");
+    const anonymous = await body<MissionTodayResponse>(await missionTodayGet(apiRequest("/api/missions/today")));
+    expect(anonymous).toMatchObject({ mission: { day, key: "lab-juice-fast", game: "bad-ideas-lab", level: "juice", ranked: true }, completions: 0, leader: null, you: null });
+    expect(Date.parse(anonymous.mission.endsAt)).toBeGreaterThan(Date.parse(anonymous.now));
+    const { cookie } = await joinAs();
+    const mine = await body<MissionTodayResponse>(await missionTodayGet(apiRequest("/api/missions/today", { cookie })));
+    expect(mine.you).toMatchObject({ state: "new", attempts: 0, progress: { days: 0, streak: 0 } });
+  });
+
+  it("stamps the mission on tickets only for today's game and level", async () => {
+    const day = missionDay(new Date());
+    await scheduleMission(db, day, "lab-juice-fast");
+    const { cookie } = await joinAs();
+    const ask = (level: string, mission: unknown) => ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab", level, mission }, cookie }));
+    expect(await body(await ask("juice", day))).toMatchObject({ mission: day });
+    expect(await body(await ask("pixel", day))).toMatchObject({ mission: null });
+    expect(await body(await ask("juice", "2020-01-01"))).toMatchObject({ mission: null });
+    expect((await ask("juice", "ontem")).status).toBe(400);
+    const started = await body<MissionTodayResponse>(await missionTodayGet(apiRequest("/api/missions/today", { cookie })));
+    expect(started.you).toMatchObject({ state: "started", attempts: 0 });
+  });
+
+  it("completes the mission through the API and lists it in the history", async () => {
+    const day = missionDay(new Date());
+    await scheduleMission(db, day, "lab-juice-fast");
+    const { cookie } = await joinAs();
+    const issued = await body<{ ticket: string; mission: string }>(await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab", level: "juice", mission: day }, cookie })));
+    const quick = labClaim("juice", [{ type: "fan", x: 220, y: 580, rot: 0 }]);
+    const sent = await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: issued.ticket, result: quick }, cookie }));
+    expect(sent.status).toBe(201);
+    expect((await body(sent)).mission).toMatchObject({ day, status: "completed", firstTime: true, best: { position: 1, total: 1, metrics: [1, 98] } });
+    const today = await body<MissionTodayResponse>(await missionTodayGet(apiRequest("/api/missions/today", { cookie })));
+    expect(today).toMatchObject({ completions: 1, leader: { you: true }, you: { state: "completed", attempts: 1, progress: { days: 1, streak: 1 } } });
+    const history = await body<MissionHistoryResponse>(await missionHistoryGet(apiRequest("/api/missions/history?limit=5", { cookie })));
+    expect(history).toMatchObject({ entries: [{ mission: { day, title: "Suco expresso" }, you: { state: "completed" } }], next: null });
+  });
+
+  it("answers an empty history without a player and refuses bad cursors", async () => {
+    expect(await body(await missionHistoryGet(apiRequest("/api/missions/history")))).toEqual({ entries: [], next: null });
+    expect((await missionHistoryGet(apiRequest("/api/missions/history?before=amanha"))).status).toBe(400);
+    expect((await missionHistoryGet(apiRequest("/api/missions/history?limit=500"))).status).toBe(400);
   });
 
   it("submits a run, answers with the board standing and accepts the retry", async () => {

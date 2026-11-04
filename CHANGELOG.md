@@ -4,6 +4,14 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Missão 404 do Dia (Stage 3.1)
+- **A mission every day.** A new `/mission` page, in the menu as "Missão", shows the day's challenge as a cartridge: the game and level, the objective, the player's state (não iniciada, em andamento, concluída) and a VCR clock counting down to the next mission. The mission is the same for everyone and changes at midnight in Fortaleza.
+- **Twelve missions to start.** Seven for the Laboratório, such as "A máquina completa" (use all five parts in the last level and make the ball pass through every one) or "Suco expresso" (orange in the juicer in 1,80 s), and five for Guerra de Lanche, such as "Oito seguidos" and "Sem uma mancha".
+- **Checked by the channel.** A mission counts only for runs that start from the mission and whose result the server accepts. Laboratório machines are rebuilt on the server, which measures the time and the parts the ball touched; Guerra de Lanche results go through the usual checks, now also comparing the best streak with its combo points.
+- **Inside the game.** "Jogar missão" opens the right level with a mission brief and a "Começar missão" button (or "Jogar sem missão"). A tag in the header shows the mission during the run, and the result shows "Missão cumprida!", or what was missing ("A bolinha levou 4,27 s."), with a retry button.
+- **Report and recorded tapes.** The page shows the player's attempts, best result and place, the number of missions completed and the days in a row, the day's leader, and older missions as VHS tapes.
+- The catalog shows the day's mission above the games. Without the backend, the page says the mission is coming soon.
+
 ### TV de perto e fitas refeitas
 - **TV de perto.** The TV in the broadcast room can be watched up close: the button on the TV's frame, or a click on a tape's picture, brings the whole TV (just the screen, with a frame, on phones) to the middle of the screen, with the same program at the same moment. Text and subtitles grow with the screen. Escape or "Voltar pra sala" goes back, and focus returns to where it was.
 - **One clock per tape.** Every tape program follows one clock from the moment the tape went in, so zooming in or out never restarts it.

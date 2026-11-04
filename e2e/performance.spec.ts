@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures";
 const KB = 1024;
 const PAGE_BUDGET = 1300 * KB;
 const CHUNK_BUDGET = 400 * KB;
-const PAGES = ["/", "/games", "/games/food-fight", "/records", "/characters", "/extras"];
+const PAGES = ["/", "/games", "/games/food-fight", "/mission", "/records", "/characters", "/extras"];
 
 test.skip(!process.env.CI && !process.env.E2E_PROD, "budgets are measured against a production build");
 

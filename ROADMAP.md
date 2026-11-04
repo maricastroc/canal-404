@@ -48,20 +48,35 @@ Plan, dependencies and per-game feasibility: [`docs/stage-2-plan.md`](docs/stage
 - [x] Headless Laboratório simulation shared by the browser and the server: pinned `matter-js` outside Phaser, a fresh engine per run, a fixed body order, deterministic trigonometry, golden step counts recorded from the old scene and equivalence tests against it ([0005](docs/decisions/0005-shared-lab-simulation.md)).
 - [x] Server replay of Laboratório results before they enter the board; replayed records are marked "máquina testada pelo canal".
 - [ ] Per-game bounds tuned with bot runs.
-- Moved to Stage 3: Rua Sem Saída launch log replay, because its timers have to move to step counters first.
+- Moved to Stage 4: Rua Sem Saída launch log replay, because its timers have to move to step counters first.
 
-### 2.3 Daily program
+Daily challenges and shared achievements (planned here as 2.3 and 2.4) became Stage 3.
 
-- [ ] A daily challenge per day in São Paulo time, stored the first time it is requested, with its own board and day-change handling.
-- [ ] Formats built on existing mechanics: Laboratório twists, Rua Sem Saída layouts, Operação: Recreio goals; Guerra do Pijama and Guerra de Lanche only after seeding their randomness.
-- [ ] A TV channel and mascot lines for the "Programa especial do dia".
+## Stage 3: Daily mission and achievements
 
-### 2.4 Shared achievements
+Decision: [0006](docs/decisions/0006-daily-missions.md).
 
-- [ ] Cross-game achievements and secrets that reference other shows, confirmed by the server when they come from validated runs.
-- [ ] Room changes, TV announcements, sounds and toasts for them.
+### 3.1 Missão 404 do Dia
 
-## Stage 3: Player-made levels
+- [x] A catalog of missions in code, each with a proof that the server accepts it, and one mission per day picked from the date in `America/Fortaleza`, stored the first time it is asked for. No cron.
+- [x] Missions for the Laboratório (replayed: parts, machine time, parts the ball touched) and Guerra de Lanche (checked stats).
+- [x] Mission tickets: the server stamps the day only for today's game and level, and judges completion from the verified result. One grace hour after midnight.
+- [x] Participation per player and day, the day's ranking on `personal_bests`, a paginated history and progress in days.
+- [x] The `/mission` page (a cartridge with the mission, a VCR countdown, the player's report, the day's board and recorded tapes), a menu item, a teaser in the catalog, and the mission brief, header tag and result line inside the game.
+
+### 3.2 Achievements and competition
+
+- [ ] Server-granted, idempotent achievements for missions, shown with the player's records.
+- [ ] The full daily ranking, with pages.
+- [ ] A clearer completion moment and the player's progress across days.
+
+### 3.3 In the broadcast room
+
+- [ ] The mission announced on the TV, mascot lines for each mission state, an object in the room that opens the mission.
+- [ ] Polish, accessibility and end-to-end tests for the whole loop.
+
+## Stage 4: Player-made levels
+
 
 Depends on the headless simulation and the backend.
 
@@ -70,9 +85,9 @@ Depends on the headless simulation and the backend.
 - [ ] Publishing only levels with a solution proven by the server, with size and complexity limits and validated input.
 - [ ] Sharing by link, and playing other players' levels safely.
 
-## Stage 4: Expansion
+## Stage 5: Expansion
 
-- [ ] Themed events (Halloween, festa junina) built on the daily program.
+- [ ] Themed events (Halloween, festa junina) built on the daily mission.
 - [ ] Gamepad support.
 - [ ] English version of the interface.
 - [ ] New shows.

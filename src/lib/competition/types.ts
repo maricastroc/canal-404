@@ -1,3 +1,4 @@
+import type { MissionOutcome } from "@/lib/missions/types";
 import type { Metric } from "./boards";
 import type { IneligibleReason } from "./rules";
 
@@ -21,9 +22,10 @@ export type SubmitResponse = {
   run: { id: string; verification: "checked" | "replayed"; eligible: boolean; ineligible?: IneligibleReason; score: number; stars: number };
   board: BoardResult | null;
   repeated: boolean;
+  mission?: MissionOutcome | null;
 };
 
-export type TicketResponse = { ticket: string; seed: number; expiresAt: string };
+export type TicketResponse = { ticket: string; seed: number; expiresAt: string; mission?: string | null };
 
 export type LeaderboardResponse = {
   board: { id: string; game: string; level: string | null; explain: string; metrics: Metric[] };

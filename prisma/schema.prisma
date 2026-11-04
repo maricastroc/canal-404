@@ -38,6 +38,7 @@ model Player {
   runs         Run[]
   bests        PersonalBest[]
   achievements PlayerAchievement[]
+  missions     ChallengeEntry[]
 
   @@index([lastSeenAt])
   @@map("players")
@@ -67,7 +68,8 @@ model Run {
   rulesVersion Int             @map("rules_version") @db.SmallInt
   startedAt    DateTime        @map("started_at") @db.Timestamptz(3)
   createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  best         PersonalBest?
+  bests        PersonalBest[]
+  completions  ChallengeEntry[]
 
   @@index([playerId, createdAt])
   @@index([board, createdAt])
@@ -79,7 +81,7 @@ model PersonalBest {
   playerId   String   @map("player_id") @db.Uuid
   player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
   board      String   @db.VarChar(64)
-  runId      String   @unique @map("run_id") @db.Uuid
+  runId      String   @map("run_id") @db.Uuid
   run        Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
   rank1      Int
   rank2      Int
@@ -92,20 +94,40 @@ model PersonalBest {
 
   @@id([playerId, board])
   @@index([board, rank1(sort: Desc), rank2(sort: Desc), rank3(sort: Desc), achievedAt])
+  @@index([runId])
   @@map("personal_bests")
 }
 
 model DailyChallenge {
-  id           String   @id @db.Char(10)
-  game         String   @db.VarChar(32)
-  level        String   @db.VarChar(32)
+  id           String           @id @db.Char(10)
+  key          String           @db.VarChar(48)
+  game         String           @db.VarChar(32)
+  level        String           @db.VarChar(32)
   seed         Int
   variant      Json
-  rulesVersion Int      @map("rules_version") @db.SmallInt
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  rulesVersion Int              @map("rules_version") @db.SmallInt
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   runs         Run[]
+  entries      ChallengeEntry[]
 
   @@map("daily_challenges")
+}
+
+model ChallengeEntry {
+  playerId       String         @map("player_id") @db.Uuid
+  player         Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  challengeId    String         @map("challenge_id") @db.Char(10)
+  challenge      DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  startedAt      DateTime       @map("started_at") @db.Timestamptz(3)
+  lastPlayedAt   DateTime?      @map("last_played_at") @db.Timestamptz(3)
+  attempts       Int            @default(0)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(3)
+  completedRunId String?        @map("completed_run_id") @db.Uuid
+  completedRun   Run?           @relation(fields: [completedRunId], references: [id], onDelete: SetNull)
+
+  @@id([playerId, challengeId])
+  @@index([challengeId, completedAt])
+  @@map("challenge_entries")
 }
 
 model PlayerAchievement {

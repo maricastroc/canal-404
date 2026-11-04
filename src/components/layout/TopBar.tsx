@@ -67,17 +67,18 @@ export function TopBar({ className = "" }: { className?: string }) {
           <Logo slogan={false} label="CANAL 404 — página inicial" className="h-14 w-auto drop-shadow-[0_4px_0_rgba(20,15,38,0.5)]" />
         </Link>
         <nav aria-label="Principal" className="ml-auto hidden md:block">
-          <ul className="flex items-center gap-2">
+          <ul className="flex items-center gap-1.5 lg:gap-2">
             {navItems.map((item) => {
               const active = isActive(pathname, item.href) || (item.href === "/games" && pathname.startsWith("/games"));
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                  prefetch={item.prefetch}
                     aria-current={isActive(pathname, item.href) ? "page" : undefined}
                     onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
                     onClick={() => play("click")}
-                    className={`press block rounded-lg border-[3px] border-ink px-3 py-1.5 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)] ${
+                    className={`press block rounded-lg border-[3px] border-ink px-2 py-1.5 font-display text-[13px] uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)] lg:px-3 lg:text-sm ${
                       active ? item.color : "bg-cream hover:bg-cream-2"
                     }`}
                   >
@@ -136,6 +137,7 @@ export function TopBar({ className = "" }: { className?: string }) {
                     <li key={item.href} className={i % 2 ? "rotate-1" : "-rotate-1"}>
                       <Link
                         href={item.href}
+                        prefetch={item.prefetch}
                         aria-current={active ? "page" : undefined}
                         onClick={() => {
                           play("click");

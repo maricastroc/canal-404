@@ -75,6 +75,18 @@ ORDER BY r.created_at DESC
 LIMIT 50;
 ```
 
+## Daily missions
+
+The mission of a day is stored in `daily_challenges` the first time someone asks for it. To see the last days and how many people completed them:
+
+```sql
+SELECT c.id, c.key, count(e.completed_at) AS completed, count(e.player_id) AS played
+FROM daily_challenges c LEFT JOIN challenge_entries e ON e.challenge_id = c.id
+GROUP BY c.id ORDER BY c.id DESC LIMIT 14;
+```
+
+Never edit a stored day: players were judged against that snapshot. To change a mission, edit its entry in `src/lib/missions/catalog.ts` and bump its `version`; the change applies from the next day that is created. See [decision 0006](decisions/0006-daily-missions.md).
+
 ## Data kept
 
 See [decision 0003](decisions/0003-competition-backend.md#decision): nickname, tag, a hash of the device key, runs and records. No email, name, address or raw address. Rejected runs are deleted after 30 days, old runs that are not records after 90 days, inactive players after two years, and everything about a player immediately when they choose "Sair do placar".

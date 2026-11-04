@@ -1,7 +1,8 @@
 import type { Player, Run } from "@/generated/prisma/client";
 import { boardId, judgeRun, RULES, type IneligibleReason, type RunClaim, type Verdict } from "@/lib/competition/rules";
 import type { BestView, SubmitResponse } from "@/lib/competition/types";
-import { bestView, leaderOf, standing } from "./boards";
+import { leaderOf, standing, upsertBest } from "./boards";
+import { judgeMission, missionFlag, recordMission, storedMissionOutcome } from "./missions";
 import { isUniqueViolation, type Db } from "./db";
 import { HttpError } from "./http";
 import { LIMITS, consume, peek } from "./rate-limit";
@@ -37,7 +38,7 @@ function ineligibleOf(run: Run): IneligibleReason | undefined {
 async function outcomeOf(db: Db, run: Run, repeated: boolean): Promise<SubmitOutcome> {
   const game = run.game as Ticket["game"];
   const board = run.board ? await standing(db, game, run.board, run.playerId) : null;
-  const isBest = board ? (await db.personalBest.findUnique({ where: { runId: run.id }, select: { runId: true } })) !== null : false;
+  const isBest = board && run.board ? (await db.personalBest.findFirst({ where: { runId: run.id, board: run.board }, select: { runId: true } })) !== null : false;
   const leader = run.board ? await leaderOf(db, game, run.board, run.playerId) : null;
   const ineligible = ineligibleOf(run);
   return {
@@ -55,6 +56,7 @@ async function outcomeOf(db: Db, run: Run, repeated: boolean): Promise<SubmitOut
         : { id: run.board, improved: false, previous: null, position: null, total: await db.personalBest.count({ where: { board: run.board, player: { status: "active" } } }), best: null, leader }
       : null,
     repeated,
+    mission: await storedMissionOutcome(db, run),
   };
 }
 
@@ -115,9 +117,12 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
   if (elapsed + ELAPSED_SLACK_MS < verdict.minElapsedMs * ELAPSED_RATIO) return recordRejection(db, ticket, player, claim, "too_fast", now);
 
   const board = boardFor(ticket, verdict);
-  const flags = [...verdict.flags, ...(verdict.ineligible ? [`${INELIGIBLE_FLAG}${verdict.ineligible}`] : [])];
+  const mission = await judgeMission(db, ticket, verdict, now);
+  const counted = mission && mission.status !== "late" ? mission : null;
+  const flags = [...verdict.flags, ...(verdict.ineligible ? [`${INELIGIBLE_FLAG}${verdict.ineligible}`] : []), ...(mission ? [missionFlag(mission)] : [])];
   try {
     return await db.$transaction(async (tx) => {
+      if (counted) await tx.$queryRaw`SELECT id FROM players WHERE id = ${player.id}::uuid FOR UPDATE`;
       const run = await tx.run.create({
         data: {
           ticketId: ticket.id,
@@ -125,6 +130,7 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
           game: ticket.game,
           level: ticket.level ?? "-",
           board,
+          challengeId: counted?.day ?? null,
           won: verdict.won,
           score: verdict.score,
           stars: verdict.stars,
@@ -143,34 +149,10 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
       });
       let previous: BestView | null = null;
       let improved = false;
-      if (run.eligible && board) {
-        const locked = await tx.$queryRaw<{ rank1: number; rank2: number; rank3: number; score: number; stars: number; achieved_at: Date; run_id: string }[]>`
-          SELECT rank1, rank2, rank3, score, stars, achieved_at, run_id FROM personal_bests
-          WHERE player_id = ${player.id}::uuid AND board = ${board} FOR UPDATE`;
-        const before = locked[0];
-        if (before) {
-          previous = bestView(ticket.game, {
-            rank1: before.rank1,
-            rank2: before.rank2,
-            rank3: before.rank3,
-            score: before.score,
-            stars: before.stars,
-            achievedAt: before.achieved_at,
-            runId: before.run_id,
-          });
-        }
-        const changed = await tx.$executeRaw`
-          INSERT INTO personal_bests (player_id, board, run_id, rank1, rank2, rank3, score, stars, stats, achieved_at, updated_at)
-          VALUES (${player.id}::uuid, ${board}, ${run.id}::uuid, ${run.rank1}, ${run.rank2}, ${run.rank3}, ${run.score}, ${run.stars}, ${JSON.stringify(claim.stats)}::jsonb, ${now}, ${now})
-          ON CONFLICT (player_id, board) DO UPDATE SET
-            run_id = EXCLUDED.run_id, rank1 = EXCLUDED.rank1, rank2 = EXCLUDED.rank2, rank3 = EXCLUDED.rank3,
-            score = EXCLUDED.score, stars = EXCLUDED.stars, stats = EXCLUDED.stats,
-            achieved_at = EXCLUDED.achieved_at, updated_at = EXCLUDED.updated_at
-          WHERE (EXCLUDED.rank1, EXCLUDED.rank2, EXCLUDED.rank3) > (personal_bests.rank1, personal_bests.rank2, personal_bests.rank3)`;
-        improved = changed > 0;
-      }
+      if (run.eligible && board) ({ improved, previous } = await upsertBest(tx, { playerId: player.id, board, game: ticket.game, run, stats: claim.stats, now }));
       const place = board ? await standing(tx, ticket.game, board, player.id) : null;
       const leader = board ? await leaderOf(tx, ticket.game, board, player.id) : null;
+      const missionOutcome = mission ? await recordMission(tx, { judgement: mission, player, ticket, run, stats: claim.stats, now }) : null;
       return {
         run: {
           id: run.id,
@@ -186,6 +168,7 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
             : { id: board, improved: false as const, previous: null, position: null, total: await tx.personalBest.count({ where: { board, player: { status: "active" } } }), best: null, leader }
           : null,
         repeated: false,
+        mission: missionOutcome,
       };
     });
   } catch (error) {

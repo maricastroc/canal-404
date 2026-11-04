@@ -1,6 +1,8 @@
 import {
   ArrowLeft,
   BadgeCheck,
+  CassetteTape,
+  CircleCheckBig,
   CircleHelp,
   Dices,
   Download,
@@ -22,6 +24,8 @@ import {
   RotateCcw,
   Smile,
   Star,
+  Target,
+  Timer,
   Trash2,
   Trophy,
   Users,
@@ -72,6 +76,10 @@ export const EjectIcon = make(Eject);
 export const CloseIcon = make(X);
 export const ZoomIcon = make(ZoomIn);
 export const RewindIcon = make(Rewind, true);
+export const MissionIcon = make(Target);
+export const TimerIcon = make(Timer);
+export const TapeIcon = make(CassetteTape);
+export const DoneIcon = make(CircleCheckBig);
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

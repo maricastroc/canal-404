@@ -12,6 +12,7 @@ export const LIMITS = {
   submitAddress: { name: "submit-ip", max: 1200, windowMs: 60 * 60 * 1000 },
   rejected: { name: "rejected", max: 8, windowMs: 60 * 60 * 1000 },
   board: { name: "board", max: 3000, windowMs: 60 * 60 * 1000 },
+  mission: { name: "mission", max: 2400, windowMs: 60 * 60 * 1000 },
 } satisfies Record<string, Limit>;
 
 export async function consume(db: Db, limit: Limit, subject: string, now = new Date()) {

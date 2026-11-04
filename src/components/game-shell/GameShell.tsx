@@ -2,15 +2,19 @@
 
 import { AnimatePresence } from "motion/react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeftIcon, PauseIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ArrowLeftIcon, MissionIcon, PauseIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
 import { GAME_LOADERS } from "@/games/loaders";
 import { getGame } from "@/games/registry";
 import type { GameInstance, GameResult, LoadStage } from "@/games/types";
-import { connect, getCompetition, join, requestTicket, submitResult, type SubmitOutcome } from "@/lib/competition/client";
+import { connect, getCompetition, join, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
+import { isDayKey } from "@/lib/missions/calendar";
+import { loadMission } from "@/lib/missions/client";
+import { useMissionToday } from "@/lib/missions/hooks";
+import type { MissionView } from "@/lib/missions/types";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { getGameRecord, recordGameResult, recordGameStart, recordLevelResult, unlockAchievement } from "@/lib/progress/store";
@@ -23,7 +27,14 @@ import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
 
-type PendingRun = { ticket: Promise<string | null> | null; result: GameResult };
+type PendingRun = { ticket: Promise<TicketGrant | null> | null; result: GameResult };
+
+const noopSubscribe = () => () => {};
+
+function missionParam() {
+  const day = new URLSearchParams(window.location.search).get("mission");
+  return isDayKey(day) ? day : "";
+}
 
 function submitLabel(outcome: SubmitOutcome) {
   if (outcome.kind === "accepted") {
@@ -57,11 +68,33 @@ export function GameShell({ slug }: { slug: string }) {
   const [showHelp, setShowHelp] = useState(false);
   const { regions, announce } = useAnnouncer();
   const [score, setScore] = useState(0);
-  const [result, setResult] = useState<{ result: GameResult; isRecord: boolean; note: string } | null>(null);
+  const [result, setResult] = useState<{ result: GameResult; isRecord: boolean; note: string; mission: MissionView | null } | null>(null);
   const progressState = useProgress();
   const [highScore, setHighScore] = useState(0);
   const [attempt, setAttempt] = useState(0);
-  const runRef = useRef<{ level: string; attempt: number; startedAt: number; ticket: Promise<string | null> | null } | null>(null);
+  const runRef = useRef<{ level: string; attempt: number; startedAt: number; ticket: Promise<TicketGrant | null> | null; mission: MissionView | null } | null>(null);
+  const requestedMission = useSyncExternalStore(noopSubscribe, missionParam, () => "");
+  const [skippedMission, setSkippedMission] = useState(false);
+  const missionWanted = Boolean(requestedMission) && !skippedMission;
+  const missionFeed = useMissionToday(missionWanted);
+  const todayMission = missionWanted ? (missionFeed.data?.mission ?? null) : null;
+  const activeMission = todayMission && todayMission.day === requestedMission && todayMission.game === slug ? todayMission : null;
+  const missionPending = missionWanted && !todayMission && missionFeed.status === "loading";
+  const missionNotice = !missionWanted
+    ? null
+    : todayMission && !activeMission
+      ? todayMission.day !== requestedMission
+        ? "Essa missão já saiu do ar. A missão de hoje está na página da Missão 404."
+        : "A missão de hoje é em outro jogo."
+      : !todayMission && !missionPending
+        ? "Sem sinal da missão agora. Dá para jogar normalmente, mas a partida não conta para a missão."
+        : null;
+  const [missionRun, setMissionRun] = useState<MissionView | null>(null);
+  const skipMission = useCallback(() => {
+    play("click");
+    setSkippedMission(true);
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [play]);
   const [board, setBoard] = useState<BoardState | null>(null);
   const boardSeqRef = useRef(0);
   const pendingRef = useRef<PendingRun | null>(null);
@@ -101,7 +134,8 @@ export function GameShell({ slug }: { slug: string }) {
           setBoard(null);
           return;
         }
-        if (outcome.kind === "accepted" && outcome.response.board?.improved) play("achievement");
+        if (outcome.kind === "accepted" && (outcome.response.board?.improved || outcome.response.mission?.firstTime)) play("achievement");
+        if (outcome.kind === "accepted" && outcome.response.mission) void loadMission(getCompetition().player?.id ?? null, true);
         setBoard({ phase: "done", outcome });
       });
     },
@@ -244,7 +278,7 @@ export function GameShell({ slug }: { slug: string }) {
                   if (ACHIEVEMENTS.some((a) => a.id === id)) unlockAchievement(id as AchievementId);
                 });
                 sendToBoard({ ticket: run?.ticket ?? null, result: r });
-                setResult({ result: r, isRecord, note });
+                setResult({ result: r, isRecord, note, mission: run?.mission ?? null });
                 const levelText = r.level ? `${word === "arena" ? "Arena" : "Fase"} ${r.level.index + 1}, ${r.level.title}: ` : "";
                 announce(
                   r.won
@@ -347,8 +381,10 @@ export function GameShell({ slug }: { slug: string }) {
     lastLevelRef.current = level;
     const n = (attemptsRef.current.get(level) ?? 0) + 1;
     attemptsRef.current.set(level, n);
-    const ticket = getCompetition().status === "unconfigured" ? null : requestTicket(slug, game.levels ? level : null);
-    runRef.current = { level, attempt: n, startedAt: performance.now(), ticket };
+    const mission = activeMission && (activeMission.level ?? "-") === level ? activeMission : null;
+    const ticket = getCompetition().status === "unconfigured" ? null : requestTicket(slug, game.levels ? level : null, mission?.day ?? null);
+    runRef.current = { level, attempt: n, startedAt: performance.now(), ticket, mission };
+    setMissionRun(mission);
     boardSeqRef.current += 1;
     pendingRef.current = null;
     setBoard(null);
@@ -404,6 +440,11 @@ export function GameShell({ slug }: { slug: string }) {
 
   const canControl = stage === "playing" || stage === "paused";
 
+  const startMission = () => {
+    const index = activeMission?.level && game.levels ? game.levels.findIndex((l) => l.id === activeMission.level) : -1;
+    start(index >= 0 ? index : undefined);
+  };
+
   return (
     <div className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
       <header className="flex h-14 shrink-0 items-center gap-2 border-b-[3px] border-ink bg-plum-800 px-2 sm:gap-3 sm:px-4">
@@ -416,6 +457,12 @@ export function GameShell({ slug }: { slug: string }) {
           <span className="hidden sm:inline">Voltar</span>
         </Link>
         <p className="truncate font-display text-lg uppercase tracking-wide text-sun sm:text-2xl">{game.title}</p>
+        {missionRun && canControl ? (
+          <p className="hidden min-w-0 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-lime px-2 py-0.5 font-display text-xs uppercase tracking-wide text-ink md:flex">
+            <MissionIcon className="size-4" />
+            <span className="truncate">Missão: {missionRun.title}</span>
+          </p>
+        ) : null}
         <p className="ml-auto hidden rounded-lg border-[3px] border-ink bg-plum-950 px-3 py-0.5 font-display text-sm tabular-nums text-cream sm:block" aria-hidden>
           {score.toLocaleString("pt-BR")} pts
         </p>
@@ -477,6 +524,11 @@ export function GameShell({ slug }: { slug: string }) {
               onToggleHelp={() => setShowHelp((v) => !v)}
               onPlay={start}
               onNew={game.resumable ? () => start(undefined, false, true) : undefined}
+              mission={activeMission ? { view: activeMission, state: missionFeed.data?.you?.state ?? null } : null}
+              missionPending={missionPending}
+              onStartMission={startMission}
+              onSkipMission={skipMission}
+              missionNotice={missionNotice}
             />
           )}
           {stage === "paused" && (
@@ -497,6 +549,7 @@ export function GameShell({ slug }: { slug: string }) {
               isRecord={result.isRecord}
               recordNote={result.note}
               board={board}
+              mission={result.mission}
               onJoin={joinBoard}
               onRestart={restart}
               onNext={

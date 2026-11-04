@@ -2,6 +2,7 @@ import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { boardId, type GameSlug, type RunClaim } from "@/lib/competition/rules";
+import { missionByKey } from "@/lib/missions/catalog";
 import { getDb, type Db } from "./db";
 import { hashToken, newTag, newToken } from "./identity";
 import { issueTicket } from "./tickets";
@@ -16,7 +17,7 @@ export function testDb(): Db {
 
 export async function resetDb(db: Db) {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE "personal_bests", "runs", "player_achievements", "daily_challenges", "rate_limits", "players" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "challenge_entries", "personal_bests", "runs", "player_achievements", "daily_challenges", "rate_limits", "players" RESTART IDENTITY CASCADE',
   );
 }
 
@@ -28,8 +29,24 @@ export async function makePlayer(db: Db, nickname = "Pato Veloz", status: "activ
   return { player, token };
 }
 
-export function ticketFor(game: GameSlug, level: string | null, playerId: string | null, issuedAt: number) {
-  return issueTicket(TEST_SECRET, { game, level, playerId, now: issuedAt });
+export function ticketFor(game: GameSlug, level: string | null, playerId: string | null, issuedAt: number, mission: string | null = null) {
+  return issueTicket(TEST_SECRET, { game, level, playerId, now: issuedAt, mission });
+}
+
+export async function scheduleMission(db: Db, day: string, key: string) {
+  const def = missionByKey(key)!;
+  return db.dailyChallenge.upsert({
+    where: { id: day },
+    create: { id: day, key, game: def.game, level: def.level ?? "-", seed: 1, rulesVersion: def.version, variant: { title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked } },
+    update: { key, game: def.game, level: def.level ?? "-", rulesVersion: def.version, variant: { title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked } },
+  });
+}
+
+export function lunchClaim(overrides: Record<string, number> = {}): RunClaim {
+  const s = { hits: 30, hitPoints: 4800, interrupts: 2, interruptPoints: 200, comboPoints: 900, lives: 1, hitsTaken: 2, lunchLadyHits: 1, bestStreak: 6, throws: 44, timeMs: 75_000, ...overrides };
+  const won = s.lives > 0;
+  const score = Math.max(0, s.hitPoints + s.interruptPoints + s.comboPoints + (won ? s.lives * 300 : 0) + (won && s.hitsTaken === 0 ? 500 : 0) - s.lunchLadyHits * 200);
+  return { won, score, stars: won ? (score >= 11500 ? 3 : score >= 7500 ? 2 : 1) : 0, stats: s };
 }
 
 export function boardOf(game: GameSlug, level: string | null) {

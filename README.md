@@ -134,14 +134,15 @@ npm run test:visual:update
 | Route | Content |
 | --- | --- |
 | `/` | Broadcast room: TV with the game of the week and channels, arcade cabinet that opens the catalog, radio with music, the 404 mascot and objects hiding secrets |
-| `/games` | Catalog with category filters |
+| `/games` | Catalog with category filters and the day's mission |
+| `/mission` | Missão 404 do Dia: the day's challenge, a countdown to the next one, the player's report, the day's board and past missions |
 | `/games/[slug]` | Game page (playable or "off the air"), with the game's champion when the scoreboard is on |
 | `/records` | Record arcade: every board with its rule, the top ten and your place (`?game=` and `?level=` pick the board) |
-| `/play/[slug]` | Real loading screen, intro, match, pause and results |
+| `/play/[slug]` | Real loading screen, intro, match, pause and results (`?mission=<day>` plays the day's mission) |
 | `/characters` | Character select with reactions |
 | `/extras` | Scoreboard membership card, downloadable posters (PNG), music, achievements and secrets |
 | `/about` | The channel's fictional history |
-| `/api/*` | Scoreboard API: `status`, `players`, `players/me`, `runs/tickets`, `runs`, `leaderboards`, `cron/cleanup` |
+| `/api/*` | Scoreboard API: `status`, `players`, `players/me`, `runs/tickets`, `runs`, `leaderboards`, `missions/today`, `missions/history`, `cron/cleanup` |
 
 Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama) and `off-air-vacation` (Férias Fora do Ar).
 
@@ -190,7 +191,7 @@ Games are independent from the portal. Each one exports a `GameModule` with `mou
 3. Add the loader in `src/games/loaders.ts`.
 4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`.
 
-The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements, screen-reader announcements and the scoreboard. To compete, a game reports integer `stats` in its result and gets a rule in `src/lib/competition/rules.ts` that recomputes its score from them. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`.
+The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements, screen-reader announcements and the scoreboard. To compete, a game reports integer `stats` in its result and gets a rule in `src/lib/competition/rules.ts` that recomputes its score from them. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`. A game gets daily missions by adding entries to `src/lib/missions/catalog.ts` with goals over stats its rule already checks, plus a proof in `catalog.test.ts` ([decision 0006](docs/decisions/0006-daily-missions.md)).
 
 ## Rua Sem Saída (`dead-end-street`)
 

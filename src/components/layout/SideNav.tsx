@@ -10,7 +10,7 @@ import { NavIcon } from "./NavIcon";
 import { SoundToggle } from "./SoundToggle";
 import { VisitorCounter } from "./VisitorCounter";
 
-const tilts = ["-rotate-2", "rotate-1", "-rotate-1", "rotate-2", "-rotate-2", "rotate-1"];
+const tilts = ["-rotate-2", "rotate-1", "-rotate-1", "rotate-2", "-rotate-2", "rotate-1", "-rotate-1", "rotate-2"];
 
 export function SideNav({ className = "" }: { className?: string }) {
   const pathname = usePathname();
@@ -33,6 +33,7 @@ export function SideNav({ className = "" }: { className?: string }) {
               <li key={item.href} className={tilts[i]}>
                 <Link
                   href={item.href}
+                  prefetch={item.prefetch}
                   aria-current={active ? "page" : undefined}
                   onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
                   onClick={() => play("click")}

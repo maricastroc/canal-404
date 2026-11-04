@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { GAME_SLUGS } from "@/lib/competition/rules";
+import { isDayKey } from "@/lib/missions/calendar";
+
+const dayKey = z.string().refine(isDayKey, "dia inválido");
 
 const INT = 2_000_000_000;
 
@@ -47,8 +50,14 @@ export const ticketSchema = z
   .object({
     game: z.enum(GAME_SLUGS),
     level: z.string().regex(/^[a-z0-9-]{1,32}$/).nullable().optional(),
+    mission: dayKey.nullable().optional(),
   })
   .strict();
+
+export const missionHistorySchema = z.object({
+  before: dayKey.nullable(),
+  limit: z.coerce.number().int().min(1).max(30).default(10),
+});
 
 export const nicknameSchema = z.object({ nickname: z.string().max(64) }).strict();
 

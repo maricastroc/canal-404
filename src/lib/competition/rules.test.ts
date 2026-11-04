@@ -157,6 +157,13 @@ describe("Laboratório", () => {
     expect(claimed.minElapsedMs).toBe(Math.round(256 * (1000 / 60)));
   });
 
+  it("hands the server's steps and the parts the ball never touched as mission evidence", () => {
+    const idle = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", TWO_RAMPS, 1)));
+    expect(idle.evidence).toEqual({ won: 1, score: idle.score, parts: 2, steps: 256, untouched: 1 });
+    const both: PlacedPart[] = [...SOLUTIONS.pixel, { type: "ramp", x: 740, y: 520, rot: 4 }];
+    expect(ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", both, 237))).evidence).toMatchObject({ parts: 2, steps: 237, untouched: 0 });
+  });
+
   it("rejects a machine that can be built but does not reach the goal", () => {
     expect(judgeRun("bad-ideas-lab", "pixel", lab("pixel", [{ type: "ramp", x: 620, y: 420, rot: 0 }], 300))).toMatchObject({ ok: false, reason: "replay_failed" });
   });
@@ -203,7 +210,7 @@ describe("Guerra de Lanche", () => {
     const messy = ok(judgeRun("food-fight", null, lunch({ hitsTaken: 1, lives: 2, hitPoints: 4600 })));
     expect(clean.score).toBe(messy.score);
     expect(compare(clean.rank, messy.rank)).toBeLessThan(0);
-    const streak = ok(judgeRun("food-fight", null, lunch({ bestStreak: 12 })));
+    const streak = ok(judgeRun("food-fight", null, lunch({ bestStreak: 10 })));
     expect(compare(streak.rank, v.rank)).toBeLessThan(0);
   });
 
@@ -219,6 +226,15 @@ describe("Guerra de Lanche", () => {
     expect(judgeRun("food-fight", null, lunch({ hitPoints: 60_000 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("food-fight", null, lunch({ interruptPoints: 900 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("food-fight", null, lunch({ lives: 3, hitsTaken: 0, comboPoints: 30 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+  });
+
+  it("refuses a best streak that its combo points could not pay for", () => {
+    expect(judgeRun("food-fight", null, lunch({ bestStreak: 12 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(ok(judgeRun("food-fight", null, lunch({ bestStreak: 11 }))).evidence).toMatchObject({ bestStreak: 11 });
+  });
+
+  it("hands the mission evidence from the checked stats", () => {
+    expect(ok(judgeRun("food-fight", null, lunch())).evidence).toEqual({ won: 1, score: 7100, bestStreak: 9, hitsTaken: 1, lunchLadyHits: 0, interrupts: 5 });
   });
 
   it("counts the big rival's first hit even without a knockout", () => {
