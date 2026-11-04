@@ -1,4 +1,6 @@
+import { useId } from "react";
 import { P } from "@/lib/palette";
+import { TAPES, tapeById, type TapeId } from "./tapes";
 
 const ink = { stroke: P.ink, strokeWidth: 5, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 const thin = { stroke: P.ink, strokeWidth: 3.5, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
@@ -396,44 +398,73 @@ export function BooksArt() {
   );
 }
 
-export function VhsArt({ inserted }: { inserted: boolean }) {
-  const tapes = [
-    { x: 6, c: P.ink, l: P.cream, t: "DESENHOS 03" },
-    { x: 40, c: P.ink, l: P.sky, t: "RUA S/ SAÍDA" },
-    { x: 74, c: P.ink, l: P.lime, t: "FÉRIAS 2004" },
-    { x: 108, c: P.ink, l: P.bubblegum, t: "KARAOKÊ" },
-  ];
+const TORN_LABEL = "M152 110 L152 46 L156 40 L159 47 L163 39 L166 45 L170 38 L174 44 L174 110 Z";
+
+export function VhsArt({ inserted }: { inserted: TapeId | null }) {
+  const clip = useId();
+  const upright = TAPES.filter((tape) => !tape.torn);
+  const torn = TAPES.find((tape) => tape.torn)!;
   return (
     <svg viewBox="0 0 236 124" className="h-full w-full" overflow="visible" aria-hidden>
+      <defs>
+        <clipPath id={clip}>
+          <path d={TORN_LABEL} />
+        </clipPath>
+      </defs>
       <g>
-        {tapes.map((tape) => (
-          <g key={tape.t}>
-            <rect x={tape.x} y="18" width="30" height="100" rx="3" fill={tape.c} stroke={P.ink} strokeWidth="3" />
-            <rect x={tape.x + 5} y="26" width="20" height="84" rx="2" fill={tape.l} />
-            <text
-              x={tape.x + 19}
-              y="68"
-              textAnchor="middle"
-              fontSize="9"
-              fill={P.ink}
-              style={hand}
-              transform={`rotate(-90 ${tape.x + 19} 68)`}
-            >
-              {tape.t}
-            </text>
-          </g>
-        ))}
-        {!inserted && (
+        {upright.map((tape, i) => {
+          const x = 6 + i * 34;
+          if (tape.id === inserted) return null;
+          return (
+            <g key={tape.id}>
+              <rect x={x} y="18" width="30" height="100" rx="3" fill={P.ink} stroke={P.ink} strokeWidth="3" />
+              <rect x={x + 5} y="26" width="20" height="84" rx="2" fill={tape.sticker} />
+              <text x={x + 19} y="68" textAnchor="middle" fontSize="9" fill={P.ink} style={hand} transform={`rotate(-90 ${x + 19} 68)`}>
+                {tape.label.toUpperCase()}
+              </text>
+            </g>
+          );
+        })}
+        {inserted !== torn.id && (
           <g transform="rotate(-10 172 70)">
             <rect x="146" y="14" width="34" height="104" rx="3" fill={P.inkSoft} stroke={P.ink} strokeWidth="3.5" />
-            <rect x="152" y="22" width="22" height="88" rx="2" fill={P.tomato} />
-            <text x="167" y="66" textAnchor="middle" fontSize="10" fill={P.white} style={display} transform="rotate(-90 167 66)">
-              NÃO ASSISTA
-            </text>
+            <path d={TORN_LABEL} fill={torn.sticker} />
+            <path d="M153 24 L172 24 L171 30 L166 27 L160 31 L154 28 Z" fill={torn.sticker} />
+            <g clipPath={`url(#${clip})`}>
+              <text x="167" y="66" textAnchor="middle" fontSize="10" fill={P.white} style={display} transform="rotate(-90 167 66)">
+                NÃO ASSISTA
+              </text>
+            </g>
           </g>
         )}
         <rect x="194" y="70" width="34" height="48" rx="3" fill={P.plum600} stroke={P.ink} strokeWidth="3" transform="rotate(6 211 94)" />
       </g>
+    </svg>
+  );
+}
+
+export function VcrArt({ playing }: { playing: TapeId | null }) {
+  const tape = playing ? tapeById(playing) : null;
+  return (
+    <svg viewBox="598 694 228 86" className="h-full w-full" aria-hidden>
+      <rect x="604" y="700" width="216" height="52" rx="6" fill={P.inkSoft} stroke={P.ink} strokeWidth="4" />
+      <rect x="616" y="712" width="120" height="12" rx="3" fill={P.ink} />
+      {tape && <rect x="620" y="715" width="112" height="6" rx="1.5" fill={tape.sticker} />}
+      {tape ? (
+        <g>
+          <rect x="616" y="728" width="78" height="14" rx="3" fill={P.plum950} />
+          <text x="621" y="739" fontSize="10" fill={P.screen} style={display} letterSpacing="1">
+            ▶ PLAY
+          </text>
+        </g>
+      ) : (
+        <rect x="616" y="730" width="70" height="8" rx="3" fill={P.plum500} />
+      )}
+      <circle cx="770" cy="726" r="9" fill={tape ? P.lime : P.tomato} stroke={P.ink} strokeWidth="3" style={tape ? { filter: "drop-shadow(0 0 5px #93cf4c)" } : undefined} />
+      <circle cx="798" cy="726" r="9" fill={P.steel} stroke={P.ink} strokeWidth="3" />
+      <text x="616" y="770" fontSize="16" fill={P.cream2} style={display} letterSpacing="2">
+        VIDEO-404
+      </text>
     </svg>
   );
 }

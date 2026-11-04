@@ -4,6 +4,7 @@ import {
   CircleHelp,
   Dices,
   Download,
+  Eject,
   IdCard,
   Gamepad2,
   Gift,
@@ -65,6 +66,8 @@ export const TrashIcon = make(Trash2);
 export const OfflineIcon = make(WifiOff);
 export const PencilIcon = make(PencilLine);
 export const VerifiedIcon = make(BadgeCheck);
+export const EjectIcon = make(Eject);
+export const CloseIcon = make(X);
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

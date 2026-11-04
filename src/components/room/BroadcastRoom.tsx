@@ -30,6 +30,7 @@ import {
   RadioArt,
   SkateArt,
   TrophyArt,
+  VcrArt,
   VhsArt,
   WindowArt,
   type CatMood,
@@ -37,6 +38,8 @@ import {
 } from "./objects/Decor";
 import { Tv, type TvBadge } from "./objects/Tv";
 import { CHANNEL_ORDER, CHANNELS, isRegularChannel, type ChannelId } from "./objects/TvChannels";
+import { isTape, tapeById, type TapeId } from "./objects/tapes";
+import { TapeShelf } from "./TapeShelf";
 import { useSchedule } from "@/components/catalog/useSchedule";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { bestRecord, FALLBACK_WEEKLY, plays, unplayedGames } from "@/lib/schedule";
@@ -108,6 +111,8 @@ export function BroadcastRoom() {
   const [lastRegular, setLastRegular] = useState<ChannelId>(FALLBACK_WEEKLY.slug);
   const tuned = useRef(false);
   const [switching, setSwitching] = useState(false);
+  const [shelfOpen, setShelfOpen] = useState(false);
+  const shelfButton = useRef<HTMLButtonElement>(null);
   const [osd, setOsd] = useState(false);
   const [knobAngle, setKnobAngle] = useState(0);
   const [flash, setFlash] = useState(false);
@@ -474,19 +479,41 @@ export function BroadcastRoom() {
     poke();
   }, [play, poke, say]);
 
-  const handleVhs = useCallback(() => {
+  const playing = isTape(channel) ? channel : null;
+
+  const openShelf = useCallback(() => {
     poke();
-    if (channel === "tape") {
-      play("click");
-      tuneTo(lastRegular);
-      say({ text: "Fita ejetada. Vamos fingir que nada aconteceu.", expression: "wink", duration: 3000 });
-      return;
-    }
     play("click");
-    tuneTo("tape");
-    unlockSecret("tape");
-    say({ text: "Você colocou a fita proibida! Ah não, é o meu ensaio de dança...", expression: "surprised", duration: 5200 });
-  }, [channel, lastRegular, play, poke, say, tuneTo]);
+    setShelfOpen(true);
+  }, [play, poke]);
+
+  const closeShelf = useCallback(() => {
+    setShelfOpen(false);
+    window.setTimeout(() => shelfButton.current?.focus(), 0);
+  }, []);
+
+  const insertTape = useCallback(
+    (id: TapeId) => {
+      closeShelf();
+      poke();
+      play("tapeIn");
+      tuneTo(id, { quiet: true });
+      const tape = tapeById(id);
+      if (id === "tape") unlockSecret("tape");
+      if (id === "tape-street") window.setTimeout(() => play("jingle"), 420);
+      if (id === "tape-karaoke") window.setTimeout(() => play("karaoke"), 420);
+      say({ text: tape.insertLine, expression: id === "tape" || id === "tape-resort" ? "surprised" : id === "tape-karaoke" ? "wink" : "excited", duration: 5200 });
+    },
+    [closeShelf, play, poke, say, tuneTo],
+  );
+
+  const ejectTape = useCallback(() => {
+    if (!playing) return;
+    poke();
+    play("tapeOut");
+    tuneTo(lastRegular, { quiet: true });
+    say({ text: tapeById(playing).ejectLine, expression: "wink", duration: 3400 });
+  }, [lastRegular, play, playing, poke, say, tuneTo]);
 
   const say2 = useCallback(
     (text: string, expression: Parameters<typeof say>[0]["expression"] = "happy", sound: Parameters<typeof play>[0] = "click") => {
@@ -705,7 +732,7 @@ export function BroadcastRoom() {
           channel={channel}
           badge={badgeFor(channel)}
           next={
-            suggestion && CHANNELS[suggestion.game.slug]
+            !playing && suggestion && CHANNELS[suggestion.game.slug]
               ? { number: CHANNELS[suggestion.game.slug].number, name: suggestion.game.title, onTune: tuneSuggestion }
               : null
           }
@@ -720,16 +747,31 @@ export function BroadcastRoom() {
         />
 
         <RoomButton
+          ref={shelfButton}
           spot={SPOTS.vhs}
-          label={channel === "tape" ? "Ejetar a fita do videocassete" : "Fitas VHS: colocar a fita 'Não assista' no videocassete"}
-          pressed={channel === "tape"}
-          hint={channel === "tape" ? "Ejeta essa fita, por favor." : "Uma das fitas diz NÃO ASSISTA. Hmm."}
+          label="Estante de fitas VHS: escolher uma fita"
+          hasPopup="dialog"
+          hint={playing ? `Tá passando: ${tapeById(playing).label}. Quer trocar de fita?` : "Uma das fitas diz NÃO ASSISTA. Hmm."}
           onHint={onHint}
           onHoverSound={hover}
-          onActivate={handleVhs}
+          onActivate={openShelf}
           z={13}
         >
-          <VhsArt inserted={channel === "tape"} />
+          <VhsArt inserted={playing} />
+        </RoomButton>
+
+        <RoomButton
+          spot={SPOTS.vcr}
+          label={playing ? `Videocassete: ejetar a fita ${tapeById(playing).label}` : "Videocassete vazio: abrir a estante de fitas"}
+          hasPopup={playing ? undefined : "dialog"}
+          hint={playing ? "Aperta pra ejetar a fita." : "O videocassete tá vazio. As fitas ficam na estante do lado."}
+          onHint={onHint}
+          onHoverSound={hover}
+          onActivate={playing ? ejectTape : openShelf}
+          hit="box"
+          z={11}
+        >
+          <VcrArt playing={playing} />
         </RoomButton>
 
         <RoomButton
@@ -975,6 +1017,18 @@ export function BroadcastRoom() {
           </div>,
           dockTarget,
         )}
+
+      <TapeShelf
+        open={shelfOpen}
+        inserted={playing}
+        onPick={insertTape}
+        onEject={() => {
+          closeShelf();
+          ejectTape();
+        }}
+        onClose={closeShelf}
+        onHoverSound={hover}
+      />
 
       <p className="sr-only" aria-live="polite">
         {director.announcement}

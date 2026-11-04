@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Estante de fitas
+- The VHS shelf in the broadcast room now opens a close-up of the shelf with five tapes, each a large button, so any of them can be put in the VCR.
+- Each tape plays its own program on the TV, separate from the regular channels: "Desenhos 03" is a recorded episode where the 404 catches static, "Rua S/ Saída" is an over-the-top 2004 commercial with a jingle and a button to play, "Férias 2004" is a home video from the resort with a detail that changes for a moment, and "Karaokê" has the 404 singing an original song with the lyrics on screen.
+- "Não assista" keeps the mysterious tape secret and now has a torn label.
+- The VCR shows when a tape is playing and ejects it with a click. When it is empty, it opens the shelf.
+
 ### Fliperama de recordes (Stage 2.2)
 - A new "Fliperama de recordes" page shows the best of the channel in every game: a cartridge per game, a picker for each level or arena, the top ten with nickname and tag, and your own place even when you are outside the top. Each board explains its rule, its tie-breaks and how the channel checks results.
 - It opens from the new "Recordes" menu item, the trophy in the broadcast room, a "Quadro dos campeões" strip on each game page, the result panel and the membership card in Extras.

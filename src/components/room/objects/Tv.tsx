@@ -59,9 +59,7 @@ export function Tv({ channel, badge, next, switching, osd, knobAngle, flash, onK
       : badge === "new"
         ? `${info.game.title}: programa inédito pra você! Clica na tela pra jogar.`
         : `Reprise de ${info.game.title}! Clica na tela pra jogar.`
-    : channel === "cartoon"
-      ? "Reprise do meu desenho! Clica pra conhecer a turma."
-      : null;
+    : (info.hint ?? null);
   const ctaContext = info.cta ? (badge ? `${info.cta.context}, ${BADGE_LABEL[badge].toLowerCase()}` : info.cta.context) : "";
 
   return (

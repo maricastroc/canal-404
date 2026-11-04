@@ -16,6 +16,7 @@ type CommonProps = {
   z?: number;
   pressed?: boolean;
   describedBy?: string;
+  hasPopup?: "dialog";
 };
 
 type ButtonProps = CommonProps & {
@@ -40,7 +41,7 @@ export function hitClass(hit: "shape" | "box") {
 }
 
 export const RoomButton = forwardRef<HTMLButtonElement, ButtonProps>(function RoomButton(
-  { spot, label, hint, onHint, onHoverSound, hit = "shape", className = "", children, onActivate, z = 10, pressed, describedBy },
+  { spot, label, hint, onHint, onHoverSound, hit = "shape", className = "", children, onActivate, z = 10, pressed, describedBy, hasPopup },
   ref,
 ) {
   return (
@@ -48,6 +49,7 @@ export const RoomButton = forwardRef<HTMLButtonElement, ButtonProps>(function Ro
       ref={ref}
       type="button"
       aria-pressed={pressed}
+      aria-haspopup={hasPopup}
       aria-describedby={describedBy}
       onClick={onActivate}
       onPointerEnter={(e) => {

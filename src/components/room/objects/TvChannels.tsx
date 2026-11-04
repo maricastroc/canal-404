@@ -4,6 +4,8 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { Feather, Head, Pillow } from "@/components/art/PajamaWarArt";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { P } from "@/lib/palette";
+import { CartoonTapeScreen, KaraokeScreen, ResortVideoScreen, StreetAdScreen } from "./TapeScreens";
+import { TAPES } from "./tapes";
 
 export type ChannelId = string;
 
@@ -13,6 +15,7 @@ export type Channel = {
   name: string;
   game?: GameMeta;
   cta?: { href: string; label: string; context: string; play?: boolean };
+  hint?: string;
 };
 
 const GAME_CHANNELS: Channel[] = PLAYABLE.map((game, i) => ({
@@ -30,12 +33,24 @@ const SPECIAL_CHANNELS: Channel[] = [
     number: String(GAME_CHANNELS.length + 2).padStart(2, "0"),
     name: "Desenho: 404 e o Controle Perdido",
     cta: { href: "/characters", label: "Personagens", context: "conhecer a turma do CANAL 404" },
+    hint: "Reprise do meu desenho! Clica pra conhecer a turma.",
   },
   { id: "lost", number: "00", name: "Transmissão perdida" },
-  { id: "tape", number: "AV", name: "Fita misteriosa no videocassete" },
 ];
 
-export const CHANNELS: Record<ChannelId, Channel> = Object.fromEntries([...GAME_CHANNELS, ...SPECIAL_CHANNELS].map((c) => [c.id, c]));
+const TAPE_CHANNELS: Channel[] = TAPES.map((tape) => ({
+  id: tape.id,
+  number: "AV",
+  name: tape.name,
+  ...(tape.id === "tape-street"
+    ? {
+        cta: { href: "/play/dead-end-street", label: "Jogar agora", context: "Rua Sem Saída", play: true },
+        hint: "Um comercial de 2004 da Rua Sem Saída. Clica na tela pra jogar.",
+      }
+    : {}),
+}));
+
+export const CHANNELS: Record<ChannelId, Channel> = Object.fromEntries([...GAME_CHANNELS, ...SPECIAL_CHANNELS, ...TAPE_CHANNELS].map((c) => [c.id, c]));
 
 export const CHANNEL_ORDER: ChannelId[] = [...GAME_CHANNELS.map((c) => c.id), "bars", "cartoon"];
 
@@ -251,6 +266,14 @@ export function ChannelContent({ id }: { id: ChannelId }) {
       return <LostScreen />;
     case "tape":
       return <TapeScreen />;
+    case "tape-cartoon":
+      return <CartoonTapeScreen />;
+    case "tape-street":
+      return <StreetAdScreen />;
+    case "tape-resort":
+      return <ResortVideoScreen />;
+    case "tape-karaoke":
+      return <KaraokeScreen />;
   }
   const game = CHANNELS[id]?.game;
   return game ? <GameScreen game={game} /> : <BarsScreen />;

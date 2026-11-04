@@ -101,14 +101,6 @@ function TvCabinet() {
       <rect x="560" y="626" width="564" height="26" rx="8" fill={P.wood} {...ink} />
       <rect x="592" y="672" width="240" height="118" rx="8" fill={P.woodDark} stroke={P.ink} strokeWidth="4" />
       <rect x="852" y="672" width="240" height="118" rx="8" fill={P.woodDark} stroke={P.ink} strokeWidth="4" />
-      <rect x="604" y="700" width="216" height="52" rx="6" fill={P.inkSoft} stroke={P.ink} strokeWidth="4" />
-      <rect x="616" y="712" width="120" height="12" rx="3" fill={P.ink} />
-      <rect x="616" y="730" width="70" height="8" rx="3" fill={P.plum500} />
-      <circle cx="770" cy="726" r="9" fill={P.tomato} stroke={P.ink} strokeWidth="3" />
-      <circle cx="798" cy="726" r="9" fill={P.steel} stroke={P.ink} strokeWidth="3" />
-      <text x="616" y="770" fontSize="16" fill={P.cream2} style={{ fontFamily: "var(--font-luckiest)" }} letterSpacing="2">
-        VIDEO-404
-      </text>
       <rect x="590" y="812" width="24" height="14" fill={P.woodDark} stroke={P.ink} strokeWidth="4" />
       <rect x="1070" y="812" width="24" height="14" fill={P.woodDark} stroke={P.ink} strokeWidth="4" />
     </g>

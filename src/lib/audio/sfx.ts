@@ -156,6 +156,44 @@ export const SFX = {
       { kind: "tone", wave: "square", from: 330, to: 310, duration: 0.8, delay: 0.78, gain: 0.07, vibrato: { rate: 6, depth: 8 }, filter: { type: "lowpass", frequency: 1000 } },
     ],
   },
+  tapeIn: {
+    layers: [
+      { kind: "noise", duration: 0.06, gain: 0.12, filter: { type: "lowpass", from: 900 } },
+      { kind: "tone", wave: "square", from: 140, to: 90, duration: 0.08, gain: 0.08 },
+      { kind: "tone", wave: "sawtooth", from: 70, to: 96, duration: 0.42, delay: 0.1, gain: 0.05, filter: { type: "lowpass", frequency: 500 } },
+      { kind: "noise", duration: 0.04, delay: 0.5, gain: 0.08, filter: { type: "highpass", from: 2400 } },
+    ],
+  },
+  tapeOut: {
+    layers: [
+      { kind: "noise", duration: 0.05, gain: 0.1, filter: { type: "highpass", from: 1800 } },
+      { kind: "tone", wave: "sawtooth", from: 96, to: 64, duration: 0.3, delay: 0.04, gain: 0.05, filter: { type: "lowpass", frequency: 500 } },
+      { kind: "tone", wave: "square", from: 180, to: 260, duration: 0.07, delay: 0.32, gain: 0.08 },
+    ],
+  },
+  jingle: {
+    volume: 0.9,
+    layers: [
+      { kind: "tone", wave: "pulse", from: 523, duration: 0.09, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.09, delay: 0.1, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 784, duration: 0.09, delay: 0.2, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.09, delay: 0.3, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 784, duration: 0.09, delay: 0.4, gain: 0.11 },
+      { kind: "tone", wave: "pulse", from: 1047, duration: 0.5, delay: 0.5, gain: 0.12, vibrato: { rate: 7, depth: 16 } },
+      { kind: "tone", wave: "triangle", from: 262, duration: 0.5, delay: 0.5, gain: 0.14 },
+      { kind: "noise", duration: 0.18, delay: 0.5, gain: 0.05, filter: { type: "highpass", from: 5000 } },
+    ],
+  },
+  karaoke: {
+    volume: 0.85,
+    layers: [
+      { kind: "tone", wave: "triangle", from: 392, duration: 0.22, gain: 0.12, vibrato: { rate: 5, depth: 6 } },
+      { kind: "tone", wave: "triangle", from: 440, duration: 0.22, delay: 0.26, gain: 0.12, vibrato: { rate: 5, depth: 6 } },
+      { kind: "tone", wave: "triangle", from: 494, duration: 0.22, delay: 0.52, gain: 0.12, vibrato: { rate: 5, depth: 6 } },
+      { kind: "tone", wave: "triangle", from: 587, duration: 0.7, delay: 0.78, gain: 0.12, vibrato: { rate: 5, depth: 10 } },
+      { kind: "tone", wave: "sine", from: 196, duration: 1.4, delay: 0.1, gain: 0.08 },
+    ],
+  },
 } satisfies Record<string, SoundRecipe>;
 
 export type SfxName = keyof typeof SFX;

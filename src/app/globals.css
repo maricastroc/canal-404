@@ -595,6 +595,113 @@ body {
   }
 }
 
+@keyframes vhs-track {
+  0% {
+    transform: translateY(-120%) skewX(0deg);
+  }
+  40% {
+    transform: translateY(300%) skewX(10deg);
+  }
+  42% {
+    transform: translateY(320%) skewX(-8deg);
+  }
+  100% {
+    transform: translateY(1100%) skewX(0deg);
+  }
+}
+
+@keyframes rec-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes handheld {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-1%, 0.6%) rotate(-0.6deg);
+  }
+  55% {
+    transform: translate(0.8%, -0.5%) rotate(0.5deg);
+  }
+  80% {
+    transform: translate(-0.4%, 0.8%) rotate(-0.2deg);
+  }
+}
+
+@keyframes cam-glitch {
+  0%,
+  88% {
+    opacity: 0;
+  }
+  88.5%,
+  94% {
+    opacity: 1;
+  }
+  94.5%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes cam-steady {
+  0%,
+  88% {
+    opacity: 1;
+  }
+  88.5%,
+  94% {
+    opacity: 0;
+  }
+  94.5%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes spot-sway {
+  from {
+    transform: rotate(-12deg);
+  }
+  to {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes karaoke-ball {
+  from {
+    left: 0%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+@keyframes karaoke-hop {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-90%);
+  }
+}
+
+@keyframes karaoke-fill {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
 @keyframes glitch {
   0%,
   100% {
