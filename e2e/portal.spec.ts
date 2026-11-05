@@ -25,6 +25,36 @@ for (const section of SECTIONS) {
   });
 }
 
+for (const size of [
+  { width: 1512, height: 730 },
+  { width: 1280, height: 600 },
+]) {
+  test(`fits the whole room menu in a ${size.width}x${size.height} window`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto("/");
+    const links = page.getByRole("navigation", { name: "Principal" }).getByRole("link");
+    await expect(links).toHaveCount(8);
+    for (const link of await links.all()) {
+      const box = (await link.boundingBox())!;
+      expect(box.y + box.height, await link.innerText()).toBeLessThanOrEqual(size.height);
+    }
+  });
+}
+
+test("lets the room menu scroll when the window is too short for it", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 480 });
+  await page.goto("/");
+  const last = page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Sobre o canal" });
+  await page.mouse.move(150, 300);
+  await page.mouse.wheel(0, 600);
+  await expect(async () => {
+    const box = (await last.boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(480);
+  }).toPass();
+  await last.click();
+  await expect(page).toHaveURL("/about");
+});
+
 test("filters the catalog by category", async ({ page }) => {
   await page.goto("/games");
   const filters = page.getByRole("group", { name: "Filtrar jogos por categoria" });

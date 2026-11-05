@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @custom-variant tvset (@media (min-width: 768px) and (min-height: 560px));
+@custom-variant short (@media (max-height: 899px));
+@custom-variant shorter (@media (max-height: 719px));
 
 @theme {
   --color-ink: #1d1830;
