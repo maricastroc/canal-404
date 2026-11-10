@@ -1,5 +1,5 @@
 import { apiCall } from "@/lib/competition/client";
-import type { MissionHistoryResponse, MissionTodayResponse } from "./types";
+import type { MissionBoardResponse, MissionHistoryResponse, MissionTodayResponse } from "./types";
 
 export type MissionSnapshot = {
   status: "idle" | "loading" | "ready" | "error";
@@ -62,6 +62,13 @@ export async function fetchMissionHistory(before: string | null, limit = 10): Pr
   const params = new URLSearchParams({ limit: String(limit) });
   if (before) params.set("before", before);
   const response = await apiCall<MissionHistoryResponse>(`/api/missions/history?${params}`);
+  return response.ok ? response.data : null;
+}
+
+export async function fetchMissionBoard(day: string | null, page = 1): Promise<MissionBoardResponse | null> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (day) params.set("day", day);
+  const response = await apiCall<MissionBoardResponse>(`/api/missions/board?${params}`);
   return response.ok ? response.data : null;
 }
 

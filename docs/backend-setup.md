@@ -85,6 +85,16 @@ FROM daily_challenges c LEFT JOIN challenge_entries e ON e.challenge_id = c.id
 GROUP BY c.id ORDER BY c.id DESC LIMIT 14;
 ```
 
+Days are settled (final places and Campeão do Dia) by the first request after 01:00 of the next day. To see who won and whether a day was settled:
+
+```sql
+SELECT c.id, c.settled_at, p.nickname, p.tag
+FROM daily_challenges c
+LEFT JOIN challenge_entries e ON e.challenge_id = c.id AND e.final_position = 1
+LEFT JOIN players p ON p.id = e.player_id
+ORDER BY c.id DESC LIMIT 14;
+```
+
 Never edit a stored day: players were judged against that snapshot. To change a mission, edit its entry in `src/lib/missions/catalog.ts` and bump its `version`; the change applies from the next day that is created. See [decision 0006](decisions/0006-daily-missions.md).
 
 ## Data kept

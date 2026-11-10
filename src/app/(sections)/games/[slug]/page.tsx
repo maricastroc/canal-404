@@ -11,7 +11,8 @@ import { ChampionTicker } from "@/components/records/ChampionTicker";
 import { WeeklyPlayLink } from "@/components/catalog/WeeklyPlayLink";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
-import { InkLink, PaperPanel, Tag } from "@/components/ui/Primitives";
+import { InkLink, inkStyle, PaperPanel, Tag } from "@/components/ui/Primitives";
+import { IntentLink } from "@/components/ui/IntentLink";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 import { CATEGORY_LABELS, GAMES, getGame } from "@/games/registry";
 import { isGameSlug } from "@/lib/competition/boards";
@@ -96,9 +97,9 @@ export default async function GamePage({ params }: PageProps<"/games/[slug]">) {
             </div>
             {available ? (
               <div className="mt-6 flex flex-col gap-4">
-                <InkLink href={`/play/${game.slug}`} size="lg" tone="sun" className="self-start">
+                <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "lg", "self-start")}>
                   <PlayIcon className="size-7 text-ink" /> Jogar
-                </InkLink>
+                </IntentLink>
                 <GameStats slug={game.slug} levels={game.levels} levelWord={game.levelWord} />
                 {isGameSlug(game.slug) ? <ChampionTicker slug={game.slug} levelWord={game.levelWord} /> : null}
               </div>

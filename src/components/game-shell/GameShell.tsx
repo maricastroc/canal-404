@@ -14,6 +14,7 @@ import { connect, getCompetition, join, requestTicket, submitResult, type Submit
 import { isDayKey } from "@/lib/missions/calendar";
 import { loadMission } from "@/lib/missions/client";
 import { useMissionToday } from "@/lib/missions/hooks";
+import { announceAchievements } from "@/lib/missions/seen";
 import type { MissionView } from "@/lib/missions/types";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
@@ -135,7 +136,11 @@ export function GameShell({ slug }: { slug: string }) {
           return;
         }
         if (outcome.kind === "accepted" && (outcome.response.board?.improved || outcome.response.mission?.firstTime)) play("achievement");
-        if (outcome.kind === "accepted" && outcome.response.mission) void loadMission(getCompetition().player?.id ?? null, true);
+        if (outcome.kind === "accepted" && outcome.response.mission) {
+          const playerId = getCompetition().player?.id ?? null;
+          if (playerId) announceAchievements(playerId, outcome.response.mission.achievements);
+          void loadMission(playerId, true);
+        }
         setBoard({ phase: "done", outcome });
       });
     },

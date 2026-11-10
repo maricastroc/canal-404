@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Conquistas e placar do dia (Stage 3.2)
+- **Five mission achievements**, checked by the channel: Primeira Transmissão, Frequentador do Canal (3 different days), Maratonista do 404 (7 different days), De Volta ao Ar (a mission after 7 days or more without one) and Campeão do Dia (1st place when the day closes, with someone else on the board). They show up in the result of the run that earned them, as a toast, in the report on `/mission` and in Extras → Conquistas with the date. Players who completed missions before this update got theirs too.
+- **The day's board** now lists everyone, 10 per page, with your own place even outside the page. Arrows go to earlier days, which show the final result and the champion, and each recorded tape has a "Ver placar" link.
+- **Your grade.** The report shows the last 14 days (completed, tried or no mission) and how many times you were the champion.
+- **Lighter pages.** Play buttons load the game only when you point at them or touch them, so pages with a play link download about 90 KB less.
+- The "Missão cumprida!" stamp moved onto the cover so it no longer covers the mission title.
+
 ### Missão 404 do Dia (Stage 3.1)
 - **A mission every day.** A new `/mission` page, in the menu as "Missão", shows the day's challenge as a cartridge: the game and level, the objective, the player's state (não iniciada, em andamento, concluída) and a VCR clock counting down to the next mission. The mission is the same for everyone and changes at midnight in Fortaleza.
 - **Twelve missions to start.** Seven for the Laboratório, such as "A máquina completa" (use all five parts in the last level and make the ball pass through every one) or "Suco expresso" (orange in the juicer in 1,80 s), and five for Guerra de Lanche, such as "Oito seguidos" and "Sem uma mancha".

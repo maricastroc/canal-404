@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import type { CSSProperties, MouseEvent, Ref } from "react";
 import { PlayIcon, RewindIcon, ZoomIcon } from "@/components/art/Icons";
+import { IntentLink } from "@/components/ui/IntentLink";
 import { spotStyle, SPOTS, type Spot } from "../layout";
 import { useBroadcast, useTimeline } from "../tapes/broadcast";
 import { TAPE_PROGRAMS } from "../tapes";
@@ -110,7 +110,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
         />
       )}
       {info.cta && (
-        <Link
+        <IntentLink
           href={info.cta.href}
           onClick={handleLaunch}
           onPointerEnter={(e) => {
@@ -135,7 +135,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
             <span className="sr-only">: {ctaContext}</span>
             <PlayIcon className="size-[1em] text-ink" />
           </span>
-        </Link>
+        </IntentLink>
       )}
       <RewindButton key={`rewind-${channel}-${take}`} channel={channel} onHoverSound={onHoverSound} raised={Boolean(next)} />
       {badge && info.game && (

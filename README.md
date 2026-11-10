@@ -140,9 +140,9 @@ npm run test:visual:update
 | `/records` | Record arcade: every board with its rule, the top ten and your place (`?game=` and `?level=` pick the board) |
 | `/play/[slug]` | Real loading screen, intro, match, pause and results (`?mission=<day>` plays the day's mission) |
 | `/characters` | Character select with reactions |
-| `/extras` | Scoreboard membership card, downloadable posters (PNG), music, achievements and secrets |
+| `/extras` | Scoreboard membership card, downloadable posters (PNG), music, achievements (including the mission seals) and secrets |
 | `/about` | The channel's fictional history |
-| `/api/*` | Scoreboard API: `status`, `players`, `players/me`, `runs/tickets`, `runs`, `leaderboards`, `missions/today`, `missions/history`, `cron/cleanup` |
+| `/api/*` | Scoreboard API: `status`, `players`, `players/me`, `runs/tickets`, `runs`, `leaderboards`, `missions/today`, `missions/board`, `missions/history`, `cron/cleanup` |
 
 Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama) and `off-air-vacation` (Férias Fora do Ar).
 

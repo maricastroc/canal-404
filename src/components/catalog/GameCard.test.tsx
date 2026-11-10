@@ -28,7 +28,7 @@ describe("game card program stickers", () => {
     await renderCatalog({ "food-fight": 2 });
     await vi.waitFor(() => expect(sticker("Guerra de Lanche")).toBe("rerun"));
     expect(sticker("Rua Sem Saída")).toBe("unplayed");
-    expect(within(card("Guerra de Lanche")).getByText("Reprise: você já jogou.")).toBeInTheDocument();
+    expect(within(card("Guerra de Lanche")).getByText(/Reprise: você já jogou\./)).toBeInTheDocument();
   });
 
   it("shows a saved adventure instead of the play count", async () => {

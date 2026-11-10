@@ -4,6 +4,7 @@ import { useState } from "react";
 import { KeyholeBadge, LockedBadge, StarBadge } from "@/components/art/Badges";
 import { ImagesIcon, KeyIcon, LockIcon, PauseIcon, PlayIcon, RadioIcon, TrophyIcon } from "@/components/art/Icons";
 import { PlayerCard } from "@/components/competition/PlayerCard";
+import { MissionAchievements } from "@/components/missions/MissionAchievements";
 import { InkButton } from "@/components/ui/Primitives";
 import { getAudio } from "@/lib/audio/engine";
 import { useMusicState, useSound } from "@/lib/audio/hooks";
@@ -206,6 +207,7 @@ export function ExtrasHub() {
             );
           })}
         </ul>
+        <MissionAchievements />
       </section>
 
       <section aria-labelledby="secrets" className="mt-14">

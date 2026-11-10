@@ -14,5 +14,5 @@ export const GET = competitionRoute(async ({ request, db, secret, now }) => {
   await enforce(db, LIMITS.mission, addressKey(request, secret), now);
   const player = await currentPlayer(db, request, now);
   if (!player) return json({ entries: [], next: null });
-  return json(await missionHistory(db, player, parsed.data));
+  return json(await missionHistory(db, player, parsed.data, now));
 });

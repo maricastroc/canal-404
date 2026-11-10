@@ -107,6 +107,7 @@ model DailyChallenge {
   variant      Json
   rulesVersion Int              @map("rules_version") @db.SmallInt
   createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  settledAt    DateTime?        @map("settled_at") @db.Timestamptz(3)
   runs         Run[]
   entries      ChallengeEntry[]
 
@@ -124,6 +125,8 @@ model ChallengeEntry {
   completedAt    DateTime?      @map("completed_at") @db.Timestamptz(3)
   completedRunId String?        @map("completed_run_id") @db.Uuid
   completedRun   Run?           @relation(fields: [completedRunId], references: [id], onDelete: SetNull)
+  finalPosition  Int?           @map("final_position")
+  finalTotal     Int?           @map("final_total")
 
   @@id([playerId, challengeId])
   @@index([challengeId, completedAt])

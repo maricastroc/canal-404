@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
+import { StarBadge } from "@/components/art/Badges";
 import { MissionIcon, OfflineIcon } from "@/components/art/Icons";
 import { StateChip, missionPlace } from "@/components/missions/parts";
+import { missionAchievement } from "@/lib/missions/achievements";
 import { describeShortfall } from "@/lib/missions/goals";
 import { dayName, formatMissionBest, formatPlace } from "@/lib/missions/format";
 import type { MissionState, MissionView } from "@/lib/missions/types";
@@ -52,6 +54,7 @@ const TONES = {
 export function MissionLine({ view, board }: { view: MissionView; board: BoardState | null }) {
   const line = describeMission(view, board);
   const still = useReducedMotion();
+  const unlocked = board?.phase === "done" && board.outcome.kind === "accepted" ? (board.outcome.response.mission?.achievements ?? []) : [];
   return (
     <motion.section
       aria-label="Missão 404 do dia"
@@ -72,6 +75,28 @@ export function MissionLine({ view, board }: { view: MissionView; board: BoardSt
           {line.headline}
         </p>
         <p className="font-semibold">{line.text}</p>
+        {unlocked.length ? (
+          <ul aria-label="Novas conquistas" className="mt-2 flex flex-wrap gap-2">
+            {unlocked.map((id, i) => {
+              const def = missionAchievement(id);
+              return (
+                <motion.li
+                  key={id}
+                  initial={still ? false : { scale: 0.6, opacity: 0, rotate: -8 }}
+                  animate={{ scale: 1, opacity: 1, rotate: i % 2 ? 1.5 : -1.5 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 18, delay: 1 + i * 0.2 }}
+                  className="flex items-center gap-2 rounded-lg border-[3px] border-ink bg-paper py-1 pl-1 pr-2.5 shadow-[var(--shadow-ink-sm)]"
+                >
+                  <StarBadge color={def.color} className="w-8 shrink-0" />
+                  <span className="leading-tight">
+                    <span className="block font-display text-[11px] uppercase tracking-wider text-ink-soft">Nova conquista</span>
+                    <span className="block font-display text-base uppercase tracking-wide">{def.title}</span>
+                  </span>
+                </motion.li>
+              );
+            })}
+          </ul>
+        ) : null}
       </div>
       {line.stamp ? (
         <motion.span

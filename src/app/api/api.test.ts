@@ -8,6 +8,7 @@ import type { MissionHistoryResponse, MissionTodayResponse } from "@/lib/mission
 import { apiRequest, cookieFrom, hasTestDb, labClaim, resetDb, scheduleMission, streetClaim, testDb } from "@/server/testing";
 import { GET as cleanupGet } from "./cron/cleanup/route";
 import { GET as boardGet } from "./leaderboards/route";
+import { GET as missionBoardGet } from "./missions/board/route";
 import { GET as missionHistoryGet } from "./missions/history/route";
 import { GET as missionTodayGet } from "./missions/today/route";
 import { DELETE as meDelete, GET as meGet, PATCH as mePatch } from "./players/me/route";
@@ -186,9 +187,21 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect(sent.status).toBe(201);
     expect((await body(sent)).mission).toMatchObject({ day, status: "completed", firstTime: true, best: { position: 1, total: 1, metrics: [1, 98] } });
     const today = await body<MissionTodayResponse>(await missionTodayGet(apiRequest("/api/missions/today", { cookie })));
-    expect(today).toMatchObject({ completions: 1, leader: { you: true }, you: { state: "completed", attempts: 1, progress: { days: 1, streak: 1 } } });
+    expect(today).toMatchObject({ completions: 1, leader: { you: true }, you: { state: "completed", attempts: 1, progress: { days: 1, streak: 1 }, championDays: 0, achievements: [{ id: "mission-first", day }] } });
     const history = await body<MissionHistoryResponse>(await missionHistoryGet(apiRequest("/api/missions/history?limit=5", { cookie })));
     expect(history).toMatchObject({ entries: [{ mission: { day, title: "Suco expresso" }, you: { state: "completed" } }], next: null });
+  });
+
+  it("serves the day's board to anyone and refuses bad or future days", async () => {
+    const day = missionDay(new Date());
+    await scheduleMission(db, day, "lab-juice-fast");
+    const board = await missionBoardGet(apiRequest("/api/missions/board"));
+    expect(board.status).toBe(200);
+    expect(await body(board)).toMatchObject({ mission: { day }, entries: [], total: 0, page: 1, pages: 1, you: null, closed: false });
+    expect((await missionBoardGet(apiRequest("/api/missions/board?day=ontem"))).status).toBe(400);
+    expect((await missionBoardGet(apiRequest("/api/missions/board?page=0"))).status).toBe(400);
+    expect((await missionBoardGet(apiRequest("/api/missions/board?day=2099-01-01"))).status).toBe(404);
+    expect((await missionBoardGet(apiRequest("/api/missions/board?day=2020-01-01"))).status).toBe(404);
   });
 
   it("answers an empty history without a player and refuses bad cursors", async () => {

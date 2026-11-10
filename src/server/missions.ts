@@ -2,12 +2,27 @@ import { z } from "zod";
 import type { DailyChallenge, Player, Run } from "@/generated/prisma/client";
 import type { GameStats } from "@/games/types";
 import { isGameSlug, type GameSlug, type Verdict } from "@/lib/competition/rules";
+import { CHAMPION_MIN_PLAYERS, earnedOnCompletion, isMissionAchievement, type MissionAchievementId } from "@/lib/missions/achievements";
 import { acceptsResults, addDays, dayEnd, missionDay, MISSION_GRACE_MS } from "@/lib/missions/calendar";
 import { checkGoal, isCondition, type Condition } from "@/lib/missions/goals";
 import { missionSeed, pickMission } from "@/lib/missions/select";
-import type { MissionBest, MissionHistoryItem, MissionHistoryResponse, MissionLeader, MissionOutcome, MissionProgress, MissionTodayResponse, MissionView, MissionYou } from "@/lib/missions/types";
-import { bestView, leaderOf, standing, upsertBest } from "./boards";
+import type {
+  MissionBest,
+  MissionBoardResponse,
+  MissionHistoryItem,
+  MissionHistoryResponse,
+  MissionLeader,
+  MissionOutcome,
+  MissionProgress,
+  MissionTodayResponse,
+  MissionView,
+  MissionYou,
+  RecentDay,
+  UnlockedAchievement,
+} from "@/lib/missions/types";
+import { bestView, leaderOf, standing, topOfBoard, upsertBest } from "./boards";
 import type { Db, Tx } from "./db";
+import { HttpError } from "./http";
 import type { Ticket } from "./tickets";
 
 const snapshotSchema = z.object({
@@ -117,7 +132,7 @@ export async function recordMission(
 ): Promise<MissionOutcome> {
   const { judgement, player, ticket, run, stats, now } = input;
   const { day } = judgement;
-  const outcome: MissionOutcome = { day, title: judgement.title, status: judgement.status, firstTime: false, shortfall: judgement.shortfall, best: null, improved: false };
+  const outcome: MissionOutcome = { day, title: judgement.title, status: judgement.status, firstTime: false, shortfall: judgement.shortfall, best: null, improved: false, achievements: [] };
   if (judgement.status === "late") return outcome;
   await tx.$queryRaw`SELECT id FROM players WHERE id = ${player.id}::uuid FOR UPDATE`;
   const entry = await tx.challengeEntry.findUnique({ where: { playerId_challengeId: { playerId: player.id, challengeId: day } } });
@@ -134,6 +149,19 @@ export async function recordMission(
     });
   }
   outcome.firstTime = firstTime;
+  if (firstTime) {
+    const done = await tx.challengeEntry.findMany({ where: { playerId: player.id, completedAt: { not: null } }, select: { challengeId: true } });
+    outcome.achievements = await grantAchievements(
+      tx,
+      player.id,
+      earnedOnCompletion(
+        done.map((d) => d.challengeId),
+        day,
+      ),
+      run.id,
+      now,
+    );
+  }
   if (passed && judgement.ranked) {
     const { improved } = await upsertBest(tx, { playerId: player.id, board: missionBoard(day), game: ticket.game, run, stats, now });
     outcome.improved = improved;
@@ -153,6 +181,10 @@ export async function storedMissionOutcome(db: Db, run: Run): Promise<MissionOut
   const condition = parsed.status === "missed" ? view.goal.find((c) => c.stat === stat) : undefined;
   const entry = parsed.status === "late" ? null : await db.challengeEntry.findUnique({ where: { playerId_challengeId: { playerId: run.playerId, challengeId: parsed.day } } });
   const best = view.ranked && parsed.status !== "late" ? await missionBestOf(db, view.game, parsed.day, run.playerId) : null;
+  const unlocked =
+    parsed.status === "completed"
+      ? await db.playerAchievement.findMany({ where: { playerId: run.playerId, runId: run.id, achievement: { not: "mission-champion" } }, select: { achievement: true } })
+      : [];
   return {
     day: parsed.day,
     title: view.title,
@@ -161,7 +193,83 @@ export async function storedMissionOutcome(db: Db, run: Run): Promise<MissionOut
     shortfall: condition ? { condition, actual: actual === "none" || actual === undefined ? null : Number(actual) } : null,
     best,
     improved: false,
+    achievements: unlocked.map((a) => a.achievement).filter(isMissionAchievement),
   };
+}
+
+async function grantAchievements(tx: Tx, playerId: string, ids: MissionAchievementId[], runId: string | null, at: Date): Promise<MissionAchievementId[]> {
+  if (!ids.length) return [];
+  const rows = await tx.$queryRaw<{ achievement: string }[]>`
+    INSERT INTO player_achievements (player_id, achievement, source, run_id, unlocked_at)
+    SELECT ${playerId}::uuid, a, 'verified'::"AchievementSource", ${runId}::uuid, ${at}
+    FROM unnest(${ids}::text[]) AS a
+    ON CONFLICT DO NOTHING
+    RETURNING achievement`;
+  return ids.filter((id) => rows.some((r) => r.achievement === id));
+}
+
+const SETTLE_BATCH = 31;
+
+export function closesAt(day: string) {
+  return new Date(dayEnd(day).getTime() + MISSION_GRACE_MS);
+}
+
+export async function settleDay(db: Db, day: string, now: Date) {
+  return db.$transaction(async (tx) => {
+    const claimed = await tx.$executeRaw`UPDATE daily_challenges SET settled_at = ${now} WHERE id = ${day} AND settled_at IS NULL`;
+    if (!claimed) return false;
+    const row = await tx.dailyChallenge.findUniqueOrThrow({ where: { id: day } });
+    if (!snapshotOf(row).ranked) return true;
+    const board = missionBoard(day);
+    await tx.$executeRaw`
+      UPDATE challenge_entries e SET final_position = r.position, final_total = r.total
+      FROM (
+        SELECT pb.player_id,
+          ROW_NUMBER() OVER (ORDER BY pb.rank1 DESC, pb.rank2 DESC, pb.rank3 DESC, pb.achieved_at ASC, pb.run_id ASC)::int AS position,
+          COUNT(*) OVER ()::int AS total
+        FROM personal_bests pb JOIN players p ON p.id = pb.player_id
+        WHERE pb.board = ${board} AND p.status = 'active'
+      ) r
+      WHERE e.player_id = r.player_id AND e.challenge_id = ${day}`;
+    await tx.$executeRaw`
+      INSERT INTO player_achievements (player_id, achievement, source, run_id, unlocked_at)
+      SELECT e.player_id, 'mission-champion', 'verified'::"AchievementSource", pb.run_id, ${closesAt(day)}
+      FROM challenge_entries e JOIN personal_bests pb ON pb.player_id = e.player_id AND pb.board = ${board}
+      WHERE e.challenge_id = ${day} AND e.final_position = 1 AND e.final_total >= ${CHAMPION_MIN_PLAYERS}
+      ON CONFLICT DO NOTHING`;
+    return true;
+  });
+}
+
+export async function settleClosedDays(db: Db, now: Date) {
+  const cutoff = missionDay(new Date(now.getTime() - MISSION_GRACE_MS));
+  const open = await db.dailyChallenge.findMany({ where: { settledAt: null, id: { lt: cutoff } }, select: { id: true }, orderBy: { id: "asc" }, take: SETTLE_BATCH });
+  let settled = 0;
+  for (const { id } of open) if (await settleDay(db, id, now)) settled += 1;
+  return settled;
+}
+
+export async function achievementsOf(db: Db, playerId: string): Promise<UnlockedAchievement[]> {
+  const rows = await db.playerAchievement.findMany({ where: { playerId, achievement: { startsWith: "mission-" } }, orderBy: { unlockedAt: "asc" } });
+  const runIds = rows.map((r) => r.runId).filter((id): id is string => Boolean(id));
+  const runs = runIds.length ? await db.run.findMany({ where: { id: { in: runIds } }, select: { id: true, challengeId: true } }) : [];
+  return rows.flatMap((row) =>
+    isMissionAchievement(row.achievement)
+      ? [{ id: row.achievement, unlockedAt: row.unlockedAt.toISOString(), day: runs.find((r) => r.id === row.runId)?.challengeId ?? null }]
+      : [],
+  );
+}
+
+const RECENT_DAYS = 14;
+
+async function recentOf(db: Db, playerId: string, today: string): Promise<RecentDay[]> {
+  const since = addDays(today, -(RECENT_DAYS - 1));
+  const rows = await db.challengeEntry.findMany({ where: { playerId, challengeId: { gte: since } }, select: { challengeId: true, completedAt: true } });
+  return Array.from({ length: RECENT_DAYS }, (_, i) => {
+    const day = addDays(since, i);
+    const entry = rows.find((r) => r.challengeId === day);
+    return { day, state: entry ? (entry.completedAt ? "completed" : "started") : "none" };
+  });
 }
 
 function youOf(entry: { attempts: number; startedAt: Date; completedAt: Date | null } | null, best: MissionBest | null): MissionYou {
@@ -197,28 +305,63 @@ async function progressOf(db: Db, playerId: string, today: string) {
 }
 
 export async function missionToday(db: Db, player: Player | null, now: Date): Promise<MissionTodayResponse> {
+  await settleClosedDays(db, now);
   const row = await todayChallenge(db, now);
   const mission = viewOf(row);
   const board = missionBoard(mission.day);
-  const [completions, leader, entry, best, progress] = await Promise.all([
+  const [completions, leader, entry, best, progress, achievements, championDays, recent] = await Promise.all([
     db.challengeEntry.count({ where: { challengeId: mission.day, completedAt: { not: null }, player: { status: "active" } } }),
     mission.ranked ? leaderOf(db, mission.game, board, player?.id ?? null) : null,
     player ? db.challengeEntry.findUnique({ where: { playerId_challengeId: { playerId: player.id, challengeId: mission.day } } }) : null,
     player && mission.ranked ? missionBestOf(db, mission.game, mission.day, player.id) : null,
     player ? progressOf(db, player.id, mission.day) : null,
+    player ? achievementsOf(db, player.id) : [],
+    player ? db.challengeEntry.count({ where: { playerId: player.id, finalPosition: 1, finalTotal: { gte: CHAMPION_MIN_PLAYERS } } }) : 0,
+    player ? recentOf(db, player.id, mission.day) : [],
   ]);
   return {
     now: now.toISOString(),
     mission,
     completions,
     leader: leader as MissionLeader | null,
-    you: player && progress ? { ...youOf(entry, best), progress } : null,
+    you: player && progress ? { ...youOf(entry, best), progress, achievements, championDays, recent } : null,
+  };
+}
+
+const BOARD_PAGE = 10;
+
+export async function missionBoardPage(db: Db, player: Player | null, options: { day: string | null; page: number }, now: Date): Promise<MissionBoardResponse> {
+  await settleClosedDays(db, now);
+  const today = missionDay(now);
+  const day = options.day ?? today;
+  if (day > today) throw new HttpError("not_found", "Essa missão ainda não foi ao ar.");
+  const row = day === today ? await ensureChallenge(db, day) : await db.dailyChallenge.findUnique({ where: { id: day } });
+  if (!row) throw new HttpError("not_found", "Não teve Missão 404 nesse dia.");
+  const mission = viewOf(row);
+  const board = missionBoard(day);
+  const [top, mine, previous, next] = await Promise.all([
+    mission.ranked ? topOfBoard(db, mission.game, board, BOARD_PAGE, player?.id ?? null, (options.page - 1) * BOARD_PAGE) : { entries: [], total: 0 },
+    player && mission.ranked ? standing(db, mission.game, board, player.id) : null,
+    db.dailyChallenge.findFirst({ where: { id: { lt: day } }, orderBy: { id: "desc" }, select: { id: true } }),
+    db.dailyChallenge.findFirst({ where: { id: { gt: day, lte: today } }, orderBy: { id: "asc" }, select: { id: true } }),
+  ]);
+  return {
+    mission,
+    closed: now.getTime() > closesAt(day).getTime(),
+    entries: top.entries.map((e) => ({ position: e.position, nickname: e.nickname, tag: e.tag, you: e.you, metrics: e.metrics, score: e.score })),
+    total: top.total,
+    page: options.page,
+    pages: Math.max(1, Math.ceil(top.total / BOARD_PAGE)),
+    you: player && mine ? { nickname: player.nickname, tag: player.tag, position: mine.position, total: mine.total, metrics: mine.best.metrics } : null,
+    previousDay: previous?.id ?? null,
+    nextDay: next?.id ?? null,
   };
 }
 
 type Placement = { board: string; position: bigint | number; total: bigint | number };
 
-export async function missionHistory(db: Db, player: Player, options: { before: string | null; limit: number }): Promise<MissionHistoryResponse> {
+export async function missionHistory(db: Db, player: Player, options: { before: string | null; limit: number }, now = new Date()): Promise<MissionHistoryResponse> {
+  await settleClosedDays(db, now);
   const rows = await db.challengeEntry.findMany({
     where: { playerId: player.id, ...(options.before ? { challengeId: { lt: options.before } } : {}) },
     orderBy: { challengeId: "desc" },

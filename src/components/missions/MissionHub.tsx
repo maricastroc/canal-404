@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { OfflineIcon, RestartIcon } from "@/components/art/Icons";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import { connect } from "@/lib/competition/client";
 import { useMissionToday } from "@/lib/missions/hooks";
+import { announceAchievements } from "@/lib/missions/seen";
+import { MissionBoard } from "./MissionBoard";
 import { MissionCartridge } from "./MissionCartridge";
 import { MissionHistory } from "./MissionHistory";
-import { MissionRules, TodayBoard, YourCard } from "./MissionPanels";
+import { MissionRules, YourCard } from "./MissionPanels";
 
 function Screen({ title, text, children, live, tone = "text-sun", expression = "neutral" }: { title: string; text?: string; children?: React.ReactNode; live?: boolean; tone?: string; expression?: "neutral" | "static" | "sleepy" }) {
   return (
@@ -24,6 +27,14 @@ function Screen({ title, text, children, live, tone = "text-sun", expression = "
 export function MissionHub() {
   const mission = useMissionToday();
   const { competition, data } = mission;
+  const [boardDay, setBoardDay] = useState<string | null>(null);
+  const boardRef = useRef<HTMLElement>(null);
+  const playerId = competition.player?.id ?? null;
+  const unlocked = data?.you?.achievements;
+
+  useEffect(() => {
+    if (playerId && unlocked) announceAchievements(playerId, unlocked.map((a) => a.id));
+  }, [playerId, unlocked]);
 
   if (mission.status === "unconfigured") {
     return (
@@ -59,14 +70,29 @@ export function MissionHub() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <MissionCartridge data={data} offset={mission.offset} />
-          <TodayBoard data={data} />
+          <MissionBoard
+            ref={boardRef}
+            day={boardDay}
+            today={data.mission.day}
+            refreshKey={`${data.completions}:${data.you?.attempts ?? 0}:${data.leader?.tag ?? ""}`}
+            onDay={setBoardDay}
+          />
         </div>
         <aside className="flex flex-col gap-6">
           <YourCard data={data} joined={joined} />
           <MissionRules game={data.mission.game} />
         </aside>
       </div>
-      {competition.player ? <MissionHistory playerId={competition.player.id} today={data.mission.day} /> : null}
+      {competition.player ? (
+        <MissionHistory
+          playerId={competition.player.id}
+          today={data.mission.day}
+          onBoard={(day) => {
+            setBoardDay(day);
+            boardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -35,6 +35,28 @@ The mission day is the calendar date in `America/Fortaleza`, computed on the ser
 - The player's history is paginated by day with a cursor, and its final positions come from one window query.
 - Progress counts the days with a completed mission, the current run of consecutive days (alive while the last completed day is today or yesterday) and the best run. The interface leads with the total, which never goes down.
 
+### Achievements (Stage 3.2)
+
+Mission achievements live in the existing `player_achievements` table (`source = verified`), one row per player and achievement, so a second grant is a no-op (`INSERT … ON CONFLICT DO NOTHING`). The definitions are in `src/lib/missions/achievements.ts`.
+
+| Achievement | Exact rule | Granted |
+| --- | --- | --- |
+| Primeira Transmissão | the first completed mission | in the completion's transaction |
+| Frequentador do Canal | completed missions on 3 different days, consecutive or not | same |
+| Maratonista do 404 | completed missions on 7 different days, consecutive or not | same |
+| De Volta ao Ar | a completion whose previous completed day is 8 or more days earlier (7 whole days or more without one) | same |
+| Campeão do Dia | 1st place on a closed day's board, with at least 2 people on it | when the day is settled |
+
+- Completion achievements are computed from the player's completed days while the player row is locked, so simultaneous results cannot grant one twice or skip one. `player_achievements.run_id` points to the run that earned it, which lets a resent result answer with the same achievements.
+- A day is **settled** by the first request (today's mission, the board or the history) that arrives after it closes at 01:00. Settlement claims the day with `UPDATE daily_challenges SET settled_at … WHERE settled_at IS NULL`, so only one request does it; it stores every visible player's final place in `challenge_entries` and grants Campeão do Dia. Hidden players are left out of the final ranking. No cron is needed, and a champion who never comes back still gets the achievement.
+- The migration backfills the completion achievements for players who completed missions before they existed, dated by the completion that earned them.
+- Coins, levels and experience points are deliberately absent.
+
+### Daily ranking and progress (Stage 3.2)
+
+- `GET /api/missions/board?day=&page=` serves any stored day, ten rows per page, with the player's own place and the previous and next days that had a mission. Closed days are marked as final and name the champion.
+- The player's report shows a 14-day grade (completed, tried or no mission), the total of completed days, the days in a row only when there are 2 or more, the seals and how many days they finished first. Missed days are shown as empty, never as lost.
+
 ### What the first missions check
 
 | Game | How the channel checks | Missions |
@@ -66,3 +88,4 @@ The other four games join later, one at a time, each with goals over stats they 
 - Changing a goal's evidence (what a stat means) needs a new stat name, so old snapshots keep their meaning.
 - Missions need the backend. Without it the page says the mission is coming soon, and games keep working.
 - The menu link to `/mission` does not prefetch the page, so every other page stays within the JavaScript budget; the catalog teaser and the result panel link still prefetch it.
+- Links into `/play` (the room TV, game pages, the record arcade, the weekly link and the mission button) prefetch the game shell on hover, focus or touch instead of on page load. The game engine always loads after the click anyway, and this keeps about 90 KB off every page that shows a play link.

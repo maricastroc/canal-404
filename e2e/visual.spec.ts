@@ -41,7 +41,36 @@ const MISSION = {
   completions: 23,
   leader: { nickname: "Lina Turbo", tag: "4270", metrics: [5, 181], you: false },
   mission: missionView("2026-11-04", "lab-finale-every-part"),
-  you: { state: "started", attempts: 2, startedAt: "2026-11-04T17:40:00.000Z", completedAt: null, best: null, progress: { days: 6, streak: 2, bestStreak: 4, lastDay: "2026-11-03" } },
+  you: {
+    state: "started",
+    attempts: 2,
+    startedAt: "2026-11-04T17:40:00.000Z",
+    completedAt: null,
+    best: null,
+    progress: { days: 6, streak: 2, bestStreak: 4, lastDay: "2026-11-03" },
+    achievements: [
+      { id: "mission-first", unlockedAt: "2026-10-24T20:00:00.000Z", day: "2026-10-24" },
+      { id: "mission-regular", unlockedAt: "2026-10-28T19:00:00.000Z", day: "2026-10-28" },
+      { id: "mission-champion", unlockedAt: "2026-11-03T04:00:00.000Z", day: "2026-11-02" },
+    ],
+    championDays: 1,
+    recent: Array.from({ length: 14 }, (_, i) => {
+      const day = `2026-${i < 10 ? "10" : "11"}-${String(i < 10 ? 22 + i : i - 9).padStart(2, "0")}`;
+      return { day, state: [2, 5, 6, 8, 11, 12].includes(i) ? "completed" : [3, 13].includes(i) ? "started" : "none" };
+    }),
+  },
+};
+
+const MISSION_BOARD = {
+  mission: MISSION.mission,
+  closed: false,
+  entries: CHAMPIONS.map((nickname, i) => ({ position: i + 1, nickname, tag: String(4270 + i * 13), you: false, metrics: [5, 181 + i * 7], score: 1000 })),
+  total: 23,
+  page: 1,
+  pages: 3,
+  you: null,
+  previousDay: "2026-11-03",
+  nextDay: null,
 };
 
 const HISTORY = {
@@ -77,9 +106,11 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/leaderboards?*", (route) => route.fulfill({ json: board(new URL(route.request().url())) }));
   await page.route("**/api/missions/today", (route) => route.fulfill({ json: MISSION }));
   await page.route("**/api/missions/history?*", (route) => route.fulfill({ json: HISTORY }));
+  await page.route("**/api/missions/board?*", (route) => route.fulfill({ json: MISSION_BOARD }));
   await page.clock.setFixedTime(NOW);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addInitScript((progress) => {
+    localStorage.setItem("canal404:mission-achievements:v1", JSON.stringify({ version: 1, seen: ["00000000-0000-4000-8000-000000000404:mission-first", "00000000-0000-4000-8000-000000000404:mission-regular", "00000000-0000-4000-8000-000000000404:mission-champion"] }));
     let seed = 404;
     Math.random = () => {
       seed = (seed * 16807) % 2147483647;

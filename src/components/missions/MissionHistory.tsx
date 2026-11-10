@@ -10,7 +10,7 @@ import { missionPlace, StateChip } from "./parts";
 
 type Loaded = { key: string; items: MissionHistoryItem[]; next: string | null; failed: boolean };
 
-function Tape({ item }: { item: MissionHistoryItem }) {
+function Tape({ item, onBoard }: { item: MissionHistoryItem; onBoard: (day: string) => void }) {
   const { mission, you } = item;
   const stamp = dayStamp(mission.day);
   const place = missionPlace(mission);
@@ -36,12 +36,21 @@ function Tape({ item }: { item: MissionHistoryItem }) {
         ) : you.attempts > 0 ? (
           <p className="text-xs font-semibold text-cream-2">{you.attempts === 1 ? "1 tentativa" : `${you.attempts} tentativas`}</p>
         ) : null}
+        {mission.ranked ? (
+          <button
+            type="button"
+            onClick={() => onBoard(mission.day)}
+            className="font-display text-[11px] uppercase tracking-wider text-sun underline decoration-2 underline-offset-2 hover:text-cream"
+          >
+            Ver placar<span className="sr-only"> de {mission.title}</span>
+          </button>
+        ) : null}
       </div>
     </li>
   );
 }
 
-export function MissionHistory({ playerId, today }: { playerId: string; today: string }) {
+export function MissionHistory({ playerId, today, onBoard }: { playerId: string; today: string; onBoard: (day: string) => void }) {
   const key = `${playerId}/${today}`;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,7 +94,7 @@ export function MissionHistory({ playerId, today }: { playerId: string; today: s
         ) : (
           <ul className="grid gap-2.5 lg:grid-cols-2">
             {past.map((item) => (
-              <Tape key={item.mission.day} item={item} />
+              <Tape key={item.mission.day} item={item} onBoard={onBoard} />
             ))}
           </ul>
         )}

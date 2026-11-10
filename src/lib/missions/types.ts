@@ -1,4 +1,5 @@
 import type { GameSlug } from "@/lib/competition/boards";
+import type { MissionAchievementId } from "./achievements";
 import type { Condition } from "./goals";
 
 export type MissionView = {
@@ -31,12 +32,30 @@ export type MissionProgress = { days: number; streak: number; bestStreak: number
 
 export type MissionLeader = { nickname: string; tag: string; metrics: number[]; you: boolean };
 
+export type UnlockedAchievement = { id: MissionAchievementId; unlockedAt: string; day: string | null };
+
+export type RecentDay = { day: string; state: "completed" | "started" | "none" };
+
 export type MissionTodayResponse = {
   now: string;
   mission: MissionView;
   completions: number;
   leader: MissionLeader | null;
-  you: (MissionYou & { progress: MissionProgress }) | null;
+  you: (MissionYou & { progress: MissionProgress; achievements: UnlockedAchievement[]; championDays: number; recent: RecentDay[] }) | null;
+};
+
+export type MissionBoardEntry = { position: number; nickname: string; tag: string; you: boolean; metrics: number[]; score: number };
+
+export type MissionBoardResponse = {
+  mission: MissionView;
+  closed: boolean;
+  entries: MissionBoardEntry[];
+  total: number;
+  page: number;
+  pages: number;
+  you: { nickname: string; tag: string; position: number; total: number; metrics: number[] } | null;
+  previousDay: string | null;
+  nextDay: string | null;
 };
 
 export type MissionHistoryItem = { mission: MissionView; you: MissionYou };
@@ -53,4 +72,5 @@ export type MissionOutcome = {
   shortfall: MissionShortfall | null;
   best: MissionBest | null;
   improved: boolean;
+  achievements: MissionAchievementId[];
 };

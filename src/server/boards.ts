@@ -46,11 +46,12 @@ export async function standing(db: Db | Tx, game: GameSlug, board: string, playe
   return { position: ahead + 1, total, best: bestView(game, mine), verified: mine.run.verification === "replayed" };
 }
 
-export async function topOfBoard(db: Db | Tx, game: GameSlug, board: string, limit: number, playerId: string | null): Promise<{ entries: BoardEntry[]; total: number }> {
+export async function topOfBoard(db: Db | Tx, game: GameSlug, board: string, limit: number, playerId: string | null, offset = 0): Promise<{ entries: BoardEntry[]; total: number }> {
   const [rows, total] = await Promise.all([
     db.personalBest.findMany({
       where: { board, player: { status: "active" } },
       orderBy: [...ORDER],
+      skip: offset,
       take: limit,
       include: { player: { select: { nickname: true, tag: true } }, run: { select: { verification: true } } },
     }),
@@ -58,7 +59,7 @@ export async function topOfBoard(db: Db | Tx, game: GameSlug, board: string, lim
   ]);
   const entries = rows.map((row, i) => ({
     ...bestView(game, row),
-    position: i + 1,
+    position: offset + i + 1,
     nickname: row.player.nickname,
     tag: row.player.tag,
     you: row.playerId === playerId,

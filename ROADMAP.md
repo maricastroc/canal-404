@@ -66,9 +66,10 @@ Decision: [0006](docs/decisions/0006-daily-missions.md).
 
 ### 3.2 Achievements and competition
 
-- [ ] Server-granted, idempotent achievements for missions, shown with the player's records.
-- [ ] The full daily ranking, with pages.
-- [ ] A clearer completion moment and the player's progress across days.
+- [x] Five server-granted, idempotent mission achievements (Primeira Transmissão, Frequentador do Canal, Maratonista do 404, De Volta ao Ar, Campeão do Dia), shown in Extras with their dates and in the player's report. Closed days are settled without a cron.
+- [x] The full daily ranking with pages, for today and every past day, with the champion of closed days.
+- [x] A completion moment with the new achievements in the result and as toasts, and a 14-day grade in the report.
+- [x] Links into the games prefetch the game shell only on intent, keeping about 90 KB off pages with a play link.
 
 ### 3.3 In the broadcast room
 

@@ -23,7 +23,7 @@ function done(mission: Partial<MissionOutcome> | null) {
     run: { id: "r", verification: "replayed", eligible: true, score: 1450, stars: 3 },
     board: null,
     repeated: false,
-    mission: mission ? { day: VIEW.day, title: VIEW.title, status: "completed", firstTime: false, shortfall: null, best: null, improved: false, ...mission } : null,
+    mission: mission ? { day: VIEW.day, title: VIEW.title, status: "completed", firstTime: false, shortfall: null, best: null, improved: false, achievements: [], ...mission } : null,
   };
   return { phase: "done" as const, outcome: { kind: "accepted" as const, response } };
 }

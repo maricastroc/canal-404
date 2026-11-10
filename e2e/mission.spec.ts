@@ -106,6 +106,7 @@ test.describe("daily mission with the backend", () => {
     const doneLine = done.getByRole("region", { name: "Missão 404 do dia" });
     await expect(doneLine.getByRole("status")).toContainText("Missão cumprida!", { timeout: simTime(15_000) });
     await expect(doneLine.getByRole("status")).toContainText(/1 peça · 4,08 s, \d+º de \d+ no placar do dia\./);
+    await expect(doneLine.getByRole("list", { name: "Novas conquistas" })).toContainText("Primeira Transmissão");
     expect(await accessibilityViolations(page, '[aria-label="Missão 404 do dia"]')).toEqual([]);
 
     await doneLine.getByRole("link", { name: "Ver a Missão 404" }).click();
@@ -116,6 +117,16 @@ test.describe("daily mission with the backend", () => {
     const report = page.getByRole("region", { name: "Seu boletim" });
     await expect(report).toContainText(/Missão cumprida às \d{2}:\d{2}, em 2 tentativas\./);
     await expect(report).toContainText(/1 peça · 4,08 s · \d+º de \d+/);
+    await expect(report).toContainText("Selos da missão · 1 de 5");
+    await expect(report.getByRole("list", { name: "Seus últimos 14 dias de missão" }).getByRole("listitem")).toHaveCount(14);
+    const dayBoard = page.getByRole("region", { name: "Placar do dia" });
+    await expect(dayBoard.getByRole("row", { name: /Você/ })).toContainText("4,08 s");
+    expect(await accessibilityViolations(page, "main")).toEqual([]);
+
+    await page.goto("/extras#achievements");
+    const seals = page.getByTestId("mission-achievements");
+    await expect(seals).toContainText("1/5");
+    await expect(seals.getByRole("listitem").filter({ hasText: "Primeira Transmissão" })).toContainText(/Em \d{2}\/\d{2}\/\d{4}/);
 
     const leave = await page.request.delete("/api/players/me");
     expect(leave.ok()).toBe(true);
@@ -152,10 +163,11 @@ test.describe("daily mission without the backend", () => {
   });
 
   test("shows no signal and recovers when the mission cannot be reached", async ({ page, problems }) => {
-    problems.allow(/\/api\/missions\/today/);
+    problems.allow(/\/api\/missions\/(today|board)/);
     problems.allow(/status of 503/);
     await page.route("**/api/status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "online" }) }));
     await page.route("**/api/players/me", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ player: null }) }));
+    await page.route("**/api/missions/board?*", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: { code: "unavailable", message: "fora" } }) }));
     await page.route("**/api/missions/today", (route) =>
       route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: { code: "unavailable", message: "fora" } }) }),
     );

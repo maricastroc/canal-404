@@ -54,6 +54,11 @@ export const ticketSchema = z
   })
   .strict();
 
+export const missionBoardSchema = z.object({
+  day: dayKey.nullable(),
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+});
+
 export const missionHistorySchema = z.object({
   before: dayKey.nullable(),
   limit: z.coerce.number().int().min(1).max(30).default(10),

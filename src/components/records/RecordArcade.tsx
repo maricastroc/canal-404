@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CardIcon, OfflineIcon, PlayIcon, RestartIcon, TrophyIcon, VerifiedIcon } from "@/components/art/Icons";
-import { InkButton, InkLink, toneBg } from "@/components/ui/Primitives";
+import { IntentLink } from "@/components/ui/IntentLink";
+import { InkButton, InkLink, inkStyle, toneBg } from "@/components/ui/Primitives";
 import { getGame, type GameMeta } from "@/games/registry";
 import { useSound } from "@/lib/audio/hooks";
 import { BOARD_META, CHECK_TEXT, GAME_SLUGS, type GameSlug, type Metric } from "@/lib/competition/boards";
@@ -211,9 +212,9 @@ function Screen({ view, game, caption, where, onRetry }: { view: View; game: Gam
         ) : null}
         {view.kind === "empty" ? (
           <ScreenMessage title="Ninguém marcou ponto aqui" text={`O primeiro lugar ${where} está vago. Que tal ser a primeira pessoa no placar?`} tone="text-lime">
-            <InkLink href={`/play/${game.slug}`} size="sm" tone="sun">
+            <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "sm")}>
               <PlayIcon className="size-4" /> Jogar {game.title}
-            </InkLink>
+            </IntentLink>
           </ScreenMessage>
         ) : null}
         {view.kind === "board" ? (
@@ -263,9 +264,9 @@ function PlayerPanel({ game, view, status, nickname, tag }: { game: GameMeta & {
           .
         </p>
       )}
-      <InkLink href={`/play/${game.slug}`} tone="tomato" className="mt-3 w-full justify-center">
+      <IntentLink href={`/play/${game.slug}`} className={inkStyle("tomato", "md", "mt-3 w-full justify-center")}>
         <PlayIcon className="size-4" /> {standing ? "Tentar bater" : "Jogar agora"}
-      </InkLink>
+      </IntentLink>
     </section>
   );
 }

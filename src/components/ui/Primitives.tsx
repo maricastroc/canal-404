@@ -80,6 +80,10 @@ const sizes = {
   lg: "min-h-16 px-8 py-3 text-2xl",
 };
 
+export function inkStyle(tone: Tone = "sun", size: keyof typeof sizes = "md", className = "") {
+  return `${buttonBase} ${sizes[size]} ${toneBg(tone)} ${className}`;
+}
+
 export function InkLink({
   tone = "sun",
   size = "md",
@@ -88,7 +92,7 @@ export function InkLink({
   ...rest
 }: { tone?: Tone; size?: keyof typeof sizes; className?: string; children: ReactNode } & ComponentProps<typeof Link>) {
   return (
-    <Link className={`${buttonBase} ${sizes[size]} ${toneBg(tone)} ${className}`} {...rest}>
+    <Link className={inkStyle(tone, size, className)} {...rest}>
       {children}
     </Link>
   );

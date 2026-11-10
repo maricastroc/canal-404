@@ -3,7 +3,8 @@
 import { motion, useReducedMotion } from "motion/react";
 import { GameCover } from "@/components/art/Covers";
 import { PlayIcon } from "@/components/art/Icons";
-import { InkLink, toneBg } from "@/components/ui/Primitives";
+import { IntentLink } from "@/components/ui/IntentLink";
+import { inkStyle, toneBg } from "@/components/ui/Primitives";
 import { getGame } from "@/games/registry";
 import { useSound } from "@/lib/audio/hooks";
 import { dayStamp } from "@/lib/missions/format";
@@ -45,9 +46,22 @@ export function MissionCartridge({ data, offset }: { data: MissionTodayResponse;
             </p>
           </div>
           <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,12rem)_1fr] sm:p-5">
-            <div className="relative mx-auto aspect-[4/3] w-full max-w-[16rem] -rotate-2 overflow-hidden rounded-lg border-[3px] border-ink shadow-[var(--shadow-ink-sm)] sm:max-w-none">
-              <GameCover slug={mission.game} decorative />
-              <span aria-hidden className="absolute inset-0 scanlines opacity-30" />
+            <div className="relative mx-auto mb-3 w-full max-w-[16rem] sm:mb-0 sm:max-w-none">
+              <div className="relative aspect-[4/3] w-full -rotate-2 overflow-hidden rounded-lg border-[3px] border-ink shadow-[var(--shadow-ink-sm)]">
+                <GameCover slug={mission.game} decorative />
+                <span aria-hidden className="absolute inset-0 scanlines opacity-30" />
+              </div>
+              {state === "completed" ? (
+                <motion.span
+                  aria-hidden
+                  initial={still ? false : { scale: 2.2, rotate: -30, opacity: 0 }}
+                  animate={{ scale: 1, rotate: -9, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 15, delay: 0.25 }}
+                  className="pointer-events-none absolute -bottom-3 -right-3 whitespace-nowrap rounded-lg border-[3px] border-ink bg-lime px-2.5 py-0.5 font-display text-lg uppercase tracking-wider text-ink shadow-[var(--shadow-ink)]"
+                >
+                  Missão cumprida!
+                </motion.span>
+              ) : null}
             </div>
             <div className="min-w-0">
               <p className={`inline-block rounded-md border-2 border-ink px-2 font-display text-xs uppercase leading-5 tracking-wider text-ink ${game ? toneBg(game.accent) : "bg-sun"}`}>{place.game}</p>
@@ -58,29 +72,17 @@ export function MissionCartridge({ data, offset }: { data: MissionTodayResponse;
               <p className="mt-2 font-hand text-[1.35rem] leading-snug text-ink">{mission.objective}</p>
             </div>
           </div>
-          {state === "completed" ? (
-            <motion.span
-              aria-hidden
-              initial={still ? false : { scale: 2.2, rotate: -30, opacity: 0 }}
-              animate={{ scale: 1, rotate: -9, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 380, damping: 15, delay: 0.25 }}
-              className="pointer-events-none absolute right-3 top-12 rounded-lg border-[3px] border-ink bg-lime px-3 py-1 font-display text-lg uppercase tracking-wider text-ink shadow-[var(--shadow-ink)] sm:right-5 sm:top-14 sm:text-2xl"
-            >
-              Missão cumprida!
-            </motion.span>
-          ) : null}
         </div>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4 px-1">
           <div className="flex flex-wrap items-center gap-3">
-            <InkLink
+            <IntentLink
               href={missionHref(mission)}
-              tone={state === "completed" ? "mint" : "sun"}
-              size="lg"
+              className={inkStyle(state === "completed" ? "mint" : "sun", "lg")}
               onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
               onClick={() => play("confirm")}
             >
               <PlayIcon className="size-7" /> {PLAY_LABEL[state]}
-            </InkLink>
+            </IntentLink>
             <StateChip state={state} />
           </div>
           <MissionClock endsAt={mission.endsAt} offset={offset} />

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { CardIcon, TrophyIcon, VerifiedIcon } from "@/components/art/Icons";
-import { formatMissionBest, formatPlace, hourOf } from "@/lib/missions/format";
-import type { MissionTodayResponse } from "@/lib/missions/types";
+import { LockedBadge, StarBadge } from "@/components/art/Badges";
+import { CardIcon, VerifiedIcon } from "@/components/art/Icons";
+import { MISSION_ACHIEVEMENTS } from "@/lib/missions/achievements";
+import { dayName, formatMissionBest, formatPlace, hourOf } from "@/lib/missions/format";
+import type { MissionTodayResponse, RecentDay } from "@/lib/missions/types";
 
 function plural(n: number, one: string, many: string) {
   return `${n.toLocaleString("pt-BR")} ${n === 1 ? one : many}`;
@@ -55,33 +57,81 @@ export function YourCard({ data, joined }: { data: MissionTodayResponse; joined:
             </div>
           </dl>
           {progress.days > 0 && progress.streak < 2 ? <p className="mt-2 text-sm text-ink-soft">Sem pressa: os dias cumpridos nunca somem do seu boletim.</p> : null}
+          <Grade days={you.recent} />
+          <Seals unlocked={you.achievements.map((a) => a.id)} championDays={you.championDays} />
         </>
       )}
     </section>
   );
 }
 
-export function TodayBoard({ data }: { data: MissionTodayResponse }) {
-  const { completions, leader, mission } = data;
+const GRADE = {
+  completed: { className: "bg-lime text-ink", label: "missão cumprida" },
+  started: { className: "bg-sun text-ink", label: "tentou" },
+  none: { className: "bg-cream-2 text-ink-soft", label: "sem missão" },
+} as const;
+
+function Grade({ days }: { days: RecentDay[] }) {
+  const today = days[days.length - 1]?.day;
   return (
-    <section aria-labelledby="mission-board-title" className="on-dark relative overflow-hidden rounded-2xl border-[3px] border-ink bg-[#10122e] p-4 text-cream shadow-[var(--shadow-ink)]">
-      <h2 id="mission-board-title" className="flex items-center gap-2 font-display text-lg uppercase tracking-wide text-sun">
-        <TrophyIcon className="size-5" /> Placar do dia
-      </h2>
-      <p className="mt-2 font-semibold leading-snug">
-        {completions === 0 ? "Ninguém cumpriu a missão ainda. O primeiro lugar está vago." : `${plural(completions, "pessoa cumpriu", "pessoas cumpriram")} a missão hoje.`}
+    <div className="mt-3">
+      <p className="font-display text-[11px] uppercase tracking-wider text-ink-soft">Sua grade · últimos 14 dias</p>
+      <ol aria-label="Seus últimos 14 dias de missão" className="mt-1 grid grid-cols-7 gap-1">
+        {days.map((d) => (
+          <li
+            key={d.day}
+            className={`grid aspect-square place-items-center rounded-md border-2 border-ink font-display text-xs tabular-nums ${GRADE[d.state].className} ${d.day === today ? "outline-2 outline-offset-1 outline-tomato" : ""}`}
+          >
+            <span aria-hidden>{d.state === "completed" ? "★" : Number(d.day.slice(8))}</span>
+            <span className="sr-only">
+              {dayName(d.day)}: {GRADE[d.state].label}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p aria-hidden className="mt-1 flex flex-wrap gap-x-3 text-[11px] font-semibold text-ink-soft">
+        <span className="inline-flex items-center gap-1">
+          <span className="size-2.5 rounded-sm border border-ink bg-lime" /> cumprida
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="size-2.5 rounded-sm border border-ink bg-sun" /> tentou
+        </span>
       </p>
-      {leader ? (
-        <p className="mt-2 rounded-lg border-2 border-ink bg-plum-800 px-2 py-1.5 text-sm">
-          <span className="font-display uppercase tracking-wider text-sun">Na frente: </span>
-          <span className="font-semibold">
-            {leader.you ? "você" : `${leader.nickname} #${leader.tag}`}
-          </span>{" "}
-          · {formatMissionBest(mission.game, leader.metrics)}
+    </div>
+  );
+}
+
+function Seals({ unlocked, championDays }: { unlocked: string[]; championDays: number }) {
+  const count = MISSION_ACHIEVEMENTS.filter((a) => unlocked.includes(a.id)).length;
+  return (
+    <div className="mt-3 border-t-2 border-dashed border-ink/25 pt-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-display text-[11px] uppercase tracking-wider text-ink-soft">
+          Selos da missão · {count} de {MISSION_ACHIEVEMENTS.length}
+        </p>
+        <Link href="/extras#achievements" className="font-display text-[11px] uppercase tracking-wider text-ink underline decoration-2 underline-offset-2">
+          Ver todos
+        </Link>
+      </div>
+      <ul className="mt-1 flex gap-1.5">
+        {MISSION_ACHIEVEMENTS.map((a) => {
+          const done = unlocked.includes(a.id);
+          return (
+            <li key={a.id} className="w-9" title={done ? a.title : `${a.title}: ${a.hint}`}>
+              {done ? <StarBadge color={a.color} className="w-full" /> : <LockedBadge className="w-full opacity-70" />}
+              <span className="sr-only">
+                {a.title}: {done ? "conquistado" : "ainda não"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {championDays > 0 ? (
+        <p className="mt-1.5 text-sm font-semibold">
+          Campeão do dia {championDays === 1 ? "1 vez" : `${championDays} vezes`}.
         </p>
       ) : null}
-      <div aria-hidden className="pointer-events-none absolute inset-0 scanlines opacity-40" />
-    </section>
+    </div>
   );
 }
 
