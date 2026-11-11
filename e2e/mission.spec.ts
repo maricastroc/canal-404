@@ -151,9 +151,32 @@ test.describe("daily mission with the backend", () => {
     await expect(page).toHaveURL("/play/bad-ideas-lab");
     await expect(intro.getByRole("button", { name: /^Jogar fase/ })).toBeVisible();
   });
+  test("announces the mission in the room and tunes the TV to it from the NO AR sign", async ({ page }) => {
+    const { day, def } = await scheduleToday("lab-pixel-fast");
+    await page.goto("/");
+    const sign = page.getByRole("button", { name: `Placa NO AR: ver a Missão 404 de hoje na TV, ${def.title}` });
+    await expect(sign).toBeVisible({ timeout: simTime(20_000) });
+    await sign.click();
+    await expect(page.getByTestId("tv-screen").first()).toHaveAttribute("data-channel", "mission");
+    await expect(page.getByRole("button", { name: /^Mudar de canal/ })).toHaveAccessibleName("Mudar de canal. Canal atual: 09, Missão 404 do Dia");
+    const play = page.getByRole("link", { name: /^Jogar missão/ });
+    await expect(play).toHaveAttribute("href", `/play/bad-ideas-lab?mission=${day}`);
+    expect(await accessibilityViolations(page, '[data-testid="tv-screen"]')).toEqual([]);
+    await play.click();
+    await expect(page).toHaveURL(`/play/bad-ideas-lab?mission=${day}`);
+    await expect(page.getByRole("dialog", { name: `${LAB_TITLE}: tela de apresentação` }).getByRole("button", { name: "Começar missão" })).toBeVisible({ timeout: simTime(45_000) });
+  });
 });
 
 test.describe("daily mission without the backend", () => {
+  test("keeps the NO AR sign as decoration when the board has not premiered", async ({ page }) => {
+    await page.route("**/api/status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "unconfigured" }) }));
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: /^Mudar de canal/ })).toBeVisible();
+    await page.waitForTimeout(1000);
+    await expect(page.getByRole("button", { name: /^Placa NO AR/ })).toHaveCount(0);
+  });
+
   test("announces that the mission is coming when the board has not premiered", async ({ page }) => {
     await page.route("**/api/status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "unconfigured" }) }));
     await page.goto("/mission");

@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### A missão na sala (Stage 3.3)
+- **NO AR.** The sign above the TV lights up and gets a "MISSÃO!" sticker while there is a mission on air, and a "CUMPRIDA" one after you complete it. Click it and the TV tunes to the mission.
+- **Canal 09: Missão 404 do Dia.** A "Plantão" bulletin on the TV with the game, the level, the mission, the time left (with a blinking "Última hora") or your place once it is done. The whole screen is a "Jogar missão" button, or "Ver placar" after you complete it. The knob reaches it too, and the zoomed TV shows the same bulletin.
+- **The 404 talks about the mission**: when you come back (new mission, already tried, completed with your place, last hour), once the last hour starts, and when a new mission starts while the room is open.
+- The TV's "A seguir" button now has a name that matches what it shows, for screen readers and voice control.
+
 ### Conquistas e placar do dia (Stage 3.2)
 - **Five mission achievements**, checked by the channel: Primeira Transmissão, Frequentador do Canal (3 different days), Maratonista do 404 (7 different days), De Volta ao Ar (a mission after 7 days or more without one) and Campeão do Dia (1st place when the day closes, with someone else on the board). They show up in the result of the run that earned them, as a toast, in the report on `/mission` and in Extras → Conquistas with the date. Players who completed missions before this update got theirs too.
 - **The day's board** now lists everyone, 10 per page, with your own place even outside the page. Arrows go to earlier days, which show the final result and the champion, and each recorded tape has a "Ver placar" link.

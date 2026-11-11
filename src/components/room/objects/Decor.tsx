@@ -585,12 +585,16 @@ export function TrophyArt({ shine, record = false }: { shine: boolean; record?: 
   );
 }
 
-export function OnAirSign({ lit }: { lit: boolean }) {
+export function OnAirSign({ lit, mission = null }: { lit: boolean; mission?: "live" | "done" | null }) {
   return (
     <svg viewBox="0 0 150 70" className="h-full w-full" overflow="visible" aria-hidden>
       <g>
         <path d="M40 0 L52 14 M110 0 L98 14" stroke={P.ink} strokeWidth="4" />
-        {lit && <rect x="-6" y="6" width="162" height="64" rx="18" fill="#ff5a4a" opacity="0.35" style={{ filter: "blur(10px)" }} />}
+        {lit && (
+          <g style={mission === "live" ? { animation: "glow-pulse 1.8s ease-in-out infinite" } : undefined}>
+            <rect x="-6" y="6" width="162" height="64" rx="18" fill="#ff5a4a" opacity="0.35" style={{ filter: "blur(10px)" }} />
+          </g>
+        )}
         <rect x="6" y="12" width="138" height="52" rx="12" fill={P.inkSoft} stroke={P.ink} strokeWidth="5" />
         <rect x="14" y="20" width="122" height="36" rx="8" fill={lit ? P.tomato : "#5a2b35"} stroke={P.ink} strokeWidth="3" />
         <text
@@ -606,6 +610,15 @@ export function OnAirSign({ lit }: { lit: boolean }) {
         </text>
         <path d="M22 26 Q30 22 40 24" stroke={P.white} strokeWidth="3" fill="none" strokeLinecap="round" opacity={lit ? 0.8 : 0.25} />
       </g>
+      {mission && (
+        <g transform="rotate(9 128 4)">
+          <rect x={mission === "done" ? 78 : 92} y="-8" width={mission === "done" ? 90 : 72} height="24" rx="6" fill={mission === "live" ? P.lime : P.paper} stroke={P.ink} strokeWidth="3.5" />
+          {mission === "done" && <path d="M86 4 L91 9 L99 -1" stroke={P.limeDeep} strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+          <text x={mission === "done" ? 133 : 128} y="10" textAnchor="middle" fontSize={mission === "done" ? 11.5 : 13} letterSpacing={mission === "done" ? 0.4 : 1} fill={P.ink} style={{ fontFamily: "var(--font-luckiest)" }}>
+            {mission === "done" ? "CUMPRIDA" : "MISSÃO!"}
+          </text>
+        </g>
+      )}
     </svg>
   );
 }

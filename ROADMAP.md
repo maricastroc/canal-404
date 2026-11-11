@@ -73,8 +73,8 @@ Decision: [0006](docs/decisions/0006-daily-missions.md).
 
 ### 3.3 In the broadcast room
 
-- [ ] The mission announced on the TV, mascot lines for each mission state, an object in the room that opens the mission.
-- [ ] Polish, accessibility and end-to-end tests for the whole loop.
+- [x] The NO AR sign lights with a "MISSÃO!" sticker while a mission is on air and tunes the TV to it; Canal 09 shows the mission bulletin with a play button; the mascot has lines for a new, tried, completed and ending mission and for a new day.
+- [x] Polish, accessibility and end-to-end tests for the whole loop, including a fix for the TV's "A seguir" button name.
 
 ## Stage 4: Player-made levels
 

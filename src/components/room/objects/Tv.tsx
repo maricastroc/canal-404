@@ -3,6 +3,7 @@
 import type { CSSProperties, MouseEvent, Ref } from "react";
 import { PlayIcon, RewindIcon, ZoomIcon } from "@/components/art/Icons";
 import { IntentLink } from "@/components/ui/IntentLink";
+import { missionCta, missionHint, useMissionOnAir } from "../MissionOnAir";
 import { spotStyle, SPOTS, type Spot } from "../layout";
 import { useBroadcast, useTimeline } from "../tapes/broadcast";
 import { TAPE_PROGRAMS } from "../tapes";
@@ -62,7 +63,8 @@ function RewindButton({ channel, onHoverSound, raised }: { channel: ChannelId; o
 
 export function TvScreen({ channel, badge, next = null, switching, osd, flash, rewinding, onLaunch, onZoom, onHint, onHoverSound, screenRef, className = "", style }: ScreenProps) {
   const spot = SPOTS.tv;
-  const info = CHANNELS[channel];
+  const mission = useMissionOnAir();
+  const info = channel === "mission" && mission ? { ...CHANNELS[channel], cta: missionCta(mission), hint: missionHint(mission) } : CHANNELS[channel];
   const { take, since } = useBroadcast();
   const fullCta = info.cta && !info.cta.pill;
 
@@ -156,7 +158,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
           aria-label={`A seguir: ${next.name}, canal ${next.number}. Sintonizar agora`}
           className="absolute inset-x-0 bottom-0 z-20 flex h-[13%] min-h-6 items-center gap-[0.5em] overflow-hidden border-t-[2px] border-ink bg-plum-950/90 px-[6%] text-left [--focus:var(--color-sun)] focus-visible:outline-offset-[-4px] hover:bg-plum-900"
         >
-          <span className="shrink-0 rounded-[3px] bg-sun px-[0.4em] font-display text-[max(8px,4.2cqw)] uppercase leading-[1.5] text-ink">A seguir</span>
+          <span className="shrink-0 rounded-[3px] bg-sun px-[0.4em] font-display text-[max(8px,4.2cqw)] uppercase leading-[1.5] text-ink">A seguir</span>{" "}
           <span className="line-clamp-2 min-w-0 font-display text-[max(8px,4.5cqw)] uppercase leading-[1.1] tracking-wide text-cream">{next.name}</span>
           <span aria-hidden className="ml-auto shrink-0 font-display text-[max(7px,5.3cqw)] leading-none text-sun">
             ▸

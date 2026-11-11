@@ -57,6 +57,14 @@ Mission achievements live in the existing `player_achievements` table (`source =
 - `GET /api/missions/board?day=&page=` serves any stored day, ten rows per page, with the player's own place and the previous and next days that had a mission. Closed days are marked as final and name the champion.
 - The player's report shows a 14-day grade (completed, tried or no mission), the total of completed days, the days in a row only when there are 2 or more, the seals and how many days they finished first. Missed days are shown as empty, never as lost.
 
+### In the broadcast room (Stage 3.3)
+
+The room already had a TV with channels, a mascot with lines and many objects, so the mission uses those instead of a new panel:
+
+- **The NO AR sign** above the TV is the mission's object. While a mission is on air it lights, its glow pulses and a "MISSÃO!" sticker sits on its corner; after the player completes it, the sticker reads "CUMPRIDA". Clicking it tunes the TV to the mission. Without the backend it stays a decoration that lights with the radio, as before.
+- **Canal 09, Missão 404 do Dia**, is a TV channel that only joins the knob rotation while a mission exists. It shows a "Plantão" bulletin (game, level, title, a countdown that turns into "Última hora" in the last hour, or "Cumprida · Nº no placar"), and the whole screen is a link: "Jogar missão" opens the mission level, and after completion "Ver placar" opens `/mission`. The weekly game stays the default channel. The room TV and the zoomed TV read the same data through a context.
+- **The mascot** opens with a mission line for returning visitors (new mission, already tried, completed with the day's place, the last hour) and after the welcome for new visitors. It warns once when the last hour starts, and announces the new mission if the day changes while the room is open. The greeting waits up to 2.5 seconds for the mission, so it never switches mid-sentence.
+
 ### What the first missions check
 
 | Game | How the channel checks | Missions |

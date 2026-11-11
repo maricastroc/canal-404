@@ -37,7 +37,9 @@ import {
   type SkyPeriod,
 } from "./objects/Decor";
 import { Tv, type TvBadge } from "./objects/Tv";
-import { CHANNEL_ORDER, CHANNELS, isRegularChannel, type ChannelId } from "./objects/TvChannels";
+import { channelOrder, CHANNELS, isRegularChannel, MISSION_CHANNEL, type ChannelId } from "./objects/TvChannels";
+import { MissionOnAirProvider, type MissionOnAir } from "./MissionOnAir";
+import { LAST_HOUR_MINUTES, missionChannelLine, missionGreeting, missionSignLine, newMissionLine, type MissionMoment } from "./missionLines";
 import { isTape, tapeById, type TapeId } from "./objects/tapes";
 import { TapeFlights, type Flight } from "./TapeFlights";
 import { TapeShelf } from "./TapeShelf";
@@ -46,6 +48,8 @@ import { BroadcastProvider, type Broadcast } from "./tapes/broadcast";
 import { useTapePlayback } from "./tapes/useTapePlayback";
 import type { TapeCue } from "./tapes/vhs";
 import { useSchedule } from "@/components/catalog/useSchedule";
+import { missionPlace } from "@/components/missions/parts";
+import { useMissionToday } from "@/lib/missions/hooks";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { bestRecord, FALLBACK_WEEKLY, plays, unplayedGames } from "@/lib/schedule";
 import { RoomBackdrop } from "./RoomBackdrop";
@@ -113,6 +117,23 @@ export function BroadcastRoom() {
   const pokes = useRef<number[]>([]);
 
   const schedule = useSchedule();
+  const missionFeed = useMissionToday();
+  const missionData = missionFeed.status === "ready" ? missionFeed.data : null;
+  const missionOffset = missionFeed.offset;
+  const onAir = useMemo<MissionOnAir | null>(
+    () => (missionData ? { view: missionData.mission, state: missionData.you?.state ?? "new", best: missionData.you?.best ?? null, offset: missionOffset } : null),
+    [missionData, missionOffset],
+  );
+  const order = useMemo(() => channelOrder(Boolean(onAir)), [onAir]);
+  const momentOf = useCallback((): MissionMoment | null => {
+    if (!onAir) return null;
+    const left = Date.parse(onAir.view.endsAt) - (Date.now() + onAir.offset);
+    return { title: onAir.view.title, game: missionPlace(onAir.view).game, state: onAir.state, minutesLeft: Math.max(1, Math.ceil(left / 60_000)), position: onAir.best?.position ?? null };
+  }, [onAir]);
+  const [missionWaitOver, setMissionWaitOver] = useState(false);
+  const missionSettled = missionFeed.status !== "loading" || missionWaitOver;
+  const greetTimers = useRef<number[]>([]);
+  const missionDay = useRef<string | null>(null);
   const [channel, setChannel] = useState<ChannelId>(FALLBACK_WEEKLY.slug);
   const [lastRegular, setLastRegular] = useState<ChannelId>(FALLBACK_WEEKLY.slug);
   const tuned = useRef(false);
@@ -170,8 +191,18 @@ export function BroadcastRoom() {
   }, [schedule.hydrated, schedule.weekly]);
 
   useEffect(() => {
-    if (!hydrated || greeted.current) return;
+    const wait = window.setTimeout(() => setMissionWaitOver(true), 2500);
+    const timers = greetTimers.current;
+    return () => {
+      window.clearTimeout(wait);
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || greeted.current || !missionSettled) return;
     greeted.current = true;
+    const mission = momentOf();
     const returning = progress.visits > 1;
     const unplayed = unplayedGames(progress);
     const best = bestRecord(progress);
@@ -182,12 +213,36 @@ export function BroadcastRoom() {
         : unplayed.length === 0 && best
           ? `Ei! Você voltou! Já viu todos os programas. Seu melhor recorde é em ${best.game.title}. Dá pra bater?`
           : "Ei! Você voltou! Bora jogar alguma coisa?";
-    const timer = window.setTimeout(() => {
-      say({ text, expression: returning ? "happy" : "excited", duration: 9000, announce: false });
-      poke();
-    }, 450);
-    return () => window.clearTimeout(timer);
-  }, [hydrated, progress, say, poke]);
+    greetTimers.current.push(
+      window.setTimeout(() => {
+        if (returning && mission) say({ ...missionGreeting(mission), duration: 9000, announce: false });
+        else say({ text, expression: returning ? "happy" : "excited", duration: 9000, announce: false });
+        poke();
+      }, 450),
+    );
+    if (!returning && mission) greetTimers.current.push(window.setTimeout(() => say({ ...missionGreeting(mission), duration: 7000, announce: false }), 9700));
+  }, [hydrated, missionSettled, momentOf, progress, say, poke]);
+
+  useEffect(() => {
+    if (!onAir) return;
+    const previous = missionDay.current;
+    missionDay.current = onAir.view.day;
+    if (previous && previous !== onAir.view.day) {
+      const moment = momentOf();
+      if (moment) say({ ...newMissionLine(moment), duration: 6000 });
+    }
+  }, [onAir, momentOf, say]);
+
+  useEffect(() => {
+    if (!onAir || onAir.state === "completed") return;
+    const wait = Date.parse(onAir.view.endsAt) - (Date.now() + onAir.offset) - LAST_HOUR_MINUTES * 60_000;
+    if (wait <= 0 || wait > 2 ** 31 - 1) return;
+    const id = window.setTimeout(() => {
+      const moment = momentOf();
+      if (moment && moment.state !== "completed") say({ ...missionGreeting(moment), duration: 7000 });
+    }, wait);
+    return () => window.clearTimeout(id);
+  }, [onAir, momentOf, say]);
 
   const lookAtSpot = useCallback((spot: Spot) => {
     const target = spotCenter(spot);
@@ -274,6 +329,10 @@ export function BroadcastRoom() {
       const info = CHANNELS[id];
       const game = info?.game;
       if (!game) {
+        if (id === MISSION_CHANNEL) {
+          const moment = momentOf();
+          return moment ? missionChannelLine(moment, info.number) : `Canal ${info.number}: plantão fora do ar.`;
+        }
         if (id === "bars") return `Canal ${info.number}: fora do ar. Relaxa, isso é normal aqui.`;
         if (id === "cartoon") return `Canal ${info.number}: reprise do meu desenho! Eu tô ótimo nesse episódio.`;
         return info?.name ?? "";
@@ -283,7 +342,7 @@ export function BroadcastRoom() {
       if (badge === "new") return `Canal ${info.number}: ${game.title}. Inédito pra você! ${game.tagline}`;
       return `Canal ${info.number}: reprise de ${game.title}. ${game.tagline}`;
     },
-    [badgeFor],
+    [badgeFor, momentOf],
   );
 
   const handleKnob = useCallback(() => {
@@ -306,8 +365,8 @@ export function BroadcastRoom() {
     if (turns.current % 9 === 8) {
       next = "lost";
     } else {
-      const base = isRegularChannel(channel) ? channel : lastRegular;
-      next = CHANNEL_ORDER[(CHANNEL_ORDER.indexOf(base) + 1) % CHANNEL_ORDER.length];
+      const base = isRegularChannel(channel, order) ? channel : lastRegular;
+      next = order[(order.indexOf(base) + 1) % order.length];
       setLastRegular(next);
     }
     tuneTo(next);
@@ -317,7 +376,19 @@ export function BroadcastRoom() {
     } else {
       say({ text: channelLine(next), expression: next === "bars" ? "confused" : badgeFor(next) === "new" ? "excited" : "happy", duration: 4200 });
     }
-  }, [badgeFor, channel, channelLine, lastRegular, play, poke, reduced, say, tuneTo]);
+  }, [badgeFor, channel, channelLine, lastRegular, order, play, poke, reduced, say, tuneTo]);
+
+  const handleSign = useCallback(() => {
+    const moment = momentOf();
+    if (!moment) return;
+    poke();
+    play("tvOn");
+    tuned.current = true;
+    setKnobAngle((a) => a + 45);
+    setLastRegular(MISSION_CHANNEL);
+    tuneTo(MISSION_CHANNEL);
+    say({ ...missionSignLine(moment), duration: 4600 });
+  }, [momentOf, play, poke, say, tuneTo]);
 
   const suggestion = useMemo(() => {
     const current = CHANNELS[channel]?.game;
@@ -704,6 +775,7 @@ export function BroadcastRoom() {
 
   return (
     <BroadcastProvider value={broadcast}>
+    <MissionOnAirProvider value={onAir}>
     <div ref={stageRef} className="on-dark relative isolate h-full w-full">
       <div ref={sceneRef} className="room-scene relative mx-auto">
         <RoomBackdrop className="pointer-events-none absolute inset-0 h-full w-full" />
@@ -765,9 +837,27 @@ export function BroadcastRoom() {
           <PosterDreamArt />
         </RoomButton>
 
-        <div aria-hidden className="pointer-events-none absolute z-[6]" style={spotStyle(SPOTS.onAir)}>
-          <OnAirSign lit={radioOn} />
-        </div>
+        {onAir ? (
+          <RoomButton
+            spot={SPOTS.onAir}
+            label={
+              onAir.state === "completed"
+                ? `Placa NO AR: Missão 404 de hoje cumprida, ${onAir.view.title}. Ver na TV`
+                : `Placa NO AR: ver a Missão 404 de hoje na TV, ${onAir.view.title}`
+            }
+            hint={onAir.state === "completed" ? "Missão de hoje cumprida. Clica pra ver na TV." : "Plantão no ar! Clica pra ver a Missão 404 na TV."}
+            onHint={onHint}
+            onHoverSound={hover}
+            onActivate={handleSign}
+            z={7}
+          >
+            <OnAirSign lit={radioOn || onAir.state !== "completed"} mission={onAir.state === "completed" ? "done" : "live"} />
+          </RoomButton>
+        ) : (
+          <div aria-hidden className="pointer-events-none absolute z-[6]" style={spotStyle(SPOTS.onAir)}>
+            <OnAirSign lit={radioOn} />
+          </div>
+        )}
 
         <RoomLink
           spot={SPOTS.trophy}
@@ -1203,6 +1293,7 @@ export function BroadcastRoom() {
         {director.announcement}
       </p>
     </div>
+    </MissionOnAirProvider>
     </BroadcastProvider>
   );
 }

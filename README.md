@@ -133,7 +133,7 @@ npm run test:visual:update
 
 | Route | Content |
 | --- | --- |
-| `/` | Broadcast room: TV with the game of the week and channels, arcade cabinet that opens the catalog, radio with music, the 404 mascot and objects hiding secrets |
+| `/` | Broadcast room: TV with the game of the week and channels, arcade cabinet that opens the catalog, radio with music, the NO AR sign that tunes the TV to the day's mission, the 404 mascot and objects hiding secrets |
 | `/games` | Catalog with category filters and the day's mission |
 | `/mission` | Missão 404 do Dia: the day's challenge, a countdown to the next one, the player's report, the day's board and past missions |
 | `/games/[slug]` | Game page (playable or "off the air"), with the game's champion when the scoreboard is on |

@@ -12,7 +12,8 @@ export default function Home() {
         <h1 className="sr-only">CANAL 404 — Sala de transmissão</h1>
         <p className="sr-only">
           Uma sala ilustrada e interativa. Use Tab para percorrer os objetos: a TV mostra o jogo da semana, o fliperama abre
-          o catálogo e o rádio liga a trilha sonora. Vários objetos escondem segredos.
+          o catálogo e o rádio liga a trilha sonora. Quando tem Missão 404 no ar, a placa NO AR acende e leva a missão para a TV. Vários
+          objetos escondem segredos.
         </p>
         <RoomPanner>
           <BroadcastRoom />

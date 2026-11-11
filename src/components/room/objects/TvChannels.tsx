@@ -4,6 +4,7 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { Feather, Head, Pillow } from "@/components/art/PajamaWarArt";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import { P } from "@/lib/palette";
+import { MissionScreen } from "../MissionOnAir";
 import { TAPE_PROGRAMS } from "../tapes";
 import { TAPES, isTape } from "./tapes";
 
@@ -36,6 +37,7 @@ const SPECIAL_CHANNELS: Channel[] = [
     hint: "Reprise do meu desenho! Clica pra conhecer a turma.",
   },
   { id: "lost", number: "00", name: "Transmissão perdida" },
+  { id: "mission", number: String(GAME_CHANNELS.length + 3).padStart(2, "0"), name: "Missão 404 do Dia" },
 ];
 
 const TAPE_CHANNELS: Channel[] = TAPES.map((tape) => ({
@@ -54,8 +56,14 @@ export const CHANNELS: Record<ChannelId, Channel> = Object.fromEntries([...GAME_
 
 export const CHANNEL_ORDER: ChannelId[] = [...GAME_CHANNELS.map((c) => c.id), "bars", "cartoon"];
 
-export function isRegularChannel(id: ChannelId) {
-  return CHANNEL_ORDER.includes(id);
+export const MISSION_CHANNEL: ChannelId = "mission";
+
+export function channelOrder(withMission: boolean): ChannelId[] {
+  return withMission ? [...CHANNEL_ORDER, MISSION_CHANNEL] : CHANNEL_ORDER;
+}
+
+export function isRegularChannel(id: ChannelId, order: readonly ChannelId[] = CHANNEL_ORDER) {
+  return order.includes(id);
 }
 
 const display = { fontFamily: "var(--font-luckiest)" };
@@ -246,6 +254,8 @@ export function ChannelContent({ id }: { id: ChannelId }) {
       return <CartoonScreen />;
     case "lost":
       return <LostScreen />;
+    case "mission":
+      return <MissionScreen />;
   }
   if (isTape(id)) {
     const { Screen } = TAPE_PROGRAMS[id];
