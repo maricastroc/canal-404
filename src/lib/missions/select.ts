@@ -1,5 +1,5 @@
-import { CATALOG, MISSION_GAMES, type MissionDef } from "./catalog";
-import { dayNumber } from "./calendar";
+import { CATALOG, ROTATIONS, type MissionDef, type Rotation } from "./catalog";
+import { addDays, dayNumber } from "./calendar";
 
 function hash(text: string) {
   let h = 0x811c9dc5;
@@ -48,16 +48,56 @@ export function missionSeed(day: string) {
   return hash(`seed:${day}`) & 0x7fffffff;
 }
 
-export function scheduledMission(day: string, catalog: readonly MissionDef[] = CATALOG, games: readonly string[] = MISSION_GAMES): MissionDef[] {
-  const live = games.filter((g) => catalog.some((m) => m.game === g));
-  const n = dayNumber(day);
-  const game = live[mod(n, live.length)];
-  const entries = catalog.filter((m) => m.game === game).sort((a, b) => a.key.localeCompare(b.key));
-  const turn = Math.floor(n / live.length);
+function entriesOf(catalog: readonly MissionDef[], game: string) {
+  return catalog.filter((m) => m.game === game).sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function bagAt(entries: readonly MissionDef[], namespace: string, turn: number): MissionDef[] {
   const cycle = Math.floor(turn / entries.length);
-  const order = cycleOrder(entries, game, cycle);
+  const order = cycleOrder(entries, namespace, cycle);
   const at = mod(turn, entries.length);
   return [...order.slice(at), ...order.slice(0, at)];
+}
+
+function liveGames(rotation: Rotation, catalog: readonly MissionDef[]) {
+  return rotation.games.filter((g) => catalog.some((m) => m.game === g));
+}
+
+function rotationIndex(day: string, rotations: readonly Rotation[]) {
+  let index = 0;
+  rotations.forEach((r, i) => {
+    if (r.from === null || r.from <= day) index = i;
+  });
+  return index;
+}
+
+function blockOrder(rotations: readonly Rotation[], index: number, block: number, catalog: readonly MissionDef[]): string[] {
+  const rotation = rotations[index];
+  const live = liveGames(rotation, catalog);
+  const order = shuffled(live, hash(`rotation:${rotation.from}:${block}`));
+  const before = block > 0 ? shuffled(live, hash(`rotation:${rotation.from}:${block - 1}`)).at(-1) : gameOn(addDays(rotation.from!, -1), rotations.slice(0, index), catalog);
+  if (order.length > 1 && order[0] === before) [order[0], order[1]] = [order[1], order[0]];
+  return order;
+}
+
+function gameOn(day: string, rotations: readonly Rotation[], catalog: readonly MissionDef[]): string | undefined {
+  if (!rotations.length) return undefined;
+  return scheduledMission(day, catalog, rotations)[0]?.game;
+}
+
+export function scheduledMission(day: string, catalog: readonly MissionDef[] = CATALOG, rotations: readonly Rotation[] = ROTATIONS): MissionDef[] {
+  const index = rotationIndex(day, rotations);
+  const rotation = rotations[index];
+  const live = liveGames(rotation, catalog);
+  if (rotation.from === null || live.length < 3) {
+    const n = dayNumber(day);
+    const game = live[mod(n, live.length)];
+    return bagAt(entriesOf(catalog, game), game, Math.floor(n / live.length));
+  }
+  const offset = dayNumber(day) - dayNumber(rotation.from);
+  const block = Math.floor(offset / live.length);
+  const game = blockOrder(rotations, index, block, catalog)[mod(offset, live.length)];
+  return bagAt(entriesOf(catalog, game), `${game}@${rotation.from}`, block);
 }
 
 export function pickMission(day: string, avoidKey: string | null = null, catalog: readonly MissionDef[] = CATALOG): MissionDef {

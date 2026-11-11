@@ -22,7 +22,9 @@ export type GameResult = {
   restartLabel?: string;
 };
 
-export type StartOptions = { level?: number; next?: boolean; fresh?: boolean };
+export type MatchSetup = { character?: string };
+
+export type StartOptions = { level?: number; next?: boolean; fresh?: boolean; setup?: MatchSetup; checkpoints?: boolean };
 
 export type GameEvent =
   | { type: "score"; score: number }

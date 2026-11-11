@@ -859,6 +859,11 @@ export class StageScene extends Phaser.Scene {
       if (bell.reached || view.x < bell.x - 30) continue;
       bell.ring(this, this.ctx.reducedMotion);
       this.sfx("bell", 0.9);
+      if (this.registry.get("checkpoints") === false) {
+        this.word("DING!", bell.x, FLOOR_Y - 260, "#63d6c1", 44);
+        this.announce("Sino tocado! Na missão, a fase vale do começo ao fim.");
+        continue;
+      }
       this.word("SALVO!", bell.x, FLOOR_Y - 260, "#63d6c1", 44);
       const col = Math.round((bell.x - TILE / 2) / TILE);
       this.registry.set("checkpoint", { level: this.levelIndex, col, score: this.score, kills: this.kills, killScore: this.killScore, stickers: this.stickers, extras: this.extras, hits: this.hits } satisfies Checkpoint);

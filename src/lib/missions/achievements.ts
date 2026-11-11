@@ -1,4 +1,5 @@
 import { daysBetween } from "./calendar";
+import { MISSION_GAMES } from "./games";
 
 export const MISSION_ACHIEVEMENTS = [
   {
@@ -30,6 +31,13 @@ export const MISSION_ACHIEVEMENTS = [
     color: "sky",
   },
   {
+    id: "mission-full-grid",
+    title: "Grade Completa",
+    description: "Cumpriu missões nos cinco jogos da grade do canal.",
+    hint: "Cumpra pelo menos uma missão em cada um dos cinco jogos que passam na Missão 404.",
+    color: "plum",
+  },
+  {
     id: "mission-champion",
     title: "Campeão do Dia",
     description: "Terminou um dia em 1º lugar no placar da missão.",
@@ -52,13 +60,18 @@ export function missionAchievement(id: MissionAchievementId) {
   return MISSION_ACHIEVEMENTS.find((a) => a.id === id)!;
 }
 
-export function earnedOnCompletion(completedDays: readonly string[], day: string): MissionAchievementId[] {
-  const days = [...new Set([...completedDays, day])].sort();
+export type CompletedMission = { day: string; game: string };
+
+export function earnedOnCompletion(completed: readonly CompletedMission[], current: CompletedMission): MissionAchievementId[] {
+  const { day } = current;
+  const days = [...new Set([...completed.map((c) => c.day), day])].sort();
   const before = days.filter((d) => d < day);
   const previous = before[before.length - 1];
   const earned: MissionAchievementId[] = ["mission-first"];
   if (days.length >= 3) earned.push("mission-regular");
   if (days.length >= 7) earned.push("mission-marathon");
   if (previous && daysBetween(previous, day) - 1 >= BACK_ON_AIR_GAP_DAYS) earned.push("mission-back-on-air");
+  const games = new Set([...completed.map((c) => c.game), current.game]);
+  if (MISSION_GAMES.every((g) => games.has(g))) earned.push("mission-full-grid");
   return earned;
 }

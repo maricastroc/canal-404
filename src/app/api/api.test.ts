@@ -5,7 +5,7 @@ import { closeDb, type Db } from "@/server/db";
 import { LIMITS } from "@/server/rate-limit";
 import { missionDay } from "@/lib/missions/calendar";
 import type { MissionHistoryResponse, MissionTodayResponse } from "@/lib/missions/types";
-import { apiRequest, cookieFrom, hasTestDb, labClaim, resetDb, scheduleMission, streetClaim, testDb } from "@/server/testing";
+import { apiRequest, cookieFrom, hasTestDb, labClaim, resetDb, scheduleMission, testDb } from "@/server/testing";
 import { GET as cleanupGet } from "./cron/cleanup/route";
 import { GET as boardGet } from "./leaderboards/route";
 import { GET as missionBoardGet } from "./missions/board/route";
@@ -225,8 +225,8 @@ describe.skipIf(!hasTestDb)("competition API", () => {
   });
 
   it("asks for a nickname before accepting a run, and keeps the ticket usable after joining", async () => {
-    const { ticket: token } = await ticketAs(undefined);
-    const payload = { ticket: token, result: streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 4 }, 2800) };
+    const { ticket: token } = await ticketAs(undefined, "bad-ideas-lab", "juice");
+    const payload = { ticket: token, result: labClaim("juice", JUICE) };
     const anonymous = await submit(apiRequest("/api/runs", { method: "POST", body: payload }));
     expect(anonymous.status).toBe(401);
     expect((await body<ApiErrorBody>(anonymous)).error.code).toBe("not_joined");
@@ -237,12 +237,12 @@ describe.skipIf(!hasTestDb)("competition API", () => {
 
   it("rejects forged tickets, malformed results and tampered scores", async () => {
     const { cookie } = await joinAs();
-    const { ticket: token } = await ticketAs(cookie);
-    const forged = await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: `${token}x`, result: streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 4 }, 2800) }, cookie }));
+    const { ticket: token } = await ticketAs(cookie, "bad-ideas-lab", "juice");
+    const forged = await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: `${token}x`, result: labClaim("juice", JUICE) }, cookie }));
     expect(forged.status).toBe(400);
     const malformed = await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: token, result: { won: "yes" } }, cookie }));
     expect(malformed.status).toBe(400);
-    const tampered = await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: token, result: { ...streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 4 }, 2800), score: 5000 } }, cookie }));
+    const tampered = await submit(apiRequest("/api/runs", { method: "POST", body: { ticket: token, result: { ...labClaim("juice", JUICE), score: 5000 } }, cookie }));
     expect(tampered.status).toBe(422);
     expect((await body(tampered)).error).toMatchObject({ code: "rejected", reason: "score_mismatch" });
   });

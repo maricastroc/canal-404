@@ -1,13 +1,17 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { ARENAS } from "./arenas";
-import { H, W } from "./config";
+import { H, KIDS, W, type KidId } from "./config";
 import { ArenaScene } from "./scenes/ArenaScene";
 import { BootScene } from "./scenes/BootScene";
 import { SelectScene } from "./scenes/SelectScene";
 import { loadStats } from "./storage";
 
 const SCENES = ["arena", "select"] as const;
+
+function kidOf(character: string | undefined): KidId | null {
+  return (KIDS as string[]).includes(character ?? "") ? (character as KidId) : null;
+}
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
@@ -30,6 +34,7 @@ function mount(ctx: GameHostContext): GameInstance {
         g.registry.set("ctx", ctx);
         g.registry.set("level", 0);
         g.registry.set("kid", null);
+        g.registry.set("forcedKid", false);
       },
       postBoot: () => ctx.onProgress(0.05, "art"),
     },
@@ -54,6 +59,17 @@ function mount(ctx: GameHostContext): GameInstance {
     start(options?: StartOptions) {
       const level = Phaser.Math.Clamp(options?.level ?? 0, 0, ARENAS.length - 1);
       game.registry.set("level", level);
+      const forced = kidOf(options?.setup?.character);
+      if (forced) {
+        game.registry.set("kid", forced);
+        game.registry.set("forcedKid", true);
+        fight();
+        return;
+      }
+      if (game.registry.get("forcedKid")) {
+        game.registry.set("forcedKid", false);
+        game.registry.set("kid", loadStats().lastKid);
+      }
       if (!game.registry.get("kid")) game.registry.set("kid", loadStats().lastKid);
       if (options?.next && game.registry.get("kid")) fight();
       else pick();

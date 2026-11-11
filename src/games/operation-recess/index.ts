@@ -37,6 +37,7 @@ function mount(ctx: GameHostContext): GameInstance {
         g.registry.set("ctx", ctx);
         g.registry.set("level", 0);
         g.registry.set("checkpoint", null);
+        g.registry.set("checkpoints", true);
         g.registry.set("resume", false);
       },
       postBoot: () => {
@@ -59,6 +60,7 @@ function mount(ctx: GameHostContext): GameInstance {
       const level = Phaser.Math.Clamp(options?.level ?? 0, 0, LEVELS.length - 1);
       const scene = stage();
       game.registry.set("resume", false);
+      game.registry.set("checkpoints", options?.checkpoints !== false);
       if (scene && scene.isAttract && scene.currentLevel === level) {
         game.registry.set("checkpoint", null);
         scene.begin();

@@ -7,7 +7,9 @@ import { pickMission } from "@/lib/missions/select";
 import { HttpError } from "./http";
 import { closesAt, ensureChallenge, missionBoard, missionBoardPage, missionHistory, missionToday, progressFrom, settleClosedDays, settleDay } from "./missions";
 import { submitRun } from "./runs";
-import { hasTestDb, labClaim, lunchClaim, makePlayer, resetDb, scheduleMission, testDb, ticketFor } from "./testing";
+import type { GameSlug } from "@/lib/competition/boards";
+import type { RunClaim } from "@/lib/competition/rules";
+import { hasTestDb, labClaim, lunchClaim, makePlayer, resetDb, scheduleMission, streetClaim, testDb, ticketFor } from "./testing";
 
 const DAY = "2026-11-04";
 const NOON = Date.UTC(2026, 10, 4, 15, 0, 0);
@@ -157,6 +159,33 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     expect((await play(lunchClaim({ bestStreak: 8, comboPoints: 1200 }), NOON + 200_000)).mission).toMatchObject({ status: "completed", firstTime: true, best: { position: 1 } });
   });
 
+  const STREET_LOSS: RunClaim = { won: false, score: 1000, stars: 0, stats: { targets: 4, targetPoints: 700, waves: 2, mess: 4, combos: 0, launches: 7, ammoLeft: 0, timeMs: 26_317 } };
+  const CORRIDOR_CLEAN: RunClaim = { won: true, score: 1600, stars: 3, stats: { kills: 6, killPoints: 600, stickers: 0, extras: 0, hits: 0, hearts: 5, resumed: 0, boss: 0, timeMs: 15_000 } };
+  const CORRIDOR_FROM_BELL: RunClaim = { ...CORRIDOR_CLEAN, score: 1100, stats: { ...CORRIDOR_CLEAN.stats, resumed: 1 } };
+  const YARD_AS_LIA: RunClaim = { won: true, score: 4350, stars: 2, stats: { hits: 26, kos: 2, throws: 84, hp: 5, damageTaken: 10, place: 1, timeMs: 76_167, kid: 0 } };
+  const YARD_AS_BIA: RunClaim = { ...YARD_AS_LIA, stats: { ...YARD_AS_LIA.stats, kid: 2 } };
+
+  async function playOn(player: Awaited<ReturnType<typeof makePlayer>>["player"], day: string, game: GameSlug, level: string | null, claim: RunClaim, offset = 0) {
+    const at = noonOf(day) + offset;
+    const { ticket } = ticketFor(game, level, player.id, at, day);
+    return submitRun(db, { player, ticket, claim, now: new Date(at + ((claim.stats.timeMs as number | undefined) ?? 50_000) + 10_000) });
+  }
+
+  it("judges Rua Sem Saída, Operação: Recreio and Guerra do Pijama missions from the checked stats", async () => {
+    const { player } = await makePlayer(db);
+    await scheduleMission(db, "2026-11-16", "street-five-launches");
+    expect((await playOn(player, "2026-11-16", "dead-end-street", null, STREET_LOSS)).mission).toMatchObject({ status: "missed", shortfall: { condition: { stat: "won" }, actual: 0 } });
+    expect((await playOn(player, "2026-11-16", "dead-end-street", null, streetClaim({ targetPoints: 900, combos: 0, mess: 3, launches: 5 }, 18_150), 100_000)).mission).toMatchObject({ status: "completed", firstTime: true });
+
+    await scheduleMission(db, "2026-11-17", "recess-corridor-spotless");
+    expect((await playOn(player, "2026-11-17", "operation-recess", "corridor", CORRIDOR_FROM_BELL)).mission).toMatchObject({ status: "missed", shortfall: { condition: { stat: "resumed" }, actual: 1 } });
+    expect((await playOn(player, "2026-11-17", "operation-recess", "corridor", CORRIDOR_CLEAN, 100_000)).mission).toMatchObject({ status: "completed", best: { metrics: [0, 15_000, 1600] } });
+
+    await scheduleMission(db, "2026-11-18", "pajama-yard-lia");
+    expect((await playOn(player, "2026-11-18", "pajama-war", "yard", YARD_AS_BIA)).mission).toMatchObject({ status: "missed", shortfall: { condition: { stat: "kid" }, actual: 2 } });
+    expect((await playOn(player, "2026-11-18", "pajama-war", "yard", YARD_AS_LIA, 100_000)).mission).toMatchObject({ status: "completed" });
+  });
+
   it("keeps players apart and leaves hidden players out of the count", async () => {
     await scheduleMission(db, DAY, "lab-pixel-fast");
     const { player: ana } = await makePlayer(db, "Ana");
@@ -249,6 +278,24 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     await completeOn(player, "2026-11-01");
     expect((await completeOn(player, "2026-11-08")).mission?.achievements).toEqual([]);
     expect((await completeOn(player, "2026-11-16")).mission?.achievements).toEqual(["mission-regular", "mission-back-on-air"]);
+  });
+
+  it("grants Grade Completa with the first completion that covers all five games", async () => {
+    const { player } = await makePlayer(db);
+    const plays: [string, string, GameSlug, string | null, RunClaim][] = [
+      ["2026-11-16", "lab-pixel-fast", "bad-ideas-lab", "pixel", labClaim("pixel", QUICK)],
+      ["2026-11-17", "street-five-launches", "dead-end-street", null, streetClaim({ targetPoints: 900, combos: 0, mess: 3, launches: 5 }, 18_150)],
+      ["2026-11-18", "food-streak-eight", "food-fight", null, lunchClaim({ bestStreak: 8, comboPoints: 1200 })],
+      ["2026-11-19", "food-spotless", "food-fight", null, lunchClaim({ lives: 3, hitsTaken: 0 })],
+      ["2026-11-20", "recess-corridor-spotless", "operation-recess", "corridor", CORRIDOR_CLEAN],
+      ["2026-11-21", "pajama-yard-lia", "pajama-war", "yard", YARD_AS_LIA],
+    ];
+    const unlocked: string[][] = [];
+    for (const [day, key, game, level, claim] of plays) {
+      await scheduleMission(db, day, key);
+      unlocked.push((await playOn(player, day, game, level, claim)).mission?.achievements ?? []);
+    }
+    expect(unlocked).toEqual([["mission-first"], [], ["mission-regular"], [], [], ["mission-full-grid"]]);
   });
 
   it("settles a closed day once, with final places and the Campeão do Dia", async () => {

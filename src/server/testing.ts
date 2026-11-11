@@ -33,12 +33,16 @@ export function ticketFor(game: GameSlug, level: string | null, playerId: string
   return issueTicket(TEST_SECRET, { game, level, playerId, now: issuedAt, mission });
 }
 
+function snapshotOf(def: NonNullable<ReturnType<typeof missionByKey>>) {
+  return { title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked, ...(def.setup ? { setup: def.setup } : {}) };
+}
+
 export async function scheduleMission(db: Db, day: string, key: string) {
   const def = missionByKey(key)!;
   return db.dailyChallenge.upsert({
     where: { id: day },
-    create: { id: day, key, game: def.game, level: def.level ?? "-", seed: 1, rulesVersion: def.version, variant: { title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked } },
-    update: { key, game: def.game, level: def.level ?? "-", rulesVersion: def.version, variant: { title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked } },
+    create: { id: day, key, game: def.game, level: def.level ?? "-", seed: 1, rulesVersion: def.version, variant: snapshotOf(def) },
+    update: { key, game: def.game, level: def.level ?? "-", rulesVersion: def.version, variant: snapshotOf(def) },
   });
 }
 

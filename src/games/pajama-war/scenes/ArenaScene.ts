@@ -951,7 +951,7 @@ export class ArenaScene extends Phaser.Scene {
     const stars = won ? (p.hp >= 7 ? 3 : p.hp >= 4 ? 2 : 1) : 0;
     const stats = loadStats();
     stats.matches += 1;
-    stats.lastKid = p.kid;
+    if (!this.registry.get("forcedKid")) stats.lastKid = p.kid;
     if (won) {
       stats.wins[p.kid] += 1;
       if (!stats.bestTime || this.matchTime < stats.bestTime) stats.bestTime = Math.round(this.matchTime);

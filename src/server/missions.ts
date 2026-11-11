@@ -30,6 +30,10 @@ const snapshotSchema = z.object({
   objective: z.string().min(1).max(240),
   goal: z.array(z.custom<Condition>(isCondition)).min(1).max(8),
   ranked: z.boolean(),
+  setup: z
+    .object({ character: z.string().regex(/^[a-z-]{1,24}$/).optional() })
+    .strict()
+    .optional(),
 });
 
 type Snapshot = z.infer<typeof snapshotSchema>;
@@ -58,6 +62,7 @@ export function viewOf(row: DailyChallenge): MissionView {
     objective: snapshot.objective,
     goal: snapshot.goal,
     ranked: snapshot.ranked,
+    ...(snapshot.setup ? { setup: snapshot.setup } : {}),
     endsAt: new Date(end).toISOString(),
     closesAt: new Date(end + MISSION_GRACE_MS).toISOString(),
   };
@@ -68,7 +73,7 @@ export async function ensureChallenge(db: Db | Tx, day: string): Promise<DailyCh
   if (found) return found;
   const yesterday = await db.dailyChallenge.findUnique({ where: { id: addDays(day, -1) }, select: { key: true } });
   const def = pickMission(day, yesterday?.key ?? null);
-  const variant: Snapshot = { title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked };
+  const variant: Snapshot = { title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked, ...(def.setup ? { setup: def.setup } : {}) };
   await db.dailyChallenge.createMany({
     data: [{ id: day, key: def.key, game: def.game, level: def.level ?? "-", seed: missionSeed(day), variant, rulesVersion: def.version }],
     skipDuplicates: true,
@@ -150,13 +155,16 @@ export async function recordMission(
   }
   outcome.firstTime = firstTime;
   if (firstTime) {
-    const done = await tx.challengeEntry.findMany({ where: { playerId: player.id, completedAt: { not: null } }, select: { challengeId: true } });
+    const done = await tx.challengeEntry.findMany({
+      where: { playerId: player.id, completedAt: { not: null } },
+      select: { challengeId: true, challenge: { select: { game: true } } },
+    });
     outcome.achievements = await grantAchievements(
       tx,
       player.id,
       earnedOnCompletion(
-        done.map((d) => d.challengeId),
-        day,
+        done.map((d) => ({ day: d.challengeId, game: d.challenge.game })),
+        { day, game: ticket.game },
       ),
       run.id,
       now,

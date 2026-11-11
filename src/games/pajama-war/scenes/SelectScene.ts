@@ -210,6 +210,7 @@ export class SelectScene extends Phaser.Scene {
     this.starting = true;
     const kid = KIDS[this.index];
     this.registry.set("kid", kid);
+    this.registry.set("forcedKid", false);
     this.sfx("go", 0.9);
     const card = this.cards[this.index];
     card.sprite.setTexture(`kid-${kid}-cheer`);

@@ -1,3 +1,4 @@
+import type { MatchSetup } from "@/games/types";
 import type { GameSlug } from "@/lib/competition/boards";
 import type { MissionAchievementId } from "./achievements";
 import type { Condition } from "./goals";
@@ -12,6 +13,7 @@ export type MissionView = {
   objective: string;
   goal: Condition[];
   ranked: boolean;
+  setup?: MatchSetup;
   endsAt: string;
   closesAt: string;
 };

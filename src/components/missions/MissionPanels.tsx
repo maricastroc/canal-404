@@ -135,8 +135,14 @@ function Seals({ unlocked, championDays }: { unlocked: string[]; championDays: n
   );
 }
 
+const GAME_RULES: Partial<Record<string, string>> = {
+  "operation-recess": "Na Operação: Recreio, a missão vale para a fase inteira. O sino toca, mas não guarda o caminho.",
+  "pajama-war": "Na Guerra do Pijama, algumas missões escolhem a criança. Ela não vira a sua favorita.",
+};
+
 export function MissionRules({ game }: { game: string }) {
   const replayed = game === "bad-ideas-lab";
+  const extra = GAME_RULES[game];
   return (
     <section aria-labelledby="mission-rules-title" className="relative -rotate-1 rounded-2xl border-[3px] border-ink bg-paper p-4 pt-5 text-ink shadow-[var(--shadow-ink)]">
       <span aria-hidden className="absolute -top-3 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2 bg-lime/85" />
@@ -147,6 +153,7 @@ export function MissionRules({ game }: { game: string }) {
         <li>Uma missão por dia, a mesma para todo mundo. Ela troca à meia-noite, no horário de Fortaleza.</li>
         <li>Comece pelo botão da missão. Partidas que começam antes da meia-noite valem se terminarem até 1h da manhã.</li>
         <li>Pode tentar quantas vezes quiser. No placar do dia fica o seu melhor resultado.</li>
+        {extra ? <li>{extra}</li> : null}
       </ul>
       <h3 className="mt-3 flex items-center gap-1.5 font-display text-sm uppercase tracking-wider">
         {replayed ? <VerifiedIcon className="size-4 text-mint-deep" /> : null}

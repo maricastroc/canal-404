@@ -24,7 +24,7 @@ export function describeMission(view: MissionView, board: BoardState | null): Li
       if (!mission) return { tone: "off", headline: "Fora da missão", text: "Esta partida não valeu para a missão. Ela mudou enquanto você jogava?" };
       if (mission.status === "late") return { tone: "off", headline: "A missão já tinha mudado", text: `A partida chegou depois do fim da missão de ${dayName(mission.day)}. Ela vale só para o placar normal.` };
       if (mission.status === "missed") {
-        const why = mission.shortfall ? describeShortfall({ passed: false, ...mission.shortfall }) : "Ainda não foi dessa vez.";
+        const why = mission.shortfall ? describeShortfall({ passed: false, ...mission.shortfall }, view.game) : "Ainda não foi dessa vez.";
         return { tone: "miss", headline: "Quase!", text: `${why} Tente de novo: a missão vale até a meia-noite.` };
       }
       const place = mission.best ? `${formatMissionBest(view.game, mission.best.metrics)}, ${formatPlace(mission.best.position, mission.best.total)} no placar do dia` : "";

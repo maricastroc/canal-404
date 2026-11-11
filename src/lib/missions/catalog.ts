@@ -1,4 +1,6 @@
+import type { MatchSetup } from "@/games/types";
 import type { GameSlug } from "@/lib/competition/boards";
+import { MISSION_GAMES, type MissionGame } from "./games";
 import type { Condition } from "./goals";
 
 export type MissionDef = {
@@ -10,11 +12,17 @@ export type MissionDef = {
   objective: string;
   goal: Condition[];
   ranked: boolean;
+  setup?: MatchSetup;
 };
 
-export const MISSION_GAMES = ["bad-ideas-lab", "food-fight"] as const satisfies readonly GameSlug[];
+export { MISSION_GAMES, type MissionGame };
 
-export type MissionGame = (typeof MISSION_GAMES)[number];
+export type Rotation = { from: string | null; games: readonly MissionGame[] };
+
+export const ROTATIONS: readonly Rotation[] = [
+  { from: null, games: ["bad-ideas-lab", "food-fight"] },
+  { from: "2026-11-16", games: MISSION_GAMES },
+];
 
 export const CATALOG: readonly MissionDef[] = [
   {
@@ -157,6 +165,162 @@ export const CATALOG: readonly MissionDef[] = [
     objective: "Acerte 5 colegas na hora H, bem quando eles levantam o pudim.",
     goal: [{ stat: "interrupts", op: "min", value: 5 }],
     ranked: true,
+  },
+  {
+    key: "street-five-launches",
+    version: 1,
+    game: "dead-end-street",
+    level: null,
+    title: "Mira econômica",
+    objective: "Vença as três rodadas da Rua Sem Saída usando no máximo 5 dos 7 objetos.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "launches", op: "max", value: 5 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "street-two-at-once",
+    version: 1,
+    game: "dead-end-street",
+    level: null,
+    title: "Dois de uma vez",
+    objective: "Derrube os dois alvos de uma rodada com um lançamento só.",
+    goal: [{ stat: "combos", op: "min", value: 1 }],
+    ranked: true,
+  },
+  {
+    key: "street-three-stars",
+    version: 1,
+    game: "dead-end-street",
+    level: null,
+    title: "Três estrelas na rua",
+    objective: "Vença com pelo menos 2.050 pontos. Cada objeto que sobra vale 250.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "score", op: "min", value: 2050 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "street-yard-chaos",
+    version: 1,
+    game: "dead-end-street",
+    level: null,
+    title: "Quintal de pernas pro ar",
+    objective: "Tire do lugar pelo menos 7 das 10 coisas do quintal do Seu Arlindo: pneus, latas, tábua e caixas.",
+    goal: [{ stat: "mess", op: "min", value: 7 }],
+    ranked: true,
+  },
+  {
+    key: "recess-corridor-spotless",
+    version: 1,
+    game: "operation-recess",
+    level: "corridor",
+    title: "Corredor sem arranhão",
+    objective: "Atravesse o Corredor proibido sem levar nenhuma batida dos monitores.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "resumed", op: "max", value: 0 },
+      { stat: "bumps", op: "max", value: 0 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "recess-yard-stickers",
+    version: 1,
+    game: "operation-recess",
+    level: "yard",
+    title: "Álbum completo",
+    objective: "Pegue as 4 figurinhas do Pátio ocupado e chegue à porta da direção. Algumas ficam lá no alto.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "resumed", op: "max", value: 0 },
+      { stat: "stickersLeft", op: "max", value: 0 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "recess-yard-monitors",
+    version: 1,
+    game: "operation-recess",
+    level: "yard",
+    title: "Pátio liberado",
+    objective: "Derrube os 9 monitores do Pátio ocupado, inclusive os do apito, antes de chegar à porta.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "resumed", op: "max", value: 0 },
+      { stat: "monitorsLeft", op: "max", value: 0 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "recess-office-boss",
+    version: 1,
+    game: "operation-recess",
+    level: "office",
+    title: "Inspetor sem chance",
+    objective: "Vença o Inspetor do Silêncio levando no máximo 3 batidas no Caminho da direção inteiro.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "resumed", op: "max", value: 0 },
+      { stat: "bumps", op: "max", value: 3 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "pajama-bedroom-few-pillows",
+    version: 1,
+    game: "pajama-war",
+    level: "bedroom",
+    title: "Quase sem marcas",
+    objective: "Vença a guerra no Quarto levando no máximo 4 travesseiradas. Fique de olho no “!”.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "damageTaken", op: "max", value: 4 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "pajama-living-double-ko",
+    version: 1,
+    game: "pajama-war",
+    level: "living",
+    title: "Nocaute duplo",
+    objective: "Na Sala de estar, nocauteie você mesmo os dois adversários e fique de pé no final.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "kos", op: "min", value: 2 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "pajama-living-full-energy",
+    version: 1,
+    game: "pajama-war",
+    level: "living",
+    title: "Energia de sobra",
+    objective: "Vença na Sala de estar terminando com pelo menos 7 pontos de energia.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "hp", op: "min", value: 7 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "pajama-yard-lia",
+    version: 1,
+    game: "pajama-war",
+    level: "yard",
+    title: "A veloz no Quintal",
+    objective: "Vença no Quintal jogando com a Lia. Ela corre muito, mas demora para pegar outro travesseiro.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "kid", op: "min", value: 0 },
+      { stat: "kid", op: "max", value: 0 },
+    ],
+    ranked: true,
+    setup: { character: "lia" },
   },
 ];
 

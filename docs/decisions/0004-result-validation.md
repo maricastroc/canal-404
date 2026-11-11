@@ -27,6 +27,11 @@ The remaining tie goes to whoever got there first. The Laboratório first-try bo
 
 - **Checked** (every game except the Laboratório): the stats are complete integers inside the game's limits; the score, stars and win flag match; and the numbers are possible together. Examples: Rua Sem Saída target points must be a sum of real targets from the rounds reached, and ammo must add up; Guerra de Lanche can't end before the bell or score more than its throws allow; Operação: Recreio kill points must be reachable with the level's monitors and the clear can't be faster than Bruno can run; Guerra do Pijama can't throw faster than the chosen kid's cooldown; a Laboratório machine must be buildable in that level (grid, inventory, build area, overlaps, using the game's own `geometry.ts`).
 - **Ticket timing** (every game except Férias Fora do Ar): the time since the ticket was issued must cover the time the match claims to have lasted (the simulated time for the Laboratório), with a small margin. Férias is played across sessions, so it only needs a valid ticket.
+- **Stage 3.4** tightened the checks of three games with relations that hold in every real run (checked against bot runs of the games):
+  - Rua Sem Saída: combos only in finished rounds and never above the launches; a win needs one launch per round and the time of the round and reload timers.
+  - Operação: Recreio: hearts against bumps and the level's snacks, 0 hearts on a loss, waves only in levels with a whistle, a ball or the boss. A monitor may count twice only in a run resumed from a bell, where the game brings some monitors back.
+  - Guerra do Pijama: energy against pillows taken, knockouts against the final place, the throw rhythm with the windup, and the time the safety after each pillow takes.
+  - None of this changes a score or a ranking key, so the rule versions and the boards stay the same.
 - **Replayed** (Laboratório, since Stage 2.2): the server runs the submitted machine in the shared simulation ([0005](0005-shared-lab-simulation.md)) and only accepts it if the ball reaches the goal. The ranking and the minimum time use the steps the server counted; a different count from the browser is flagged, not trusted.
 
 ### What this does not prevent

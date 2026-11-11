@@ -8,7 +8,7 @@ import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
 import { EXTRAS_CAP, HEARTS, RUN, SCORE as RECESS_SCORE, TILE } from "@/games/operation-recess/config";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { ARENAS } from "@/games/pajama-war/arenas";
-import { HP, KIDS, SCORE as PAJAMA_SCORE, STATS as KID_STATS } from "@/games/pajama-war/config";
+import { HIT as PAJAMA_HIT, HP, KIDS, PILLOW, SCORE as PAJAMA_SCORE, STATS as KID_STATS } from "@/games/pajama-war/config";
 import type { GameReplay, GameStats } from "@/games/types";
 import type { Evidence } from "@/lib/missions/goals";
 import { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type GameSlug, type Metric, type RankKey } from "./boards";
@@ -111,6 +111,11 @@ const TARGETS_BY_WAVE = Array.from({ length: WAVE_COUNT }, (_, i) => TARGETS.fil
 const TARGETS_BEFORE = TARGETS_BY_WAVE.reduce<number[]>((acc, wave) => [...acc, acc[acc.length - 1] + wave.length], [0]);
 const POINTS_BEFORE = TARGETS_BY_WAVE.reduce<number[]>((acc, wave) => [...acc, acc[acc.length - 1] + wave.reduce((a, b) => a + b, 0)], [0]);
 const MIN_SHOT_MS = 700;
+const COMBOS_BEFORE = TARGETS_BY_WAVE.reduce<number[]>((acc, wave) => [...acc, acc[acc.length - 1] + Math.max(0, wave.length - 1)], [0]);
+const STREET_INTERLUDE_MS = 1900;
+const STREET_FINALE_MS = 1300;
+const STREET_RELOAD_MS = 380;
+const STREET_MIN_WIN_MS = (WAVE_COUNT - 1) * STREET_INTERLUDE_MS + STREET_FINALE_MS;
 
 const deadEndStreet: GameRule = {
   game: "dead-end-street",
@@ -134,12 +139,14 @@ const deadEndStreet: GameRule = {
     if (s.targets < TARGETS_BEFORE[s.waves]) return reject("inconsistent", "rodada concluída sem todos os alvos");
     const open = s.waves < WAVE_COUNT ? TARGETS_BY_WAVE[s.waves] : [];
     const extra = s.targets - TARGETS_BEFORE[s.waves];
-    if (extra > open.length) return reject("inconsistent", "alvos de uma rodada que não começou");
+    if (!won && extra >= open.length) return reject("inconsistent", "alvos de uma rodada que não começou");
     if (!subsetSums(open, extra).has(s.targetPoints - POINTS_BEFORE[s.waves])) return reject("inconsistent", "pontos de alvos impossíveis");
-    if (s.combos > Math.max(0, s.targets - 1)) return reject("inconsistent", "combos demais");
+    if (s.combos > Math.min(s.launches, COMBOS_BEFORE[s.waves])) return reject("inconsistent", "combos demais");
     if (won && s.launches + s.ammoLeft !== AMMO.length) return reject("inconsistent", "munição não confere");
+    if (won && s.launches < WAVE_COUNT) return reject("inconsistent", "vitória com lançamentos de menos");
     if (!won && (s.ammoLeft !== 0 || s.launches !== AMMO.length)) return reject("inconsistent", "derrota com munição sobrando");
     if (s.timeMs < s.launches * MIN_SHOT_MS) return reject("inconsistent", "lançamentos rápidos demais");
+    if (won && s.timeMs < STREET_MIN_WIN_MS + STREET_RELOAD_MS * (s.launches - WAVE_COUNT)) return reject("inconsistent", "rodadas rápidas demais");
     const score =
       s.targetPoints +
       s.combos * STREET_SCORE.comboBonus +
@@ -147,7 +154,13 @@ const deadEndStreet: GameRule = {
       s.mess * STREET_SCORE.messBonus +
       (won ? s.ammoLeft * STREET_SCORE.ammoBonus : 0);
     const stars = won ? (score >= STREET_SCORE.threeStars ? 3 : score >= STREET_SCORE.twoStars ? 2 : 1) : 0;
-    return settle(claim, { won, score, stars, rank: [score, -s.launches, 0], minElapsedMs: s.timeMs }, score > 0 ? undefined : "no_points");
+    return settle(
+      claim,
+      { won, score, stars, rank: [score, -s.launches, 0], minElapsedMs: s.timeMs },
+      score > 0 ? undefined : "no_points",
+      undefined,
+      { launches: s.launches, combos: s.combos, mess: s.mess },
+    );
   },
 };
 
@@ -287,8 +300,9 @@ const operationRecess: GameRule = {
     const def = RECESS_LEVELS.find((l) => l.id === level);
     if (!def) return reject("unknown_level", "fase desconhecida");
     const stickers = def.items.filter((i) => i.kind === "sticker").length;
+    const snacks = def.items.filter((i) => i.kind === "snack").length;
     const r = read(claim.stats, {
-      kills: [0, def.enemies.length],
+      kills: [0, def.enemies.length * 2],
       killPoints: [0, def.enemies.length * RECESS_SCORE.shield],
       stickers: [0, stickers],
       extras: [0, EXTRAS_CAP],
@@ -303,7 +317,13 @@ const operationRecess: GameRule = {
     const won = claim.won;
     if (s.boss !== (won && def.boss ? 1 : 0)) return reject("inconsistent", "chefe não confere");
     if (won && s.hearts < 1) return reject("inconsistent", "vitória sem corações");
-    if (!killSums(def.enemies.map((e) => e.kind), s.kills).has(s.killPoints)) return reject("inconsistent", "pontos de monitores impossíveis");
+    if (!won && s.hearts !== 0) return reject("inconsistent", "pego com corações sobrando");
+    if (s.hearts + s.hits < HEARTS) return reject("inconsistent", "corações perdidos sem batidas");
+    if (!s.resumed && s.hearts + s.hits > HEARTS + snacks) return reject("inconsistent", "corações demais para os lanches da fase");
+    if (!s.resumed && s.kills > def.enemies.length) return reject("inconsistent", "monitores demais");
+    if (s.extras > 0 && !def.enemies.some((e) => e.kind === "whistle") && !def.balls?.length && !def.boss) return reject("inconsistent", "ondas numa fase sem apito");
+    const kinds = def.enemies.map((e) => e.kind);
+    if (!killSums(s.resumed ? [...kinds, ...kinds] : kinds, s.kills).has(s.killPoints)) return reject("inconsistent", "pontos de monitores impossíveis");
     const goal = def.exit?.col ?? def.boss?.arena ?? def.length;
     const minRunMs = (Math.max(0, goal - def.start) * TILE * 1000) / RUN;
     if (won && !s.resumed && s.timeMs < minRunMs * 0.9) return reject("inconsistent", "rápido demais para as pernas do Bruno");
@@ -314,9 +334,16 @@ const operationRecess: GameRule = {
       (won ? RECESS_SCORE.phase + (s.resumed ? 0 : s.hearts * RECESS_SCORE.heart) + (s.boss ? RECESS_SCORE.boss : 0) : 0);
     const stars = won ? (s.hits <= 1 ? 3 : s.hits <= 3 ? 2 : 1) : 0;
     const ineligible: IneligibleReason | undefined = !won ? "not_won" : s.resumed ? "resumed" : undefined;
-    return settle(claim, { won, score, stars, rank: [-s.hits, -s.timeMs, score], minElapsedMs: s.timeMs }, ineligible);
+    return settle(claim, { won, score, stars, rank: [-s.hits, -s.timeMs, score], minElapsedMs: s.timeMs }, ineligible, undefined, {
+      bumps: s.hits,
+      resumed: s.resumed,
+      stickersLeft: stickers - s.stickers,
+      monitorsLeft: Math.max(0, def.enemies.length - s.kills),
+    });
   },
 };
+
+const PAJAMA_SLACK = 0.95;
 
 const pajamaWar: GameRule = {
   game: "pajama-war",
@@ -341,11 +368,21 @@ const pajamaWar: GameRule = {
     if (won && s.hp < 1) return reject("inconsistent", "vitória sem energia");
     if (!won && s.hp !== 0) return reject("inconsistent", "derrota com energia");
     if (s.hits > s.throws || s.kos > s.hits) return reject("inconsistent", "acertos sem travesseiros");
+    if (s.hp + s.damageTaken < HP) return reject("inconsistent", "energia perdida sem travesseiradas");
+    if (s.damageTaken === 0 && s.hp !== HP) return reject("inconsistent", "energia faltando sem travesseiradas");
+    if (s.kos > 3 - s.place) return reject("inconsistent", "nocautes demais para a colocação");
     const cooldown = KID_STATS[KIDS[s.kid]].cooldown;
-    if (s.throws > 1 && s.timeMs < (s.throws - 1) * cooldown * 0.9) return reject("inconsistent", "travesseiros rápidos demais");
+    if (s.throws > 0 && s.timeMs < (PILLOW.windup + (s.throws - 1) * (cooldown + PILLOW.windup)) * PAJAMA_SLACK) return reject("inconsistent", "travesseiros rápidos demais");
+    if (s.timeMs < (s.damageTaken - 1) * PAJAMA_HIT.invulnPlayer * PAJAMA_SLACK) return reject("inconsistent", "travesseiradas rápidas demais");
+    if (won && s.timeMs < (HP - 1) * PAJAMA_HIT.invuln * PAJAMA_SLACK) return reject("inconsistent", "guerra curta demais");
     const score = s.hits * PAJAMA_SCORE.hit + s.kos * PAJAMA_SCORE.ko + (won ? PAJAMA_SCORE.win + s.hp * PAJAMA_SCORE.hp : s.place === 2 ? PAJAMA_SCORE.second : 0);
     const stars = won ? (s.hp >= 7 ? 3 : s.hp >= 4 ? 2 : 1) : 0;
-    return settle(claim, { won, score, stars, rank: [s.hp, -s.timeMs, s.hits], minElapsedMs: s.timeMs }, won ? undefined : "not_won");
+    return settle(claim, { won, score, stars, rank: [s.hp, -s.timeMs, s.hits], minElapsedMs: s.timeMs }, won ? undefined : "not_won", undefined, {
+      damageTaken: s.damageTaken,
+      kos: s.kos,
+      hp: s.hp,
+      kid: s.kid,
+    });
   },
 };
 

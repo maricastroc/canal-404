@@ -9,7 +9,7 @@ import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
 import { GAME_LOADERS } from "@/games/loaders";
 import { getGame } from "@/games/registry";
-import type { GameInstance, GameResult, LoadStage } from "@/games/types";
+import type { GameInstance, GameResult, LoadStage, StartOptions } from "@/games/types";
 import { connect, getCompetition, join, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
 import { isDayKey } from "@/lib/missions/calendar";
 import { loadMission } from "@/lib/missions/client";
@@ -394,15 +394,23 @@ export function GameShell({ slug }: { slug: string }) {
     pendingRef.current = null;
     setBoard(null);
     track({ name: "game_start", game: slug, level, attempt: n, fresh });
+    return mission;
   };
 
   const start = (level?: number, next = false, fresh = false) => {
     play("confirm");
     recordGameStart(slug);
-    beginRun(game.levels ? (game.levels[level ?? 0]?.id ?? String(level ?? 0)) : "-", fresh);
+    const mission = beginRun(game.levels ? (game.levels[level ?? 0]?.id ?? String(level ?? 0)) : "-", fresh);
     setScore(0);
     setResult(null);
-    instanceRef.current?.start(fresh ? { fresh } : level === undefined ? undefined : next ? { level, next } : { level });
+    const options: StartOptions = fresh
+      ? { fresh }
+      : {
+          ...(level === undefined ? {} : { level, ...(next ? { next } : {}) }),
+          ...(mission?.setup ? { setup: mission.setup } : {}),
+          ...(mission ? { checkpoints: false } : {}),
+        };
+    instanceRef.current?.start(Object.keys(options).length ? options : undefined);
     setStage("playing");
     focusGame();
   };
@@ -562,7 +570,7 @@ export function GameShell({ slug }: { slug: string }) {
                   ? () => start(result.result.level!.index + 1, true)
                   : undefined
               }
-              onAlt={result.result.alt ? alt : undefined}
+              onAlt={result.result.alt && !result.mission?.setup?.character ? alt : undefined}
               onLevels={game.levels ? () => setStage("intro") : undefined}
             />
           )}

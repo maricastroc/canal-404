@@ -76,6 +76,15 @@ Decision: [0006](docs/decisions/0006-daily-missions.md).
 - [x] The NO AR sign lights with a "MISSÃO!" sticker while a mission is on air and tunes the TV to it; Canal 09 shows the mission bulletin with a play button; the mascot has lines for a new, tried, completed and ending mission and for a new day.
 - [x] Polish, accessibility and end-to-end tests for the whole loop, including a fix for the TV's "A seguir" button name.
 
+### 3.4 Missions for every game in the rotation
+
+- [x] Four missions each for Rua Sem Saída, Operação: Recreio and Guerra do Pijama, with goals and proofs taken from bot runs of the games.
+- [x] Tighter checks for the three games, found by an audit and checked against 300 bot runs, and a reliability table per mission in decision 0006.
+- [x] A dated five-game rotation from 2026-11-16, balanced and never repeating a game on consecutive days, that keeps every earlier day as it was.
+- [x] Typed mission start options: a forced Guerra do Pijama kid, and runs from the start in Operação: Recreio.
+- [x] Misses explained in each game's words, the Grade Completa achievement, and end-to-end tests for each new game.
+- Férias Fora do Ar stays out of the rotation, with its permanent board.
+
 ## Stage 4: Player-made levels
 
 

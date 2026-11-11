@@ -4,6 +4,15 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Missões em todos os jogos (Stage 3.4)
+- **Five games take turns.** From November 16 the Missão 404 rotates through Laboratório, Rua Sem Saída, Guerra de Lanche, Operação: Recreio and Guerra do Pijama, each once every five days and never two days in a row. The days before that keep the mission they already had.
+- **Twelve new missions.** Rua Sem Saída: "Mira econômica", "Dois de uma vez", "Três estrelas na rua" and "Quintal de pernas pro ar". Operação: Recreio: "Corredor sem arranhão", "Álbum completo", "Pátio liberado" and "Inspetor sem chance". Guerra do Pijama: "Quase sem marcas", "Nocaute duplo", "Energia de sobra" and "A veloz no Quintal", played as Lia.
+- **Mission rules inside the games.** In a Recreio mission the bells ring but don't save, so every try starts the level from the beginning. A Pijama mission that picks a kid goes straight to the arena with them, without changing your favorite.
+- **Misses in each game's words**, such as "A munição acabou antes da última rodada." or "Sua energia acabou antes do fim da guerra."
+- **Grade Completa**, a new seal for completing missions in all five games.
+- **Stricter checks** for Rua Sem Saída, Operação: Recreio and Guerra do Pijama results. They now refuse impossible numbers that used to pass, such as an instant 3,600-point Rua match.
+- A board showing "0 batidas" no longer risks showing "-0".
+
 ### A missão na sala (Stage 3.3)
 - **NO AR.** The sign above the TV lights up and gets a "MISSÃO!" sticker while there is a mission on air, and a "CUMPRIDA" one after you complete it. Click it and the TV tunes to the mission.
 - **Canal 09: Missão 404 do Dia.** A "Plantão" bulletin on the TV with the game, the level, the mission, the time left (with a blinking "Última hora") or your place once it is done. The whole screen is a "Jogar missão" button, or "Ver placar" after you complete it. The knob reaches it too, and the zoomed TV shows the same bulletin.

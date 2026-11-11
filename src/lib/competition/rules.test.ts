@@ -54,7 +54,8 @@ function lunch(overrides: Partial<Record<string, number>> = {}): RunClaim {
 }
 
 function recess(level: string, overrides: Partial<Record<string, number>> = {}, won = true): RunClaim {
-  const s = { kills: 3, killPoints: 300, stickers: 2, extras: 4, hits: 1, hearts: 4, resumed: 0, boss: 0, timeMs: 95_000, ...overrides } as Record<string, number>;
+  const hits = overrides.hits ?? 1;
+  const s = { kills: 3, killPoints: 300, stickers: 2, extras: 0, hits, hearts: won ? Math.max(1, 5 - hits) : 0, resumed: 0, boss: 0, timeMs: 95_000, ...overrides } as Record<string, number>;
   const score = s.killPoints + s.stickers * 50 + s.extras * 10 + (won ? 500 + (s.resumed ? 0 : s.hearts * 100) + (s.boss ? 1500 : 0) : 0);
   return { won, score, stars: won ? (s.hits <= 1 ? 3 : s.hits <= 3 ? 2 : 1) : 0, stats: s };
 }
@@ -126,6 +127,22 @@ describe("Rua Sem Saída", () => {
 
   it("needs the time of the match as the minimum time since the ticket", () => {
     expect(ok(judgeRun("dead-end-street", null, street())).minElapsedMs).toBe(70_000);
+  });
+
+  it("accepts the best match the street allows and reports what missions check", () => {
+    const best = ok(judgeRun("dead-end-street", null, street({ launches: 3, ammoLeft: 4, combos: 2, mess: 10, timeMs: 5_200 })));
+    expect(best.score).toBe(2650);
+    expect(best.evidence).toEqual({ launches: 3, combos: 2, mess: 10, won: 1, score: 2650 });
+  });
+
+  it("rejects combos, launches and rounds the street cannot produce", () => {
+    expect(judgeRun("dead-end-street", null, street({ launches: 0, ammoLeft: 7, combos: 4, mess: 10, timeMs: 60_000 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("dead-end-street", null, street({ launches: 2, ammoLeft: 5, combos: 2 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("dead-end-street", null, street({ combos: 3 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("dead-end-street", null, street({ targets: 2, targetPoints: 250, waves: 1, combos: 2, launches: 7, ammoLeft: 0 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("dead-end-street", null, street({ targets: 4, targetPoints: 700, waves: 1, combos: 0, launches: 7, ammoLeft: 0 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("dead-end-street", null, street({ launches: 3, ammoLeft: 4, combos: 2, timeMs: 5_000 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("dead-end-street", null, street({ launches: 6, ammoLeft: 1, timeMs: 6_000 }))).toMatchObject({ ok: false, reason: "inconsistent" });
   });
 });
 
@@ -250,11 +267,35 @@ describe("Operação: Recreio", () => {
     expect(compare(clean.rank, quick.rank)).toBeLessThan(0);
     expect(compare(quicker.rank, clean.rank)).toBeLessThan(0);
     expect(metricValues("operation-recess", clean.rank).slice(0, 2)).toEqual([0, 120_000]);
+    expect(Object.is(metricValues("operation-recess", clean.rank)[0], 0)).toBe(true);
   });
 
   it("keeps resumed and lost runs off the board", () => {
     expect(ok(judgeRun("operation-recess", "corridor", recess("corridor", { resumed: 1 })))).toMatchObject({ eligible: false, ineligible: "resumed" });
-    expect(ok(judgeRun("operation-recess", "corridor", recess("corridor", { hearts: 0 }, false)))).toMatchObject({ eligible: false, ineligible: "not_won" });
+    expect(ok(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 5 }, false)))).toMatchObject({ eligible: false, ineligible: "not_won" });
+  });
+
+  it("checks hearts against bumps and the level's snacks", () => {
+    expect(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 0, hearts: 3 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    ok(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 3, hearts: 3 })));
+    expect(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 3, hearts: 4 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    ok(judgeRun("operation-recess", "yard", recess("yard", { hits: 3, hearts: 4 })));
+    expect(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 4 }, false))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 5, hearts: 1 }, false))).toMatchObject({ ok: false, reason: "inconsistent" });
+  });
+
+  it("only counts waves where something can blow a whistle, and a monitor twice only after the bell", () => {
+    expect(judgeRun("operation-recess", "corridor", recess("corridor", { extras: 3 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    ok(judgeRun("operation-recess", "yard", recess("yard", { extras: 3 })));
+    ok(judgeRun("operation-recess", "corridor", recess("corridor", { kills: 7, killPoints: 700, resumed: 1, hearts: 5 })));
+    expect(judgeRun("operation-recess", "corridor", recess("corridor", { kills: 7, killPoints: 700 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+  });
+
+  it("reports bumps, the bell and what was left behind as mission evidence", () => {
+    const v = ok(judgeRun("operation-recess", "yard", recess("yard", { kills: 9, killPoints: 4 * 100 + 5 * 150, stickers: 4, hits: 0 })));
+    expect(v.evidence).toEqual({ bumps: 0, resumed: 0, stickersLeft: 0, monitorsLeft: 0, won: 1, score: v.score });
+    const left = ok(judgeRun("operation-recess", "corridor", recess("corridor")));
+    expect(left.evidence).toMatchObject({ bumps: 1, stickersLeft: 2, monitorsLeft: 3 });
   });
 
   it("checks the boss flag, kill points and the shortest possible run", () => {
@@ -275,10 +316,30 @@ describe("Guerra do Pijama", () => {
   });
 
   it("only ranks wins and checks the throw rhythm of the chosen kid", () => {
-    expect(ok(judgeRun("pajama-war", "bedroom", pajama({ place: 2, hp: 0 })))).toMatchObject({ eligible: false, ineligible: "not_won" });
+    expect(ok(judgeRun("pajama-war", "bedroom", pajama({ place: 2, hp: 0, damageTaken: 10 })))).toMatchObject({ eligible: false, ineligible: "not_won" });
     expect(judgeRun("pajama-war", "bedroom", pajama({ place: 2, hp: 3 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("pajama-war", "bedroom", pajama({ throws: 200, timeMs: 30_000, kid: 0 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("pajama-war", "bedroom", pajama({ hits: 40, throws: 30 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+  });
+
+  it("checks energy against the pillows taken and knockouts against the final place", () => {
+    expect(judgeRun("pajama-war", "bedroom", pajama({ hp: 6, damageTaken: 2 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("pajama-war", "bedroom", pajama({ hp: 9, damageTaken: 0 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    ok(judgeRun("pajama-war", "bedroom", pajama({ hp: 10, damageTaken: 0 })));
+    ok(judgeRun("pajama-war", "bedroom", pajama({ hp: 9, damageTaken: 6 })));
+    expect(judgeRun("pajama-war", "bedroom", pajama({ place: 3, hp: 0, damageTaken: 10, kos: 1 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("pajama-war", "bedroom", pajama({ place: 2, hp: 0, damageTaken: 10, kos: 2, hits: 20 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+  });
+
+  it("needs the time that the pillows, the windup and the safety after each hit take", () => {
+    expect(judgeRun("pajama-war", "bedroom", pajama({ place: 2, hp: 0, damageTaken: 30, timeMs: 10_000 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("pajama-war", "bedroom", pajama({ throws: 5, hits: 5, timeMs: 4_000 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("pajama-war", "bedroom", pajama({ throws: 12, hits: 10, timeMs: 6_000, kid: 1 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+  });
+
+  it("reports pillows taken, knockouts, energy and the kid as mission evidence", () => {
+    const v = ok(judgeRun("pajama-war", "living", pajama()));
+    expect(v.evidence).toEqual({ damageTaken: 2, kos: 1, hp: 8, kid: 1, won: 1, score: v.score });
   });
 });
 

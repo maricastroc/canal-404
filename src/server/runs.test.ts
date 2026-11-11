@@ -100,7 +100,7 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     const c = await makePlayer(db, "Terceira");
     await submitStreet(a.player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START + 3000, a.player);
     await submitStreet(b.player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START, b.player);
-    await submitStreet(c.player.id, { targetPoints: 900, combos: 3, mess: 0, launches: 4 }, START + 6000, c.player);
+    await submitStreet(c.player.id, { targetPoints: 900, combos: 2, mess: 4, launches: 4 }, START + 6000, c.player);
     const top = await topOfBoard(db, "dead-end-street", STREET, 10, a.player.id);
     expect(top.entries.map((e) => e.nickname)).toEqual(["Terceira", "Segunda", "Primeira"]);
     expect(top.entries.map((e) => e.position)).toEqual([1, 2, 3]);
@@ -112,7 +112,7 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
   it("tells each submission who holds the channel record", async () => {
     const champ = await makePlayer(db, "Campea");
     const rival = await makePlayer(db, "Rival");
-    const first = await submitStreet(champ.player.id, { targetPoints: 900, combos: 3, mess: 0, launches: 4 }, START, champ.player);
+    const first = await submitStreet(champ.player.id, { targetPoints: 900, combos: 2, mess: 4, launches: 4 }, START, champ.player);
     expect(first.board?.leader).toMatchObject({ nickname: "Campea", you: true });
     const second = await submitStreet(rival.player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START + 3000, rival.player);
     expect(second.board?.leader).toMatchObject({ nickname: "Campea", tag: champ.player.tag, you: false });
@@ -145,7 +145,7 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     const visible = await makePlayer(db, "Visivel");
     const hidden = await makePlayer(db, "Escondido", "hidden");
     await submitStreet(visible.player.id, { targetPoints: 900, combos: 0, mess: 0, launches: 6 }, START, visible.player);
-    await submitStreet(hidden.player.id, { targetPoints: 900, combos: 3, mess: 9, launches: 4 }, START, hidden.player);
+    await submitStreet(hidden.player.id, { targetPoints: 900, combos: 2, mess: 9, launches: 4 }, START, hidden.player);
     const top = await topOfBoard(db, "dead-end-street", STREET, 10, null);
     expect(top.entries.map((e) => e.nickname)).toEqual(["Visivel"]);
     expect(top.total).toBe(1);

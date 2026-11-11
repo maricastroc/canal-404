@@ -78,5 +78,5 @@ export function isGameSlug(value: unknown): value is GameSlug {
 }
 
 export function metricValues(game: GameSlug, rank: RankKey) {
-  return BOARD_META[game].metrics.map((m, i) => (m.lowerIsBetter ? -rank[i] : rank[i]));
+  return BOARD_META[game].metrics.map((m, i) => (m.lowerIsBetter ? -rank[i] : rank[i]) || 0);
 }

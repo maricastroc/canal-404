@@ -97,6 +97,16 @@ ORDER BY c.id DESC LIMIT 14;
 
 Never edit a stored day: players were judged against that snapshot. To change a mission, edit its entry in `src/lib/missions/catalog.ts` and bump its `version`; the change applies from the next day that is created. See [decision 0006](decisions/0006-daily-missions.md).
 
+The games that take turns come from `ROTATIONS` in the same file. To change them, append a rotation whose `from` day is still in the future at deploy time and never edit one that already started. The five-game rotation starts on 2026-11-16. If it is deployed later than that, move its `from` to a day still in the future: days already served by the old code stay as they were stored, and a switch in the past could put the same game on two days in a row. Stage 3.4 needs no migration and no new environment variable: the forced kid of a Guerra do Pijama mission lives in the stored snapshot (`variant.setup`), and Grade Completa is a new row in `player_achievements`.
+
+To see which games each player has completed missions in:
+
+```sql
+SELECT p.nickname, p.tag, array_agg(DISTINCT c.game) AS games
+FROM challenge_entries e JOIN daily_challenges c ON c.id = e.challenge_id JOIN players p ON p.id = e.player_id
+WHERE e.completed_at IS NOT NULL GROUP BY p.id ORDER BY count(DISTINCT c.game) DESC LIMIT 20;
+```
+
 ## Data kept
 
 See [decision 0003](decisions/0003-competition-backend.md#decision): nickname, tag, a hash of the device key, runs and records. No email, name, address or raw address. Rejected runs are deleted after 30 days, old runs that are not records after 90 days, inactive players after two years, and everything about a player immediately when they choose "Sair do placar".

@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { Client } from "pg";
 import { missionDay } from "../src/lib/missions/calendar";
 import { missionByKey } from "../src/lib/missions/catalog";
@@ -35,7 +35,7 @@ async function scheduleToday(key: string) {
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();
   try {
-    const variant = JSON.stringify({ title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked });
+    const variant = JSON.stringify({ title: def.title, objective: def.objective, goal: def.goal, ranked: def.ranked, ...(def.setup ? { setup: def.setup } : {}) });
     await client.query(
       `INSERT INTO daily_challenges (id, key, game, level, seed, variant, rules_version) VALUES ($1, $2, $3, $4, 1, $5::jsonb, $6)
        ON CONFLICT (id) DO UPDATE SET key = EXCLUDED.key, game = EXCLUDED.game, level = EXCLUDED.level, variant = EXCLUDED.variant, rules_version = EXCLUDED.rules_version`,
@@ -59,10 +59,25 @@ async function placeRamp(page: Page, moves: string[]) {
   return result;
 }
 
+async function pressOnStageUntil(page: Page, code: string, shown: Locator, timeout = simTime(120_000)) {
+  await expect(async () => {
+    await stage(page).evaluate((element, key) => {
+      for (const type of ["keydown", "keyup"]) {
+        const event = new KeyboardEvent(type, { key: key === "Space" ? " " : key, code: key, bubbles: true, cancelable: true });
+        Object.defineProperty(event, "keyCode", { get: () => (key === "Space" ? 32 : 0) });
+        element.dispatchEvent(event);
+      }
+    }, code);
+    await expect(shown).toBeVisible({ timeout: 400 });
+  }).toPass({ timeout });
+}
+
 const SLOW_RAMP = ["Shift+ArrowLeft", "Shift+ArrowUp", "Shift+ArrowUp", "Shift+ArrowUp"];
 const QUICK_RAMP = ["ArrowRight", "ArrowRight", "ArrowUp", "ArrowUp"];
 
 test.describe("daily mission with the backend", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.beforeEach(async ({ page }) => {
     const online = await boardOnline(page);
     test.skip((!online || !process.env.DATABASE_URL) && !process.env.E2E_REQUIRE_DB, "the mission needs the board and DATABASE_URL");
@@ -117,7 +132,7 @@ test.describe("daily mission with the backend", () => {
     const report = page.getByRole("region", { name: "Seu boletim" });
     await expect(report).toContainText(/Missão cumprida às \d{2}:\d{2}, em 2 tentativas\./);
     await expect(report).toContainText(/1 peça · 4,08 s · \d+º de \d+/);
-    await expect(report).toContainText("Selos da missão · 1 de 5");
+    await expect(report).toContainText("Selos da missão · 1 de 6");
     await expect(report.getByRole("list", { name: "Seus últimos 14 dias de missão" }).getByRole("listitem")).toHaveCount(14);
     const dayBoard = page.getByRole("region", { name: "Placar do dia" });
     await expect(dayBoard.getByRole("row", { name: /Você/ })).toContainText("4,08 s");
@@ -125,8 +140,98 @@ test.describe("daily mission with the backend", () => {
 
     await page.goto("/extras#achievements");
     const seals = page.getByTestId("mission-achievements");
-    await expect(seals).toContainText("1/5");
+    await expect(seals).toContainText("1/6");
     await expect(seals.getByRole("listitem").filter({ hasText: "Primeira Transmissão" })).toContainText(/Em \d{2}\/\d{2}\/\d{4}/);
+
+    const leave = await page.request.delete("/api/players/me");
+    expect(leave.ok()).toBe(true);
+  });
+
+  test("misses a Rua Sem Saída mission and explains it in the street's words", async ({ page }) => {
+    const { day, def } = await scheduleToday("street-five-launches");
+    await page.goto(`/play/dead-end-street?mission=${day}`);
+    const intro = page.getByRole("dialog", { name: "Rua Sem Saída: tela de apresentação" });
+    await expect(intro).toBeVisible({ timeout: simTime(45_000) });
+    await expect(intro.getByRole("region", { name: def.title })).toContainText(def.objective);
+    const ticket = page.waitForResponse((r) => r.url().endsWith("/api/runs/tickets") && r.request().method() === "POST");
+    await intro.getByRole("button", { name: "Começar missão" }).click();
+    expect(await (await ticket).json()).toMatchObject({ mission: day });
+
+    const over = page.getByRole("dialog", { name: /^Fim de jogo/ });
+    await pressOnStageUntil(page, "Space", over);
+    const line = over.getByRole("region", { name: "Missão 404 do dia" });
+    const board = over.getByRole("region", { name: "Placar do canal" });
+    await board.getByLabel("Seu apelido").fill(nickname());
+    await board.getByRole("button", { name: "Entrar no placar" }).click();
+    await expect(line.getByRole("status")).toContainText("Quase!", { timeout: simTime(15_000) });
+    await expect(line.getByRole("status")).toContainText("A munição acabou antes da última rodada.");
+
+    const leave = await page.request.delete("/api/players/me");
+    expect(leave.ok()).toBe(true);
+  });
+
+  test("plays an Operação: Recreio mission from the start every time, even after a restart", async ({ page }) => {
+    const { day, def } = await scheduleToday("recess-office-boss");
+    await page.goto(`/play/operation-recess?mission=${day}`);
+    const intro = page.getByRole("dialog", { name: "Operação: Recreio: tela de apresentação" });
+    await expect(intro).toBeVisible({ timeout: simTime(45_000) });
+    await expect(intro.getByRole("region", { name: def.title })).toContainText(def.objective);
+    const first = page.waitForResponse((r) => r.url().endsWith("/api/runs/tickets") && r.request().method() === "POST");
+    await intro.getByRole("button", { name: "Começar missão" }).click();
+    expect(await (await first).json()).toMatchObject({ mission: day });
+
+    await stage(page).focus();
+    await page.keyboard.down("ArrowRight");
+    const caught = page.getByRole("dialog", { name: /^Fim de jogo/ });
+    await expect(caught).toBeVisible({ timeout: simTime(60_000) });
+    await page.keyboard.up("ArrowRight");
+    const line = caught.getByRole("region", { name: "Missão 404 do dia" });
+    const board = caught.getByRole("region", { name: "Placar do canal" });
+    await board.getByLabel("Seu apelido").fill(nickname());
+    await board.getByRole("button", { name: "Entrar no placar" }).click();
+    await expect(line.getByRole("status")).toContainText("Quase!", { timeout: simTime(15_000) });
+    await expect(line.getByRole("status")).toContainText("Os corações do Bruno acabaram antes do fim da fase.");
+
+    const retry = page.waitForResponse((r) => r.url().endsWith("/api/runs/tickets") && r.request().method() === "POST");
+    await caught.getByRole("button", { name: "Tentar a missão de novo" }).click();
+    expect(await (await retry).json()).toMatchObject({ mission: day });
+    await page.getByRole("button", { name: "Pausar" }).click();
+    const again = page.waitForResponse((r) => r.url().endsWith("/api/runs/tickets") && r.request().method() === "POST");
+    await page.getByRole("dialog", { name: "Jogo pausado" }).getByRole("button", { name: "Recomeçar" }).click();
+    expect(await (await again).json()).toMatchObject({ mission: day });
+
+    const leave = await page.request.delete("/api/players/me");
+    expect(leave.ok()).toBe(true);
+  });
+
+  test("puts the player in the Guerra do Pijama arena with the mission's kid, without changing their favorite", async ({ page }) => {
+    test.setTimeout(simTime(180_000));
+    await page.addInitScript(() => {
+      if (!localStorage.getItem("canal404:pajama-war:v1")) {
+        localStorage.setItem("canal404:pajama-war:v1", JSON.stringify({ version: 1, wins: { lia: 0, nico: 1, bia: 0 }, matches: 1, bestTime: 0, lastKid: "nico" }));
+      }
+    });
+    const { day, def } = await scheduleToday("pajama-yard-lia");
+    await page.goto(`/play/pajama-war?mission=${day}`);
+    const intro = page.getByRole("dialog", { name: "Guerra do Pijama: tela de apresentação" });
+    await expect(intro).toBeVisible({ timeout: simTime(45_000) });
+    await expect(intro.getByRole("region", { name: def.title })).toContainText(def.objective);
+    const ticket = page.waitForResponse((r) => r.url().endsWith("/api/runs/tickets") && r.request().method() === "POST");
+    await intro.getByRole("button", { name: "Começar missão" }).click();
+    expect(await (await ticket).json()).toMatchObject({ mission: day });
+    await expect(page.getByTestId("game-announcer")).toContainText("Quintal. Você é a Lia.", { timeout: simTime(20_000) });
+
+    const out = page.getByRole("dialog", { name: /^Fim de jogo/ });
+    await expect(out).toBeVisible({ timeout: simTime(120_000) });
+    await expect(out.getByRole("button", { name: "Trocar personagem" })).toHaveCount(0);
+    const line = out.getByRole("region", { name: "Missão 404 do dia" });
+    const board = out.getByRole("region", { name: "Placar do canal" });
+    await board.getByLabel("Seu apelido").fill(nickname());
+    await board.getByRole("button", { name: "Entrar no placar" }).click();
+    await expect(line.getByRole("status")).toContainText("Quase!", { timeout: simTime(15_000) });
+    await expect(line.getByRole("status")).toContainText("Sua energia acabou antes do fim da guerra.");
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("canal404:pajama-war:v1") ?? "{}") as { lastKid?: string; matches?: number });
+    expect(saved).toMatchObject({ lastKid: "nico", matches: 2 });
 
     const leave = await page.request.delete("/api/players/me");
     expect(leave.ok()).toBe(true);
