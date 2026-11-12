@@ -152,7 +152,7 @@ export function TvZoom({ getOrigin, onClose, knobAngle, ...screen }: Props) {
           className="inset-[4%] tvset:inset-auto tvset:left-[10.417%] tvset:top-[14.5%] tvset:h-[61.5%] tvset:w-[61.25%]"
         />
       </div>
-      <p className="pointer-events-none absolute inset-x-4 bottom-3 text-center font-hand text-base text-cream-2 sm:bottom-5">Esc ou clique fora da TV pra voltar pra sala.</p>
+      <p className="pointer-events-none absolute inset-x-4 bottom-3 text-center copy-sm text-cream-2 sm:bottom-5">Aperte Esc ou clique fora da TV para voltar à sala.</p>
     </div>,
     document.body,
   );

@@ -815,7 +815,7 @@ export function BroadcastRoom() {
           onActivate={() => {
             setPeeled((p) => !p);
             say2(
-              peeled ? "Pôster de volta no lugar." : "Atrás do pôster tem um bilhete: 'tem pôster pra baixar nos Extras'. Psiu!",
+              peeled ? "Pronto, pôster de volta no lugar." : "Achei um bilhete atrás do pôster: 'Tem pôster pra baixar nos Extras.' Psiu!",
               "wink",
               "page",
             );

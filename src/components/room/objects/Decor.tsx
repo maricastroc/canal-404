@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { CHAOS_POSTER, PosterTexts } from "@/components/extras/posterArt";
 import { P } from "@/lib/palette";
 import { TAPES, tapeById, type TapeId } from "./tapes";
 
@@ -474,30 +475,11 @@ export function PosterChaosArt({ peeled }: { peeled: boolean }) {
     <svg viewBox="0 0 150 190" className="h-full w-full" overflow="visible" aria-hidden>
       <g transform="rotate(4 75 95)">
         <rect x="10" y="12" width="132" height="172" fill={P.ink} opacity="0.4" transform="translate(5 5)" />
-        <rect x="10" y="12" width="132" height="172" fill={P.tangerine} stroke={P.ink} strokeWidth="4.5" />
-        <g opacity="0.9">
-          {Array.from({ length: 12 }, (_, i) => {
-            const a = (i / 12) * Math.PI * 2;
-            return (
-              <path
-                key={i}
-                d={`M76 80 L${(76 + Math.cos(a) * 120).toFixed(1)} ${(80 + Math.sin(a) * 120).toFixed(1)} L${(76 + Math.cos(a + 0.22) * 120).toFixed(1)} ${(80 + Math.sin(a + 0.22) * 120).toFixed(1)} Z`}
-                fill={P.sun}
-              />
-            );
-          })}
-        </g>
+        <svg x="10" y="12" width="132" height="172" viewBox="0 0 600 800" preserveAspectRatio="none">
+          {CHAOS_POSTER.art}
+          <PosterTexts texts={CHAOS_POSTER.texts} />
+        </svg>
         <rect x="10" y="12" width="132" height="172" fill="none" stroke={P.ink} strokeWidth="4.5" />
-        <path d="M54 72 L64 50 L76 66 L90 44 L98 72 Z" fill={P.tomato} stroke={P.ink} strokeWidth="3" strokeLinejoin="round" />
-        <text x="76" y="112" textAnchor="middle" fontSize="40" fill={P.white} stroke={P.ink} strokeWidth="6" paintOrder="stroke" style={display} transform="rotate(-6 76 104)">
-          CAOS
-        </text>
-        <text x="76" y="138" textAnchor="middle" fontSize="12.5" fill={P.ink} style={display}>
-          FAZ PARTE DA
-        </text>
-        <text x="76" y="156" textAnchor="middle" fontSize="12.5" fill={P.ink} style={display}>
-          PROGRAMAÇÃO
-        </text>
         <rect x="58" y="4" width="36" height="14" fill={P.mint} opacity="0.85" transform="rotate(-5 76 11)" />
         {peeled ? (
           <path d="M142 150 L142 184 L108 184 Q128 170 142 150 Z" fill={P.cream} stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />

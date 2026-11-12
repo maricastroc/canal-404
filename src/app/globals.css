@@ -144,6 +144,47 @@ body {
   --focus: var(--color-sun);
 }
 
+@utility copy-lede {
+  font-family: var(--font-body);
+  font-size: 1.1875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+@utility copy {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+@utility copy-sm {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+@utility card-title {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+@utility tag-label {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 @utility ink-outline {
   border: 3px solid var(--color-ink);
 }

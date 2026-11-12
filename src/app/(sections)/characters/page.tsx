@@ -18,7 +18,7 @@ export default function CharactersPage() {
         <h1 className="mt-2 font-display text-[clamp(2.4rem,7vw,4.6rem)] uppercase leading-[0.95] tracking-wide text-cream [text-shadow:4px_5px_0_var(--color-ink)]">
           Personagens do canal
         </h1>
-        <p className="mx-auto mt-3 max-w-xl font-hand text-xl text-cream-2">
+        <p className="mx-auto copy-lede mt-3 max-w-xl text-cream-2">
           Escolha alguém da turma. Clique no retrato para ver como cada um reage.
         </p>
       </div>
