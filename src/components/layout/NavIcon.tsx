@@ -1,10 +1,9 @@
-import { ControllerIcon, GiftIcon, HouseIcon, MissionIcon, SmileyIcon, StarIcon, TowerIcon, TrophyIcon } from "@/components/art/Icons";
+import { ControllerIcon, GiftIcon, HouseIcon, MissionIcon, SmileyIcon, TowerIcon, TrophyIcon } from "@/components/art/Icons";
 import type { NavItem } from "./nav";
 
 const ICONS = {
   house: HouseIcon,
   controller: ControllerIcon,
-  star: StarIcon,
   target: MissionIcon,
   trophy: TrophyIcon,
   smiley: SmileyIcon,

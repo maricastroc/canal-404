@@ -33,7 +33,7 @@ for (const size of [
     await page.setViewportSize(size);
     await page.goto("/");
     const links = page.getByRole("navigation", { name: "Principal" }).getByRole("link");
-    await expect(links).toHaveCount(8);
+    await expect(links).toHaveCount(7);
     for (const link of await links.all()) {
       const box = (await link.boundingBox())!;
       expect(box.y + box.height, await link.innerText()).toBeLessThanOrEqual(size.height);

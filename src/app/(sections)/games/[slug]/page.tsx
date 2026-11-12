@@ -8,7 +8,6 @@ import { GAME_LOGOS, GameHowToPanel } from "@/components/art/GameLogos";
 import { ArrowLeftIcon, PlayIcon } from "@/components/art/Icons";
 import { GameStats } from "@/components/catalog/GameStats";
 import { ChampionTicker } from "@/components/records/ChampionTicker";
-import { WeeklyPlayLink } from "@/components/catalog/WeeklyPlayLink";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkLink, inkStyle, PaperPanel, Tag } from "@/components/ui/Primitives";
@@ -157,11 +156,13 @@ export default async function GamePage({ params }: PageProps<"/games/[slug]">) {
               Hmm... parece que esse jogo ainda está fora do ar.
             </SpeechBubble>
             <p className="mt-4 text-lg leading-snug text-cream-2">
-              Ele ainda está sendo desenhado. Enquanto isso, o jogo da semana está no ar e a sala de transmissão tem muita
+              Ele ainda está sendo desenhado. Enquanto isso, os outros jogos estão no ar e a sala de transmissão tem muita
               coisa escondida.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <WeeklyPlayLink tone="sun" exclude={game.slug} />
+              <InkLink href="/games" tone="sun">
+                Ver a programação
+              </InkLink>
               <InkLink href="/" tone="mint">
                 Explorar a sala
               </InkLink>

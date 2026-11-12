@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { WeeklyPlayLink } from "@/components/catalog/WeeklyPlayLink";
 import { pageMetadata } from "@/lib/site";
 import { Sparkle, Squiggle } from "@/components/art/Badges";
 import { KidBust } from "@/components/characters/Heads";
@@ -162,7 +161,9 @@ export default function AboutPage() {
           <InkLink href="/" tone="sun">
             Voltar para a sala
           </InkLink>
-          <WeeklyPlayLink tone="mint" />
+          <InkLink href="/games" tone="mint">
+            Ver os jogos
+          </InkLink>
         </div>
       </PaperPanel>
     </div>

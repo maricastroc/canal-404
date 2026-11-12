@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Um destaque só: a missão
+- **No more "Jogo da semana".** The menu item, the catalog ribbon, the TV badge and the "Jogar …" buttons on the About and coming-soon pages are gone, so the Missão 404 do Dia is the portal's only featured game.
+- **The TV opens on the mission.** When there is a mission you haven't completed, the room TV starts on Canal 09. Otherwise it starts on the first game you haven't played, marked "Inédito", or on the one you played least. The "A seguir" suggestions follow the catalog order instead of the week.
+- When you come back with a game still unplayed, the 404 says it is on the TV right now.
+
 ### Missões em todos os jogos (Stage 3.4)
 - **Five games take turns.** From November 16 the Missão 404 rotates through Laboratório, Rua Sem Saída, Guerra de Lanche, Operação: Recreio and Guerra do Pijama, each once every five days and never two days in a row. The days before that keep the mission they already had.
 - **Twelve new missions.** Rua Sem Saída: "Mira econômica", "Dois de uma vez", "Três estrelas na rua" and "Quintal de pernas pro ar". Operação: Recreio: "Corredor sem arranhão", "Álbum completo", "Pátio liberado" and "Inspetor sem chance". Guerra do Pijama: "Quase sem marcas", "Nocaute duplo", "Energia de sobra" and "A veloz no Quintal", played as Lia.

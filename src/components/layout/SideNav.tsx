@@ -4,8 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/art/Logo";
 import { useSound } from "@/lib/audio/hooks";
-import { isActive } from "./nav";
-import { useNavItems } from "./useNavItems";
+import { isActive, NAV_ITEMS } from "./nav";
 import { NavIcon } from "./NavIcon";
 import { SoundToggle } from "./SoundToggle";
 import { VisitorCounter } from "./VisitorCounter";
@@ -15,7 +14,6 @@ const tilts = ["-rotate-2", "rotate-1", "-rotate-1", "rotate-2", "-rotate-2", "r
 export function SideNav({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   const { play, hover } = useSound();
-  const navItems = useNavItems();
   return (
     <aside className={`on-dark pointer-events-none flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-color:var(--color-plum-500)_transparent] [scrollbar-width:thin] short:gap-3 short:py-4 shorter:gap-2 shorter:py-3 ${className}`}>
       <Link
@@ -27,7 +25,7 @@ export function SideNav({ className = "" }: { className?: string }) {
       </Link>
       <nav aria-label="Principal" className="pointer-events-auto mt-1">
         <ul className="flex flex-col gap-3 short:gap-2 shorter:gap-1.5">
-          {navItems.map((item, i) => {
+          {NAV_ITEMS.map((item, i) => {
             const active = isActive(pathname, item.href);
             return (
               <li key={item.href} className={tilts[i]}>

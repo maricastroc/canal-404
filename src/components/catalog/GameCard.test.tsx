@@ -1,7 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PLAYABLE } from "@/games/registry";
-import { weeklyGame } from "@/lib/schedule";
 
 const record = (plays: number) => ({ highScore: 0, bestStars: 0, plays, wins: 0, lastScore: 0 });
 
@@ -37,11 +36,10 @@ describe("game card program stickers", () => {
     await vi.waitFor(() => expect(sticker(adventure.title)).toBe("saved"));
   });
 
-  it("puts the weekly ribbon on exactly one card, the game of this week", async () => {
+  it("has no game of the week ribbon", async () => {
     await renderCatalog({});
-    const weekly = weeklyGame(new Date());
-    await vi.waitFor(() => expect(screen.getAllByText(/^Jogo da semana\.?\s*$/)).toHaveLength(1));
-    expect(within(card(weekly.title)).getAllByText(/Jogo da semana/).length).toBeGreaterThan(0);
+    await vi.waitFor(() => expect(sticker("Rua Sem Saída")).toBe("unplayed"));
+    expect(screen.queryByText(/Jogo da semana/)).not.toBeInTheDocument();
   });
 
   it("no longer uses the generic playable sticker", async () => {

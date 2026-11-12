@@ -51,7 +51,7 @@ import { useSchedule } from "@/components/catalog/useSchedule";
 import { missionPlace } from "@/components/missions/parts";
 import { useMissionToday } from "@/lib/missions/hooks";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
-import { bestRecord, FALLBACK_WEEKLY, plays, unplayedGames } from "@/lib/schedule";
+import { bestRecord, plays, unplayedGames } from "@/lib/schedule";
 import { RoomBackdrop } from "./RoomBackdrop";
 import { RoomButton, RoomLink } from "./RoomObject";
 import { useMascotDirector } from "./useMascotDirector";
@@ -134,8 +134,8 @@ export function BroadcastRoom() {
   const missionSettled = missionFeed.status !== "loading" || missionWaitOver;
   const greetTimers = useRef<number[]>([]);
   const missionDay = useRef<string | null>(null);
-  const [channel, setChannel] = useState<ChannelId>(FALLBACK_WEEKLY.slug);
-  const [lastRegular, setLastRegular] = useState<ChannelId>(FALLBACK_WEEKLY.slug);
+  const [channel, setChannel] = useState<ChannelId>(PLAYABLE[0].slug);
+  const [lastRegular, setLastRegular] = useState<ChannelId>(PLAYABLE[0].slug);
   const tuned = useRef(false);
   const [switching, setSwitching] = useState(false);
   const [shelfOpen, setShelfOpen] = useState(false);
@@ -184,11 +184,12 @@ export function BroadcastRoom() {
   }, []);
 
   useEffect(() => {
-    if (!schedule.hydrated || tuned.current) return;
+    if (!schedule.hydrated || !missionSettled || tuned.current) return;
     tuned.current = true;
-    setChannel(schedule.weekly.slug);
-    setLastRegular(schedule.weekly.slug);
-  }, [schedule.hydrated, schedule.weekly]);
+    const start = onAir && onAir.state !== "completed" ? MISSION_CHANNEL : (schedule.next()?.game.slug ?? PLAYABLE[0].slug);
+    setChannel(start);
+    setLastRegular(start);
+  }, [schedule, missionSettled, onAir]);
 
   useEffect(() => {
     const wait = window.setTimeout(() => setMissionWaitOver(true), 2500);
@@ -209,7 +210,7 @@ export function BroadcastRoom() {
     const text = !returning
       ? "Ei! Visitante novo! Pode mexer em tudo da sala. Quase tudo faz alguma coisa."
       : unplayed.length > 0 && unplayed.length < PLAYABLE.length
-        ? `Ei! Você voltou! Ainda tem programa inédito pra você: ${unplayed[0].title}. Gira o botão da TV!`
+        ? `Ei! Você voltou! Ainda tem programa inédito pra você: ${unplayed[0].title}. Tá passando agora na TV!`
         : unplayed.length === 0 && best
           ? `Ei! Você voltou! Já viu todos os programas. Seu melhor recorde é em ${best.game.title}. Dá pra bater?`
           : "Ei! Você voltou! Bora jogar alguma coisa?";
@@ -300,6 +301,7 @@ export function BroadcastRoom() {
 
   const tuneTo = useCallback(
     (next: ChannelId, opts: { quiet?: boolean } = {}) => {
+      tuned.current = true;
       setSwitching(true);
       setOsd(true);
       if (!opts.quiet) play("static");
@@ -318,7 +320,6 @@ export function BroadcastRoom() {
     (id: ChannelId): TvBadge => {
       const game = CHANNELS[id]?.game;
       if (!game) return null;
-      if (game.slug === schedule.weekly.slug) return "weekly";
       return schedule.state(game) === "unplayed" ? "new" : null;
     },
     [schedule],
@@ -338,7 +339,6 @@ export function BroadcastRoom() {
         return info?.name ?? "";
       }
       const badge = badgeFor(id);
-      if (badge === "weekly") return `Canal ${info.number}: o jogo da semana! ${game.title}.`;
       if (badge === "new") return `Canal ${info.number}: ${game.title}. Inédito pra você! ${game.tagline}`;
       return `Canal ${info.number}: reprise de ${game.title}. ${game.tagline}`;
     },
@@ -355,7 +355,6 @@ export function BroadcastRoom() {
         setFlights((list) => [...list, { id, tape: channel, to: "shelf", delay: 0 }]);
       }
     }
-    tuned.current = true;
     turns.current += 1;
     setKnobAngle((a) => a + 45);
     const now = Date.now();
@@ -383,7 +382,6 @@ export function BroadcastRoom() {
     if (!moment) return;
     poke();
     play("tvOn");
-    tuned.current = true;
     setKnobAngle((a) => a + 45);
     setLastRegular(MISSION_CHANNEL);
     tuneTo(MISSION_CHANNEL);
@@ -391,14 +389,13 @@ export function BroadcastRoom() {
   }, [momentOf, play, poke, say, tuneTo]);
 
   const suggestion = useMemo(() => {
-    const current = CHANNELS[channel]?.game;
-    return schedule.next(current ? [current.slug] : []);
-  }, [channel, schedule]);
+    const current = channel === MISSION_CHANNEL ? onAir?.view.game : CHANNELS[channel]?.game?.slug;
+    return schedule.next(current ? [current] : []);
+  }, [channel, onAir, schedule]);
 
   const tuneSuggestion = useCallback(() => {
     if (!suggestion) return;
     poke();
-    tuned.current = true;
     setKnobAngle((a) => a + 45);
     setLastRegular(suggestion.game.slug);
     tuneTo(suggestion.game.slug);
@@ -648,6 +645,7 @@ export function BroadcastRoom() {
 
   const insertTape = useCallback(
     (id: TapeId) => {
+      tuned.current = true;
       closeShelf();
       poke();
       play("pop", { volume: 0.5 });

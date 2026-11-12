@@ -89,13 +89,14 @@ test("zooms into a tape without restarting it and gives focus back", async ({ pa
 });
 
 test("zooms into a regular channel and keeps its play link", async ({ page }) => {
+  await page.route("**/api/status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "unconfigured" }) }));
   await page.goto("/");
-  await expect(page.getByRole("link", { name: /^Jogar agora.*, jogo da semana$/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Jogar agora.*, inédito$/ })).toBeVisible();
   await page.getByRole("button", { name: "Ver a TV de perto" }).click();
   const big = zoom(page).getByTestId("tv-screen");
   await expect(big).toHaveAttribute("data-channel", (await roomScreen(page).getAttribute("data-channel"))!);
   const href = await roomScreen(page).locator("a[href^='/play/']").getAttribute("href");
-  await expect(zoom(page).getByRole("link", { name: /^Jogar agora.*, jogo da semana$/ })).toHaveAttribute("href", href!);
+  await expect(zoom(page).getByRole("link", { name: /^Jogar agora.*, inédito$/ })).toHaveAttribute("href", href!);
   await zoom(page).getByRole("button", { name: "Voltar pra sala" }).click();
   await expect(zoom(page)).toBeHidden();
   await expect(knob(page)).toHaveAccessibleName(/^Mudar de canal\. Canal atual: \d+/);

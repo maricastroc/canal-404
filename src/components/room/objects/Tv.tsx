@@ -13,11 +13,11 @@ import { TV_BOX, TV_KNOB, TV_SCREEN, TvKnob, TvSet } from "./TvSet";
 
 const pct = (v: number, total: number) => `${(v / total) * 100}%`;
 
-export type TvBadge = "weekly" | "new" | null;
+export type TvBadge = "new" | null;
 
 export type TvNext = { number: string; name: string; onTune: () => void };
 
-const BADGE_LABEL: Record<Exclude<TvBadge, null>, string> = { weekly: "Jogo da semana", new: "Inédito" };
+const BADGE_LABEL: Record<Exclude<TvBadge, null>, string> = { new: "Inédito" };
 
 export const SCREEN_RADIUS = `${(34 / TV_SCREEN.w) * 100}% / ${(34 / TV_SCREEN.h) * 100}%`;
 
@@ -76,11 +76,9 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
   };
 
   const screenHint = info.game
-    ? badge === "weekly"
-      ? `${info.game.title} é o jogo da semana! Clica na tela pra jogar.`
-      : badge === "new"
-        ? `${info.game.title}: programa inédito pra você! Clica na tela pra jogar.`
-        : `Reprise de ${info.game.title}! Clica na tela pra jogar.`
+    ? badge === "new"
+      ? `${info.game.title}: programa inédito pra você! Clica na tela pra jogar.`
+      : `Reprise de ${info.game.title}! Clica na tela pra jogar.`
     : (info.hint ?? null);
   const ctaContext = info.cta ? (badge ? `${info.cta.context}, ${BADGE_LABEL[badge].toLowerCase()}` : info.cta.context) : "";
 
@@ -143,9 +141,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
       {badge && info.game && (
         <span
           aria-hidden
-          className={`pointer-events-none absolute left-[5%] top-[6%] z-[15] -rotate-6 rounded-[4px] border-[2.5px] border-ink px-[0.5em] py-[0.15em] font-display text-[max(7px,5.3cqw)] uppercase leading-none tracking-wide shadow-[0_2px_0_0_var(--color-ink)] ${
-            badge === "weekly" ? "bg-tomato text-cream" : "bg-sun text-ink"
-          }`}
+          className="pointer-events-none absolute left-[5%] top-[6%] z-[15] -rotate-6 rounded-[4px] border-[2.5px] border-ink bg-sun px-[0.5em] py-[0.15em] font-display text-[max(7px,5.3cqw)] uppercase leading-none tracking-wide text-ink shadow-[0_2px_0_0_var(--color-ink)]"
         >
           {BADGE_LABEL[badge]}
         </span>

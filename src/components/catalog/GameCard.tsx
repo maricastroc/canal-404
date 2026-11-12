@@ -31,7 +31,6 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
   const schedule = useSchedule();
   const state = available ? schedule.state(game) : null;
   const sticker = state ? STICKERS[state] : null;
-  const weekly = available && schedule.hydrated && schedule.weekly.slug === game.slug;
   const tilt = index % 3 === 0 ? "-rotate-1" : index % 3 === 1 ? "rotate-1" : "-rotate-[0.5deg]";
 
   return (
@@ -65,23 +64,10 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
             {sticker.label}
           </span>
         )}
-        {weekly && (
-          <span
-            aria-hidden
-            className="absolute -right-9 top-4 w-40 rotate-[28deg] border-y-[3px] border-ink bg-tomato py-0.5 text-center font-display text-[11px] uppercase tracking-widest text-cream shadow-[0_3px_0_0_var(--color-ink)]"
-          >
-            Jogo da semana
-          </span>
-        )}
       </div>
       <div className="flex flex-1 flex-col items-center gap-1.5 px-1 pb-1 pt-3 text-center">
         <h2 className="font-display text-[1.35rem] uppercase leading-none tracking-wide text-ink">{game.title}</h2>
-        {(sticker || weekly) && (
-          <span className="sr-only">
-            {weekly ? "Jogo da semana. " : ""}
-            {sticker?.spoken}
-          </span>
-        )}
+        {sticker && <span className="sr-only">{sticker.spoken}</span>}
         <p className="text-sm leading-snug text-ink-soft">{game.tagline}</p>
         <div className="mt-auto flex flex-wrap items-center justify-center gap-1.5 pt-2">
           <Tag tone={categoryTone[game.category]}>{CATEGORY_LABELS[game.category]}</Tag>
