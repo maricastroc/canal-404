@@ -108,7 +108,7 @@ export const TRACKS: Track[] = [
       snare: "....x.......x...",
       hat: "..x...x...x...x.",
     },
-    unlock: { type: "achievement", id: "radio-on", label: "Ligue o rádio da sala" },
+    unlock: { type: "achievement", id: "radio-on", label: "Ligue o rádio da sala de transmissão." },
   },
   {
     id: "street",
@@ -150,7 +150,7 @@ export const TRACKS: Track[] = [
       snare: "....x.......x...",
       hat: "xxxxxxxxxxxxxxxx",
     },
-    unlock: { type: "achievement", id: "first-launch", label: "Faça um lançamento em Rua Sem Saída" },
+    unlock: { type: "achievement", id: "first-launch", label: "Faça seu primeiro lançamento em Rua Sem Saída." },
   },
   {
     id: "sign-off",
@@ -195,7 +195,7 @@ export const TRACKS: Track[] = [
       snare: "........x.......",
       hat: "....x.......x...",
     },
-    unlock: { type: "secrets", count: 5, label: "Encontre 5 segredos na sala" },
+    unlock: { type: "secrets", count: 5, label: "Encontre 5 segredos na sala de transmissão." },
   },
 ];
 

@@ -26,11 +26,11 @@ const SECTIONS = [
 function SectionTitle({ id, children, count }: { id: string; children: React.ReactNode; count?: string }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
-      <h2 id={id} className="scroll-mt-24 font-display text-4xl uppercase tracking-wide text-cream [text-shadow:3px_4px_0_var(--color-ink)]">
+      <h2 id={id} className="scroll-mt-24 text-balance font-display text-[clamp(1.9rem,6vw,2.25rem)] uppercase leading-none tracking-wide text-cream [text-shadow:3px_4px_0_var(--color-ink)]">
         {children}
       </h2>
       {count && (
-        <p className="rounded-lg border-[3px] border-ink bg-sun px-3 py-0.5 font-display text-sm uppercase tracking-wider text-ink shadow-[var(--shadow-ink-sm)]">
+        <p className="tag-label rounded-lg border-[3px] border-ink bg-sun px-3 py-1 text-sm text-ink shadow-[var(--shadow-ink-sm)]">
           {count}
         </p>
       )}
@@ -76,7 +76,7 @@ export function ExtrasHub() {
                 <span className={`grid size-16 place-items-center rounded-2xl border-[3px] border-ink shadow-[var(--shadow-ink-sm)] ${s.tone}`}>
                   <s.Icon className="size-9 text-ink" />
                 </span>
-                <span className="font-display text-sm uppercase leading-tight tracking-wide text-ink">{s.label}</span>
+                <span className="font-display text-sm uppercase leading-tight tracking-wide text-balance text-ink">{s.label}</span>
               </a>
             </li>
           ))}
@@ -134,22 +134,31 @@ export function ExtrasHub() {
           {TRACKS.map((track, i) => {
             const unlocked = hydrated && isTrackUnlocked(track, p);
             const playing = music.playing && music.trackId === track.id;
+            const number = String(i + 1).padStart(2, "0");
             return (
-              <li key={track.id} className="flex flex-wrap items-center gap-4 py-4">
-                <span className="grid size-12 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-plum-800 font-display text-lg text-sun">
-                  {String(i + 1).padStart(2, "0")}
+              <li key={track.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 py-4">
+                <span
+                  className={`grid size-12 shrink-0 place-items-center rounded-full border-[3px] border-ink font-display text-lg ${unlocked ? "bg-plum-800 text-sun" : "border-dashed bg-plum-700 text-plum-300"}`}
+                >
+                  {unlocked ? number : <LockIcon className="size-6" />}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-display text-xl uppercase leading-tight text-ink">{unlocked ? track.title : "Faixa escondida"}</p>
-                  <p className="text-ink-soft">
-                    {unlocked ? (
-                      <>
-                        <span className="font-display text-xs uppercase tracking-wider text-plum-600">{track.station}</span> · {track.mood}
-                      </>
-                    ) : (
-                      <span className="font-hand text-lg">Como liberar: {track.unlock.type === "default" ? "" : track.unlock.label}</span>
-                    )}
-                  </p>
+                <div className="min-w-0 flex-1 basis-48">
+                  {unlocked ? (
+                    <>
+                      <p className="font-display text-xl uppercase leading-tight text-ink">{track.title}</p>
+                      <p className="copy-sm text-ink-soft">
+                        <span className="tag-label text-plum-600">{track.station}</span> · {track.mood}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-display text-xl uppercase leading-tight text-ink">
+                        Faixa {number} <span className="text-plum-600">· ???</span>
+                        <span className="sr-only">, ainda escondida</span>
+                      </p>
+                      <p className="copy-sm text-ink-soft">{track.unlock.type === "default" ? "" : track.unlock.label}</p>
+                    </>
+                  )}
                 </div>
                 {playing && (
                   <span aria-hidden className="flex h-8 items-end gap-1">
@@ -158,28 +167,28 @@ export function ExtrasHub() {
                     ))}
                   </span>
                 )}
-                {unlocked ? (
-                  <InkButton
-                    size="sm"
-                    tone={playing ? "tomato" : "sun"}
-                    aria-pressed={playing}
-                    aria-label={playing ? `Parar ${track.title}` : `Tocar ${track.title}`}
-                    onClick={() => toggleTrack(track.id)}
-                  >
-                    {playing ? <PauseIcon className="size-5 text-ink" /> : <PlayIcon className="size-5 text-ink" />}
-                    {playing ? "Parar" : "Tocar"}
-                  </InkButton>
-                ) : (
-                  <span className="flex items-center gap-2 font-display text-sm uppercase tracking-wide text-ink-soft">
-                    <LockIcon className="size-7" /> Bloqueada
-                  </span>
-                )}
+                <div className="ml-16 sm:ml-0">
+                  {unlocked ? (
+                    <InkButton
+                      size="sm"
+                      tone={playing ? "tomato" : "sun"}
+                      aria-pressed={playing}
+                      aria-label={playing ? `Parar ${track.title}` : `Tocar ${track.title}`}
+                      onClick={() => toggleTrack(track.id)}
+                    >
+                      {playing ? <PauseIcon className="size-5 text-ink" /> : <PlayIcon className="size-5 text-ink" />}
+                      {playing ? "Parar" : "Tocar"}
+                    </InkButton>
+                  ) : (
+                    <span className="tag-label inline-block rounded-lg border-2 border-dashed border-ink/40 px-2.5 py-1.5 text-ink-soft">Bloqueada</span>
+                  )}
+                </div>
               </li>
             );
           })}
         </ul>
-        <p className="mt-3 font-hand text-lg text-cream-2">
-          As trilhas são tocadas ao vivo pelo sintetizador do canal. O rádio da sala toca as mesmas faixas.
+        <p className="copy mt-3 text-cream-2">
+          As músicas são geradas na hora pelo sintetizador do Canal 404. O rádio da sala toca as mesmas faixas.
         </p>
       </section>
 
@@ -193,14 +202,12 @@ export function ExtrasHub() {
             return (
               <li
                 key={a.id}
-                className={`flex items-center gap-3 rounded-2xl border-[3px] border-ink p-3 shadow-[var(--shadow-ink)] ${done ? "paper" : "bg-plum-800 text-cream"}`}
+                className={`flex items-center gap-4 rounded-2xl border-[3px] border-ink p-4 shadow-[var(--shadow-ink)] ${done ? "paper" : "bg-plum-800 text-cream"}`}
               >
-                <div className="w-16 shrink-0">{done ? <StarBadge color={a.color} className="w-full" /> : <LockedBadge className="w-full" />}</div>
+                <div className="w-14 shrink-0">{done ? <StarBadge color={a.color} className="w-full" /> : <LockedBadge className="w-full" />}</div>
                 <div className="min-w-0">
-                  <p className={`font-display text-lg uppercase leading-tight ${done ? "text-ink" : "text-plum-300"}`}>{a.title}</p>
-                  <p className={`text-sm leading-snug ${done ? "text-ink-soft" : "text-cream-2"}`}>
-                    {done ? a.description : <span className="font-hand text-base">Dica: {a.hint}</span>}
-                  </p>
+                  <p className={`card-title ${done ? "text-ink" : "text-plum-300"}`}>{a.title}</p>
+                  <p className={`copy-sm mt-1 ${done ? "text-ink-soft" : "text-cream-2"}`}>{done ? a.description : a.hint}</p>
                   <span className="sr-only">{done ? "Conquistada." : "Ainda não conquistada."}</span>
                 </div>
               </li>
@@ -223,11 +230,18 @@ export function ExtrasHub() {
                 className={`flex items-center gap-4 border-[3px] border-ink p-4 shadow-[var(--shadow-ink)] wobbly-sm ${found ? "paper" : "bg-plum-950 text-cream"} ${i % 2 ? "rotate-[0.5deg]" : "-rotate-[0.5deg]"}`}
               >
                 <div className="w-14 shrink-0">{found ? <KeyholeBadge className="w-full" /> : <LockedBadge className="w-full" />}</div>
-                <div>
-                  <p className={`font-display text-lg uppercase leading-tight ${found ? "text-ink" : "text-plum-300"}`}>
-                    {found ? s.title : "? ? ? ? ?"}
+                <div className="min-w-0">
+                  <p className={`card-title ${found ? "text-ink" : "text-plum-300"}`}>
+                    {found ? (
+                      s.title
+                    ) : (
+                      <>
+                        <span aria-hidden>? ? ? ? ?</span>
+                        <span className="sr-only">Segredo escondido</span>
+                      </>
+                    )}
                   </p>
-                  <p className={`leading-snug ${found ? "text-ink-soft" : "font-hand text-lg text-cream-2"}`}>{found ? s.description : s.hint}</p>
+                  <p className={`copy-sm mt-1 ${found ? "text-ink-soft" : "text-cream-2"}`}>{found ? s.description : s.hint}</p>
                   <span className="sr-only">{found ? "Encontrado." : "Ainda não encontrado."}</span>
                 </div>
               </li>
@@ -239,8 +253,8 @@ export function ExtrasHub() {
       <section aria-label="Gerenciar progresso" className="mt-14 flex flex-wrap items-center justify-center gap-3 text-center">
         {confirming ? (
           <>
-            <p className="w-full font-hand text-xl text-cream-2">
-              Isso apaga segredos, conquistas, recordes de cada jogo e aventuras salvas neste navegador. Tem certeza?
+            <p className="copy w-full text-cream-2">
+              Isso apaga os segredos, as conquistas, os recordes e as aventuras salvas neste navegador. Tem certeza?
             </p>
             <InkButton
               tone="tomato"

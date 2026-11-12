@@ -6,10 +6,7 @@ export function SiteFooter() {
     <footer className="on-dark mt-16 border-t-[3px] border-ink bg-plum-950 px-4 py-8 text-cream">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-center">
         <Squiggle className="w-32" />
-        <p className="max-w-xl font-hand text-lg leading-snug text-cream-2">
-          O CANAL 404 é um canal fictício. Nenhum desenho foi cancelado na produção deste site. Eles só estão fora do
-          ar.
-        </p>
+        <p className="copy max-w-xl text-balance text-cream-2">O Canal 404 nunca passou na TV de verdade. Mesmo assim, ninguém conseguiu tirar o canal do ar.</p>
         <nav aria-label="Rodapé">
           <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 font-display text-sm uppercase tracking-wide">
             <li>

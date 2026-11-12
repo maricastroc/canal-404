@@ -18,7 +18,7 @@ export default function MissionPage() {
         <h1 className="mt-2 font-display text-[clamp(2.4rem,7vw,4.6rem)] uppercase leading-[0.95] tracking-wide text-cream [text-shadow:4px_5px_0_var(--color-ink)]">
           Missão 404 do Dia
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl font-hand text-xl text-cream-2">
+        <p className="mx-auto copy-lede mt-3 max-w-2xl text-cream-2">
           Todo dia o canal escolhe um desafio em um dos jogos. É o mesmo para todo mundo e troca à meia-noite.
         </p>
       </div>

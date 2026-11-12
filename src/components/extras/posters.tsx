@@ -2,17 +2,7 @@ import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { P } from "@/lib/palette";
 import type { ProgressState } from "@/lib/progress/store";
-
-export type PosterText = {
-  text: string;
-  x: number;
-  y: number;
-  size: number;
-  color: string;
-  rotate?: number;
-  font?: "display" | "hand";
-  stroke?: number;
-};
+import { CHAOS_POSTER, posterInk as ink, type PosterText } from "./posterArt";
 
 export type PosterDef = {
   id: string;
@@ -23,43 +13,13 @@ export type PosterDef = {
   texts: PosterText[];
 };
 
-const ink = { stroke: P.ink, strokeWidth: 8, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
-
-function rays(cx: number, cy: number, color: string, count = 18, r = 900) {
-  return Array.from({ length: count }, (_, i) => {
-    const a = (i / count) * Math.PI * 2;
-    const b = a + Math.PI / count;
-    return (
-      <path
-        key={i}
-        d={`M${cx} ${cy} L${(cx + Math.cos(a) * r).toFixed(1)} ${(cy + Math.sin(a) * r).toFixed(1)} L${(cx + Math.cos(b) * r).toFixed(1)} ${(cy + Math.sin(b) * r).toFixed(1)} Z`}
-        fill={color}
-      />
-    );
-  });
-}
-
 export const POSTERS: PosterDef[] = [
   {
     id: "chaos",
     title: "Caos faz parte da programação",
     file: "canal404-poster-chaos.png",
     unlock: { label: "Liberado desde 2004", check: () => true },
-    art: (
-      <g>
-        <rect width="600" height="800" fill={P.tangerine} />
-        {rays(300, 420, P.sun)}
-        <circle cx="300" cy="420" r="170" fill={P.tomato} opacity="0.35" />
-        <Mascot404 expression="dizzy" pose="full" frame={{ x: 150, y: 250, width: 300, height: 456 }} />
-        <rect x="18" y="18" width="564" height="764" fill="none" {...ink} strokeWidth={12} />
-        <rect x="40" y="40" width="520" height="720" fill="none" stroke={P.ink} strokeWidth="4" strokeDasharray="14 12" />
-      </g>
-    ),
-    texts: [
-      { text: "CAOS", x: 300, y: 190, size: 160, color: P.white, rotate: -6, stroke: 22 },
-      { text: "FAZ PARTE DA", x: 300, y: 730, size: 46, color: P.ink, stroke: 0 },
-      { text: "PROGRAMAÇÃO", x: 300, y: 690, size: 58, color: P.sun, rotate: -2, stroke: 12 },
-    ],
+    ...CHAOS_POSTER,
   },
   {
     id: "dream",
@@ -96,15 +56,15 @@ export const POSTERS: PosterDef[] = [
       { text: "SONHE", x: 300, y: 190, size: 112, color: P.sun, rotate: -4, stroke: 18 },
       { text: "JOGUE", x: 300, y: 330, size: 112, color: P.mint, rotate: 3, stroke: 18 },
       { text: "INVENTE", x: 300, y: 470, size: 100, color: P.bubblegum, rotate: -3, stroke: 18 },
-      { text: "REPITA", x: 240, y: 610, size: 104, color: P.tangerine, rotate: 3, stroke: 18 },
+      { text: "REPITA", x: 214, y: 610, size: 100, color: P.tangerine, rotate: 3, stroke: 18 },
     ],
   },
   {
     id: "dead-end-street",
-    title: "Rua Sem Saída: a bagunça oficial",
+    title: "Rua Sem Saída: a bagunça oficial do bairro",
     file: "canal404-poster-dead-end-street.png",
     unlock: {
-      label: "Vença Rua Sem Saída",
+      label: "Vença uma partida de Rua Sem Saída.",
       check: (p) => Boolean(p.achievements["street-win"]),
     },
     art: (
@@ -135,7 +95,7 @@ export const POSTERS: PosterDef[] = [
     title: "Fora do ar (ou não)",
     file: "canal404-poster-off-air.png",
     unlock: {
-      label: "Encontre 3 segredos na sala",
+      label: "Encontre 3 segredos na sala de transmissão.",
       check: (p) => Object.keys(p.secrets).length >= 3,
     },
     art: (
@@ -152,7 +112,7 @@ export const POSTERS: PosterDef[] = [
     ),
     texts: [
       { text: "FORA DO AR", x: 300, y: 110, size: 92, color: P.white, rotate: -3, stroke: 18 },
-      { text: "o canal nunca saiu do ar.", x: 300, y: 740, size: 40, color: "#b7ff8a", font: "hand", stroke: 0 },
+      { text: "o canal nunca saiu do ar", x: 300, y: 740, size: 40, color: "#b7ff8a", font: "hand", stroke: 0 },
     ],
   },
 ];

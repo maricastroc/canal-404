@@ -4,7 +4,7 @@ import { ExtrasHub } from "@/components/extras/ExtrasHub";
 
 export const metadata: Metadata = pageMetadata({
   title: "Extras",
-  description: "Pôsteres para baixar, trilhas sonoras, conquistas e segredos do CANAL 404.",
+  description: "Pôsteres para baixar, trilhas sonoras, conquistas e segredos do Canal 404.",
   path: "/extras",
 });
 
@@ -18,8 +18,8 @@ export default function ExtrasPage() {
         <h1 className="mt-2 font-display text-[clamp(2.6rem,8vw,5rem)] uppercase leading-[0.95] tracking-wide text-cream [text-shadow:4px_5px_0_var(--color-ink)]">
           Extras
         </h1>
-        <p className="mx-auto mt-3 max-w-xl font-hand text-xl text-cream-2">
-          Tudo que você destrava jogando e explorando a sala fica guardado aqui, neste navegador.
+        <p className="copy-lede mx-auto mt-3 max-w-xl text-cream-2">
+          Tudo o que você libera jogando e explorando a sala fica guardado aqui, neste navegador.
         </p>
       </div>
       <ExtrasHub />

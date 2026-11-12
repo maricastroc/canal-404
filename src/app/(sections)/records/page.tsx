@@ -19,7 +19,7 @@ export default function RecordsPage() {
         <h1 className="mt-2 font-display text-[clamp(2.4rem,7vw,4.6rem)] uppercase leading-[0.95] tracking-wide text-cream [text-shadow:4px_5px_0_var(--color-ink)]">
           Fliperama de recordes
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl font-hand text-xl text-cream-2">
+        <p className="mx-auto copy-lede mt-3 max-w-2xl text-cream-2">
           Cada jogo tem sua própria regra. Jogue, escolha um apelido no fim da partida e tente tirar o primeiro lugar de alguém.
         </p>
       </div>

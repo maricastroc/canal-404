@@ -49,24 +49,24 @@ export function PlayerCard() {
                 <p className="font-display text-xs uppercase tracking-widest text-ink-soft">Sócio do fliperama</p>
                 <p className="break-words font-display text-3xl leading-none text-ink">{player.nickname}</p>
                 <p className="mt-1 font-display text-lg tabular-nums text-plum-600">#{player.tag}</p>
-                <p className="text-sm text-ink-soft">Desde {memberSince(player.createdAt)}</p>
+                <p className="copy-sm text-ink-soft">Desde {memberSince(player.createdAt)}</p>
               </>
             ) : status === "unconfigured" ? (
               <>
                 <p className="font-display text-2xl uppercase leading-tight text-ink">Em breve</p>
-                <p className="text-sm leading-snug text-ink-soft">O placar do canal ainda não estreou. Seu progresso continua salvo neste computador.</p>
+                <p className="copy-sm mt-1 text-ink-soft">O placar do canal ainda não estreou. Seu progresso continua salvo neste navegador.</p>
               </>
             ) : status === "offline" && !player ? (
               <>
                 <p className="flex items-center gap-2 font-display text-2xl uppercase leading-tight text-ink">
                   <OfflineIcon className="size-6" /> Sem sinal
                 </p>
-                <p className="text-sm leading-snug text-ink-soft">O placar está fora do ar agora. Os jogos funcionam normalmente.</p>
+                <p className="copy-sm mt-1 text-ink-soft">O placar está fora do ar agora. Os jogos funcionam normalmente.</p>
               </>
             ) : (
               <>
                 <p className="font-display text-2xl uppercase leading-tight text-ink">Sem carteirinha</p>
-                <p className="text-sm leading-snug text-ink-soft">Escolha um apelido para aparecer no placar do canal.</p>
+                <p className="copy-sm mt-1 text-ink-soft">Escolha um apelido para aparecer no placar do canal.</p>
               </>
             )}
           </div>
@@ -101,7 +101,7 @@ export function PlayerCard() {
           {player && mode === "leave" ? (
             <div role="alertdialog" aria-label="Sair do placar" className="rounded-xl border-[3px] border-ink bg-cream-2 p-3">
               <p className="font-display text-lg uppercase tracking-wide text-ink">Sair do placar?</p>
-              <p className="mt-1 text-sm leading-snug text-ink-soft">Apagamos seu apelido e seus resultados do placar. O progresso neste computador continua.</p>
+              <p className="copy-sm mt-1 text-ink-soft">Seu apelido e seus resultados saem do placar. O progresso neste navegador continua.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <InkButton tone="tomato" size="sm" onClick={confirmLeave}>
                   Sim, apagar
@@ -118,17 +118,17 @@ export function PlayerCard() {
             </div>
           ) : null}
           {!player && status === "online" ? <NicknameForm submitLabel="Tirar carteirinha" onSubmit={join} /> : null}
-          {!player && status !== "online" ? <p className="font-hand text-lg leading-snug text-ink-soft">A carteirinha fica disponível quando o placar estiver no ar.</p> : null}
+          {!player && status !== "online" ? <p className="copy-sm text-ink-soft">A carteirinha fica disponível quando o placar estiver no ar.</p> : null}
         </div>
       </div>
       <div className="paper border-[3px] border-ink p-5 shadow-[var(--shadow-ink)] wobbly">
         <h3 className="font-display text-xl uppercase tracking-wide text-ink">O que o placar guarda</h3>
-        <ul className="mt-2 list-disc space-y-1 pl-5 leading-snug text-ink-soft">
+        <ul className="copy mt-2 list-disc space-y-1.5 pl-5 text-ink-soft">
           <li>O apelido que você escolher e um número de quatro dígitos para diferenciar apelidos iguais.</li>
           <li>Um código secreto guardado neste navegador, que funciona como sua carteirinha. Sem e-mail, sem senha, sem nome.</li>
           <li>Os resultados que você enviar para o placar.</li>
         </ul>
-        <p className="mt-3 leading-snug text-ink-soft">
+        <p className="copy mt-3 text-ink-soft">
           Se você limpar os dados do navegador, a carteirinha se perde. Ao sair do placar, apagamos tudo o que está no servidor na hora.
         </p>
       </div>

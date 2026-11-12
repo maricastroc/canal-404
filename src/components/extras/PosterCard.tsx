@@ -5,11 +5,51 @@ import { DownloadIcon, LockIcon } from "@/components/art/Icons";
 import { InkButton } from "@/components/ui/Primitives";
 import { useSound } from "@/lib/audio/hooks";
 import { P } from "@/lib/palette";
+import { POSTER_SHADOW } from "./posterArt";
 import type { PosterDef } from "./posters";
 
 function family(variable: string, fallback: string) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
   return value ? `${value}, ${fallback}` : fallback;
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function embeddedFonts(variables: string[]) {
+  const names = new Map<string, string>();
+  for (const variable of variables) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+    if (value) names.set(value.split(",")[0].trim().replace(/['"]/g, ""), `${variable}:${value}`);
+  }
+  const faces: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    let rules: CSSRuleList;
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      continue;
+    }
+    for (const rule of Array.from(rules)) {
+      if (!(rule instanceof CSSFontFaceRule)) continue;
+      if (!names.has(rule.style.getPropertyValue("font-family").trim().replace(/['"]/g, ""))) continue;
+      const match = /url\(["']?([^"')]+)["']?\)/.exec(rule.style.getPropertyValue("src"));
+      if (!match) continue;
+      const url = new URL(match[1], sheet.href ?? document.baseURI).href;
+      const data = await fetch(url)
+        .then((r) => r.blob())
+        .then(blobToDataUrl)
+        .catch(() => null);
+      if (data) faces.push(rule.cssText.replace(match[0], `url("${data}")`));
+    }
+  }
+  return `<style>svg{${[...names.values()].join(";")}}${faces.join("")}</style>`;
 }
 
 async function drawPoster(canvas: HTMLCanvasElement, svg: SVGSVGElement, def: PosterDef) {
@@ -18,7 +58,10 @@ async function drawPoster(canvas: HTMLCanvasElement, svg: SVGSVGElement, def: Po
   const display = family("--font-luckiest", "Arial Black, sans-serif");
   const hand = family("--font-patrick", "Comic Sans MS, sans-serif");
   await Promise.all([document.fonts.load(`80px ${display}`), document.fonts.load(`40px ${hand}`)]).catch(() => undefined);
-  const xml = new XMLSerializer().serializeToString(svg).replace(/<text[^>]*>\?\?<\/text>/g, "");
+  const fonts = await embeddedFonts(["--font-luckiest"]);
+  const xml = new XMLSerializer()
+    .serializeToString(svg)
+    .replace(/^(<svg[^>]*>)/, `$1${fonts}`);
   const img = new Image();
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
   await img.decode();
@@ -34,7 +77,7 @@ async function drawPoster(canvas: HTMLCanvasElement, svg: SVGSVGElement, def: Po
     ctx.lineJoin = "round";
     if (t.stroke) {
       ctx.fillStyle = P.ink;
-      ctx.fillText(t.text, 6, 8);
+      ctx.fillText(t.text, POSTER_SHADOW.x, POSTER_SHADOW.y);
       ctx.lineWidth = t.stroke;
       ctx.strokeStyle = P.ink;
       ctx.strokeText(t.text, 0, 0);
@@ -85,7 +128,7 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
   const tilt = index % 2 ? "rotate-1" : "-rotate-1";
 
   return (
-    <figure className={`paper-light flex flex-col border-[3px] border-ink p-3 shadow-[var(--shadow-ink)] wobbly-sm ${tilt}`}>
+    <figure className={`paper-light flex h-full flex-col border-[3px] border-ink p-3 shadow-[var(--shadow-ink)] wobbly-sm ${tilt}`}>
       <div className="relative aspect-[3/4] overflow-hidden rounded-lg border-[3px] border-ink bg-plum-800">
         {unlocked ? (
           <>
@@ -93,26 +136,34 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
               {def.art}
             </svg>
             <canvas ref={canvasRef} width={600} height={800} className="h-full w-full" aria-hidden />
-            {!ready && <div className="absolute inset-0 grid place-items-center font-display text-cream">sintonizando...</div>}
+            {!ready && <div className="tag-label absolute inset-0 grid place-items-center text-sm text-cream">Sintonizando…</div>}
           </>
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
-            <LockIcon className="w-14" />
-            <p className="font-display text-sm uppercase tracking-wider text-plum-300">Bloqueado</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[repeating-linear-gradient(-45deg,transparent_0_14px,rgb(255_255_255/0.04)_14px_28px)] p-4 text-center text-plum-300">
+            <span className="grid size-20 place-items-center rounded-full border-[3px] border-dashed border-plum-500 bg-plum-700">
+              <LockIcon className="size-9" />
+            </span>
+            <p className="tag-label text-sm">Bloqueado</p>
           </div>
         )}
       </div>
-      <figcaption className="flex flex-1 flex-col gap-2 px-1 pt-3">
-        <p className="font-display text-lg uppercase leading-tight text-ink">{unlocked ? def.title : "Pôster misterioso"}</p>
+      <figcaption className="flex flex-1 flex-col gap-3 px-1 pt-3">
+        <p className="card-title text-ink">
+          {unlocked ? (
+            def.title
+          ) : (
+            <>
+              Pôster {String(index + 1).padStart(2, "0")} <span className="text-plum-600">· ???</span>
+            </>
+          )}
+        </p>
         {unlocked ? (
           <InkButton size="sm" tone="mint" onClick={download} disabled={!ready || saving} className="mt-auto self-start">
             <DownloadIcon className="size-5" /> {saving ? "Salvando..." : "Baixar imagem"}
             <span className="sr-only">: pôster {def.title}</span>
           </InkButton>
         ) : (
-          <p className="mt-auto rounded-lg border-2 border-dashed border-ink/40 px-2 py-1 font-hand text-lg leading-snug text-ink-soft">
-            Como liberar: {def.unlock.label}
-          </p>
+          <p className="copy-sm mt-auto rounded-lg border-2 border-dashed border-ink/40 px-2.5 py-1.5 text-ink-soft">{def.unlock.label}</p>
         )}
       </figcaption>
     </figure>
