@@ -39,7 +39,7 @@ export function MissionClock({ endsAt, offset, className = "", tone = "dark" }: 
   const left = useCountdown(endsAt, offset);
   return (
     <p className={`flex flex-col items-start gap-1 ${className}`}>
-      <span className={`font-display text-[11px] uppercase tracking-[0.2em] ${tone === "dark" ? "text-plum-300" : "text-ink-soft"}`}>Nova missão em</span>
+      <span className={`tag-label ${tone === "dark" ? "text-plum-300" : "text-ink-soft"}`}>Nova missão em</span>
       <span className="rounded-md border-[3px] border-ink bg-[#10122e] px-2.5 py-1 shadow-[inset_0_0_12px_rgba(157,240,220,0.18)]">
         <span aria-hidden className="font-display text-xl tabular-nums leading-none tracking-[0.12em] text-screen [text-shadow:0_0_8px_rgba(157,240,220,0.7)]">
           {left === null ? "--:--:--" : clock(left)}

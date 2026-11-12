@@ -69,7 +69,7 @@ export function MissionCartridge({ data, offset }: { data: MissionTodayResponse;
               <h2 id="mission-title" className="mt-1 font-display text-[clamp(1.9rem,5vw,2.9rem)] uppercase leading-[0.95] tracking-wide text-ink">
                 {mission.title}
               </h2>
-              <p className="mt-2 font-hand text-[1.35rem] leading-snug text-ink">{mission.objective}</p>
+              <p className="copy-lede mt-2 text-ink">{mission.objective}</p>
             </div>
           </div>
         </div>

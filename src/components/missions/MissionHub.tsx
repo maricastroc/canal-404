@@ -17,7 +17,7 @@ function Screen({ title, text, children, live, tone = "text-sun", expression = "
     <div role={live ? "status" : undefined} className="on-dark relative mx-auto flex min-h-80 max-w-3xl flex-col items-center justify-center gap-3 overflow-hidden rounded-[1.75rem] border-[3px] border-ink bg-[#10122e] px-5 py-10 text-center text-cream shadow-[var(--shadow-ink-lg)]">
       <Mascot404 expression={expression} className="w-24" />
       <p className={`font-display text-2xl uppercase tracking-wide ${tone}`}>{title}</p>
-      {text ? <p className="max-w-md font-semibold text-cream-2">{text}</p> : null}
+      {text ? <p className="copy max-w-md text-cream-2">{text}</p> : null}
       {children}
       <div aria-hidden className="pointer-events-none absolute inset-0 scanlines opacity-40" />
     </div>
@@ -38,7 +38,7 @@ export function MissionHub() {
 
   if (mission.status === "unconfigured") {
     return (
-      <Screen title="A missão estreia em breve" text="A Missão 404 precisa do placar do canal, que ainda não está no ar aqui. Os jogos funcionam normalmente." tone="text-bubblegum" expression="sleepy">
+      <Screen title="A missão estreia em breve" text="A Missão 404 depende do placar do canal, que ainda não entrou no ar. Enquanto isso, os jogos funcionam normalmente." tone="text-bubblegum" expression="sleepy">
         <InkLink href="/games" size="sm" tone="sun">
           Ver o catálogo
         </InkLink>
@@ -47,7 +47,7 @@ export function MissionHub() {
   }
   if (mission.status === "offline" || (competition.status === "offline" && !data)) {
     return (
-      <Screen title="Sem sinal da missão" text="Não deu para falar com o canal agora. Os jogos continuam funcionando." tone="text-tomato" expression="static">
+      <Screen title="Sem sinal da missão" text="A antena do canal não respondeu. Os jogos continuam funcionando, e a missão volta assim que o sinal voltar." tone="text-tomato" expression="static">
         <OfflineIcon className="size-8 text-tomato" />
         <InkButton
           size="sm"
@@ -66,32 +66,34 @@ export function MissionHub() {
 
   const joined = Boolean(competition.player);
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <MissionCartridge data={data} offset={mission.offset} />
-          <MissionBoard
-            ref={boardRef}
-            day={boardDay}
-            today={data.mission.day}
-            refreshKey={`${data.completions}:${data.you?.attempts ?? 0}:${data.leader?.tag ?? ""}`}
-            onDay={setBoardDay}
-          />
-        </div>
-        <aside className="flex flex-col gap-6">
-          <YourCard data={data} joined={joined} />
-          <MissionRules game={data.mission.game} />
-        </aside>
+    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_auto_1fr]">
+      <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+        <MissionCartridge data={data} offset={mission.offset} />
+      </div>
+      <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+        <MissionBoard
+          ref={boardRef}
+          day={boardDay}
+          today={data.mission.day}
+          refreshKey={`${data.completions}:${data.you?.attempts ?? 0}:${data.leader?.tag ?? ""}`}
+          onDay={setBoardDay}
+        />
+      </div>
+      <div className="flex flex-col gap-6 lg:top-6 lg:col-start-2 lg:[@media(min-height:54rem)]:sticky lg:row-span-3 lg:row-start-1 lg:self-start">
+        <YourCard data={data} joined={joined} />
+        <MissionRules game={data.mission.game} />
       </div>
       {competition.player ? (
-        <MissionHistory
-          playerId={competition.player.id}
-          today={data.mission.day}
-          onBoard={(day) => {
-            setBoardDay(day);
-            boardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-        />
+        <div className="min-w-0 lg:col-start-1 lg:row-start-3">
+          <MissionHistory
+            playerId={competition.player.id}
+            today={data.mission.day}
+            onBoard={(day) => {
+              setBoardDay(day);
+              boardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          />
+        </div>
       ) : null}
     </div>
   );

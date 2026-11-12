@@ -1,12 +1,14 @@
 "use client";
 
 import { forwardRef, useEffect, useState } from "react";
-import { RestartIcon, TrophyIcon } from "@/components/art/Icons";
-import { InkButton } from "@/components/ui/Primitives";
+import { PlayIcon, RestartIcon, TrophyIcon } from "@/components/art/Icons";
+import { IntentLink } from "@/components/ui/IntentLink";
+import { InkButton, inkStyle } from "@/components/ui/Primitives";
 import { useSound } from "@/lib/audio/hooks";
 import { fetchMissionBoard } from "@/lib/missions/client";
 import { dayName, dayStamp, formatMissionBest, formatPlace } from "@/lib/missions/format";
 import type { MissionBoardEntry, MissionBoardResponse } from "@/lib/missions/types";
+import { missionHref } from "./parts";
 
 type Loaded = { key: string; data: MissionBoardResponse | null };
 
@@ -24,12 +26,41 @@ function Row({ entry, game }: { entry: Pick<MissionBoardEntry, "position" | "nic
       <td className="px-1 py-1.5">
         <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <span className="font-semibold text-cream">{entry.nickname}</span>
-          <span className="text-sm text-plum-300">#{entry.tag}</span>
+          <span className="copy-sm text-plum-300">#{entry.tag}</span>
           {entry.you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">Você</span> : null}
         </span>
       </td>
-      <td className="whitespace-nowrap rounded-r-lg px-1 py-1.5 pr-2 text-right text-sm text-cream-2">{formatMissionBest(game, entry.metrics)}</td>
+      <td className="copy-sm whitespace-nowrap rounded-r-lg px-1 py-1.5 pr-2 text-right text-cream-2">{formatMissionBest(game, entry.metrics)}</td>
     </tr>
+  );
+}
+
+function EmptyBoard({ closed, href }: { closed: boolean; href: string | null }) {
+  return (
+    <div className="grid items-center gap-5 py-2 sm:grid-cols-[minmax(0,13rem)_1fr]">
+      <ol aria-hidden className="flex flex-col gap-1.5">
+        {[1, 2, 3].map((position) => (
+          <li key={position} className="flex items-center gap-2 rounded-lg border-2 border-dashed border-plum-500 px-2.5 py-1.5">
+            <span className={`inline-flex w-10 items-center gap-1 font-display text-lg leading-none ${PLACE_COLOR[position - 1]}`}>
+              {position === 1 ? <TrophyIcon className="size-4" /> : null}
+              {position}º
+            </span>
+            <span className="copy-sm text-plum-300">{closed ? "Ninguém" : "Vago"}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="text-center sm:text-left">
+        <p className="font-display text-xl uppercase leading-tight tracking-wide text-lime">{closed ? "Placar em branco" : "O primeiro lugar está vago"}</p>
+        <p className="copy mt-1 text-cream-2">
+          {closed ? "Ninguém cumpriu essa missão. Acontece até nas melhores emissoras." : "Ninguém cumpriu a missão ainda. Quem cumprir primeiro estreia no topo do placar."}
+        </p>
+        {href ? (
+          <IntentLink href={href} className={inkStyle("sun", "sm", "mt-3")}>
+            <PlayIcon className="size-4" /> Ser o primeiro
+          </IntentLink>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -103,7 +134,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
           </nav>
         </div>
         {view ? (
-          <p className="mt-1 text-sm font-semibold text-cream-2">
+          <p className="copy-sm mt-1 text-cream-2">
             {isToday ? "" : `${view.mission.title} · `}
             {view.closed ? (
               <span className="font-display uppercase tracking-wider text-bubblegum">Resultado final</span>
@@ -128,16 +159,14 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
               </InkButton>
             </div>
           ) : !view.mission.ranked ? (
-            <p className="py-5 text-center font-semibold text-cream-2">Essa missão não teve placar.</p>
+            <p className="copy py-5 text-center text-cream-2">Essa missão não teve placar: valia só cumprir.</p>
           ) : view.entries.length === 0 ? (
-            <p className="py-5 text-center font-semibold text-cream-2">
-              {view.closed ? "Ninguém cumpriu essa missão." : "Ninguém cumpriu a missão ainda. O primeiro lugar está vago."}
-            </p>
+            <EmptyBoard closed={view.closed} href={isToday && !view.closed ? missionHref(view.mission) : null} />
           ) : (
             <>
               {view.closed && view.page === 1 && view.total >= 2 ? (
-                <p className="mb-2 rounded-lg border-2 border-ink bg-bubblegum px-2 py-1 text-sm font-semibold text-ink">
-                  <span className="font-display uppercase tracking-wider">Campeão do dia: </span>
+                <p className="copy-sm mb-2 rounded-lg border-2 border-ink bg-bubblegum px-2 py-1 text-ink">
+                  <span className="tag-label">Campeão do dia: </span>
                   {view.entries[0].nickname} #{view.entries[0].tag}
                 </p>
               ) : null}
@@ -146,7 +175,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
                   Placar da Missão 404 de {dayName(shownDay)}, página {view.page} de {view.pages}
                 </caption>
                 <thead>
-                  <tr className="font-display text-[11px] uppercase tracking-wider text-plum-300">
+                  <tr className="tag-label text-plum-300">
                     <th scope="col" className="w-12 pl-2 font-normal">
                       Pos.
                     </th>
@@ -175,7 +204,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
                 </tbody>
               </table>
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-plum-300">{view.total === 1 ? "1 pessoa no placar" : `${view.total.toLocaleString("pt-BR")} pessoas no placar`}</p>
+                <p className="copy-sm text-plum-300">{view.total === 1 ? "1 pessoa no placar" : `${view.total.toLocaleString("pt-BR")} pessoas no placar`}</p>
                 {view.pages > 1 ? (
                   <nav aria-label="Páginas do placar" className="flex items-center gap-2">
                     <InkButton size="sm" tone="cream" disabled={view.page <= 1} onClick={() => turn(view.page - 1)} aria-label="Página anterior">
@@ -190,7 +219,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
                   </nav>
                 ) : null}
               </div>
-              {view.you && !view.closed ? <p className="mt-1 text-xs text-cream-2">Seu lugar hoje: {formatPlace(view.you.position, view.you.total)}.</p> : null}
+              {view.you && !view.closed ? <p className="copy-sm mt-1 text-cream-2">Seu lugar hoje: {formatPlace(view.you.position, view.you.total)}.</p> : null}
             </>
           )}
         </div>
