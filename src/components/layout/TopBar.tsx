@@ -7,8 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { MenuIcon } from "@/components/art/Icons";
 import { Logo } from "@/components/art/Logo";
 import { useSound } from "@/lib/audio/hooks";
-import { isActive } from "./nav";
-import { useNavItems } from "./useNavItems";
+import { isActive, NAV_ITEMS } from "./nav";
 import { NavIcon } from "./NavIcon";
 import { SoundToggle } from "./SoundToggle";
 import { VisitorCounter } from "./VisitorCounter";
@@ -57,9 +56,6 @@ export function TopBar({ className = "" }: { className?: string }) {
     };
   }, [open]);
 
-  const allItems = useNavItems();
-  const navItems = allItems.filter((item) => !item.weekly);
-
   return (
     <header className={`on-dark relative z-50 border-b-[3px] border-ink bg-plum-800 ${className}`}>
       <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-3 px-3 sm:px-5">
@@ -68,7 +64,7 @@ export function TopBar({ className = "" }: { className?: string }) {
         </Link>
         <nav aria-label="Principal" className="ml-auto hidden md:block">
           <ul className="flex items-center gap-1.5 lg:gap-2">
-            {navItems.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const active = isActive(pathname, item.href) || (item.href === "/games" && pathname.startsWith("/games"));
               return (
                 <li key={item.href}>
@@ -131,7 +127,7 @@ export function TopBar({ className = "" }: { className?: string }) {
               className="paper fixed inset-x-3 top-[5.2rem] z-50 max-h-[calc(100svh-6rem)] overflow-y-auto border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly md:hidden"
             >
               <ul className="flex flex-col gap-3">
-                {allItems.map((item, i) => {
+                {NAV_ITEMS.map((item, i) => {
                   const active = isActive(pathname, item.href);
                   return (
                     <li key={item.href} className={i % 2 ? "rotate-1" : "-rotate-1"}>

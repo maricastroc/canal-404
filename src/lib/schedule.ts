@@ -1,36 +1,15 @@
 import { PLAYABLE, type GameMeta } from "@/games/registry";
 import type { ProgressState } from "@/lib/progress/store";
 
-const DAY = 86_400_000;
-const FIRST_MONDAY = Date.UTC(1970, 0, 5);
-
-export const FALLBACK_WEEKLY = PLAYABLE[0];
-
-export function weekNumber(date: Date) {
-  const day = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  return Math.floor((day - FIRST_MONDAY) / (7 * DAY));
-}
-
-export function weeklyGame(date: Date, games: GameMeta[] = PLAYABLE) {
-  const n = games.length;
-  return games[((weekNumber(date) % n) + n) % n];
-}
-
-function rotation(start: GameMeta, games: GameMeta[]) {
-  const i = Math.max(0, games.indexOf(start));
-  return [...games.slice(i), ...games.slice(0, i)];
-}
-
 export function plays(progress: ProgressState | undefined, slug: string) {
   return progress?.games[slug]?.plays ?? 0;
 }
 
 export type Pick = { game: GameMeta; reason: "unplayed" | "least" };
 
-export function nextPick(progress: ProgressState | undefined, { date, exclude = [], games = PLAYABLE }: { date: Date; exclude?: string[]; games?: GameMeta[] }): Pick {
-  const order = rotation(weeklyGame(date, games), games);
-  const candidates = order.filter((g) => !exclude.includes(g.slug));
-  const pool = candidates.length ? candidates : order;
+export function nextPick(progress: ProgressState | undefined, { exclude = [], games = PLAYABLE }: { exclude?: string[]; games?: GameMeta[] } = {}): Pick {
+  const candidates = games.filter((g) => !exclude.includes(g.slug));
+  const pool = candidates.length ? candidates : games;
   const unplayed = pool.find((g) => plays(progress, g.slug) === 0);
   if (unplayed) return { game: unplayed, reason: "unplayed" };
   const least = pool.reduce((best, g) => (plays(progress, g.slug) < plays(progress, best.slug) ? g : best), pool[0]);

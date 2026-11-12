@@ -72,9 +72,9 @@ describe("game registry", () => {
     expect(getGame("nope")).toBeUndefined();
   });
 
-  it("links the game of the week to a playable game", () => {
-    const weekly = NAV_ITEMS.find((n) => n.icon === "star");
-    const slug = weekly?.href.replace("/games/", "");
-    expect(PLAYABLE.some((g) => g.slug === slug)).toBe(true);
+  it("links every game route in the navigation to a playable game", () => {
+    const slugs = NAV_ITEMS.filter((n) => n.href.startsWith("/games/")).map((n) => n.href.replace("/games/", ""));
+    expect(slugs.every((slug) => PLAYABLE.some((g) => g.slug === slug))).toBe(true);
+    expect(NAV_ITEMS.some((n) => /semana/i.test(n.label))).toBe(false);
   });
 });
