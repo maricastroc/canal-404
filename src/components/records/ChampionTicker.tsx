@@ -43,7 +43,7 @@ export function ChampionTicker({ slug, levelWord = "fase" }: { slug: GameSlug; l
       ? "Ver o fliperama de recordes"
       : current.leader
         ? `${current.leader.nickname} #${current.leader.tag} · ${formatBest(slug, current.leader.metrics)}`
-        : "Ninguém no placar ainda. O primeiro lugar está vago!";
+        : "O quadro dos campeões ainda está vazio. Que tal colocar seu nome nele?";
 
   return (
     <Link
