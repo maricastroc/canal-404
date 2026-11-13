@@ -1,5 +1,6 @@
 import { BrunoHead, DecoHead, LinaHead, MilaHead, type Face } from "@/components/characters/Heads";
 import { P } from "@/lib/palette";
+import { arcPoint, Fork, House, Sparkle4 } from "./DeadEndStreetArt";
 import { OffAirVacationCoverArt } from "./OffAirVacationArt";
 import { PajamaWarCoverArt } from "./PajamaWarArt";
 
@@ -55,40 +56,120 @@ function Frame({ children, bg, label, decorative }: { children: React.ReactNode;
   );
 }
 
-export function DeadEndStreetCover({ decorative }: { decorative?: boolean }) {
+const ARC = { from: { x: 200, y: 118 }, via: { x: 246, y: 0 }, to: { x: 286, y: 112 } };
+
+const arcAt = (t: number) => arcPoint(ARC.from, ARC.via, ARC.to, t);
+
+function Pot({ cx, bottom, w, h, fill, rim }: { cx: number; bottom: number; w: number; h: number; fill: string; rim: string }) {
+  const top = bottom - h;
+  const lip = h * 0.32;
   return (
-    <Frame decorative={decorative} bg="#82d3f7" label="Capa de Rua Sem Saída: Déco e Lina numa engenhoca de carrinho lançando um tênis">
-      <circle cx="270" cy="44" r="24" fill={P.sun} {...ink} />
-      <path d="M30 60 Q28 44 46 44 Q52 30 68 36 Q80 26 92 40 Q108 40 104 58 Z" fill={P.white} {...ink} strokeWidth={3} />
-      <path d="M0 150 L36 112 L72 150 L72 120 L110 92 L148 120 L148 150 L196 118 L236 150 L274 110 L320 140 L320 170 L0 170 Z" fill="#c9a6e8" {...ink} strokeWidth={3} />
-      <rect x="88" y="122" width="14" height="14" fill={P.sun} {...ink} strokeWidth={2.5} />
-      <rect x="262" y="130" width="14" height="14" fill={P.sun} {...ink} strokeWidth={2.5} />
-      <rect y="168" width="320" height="72" fill={P.lime} />
-      {Array.from({ length: 15 }, (_, i) => i * 24 - 6).map((x) => (
-        <path key={x} d={`M${x} 196 L${x} 150 L${x + 10} 142 L${x + 20} 150 L${x + 20} 196 Z`} fill={P.tangerine} stroke={P.ink} strokeWidth="2.5" strokeLinejoin="round" />
-      ))}
-      <path d="M0 162 L320 162 M0 184 L320 184" stroke={P.ink} strokeWidth="3" />
-      <rect y="196" width="320" height="44" fill="#d8a066" />
-      <path d="M0 196 L320 196" stroke={P.ink} strokeWidth="3" />
-      <path d="M180 90 Q230 30 290 70" fill="none" stroke={P.tangerineDeep} strokeWidth="3" strokeDasharray="6 7" />
-      <g transform="translate(276 58) rotate(28)">
-        <path d="M-18 0 Q-16 -12 -4 -12 L4 -12 Q8 -4 18 -4 Q28 -2 26 8 L-18 8 Z" fill={P.tomato} {...ink} strokeWidth={3} />
-        <path d="M-16 8 L26 8" stroke={P.white} strokeWidth="3" />
-      </g>
-      <path d="M248 74 L234 80 M252 84 L238 92 M244 64 L232 66" stroke={P.ink} strokeWidth="3" strokeLinecap="round" />
+    <g stroke={P.ink} strokeWidth={3} strokeLinejoin="round">
+      <path d={`M${cx - w / 2 + 3} ${top + lip} L${cx + w / 2 - 3} ${top + lip} L${cx + w / 2 - 6} ${bottom} L${cx - w / 2 + 6} ${bottom} Z`} fill={fill} />
+      <path d={`M${cx + w / 2 - 9} ${top + lip} L${cx + w / 2 - 3} ${top + lip} L${cx + w / 2 - 6} ${bottom} L${cx + w / 2 - 12} ${bottom} Z`} fill={P.ink} opacity={0.18} stroke="none" />
+      <rect x={cx - w / 2} y={top} width={w} height={lip} rx={3} fill={rim} />
+    </g>
+  );
+}
+
+export function DeadEndStreetCover({ decorative }: { decorative?: boolean }) {
+  const dots = [0.1, 0.2, 0.3, 0.4, 0.62, 0.72, 0.82, 0.92].map((t) => ({ t, ...arcAt(t) }));
+  const shoe = arcAt(0.51);
+  return (
+    <Frame decorative={decorative} bg="#82d3f7" label="Capa de Rua Sem Saída: Déco e Lina num carrinho com uma colher gigante lançando um tênis em direção a uma pilha de vasos com um gnomo">
+      <rect y="96" width="320" height="70" fill={P.skyPale} opacity={0.55} />
       <g>
-        <path d="M60 186 L196 186 L188 222 L66 222 Z" fill={P.tomato} {...ink} />
-        <path d="M70 196 L184 196" stroke={P.tomatoDeep} strokeWidth="5" />
-        <circle cx="86" cy="226" r="14" fill={P.ink} />
-        <circle cx="86" cy="226" r="5" fill={P.steel} />
-        <circle cx="172" cy="226" r="14" fill={P.ink} />
-        <circle cx="172" cy="226" r="5" fill={P.steel} />
-        <path d="M150 188 L196 96" stroke={P.ink} strokeWidth="12" strokeLinecap="round" />
-        <path d="M150 188 L196 96" stroke={P.wood} strokeWidth="6" strokeLinecap="round" />
-        <ellipse cx="198" cy="92" rx="18" ry="10" fill={P.wood} {...ink} strokeWidth={3} transform="rotate(-30 198 92)" />
+        {Array.from({ length: 10 }, (_, i) => {
+          const a = (i / 10) * Math.PI * 2;
+          const f = (n: number) => n.toFixed(1);
+          return <path key={i} d={`M${f(46 + Math.cos(a) * 28)} ${f(40 + Math.sin(a) * 28)} L${f(46 + Math.cos(a) * 36)} ${f(40 + Math.sin(a) * 36)}`} stroke={P.sunDeep} strokeWidth={4} strokeLinecap="round" />;
+        })}
+        <circle cx="46" cy="40" r="20" fill={P.sun} {...ink} />
+        <path d="M34 48 Q46 58 58 46" fill="none" stroke={P.sunDeep} strokeWidth={4} strokeLinecap="round" />
       </g>
-      <Kid who="deco" x={50} y={92} size={92} face="happy" rotate={-8} />
-      <Kid who="lina" x={110} y={110} size={80} face="wow" rotate={6} />
+      <g transform="translate(112 -8)">
+        <path d="M30 60 Q28 44 46 44 Q52 30 68 36 Q80 26 92 40 Q108 40 104 58 Z" fill={P.white} {...ink} strokeWidth={3} />
+        <path d="M36 58 Q60 52 98 56" fill="none" stroke={P.skyPale} strokeWidth={4} strokeLinecap="round" />
+      </g>
+      <g transform="translate(-6 66) scale(0.6)">
+        <path d="M30 60 Q28 44 46 44 Q52 30 68 36 Q80 26 92 40 Q108 40 104 58 Z" fill={P.white} {...ink} strokeWidth={4.5} />
+      </g>
+      <House x={184} w={54} h={34} peak={26} wall={P.sunPale} roof={P.skyDeep} />
+      <House x={250} w={66} h={42} peak={32} wall={P.plum300} roof={P.tomatoDeep} />
+      <g>
+        {Array.from({ length: 17 }, (_, i) => i * 20 - 6).map((x) => (
+          <g key={x}>
+            <path d={`M${x} 192 L${x} 158 L${x + 8} 149 L${x + 16} 158 L${x + 16} 192 Z`} fill={P.cream} stroke={P.ink} strokeWidth={3} strokeLinejoin="round" />
+            <path d={`M${x + 9} 150 L${x + 16} 158 L${x + 16} 192 L${x + 9} 192 Z`} fill={P.cream2} />
+            <path d={`M${x + 16} 158 L${x + 16} 192`} stroke={P.ink} strokeWidth={3} strokeLinecap="round" />
+          </g>
+        ))}
+        <path d="M-4 168 L324 168 L324 175 L-4 175 Z M-4 182 L324 182 L324 189 L-4 189 Z" fill={P.wood} stroke={P.ink} strokeWidth={3} strokeLinejoin="round" />
+        <path d="M-4 173 L324 173 M-4 187 L324 187" stroke={P.woodDeep} strokeWidth={2} />
+      </g>
+      <rect y="192" width="320" height="14" fill={P.lime} />
+      <path d="M0 192 L320 192" stroke={P.ink} strokeWidth={3} />
+      <rect y="192" width="320" height="5" fill={P.ink} opacity={0.14} />
+      <path d="M0 206 L320 206" stroke={P.ink} strokeWidth={3} />
+      <rect y="206" width="320" height="34" fill="#d8a066" />
+      <path d="M20 224 L40 224 M120 232 L146 232 M230 222 L256 222 M280 234 L304 234" stroke="#b97f45" strokeWidth={3} strokeLinecap="round" />
+      <g stroke={P.leafDeep} strokeWidth={3} strokeLinecap="round" fill="none">
+        <path d="M8 204 L6 197 M12 204 L14 196 M16 204 L20 198" />
+        <path d="M232 204 L230 198 M236 204 L238 197 M240 204 L244 199" />
+      </g>
+      <ellipse cx="290" cy="203" rx="26" ry="5" fill={P.ink} opacity={0.22} />
+      <Pot cx={290} bottom={202} w={38} h={19} fill={P.tangerineDeep} rim={P.tangerine} />
+      <Pot cx={290} bottom={183} w={32} h={16} fill={P.sunDeep} rim={P.sun} />
+      <Pot cx={290} bottom={167} w={26} h={14} fill={P.bubblegumDeep} rim={P.bubblegum} />
+      <g stroke={P.ink} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round">
+        <path d="M281 142 Q282 160 290 162 Q298 160 299 142 Q290 150 281 142 Z" fill={P.white} />
+        <ellipse cx="290" cy="140" rx="9" ry="6" fill={P.blush} />
+        <circle cx="290" cy="142" r="3" fill={P.bubblegum} strokeWidth={2} />
+        <path d="M280 136 L290 106 L300 136 Q290 140 280 136 Z" fill={P.tomato} />
+        <path d="M290 106 L296 120" stroke={P.tomatoDeep} strokeWidth={3} />
+      </g>
+      <Sparkle4 x={304} y={112} r={7} fill={P.sunPale} />
+      <Sparkle4 x={272} y={128} r={5} fill={P.white} />
+      <g>
+        {dots.map(({ t, x, y }) => {
+          const r = 6.5 - t * 3;
+          return (
+            <g key={t}>
+              <circle cx={x} cy={y} r={r + 2.5} fill={P.ink} opacity={0.9 - t * 0.35} />
+              <circle cx={x} cy={y} r={r} fill={P.tangerine} />
+            </g>
+          );
+        })}
+      </g>
+      <g transform={`translate(${shoe.x.toFixed(1)} ${shoe.y.toFixed(1)}) rotate(-14)`}>
+        <path d="M-34 -6 L-24 -6 M-38 3 L-26 3 M-32 12 L-24 12" stroke={P.ink} strokeWidth={3} strokeLinecap="round" />
+        <path d="M-17 -14 L-3 -14 L3 -4 Q13 -3 19 -1 Q24 1 23 7 L-17 7 Z" fill={P.tomato} {...ink} strokeWidth={3} />
+        <path d="M-3 -14 L3 -4 L-6 -3 Z" fill={P.tomatoDeep} {...ink} strokeWidth={2} />
+        <path d="M-17 -14 L-17 7" stroke={P.ink} strokeWidth={3} strokeLinecap="round" />
+        <path d="M2 -6 L7 -9 M6 -3 L11 -6" stroke={P.white} strokeWidth={2.5} strokeLinecap="round" />
+        <path d="M-19 7 L24 7 L24 12 L-19 12 Z" fill={P.white} {...ink} strokeWidth={3} />
+      </g>
+      <ellipse cx="114" cy="232" rx="108" ry="6" fill={P.ink} opacity={0.22} />
+      <Kid who="deco" x={30} y={98} size={76} face="happy" rotate={-4} />
+      <Kid who="lina" x={110} y={104} size={70} face="wow" rotate={4} />
+      <g>
+        <path d="M30 176 Q4 176 8 206" fill="none" stroke={P.ink} strokeWidth={10} strokeLinecap="round" />
+        <path d="M30 176 Q4 176 8 206" fill="none" stroke={P.wood} strokeWidth={4.5} strokeLinecap="round" />
+        <path d="M22 171 L208 171 L198 212 L32 212 Z" fill={P.tomato} {...ink} />
+        <path d="M22 171 L208 171 L207 180 L23 180 Z" fill={P.tomatoDeep} {...ink} strokeWidth={3} />
+        <path d="M30 198 L200 198" stroke={P.tomatoDeep} strokeWidth={4} strokeLinecap="round" />
+        <path d="M34 187 L90 187" stroke={P.blush} strokeWidth={3.5} strokeLinecap="round" opacity={0.8} />
+        <circle cx="62" cy="218" r="15" fill={P.ink} />
+        <circle cx="62" cy="218" r="9" fill={P.steelDeep} />
+        <circle cx="62" cy="218" r="4" fill={P.steel} />
+        <circle cx="168" cy="218" r="15" fill={P.ink} />
+        <circle cx="168" cy="218" r="9" fill={P.steelDeep} />
+        <circle cx="168" cy="218" r="4" fill={P.steel} />
+        <path d="M54 211 Q58 207 64 208" stroke={P.white} strokeWidth={2.5} strokeLinecap="round" fill="none" opacity={0.7} />
+        <path d="M160 211 Q164 207 170 208" stroke={P.white} strokeWidth={2.5} strokeLinecap="round" fill="none" opacity={0.7} />
+      </g>
+      <Fork x={192} y={176} s={1.7} pouch={{ x: 2, y: -28 }} tension={0} />
+      <Sparkle4 x={20} y={130} r={9} fill={P.sunPale} />
     </Frame>
   );
 }

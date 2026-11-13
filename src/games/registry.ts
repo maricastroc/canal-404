@@ -44,7 +44,7 @@ export const GAMES: GameMeta[] = [
     title: "Rua Sem Saída",
     tagline: "Engenhocas, física e muita confusão no quintal do vizinho.",
     description:
-      "Déco e Lina construíram uma engenhoca de lançamento com um carrinho de rolimã, uma colher de pau gigante e elástico de calcinha. Mire, lance objetos absurdos pelo bairro e derrube todos os enfeites do jardim do Seu Arlindo antes que a munição acabe.",
+      "Déco e Lina montaram uma engenhoca com carrinho de rolimã, colher de pau gigante e elástico de calcinha. Agora é só lançar objetos absurdos e derrubar os enfeites do quintal do Seu Arlindo antes que a munição acabe.",
     category: "action",
     tags: ["Ação", "Física", "Engenhocas"],
     status: "available",
@@ -52,16 +52,16 @@ export const GAMES: GameMeta[] = [
     cast: ["deco", "lina", "bruno"],
     objective: "Três rodadas no quintal do Seu Arlindo: derrube os enfeites antes de acabar a munição. Bagunça extra vale pontos.",
     controls: [
-      { input: "Arrastar (mouse ou dedo)", action: "Puxe para trás e solte para lançar" },
-      { input: "← → ou A D", action: "Ajustar o ângulo" },
-      { input: "↑ ↓ ou W S", action: "Ajustar a força" },
+      { input: "Mouse ou dedo", action: "Arraste e solte" },
+      { input: "← → ou A D", action: "Ângulo" },
+      { input: "↑ ↓ ou W S", action: "Força" },
       { input: "Espaço ou Enter", action: "Lançar" },
       { input: "Esc ou P", action: "Pausar" },
     ],
     howTo: [
-      { title: "Puxe", text: "Arraste para trás em qualquer lugar da tela. Quanto mais longe, mais força." },
-      { title: "Mire", text: "A linha pontilhada mostra o começo do caminho. É o plano do Bruno." },
-      { title: "Bagunce", text: "Cada objeto voa diferente. O pato quica, o pneu derruba, o balão estoura." },
+      { title: "Puxe", text: "Arraste para trás para preparar o lançamento. Quanto mais puxar, mais longe vai!" },
+      { title: "Mire", text: "A linha pontilhada mostra por onde o objeto deve passar. Ajuste a mira antes de soltar!" },
+      { title: "Bagunce", text: "Cada objeto tem sua surpresa: o pato quica, o pneu derruba e o balão estoura!" },
     ],
     tips: [
       "Derrubar dois alvos com um lançamento vale bônus.",
