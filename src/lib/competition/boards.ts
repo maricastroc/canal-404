@@ -4,7 +4,7 @@ export type GameSlug = (typeof GAME_SLUGS)[number];
 
 export type RankKey = [number, number, number];
 
-export type MetricUnit = "points" | "time" | "count";
+export type MetricUnit = "points" | "time" | "count" | "steps";
 
 export type Metric = { label: string; unit: MetricUnit; lowerIsBetter: boolean; noun?: readonly [string, string] };
 
@@ -27,7 +27,7 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
     practice: ["test"],
     metrics: [
       { label: "Peças", unit: "count", lowerIsBetter: true, noun: ["peça", "peças"] },
-      { label: "Passos da máquina", unit: "count", lowerIsBetter: true, noun: ["passo", "passos"] },
+      { label: "Tempo da bolinha", unit: "steps", lowerIsBetter: true },
     ],
   },
   "food-fight": {

@@ -1127,6 +1127,7 @@ export class LunchScene extends Phaser.Scene {
         ? { title: "Sinal!", text: "A mesa resistiu até o fim do recreio." }
         : { title: "Melecado!", text: "Acabaram os guardanapos. Fica pra próxima!" },
       summary: `${this.hits} ${this.hits === 1 ? "acerto" : "acertos"}. Melhor sequência: ${this.bestStreak}.`,
+      ...(won && stars < 3 ? { starHint: `Faltaram ${((stars === 1 ? SCORE.twoStars : SCORE.threeStars) - score).toLocaleString("pt-BR")} pontos para a ${stars + 1}ª estrela.` } : {}),
     };
     this.ctx.onEvent({ type: "finished", result });
   }

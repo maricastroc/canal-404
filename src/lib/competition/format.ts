@@ -10,9 +10,14 @@ export function formatDuration(ms: number) {
   return `${seconds}s`;
 }
 
+export function machineSeconds(steps: number) {
+  return `${(steps / 60).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s`;
+}
+
 export function formatMetric(metric: Metric, value: number) {
   if (metric.unit === "points") return `${value.toLocaleString("pt-BR")} pts`;
   if (metric.unit === "time") return formatDuration(value);
+  if (metric.unit === "steps") return machineSeconds(value);
   const [one, many] = metric.noun ?? ["", ""];
   return `${value.toLocaleString("pt-BR")} ${value === 1 ? one : many}`.trim();
 }

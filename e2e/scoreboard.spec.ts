@@ -74,22 +74,22 @@ test.describe("scoreboard with the backend", () => {
   test("joins after a win, registers a verified-shape result and remembers the best", async ({ page }) => {
     await seed(page);
     const result = await solvePixel(page);
-    const board = result.getByRole("region", { name: "Placar do canal" });
-    await expect(board).toContainText("Quer ver seu nome no placar do canal?");
+    const board = result.getByRole("region", { name: "Placar da fase" });
+    await expect(board).toContainText("Quer ver seu nome no placar?");
     await board.getByLabel("Seu apelido").fill(nickname());
     const submitted = page.waitForResponse((r) => r.url().endsWith("/api/runs") && r.request().method() === "POST" && r.status() === 201);
     await board.getByRole("button", { name: "Entrar no placar" }).click();
     expect((await (await submitted).json()).run).toMatchObject({ verification: "replayed", eligible: true });
-    await expect(board.getByRole("status")).toContainText(/Novo recorde pessoal!|Primeiro lugar no placar!/, { timeout: simTime(15_000) });
-    await expect(board.getByRole("status")).toContainText(/1 peça · \d+ passos\. Você está em \d+º de \d+\./);
+    await expect(board.getByRole("status")).toContainText(/Você entrou no placar|Novo recorde pessoal!|Recorde do canal!|Placar inaugurado/, { timeout: simTime(15_000) });
+    await expect(board.getByRole("status")).toContainText(/1 peça · \d+,\d{2} s\. ((Agora v|V)ocê está em \d+º de \d+|Você passou na frente de todo mundo: 1º de \d+|Por enquanto, o placar desta fase é só seu)\./);
     await expect(board.getByRole("link", { name: "Ver o fliperama de recordes" })).toHaveAttribute("href", "/records?game=bad-ideas-lab&level=pixel");
 
-    expect(await accessibilityViolations(page, '[aria-label="Placar do canal"]')).toEqual([]);
+    expect(await accessibilityViolations(page, '[aria-label="Placar da fase"]')).toEqual([]);
 
     await result.getByRole("button", { name: "Refazer fase" }).click();
     await expect(result).toBeHidden();
     const again = await placePixelRamp(page);
-    await expect(again.getByRole("region", { name: "Placar do canal" }).getByRole("status")).toContainText(/Seu melhor no placar: 1 peça · \d+ passos/, {
+    await expect(again.getByRole("region", { name: "Placar da fase" }).getByRole("status")).toContainText(/Seu melhor continua 1 peça · \d+,\d{2} s/, {
       timeout: simTime(15_000),
     });
 
@@ -103,8 +103,8 @@ test.describe("scoreboard with the backend", () => {
 
   test("keeps practice levels off the board", async ({ page }) => {
     const result = await playPractice(page);
-    const board = result.getByRole("region", { name: "Placar do canal" });
-    await expect(board).toContainText("Quer ver seu nome no placar do canal?");
+    const board = result.getByRole("region", { name: "Placar da fase" });
+    await expect(board).toContainText("Quer ver seu nome no placar?");
     await board.getByLabel("Seu apelido").fill(nickname());
     await board.getByRole("button", { name: "Entrar no placar" }).click();
     await expect(board.getByRole("status")).toHaveText("Fase de treino não entra no placar.", { timeout: simTime(15_000) });
@@ -120,8 +120,8 @@ test.describe("scoreboard without the backend", () => {
     await page.route("**/api/**", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: { code: "unavailable", message: "fora" } }) }));
     const result = await playPractice(page);
     await expect(result.getByRole("img", { name: "3 de 3 estrelas" })).toBeVisible();
-    const board = result.getByRole("region", { name: "Placar do canal" });
-    await expect(board.getByRole("status")).toContainText("ficou só neste computador");
+    const board = result.getByRole("region", { name: "Placar da fase" });
+    await expect(board.getByRole("status")).toContainText("ficou só no seu progresso");
     await expect(board).toContainText("Sem sinal");
     await result.getByRole("button", { name: "Escolher fase" }).click();
     await expect(page.getByRole("dialog", { name: `${LAB.title}: tela de apresentação` }).getByRole("button", { name: "Jogar fase 2" })).toBeVisible();
@@ -131,7 +131,7 @@ test.describe("scoreboard without the backend", () => {
     await page.route("**/api/status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "unconfigured" }) }));
     const result = await playPractice(page);
     await expect(result.getByRole("img", { name: "3 de 3 estrelas" })).toBeVisible();
-    await expect(result.getByRole("region", { name: "Placar do canal" })).toHaveCount(0);
+    await expect(result.getByRole("region", { name: "Placar da fase" })).toHaveCount(0);
   });
 
   test("shows the membership card as coming soon and passes an accessibility check", async ({ page }) => {

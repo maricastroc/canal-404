@@ -1,13 +1,8 @@
 import { formatBest, ordinal } from "@/lib/competition/format";
 import type { GameSlug } from "@/lib/competition/boards";
 import { MISSION_TIME_ZONE } from "./calendar";
-import { machineSeconds } from "./goals";
 
 export function formatMissionBest(game: GameSlug, metrics: number[]) {
-  if (game === "bad-ideas-lab") {
-    const parts = metrics[0] ?? 0;
-    return `${parts} ${parts === 1 ? "peça" : "peças"} · ${machineSeconds(metrics[1] ?? 0)}`;
-  }
   return formatBest(game, metrics);
 }
 

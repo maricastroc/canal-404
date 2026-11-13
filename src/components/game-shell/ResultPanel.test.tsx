@@ -32,3 +32,45 @@ describe("ResultPanel next program", () => {
     expect(screen.queryByRole("complementary", { name: "Depois do intervalo" })).not.toBeInTheDocument();
   });
 });
+
+describe("ResultPanel stars and mission", () => {
+  const WON: GameResult = {
+    won: true,
+    score: 1150,
+    stars: 2,
+    breakdown: [{ label: "Máquina funcionou", value: 1000 }],
+    level: { index: 1, id: "pixel", title: "Bom dia, Pixel", total: 6 },
+    summary: "Você usou 2 peças.",
+    starHint: "Com 1 peça só, a fase vale 3 estrelas.",
+  };
+  const MISSION = {
+    day: "2026-11-13",
+    key: "lab-pixel-two-ramps",
+    version: 1,
+    game: "bad-ideas-lab" as const,
+    level: "pixel",
+    title: "Rampa dupla",
+    objective: "Acorde o Pixel usando as duas rampas.",
+    goal: [{ stat: "parts" as const, op: "min" as const, value: 2 }],
+    ranked: true,
+    endsAt: "2026-11-14T03:00:00.000Z",
+    closesAt: "2026-11-14T04:00:00.000Z",
+  };
+
+  async function show(mission: typeof MISSION | null) {
+    vi.resetModules();
+    const { ResultPanel } = await import("./Panels");
+    render(<ResultPanel game={getGame("bad-ideas-lab")!} result={WON} isRecord={false} recordNote="" mission={mission} onRestart={vi.fn()} />);
+  }
+
+  it("shows how to earn more stars in a normal run", async () => {
+    await show(null);
+    expect(screen.getByText("Com 1 peça só, a fase vale 3 estrelas.")).toBeInTheDocument();
+  });
+
+  it("drops the star hint when the mission asks for more parts", async () => {
+    await show(MISSION);
+    expect(screen.queryByText("Com 1 peça só, a fase vale 3 estrelas.")).not.toBeInTheDocument();
+    expect(screen.getByText("Você usou 2 peças.")).toBeInTheDocument();
+  });
+});

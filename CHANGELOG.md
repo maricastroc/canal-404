@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Fase, missão e placar falando a mesma língua
+- **A missão diz o que pedia.** A missed mission now reads "Missão não cumprida" and names both the number and the target, such as "A máquina usou 1 peça, e a missão pede pelo menos 2 peças.", in every game.
+- **Missions that cost stars say so.** Laboratório missions that need more parts than three stars allow explain this before the run, and the result no longer suggests using fewer parts during them. Operação: Recreio and Guerra do Pijama missions show their own rules on the intro as well as on `/mission`.
+- **Each board says which board it is**: "Placar da fase", "Placar da arena" or "Placar do jogo". A first entry reads "Você entrou no placar", being alone reads "Placar inaugurado", and the "Recorde!" stamp is kept for beating someone.
+- **Seconds instead of steps.** Laboratório boards and the record arcade show the ball's time ("4,18 s") instead of machine steps.
+- **Clearer result notes**: "Primeira vitória nesta fase. Fase 3 liberada!", "Ligou e funcionou de primeira", a hint for the next star in Laboratório, Guerra de Lanche, Operação: Recreio and Guerra do Pijama, and no "Novo recorde!" sticker on a first match.
+
 ### Um destaque só: a missão
 - **No more "Jogo da semana".** The menu item, the catalog ribbon, the TV badge and the "Jogar …" buttons on the About and coming-soon pages are gone, so the Missão 404 do Dia is the portal's only featured game.
 - **The TV opens on the mission.** When there is a mission you haven't completed, the room TV starts on Canal 09. Otherwise it starts on the first game you haven't played, marked "Inédito", or on the one you played least. The "A seguir" suggestions follow the catalog order instead of the week.

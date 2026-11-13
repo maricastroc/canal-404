@@ -986,6 +986,7 @@ export class ArenaScene extends Phaser.Scene {
           ? { title: "Quase!", text: `${winnerName} ficou de pé no final. Mais uma partida?` }
           : { title: "Fora da guerra!", text: "Você foi o primeiro a cair. Mais uma partida?" },
       summary: `Tempo ${fmt(this.matchTime)} · Travesseiros ${p.throws} · Acertos ${hits}`,
+      ...(won && stars < 3 ? { starHint: stars === 1 ? "Termine com 4 de energia ou mais para 2 estrelas, e com 7 para 3." : "Termine com 7 de energia ou mais para 3 estrelas." } : {}),
       alt: "Trocar personagem",
       featured: p.kid,
     };

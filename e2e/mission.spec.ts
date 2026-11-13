@@ -109,11 +109,11 @@ test.describe("daily mission with the backend", () => {
     const missed = await placeRamp(page, SLOW_RAMP);
     const missionLine = missed.getByRole("region", { name: "Missão 404 do dia" });
     await expect(missionLine).toContainText("Falta seu apelido");
-    const board = missed.getByRole("region", { name: "Placar do canal" });
+    const board = missed.getByRole("region", { name: "Placar da fase" });
     await board.getByLabel("Seu apelido").fill(nickname());
     await board.getByRole("button", { name: "Entrar no placar" }).click();
-    await expect(missionLine.getByRole("status")).toContainText("Quase!", { timeout: simTime(15_000) });
-    await expect(missionLine.getByRole("status")).toContainText("A bolinha levou 4,27 s.");
+    await expect(missionLine.getByRole("status")).toContainText("Missão não cumprida", { timeout: simTime(15_000) });
+    await expect(missionLine.getByRole("status")).toContainText("A bolinha levou 4,27 s, e a missão pede até 4,20 s.");
 
     await missed.getByRole("button", { name: "Tentar a missão de novo" }).click();
     await expect(missed).toBeHidden();
@@ -160,10 +160,10 @@ test.describe("daily mission with the backend", () => {
     const over = page.getByRole("dialog", { name: /^Fim de jogo/ });
     await pressOnStageUntil(page, "Space", over);
     const line = over.getByRole("region", { name: "Missão 404 do dia" });
-    const board = over.getByRole("region", { name: "Placar do canal" });
+    const board = over.getByRole("region", { name: "Placar do jogo" });
     await board.getByLabel("Seu apelido").fill(nickname());
     await board.getByRole("button", { name: "Entrar no placar" }).click();
-    await expect(line.getByRole("status")).toContainText("Quase!", { timeout: simTime(15_000) });
+    await expect(line.getByRole("status")).toContainText("Missão não cumprida", { timeout: simTime(15_000) });
     await expect(line.getByRole("status")).toContainText("A munição acabou antes da última rodada.");
 
     const leave = await page.request.delete("/api/players/me");
@@ -186,10 +186,10 @@ test.describe("daily mission with the backend", () => {
     await expect(caught).toBeVisible({ timeout: simTime(60_000) });
     await page.keyboard.up("ArrowRight");
     const line = caught.getByRole("region", { name: "Missão 404 do dia" });
-    const board = caught.getByRole("region", { name: "Placar do canal" });
+    const board = caught.getByRole("region", { name: "Placar da fase" });
     await board.getByLabel("Seu apelido").fill(nickname());
     await board.getByRole("button", { name: "Entrar no placar" }).click();
-    await expect(line.getByRole("status")).toContainText("Quase!", { timeout: simTime(15_000) });
+    await expect(line.getByRole("status")).toContainText("Missão não cumprida", { timeout: simTime(15_000) });
     await expect(line.getByRole("status")).toContainText("Os corações do Bruno acabaram antes do fim da fase.");
 
     const retry = page.waitForResponse((r) => r.url().endsWith("/api/runs/tickets") && r.request().method() === "POST");
@@ -225,10 +225,10 @@ test.describe("daily mission with the backend", () => {
     await expect(out).toBeVisible({ timeout: simTime(120_000) });
     await expect(out.getByRole("button", { name: "Trocar personagem" })).toHaveCount(0);
     const line = out.getByRole("region", { name: "Missão 404 do dia" });
-    const board = out.getByRole("region", { name: "Placar do canal" });
+    const board = out.getByRole("region", { name: "Placar da arena" });
     await board.getByLabel("Seu apelido").fill(nickname());
     await board.getByRole("button", { name: "Entrar no placar" }).click();
-    await expect(line.getByRole("status")).toContainText("Quase!", { timeout: simTime(15_000) });
+    await expect(line.getByRole("status")).toContainText("Missão não cumprida", { timeout: simTime(15_000) });
     await expect(line.getByRole("status")).toContainText("Sua energia acabou antes do fim da guerra.");
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("canal404:pajama-war:v1") ?? "{}") as { lastKid?: string; matches?: number });
     expect(saved).toMatchObject({ lastKid: "nico", matches: 2 });

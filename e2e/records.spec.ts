@@ -40,11 +40,11 @@ test.describe("record arcade", () => {
     await expect(rows.nth(1)).toContainText("Lina Turbo");
     await expect(rows.nth(1)).toContainText("#4270");
     await expect(rows.nth(1)).toContainText("1 peça");
-    await expect(rows.nth(1)).toContainText("98 passos");
+    await expect(rows.nth(1)).toContainText("1,63 s");
     await expect(rows.nth(1)).toContainText("máquina testada pelo canal");
     await expect(rows.last()).toContainText("14º");
     await expect(rows.last()).toContainText("Você");
-    await expect(page.getByRole("region", { name: "Seu lugar" })).toContainText("14º de 23: 1 peça · 190 passos");
+    await expect(page.getByRole("region", { name: "Seu lugar" })).toContainText("14º de 23: 1 peça · 3,17 s");
     const rules = page.getByRole("region", { name: "Regras da casa" });
     await expect(rules).toContainText("Menos peças vence.");
     await expect(rules).toContainText("monta sua máquina de novo");
@@ -134,7 +134,7 @@ test.describe("record arcade with the backend", () => {
     await page.goto("/records?game=bad-ideas-lab&level=juice");
     const mine = page.getByRole("region", { name: "Laboratório de Péssimas Ideias" }).getByRole("row").filter({ hasText: nickname }).first();
     await expect(mine).toContainText("Você");
-    await expect(mine).toContainText("98 passos");
+    await expect(mine).toContainText("1,63 s");
     await expect(mine).toContainText("máquina testada pelo canal");
     expect((await page.request.delete("/api/players/me")).ok()).toBe(true);
   });

@@ -16,6 +16,7 @@ import type { GameMeta } from "@/games/registry";
 import type { GameResult } from "@/games/types";
 import { useSound } from "@/lib/audio/hooks";
 import type { JoinOutcome } from "@/lib/competition/client";
+import { missionOverridesStars } from "@/lib/missions/goals";
 import type { MissionState, MissionView } from "@/lib/missions/types";
 import { BoardLine, type BoardState } from "./BoardLine";
 import { MissionBrief, MissionLine } from "./MissionLine";
@@ -436,6 +437,11 @@ export function ResultPanel({
           {result.summary}
         </motion.p>
       )}
+      {result.starHint && !(mission && missionOverridesStars(mission)) ? (
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} className="copy-sm mt-0.5 text-center text-ink-soft">
+          {result.starHint}
+        </motion.p>
+      ) : null}
       <dl className="mt-5 divide-y-2 divide-dashed divide-ink/25 rounded-xl border-[3px] border-ink bg-cream-2 px-4 py-2">
         {result.breakdown.map((row, i) => (
           <motion.div
@@ -445,7 +451,7 @@ export function ResultPanel({
             transition={{ delay: 0.3 + i * 0.12 }}
             className="flex items-baseline justify-between gap-4 py-1.5"
           >
-            <dt className="text-ink-soft">{row.label}</dt>
+            <dt className="copy text-ink-soft">{row.label}</dt>
             <dd className={`font-display text-lg tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
               {row.value < 0 ? "−" : "+"}
               {Math.abs(row.value).toLocaleString("pt-BR")}
@@ -459,7 +465,7 @@ export function ResultPanel({
           </dd>
         </div>
       </dl>
-      {recordNote && <p className="mt-2 text-sm text-ink-soft">{recordNote}</p>}
+      {recordNote && <p className="copy-sm mt-2 text-ink-soft">{recordNote}</p>}
       {mission ? <MissionLine view={mission} board={board ?? null} /> : null}
       {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
       {!onNext && <NextProgram current={game.slug} />}

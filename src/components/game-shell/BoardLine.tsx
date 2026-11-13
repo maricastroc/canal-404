@@ -13,10 +13,15 @@ import { recordsHref } from "@/lib/competition/links";
 
 export type BoardState = { phase: "sending" } | { phase: "join" } | { phase: "done"; outcome: SubmitOutcome };
 
-type Line = { headline?: string; text: string; rival?: string; href?: string; live?: boolean; offline?: boolean; record?: boolean };
+type Line = { headline?: string; text: string; rival?: string; href?: string; live?: boolean; offline?: boolean; record?: boolean; stamp?: boolean };
+
+export function boardLabel(game: GameMeta) {
+  return game.levels ? `Placar da ${game.levelWord ?? "fase"}` : "Placar do jogo";
+}
 
 export function describeBoard(game: GameMeta, outcome: SubmitOutcome): Line | null {
   const word = game.levelWord ?? "fase";
+  const here = game.levels ? `desta ${word}` : "deste jogo";
   switch (outcome.kind) {
     case "queued":
       return { text: "Placar fora do ar. Guardamos o resultado e enviamos quando o sinal voltar.", offline: true };
@@ -28,7 +33,7 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome): Line | nu
       if (outcome.why === "unconfigured") return null;
       if (outcome.why === "expired") return { text: "Esse resultado demorou demais para chegar ao placar." };
       if (outcome.why === "limited") return { text: outcome.message ?? "Muitos envios seguidos. Espere um pouco." };
-      return { text: "O placar estava fora do ar quando a partida começou. Este resultado ficou só neste computador.", offline: true };
+      return { text: "O placar estava fora do ar quando a partida começou. Este resultado ficou só no seu progresso.", offline: true };
     case "accepted": {
       const { run, board } = outcome.response;
       if (!board) return { text: "Fase de treino não entra no placar." };
@@ -37,24 +42,22 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome): Line | nu
       const slug = isGameSlug(game.slug) ? game.slug : null;
       const best = board.best && slug ? formatBest(slug, board.best.metrics) : "";
       const place = board.position ? `${ordinal(board.position)} de ${board.total.toLocaleString("pt-BR")}` : "";
+      const alone = board.position === 1 && board.total === 1;
       const href = slug ? recordsHref(slug, levelOfBoard(board.id)) : undefined;
       const leader = board.leader;
       const rival = leader && !leader.you && slug ? `Recorde do canal: ${leader.nickname} #${leader.tag} · ${formatBest(slug, leader.metrics)}.` : undefined;
       if (run.ineligible === "not_won") {
-        return { text: board.best ? `Só vitórias entram no placar desta ${word}. Seu melhor: ${best} (${place}).` : `Só vitórias entram no placar desta ${word}.`, rival, href };
+        return { text: board.best ? `Só vitórias entram no placar ${here}. Seu melhor continua ${best}, ${place}.` : `Só vitórias entram no placar ${here}.`, rival, href };
       }
       if (board.improved && board.position) {
-        return {
-          headline: board.position === 1 ? "Primeiro lugar no placar!" : "Novo recorde pessoal!",
-          text: `${best}. Você está em ${place}.`,
-          rival,
-          href,
-          live: true,
-          record: true,
-        };
+        if (alone) return { headline: "Placar inaugurado", text: `${best}. Por enquanto, o placar ${here} é só seu.`, href, live: true, record: true };
+        if (board.position === 1) return { headline: "Recorde do canal!", text: `${best}. Você passou na frente de todo mundo: 1º de ${board.total.toLocaleString("pt-BR")}.`, href, live: true, record: true, stamp: true };
+        if (!board.previous) return { headline: "Você entrou no placar", text: `${best}. Você está em ${place}.`, rival, href, live: true };
+        return { headline: "Novo recorde pessoal!", text: `${best}. Agora você está em ${place}.`, rival, href, live: true, record: true };
       }
-      const holder = leader?.you ? "Você continua com o recorde do canal." : undefined;
-      if (board.best) return { text: `Seu melhor no placar: ${best}. Você está em ${place}.`, rival: rival ?? holder, href, live: true };
+      if (board.best && alone) return { text: `Seu melhor continua ${best}. Por enquanto, o placar ${here} é só seu.`, href, live: true };
+      const holder = leader?.you ? "O recorde do canal continua com você." : undefined;
+      if (board.best) return { text: `Seu melhor continua ${best}, ${place}.`, rival: rival ?? holder, href, live: true };
       return { text: "Resultado registrado no placar.", rival, href, live: true };
     }
   }
@@ -81,6 +84,7 @@ function RecordStamp() {
 }
 
 export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: BoardState; onJoin: (nickname: string) => Promise<JoinOutcome> }) {
+  const label = boardLabel(game);
   const line =
     state.phase === "sending"
       ? ({ text: "Transmitindo seu resultado…", live: true } satisfies Line)
@@ -90,14 +94,14 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
   if (state.phase === "done" && !line) return null;
   return (
     <motion.section
-      aria-label="Placar do canal"
+      aria-label={label}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
       className="on-dark mt-3 rounded-xl border-[3px] border-ink bg-plum-900 p-3 text-cream shadow-[var(--shadow-ink-sm)] scanlines"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-md border-2 border-ink bg-sun px-1.5 font-display text-xs uppercase leading-5 tracking-wider text-ink">Placar do canal</span>
+        <span className="rounded-md border-2 border-ink bg-sun px-1.5 font-display text-xs uppercase leading-5 tracking-wider text-ink">{label}</span>
         {line?.live ? (
           <span className="flex items-center gap-1 font-display text-xs uppercase leading-5 tracking-wider text-lime">
             <span aria-hidden className="size-2 animate-pulse rounded-full bg-lime" /> Ao vivo
@@ -111,7 +115,7 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
       </div>
       {state.phase === "join" ? (
         <>
-          <p className="mt-1.5 font-semibold leading-snug">Quer ver seu nome no placar do canal? Escolha um apelido e este resultado entra na disputa.</p>
+          <p className="copy mt-1.5 font-semibold">Quer ver seu nome no placar? Escolha um apelido e este resultado entra na disputa.</p>
           <NicknameForm dark submitLabel="Entrar no placar" onSubmit={onJoin} />
         </>
       ) : (
@@ -121,11 +125,11 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
             {line?.headline ? (
               <p className={`flex flex-wrap items-center gap-2 font-display text-lg uppercase tracking-wide ${line.record ? "text-sun" : "text-cream"}`}>
                 {line.headline}
-                {line.record ? <RecordStamp /> : null}
+                {line.stamp ? <RecordStamp /> : null}
               </p>
             ) : null}
-            <p className="font-semibold">{line?.text}</p>
-            {line?.rival ? <p className="mt-1 text-sm text-cream-2">{line.rival}</p> : null}
+            <p className="copy font-semibold">{line?.text}</p>
+            {line?.rival ? <p className="copy-sm mt-1 text-cream-2">{line.rival}</p> : null}
           </div>
         </div>
       )}

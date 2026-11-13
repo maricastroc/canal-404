@@ -17,6 +17,7 @@ export type GameResult = {
   level?: { index: number; id: string; title: string; total: number };
   copy?: { title: string; text: string };
   summary?: string;
+  starHint?: string;
   alt?: string;
   featured?: string;
   restartLabel?: string;
