@@ -1,4 +1,5 @@
 import { KID_INFO, KIDS, type KidId } from "@/games/pajama-war/config";
+import { LEVELS, starsFor } from "@/games/bad-ideas-lab/levels";
 import type { GameSlug } from "@/lib/competition/boards";
 import { machineSeconds } from "@/lib/competition/format";
 
@@ -196,14 +197,23 @@ export function describeShortfall(check: Extract<GoalCheck, { passed: false }>, 
   return sentence(target ? `${actual}, e ${target}` : actual);
 }
 
-export function missionOverridesStars(mission: { game: GameSlug; goal: readonly Condition[] }) {
-  return mission.game === "bad-ideas-lab" && mission.goal.some((c) => c.stat === "parts" && c.op === "min");
+export function missionOverridesStars(mission: { game: GameSlug; level?: string | null; goal: readonly Condition[] }) {
+  const parts = mission.game === "bad-ideas-lab" ? mission.goal.find((c) => c.stat === "parts" && c.op === "min") : undefined;
+  const level = LEVELS.find((l) => l.id === mission.level);
+  return Boolean(parts && level && starsFor(parts.value, level.par) < 3);
 }
 
-export function missionNotes(mission: { game: GameSlug; goal: readonly Condition[]; setup?: { character?: string } }) {
+export function missionNotes(mission: { game: GameSlug; level?: string | null; goal: readonly Condition[]; setup?: { character?: string } }) {
   const notes: string[] = [];
-  if (missionOverridesStars(mission)) {
-    notes.push("Para cumprir, a máquina vai usar mais peças do que as 3 estrelas permitem. Tudo bem: a missão conta à parte das estrelas.");
+  const parts = mission.game === "bad-ideas-lab" ? mission.goal.find((c) => c.stat === "parts" && c.op === "min") : undefined;
+  const level = LEVELS.find((l) => l.id === mission.level);
+  if (parts && level) {
+    const stars = starsFor(parts.value, level.par);
+    if (stars < 3) {
+      notes.push(
+        `Nesta missão, você precisa usar ${plural(parts.value, "peça", "peças")}. Por isso, pode ganhar até ${plural(stars, "estrela", "estrelas")} na fase. Mas fique tranquilo: para cumprir a missão, o que conta é completar o desafio!`,
+      );
+    }
   }
   if (mission.game === "operation-recess") notes.push("Na missão, toda tentativa começa do início da fase: os sinos tocam, mas não salvam.");
   const kid = mission.setup?.character;
