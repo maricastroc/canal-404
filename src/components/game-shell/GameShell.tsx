@@ -261,21 +261,31 @@ export function GameShell({ slug }: { slug: string }) {
                 if (r.level) {
                   const saved = recordLevelResult(slug, r.level.id, r);
                   isRecord = saved.isRecord && saved.previous.stars > 0;
-                  const best = saved.record.levels?.[r.level.id];
-                  note = r.won
-                    ? saved.previous.stars === 0
-                      ? `${word === "arena" ? "Arena vencida" : "Fase concluída"} pela primeira vez neste computador.`
-                      : `Seu melhor nesta ${word}: ${best?.stars ?? r.stars} ${best?.stars === 1 ? "estrela" : "estrelas"}.`
-                    : "";
+                  const best = saved.record.levels?.[r.level.id]?.stars ?? r.stars;
+                  const Word = word === "arena" ? "Arena" : "Fase";
+                  const stars = (n: number) => `${n} ${n === 1 ? "estrela" : "estrelas"}`;
+                  note = !r.won
+                    ? ""
+                    : saved.previous.stars === 0
+                      ? r.level.index + 1 < r.level.total && !getGame(slug)?.levels?.slice(r.level.index + 1).some((l) => (saved.record.levels?.[l.id]?.stars ?? 0) > 0)
+                        ? `Primeira vitória nesta ${word}. ${Word} ${r.level.index + 2} liberada!`
+                        : `Primeira vitória nesta ${word}.`
+                      : r.stars > saved.previous.stars
+                        ? `Antes, seu melhor aqui era ${stars(saved.previous.stars)}.`
+                        : isRecord
+                          ? `Mesmas ${stars(r.stars)} de antes, com mais pontos.`
+                          : best > r.stars
+                            ? `Seu melhor nesta ${word} continua sendo ${stars(best)}.`
+                            : "";
                   setHighScore(saved.record.highScore);
                 } else {
                   const saved = recordGameResult(slug, r);
-                  isRecord = saved.isRecord;
+                  isRecord = saved.isRecord && saved.previousBest > 0;
                   note = saved.isRecord
                     ? saved.previousBest > 0
                       ? `Seu recorde anterior era ${saved.previousBest.toLocaleString("pt-BR")}.`
-                      : "Primeiro recorde registrado neste computador."
-                    : `Recorde atual: ${saved.record.highScore.toLocaleString("pt-BR")}.`;
+                      : "Primeira partida registrada. Esse é o recorde a bater."
+                    : `Seu recorde continua ${saved.record.highScore.toLocaleString("pt-BR")}.`;
                   setHighScore(saved.record.highScore);
                   instanceRef.current?.setHighScore(saved.record.highScore);
                 }

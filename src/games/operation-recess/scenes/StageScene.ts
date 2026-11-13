@@ -634,6 +634,7 @@ export class StageScene extends Phaser.Scene {
       level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
       copy: last ? { title: "Você conseguiu!", text: "O recreio está de volta!" } : { title: "Boa!", text: `${this.level.win} Próxima fase!` },
       summary: `Monitores: ${this.kills}. Batidas: ${this.hits}.`,
+      ...(stars < 3 ? { starHint: stars === 1 ? "Com até 3 batidas, a fase vale 2 estrelas. Com até 1, vale 3." : "Com até 1 batida, a fase vale 3 estrelas." } : {}),
     };
     if (last) {
       this.celebrate();

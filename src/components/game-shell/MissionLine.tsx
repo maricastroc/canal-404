@@ -6,7 +6,7 @@ import { StarBadge } from "@/components/art/Badges";
 import { MissionIcon, OfflineIcon } from "@/components/art/Icons";
 import { StateChip, missionPlace } from "@/components/missions/parts";
 import { missionAchievement } from "@/lib/missions/achievements";
-import { describeShortfall } from "@/lib/missions/goals";
+import { describeShortfall, missionNotes } from "@/lib/missions/goals";
 import { dayName, formatMissionBest, formatPlace } from "@/lib/missions/format";
 import type { MissionState, MissionView } from "@/lib/missions/types";
 import type { BoardState } from "./BoardLine";
@@ -21,15 +21,16 @@ export function describeMission(view: MissionView, board: BoardState | null): Li
   switch (outcome.kind) {
     case "accepted": {
       const mission = outcome.response.mission;
-      if (!mission) return { tone: "off", headline: "Fora da missão", text: "Esta partida não valeu para a missão. Ela mudou enquanto você jogava?" };
+      if (!mission) return { tone: "off", headline: "Fora da missão", text: "Esta partida não entrou na missão. Ela pode ter trocado enquanto você jogava." };
       if (mission.status === "late") return { tone: "off", headline: "A missão já tinha mudado", text: `A partida chegou depois do fim da missão de ${dayName(mission.day)}. Ela vale só para o placar normal.` };
       if (mission.status === "missed") {
-        const why = mission.shortfall ? describeShortfall({ passed: false, ...mission.shortfall }, view.game) : "Ainda não foi dessa vez.";
-        return { tone: "miss", headline: "Quase!", text: `${why} Tente de novo: a missão vale até a meia-noite.` };
+        const why = mission.shortfall ? describeShortfall({ passed: false, ...mission.shortfall }, view.game) : "A partida não cumpriu o que a missão pede.";
+        return { tone: "miss", headline: "Missão não cumprida", text: `${why} Dá para tentar de novo até a meia-noite.` };
       }
-      const place = mission.best ? `${formatMissionBest(view.game, mission.best.metrics)}, ${formatPlace(mission.best.position, mission.best.total)} no placar do dia` : "";
-      if (mission.firstTime) return { tone: "done", headline: "Missão cumprida!", text: place ? `${place[0].toUpperCase()}${place.slice(1)}.` : "Volte amanhã para a próxima.", stamp: true };
-      return { tone: "done", headline: mission.improved ? "Seu melhor do dia!" : "Missão já cumprida hoje", text: place ? `${place[0].toUpperCase()}${place.slice(1)}.` : "Ela já está no seu boletim." };
+      const best = mission.best ? `${formatMissionBest(view.game, mission.best.metrics)}, ${formatPlace(mission.best.position, mission.best.total)} no placar do dia` : null;
+      if (mission.firstTime) return { tone: "done", headline: "Missão cumprida!", text: best ? `${best[0].toUpperCase()}${best.slice(1)}.` : "Ela já entrou no seu boletim.", stamp: true };
+      if (mission.improved) return { tone: "done", headline: "Seu melhor do dia!", text: best ? `Missão cumprida de novo, e melhor: ${best}.` : "Missão cumprida de novo, e melhor." };
+      return { tone: "done", headline: "Missão já cumprida hoje", text: best ? `Esta partida não superou seu melhor: ${best}.` : "Ela já está no seu boletim." };
     }
     case "rejected":
       return { tone: "off", headline: "Não valeu", text: "O placar não aceitou este resultado, então a missão também não conta." };
@@ -74,7 +75,7 @@ export function MissionLine({ view, board }: { view: MissionView; board: BoardSt
           {line.tone === "off" ? <OfflineIcon className="size-5" /> : null}
           {line.headline}
         </p>
-        <p className="font-semibold">{line.text}</p>
+        <p className="copy font-semibold">{line.text}</p>
         {unlocked.length ? (
           <ul aria-label="Novas conquistas" className="mt-2 flex flex-wrap gap-2">
             {unlocked.map((id, i) => {
@@ -120,6 +121,7 @@ export function MissionLine({ view, board }: { view: MissionView; board: BoardSt
 
 export function MissionBrief({ view, state }: { view: MissionView; state: MissionState | null }) {
   const place = missionPlace(view);
+  const notes = missionNotes(view);
   return (
     <section aria-labelledby="mission-brief-title" className="on-dark mt-4 overflow-hidden rounded-xl border-[3px] border-ink bg-plum-800 text-cream shadow-[var(--shadow-ink-sm)]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b-[3px] border-ink bg-tomato px-3 py-1">
@@ -134,7 +136,14 @@ export function MissionBrief({ view, state }: { view: MissionView; state: Missio
         <h2 id="mission-brief-title" className="font-display text-3xl uppercase leading-none tracking-wide text-sun">
           {view.title}
         </h2>
-        <p className="mt-1.5 font-hand text-xl leading-snug text-cream">{view.objective}</p>
+        <p className="copy-lede mt-1.5 text-cream">{view.objective}</p>
+        {notes.length ? (
+          <ul className="copy-sm mt-2 space-y-1 border-t-2 border-dashed border-plum-500 pt-2 text-cream-2">
+            {notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </section>
   );

@@ -6,7 +6,7 @@ import { KIDS } from "@/games/pajama-war/config";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { hasLevel, judgeRun, type RunClaim } from "@/lib/competition/rules";
 import { CATALOG, MISSION_GAMES, missionByKey, type MissionDef } from "./catalog";
-import { checkGoal, isCondition } from "./goals";
+import { checkGoal, isCondition, missionOverridesStars } from "./goals";
 
 const LAB_PROOFS: Record<string, PlacedPart[]> = {
   "lab-finale-every-part": [
@@ -35,6 +35,25 @@ function labClaim(level: string, parts: PlacedPart[]): RunClaim {
     replay: { kind: "lab-placements", version: 1, parts },
   };
 }
+
+describe("lab missions that ask for parts", () => {
+  it("only claim to cost stars when they really need more parts than three stars allow", () => {
+    for (const def of CATALOG.filter((m) => m.game === "bad-ideas-lab")) {
+      const level = LEVELS.find((l) => l.id === def.level)!;
+      const min = def.goal.find((c) => c.stat === "parts" && c.op === "min");
+      expect(missionOverridesStars(def), def.key).toBe(Boolean(min));
+      if (min) expect(min.value, def.key).toBeGreaterThan(level.par);
+    }
+  });
+
+  it("ask for every part in the box when the objective names them all", () => {
+    for (const def of CATALOG.filter((m) => m.game === "bad-ideas-lab" && m.goal.some((c) => c.stat === "untouched"))) {
+      const level = LEVELS.find((l) => l.id === def.level)!;
+      const total = Object.values(level.inventory).reduce((a, b) => a + (b ?? 0), 0);
+      expect(def.goal.find((c) => c.stat === "parts" && c.op === "min")?.value, def.key).toBe(total);
+    }
+  });
+});
 
 function lunch(overrides: Record<string, number> = {}): RunClaim {
   const s = { hits: 30, hitPoints: 4800, interrupts: 2, interruptPoints: 200, comboPoints: 900, lives: 1, hitsTaken: 2, lunchLadyHits: 1, bestStreak: 6, throws: 44, timeMs: 75_000, ...overrides };

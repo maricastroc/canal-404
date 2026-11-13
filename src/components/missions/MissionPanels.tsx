@@ -5,7 +5,8 @@ import { LockedBadge, StarBadge } from "@/components/art/Badges";
 import { CardIcon, VerifiedIcon } from "@/components/art/Icons";
 import { MISSION_ACHIEVEMENTS } from "@/lib/missions/achievements";
 import { dayName, formatMissionBest, formatPlace, hourOf } from "@/lib/missions/format";
-import type { MissionTodayResponse, RecentDay } from "@/lib/missions/types";
+import { missionNotes } from "@/lib/missions/goals";
+import type { MissionTodayResponse, MissionView, RecentDay } from "@/lib/missions/types";
 
 function plural(n: number, one: string, many: string) {
   return `${n.toLocaleString("pt-BR")} ${n === 1 ? one : many}`;
@@ -140,14 +141,9 @@ function Seals({ unlocked, championDays }: { unlocked: string[]; championDays: n
   );
 }
 
-const GAME_RULES: Partial<Record<string, string>> = {
-  "operation-recess": "Na Operação: Recreio, toda tentativa começa do início da fase. Os sinos tocam, mas não salvam.",
-  "pajama-war": "Na Guerra do Pijama, algumas missões escolhem a criança por você. Sua favorita continua a mesma.",
-};
-
-export function MissionRules({ game }: { game: string }) {
-  const replayed = game === "bad-ideas-lab";
-  const extra = GAME_RULES[game];
+export function MissionRules({ mission }: { mission: MissionView }) {
+  const replayed = mission.game === "bad-ideas-lab";
+  const notes = missionNotes(mission);
   return (
     <section aria-labelledby="mission-rules-title" className="relative -rotate-1 rounded-2xl border-[3px] border-ink bg-paper p-4 pt-5 text-ink shadow-[var(--shadow-ink)]">
       <span aria-hidden className="absolute -top-3 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2 bg-lime/85" />
@@ -158,7 +154,9 @@ export function MissionRules({ game }: { game: string }) {
         <li>Uma missão por dia, igual para todo mundo. Ela troca à meia-noite, no horário de Fortaleza.</li>
         <li>Jogue pelo botão da missão. Começou antes da meia-noite? Vale se terminar até 1h.</li>
         <li>Tente quantas vezes quiser: no placar fica a sua melhor partida.</li>
-        {extra ? <li>{extra}</li> : null}
+        {notes.map((note) => (
+          <li key={note}>{note}</li>
+        ))}
       </ul>
       <p className="copy-sm mt-3 flex gap-1.5 border-t-2 border-dashed border-ink/25 pt-2.5 text-ink-soft">
         <VerifiedIcon className="mt-0.5 size-4 shrink-0 text-mint-deep" />

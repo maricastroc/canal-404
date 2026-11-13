@@ -9,7 +9,7 @@ describe("competition formatting", () => {
   });
 
   it("describes the best result with each game's own metrics", () => {
-    expect(formatBest("bad-ideas-lab", [1, 312])).toBe("1 peça · 312 passos");
+    expect(formatBest("bad-ideas-lab", [1, 312])).toBe("1 peça · 5,20 s");
     expect(formatBest("dead-end-street", [2150, 4])).toBe("2.150 pts · 4 lançamentos");
     expect(formatBest("operation-recess", [0, 83_000, 2900])).toBe("0 batidas · 1min 23s");
     expect(formatBest("pajama-war", [9, 51_000, 12])).toBe("9 de energia · 51s");

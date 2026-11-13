@@ -41,14 +41,14 @@ describe("describeMission", () => {
   });
 
   it("does not celebrate twice", () => {
-    expect(describeMission(VIEW, done({ best: BEST }))).toMatchObject({ headline: "Missão já cumprida hoje" });
-    expect(describeMission(VIEW, done({ best: BEST, improved: true }))).toMatchObject({ headline: "Seu melhor do dia!" });
+    expect(describeMission(VIEW, done({ best: BEST }))).toMatchObject({ headline: "Missão já cumprida hoje", text: "Esta partida não superou seu melhor: 1 peça · 4,08 s, 3º de 12 no placar do dia." });
+    expect(describeMission(VIEW, done({ best: BEST, improved: true }))).toMatchObject({ headline: "Seu melhor do dia!", text: "Missão cumprida de novo, e melhor: 1 peça · 4,08 s, 3º de 12 no placar do dia." });
   });
 
-  it("explains a miss with the measured number", () => {
+  it("names a miss as the mission's, with the number and the target", () => {
     const line = describeMission(VIEW, done({ status: "missed", shortfall: { condition: VIEW.goal[0], actual: 256 } }));
-    expect(line).toMatchObject({ tone: "miss", headline: "Quase!" });
-    expect(line.text).toContain("A bolinha levou 4,27 s.");
+    expect(line).toMatchObject({ tone: "miss", headline: "Missão não cumprida" });
+    expect(line.text).toBe("A bolinha levou 4,27 s, e a missão pede até 4,20 s. Dá para tentar de novo até a meia-noite.");
   });
 
   it("says when the mission changed or the result came too late", () => {
@@ -73,6 +73,11 @@ describe("mission panels", () => {
     expect(region).toHaveTextContent("Despertador ligeiro");
     expect(screen.getByRole("status")).toHaveTextContent("Missão cumprida!");
     expect(screen.getByRole("link", { name: "Ver a Missão 404" })).toHaveAttribute("href", "/mission");
+  });
+
+  it("warns before the run when the mission costs the level's stars", () => {
+    render(<MissionBrief view={{ ...VIEW, key: "lab-pixel-two-ramps", title: "Rampa dupla", goal: [{ stat: "parts", op: "min", value: 2 }, { stat: "untouched", op: "max", value: 0 }] }} state="new" />);
+    expect(screen.getByRole("region", { name: "Rampa dupla" })).toHaveTextContent("a missão conta à parte das estrelas");
   });
 
   it("briefs the mission before the run with its level and state", () => {

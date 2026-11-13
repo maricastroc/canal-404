@@ -1525,8 +1525,8 @@ export class LabScene extends Phaser.Scene {
     const firstTry = this.runs === 1;
     const breakdown = [
       { label: "Máquina funcionou", value: 1000 },
-      { label: saved === 1 ? "Sobrou 1 peça" : `Sobraram ${saved} peças`, value: saved * 150 },
-      { label: "Deu certo de primeira", value: firstTry ? 300 : 0 },
+      { label: saved === 1 ? "Sobrou 1 peça na caixa" : `Sobraram ${saved} peças na caixa`, value: saved * 150 },
+      { label: "Ligou e funcionou de primeira", value: firstTry ? 300 : 0 },
     ].filter((row, i) => i === 0 || row.value > 0);
     this.starStamp(stars);
     const score = breakdown.reduce((a, b) => a + b.value, 0);
@@ -1544,7 +1544,8 @@ export class LabScene extends Phaser.Scene {
       achievements,
       level: { index: this.levelIndex, id: level.id, title: level.title, total: LEVELS.length },
       copy: { title: "Funcionou!", text: level.win },
-      summary: `Você usou ${used} ${used === 1 ? "peça" : "peças"}. Para 3 estrelas: ${level.par === 1 ? "1 peça" : `até ${level.par} peças`}.`,
+      summary: `Você usou ${used} ${used === 1 ? "peça" : "peças"}.`,
+      ...(stars < 3 ? { starHint: `Com ${level.par === 1 ? "1 peça só" : `até ${level.par} peças`}, a fase vale 3 estrelas.` } : {}),
     };
     this.time.delayedCall(Math.max(hold, 1700) + 900, () => this.ctx.onEvent({ type: "finished", result }));
   }

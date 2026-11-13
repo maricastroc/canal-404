@@ -81,7 +81,7 @@ export function MissionHub() {
       </div>
       <div className="flex flex-col gap-6 lg:top-6 lg:col-start-2 lg:[@media(min-height:54rem)]:sticky lg:row-span-3 lg:row-start-1 lg:self-start">
         <YourCard data={data} joined={joined} />
-        <MissionRules game={data.mission.game} />
+        <MissionRules mission={data.mission} />
       </div>
       {competition.player ? (
         <div className="min-w-0 lg:col-start-1 lg:row-start-3">

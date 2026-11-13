@@ -259,7 +259,7 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     }
     const response = await boardGet(apiRequest("/api/leaderboards?game=bad-ideas-lab&level=juice&limit=5", { cookie: a.cookie }));
     const data = await body<LeaderboardResponse>(response);
-    expect(data.board).toMatchObject({ id: "bad-ideas-lab/juice/v1", explain: expect.any(String), metrics: [{ label: "Peças" }, { label: "Passos da máquina" }] });
+    expect(data.board).toMatchObject({ id: "bad-ideas-lab/juice/v1", explain: expect.any(String), metrics: [{ label: "Peças" }, { label: "Tempo da bolinha" }] });
     expect(data.entries.map((e) => e.metrics)).toEqual([
       [1, 98],
       [1, 112],
