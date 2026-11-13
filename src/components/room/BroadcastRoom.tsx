@@ -626,6 +626,7 @@ export function BroadcastRoom() {
   );
 
   const openShelf = useCallback(() => {
+    tuned.current = true;
     poke();
     play("whoosh", { volume: 0.35 });
     setShelfOrigin(shelfButton.current?.getBoundingClientRect() ?? null);
@@ -710,6 +711,7 @@ export function BroadcastRoom() {
   useTapePlayback(playing, since, take, onCue);
 
   const openZoom = useCallback(() => {
+    tuned.current = true;
     poke();
     play("whoosh", { volume: 0.3, pitch: 1.15 });
     setZoomed(true);

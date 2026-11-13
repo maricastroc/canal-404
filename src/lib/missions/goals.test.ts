@@ -45,10 +45,12 @@ describe("mission goals", () => {
   });
 
   it("separates the mission from the level's stars only where they pull apart", () => {
-    const parts = { game: "bad-ideas-lab" as const, goal: [{ stat: "parts" as const, op: "min" as const, value: 2 }] };
+    const parts = { game: "bad-ideas-lab" as const, level: "pixel", goal: [{ stat: "parts" as const, op: "min" as const, value: 2 }] };
     expect(missionOverridesStars(parts)).toBe(true);
-    expect(missionNotes(parts)[0]).toMatch(/mais peças do que as 3 estrelas permitem/);
-    expect(missionOverridesStars({ game: "bad-ideas-lab", goal: [{ stat: "parts", op: "max", value: 2 }] })).toBe(false);
+    expect(missionNotes(parts)).toEqual(["Nesta missão, você precisa usar 2 peças. Por isso, pode ganhar até 2 estrelas na fase. Mas fique tranquilo: para cumprir a missão, o que conta é completar o desafio!"]);
+    expect(missionNotes({ ...parts, level: "finale", goal: [{ stat: "parts", op: "min", value: 5 }] })[0]).toContain("usar 5 peças. Por isso, pode ganhar até 1 estrela na fase.");
+    expect(missionNotes({ ...parts, level: "finale" })).toEqual([]);
+    expect(missionOverridesStars({ game: "bad-ideas-lab", level: "pixel", goal: [{ stat: "parts", op: "max", value: 2 }] })).toBe(false);
     expect(missionNotes({ game: "bad-ideas-lab", goal: [{ stat: "steps", op: "max", value: 252 }] })).toEqual([]);
     expect(missionNotes({ game: "operation-recess", goal: [] })[0]).toMatch(/os sinos tocam, mas não salvam/);
     expect(missionNotes({ game: "pajama-war", goal: [], setup: { character: "lia" } })).toEqual(["Nesta missão você joga com a Lia. Sua criança favorita continua a mesma."]);

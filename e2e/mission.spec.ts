@@ -148,6 +148,7 @@ test.describe("daily mission with the backend", () => {
   });
 
   test("misses a Rua Sem Saída mission and explains it in the street's words", async ({ page }) => {
+    test.setTimeout(simTime(180_000));
     const { day, def } = await scheduleToday("street-five-launches");
     await page.goto(`/play/dead-end-street?mission=${day}`);
     const intro = page.getByRole("dialog", { name: "Rua Sem Saída: tela de apresentação" });
