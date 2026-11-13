@@ -152,3 +152,7 @@ export const LEVELS: LevelDef[] = [
     decor: [],
   },
 ];
+
+export function starsFor(used: number, par: number) {
+  return used <= par ? 3 : used === par + 1 ? 2 : 1;
+}

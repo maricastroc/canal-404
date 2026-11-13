@@ -11,7 +11,7 @@ import {
   partAngle,
   type PartType,
 } from "../config";
-import { LEVELS, type LevelDef } from "../levels";
+import { LEVELS, starsFor, type LevelDef } from "../levels";
 import { goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Vec } from "../geometry";
 import {
   areaCoordinates,
@@ -1521,7 +1521,7 @@ export class LabScene extends Phaser.Scene {
     const used = this.parts.length;
     const total = Object.values(level.inventory).reduce((a, b) => a + (b ?? 0), 0);
     const saved = total - used;
-    const stars = used <= level.par ? 3 : used === level.par + 1 ? 2 : 1;
+    const stars = starsFor(used, level.par);
     const firstTry = this.runs === 1;
     const breakdown = [
       { label: "Máquina funcionou", value: 1000 },

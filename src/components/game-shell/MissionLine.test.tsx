@@ -77,7 +77,7 @@ describe("mission panels", () => {
 
   it("warns before the run when the mission costs the level's stars", () => {
     render(<MissionBrief view={{ ...VIEW, key: "lab-pixel-two-ramps", title: "Rampa dupla", goal: [{ stat: "parts", op: "min", value: 2 }, { stat: "untouched", op: "max", value: 0 }] }} state="new" />);
-    expect(screen.getByRole("region", { name: "Rampa dupla" })).toHaveTextContent("a missão conta à parte das estrelas");
+    expect(screen.getByRole("region", { name: "Rampa dupla" })).toHaveTextContent("pode ganhar até 2 estrelas na fase");
   });
 
   it("briefs the mission before the run with its level and state", () => {
