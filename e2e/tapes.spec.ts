@@ -43,6 +43,10 @@ test("plays each of the five tapes and keeps the shelf, the VCR and the TV in sy
 });
 
 test("swaps tapes directly and ejects back to the channel that was on", async ({ page }) => {
+  await page.route("**/api/missions/today", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await route.continue();
+  });
   await page.goto("/");
   await expect(page.getByRole("button", { name: /^A seguir:/ })).toBeVisible();
   await shelf(page).press("Enter");
