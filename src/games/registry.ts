@@ -143,9 +143,9 @@ export const GAMES: GameMeta[] = [
   {
     slug: "food-fight",
     title: "Guerra de Lanche",
-    tagline: "A cantina virou campo de batalha. Abaixe-se!",
+    tagline: "A guerra de comida começou. E ninguém vai sair limpo!",
     description:
-      "Uma uva voou, alguém revidou com um sanduíche e pronto: começou a guerra. Déco e Mila defendem a mesa vermelha contra a turma do outro lado, que tem pudim de sobra.",
+      "Tudo começou com uma uva atravessando a cantina. Agora, Déco e Mila precisam defender a mesa deles da turma rival. Revide com lanches, se esconda dos pudins e aguente firme até o sinal tocar!",
     category: "action",
     tags: ["Ação", "Arcade", "Comida"],
     status: "available",
