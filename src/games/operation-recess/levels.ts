@@ -1,6 +1,6 @@
 export type Theme = "corridor" | "yard" | "office";
 export type EnemyKind = "common" | "whistle" | "shield";
-export type EnemyStyle = "patrol" | "rush" | "guard";
+export type EnemyStyle = "patrol" | "rush" | "guard" | "mixed";
 
 export type LevelDef = {
   id: string;
@@ -13,7 +13,7 @@ export type LevelDef = {
   start: number;
   ground: [number, number][];
   blocks: { col: number; row: number; w: number; h: number; art: "bin" | "boxes" | "cabinet" }[];
-  platforms: { col: number; row: number; w: number; art: "shelf" | "bench" | "bars" | "desk" }[];
+  platforms: { col: number; row: number; w: number; art: "shelf" | "bench" | "bars" | "desk"; wobbly?: boolean }[];
   puddles: { col: number; w: number }[];
   enemies: { kind: EnemyKind; col: number; row?: number; style?: EnemyStyle }[];
   items: { kind: "snack" | "sticker"; col: number; row: number }[];
@@ -22,15 +22,20 @@ export type LevelDef = {
   carts?: { from: number; to: number; speed: number }[];
   exit?: { col: number; label: string };
   boss?: { arena: number };
+  lockers?: number[];
+  watchers?: { col: number; look: number }[];
+  ropes?: { col: number; w: number; period: number }[];
+  pads?: number[];
+  lights?: { col: number; span: number; period: number }[];
 };
 
 export const LEVELS: LevelDef[] = [
   {
     id: "corridor",
     title: "Corredor proibido",
-    goal: "Passe pelos monitores.",
-    intro: "O recreio foi cancelado! Atravesse o corredor.",
-    win: "O corredor está livre.",
+    goal: "Atravesse o corredor sem ser pego.",
+    intro: "Recreio cancelado? Nem pensar! Atravesse o corredor.",
+    win: "Corredor liberado!",
     theme: "corridor",
     length: 72,
     start: 2,
@@ -49,13 +54,13 @@ export const LEVELS: LevelDef[] = [
     ],
     puddles: [
       { col: 24, w: 4 },
-      { col: 46, w: 7 },
+      { col: 54, w: 4 },
     ],
     enemies: [
       { kind: "common", col: 21, style: "guard" },
-      { kind: "common", col: 36 },
-      { kind: "common", col: 40, style: "rush" },
-      { kind: "common", col: 55 },
+      { kind: "common", col: 38 },
+      { kind: "common", col: 41, style: "rush" },
+      { kind: "common", col: 56 },
       { kind: "common", col: 64, style: "guard" },
       { kind: "common", col: 68, style: "rush" },
     ],
@@ -68,13 +73,15 @@ export const LEVELS: LevelDef[] = [
     ],
     checkpoints: [44],
     exit: { col: 70, label: "PÁTIO" },
+    lockers: [34, 60],
+    watchers: [{ col: 48, look: 1500 }],
   },
   {
     id: "yard",
     title: "Pátio ocupado",
-    goal: "Atravesse o pátio.",
-    intro: "Cuidado com os monitores de apito. Pule as ondas!",
-    win: "O pátio é das crianças de novo.",
+    goal: "Cruze o pátio sem levar apitada.",
+    intro: "Os monitores do apito tomaram o pátio. Pule as ondas!",
+    win: "O pátio é da criançada de novo.",
     theme: "yard",
     length: 80,
     start: 2,
@@ -92,12 +99,12 @@ export const LEVELS: LevelDef[] = [
     ],
     puddles: [],
     enemies: [
-      { kind: "whistle", col: 16 },
+      { kind: "whistle", col: 19 },
       { kind: "whistle", col: 25, row: 6 },
       { kind: "common", col: 33 },
       { kind: "common", col: 37, style: "rush" },
       { kind: "whistle", col: 45 },
-      { kind: "common", col: 53, style: "guard" },
+      { kind: "common", col: 55, style: "guard" },
       { kind: "whistle", col: 61, row: 6 },
       { kind: "common", col: 70, style: "rush" },
       { kind: "whistle", col: 75 },
@@ -113,11 +120,13 @@ export const LEVELS: LevelDef[] = [
     checkpoints: [50],
     balls: [{ col: 41, every: 2600, offset: 400, wake: 1200 }],
     exit: { col: 78, label: "DIREÇÃO" },
+    ropes: [{ col: 13, w: 4, period: 1400 }],
+    pads: [52],
   },
   {
     id: "office",
     title: "Caminho da direção",
-    goal: "Chegue à direção.",
+    goal: "Chegue à diretoria.",
     intro: "Última parada: a sala do Inspetor do Silêncio.",
     win: "O recreio está de volta!",
     theme: "office",
@@ -135,6 +144,8 @@ export const LEVELS: LevelDef[] = [
     platforms: [
       { col: 7, row: 10, w: 3, art: "desk" },
       { col: 12, row: 8, w: 3, art: "desk" },
+      { col: 21, row: 10, w: 2, art: "desk", wobbly: true },
+      { col: 37, row: 10, w: 2, art: "desk", wobbly: true },
       { col: 44, row: 10, w: 3, art: "desk" },
       { col: 49, row: 8, w: 3, art: "desk" },
       { col: 53, row: 10, w: 3, art: "desk" },
@@ -147,7 +158,7 @@ export const LEVELS: LevelDef[] = [
       { kind: "shield", col: 31 },
       { kind: "common", col: 43 },
       { kind: "shield", col: 47 },
-      { kind: "whistle", col: 50, row: 7 },
+      { kind: "whistle", col: 51, style: "mixed" },
       { kind: "common", col: 56 },
       { kind: "shield", col: 61 },
     ],
@@ -164,5 +175,9 @@ export const LEVELS: LevelDef[] = [
       { from: 34, to: 37, speed: 190 },
     ],
     boss: { arena: 64 },
+    lights: [
+      { col: 6, span: 2, period: 2800 },
+      { col: 53, span: 4, period: 3000 },
+    ],
   },
 ];
