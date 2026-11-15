@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { MERGE_WINDOW_MS, nextAnnouncement } from "./useAnnouncer";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MERGE_WINDOW_MS, REPLAY_DELAY_MS, REPLAY_WINDOW_MS, nextAnnouncement, useAnnouncer } from "./useAnnouncer";
 
 const empty = { active: 1 as const, at: -Infinity, text: "", transient: false };
 
@@ -33,5 +34,59 @@ describe("nextAnnouncement", () => {
     expect(b.active).not.toBe(a.active);
     expect(c).toMatchObject({ active: b.active, text: "Direita. 2 passos." });
     expect(d).toMatchObject({ active: c.active, text: "Rampa colocada.", transient: false });
+  });
+});
+
+describe("useAnnouncer after a focus move", () => {
+  let now = 0;
+  beforeEach(() => {
+    now = 1000;
+    vi.useFakeTimers();
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const spoken = (regions: [string, string]) => regions.join("");
+
+  it("reads a message sent just before focus moves again once focus has landed", () => {
+    const { result } = renderHook(() => useAnnouncer());
+    act(() => result.current.announce("Fase 1 de 6: Primeiro teste."));
+    now += 40;
+    act(() => result.current.afterFocus());
+    expect(spoken(result.current.regions)).toBe("");
+    act(() => vi.advanceTimersByTime(REPLAY_DELAY_MS));
+    expect(spoken(result.current.regions)).toBe("Fase 1 de 6: Primeiro teste.");
+  });
+
+  it("joins messages sent while waiting into the same reading", () => {
+    const { result } = renderHook(() => useAnnouncer());
+    act(() => result.current.announce("Fase 1, Primeiro teste: vitória!"));
+    act(() => result.current.afterFocus());
+    act(() => result.current.announce("Fase de treino não entra no placar."));
+    expect(spoken(result.current.regions)).toBe("");
+    act(() => vi.advanceTimersByTime(REPLAY_DELAY_MS));
+    expect(spoken(result.current.regions)).toBe("Fase 1, Primeiro teste: vitória! Fase de treino não entra no placar.");
+  });
+
+  it("answers a key press at once instead of waiting behind the replay", () => {
+    const { result } = renderHook(() => useAnnouncer());
+    act(() => result.current.announce("Fase 2 de 6: Bom dia, Pixel.", { fresh: true }));
+    act(() => result.current.afterFocus());
+    act(() => result.current.announce("Rampa na mão.", { fresh: true }));
+    expect(spoken(result.current.regions)).toBe("Rampa na mão.");
+    act(() => vi.advanceTimersByTime(REPLAY_DELAY_MS));
+    expect(spoken(result.current.regions)).toBe("Rampa na mão.");
+  });
+
+  it("leaves older messages alone when focus moves", () => {
+    const { result } = renderHook(() => useAnnouncer());
+    act(() => result.current.announce("Rampa colocada."));
+    now += REPLAY_WINDOW_MS + 1;
+    act(() => result.current.afterFocus());
+    expect(spoken(result.current.regions)).toBe("Rampa colocada.");
+    act(() => vi.advanceTimersByTime(REPLAY_DELAY_MS));
+    expect(spoken(result.current.regions)).toBe("Rampa colocada.");
   });
 });
