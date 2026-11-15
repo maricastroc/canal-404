@@ -61,7 +61,7 @@ export const PHASES: Phase[] = [
   { from: 65000, maxActive: 3, windup: 850, gap: [350, 700], speedy: 0.4, big: 0.2, flight: 0.8 },
 ];
 
-export const LUNCH_LADY_TIMES = [30000];
+export const LUNCH_LADY = { times: [15000, 30000, 60000, 70500], speed: 0.27, minGap: 2000, enterX: 2060, exitX: -160 };
 
 export const EVENTS = { trayFrom: 19000, trayChance: 0.3, brawlAt: 43000, brawlMs: 6500, brawlers: 4 };
 

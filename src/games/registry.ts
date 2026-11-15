@@ -151,7 +151,7 @@ export const GAMES: GameMeta[] = [
     status: "available",
     accent: "tangerine",
     cast: ["deco", "mila"],
-    objective: "Aguente até o sinal do recreio tocar. Cada pudim que te acerta gasta um dos três guardanapos.",
+    objective: "A guerra de comida começou! Desvie dos lanches até o sinal tocar. Você tem três guardanapos para aguentar os ataques.",
     controls: [
       { input: "Tocar ou clicar num aluno", action: "Lançar um lanche nele" },
       { input: "Segurar ABAIXAR", action: "Abaixar atrás da mesa e recarregar" },
@@ -178,7 +178,7 @@ export const GAMES: GameMeta[] = [
     controlsSummary: "Guerra de Lanche. Espaço lança no aluno mais perigoso, 1 a 5 escolhem a mesa, segure seta para baixo para abaixar e recarregar, Esc pausa.",
     copy: {
       winTitle: "Sinal!",
-      winText: "A mesa resistiu até o fim do recreio.",
+      winText: "O sinal tocou! A cantina sobreviveu a mais uma guerra de comida.",
       loseTitle: "Melecado!",
       loseText: "Acabaram os guardanapos. Fica pra próxima!",
     },

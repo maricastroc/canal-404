@@ -315,3 +315,34 @@ export function FoodFightHowToPanel({ step }: { step: 0 | 1 | 2 }) {
   if (step === 1) return <DuckPanel />;
   return <ReloadPanel />;
 }
+
+type CastMood = "intro" | "win" | "lose";
+
+const CAST_POSES: Record<CastMood, { deco: string; mila: string; held: boolean; splat: boolean }> = {
+  intro: { deco: "throw", mila: "shout", held: true, splat: false },
+  win: { deco: "cheer", mila: "shout", held: false, splat: true },
+  lose: { deco: "splat", mila: "shout", held: false, splat: true },
+};
+
+export function FoodFightCast({ mood, className }: { mood: CastMood; className?: string }) {
+  const pose = CAST_POSES[mood];
+  const table = { x: 455, w: 560 };
+  const floor = OUR_TABLE.y + SIZES.ourTable.h - 22;
+  return (
+    <svg viewBox="148 440 620 540" className={className} aria-hidden overflow="visible">
+      <Outline />
+      <path d={`M150 ${floor - 4} Q150 ${floor - 12} 162 ${floor - 12} L754 ${floor - 12} Q766 ${floor - 12} 766 ${floor - 4} L766 ${floor + 10} Q766 ${floor + 18} 754 ${floor + 18} L162 ${floor + 18} Q150 ${floor + 18} 150 ${floor + 10} Z`} fill="#dcc394" stroke={P.ink} strokeWidth={U * 0.5} />
+      <path d={`M190 ${floor + 4} L250 ${floor + 4} M640 ${floor + 6} L720 ${floor + 6}`} stroke="#c4a873" strokeWidth={6} strokeLinecap="round" />
+      <ellipse cx={table.x} cy={floor + 2} rx={table.w * 0.5} ry={12} fill={P.ink} opacity={0.22} />
+      <Kid who="deco" pose={pose.deco} />
+      <Kid who="mila" pose={pose.mila} />
+      {pose.held ? <Sprite name="pudding" x={440} y={578} w={SIZES.pudding.w * 0.95} h={SIZES.pudding.h * 0.95} rotate={-14} /> : null}
+      <Sprite name="our-table" x={table.x} y={OUR_TABLE.y} w={table.w} h={SIZES.ourTable.h} ay={0} />
+      <FoodSprite food="sandwich" x={226} y={AMMO_Y} s={0.85} rotate={-4} />
+      <FoodSprite food="apple" x={300} y={AMMO_Y} s={0.85} />
+      <FoodSprite food="grapes" x={478} y={AMMO_Y} s={0.8} />
+      <FoodSprite food="banana" x={690} y={AMMO_Y} s={0.85} rotate={8} />
+      {pose.splat ? <Sprite name="splat-pudding" x={380} y={AMMO_Y + 4} w={SIZES.splatPudding.w * 0.6} h={SIZES.splatPudding.h * 0.45} outline={false} /> : null}
+    </svg>
+  );
+}
