@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   BadgeCheck,
   CassetteTape,
+  Check,
   CircleCheckBig,
   CircleHelp,
   Dices,
@@ -13,6 +14,7 @@ import {
   House,
   Images,
   KeyRound,
+  LayoutGrid,
   Lock,
   Menu,
   Pause,
@@ -80,6 +82,8 @@ export const MissionIcon = make(Target);
 export const TimerIcon = make(Timer);
 export const TapeIcon = make(CassetteTape);
 export const DoneIcon = make(CircleCheckBig);
+export const CheckIcon = make(Check);
+export const LevelsIcon = make(LayoutGrid);
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

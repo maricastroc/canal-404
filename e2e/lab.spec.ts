@@ -39,7 +39,7 @@ test("gives a hint and pauses from the keyboard", async ({ page }) => {
   await stage(page).focus();
   const live = page.getByTestId("game-announcer");
   await page.keyboard.press("h");
-  await expect(live).toContainText("Dica da Lina: Arraste a rampa até a marca tracejada.");
+  await expect(live).toContainText("Dica da Lina: Arraste a rampa até a área marcada.");
   await page.keyboard.press("Escape");
   const paused = page.getByRole("dialog", { name: "Jogo pausado" });
   await expect(paused).toBeVisible();

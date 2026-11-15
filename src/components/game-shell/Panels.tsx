@@ -8,7 +8,7 @@ import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
 import { HouseIcon, MissionIcon, PlayIcon, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
-import { LockIcon } from "@/components/art/Icons";
+import { CheckIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
@@ -21,6 +21,9 @@ import { missionOverridesStars } from "@/lib/missions/goals";
 import type { MissionState, MissionView } from "@/lib/missions/types";
 import { BoardLine, type BoardState } from "./BoardLine";
 import { MissionBrief, MissionLine } from "./MissionLine";
+
+const TERTIARY =
+  "inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1 font-display text-base uppercase tracking-wide text-ink-soft underline decoration-2 underline-offset-4 hover:text-ink";
 
 export type IntroMission = { view: MissionView; state: MissionState | null };
 
@@ -259,28 +262,50 @@ export function IntroPanel({
               Estrelas: {totalStars}/{game.levels.length * 3}
             </p>
           </div>
-          <ol className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ol className="mt-3 grid gap-x-2.5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
             {game.levels.map((level, i) => {
               const locked = i > levels.unlocked;
+              const done = !locked && levels.stars[i] > 0;
+              const current = !locked && i === suggested;
               return (
-                <li key={level.id}>
+                <li key={level.id} className="relative">
+                  {current ? (
+                    <span aria-hidden className="pointer-events-none absolute -top-2.5 right-3 z-10 rotate-2 rounded-md border-2 border-ink bg-ink px-1.5 font-display text-[11px] uppercase leading-5 tracking-wider text-sun">
+                      A seguir
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     disabled={locked}
+                    aria-current={current ? "step" : undefined}
                     onClick={() => onPlay(i)}
-                    className={`press flex h-full w-full items-center gap-3 rounded-xl border-[3px] border-ink p-2.5 text-left shadow-[var(--shadow-ink-sm)] disabled:cursor-not-allowed disabled:opacity-60 ${
-                      i === suggested ? "bg-sun" : "bg-cream-2"
+                    className={`press grid h-full w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-xl border-ink p-2.5 text-left disabled:cursor-not-allowed disabled:border-dashed disabled:border-ink/45 disabled:opacity-70 disabled:shadow-none ${
+                      current ? "border-4 bg-sun shadow-[var(--shadow-ink)]" : "border-[3px] bg-cream-2 shadow-[var(--shadow-ink-sm)]"
                     }`}
                   >
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-paper font-display text-lg text-ink">
-                      {locked ? <LockIcon className="size-6" /> : i + 1}
+                    <span
+                      className={`relative mt-0.5 grid size-10 shrink-0 place-items-center rounded-full border-[3px] font-display text-lg ${
+                        locked ? "border-ink/45 bg-cream text-ink-soft" : current ? "border-ink bg-ink text-sun" : "border-ink bg-paper text-ink"
+                      }`}
+                    >
+                      {locked ? <LockIcon className="size-5" /> : i + 1}
+                      {done ? (
+                        <span className="absolute -bottom-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-ink bg-lime text-ink">
+                          <CheckIcon className="size-3" />
+                        </span>
+                      ) : null}
                     </span>
-                    <span className="min-w-0">
-                      <span className="block font-display text-base uppercase leading-tight text-ink">{level.title}</span>
-                      <span className="block text-xs leading-snug text-ink-soft">
+                    <span className="flex min-h-full min-w-0 flex-col">
+                      <span className="block text-balance font-display text-base uppercase leading-tight text-ink">{level.title}</span>
+                      <span className="mt-0.5 block text-xs leading-snug text-ink-soft">
                         {locked ? (word === "arena" ? "Vença a arena anterior" : "Termine a fase anterior") : level.goal}
                       </span>
-                      {!locked && levels.stars[i] > 0 && <MiniStars count={levels.stars[i]} />}
+                      {locked ? null : (
+                        <span className="mt-auto flex items-center gap-2 pt-1.5">
+                          <MiniStars count={levels.stars[i]} />
+                          {done ? null : <span className="font-display text-[11px] uppercase tracking-wider text-ink-soft">Sem estrelas</span>}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>
@@ -471,24 +496,26 @@ export function ResultPanel({
               </div>
             </div>
           </div>
-          {result.won && <RewardStars stars={result.stars} className="wideshort:mt-0 wideshort:shrink-0 wideshort:pr-2" />}
+          <div className="wideshort:flex wideshort:w-[19rem] wideshort:shrink-0 wideshort:flex-col wideshort:items-center">
+            {result.won && <RewardStars stars={result.stars} className="wideshort:mt-0" />}
+            {result.summary && (
+              <motion.p
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.85 }}
+                className="mt-2 text-center font-display text-base uppercase tracking-wide text-ink wideshort:text-sm"
+              >
+                {result.summary}
+              </motion.p>
+            )}
+            {result.starHint && !(mission && missionOverridesStars(mission)) ? (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} className="copy-sm mt-0.5 text-center text-ink-soft">
+                {result.starHint}
+              </motion.p>
+            ) : null}
+          </div>
         </div>
         <div className="wideshort:mt-4">
-          {result.summary && (
-            <motion.p
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.85 }}
-              className="mt-2 text-center font-display text-base uppercase tracking-wide text-ink wideshort:mt-0 wideshort:text-left"
-            >
-              {result.summary}
-            </motion.p>
-          )}
-          {result.starHint && !(mission && missionOverridesStars(mission)) ? (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} className="copy-sm mt-0.5 text-center text-ink-soft wideshort:text-left">
-              {result.starHint}
-            </motion.p>
-          ) : null}
           <dl className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 px-4 pt-1 max-sm:mt-3 max-sm:px-3 wideshort:mt-3">
             {result.breakdown.map((row, i) => (
               <motion.div
@@ -524,12 +551,12 @@ export function ResultPanel({
                 <PlayIcon className="size-5 text-ink" /> Próxima {word}
               </InkButton>
             ) : null}
-            <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "mint" : "sun"} onClick={onRestart} className={onNext && !mission ? "" : "sm:px-7"}>
+            <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "cream" : "sun"} onClick={onRestart} className={onNext && !mission ? "max-[420px]:[&>svg]:hidden" : "sm:px-7"}>
               {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
               {mission ? "Tentar a missão de novo" : (result.restartLabel ?? (result.level && word === "fase" ? "Refazer fase" : "Jogar de novo"))}
             </InkButton>
             {onNext && mission ? (
-              <InkButton tone="mint" onClick={onNext}>
+              <InkButton tone="cream" onClick={onNext}>
                 <PlayIcon className="size-5 text-ink" /> Próxima {word}
               </InkButton>
             ) : null}
@@ -538,21 +565,21 @@ export function ResultPanel({
                 {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}
               </InkButton>
             ) : null}
-            {onLevels ? (
-              <InkButton tone="cream" onClick={onLevels}>
-                Escolher {word}
-              </InkButton>
-            ) : (
+            {onLevels ? null : (
               <InkLink href="/games" tone="cream">
                 Ver catálogo
               </InkLink>
             )}
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center gap-1.5 self-center rounded-md px-2 py-1 font-display text-base uppercase tracking-wide text-ink-soft underline decoration-2 underline-offset-4 hover:text-ink max-sm:col-span-2"
-            >
-              <HouseIcon className="size-4" /> Voltar à sala
-            </Link>
+            <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 max-sm:col-span-2 max-sm:justify-center">
+              {onLevels ? (
+                <button type="button" onClick={onLevels} className={TERTIARY}>
+                  <LevelsIcon className="size-4" /> Escolher {word}
+                </button>
+              ) : null}
+              <Link href="/" className={TERTIARY}>
+                <HouseIcon className="size-4" /> Voltar à sala
+              </Link>
+            </div>
           </div>
         </div>
       </div>

@@ -36,7 +36,7 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome): Line | nu
       return { text: "O placar estava fora do ar quando a partida começou. Este resultado ficou só no seu progresso.", offline: true };
     case "accepted": {
       const { run, board } = outcome.response;
-      if (!board) return { text: "Fase de treino não entra no placar." };
+      if (!board) return { text: "Este foi só o aquecimento! A fase de treino não vale pontos no placar global." };
       if (run.ineligible === "resumed") return { text: "Partidas retomadas do sino não entram no placar. Jogue a fase inteira para competir." };
       if (run.ineligible === "no_points") return { text: "Sem pontos, sem placar. Fica para a próxima!" };
       const slug = isGameSlug(game.slug) ? game.slug : null;

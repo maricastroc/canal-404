@@ -59,7 +59,7 @@ describe("describeBoard", () => {
   });
 
   it("explains why a run stays off the board", () => {
-    expect(describeBoard(LAB, accepted({ eligible: false, ineligible: "practice" }, null))?.text).toBe("Fase de treino não entra no placar.");
+    expect(describeBoard(LAB, accepted({ eligible: false, ineligible: "practice" }, null))?.text).toBe("Este foi só o aquecimento! A fase de treino não vale pontos no placar global.");
     expect(describeBoard(RECESS, accepted({ eligible: false, ineligible: "resumed" }, { id: "b", improved: false, previous: null, position: null, total: 3, best: null, leader: null }))?.text).toMatch(/retomadas do sino/);
     expect(describeBoard(RECESS, accepted({ eligible: false, ineligible: "not_won" }, { id: "b", improved: false, previous: null, position: null, total: 3, best: null, leader: null }))?.text).toBe("Só vitórias entram no placar desta fase.");
   });

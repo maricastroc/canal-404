@@ -18,6 +18,7 @@ type Slot = {
   root: Phaser.GameObjects.Container;
   count: Phaser.GameObjects.Text;
   badge: Phaser.GameObjects.Graphics;
+  ring: Phaser.GameObjects.Graphics;
 };
 
 type Button = {
@@ -41,6 +42,9 @@ const LEVEL_CARD_W = 560;
 const PARTS_CARD_W = 330;
 const CLEARANCE = 10;
 const MIN_FIT = 0.85;
+const TOOL_H = 66;
+const RUN_GAP = 30;
+const BTN = { hint: 124, clear: 150, run: 228 };
 
 function drawButtonBg(g: Phaser.GameObjects.Graphics, w: number, h: number, fill: number) {
   g.clear();
@@ -121,7 +125,7 @@ export class LabHud {
     }
     this.partsCard = scene.add.container(W - 24, CARD_TOP, children).setDepth(20);
 
-    const buttonsW = 128 + 160 + 210 + GAP * 2;
+    const buttonsW = BTN.hint + BTN.clear + BTN.run + GAP + RUN_GAP;
     this.trayW = TRAY_PAD * 2 + slotTypes.length * SLOT_W + (slotTypes.length - 1) * GAP + 28 + buttonsW;
     const tg = scene.add.graphics();
     paper(tg, -this.trayW / 2, -SLOT_H - TRAY_PAD * 2, this.trayW, SLOT_H + TRAY_PAD * 2, 24);
@@ -137,11 +141,12 @@ export class LabHud {
     x += 28 - GAP;
     tg.lineStyle(3, INK_HEX, 0.2);
     tg.lineBetween(x - 14, cy - SLOT_H / 2 + 6, x - 14, cy + SLOT_H / 2 - 6);
-    this.hintBtn = this.makeButton("DICA", 128, SLOT_H - 8, 0xb9a6ef, x + 64, cy, ["hint"], () => this.handlers.onHint());
-    x += 128 + GAP;
-    this.clearBtn = this.makeButton("LIMPAR", 160, SLOT_H - 8, 0xfbf5e6, x + 80, cy, ["trash"], () => this.handlers.onClear());
-    x += 160 + GAP;
-    this.runBtn = this.makeButton("LIGAR", 210, SLOT_H, 0x93cf4c, x + 105, cy, ["play"], () => this.handlers.onRun());
+    this.hintBtn = this.makeButton("DICA", BTN.hint, TOOL_H, 0xb9a6ef, x + BTN.hint / 2, cy, ["hint"], () => this.handlers.onHint(), 24);
+    x += BTN.hint + GAP;
+    this.clearBtn = this.makeButton("LIMPAR", BTN.clear, TOOL_H, 0xfbf5e6, x + BTN.clear / 2, cy, ["trash"], () => this.handlers.onClear(), 24);
+    x += BTN.clear + RUN_GAP;
+    tg.lineBetween(x - RUN_GAP / 2, cy - SLOT_H / 2 + 6, x - RUN_GAP / 2, cy + SLOT_H / 2 - 6);
+    this.runBtn = this.makeButton("LIGAR", BTN.run, SLOT_H, 0x93cf4c, x + BTN.run / 2, cy, ["play"], () => this.handlers.onRun(), 36);
     trayChildren.push(this.hintBtn.root, this.clearBtn.root, this.runBtn.root);
     this.tray = scene.add.container(W / 2, H - TRAY_BOTTOM, trayChildren).setDepth(20);
 
@@ -185,15 +190,20 @@ export class LabHud {
     const keyText = cartoonText(scene, -SLOT_W / 2 + 21, -SLOT_H / 2 + 21, String(key), { size: 18, color: "#fbf5e6", font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
     const badge = scene.add.graphics();
     const count = cartoonText(scene, SLOT_W / 2 - 20, -SLOT_H / 2 + 20, "", { size: 22, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    const ring = scene.add.graphics().setVisible(false);
+    ring.lineStyle(11, INK_HEX, 1);
+    ring.strokeRoundedRect(-SLOT_W / 2 - 8, -SLOT_H / 2 - 8, SLOT_W + 16, SLOT_H + 16, 22);
+    ring.lineStyle(6, 0xffc83d, 1);
+    ring.strokeRoundedRect(-SLOT_W / 2 - 8, -SLOT_H / 2 - 8, SLOT_W + 16, SLOT_H + 16, 22);
     const hit = scene.add.rectangle(0, 0, SLOT_W, SLOT_H, 0xffffff, 0).setInteractive({ useHandCursor: true });
-    const root = scene.add.container(x, y, [g, icon, name, keyChip, keyText, badge, count, hit]);
+    const root = scene.add.container(x, y, [ring, g, icon, name, keyChip, keyText, badge, count, hit]);
     hit.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       if (!this.enabled || this.running) return;
       this.handlers.onSlotDown(type, pointer);
     });
     hit.on("pointerover", () => this.enabled && !this.running && !this.reduced && root.setScale(1.04));
     hit.on("pointerout", () => root.setScale(1));
-    return { type, root, count, badge };
+    return { type, root, count, badge, ring };
   }
 
   private makeButton(
@@ -205,13 +215,14 @@ export class LabHud {
     y: number,
     icons: [IconName, ...IconName[]],
     onClick: () => void,
+    size = 32,
   ): Button {
     const scene = this.scene;
     const bg = scene.add.graphics();
     drawButtonBg(bg, w, h, fill);
     const ix = label ? -w / 2 + 28 : 0;
     const images = icons.map((name) => addIcon(scene, ix, 0, name));
-    const text = cartoonText(scene, label ? -w / 2 + 50 : 0, 0, label, { size: label.length > 5 ? 26 : 32, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(label ? 0 : 0.5, 0.5);
+    const text = cartoonText(scene, label ? -w / 2 + 50 : 0, 0, label, { size, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(label ? 0 : 0.5, 0.5);
     centerGlyphs(text);
     const hit = scene.add.rectangle(0, 0, w, h, 0xffffff, 0).setInteractive({ useHandCursor: true });
     const root = scene.add.container(x, y, [bg, ...images, text, hit]);
@@ -273,6 +284,15 @@ export class LabHud {
     }
   }
 
+  highlightSlot(type: PartType | null) {
+    for (const slot of this.slots) {
+      const on = slot.type === type;
+      this.scene.tweens.killTweensOf(slot.ring);
+      slot.ring.setVisible(on).setAlpha(1);
+      if (on && !this.reduced) this.scene.tweens.add({ targets: slot.ring, alpha: 0.35, duration: 260, yoyo: true, repeat: 2, delay: 450, ease: "Sine.easeInOut" });
+    }
+  }
+
   setUsed(used: number, par: number) {
     this.usedText.setText(String(used));
     const projected = used <= par ? 3 : used === par + 1 ? 2 : 1;
@@ -288,7 +308,7 @@ export class LabHud {
   setRunning(on: boolean) {
     this.running = on;
     this.runBtn.label.setText(on ? "DESLIGAR" : "LIGAR");
-    this.runBtn.label.setFontSize(on ? 26 : 32);
+    this.runBtn.label.setFontSize(on ? 30 : 36);
     centerGlyphs(this.runBtn.label);
     drawButtonBg(this.runBtn.bg, this.runBtn.w, this.runBtn.h, on ? 0xef4f43 : 0x93cf4c);
     setIcon(this.runBtn.icon, on ? "stop" : "play");
@@ -384,6 +404,47 @@ export class LabHud {
     b.setScale(this.reduced ? Math.min(this.uiScale, 1.2) : 0.3);
     if (!this.reduced) this.scene.tweens.add({ targets: b, scale: Math.min(this.uiScale, 1.2), duration: 260, ease: "Back.easeOut" });
     this.scene.tweens.add({ targets: b, alpha: 0, delay: hold, duration: 260, onComplete: () => b.setVisible(false) });
+  }
+
+  celebrate(stars: number, onStar: (index: number, lit: boolean, x: number, y: number) => void) {
+    const scene = this.scene;
+    const s = Math.min(this.uiScale, 1.2);
+    const title = cartoonText(scene, W / 2, 196, "FUNCIONOU!", { size: 96, color: "#93cf4c", font: this.fonts.display, stroke: 0.2 })
+      .setOrigin(0.5)
+      .setDepth(26);
+    const plateW = 318;
+    const plateH = 100;
+    const plate = scene.add.graphics();
+    plate.fillStyle(INK_HEX, 1);
+    plate.fillRoundedRect(-plateW / 2 + 6, -plateH / 2 + 7, plateW, plateH, 26);
+    plate.fillStyle(0x2b2150, 1);
+    plate.fillRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
+    plate.lineStyle(5, INK_HEX, 1);
+    plate.strokeRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
+    const icons = [0, 1, 2].map((i) => scene.add.image((i - 1) * 96, 0, "star").setScale(2.1).setTint(0x5a4d8a).setAlpha(0.55));
+    const group = scene.add.container(W / 2, 196 + 122 * s, [plate, ...icons]).setDepth(26).setScale(s);
+    const reveal = (i: number) => {
+      const icon = icons[i];
+      const lit = i < stars;
+      const m = icon.getWorldTransformMatrix();
+      onStar(i, lit, m.tx, m.ty);
+      if (!lit) return;
+      icon.clearTint().setAlpha(1);
+      if (this.reduced) return;
+      icon.setScale(3.4).setAngle(-30);
+      scene.tweens.add({ targets: icon, scale: 2.1, angle: 0, duration: 260, ease: "Back.easeOut" });
+    };
+    scene.tweens.add({ targets: [title, group], alpha: 0, delay: 1750, duration: 240 });
+    if (this.reduced) {
+      title.setScale(s);
+      [0, 1, 2].forEach(reveal);
+      return;
+    }
+    title.setScale(0.25 * s).setAngle(-10);
+    scene.tweens.add({ targets: title, scale: s, angle: -2, duration: 300, ease: "Back.easeOut" });
+    group.setAlpha(0).setScale(0.6 * s);
+    scene.tweens.add({ targets: group, alpha: 1, scale: s, duration: 220, delay: 280, ease: "Back.easeOut" });
+    [0, 1, 2].forEach((i) => scene.time.delayedCall(460 + i * 190, () => reveal(i)));
   }
 
   hideAll() {

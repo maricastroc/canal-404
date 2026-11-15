@@ -1,5 +1,6 @@
 import type React from "react";
 import { KidBust } from "@/components/characters/Heads";
+import { BadIdeasLabCast } from "./BadIdeasLabCast";
 import { DeadEndStreetCast } from "./DeadEndStreetCast";
 import { PajamaBust, type PajamaKidId } from "@/components/characters/PajamaKids";
 import { FOLK_INFO, FolkBust, type FolkId } from "@/components/characters/ResortFolks";
@@ -52,8 +53,13 @@ function StreetCast({ mood }: { mood: CastMood }) {
   return <DeadEndStreetCast mood={mood} className={mood === "intro" ? "w-56 md:w-72" : "w-44 sm:w-52 sm:shorter:w-40"} />;
 }
 
+function LabCast({ mood }: { mood: CastMood }) {
+  return <BadIdeasLabCast mood={mood} className={mood === "intro" ? "w-56 md:w-64" : "w-44 sm:w-52 sm:shorter:w-40"} />;
+}
+
 export const GAME_CAST: Record<string, (props: { mood: CastMood; featured?: string }) => React.JSX.Element> = {
   "dead-end-street": StreetCast,
+  "bad-ideas-lab": LabCast,
   "pajama-war": PajamaCast,
   "off-air-vacation": ResortCast,
 };
