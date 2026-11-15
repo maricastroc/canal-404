@@ -3,6 +3,7 @@ import { KidBust } from "@/components/characters/Heads";
 import { BadIdeasLabCast } from "./BadIdeasLabCast";
 import { DeadEndStreetCast } from "./DeadEndStreetCast";
 import { FoodFightCast } from "./FoodFightArt";
+import { OperationRecessCast } from "./OperationRecessArt";
 import { PajamaWarCast } from "./PajamaWarArt";
 import { PajamaBust, type PajamaKidId } from "@/components/characters/PajamaKids";
 import { FOLK_INFO, FolkBust, type FolkId } from "@/components/characters/ResortFolks";
@@ -49,6 +50,10 @@ function LabCast({ mood }: { mood: CastMood }) {
   return <BadIdeasLabCast mood={mood} className={mood === "intro" ? "w-56 md:w-64" : "w-44 sm:w-52 sm:shorter:w-40"} />;
 }
 
+function RecessCast({ mood }: { mood: CastMood }) {
+  return <OperationRecessCast mood={mood} className={mood === "intro" ? "w-56 md:w-72" : "w-44 sm:w-52 sm:shorter:w-40"} />;
+}
+
 function CanteenCast({ mood }: { mood: CastMood }) {
   return <FoodFightCast mood={mood} className={mood === "intro" ? "w-56 md:w-64" : "w-44 sm:w-52 sm:shorter:w-40"} />;
 }
@@ -58,6 +63,7 @@ export const GAME_CAST: Record<string, (props: { mood: CastMood; featured?: stri
   "bad-ideas-lab": LabCast,
   "food-fight": CanteenCast,
   "pajama-war": PajamaCast,
+  "operation-recess": RecessCast,
   "off-air-vacation": ResortCast,
 };
 

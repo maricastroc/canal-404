@@ -263,7 +263,7 @@ export class Scenery {
     s.add.tileSprite(0, 0, this.width, FLOOR_Y, "wall-corridor").setOrigin(0, 0).setDepth(0);
     s.add.image(0, 140, "shade-top").setOrigin(0, 0).setDisplaySize(this.width, 260).setDepth(0.35).setAlpha(0.45);
     this.floor("floor-corridor");
-    for (const x of [880, 2230, 3420, 4380]) {
+    for (const x of [762, 2192, 3392, 4386]) {
       const g = s.add.graphics().setDepth(0.3);
       g.fillStyle(0xe8d8b0, 1);
       g.fillRect(x, 140, 76, FLOOR_Y - 140);
@@ -272,7 +272,8 @@ export class Scenery {
       g.lineStyle(5, INK_HEX, 1);
       g.strokeRect(x, 140, 76, FLOOR_Y - 140);
     }
-    for (let x = 300; x < this.width; x += 620) {
+    for (const x of [300, 1000, 1600, 2500, 3000, 3800, 4250, 4900, 5450]) {
+      if (x > this.width - 100) continue;
       this.img("ceiling-lamp", x, 130, D.wall + 0.1, [0.5, 0]);
       this.cone(x, 186, 0.28, 1.1).setTint(0xfff1b8);
     }
@@ -289,9 +290,9 @@ export class Scenery {
       ["fountain", 2780],
       ["banner", 3060],
       ["lockers-c", 3250],
-      ["poster-obey", 3500],
-      ["window", 3720],
-      ["mop", 3960],
+      ["poster-obey", 3560],
+      ["window", 3800],
+      ["mop", 4030],
       ["board", 4250],
       ["door-class-c", 4560],
       ["lockers-a", 4980],
@@ -338,7 +339,6 @@ export class Scenery {
     if (kind === "board") {
       this.react(this.img("board", x, 470, D.back, [0.5, 0.5]), "swing");
       this.grounded(this.img("bench-hall", x, FLOOR_Y, D.back));
-      this.react(this.img("poster-recess", x + 230, 460, D.back, [0.5, 0.5]).setScale(0.85), "swing");
       return;
     }
     if (kind === "fountain") {
@@ -396,16 +396,16 @@ export class Scenery {
       g.fillRect(a, 836, b - a, 30);
     }
     for (const x of [620, 1500, 2900, 3900]) this.img("hoop", x, 860, D.mid + 0.12).setScrollFactor(0.65, 0).setScale(0.8);
-    this.img("banner-protest", 1100, 610, D.mid + 0.14, [0.5, 0]).setScrollFactor(0.65, 0).setScale(0.8);
-    this.img("banner-protest", 3400, 610, D.mid + 0.14, [0.5, 0]).setScrollFactor(0.65, 0).setScale(0.8);
     this.floor("floor-yard");
     for (const x of [260, 2560, 4380, 5980]) this.img("tree-big", x, FLOOR_Y + 8, D.back);
-    this.img("stairs-bg", 1260, FLOOR_Y, D.back - 0.05);
     this.img("kiosk", 3060, FLOOR_Y, D.back);
     for (const x of [520, 3380, 5640]) this.img("picnic-table", x, FLOOR_Y, D.floor);
-    const posts = [1060, 1900, 3600, 4300, 5180, 6040];
+    const posts = [1060, 1760, 3600, 4300, 5180, 6040];
     for (const x of posts) this.img("lamp-post", x, FLOOR_Y, D.back + 0.02).setScale(0.9);
-    for (let i = 0; i < posts.length - 1; i += 1) if (posts[i + 1] - posts[i] < 1000) this.bunting(posts[i], posts[i + 1], 600);
+    this.strung(1060, 1760, 640);
+    this.strung(3600, 4300, 640);
+    this.bunting(4300, 5180, 600);
+    this.bunting(5180, 6040, 600);
     for (const x of [2340, 4100, 6200]) this.react(this.img("protest-sign", x, FLOOR_Y + 4, D.floor), "swing");
     this.img("backpack", 940, FLOOR_Y + 4, D.floor + 0.1).setScale(0.8);
     this.img("jump-rope", 1520, FLOOR_Y + 6, D.floor + 0.1);
@@ -418,6 +418,17 @@ export class Scenery {
     for (let x = 120; x < this.width; x += 640) {
       this.img("grass-tuft", x + (x % 3) * 40, H + 10, D.front).setScrollFactor(1.15, 1).setScale(1.2);
     }
+  }
+
+  private strung(x0: number, x1: number, y: number) {
+    const mid = (x0 + x1) / 2;
+    const banner = this.img("banner-protest", mid, y, D.back + 0.03, [0.5, 0]).setScale(0.86);
+    const half = banner.displayWidth / 2;
+    const g = this.scene.add.graphics().setDepth(D.back + 0.025);
+    g.lineStyle(4, INK_HEX, 1);
+    g.lineBetween(x0 + 10, y - 10, mid - half + 14, y + 12);
+    g.lineBetween(x1 - 10, y - 10, mid + half - 14, y + 12);
+    this.react(banner, "swing");
   }
 
   private bunting(x0: number, x1: number, y: number) {
@@ -444,26 +455,26 @@ export class Scenery {
     s.add.tileSprite(0, 0, this.width, FLOOR_Y, "wall-office").setOrigin(0, 0).setDepth(0);
     s.add.image(0, 130, "shade-top").setOrigin(0, 0).setDisplaySize(this.width, 300).setDepth(0.35).setAlpha(0.6);
     this.floor("floor-office");
-    for (let x = 350; x < arenaX - 200; x += 700) this.img("column", x, FLOOR_Y, D.wall + 0.1);
-    for (let x = 700; x < arenaX - 200; x += 700) {
+    for (const x of [300, 1030, 1740, 2290, 3020, 3760]) this.img("column", x, FLOOR_Y, D.wall + 0.1);
+    for (const x of [700, 1400, 2120, 2800, 3450, 4200]) {
       this.img("lamp-warm", x, 120, D.wall + 0.12, [0.5, 0]).setScale(0.8);
       this.cone(x, 210, 0.24, 1.2);
     }
     const plan: [string, number][] = [
-      ["window", 700],
+      ["window", 670],
       ["gallery", 1400],
-      ["banner-order", 1860],
-      ["door-admin-a", 2100],
-      ["bust", 2460],
+      ["banner-order", 1890],
+      ["door-admin-a", 2120],
+      ["bust", 2480],
       ["window", 2800],
-      ["banner-obey", 3150],
+      ["banner-obey", 3170],
       ["stairs", 3450],
       ["gallery", 4200],
-      ["door-admin-b", 4560],
-      ["signpost", 4850],
+      ["door-admin-b", 4580],
+      ["signpost", 4790],
     ];
     for (const [kind, x] of plan) this.officeModule(kind, x);
-    for (const x of [1320, 2630, 3800]) this.grounded(this.react(this.img("plant-big", x, FLOOR_Y, D.back), "plant"));
+    for (const x of [1180, 2680, 3900]) this.grounded(this.react(this.img("plant-big", x, FLOOR_Y, D.back).setScale(0.85), "plant"));
     this.img("office-door", arenaX - 120, FLOOR_Y, D.back);
   }
 
@@ -503,7 +514,7 @@ export class Scenery {
       this.img("stairs-office", x, FLOOR_Y, D.back - 0.05).setScale(0.9);
       return;
     }
-    if (kind === "signpost") this.react(this.img("signpost", x, FLOOR_Y, D.back), "swing");
+    if (kind === "signpost") this.react(this.img("signpost", x, FLOOR_Y, D.back).setScale(0.6), "swing");
   }
 
   private arena(left: number) {

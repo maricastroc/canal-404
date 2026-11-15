@@ -55,13 +55,12 @@ function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
     scene.add.image(x + w / 2, y - 6, "bench").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w, 100 * (w / 250));
     return;
   }
-  if (pl.art === "desk") {
-    const h = 130 * ((w + 10) / 250);
-    if (y - 8 + h > FLOOR_Y - 40) contact(scene, x + w / 2, w);
-    else wallShadow(scene, x, y - 8 + h - 6, w);
-    scene.add.image(x + w / 2, y - 8, "desk").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, h);
+  if (pl.art === "desk" && FLOOR_Y - y < 220) {
+    contact(scene, x + w / 2, w);
+    scene.add.image(x + w / 2, y - 8, "desk").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, FLOOR_Y - y + 10);
     return;
   }
+  const dark = pl.art === "desk";
   const g = scene.add.graphics().setDepth(4);
   const color = PLATFORM_ART[pl.art];
   if (pl.art === "bars") {
@@ -91,9 +90,9 @@ function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
   }
   g.fillStyle(INK_HEX, 1);
   g.fillRoundedRect(x - 4, y - 5, w + 8, 32, 8);
-  g.fillStyle(0x9c5832, 1);
+  g.fillStyle(dark ? 0x55301e : 0x9c5832, 1);
   g.fillRoundedRect(x, y - 1, w, 24, 6);
-  g.fillStyle(0xd99558, 1);
+  g.fillStyle(dark ? 0x9c5832 : 0xd99558, 1);
   g.fillRoundedRect(x, y - 1, w, 10, { tl: 6, tr: 6, bl: 0, br: 0 });
   g.fillStyle(0xffffff, 0.3);
   g.fillRect(x + 8, y + 1, w - 16, 3);
@@ -137,6 +136,7 @@ export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {
 
   const oneWays: Phaser.GameObjects.Zone[] = [];
   for (const pl of level.platforms) {
+    if (pl.wobbly) continue;
     drawPlatform(scene, pl);
     const z = scene.add.zone(cx(pl.col) + (pl.w * TILE) / 2, cy(pl.row) + 10, pl.w * TILE, 20);
     scene.physics.add.existing(z, true);

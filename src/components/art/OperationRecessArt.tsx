@@ -20,8 +20,12 @@ const C = {
   carpet: "#c4352c",
 };
 
-type Kind = "hero" | "mon";
-const REF = { hero: { w: 300, h: 214, cx: 150, feet: 211, tall: 197 }, mon: { w: 260, h: 256, cx: 130, feet: 255, tall: 254 } } as const;
+type Kind = "hero" | "mon" | "kid";
+const REF = {
+  hero: { w: 300, h: 214, cx: 146, feet: 206, tall: 191 },
+  mon: { w: 260, h: 256, cx: 130, feet: 255, tall: 254 },
+  kid: { w: 150, h: 212, cx: 75, feet: 210, tall: 200 },
+} as const;
 
 type At = { x: number; feet: number; h: number; flip?: boolean };
 
@@ -142,7 +146,7 @@ function RunPanel() {
       <path d={`M36 ${ground - 2} Q98 34 168 ${ground - 2}`} fill="none" stroke={P.ink} strokeWidth={1.4} strokeLinecap="round" strokeDasharray="0.1 4" opacity={0.6} />
       <ellipse cx={36} cy={ground} rx={9} ry={2} fill={P.ink} opacity={0.16} />
       <Speed d="M80 50 L70 51 M78 60 L66 61 M80 70 L70 71" w={1.4} />
-      <Hero pose="jump" face="thrill" at={bruno} lift={ground - bruno.feet} />
+      <Figure kind="hero" name="hero-jump" at={bruno} lift={ground - bruno.feet} />
       <path d="M30 116 Q26 110 31 108 Q34 104 38 108 Q43 107 42 113 Z" fill={P.white} stroke={P.ink} strokeWidth={1.1} strokeLinejoin="round" />
     </Panel>
   );
@@ -152,7 +156,7 @@ function AttackPanel() {
   const bruno: At = { x: 66, feet: 122, h: 66 };
   const mon: At = { x: 146, feet: 122, h: 86 };
   const s = bruno.h / REF.hero.tall;
-  const tip = { x: Math.round((bruno.x + (292 - REF.hero.cx) * s) * 10) / 10, y: Math.round((bruno.feet - (REF.hero.feet - 112) * s) * 10) / 10 };
+  const tip = { x: Math.round((bruno.x + (291 - REF.hero.cx) * s) * 10) / 10, y: Math.round((bruno.feet - (REF.hero.feet - 123) * s) * 10) / 10 };
   return (
     <Panel>
       <Prop name="poster-quiet" x={102} bottom={54} h={34} w0={140} h0={180} />
@@ -163,7 +167,7 @@ function AttackPanel() {
       </g>
       <Prop name="pow" x={tip.x + 4} bottom={tip.y + 20} h={40} w0={120} h0={120} />
       <Figure kind="mon" name="mon-common-hurt" at={mon} />
-      <Hero pose="strike" face="shout" at={bruno} />
+      <Figure kind="hero" name="hero-attack-b" at={bruno} />
       <Speed d={`M${mon.x + 30} ${mon.feet - 70} L${mon.x + 40} ${mon.feet - 74} M${mon.x + 32} ${mon.feet - 58} L${mon.x + 44} ${mon.feet - 58}`} w={1.4} />
       <g style={display} transform={`translate(${tip.x + 8} ${tip.y - 22}) rotate(-10)`}>
         <text textAnchor="middle" fontSize="12" fill={P.sun} stroke={P.ink} strokeWidth="3.4" paintOrder="stroke" strokeLinejoin="round">
@@ -187,7 +191,7 @@ function AdvancePanel() {
       <Figure kind="mon" name="mon-common-hurt" at={{ x: 54, feet: 114, h: 48 }} />
       <Stars x={52} y={64} s={0.62} />
       <Speed d="M88 88 L76 89 M86 98 L72 99 M88 108 L78 109" w={1.4} />
-      <Hero pose="run" face="proud" at={bruno} />
+      <Figure kind="hero" name="hero-run-a" at={bruno} />
     </Panel>
   );
 }
@@ -239,5 +243,118 @@ export function OperationRecessCoverArt() {
       <Speed d="M150 150 L162 148 M152 162 L166 162 M150 174 L162 176" w={2.6} />
       <Prop name="backpack" x={18} bottom={242} h={42} w0={100} h0={110} />
     </>
+  );
+}
+
+const CAST_LINE = 2.4;
+const FLOOR = 186;
+
+function CastFloor() {
+  const l = 8;
+  const r = 292;
+  const top = FLOOR;
+  const b = top + 17;
+  const d = `M${l + 9} ${top} L${r - 9} ${top} Q${r} ${top} ${r} ${top + 8} Q${r} ${b} ${r - 9} ${b} L${l + 9} ${b} Q${l} ${b} ${l} ${top + 8} Q${l} ${top} ${l + 9} ${top} Z`;
+  const tiles: React.ReactNode[] = [];
+  for (let row = 0; row < 2; row += 1) {
+    for (let x = l + 10 + row * 13; x < r - 22; x += 26) tiles.push(<rect key={`${row}-${x}`} x={x} y={top + 5 + row * 6} width={13} height={6} fill={C.floorTile} />);
+  }
+  return (
+    <g>
+      <path d={d} fill={C.floor} />
+      {tiles}
+      <path d={`M${l + 9} ${top} L${r - 9} ${top} Q${r} ${top} ${r} ${top + 5} L${l} ${top + 5} Q${l} ${top} ${l + 9} ${top} Z`} fill={C.floorStrip} />
+      <path d={d} fill="none" stroke={P.ink} strokeWidth={CAST_LINE} strokeLinejoin="round" />
+    </g>
+  );
+}
+
+function Shout({ x, y, text, size, color, rotate = 0 }: { x: number; y: number; text: string; size: number; color: string; rotate?: number }) {
+  return (
+    <g style={display} transform={`translate(${x} ${y}) rotate(${rotate})`}>
+      <text textAnchor="middle" fontSize={size} fill={color} stroke={P.ink} strokeWidth={size * 0.24} paintOrder="stroke" strokeLinejoin="round">
+        {text}
+      </text>
+    </g>
+  );
+}
+
+function Confetti() {
+  const bits: [number, number, number, string][] = [
+    [34, 40, 20, P.tomato],
+    [70, 18, -30, P.sun],
+    [112, 46, 50, P.mint],
+    [150, 12, -10, P.bubblegum],
+    [196, 34, 35, P.sky],
+    [236, 16, -45, P.sun],
+    [268, 48, 15, P.tomato],
+    [92, 78, -60, P.sky],
+    [214, 74, 70, P.mint],
+    [20, 88, 40, P.bubblegum],
+    [282, 96, -20, P.sun],
+  ];
+  return (
+    <g>
+      {bits.map(([x, y, a, c]) => (
+        <rect key={`${x}-${y}`} x={x - 5} y={y - 3} width={10} height={6} rx={1.5} fill={c} stroke={P.ink} strokeWidth={1.2} transform={`rotate(${a} ${x} ${y})`} />
+      ))}
+    </g>
+  );
+}
+
+function CastIntro() {
+  const bruno: At = { x: 92, feet: FLOOR + 6, h: 134 };
+  const mon: At = { x: 230, feet: FLOOR + 6, h: 150, flip: true };
+  return (
+    <>
+      <Prop name="lockers-a" x={158} bottom={FLOOR + 4} h={98} w0={342} h0={244} />
+      <CastFloor />
+      <Prop name="paper-pile" x={166} bottom={FLOOR + 12} h={11} w0={120} h0={50} />
+      <Figure kind="mon" name="mon-whistle-blow" at={mon} />
+      <Shout x={196} y={44} text="PRIII!" size={20} color={P.tomato} rotate={-8} />
+      <Speed d={`M${bruno.x - 62} ${bruno.feet - 88} L${bruno.x - 78} ${bruno.feet - 87} M${bruno.x - 60} ${bruno.feet - 70} L${bruno.x - 80} ${bruno.feet - 69} M${bruno.x - 62} ${bruno.feet - 52} L${bruno.x - 76} ${bruno.feet - 51}`} w={2.2} />
+      <Figure kind="hero" name="hero-run-a" at={bruno} />
+    </>
+  );
+}
+
+function CastWin() {
+  const hop = 12;
+  const bruno: At = { x: 150, feet: FLOOR + 6 - hop, h: 140 };
+  const deco: At = { x: 56, feet: FLOOR + 6, h: 124 };
+  const lina: At = { x: 248, feet: FLOOR + 6, h: 120 };
+  return (
+    <>
+      <Prop name="lockers-a" x={150} bottom={FLOOR + 4} h={98} w0={342} h0={244} />
+      <Confetti />
+      <CastFloor />
+      <Figure kind="kid" name="kid-deco-a" at={deco} />
+      <Figure kind="kid" name="kid-lina-a" at={lina} />
+      <Figure kind="hero" name="hero-cheer" at={bruno} lift={hop} />
+      <Shout x={150} y={34} text="RECREIO!" size={22} color={P.sun} rotate={-4} />
+    </>
+  );
+}
+
+function CastLose() {
+  const bruno: At = { x: 92, feet: FLOOR + 6, h: 130 };
+  const mon: At = { x: 222, feet: FLOOR + 6, h: 152, flip: true };
+  return (
+    <>
+      <Prop name="lockers-a" x={150} bottom={FLOOR + 4} h={98} w0={342} h0={244} />
+      <CastFloor />
+      <Figure kind="mon" name="mon-common-attack" at={mon} />
+      <Shout x={238} y={36} text="HAHA!" size={20} color={P.white} rotate={6} />
+      <Figure kind="hero" name="hero-hurt" at={bruno} />
+      <Stars x={bruno.x + 6} y={bruno.feet - bruno.h - 4} s={1.6} />
+    </>
+  );
+}
+
+export function OperationRecessCast({ mood, className }: { mood: "intro" | "win" | "lose"; className?: string }) {
+  return (
+    <svg viewBox="0 0 300 210" className={className} aria-hidden overflow="visible">
+      {mood === "intro" ? <CastIntro /> : mood === "win" ? <CastWin /> : <CastLose />}
+    </svg>
   );
 }

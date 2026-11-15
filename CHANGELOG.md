@@ -4,6 +4,17 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Operação: Recreio: Bruno de perfil, escola mais caprichada e um caminho com mais desafios
+- **Bruno drawn in profile.** The in-game Bruno was a front-facing head on a sideways body. He is now drawn in a true side view: one eye behind one round lens with the temple running to the ear, the nose and chin sticking out of the silhouette, hair covering the back of the head, a narrow torso, and the far arm and leg darker and partly hidden behind the body. The head is now about 38% of his height instead of half, with longer torso, arms and legs. Running has four frames instead of two, the attack has a windup, a slash and a follow-through, and jump, fall, hurt and cheer use the same drawing, facing left or right.
+- **Tidier scenery.** Corridor columns, posters, the window and the mop no longer overlap. The yard's protest banners hang on ropes between the lamp posts and sway when hit. Office columns, lamps, the bust and the door no longer overlap, and the desks stand on the floor or hang as wall shelves instead of floating.
+- **Corridor**: lockers rattle and then burst open on whoever runs past. Wait for them or slam them shut with the sword. The vigia reads a newspaper and, when he lowers it, anyone who moves gets a giant whistle wave.
+- **Yard**: Lina and Mila turn a jump rope you have to jump at the right moment (tripping costs no heart), and a gym mat bounces you up to a high ledge.
+- **Office**: the Inspetor's searchlights sweep the floor (standing on the furniture keeps you out of them), wobbly shelves fall shortly after you step on them, and a monitor alternates high whistles (stay on the ground) with low ones (jump).
+- A short hint appears the first time each new mechanic shows up, after the level title has gone.
+- **New text**: "Pego no flagra!", "Passou! Bora pra próxima!", "Recreio liberado!", along with new tips and a new "Como jogar" covering the lockers, the vigia, the rope, the searchlight and the shelves.
+- **Scenes instead of floating heads.** The intro shows Bruno charging at a whistling monitor in front of the lockers. A win shows him cheering with Deco and Lina under confetti, and a loss shows him dizzy while a monitor laughs. All three use the game's own sprites, standing on a strip of corridor floor. The "Como jogar" panels on the game page use the new profile Bruno too.
+- Monitor counts, stickers, scoring, stars and the scoreboard and mission rules are unchanged. The vigia's giant wave can't be cut with the sword, so it never counts as a whistle wave in the corridor.
+
 ### Testes enxutos
 - The test suite now covers only what breaks silently and costs a lot: player saves, the scoreboard and mission judges, the API's security, the Laboratório replay, and one end-to-end smoke per flow ([decision 0007](docs/decisions/0007-essential-tests-only.md)). Unit tests went from 530 to 146 cases (about 4 s) and end-to-end from 101 tests to 14.
 - Removed the visual regression job and its snapshots, the JavaScript budget spec, the axe checks, the component tests, and the Testing Library, axe and Vitest React plugin dependencies.

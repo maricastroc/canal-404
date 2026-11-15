@@ -70,7 +70,7 @@ const SCENERY = [
   "pennants",
 ];
 
-const HERO = ["idle", "run-a", "run-b", "jump", "fall", "attack-a", "attack-b", "hurt", "cheer"];
+const HERO = ["idle", "run-a", "run-b", "run-c", "run-d", "jump", "fall", "attack-a", "attack-b", "attack-c", "hurt", "cheer"];
 const MON: Record<string, string[]> = {
   common: ["walk-a", "walk-b", "windup", "attack", "hurt"],
   whistle: ["walk-a", "walk-b", "puff", "blow", "hurt"],

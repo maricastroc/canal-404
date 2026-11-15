@@ -1,20 +1,21 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
+import { ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
 import { LEVELS, type LevelDef } from "../levels";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { Inspector } from "./boss";
-import { makeEnemy, Wave, type Enemy, type HeroView, type StageApi } from "./enemies";
+import { makeEnemy, Wave, WhistleMonitor, type Enemy, type HeroView, type StageApi } from "./enemies";
 import { Ball, BallSpawner, Bell, Cart, Item } from "./hazards";
+import { Locker, makeGadgetTextures, Pad, Rope, Searchlight, Watcher, WobblyShelf, type HeroState } from "./gadgets";
 import { RecessHud } from "./hud";
 import { Hero } from "./player";
 import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
 
 type Mode = "attract" | "play" | "ko" | "won";
-type Lesson = "walk" | "jump" | "attack";
-type Chip = { box: Phaser.GameObjects.Container; lift: number; dx: number; leaving: boolean };
+type Lesson = "walk" | "jump" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "wobbly" | "high";
+type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean };
 type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
@@ -23,6 +24,24 @@ const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
 const HIT_WORDS = ["POW!", "TOMA!", "PAF!", "BOING!"];
 const learned = new Set<Lesson>();
+const HINTS: Partial<Record<Lesson, string>> = {
+  locker: "ARMÁRIO TREMENDO? VAI ABRIR!",
+  watcher: "JORNAL ABAIXOU? ESTÁTUA!",
+  rope: "PULE QUANDO A CORDA PASSAR!",
+  pad: "PULE NO COLCHONETE!",
+  light: "FUJA DA LUZ DO INSPETOR!",
+  wobbly: "PRATELEIRA BAMBA: NÃO PARE!",
+  high: "APITO ALTO? FIQUE NO CHÃO!",
+};
+const HINT_SPEECH: Partial<Record<Lesson, string>> = {
+  locker: "Cuidado: armário tremendo vai abrir. Espere ou dê uma espadada nele.",
+  watcher: "Vigia à frente. Quando ele baixar o jornal, fique parado.",
+  rope: "Corda de pular à frente. Pule quando ela passar pelo chão.",
+  pad: "Colchonete à frente. Pule nele para ir bem alto.",
+  light: "Holofote do Inspetor. Não fique na luz.",
+  wobbly: "Prateleira bamba. Ela cai logo depois que você pisa.",
+  high: "Este monitor solta apitos altos e baixos. Pule só os baixos.",
+};
 
 export class StageScene extends Phaser.Scene {
   private ctx!: GameHostContext;
@@ -38,6 +57,12 @@ export class StageScene extends Phaser.Scene {
   private carts: Cart[] = [];
   private items: Item[] = [];
   private bells: Bell[] = [];
+  private lockers: Locker[] = [];
+  private watchers: Watcher[] = [];
+  private ropes: Rope[] = [];
+  private pads: Pad[] = [];
+  private spotlights: Searchlight[] = [];
+  private shelves: WobblyShelf[] = [];
   private boss: Inspector | null = null;
   private arena = { left: 0, right: 0, entered: false };
   private gate: Phaser.GameObjects.Zone | null = null;
@@ -61,6 +86,7 @@ export class StageScene extends Phaser.Scene {
   private tutorialFrom = 0;
   private lesson: Lesson | null = null;
   private lessonUntil = 0;
+  private hintsAt = 0;
   private shown = new Set<Lesson>();
   private chips: Chip[] = [];
   private exitZone: Phaser.Geom.Rectangle | null = null;
@@ -82,6 +108,12 @@ export class StageScene extends Phaser.Scene {
     this.carts = [];
     this.items = [];
     this.bells = [];
+    this.lockers = [];
+    this.watchers = [];
+    this.ropes = [];
+    this.pads = [];
+    this.spotlights = [];
+    this.shelves = [];
     this.boss = null;
     this.arena = { left: 0, right: 0, entered: false };
     this.gate = null;
@@ -102,6 +134,7 @@ export class StageScene extends Phaser.Scene {
     this.tutorialOn = false;
     this.lesson = null;
     this.lessonUntil = 0;
+    this.hintsAt = 0;
     this.shown = new Set();
     this.chips = [];
     this.exitZone = null;
@@ -158,6 +191,13 @@ export class StageScene extends Phaser.Scene {
     for (const it of this.level.items) this.items.push(new Item(this, it.kind, it.col, it.row, reduced));
     for (const col of this.level.checkpoints) this.bells.push(new Bell(this, col));
     for (const b of this.level.balls ?? []) this.spawners.push(new BallSpawner(this.api, b, (ball) => this.balls.push(ball)));
+    makeGadgetTextures(this);
+    (this.level.lockers ?? []).forEach((col, i) => this.lockers.push(new Locker(this.api, col, i)));
+    for (const w of this.level.watchers ?? []) this.watchers.push(new Watcher(this.api, w.col, w.look, this.ctx.fonts.display, (x, dir) => this.mode === "play" && this.waves.push(new Wave(this, x, FLOOR_Y, dir, true))));
+    for (const r of this.level.ropes ?? []) this.ropes.push(new Rope(this.api, r));
+    for (const col of this.level.pads ?? []) this.pads.push(new Pad(this.api, col));
+    for (const l of this.level.lights ?? []) this.spotlights.push(new Searchlight(this.api, l));
+    for (const pl of this.level.platforms) if (pl.wobbly) this.shelves.push(new WobblyShelf(this.api, pl));
 
     const startCol = resume ? resume.col : this.level.start;
     if (resume) {
@@ -196,6 +236,7 @@ export class StageScene extends Phaser.Scene {
     const carts = this.carts.map((c) => c.img);
     this.physics.add.collider(this.hero.rect, solids);
     this.physics.add.collider(this.hero.rect, oneWays);
+    for (const z of [...this.pads.map((p) => p.zone), ...this.shelves.map((s) => s.zone)]) this.physics.add.collider(this.hero.rect, z);
     if (carts.length) this.physics.add.collider(this.hero.rect, carts);
     for (const e of this.enemies) {
       this.physics.add.collider(e.rect, solids);
@@ -271,6 +312,7 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     this.hud.flash(this.level.title.toUpperCase(), "#ffc83d", 1300, this.level.intro);
+    this.hintsAt = this.t + 2400;
     this.announce(`Fase ${this.levelIndex + 1} de ${LEVELS.length}: ${this.level.title}. ${this.level.intro} Setas andam, espaço pula, J ataca.`);
     if (this.levelIndex === 0 && !(["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l))) {
       this.tutorialOn = true;
@@ -391,7 +433,7 @@ export class StageScene extends Phaser.Scene {
     if (icons.length) x += 4;
     label.setX(x);
     parts.push(label);
-    const chip: Chip = { box: this.add.container(this.hero.x, this.hero.top - 34, parts).setDepth(45).setAlpha(0), lift: 0, dx: 0, leaving: false };
+    const chip: Chip = { box: this.add.container(this.hero.x, this.hero.top - 34, parts).setDepth(45).setAlpha(0), half: w / 2, lift: 0, dx: 0, leaving: false };
     this.chips.push(chip);
     if (this.ctx.reducedMotion) {
       this.tweens.add({ targets: chip.box, alpha: 1, duration: 160 });
@@ -425,7 +467,9 @@ export class StageScene extends Phaser.Scene {
     const want = foe ? -Math.sign(foe.x - this.hero.x) * 70 : 0;
     for (const chip of this.chips) {
       chip.dx = Phaser.Math.Linear(chip.dx, want, 0.12);
-      chip.box.setPosition(this.hero.x + chip.dx, this.hero.top - 34 - chip.lift);
+      const view = this.cameras.main.worldView;
+      const x = Phaser.Math.Clamp(this.hero.x + chip.dx, view.x + chip.half + 16, view.right - chip.half - 16);
+      chip.box.setPosition(x, this.hero.top - 34 - chip.lift);
     }
   }
 
@@ -563,8 +607,8 @@ export class StageScene extends Phaser.Scene {
     this.sfx("lose", 1);
     const cp = this.registry.get("checkpoint") as Checkpoint | null;
     if (cp) cp.hits = this.hits;
-    this.hud.flash("VOCÊ FOI PEGO!", "#ef4f43", 1200, cp ? "Você volta do último sino." : "Tenta de novo!");
-    this.announce("Você foi pego pelos monitores!");
+    this.hud.flash("TE PEGARAM!", "#ef4f43", 1200, cp ? "Você volta do último sino." : "Bora de novo!");
+    this.announce("Os monitores te pegaram!");
     const result: GameResult = {
       won: false,
       score: this.score,
@@ -572,7 +616,7 @@ export class StageScene extends Phaser.Scene {
       breakdown: this.breakdown(false),
       stats: this.resultStats(false),
       level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
-      copy: { title: "Pego!", text: cp ? "Jogue de novo para voltar do último sino." : "Os monitores te levaram pra sala. Tenta de novo!" },
+      copy: { title: "Pego no flagra!", text: cp ? "Os monitores te levaram pra sala. Jogue de novo e volte do último sino." : "Os monitores te levaram pra sala. Bora de novo?" },
       ...(cp ? { restartLabel: "Voltar ao sino" } : {}),
       summary: `Monitores: ${this.kills}. Figurinhas: ${this.stickers}.`,
     };
@@ -634,7 +678,7 @@ export class StageScene extends Phaser.Scene {
       stats: this.resultStats(true),
       achievements,
       level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
-      copy: last ? { title: "Você conseguiu!", text: "O recreio está de volta!" } : { title: "Boa!", text: `${this.level.win} Próxima fase!` },
+      copy: last ? { title: "Recreio liberado!", text: "O Inspetor dançou e o pátio é da criançada de novo!" } : { title: "Passou!", text: `${this.level.win} Bora pra próxima!` },
       summary: `Monitores: ${this.kills}. Batidas: ${this.hits}.`,
       ...(stars < 3 ? { starHint: stars === 1 ? "Com até 3 batidas, a fase vale 2 estrelas. Com até 1, vale 3." : "Com até 1 batida, a fase vale 3 estrelas." } : {}),
     };
@@ -645,9 +689,9 @@ export class StageScene extends Phaser.Scene {
     }
     this.sfx("door", 1);
     this.time.delayedCall(420, () => this.sfx("win", 1));
-    this.hud.flash("BOA!", "#93cf4c", 1100, "Próxima fase!");
+    this.hud.flash("PASSOU!", "#93cf4c", 1100, "Bora pra próxima!");
     this.kidAtDoor();
-    this.announce(`Boa! Você passou da fase ${this.level.title}.`);
+    this.announce(`Passou! Fase ${this.level.title} concluída.`);
     this.time.delayedCall(1600, () => this.ctx.onEvent({ type: "finished", result }));
   }
 
@@ -673,8 +717,8 @@ export class StageScene extends Phaser.Scene {
     const reduced = this.ctx.reducedMotion;
     this.sfx("bell", 1);
     this.time.delayedCall(300, () => this.sfx("cheer", 1));
-    this.hud.flash("RECREIO LIBERADO!", "#93cf4c", 2800, "Você conseguiu! O recreio está de volta!");
-    this.announce("O Inspetor foi vencido. Recreio liberado! Você conseguiu!");
+    this.hud.flash("RECREIO LIBERADO!", "#93cf4c", 2800, "O sinal tocou. O pátio é de vocês!");
+    this.announce("O Inspetor foi vencido. Recreio liberado! O pátio é de vocês!");
     const left = this.arena.left;
     const kids: [string, number][] = [
       ["deco", left + 360],
@@ -820,6 +864,7 @@ export class StageScene extends Phaser.Scene {
     for (const w of this.waves) w.update(dt);
     for (const b of this.balls) b.update(dt);
     for (const it of this.items) it.update(t);
+    this.updateGadgets(t, dt);
     if (this.scenery.update(t, this.hero.x, this.hero.body.velocity.x, this.hero.grounded, this.cameras.main.worldView)) this.sfx("swing", 0.3);
 
     this.updateCamera(dt);
@@ -894,9 +939,69 @@ export class StageScene extends Phaser.Scene {
     if (this.boss && !this.arena.entered && view.x > this.arena.left + 260) this.enterArena();
   }
 
+  private heroState(): HeroState {
+    const b = this.hero.body;
+    return { x: b.center.x, feet: b.bottom, top: b.top, vx: b.velocity.x, vy: b.velocity.y, grounded: this.hero.grounded };
+  }
+
+  private updateGadgets(t: number, dt: number) {
+    if (!this.lockers.length && !this.watchers.length && !this.ropes.length && !this.pads.length && !this.spotlights.length && !this.shelves.length) return;
+    const h = this.heroState();
+    const hr = this.heroRect();
+    for (const l of this.lockers) {
+      l.update(t, h);
+      const box = l.hitBox(t);
+      if (box && Phaser.Geom.Intersects.RectangleToRectangle(hr, box)) this.hurt(l.hinge);
+    }
+    for (const w of this.watchers) w.update(t, h);
+    for (const r of this.ropes) if (r.update(t, h)) this.trip();
+    for (const p of this.pads) {
+      if (!p.landed(h)) continue;
+      this.hero.bounce(JUMP_V * 1.45);
+      p.boing();
+      this.word("BOING!", p.x, p.top - 60, "#5cb9f0", 40);
+    }
+    for (const l of this.spotlights) if (l.update(t, dt, h)) this.hurt(l.spotX);
+    for (const s of this.shelves) s.update(t, h);
+    this.updateHints(h.x);
+  }
+
+  private trip() {
+    if (this.t < this.invulnUntil) return;
+    this.invulnUntil = this.t + 700;
+    this.hero.knock(this.hero.x + this.hero.facing * 10, this.t, 300, 320);
+    this.word("TROPEÇOU!", this.hero.x, this.hero.body.top - 40, "#f06ba8", 40);
+    this.sfx("land", 0.9);
+    this.announce("Tropeçou na corda! Pule quando ela passar pelo chão.");
+  }
+
+  private updateHints(x: number) {
+    if (this.lesson || this.mode !== "play" || this.t < this.hintsAt) return;
+    const wants: [Lesson, boolean][] = [
+      ["locker", this.lockers.some((l) => x > l.x - 520 && x < l.x - 200)],
+      ["watcher", this.watchers.some((w) => x > w.x - 900 && x < w.x - 400)],
+      ["rope", this.ropes.some((r) => r.near(x))],
+      ["pad", this.pads.some((p) => x > p.x - 520 && x < p.x - 120)],
+      ["light", this.spotlights.some((l) => l.near(x))],
+      ["wobbly", this.shelves.some((s) => s.near(x))],
+      ["high", this.enemies.some((e) => !e.dead && e instanceof WhistleMonitor && e.mixed && Math.abs(e.x - x) < 900)],
+    ];
+    for (const [lesson, on] of wants) {
+      if (!on || learned.has(lesson) || this.shown.has(lesson)) continue;
+      this.shown.add(lesson);
+      learned.add(lesson);
+      this.lesson = lesson;
+      this.lessonUntil = this.t + 4200;
+      this.showChip(HINTS[lesson]!);
+      this.announce(HINT_SPEECH[lesson]!);
+      return;
+    }
+  }
+
   private resolveAttack(atk: Phaser.Geom.Rectangle, t: number) {
     const id = this.hero.attackId;
     const fromX = this.hero.x;
+    for (const l of this.lockers) if (Phaser.Geom.Intersects.RectangleToRectangle(atk, l.bounds()) && l.slam()) this.hitStopUntil = this.time.now + HIT_STOP_MS;
     for (const e of this.enemies) {
       if (e.dead || !Phaser.Geom.Intersects.RectangleToRectangle(atk, e.bounds())) continue;
       const res = e.hitBy(id, fromX, t);

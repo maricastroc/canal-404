@@ -265,6 +265,7 @@ const COMMON: Record<EnemyStyle, CommonTune> = {
   patrol: { sight: 640, speed: 155, windup: 460, lunge: 330, recover: 620, dodge: 0.3 },
   rush: { sight: 600, speed: 250, windup: 400, lunge: 400, recover: 860, dodge: 0 },
   guard: { sight: 340, speed: 125, windup: 520, lunge: 300, recover: 700, dodge: 0 },
+  mixed: { sight: 640, speed: 155, windup: 460, lunge: 330, recover: 620, dodge: 0.3 },
 };
 
 export class CommonMonitor extends Enemy {
@@ -449,8 +450,14 @@ export class CommonMonitor extends Enemy {
 export class WhistleMonitor extends Enemy {
   private nextShot = 0;
   private hopReady = 0;
+  private shots = 0;
 
-  constructor(api: StageApi, x: number, feet: number) {
+  constructor(
+    api: StageApi,
+    x: number,
+    feet: number,
+    readonly mixed = false,
+  ) {
     super(api, "whistle", x, feet, 2);
     this.knockback = { x: 440, y: 360 };
     this.state = "watch";
@@ -521,7 +528,9 @@ export class WhistleMonitor extends Enemy {
           this.until = t + 420;
           this.tex("blow");
           this.api.sfx("whistle", 0.8);
-          this.api.spawnWave(this.x + this.facing * 90, this.feet - 82, this.facing, false);
+          const high = this.mixed && this.shots % 2 === 1;
+          this.shots += 1;
+          this.api.spawnWave(this.x + this.facing * 90, this.feet - (high ? 252 : 82), this.facing, false);
         }
         return;
       case "blow":
@@ -751,7 +760,7 @@ export class Wave {
 }
 
 export function makeEnemy(api: StageApi, kind: EnemyKind, x: number, feet: number, style?: EnemyStyle): Enemy {
-  if (kind === "whistle") return new WhistleMonitor(api, x, feet);
+  if (kind === "whistle") return new WhistleMonitor(api, x, feet, style === "mixed");
   if (kind === "shield") return new ShieldMonitor(api, x, feet);
   return new CommonMonitor(api, x, feet, style);
 }

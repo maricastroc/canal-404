@@ -21,7 +21,9 @@ import {
 } from "../config";
 
 export type HeroInput = { left: boolean; right: boolean; jumpHeld: boolean };
-type Pose = "idle" | "run-a" | "run-b" | "jump" | "fall" | "attack-a" | "attack-b" | "hurt" | "cheer";
+type Pose = "idle" | "run-a" | "run-b" | "run-c" | "run-d" | "jump" | "fall" | "attack-a" | "attack-b" | "attack-c" | "hurt" | "cheer";
+
+const RUN_FRAMES: Pose[] = ["run-a", "run-b", "run-c", "run-d"];
 
 export type HeroFx = {
   sfx: (name: "jump" | "land" | "swing" | "step", volume?: number) => void;
@@ -235,12 +237,13 @@ export class Hero {
     if (t < this.recoilUntil) this.setPose("attack-a");
     else if (t < this.stunUntil) this.setPose("hurt");
     else if (since < ATTACK.windup) this.setPose("attack-a");
-    else if (since < ATTACK.windup + ATTACK.active + 70) this.setPose("attack-b");
+    else if (since < ATTACK.windup + ATTACK.active * 0.6) this.setPose("attack-b");
+    else if (since < ATTACK.windup + ATTACK.active + 70) this.setPose("attack-c");
     else if (!ground) this.setPose(this.body.velocity.y < 0 ? "jump" : "fall");
     else if (Math.abs(this.body.velocity.x) > 50) {
       this.runClock += dt * Math.abs(this.body.velocity.x);
-      const frame = Math.floor(this.runClock / 70) % 2 === 0 ? "run-a" : "run-b";
-      if (frame !== this.pose && (this.pose === "run-a" || this.pose === "run-b")) this.fx.sfx("step", 0.35);
+      const frame = RUN_FRAMES[Math.floor(this.runClock / 52) % 4];
+      if (frame !== this.pose && (frame === "run-a" || frame === "run-c") && this.pose.startsWith("run")) this.fx.sfx("step", 0.35);
       this.setPose(frame);
     } else this.setPose("idle");
     const active = t >= this.recoilUntil && since >= ATTACK.windup && since < ATTACK.windup + ATTACK.active + 40;
@@ -254,7 +257,7 @@ export class Hero {
   sync(t: number, invulnUntil: number) {
     const b = this.body;
     this.sprite.setPosition(b.center.x, b.bottom + 2).setFlipX(this.facing < 0);
-    this.slash.setPosition(b.center.x + this.facing * 106 * this.k, b.center.y - 22 - (this.k - 1) * 60);
+    this.slash.setPosition(b.center.x + this.facing * 104 * this.k, b.center.y + 4 - (this.k - 1) * 50);
     if (t < invulnUntil && !this.locked) this.sprite.setAlpha(Math.floor(t / 70) % 2 ? 0.35 : 1);
     else this.sprite.setAlpha(1);
     if (this.grounded) this.groundY = b.bottom;

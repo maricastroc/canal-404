@@ -86,7 +86,7 @@ export class RecessHud {
   private makePad(action: PadAction, icon: string, r: number, color: number) {
     const bg = this.scene.add.graphics().setDepth(62).setScrollFactor(0);
     const img = this.scene.add.image(0, 0, icon).setDepth(63).setScrollFactor(0);
-    const hit = this.scene.add.circle(0, 0, r + 18, 0xffffff, 0).setDepth(64).setScrollFactor(0).setInteractive();
+    const hit = this.scene.add.circle(0, 0, r + 18, 0xffffff, 0).setDepth(64).setScrollFactor(0).setInteractive({ useHandCursor: true });
     const pad: Pad = { action, bg, icon: img, hit, r, color, x: 0, y: 0, base: 1 };
     hit.on("pointerdown", (p: Phaser.Input.Pointer) => {
       this.pointers.set(p.id, action);
