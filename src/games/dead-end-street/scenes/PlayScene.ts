@@ -42,6 +42,7 @@ type TargetState = {
   def: TargetDef;
   index: number;
   obj: Phaser.Physics.Matter.Image | null;
+  shadow: Phaser.GameObjects.Image | null;
   rest: Pose | null;
   hit: boolean;
   active: boolean;
@@ -61,6 +62,9 @@ type Impact = {
   flying: boolean;
   other: MatterJS.BodyType | null;
 };
+
+const SHADOW = { x: 5, y: 6, alpha: 0.26 };
+const KNOCKED_TINT = 0xd4cddc;
 
 const HIT_LINES = ["NA MOSCA!", "ISSO!", "BOA!", "EM CHEIO!"];
 const MISS_LINES = ["ERREI!", "FOI O VENTO!", "OPS!", "MIRA TORTA!"];
@@ -109,6 +113,7 @@ export class PlayScene extends Phaser.Scene {
   private targetByBody = new Map<number, TargetState>();
   private propByBody = new Map<number, PropState>();
   private pendingHits = new Set<TargetState>();
+  private knocked = new Set<number>();
   private impacts: Impact[] = [];
   private bandBack!: Phaser.GameObjects.Graphics;
   private bandFront!: Phaser.GameObjects.Graphics;
@@ -245,6 +250,7 @@ export class PlayScene extends Phaser.Scene {
       message: `Partida iniciada. Rodada 1 de ${WAVES.length}: ${WAVES[0].subtitle}. Arraste para trás e solte, ou use as setas para mirar e espaço para lançar.`,
     });
     this.loadNext();
+    this.targets.filter((t) => t.def.wave === 1).forEach((t, i) => this.time.delayedCall(500 + i * 220, () => this.cueTarget(t)));
   }
 
   setHighScore(value: number) {
@@ -327,7 +333,7 @@ export class PlayScene extends Phaser.Scene {
       this.propByBody.set((obj.body as MatterJS.BodyType).id, state);
     }
     TARGETS.forEach((def, index) => {
-      const state: TargetState = { def, index, obj: null, rest: null, hit: false, active: false, armedAt: 0 };
+      const state: TargetState = { def, index, obj: null, shadow: null, rest: null, hit: false, active: false, armedAt: 0 };
       this.targets.push(state);
       if (def.wave === 1) this.spawnTarget(state, false);
     });
@@ -336,6 +342,7 @@ export class PlayScene extends Phaser.Scene {
   private spawnTarget(t: TargetState, animate: boolean) {
     const obj = this.addBody(t.def, `target:${t.def.id}`, animate ? -36 : 0);
     t.obj = obj;
+    t.shadow = this.add.image(obj.x + SHADOW.x, obj.y + SHADOW.y, t.def.tex).setTintFill(0x1d1830).setAlpha(SHADOW.alpha).setDepth(4.9);
     t.active = true;
     t.rest = null;
     t.armedAt = animate ? this.time.now + 900 : 0;
@@ -347,7 +354,60 @@ export class PlayScene extends Phaser.Scene {
       this.fx.burst(this.fx.sparks, 5, t.def.x, t.def.y - 20);
       this.sfx("spawn", 0.9);
       this.hud.revealTarget(t.index);
+      this.time.delayedCall(260, () => this.cueTarget(t));
     }
+  }
+
+  private cueTarget(t: TargetState) {
+    if (!t.obj || t.hit || this.finishing) return;
+    const x = t.def.x;
+    const y = t.def.y - t.def.h / 2 - 46;
+    const g = this.add.graphics().setDepth(13);
+    g.fillStyle(0x1d1830, 1);
+    g.fillTriangle(-17, -12, 21, -12, 2, 15);
+    g.fillStyle(0xffc83d, 1);
+    g.fillTriangle(-19, -16, 19, -16, 0, 11);
+    g.lineStyle(4, 0x1d1830, 1);
+    g.strokeTriangle(-19, -16, 19, -16, 0, 11);
+    g.setPosition(x, y).setScale(Math.min(this.hud.uiScale, 1.3) * 1.35);
+    const fade = () => this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
+    if (this.ctx.reducedMotion) {
+      this.time.delayedCall(1300, fade);
+      return;
+    }
+    g.setAlpha(0);
+    this.tweens.add({ targets: g, alpha: 1, duration: 140 });
+    this.tweens.add({ targets: g, y: y - 12, duration: 300, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: fade });
+  }
+
+  private syncShadows() {
+    for (const t of this.targets) {
+      if (!t.obj || !t.shadow) continue;
+      t.shadow.setPosition(t.obj.x + SHADOW.x, t.obj.y + SHADOW.y).setRotation(t.obj.rotation).setAlpha(t.obj.alpha * SHADOW.alpha);
+    }
+  }
+
+  private flyToHud(t: TargetState, x: number, y: number) {
+    if (this.ctx.reducedMotion) {
+      this.hud.checkTarget(t.index);
+      return;
+    }
+    const to = this.hud.iconPoint(t.index);
+    const token = this.add.image(x, y, "star").setDepth(21).setScale(1.6);
+    this.tweens.add({ targets: token, angle: 220, duration: 560, delay: 140 });
+    this.tweens.add({
+      targets: token,
+      x: to.x,
+      y: to.y,
+      scale: 0.9,
+      duration: 560,
+      delay: 140,
+      ease: "Cubic.easeIn",
+      onComplete: () => {
+        token.destroy();
+        this.hud.checkTarget(t.index);
+      },
+    });
   }
 
   private buildLauncher() {
@@ -538,7 +598,11 @@ export class PlayScene extends Phaser.Scene {
     const go = (body as MatterJS.BodyType & { gameObject?: Phaser.Physics.Matter.Image }).gameObject;
     if (!go || !go.active) return;
     go.setTintFill(0xffffff);
-    this.time.delayedCall(70, () => go.active && go.clearTint());
+    this.time.delayedCall(70, () => {
+      if (!go.active) return;
+      if (this.knocked.has(body.id)) go.setTint(KNOCKED_TINT);
+      else go.clearTint();
+    });
   }
 
   private processImpacts() {
@@ -792,13 +856,18 @@ export class PlayScene extends Phaser.Scene {
     }
     if (t.def.id === "birdhouse") {
       t.obj.setTexture("birdhouse-empty");
+      t.shadow?.setTexture("birdhouse-empty");
       birdFlyOut(this, x + 4, y + 2, this.fx, this.ctx.reducedMotion);
       this.sfx("tweet", 1);
     }
     this.sfx("target", 1);
     this.freeze(this.shotHits === 1 ? 50 : 30);
     this.arlindo.shout(t.def.shout);
-    this.hud.checkTarget(t.index);
+    this.flyToHud(t, x, y);
+    const obj = t.obj;
+    const bodyId = (obj.body as MatterJS.BodyType).id;
+    this.knocked.add(bodyId);
+    this.time.delayedCall(650, () => obj.active && obj.setTint(KNOCKED_TINT));
     this.hop(this.lina, 24);
     let message = `${t.def.name} ${t.def.fem ? "derrubada" : "derrubado"}! Mais ${t.def.points} pontos.`;
     if (this.shotHits >= 2 && this.phase === "flying") {
@@ -1133,6 +1202,7 @@ export class PlayScene extends Phaser.Scene {
         if (steps === 6) this.acc = 0;
       }
     }
+    this.syncShadows();
     this.drawBands();
     this.drawAim();
   }

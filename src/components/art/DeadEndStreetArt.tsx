@@ -103,7 +103,7 @@ function GnomeHat({ w }: { w: number }) {
   );
 }
 
-function Gnome({ x, y, s, rotate = 0, shock = false, hat = true }: { x: number; y: number; s: number; rotate?: number; shock?: boolean; hat?: boolean }) {
+export function Gnome({ x, y, s, rotate = 0, shock = false, hat = true }: { x: number; y: number; s: number; rotate?: number; shock?: boolean; hat?: boolean }) {
   const w = LINE.mid / s;
   return (
     <g transform={`translate(${x} ${y}) rotate(${rotate}) scale(${s}) translate(-33 -102)`} {...ink} strokeWidth={w}>

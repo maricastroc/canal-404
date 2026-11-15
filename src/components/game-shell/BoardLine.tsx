@@ -8,7 +8,7 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import type { GameMeta } from "@/games/registry";
 import type { JoinOutcome, SubmitOutcome } from "@/lib/competition/client";
 import { formatBest, ordinal } from "@/lib/competition/format";
-import { isGameSlug } from "@/lib/competition/boards";
+import { BOARD_META, isGameSlug, type GameSlug } from "@/lib/competition/boards";
 import { recordsHref } from "@/lib/competition/links";
 
 export type BoardState = { phase: "sending" } | { phase: "join" } | { phase: "done"; outcome: SubmitOutcome };
@@ -50,17 +50,26 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome): Line | nu
         return { text: board.best ? `Só vitórias entram no placar ${here}. Seu melhor continua ${best}, ${place}.` : `Só vitórias entram no placar ${here}.`, rival, href };
       }
       if (board.improved && board.position) {
-        if (alone) return { headline: "Placar inaugurado", text: `${best}. Por enquanto, o placar ${here} é só seu.`, href, live: true, record: true };
+        if (alone) return { headline: "Placar inaugurado", text: `Você inaugurou o placar! Agora é esperar alguém tentar superar ${markToBeat(slug, board.best?.metrics ?? [], best)}.`, href, live: true, record: true };
         if (board.position === 1) return { headline: "Recorde do canal!", text: `${best}. Você passou na frente de todo mundo: 1º de ${board.total.toLocaleString("pt-BR")}.`, href, live: true, record: true, stamp: true };
         if (!board.previous) return { headline: "Você entrou no placar", text: `${best}. Você está em ${place}.`, rival, href, live: true };
         return { headline: "Novo recorde pessoal!", text: `${best}. Agora você está em ${place}.`, rival, href, live: true, record: true };
       }
-      if (board.best && alone) return { text: `Seu melhor continua ${best}. Por enquanto, o placar ${here} é só seu.`, href, live: true };
+      if (board.best && alone) return { text: `Seu melhor continua ${best}. O placar ${here} segue só seu: ninguém apareceu para tentar superar.`, href, live: true };
       const holder = leader?.you ? "O recorde do canal continua com você." : undefined;
       if (board.best) return { text: `Seu melhor continua ${best}, ${place}.`, rival: rival ?? holder, href, live: true };
       return { text: "Resultado registrado no placar.", rival, href, live: true };
     }
   }
+}
+
+function markToBeat(slug: GameSlug | null, metrics: number[], best: string) {
+  const first = slug ? BOARD_META[slug].metrics[0] : null;
+  if (first?.unit === "points") {
+    const points = metrics[0] ?? 0;
+    return `seus ${points.toLocaleString("pt-BR")} ${points === 1 ? "ponto" : "pontos"}`;
+  }
+  return `sua marca: ${best}`;
 }
 
 function levelOfBoard(id: string) {

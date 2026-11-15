@@ -8,7 +8,7 @@ import { PajamaWarHowToPanel, PajamaWarLogo } from "./PajamaWarArt";
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
-export function DeadEndStreetLogo({ className }: { className?: string }) {
+export function DeadEndStreetLogo({ className, bare = false }: { className?: string; bare?: boolean }) {
   return (
     <svg viewBox="-8 -8 350 184" className={className} role="img" aria-label="Rua Sem Saída">
       <g style={display}>
@@ -36,9 +36,11 @@ export function DeadEndStreetLogo({ className }: { className?: string }) {
           </text>
         </g>
         <path d="M24 120 L4 104 M30 108 L18 88" stroke={P.ink} strokeWidth="5" strokeLinecap="round" />
-        <g transform="translate(316 30) rotate(20)">
-          <path d="M0 -16 L4 -4 L16 -4 L6 4 L10 16 L0 8 L-10 16 L-6 4 L-16 -4 L-4 -4 Z" fill={P.sun} stroke={P.ink} strokeWidth="4" strokeLinejoin="round" />
-        </g>
+        {bare ? null : (
+          <g transform="translate(316 30) rotate(20)">
+            <path d="M0 -16 L4 -4 L16 -4 L6 4 L10 16 L0 8 L-10 16 L-6 4 L-16 -4 L-4 -4 Z" fill={P.sun} stroke={P.ink} strokeWidth="4" strokeLinejoin="round" />
+          </g>
+        )}
       </g>
     </svg>
   );
@@ -151,7 +153,7 @@ export function OperationRecessLogo({ className }: { className?: string }) {
   );
 }
 
-export const GAME_LOGOS: Record<string, (props: { className?: string }) => React.JSX.Element> = {
+export const GAME_LOGOS: Record<string, (props: { className?: string; bare?: boolean }) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetLogo,
   "bad-ideas-lab": BadIdeasLabLogo,
   "food-fight": FoodFightLogo,

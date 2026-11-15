@@ -63,8 +63,7 @@ export const ICONS: IconSpec[] = [
   { key: "icon-force-max", icon: Signal, size: ICON_SIZE, color: "#ef4f43", strokeWidth: 2.6 },
   { key: "icon-check-outline", icon: Check, size: ICON_SIZE, color: INK, strokeWidth: 6.4 },
   { key: "icon-check", icon: Check, size: ICON_SIZE, color: "#93cf4c", strokeWidth: 3.2 },
-  { key: "icon-lock-outline", icon: Lock, size: ICON_SIZE, color: INK, strokeWidth: 6 },
-  { key: "icon-lock", icon: Lock, size: ICON_SIZE, color: "#b9a6ef", strokeWidth: 2.8 },
+  { key: "icon-lock-ink", icon: Lock, size: ICON_SIZE, color: INK, strokeWidth: 3 },
 ];
 
 export class BootScene extends Phaser.Scene {
