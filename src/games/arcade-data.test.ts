@@ -65,6 +65,19 @@ describe("Guerra de Lanche", () => {
     expect(passes.length).toBeGreaterThanOrEqual(5);
   });
 
+  it("lets the cook finish every visit inside the round and away from the brawl", () => {
+    const { times, warnMs, enterX, standX, exitX, enterSpeed, exitSpeed, grabMs, take } = lunch.COOK;
+    const visit = warnMs + (standX - enterX) / enterSpeed + grabMs + (standX - exitX) / exitSpeed;
+    const brawlStart = lunch.EVENTS.brawlAt;
+    const brawlEnd = lunch.EVENTS.brawlAt + lunch.EVENTS.brawlMs;
+    times.slice(1).forEach((t, i) => expect(t - times[i]).toBeGreaterThan(visit));
+    for (const t of times) {
+      expect(t + visit).toBeLessThan(lunch.ROUND_MS);
+      expect(t + visit <= brawlStart || t >= brawlEnd).toBe(true);
+    }
+    expect(take).toBeLessThan(lunch.AMMO_MAX);
+  });
+
   it("gives the tougher rival more points and more health", () => {
     expect(lunch.RIVALS.big.hp).toBeGreaterThan(lunch.RIVALS.cap.hp);
     expect(lunch.RIVALS.big.points).toBeGreaterThan(lunch.RIVALS.cap.points);

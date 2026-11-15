@@ -174,6 +174,7 @@ export const GAMES: GameMeta[] = [
       "Acertar quem vai jogar pudim vale bônus.",
       "Na bagunça, cada acerto vale o dobro.",
       "Acertar a tia da cantina tira pontos.",
+      "A merendeira leva os lanches que estiverem na mesa. Quando ela vier, jogue tudo antes!",
     ],
     controlsSummary: "Guerra de Lanche. Espaço lança no aluno mais perigoso, 1 a 5 escolhem a mesa, segure seta para baixo para abaixar e recarregar, Esc pausa.",
     copy: {
