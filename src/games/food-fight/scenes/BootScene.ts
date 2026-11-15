@@ -22,8 +22,11 @@ const ASSETS: [key: string, file: string, width: number, height: number][] = [
   ["rival-speedy-windup", "rival-speedy-windup.svg", 200, 250],
   ["rival-big-up", "rival-big-up.svg", 200, 250],
   ["rival-big-windup", "rival-big-windup.svg", 200, 250],
-  ["lunch-lady", "lunch-lady.svg", 210, 380],
-  ["lunch-lady-angry", "lunch-lady-angry.svg", 210, 380],
+  ...[0, 1, 2, 3].flatMap((i): [string, string, number, number][] => [
+    [`lady-walk-${i}`, `lady-walk-${i}.svg`, 220, 520],
+    [`lady-angry-${i}`, `lady-angry-${i}.svg`, 220, 520],
+  ]),
+  ...["cook-walk-0", "cook-walk-1", "cook-reach", "cook-carry-0", "cook-carry-1", "cook-huff-0", "cook-huff-1"].map((k): [string, string, number, number] => [k, `${k}.svg`, 280, 500]),
   ["pudding", "pudding.svg", 76, 62],
   ["sandwich", "sandwich.svg", 80, 54],
   ["apple", "apple.svg", 54, 60],

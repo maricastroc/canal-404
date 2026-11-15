@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { LUNCH_LADY, RIVALS, type RivalDef, type RivalKind, type SlotDef } from "../config";
+import { COOK, LUNCH_LADY, RIVALS, type RivalDef, type RivalKind, type SlotDef } from "../config";
 import { cartoonText, type Fonts } from "../../kit/ui";
 
 export type RivalState = "hidden" | "rising" | "up" | "windup" | "after" | "stunned" | "lowering";
@@ -328,61 +328,163 @@ export class Rival {
 export class LunchLady {
   readonly img: Phaser.GameObjects.Image;
   private marker: Phaser.GameObjects.Image;
+  private shadow: Phaser.GameObjects.Ellipse;
   active = false;
   angry = false;
   private speed = LUNCH_LADY.speed;
-  private bob = 0;
+  private walked = 0;
 
   constructor(
     private scene: Phaser.Scene,
     private reduced: boolean,
   ) {
-    this.img = scene.add.image(-300, 706, "lunch-lady").setOrigin(0.5, 1).setScale(0.64).setDepth(2).setVisible(false);
+    this.shadow = scene.add.ellipse(-300, LUNCH_LADY.y + 4, 120, 20, 0x1d1830, 0.22).setDepth(4.9).setVisible(false);
+    this.img = scene.add.image(-300, LUNCH_LADY.y, "lady-walk-0").setOrigin(0.5, 1).setScale(LUNCH_LADY.scale).setDepth(5).setVisible(false);
     this.marker = scene.add.image(-300, 420, "icon-ban").setDepth(15).setAlpha(0.92).setVisible(false);
   }
 
   start() {
     this.active = true;
     this.angry = false;
-    this.img.setTexture("lunch-lady").setPosition(LUNCH_LADY.enterX, 706).setVisible(true).setFlipX(false);
+    this.walked = 0;
+    this.img.setTexture("lady-walk-0").setPosition(LUNCH_LADY.enterX, LUNCH_LADY.y).setAngle(0).setVisible(true);
+    this.shadow.setVisible(true);
     this.marker.setVisible(true);
+    this.place();
   }
 
   center() {
-    return { x: this.img.x, y: this.img.y - 150 };
+    return { x: this.img.x, y: this.img.y - this.img.displayHeight * 0.56 };
   }
 
   covers(at: { x: number; y: number }, margin = 0) {
     if (!this.active) return false;
-    const halfW = (this.img.displayWidth * 0.42) + margin;
+    const halfW = this.img.displayWidth * 0.4 + margin;
     const top = this.img.y - this.img.displayHeight;
     return Math.abs(at.x - this.img.x) < halfW && at.y > top - margin && at.y < this.img.y + 40;
   }
 
+  private place() {
+    const frame = Math.floor(this.walked / LUNCH_LADY.stride) % 4;
+    this.img.setTexture(`${this.angry ? "lady-angry" : "lady-walk"}-${frame}`);
+    const lift = frame % 2 === 1 ? 7 : 0;
+    this.img.setY(LUNCH_LADY.y - (this.reduced ? 0 : lift));
+    if (!this.reduced) this.img.setAngle(frame === 1 ? -1.5 : frame === 3 ? 1.5 : 0);
+    this.shadow.setPosition(this.img.x + 4, LUNCH_LADY.y + 4).setScale(lift ? 0.88 : 1, 1);
+    this.marker.setPosition(this.img.x, LUNCH_LADY.y - this.img.displayHeight - 34 - lift);
+  }
+
   update(delta: number) {
     if (!this.active) return;
-    this.img.x -= this.speed * delta * (this.angry ? 1.6 : 1);
-    this.bob += delta;
-    if (!this.reduced) this.img.setAngle(Math.sin(this.bob / 140) * 2.5).setY(706 - Math.abs(Math.sin(this.bob / 140)) * 6);
-    this.marker.setPosition(this.img.x, this.img.y - 278);
-    if (this.img.x < LUNCH_LADY.exitX) {
-      this.active = false;
-      this.img.setVisible(false);
-      this.marker.setVisible(false);
-    }
+    const step = this.speed * delta * (this.angry ? 1.6 : 1);
+    this.img.x -= step;
+    this.walked += step;
+    this.place();
+    if (this.img.x < LUNCH_LADY.exitX) this.hide();
   }
 
   scold() {
     this.angry = true;
-    this.img.setTexture("lunch-lady-angry");
+    this.place();
     if (!this.reduced) {
-      this.scene.tweens.add({ targets: this.img, scaleX: 0.7, scaleY: 0.58, duration: 90, yoyo: true });
+      const s = LUNCH_LADY.scale;
+      this.scene.tweens.add({ targets: this.img, scaleX: s * 1.08, scaleY: s * 0.92, duration: 90, yoyo: true });
     }
   }
 
   hide() {
     this.active = false;
     this.img.setVisible(false);
+    this.shadow.setVisible(false);
     this.marker.setVisible(false);
+  }
+}
+
+export type CookPhase = "away" | "warning" | "entering" | "grabbing" | "leaving";
+
+export class Cook {
+  readonly img: Phaser.GameObjects.Image;
+  phase: CookPhase = "away";
+  private clock = 0;
+  private carrying = false;
+  private found = false;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private reduced: boolean,
+  ) {
+    this.img = scene.add.image(COOK.enterX, COOK.y, "cook-walk-0").setOrigin(0.5, 1).setScale(COOK.scale).setDepth(8.5).setVisible(false);
+  }
+
+  get busy() {
+    return this.phase !== "away";
+  }
+
+  get grabbing() {
+    return this.phase === "grabbing";
+  }
+
+  warn() {
+    this.phase = "warning";
+    this.clock = 0;
+  }
+
+  basket() {
+    const s = COOK.scale;
+    return { x: this.img.x + (60 - 140) * s, y: this.img.y - (500 - 312) * s };
+  }
+
+  private walkFrame(prefix: string) {
+    const frame = Math.floor(this.clock / 150) % 2;
+    this.img.setTexture(`${prefix}-${frame}`);
+    this.img.setY(COOK.y - (this.reduced || frame === 0 ? 0 : 6));
+    if (!this.reduced) this.img.setAngle(frame ? -1.5 : 1.5);
+  }
+
+  update(delta: number, onArrive: () => void, onDone: () => void) {
+    if (this.phase === "away") return;
+    this.clock += delta;
+    if (this.phase === "warning") {
+      if (this.clock >= COOK.warnMs) {
+        this.phase = "entering";
+        this.clock = 0;
+        this.img.setPosition(COOK.enterX, COOK.y).setVisible(true);
+      }
+      return;
+    }
+    if (this.phase === "entering") {
+      this.img.x = Math.min(COOK.standX, this.img.x + COOK.enterSpeed * delta);
+      this.walkFrame("cook-walk");
+      if (this.img.x >= COOK.standX) {
+        this.phase = "grabbing";
+        this.clock = 0;
+        this.img.setTexture("cook-reach").setAngle(0).setY(COOK.y);
+        if (!this.reduced) this.scene.tweens.add({ targets: this.img, y: COOK.y + 10, duration: 160, yoyo: true, repeat: 1, ease: "Sine.easeInOut" });
+        onArrive();
+      }
+      return;
+    }
+    if (this.phase === "grabbing") {
+      if (this.clock >= COOK.grabMs) {
+        this.phase = "leaving";
+        this.clock = 0;
+        onDone();
+      }
+      return;
+    }
+    this.img.x -= COOK.exitSpeed * delta;
+    this.walkFrame(this.carrying ? "cook-carry" : this.found ? "cook-walk" : "cook-huff");
+    if (this.img.x < COOK.exitX) this.hide();
+  }
+
+  leave(carrying: boolean) {
+    this.carrying = carrying;
+    this.found = carrying;
+  }
+
+  hide() {
+    this.phase = "away";
+    this.carrying = false;
+    this.img.setVisible(false).setAngle(0);
   }
 }

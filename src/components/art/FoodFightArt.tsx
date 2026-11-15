@@ -14,7 +14,7 @@ const SIZES = {
   deco: { w: 260, h: 330 },
   mila: { w: 220, h: 240 },
   rival: { w: 200, h: 250 },
-  lady: { w: 210, h: 380 },
+  lady: { w: 220, h: 520 },
   ourTable: { w: 680, h: 210 },
   rivalTable: { w: 380, h: 170 },
   sandwich: { w: 80, h: 54 },
@@ -35,7 +35,7 @@ const BACK = [
   { x: 900, tableY: 590, upY: 604, scale: 0.72 },
   { x: 1180, tableY: 590, upY: 604, scale: 0.72 },
 ];
-const LADY = { x: 760, y: 706, scale: 0.64 };
+const LADY = { x: 760, y: 712, scale: 0.68 };
 
 type Food = "sandwich" | "apple" | "grapes" | "banana";
 
