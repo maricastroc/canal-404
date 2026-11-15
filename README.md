@@ -93,29 +93,15 @@ npm test
 npm run test:e2e
 ```
 
-`npm test` runs the unit and component tests with Vitest and Testing Library (about 5 seconds). They cover:
+The suite is kept small on purpose ([decision 0007](docs/decisions/0007-essential-tests-only.md)): it only guards what breaks silently and costs a lot. Copy, timings, layout, visuals, balance and game content are checked by playing, not by tests.
 
-- **Progress:** high scores, stars per level, secrets, achievements, reset and syncing between tabs.
-- **Game data:** every game in the registry has a loader, cover, logo and matching levels; level layouts stay on solid ground and inside the screen; tracks only use valid notes.
-- **Férias Fora do Ar:** the whole main quest is played through the real story scripts with a fake director, including both endings and the side content; the save and the pathfinding are tested too.
-- **Laboratório:** placement rules, and a known solution for every level that must stay buildable.
-- **Components:** the game intro (level picker, locked levels, continuing or restarting an adventure), the catalog filters and the character tabs, queried by role and accessible name.
+`npm test` runs the unit tests with Vitest (about 4 seconds): saving, loading, migrating, backing up and erasing progress and game saves; the server judge for every game (tampered and impossible results, ranking and tie-breaks); signed tickets; nicknames; the client outbox; the mission calendar, goals, selection and a proof that every mission can be completed; and the Laboratório simulation, which must keep the golden step counts the server replays.
 
-With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests: ranking and tie-break rules for every game, result validation, signed tickets, nicknames, idempotent and concurrent submissions, rate limits, retention, the API routes and how they behave when the database is missing or down.
+With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests: idempotent and concurrent submissions, personal bests and board order, hidden players, rate limits, retention, erasure when a player leaves, mission completion and settlement, and the API routes, including how they behave when the database is missing or down.
 
-`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game, check that no file fails to load, start, pause and resume each one, win the first Laboratório level using only the keyboard, save and continue a Férias adventure, check that secrets survive a reload, and run a phone-sized pass for layout and touch. The scoreboard tests win a Laboratório level, join with a nickname, check that the server replayed the machine, the record and the "Seu melhor" line on a second try, leave the board, and play with the board down or not configured. The record arcade tests check the board, your place, the rules, switching games and levels, the empty, no-signal and not-open states and the trophy in the room; the new panels pass an axe accessibility check.
+`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game from its page and start, pause and resume it, open the room and every section from the navigation, check that progress and a Férias adventure survive a reload, play a game and use the menu on a phone, keep a game playable with the board down, and, with the backend, submit a replayed Laboratório run to the board and miss and then complete the day's mission.
 
-A performance budget (`e2e/performance.spec.ts`) runs against production builds: each portal page must stay under 1.3 MB of JavaScript, and the game engine may only load on the play page.
-
-Visual regression tests compare the portal pages with approved screenshots in `e2e/visual.spec.ts-snapshots`, rendered on Linux inside the official Playwright Docker image so they match CI. After an intended visual change, refresh them (requires Docker):
-
-```bash
-npm run test:visual:update
-```
-
-`npm run test:visual:check` runs the same comparison locally in Docker.
-
-`npm run typecheck` and `npm run lint` complete the checks. GitHub Actions runs all of them on every push to `main` and on pull requests; there the end-to-end and performance tests run against a production build, and the visual tests run in the Playwright container.
+`npm run typecheck` and `npm run lint` complete the checks. GitHub Actions runs all of them on every push to `main` and on pull requests; there the end-to-end tests run against a production build.
 
 ## Stack
 
@@ -127,7 +113,7 @@ npm run test:visual:update
 - Hand-made SVG for every illustration
 - Web Audio API for sound effects and live-synthesized music
 - PostgreSQL with Prisma 7 (driver adapter `@prisma/adapter-pg`) and zod for the optional scoreboard API in Route Handlers
-- Vitest and Testing Library for unit and component tests, Playwright and axe for end-to-end tests
+- Vitest for unit tests, Playwright for end-to-end tests
 
 ## Routes
 

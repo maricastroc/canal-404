@@ -1,4 +1,3 @@
-import AxeBuilder from "@axe-core/playwright";
 import { test as base, expect, type Page } from "@playwright/test";
 
 type Problems = { list: string[]; allow: (pattern: RegExp) => void };
@@ -46,20 +45,4 @@ export async function openGame(page: Page, slug: string, title: string) {
 
 export function stage(page: Page) {
   return page.getByRole("application");
-}
-
-export async function settle(page: Page) {
-  await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => {
-      if (animation.playState !== "running" || animation.effect?.getComputedTiming().iterations === Infinity) return true;
-      const target = animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
-      return target instanceof Element && target.closest("[data-testid=tv-screen] > [aria-hidden]") !== null;
-    }),
-  );
-}
-
-export async function accessibilityViolations(page: Page, selector: string) {
-  await settle(page);
-  const result = await new AxeBuilder({ page }).include(selector).analyze();
-  return result.violations;
 }

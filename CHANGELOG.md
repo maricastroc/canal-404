@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Testes enxutos
+- The test suite now covers only what breaks silently and costs a lot: player saves, the scoreboard and mission judges, the API's security, the Laboratório replay, and one end-to-end smoke per flow ([decision 0007](docs/decisions/0007-essential-tests-only.md)). Unit tests went from 530 to 146 cases (about 4 s) and end-to-end from 101 tests to 14.
+- Removed the visual regression job and its snapshots, the JavaScript budget spec, the axe checks, the component tests, and the Testing Library, axe and Vitest React plugin dependencies.
+
 ### Guerra do Pijama: bots mais espertos e arenas com personalidade
 - **Bots that find their way.** Lia, Nico and Bia now plan routes around beds, sofas, the tent and the fence instead of walking into them, notice when something blocks the way and take another route, look for cover when they are low on energy, and keep a clear line to whoever they are attacking. In bot test runs the time a kid spent pushing against a wall or fence dropped from 6–18 s per match to under 0.2 s.
 - **No more hidden corners.** The narrow gaps behind the tent, beside the beds, the TV and the beanbag and behind the stumps are closed, so nobody gets stuck where the art shows no floor.

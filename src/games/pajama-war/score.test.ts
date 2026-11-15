@@ -28,9 +28,4 @@ describe("Guerra do Pijama scoring", () => {
     }
     expect(checked).toBeGreaterThan(60);
   });
-
-  it("keeps the star thresholds at 7 and 4 energy points", () => {
-    expect([1, 3, 4, 6, 7, 10].map((hp) => matchScore({ won: true, place: 1, hits: 5, kos: 2, hp }).stars)).toEqual([1, 1, 2, 2, 3, 3]);
-    expect(matchScore({ won: false, place: 2, hits: 5, kos: 1, hp: 0 }).stars).toBe(0);
-  });
 });
