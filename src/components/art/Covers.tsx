@@ -430,7 +430,7 @@ export function PajamaWarCover({ decorative }: { decorative?: boolean }) {
 
 export function OffAirVacationCover({ decorative }: { decorative?: boolean }) {
   return (
-    <Frame decorative={decorative} bg="#5cb9f0" label="Capa de Férias Fora do Ar: Déco chega a um resort na praia com o Sr. Bigodes, a gaivota Marisa e uma antena do Canal 404">
+    <Frame decorative={decorative} bg="#5cb9f0" label="Capa de Férias Fora do Ar: Déco chega ao Resort 404 com mala e mapa e encara o Sr. Bigodes, sério demais atrás do balcão da recepção, enquanto o relógio da fachada está parado às 4:04 e a TV ao lado só mostra chuvisco">
       <OffAirVacationCoverArt />
     </Frame>
   );
