@@ -3,6 +3,7 @@
 @custom-variant tvset (@media (min-width: 768px) and (min-height: 560px));
 @custom-variant short (@media (max-height: 899px));
 @custom-variant shorter (@media (max-height: 719px));
+@custom-variant wideshort (@media (min-width: 1024px) and (max-height: 1099px));
 
 @theme {
   --color-ink: #1d1830;

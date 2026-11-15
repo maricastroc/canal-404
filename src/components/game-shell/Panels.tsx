@@ -388,119 +388,127 @@ export function ResultPanel({
   const title = result.copy?.title ?? (result.won ? game.copy?.winTitle : game.copy?.loseTitle) ?? (result.won ? "Vitória!" : "Fim de jogo");
   const text = result.copy?.text ?? (result.won ? game.copy?.winText : game.copy?.loseText) ?? "";
   return (
-    <OverlayFrame label={result.won ? `Vitória: ${title}` : `Fim de jogo: ${title}`} className="max-w-2xl p-5 sm:p-7">
+    <OverlayFrame label={result.won ? `Vitória: ${title}` : `Fim de jogo: ${title}`} className="max-w-2xl p-5 sm:p-7 wideshort:max-w-5xl wideshort:p-5">
       {isRecord && (
         <span className="absolute -right-3 -top-4 rotate-12 rounded-lg border-[3px] border-ink bg-bubblegum px-3 py-1 font-display text-lg uppercase tracking-wider text-ink shadow-[var(--shadow-ink)]">
           {result.level ? "Melhor resultado!" : "Novo recorde!"}
         </span>
       )}
-      {result.level && (
-        <p className="mb-2 inline-block -rotate-1 rounded-md border-[3px] border-ink bg-mint px-2 font-display text-sm uppercase tracking-wider text-ink">
-          {Word} {result.level.index + 1} de {result.level.total} · {result.level.title}
-        </p>
-      )}
-      <div className="flex flex-wrap items-center gap-4">
-        {Cast ? (
-          <Cast mood={result.won ? "win" : "lose"} featured={result.featured} />
-        ) : result.won ? (
-          <CastPair game={game} happy />
-        ) : (
-          <Mascot404 expression="sad" className="w-24 shrink-0" />
-        )}
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink">{title}</h2>
-          {text && <p className="mt-1 font-hand text-xl leading-snug text-ink-soft">{text}</p>}
-        </div>
-      </div>
-      {result.won && (
-        <div className="mt-4 flex justify-center gap-2" aria-label={`${result.stars} de 3 estrelas`} role="img">
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              initial={{ scale: 0, rotate: -40 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.25 + i * 0.18, type: "spring", stiffness: 400, damping: 14 }}
-              className={`w-16 sm:w-20 ${i < result.stars ? "" : "opacity-30 grayscale"}`}
+      <div className="wideshort:grid wideshort:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] wideshort:items-center wideshort:gap-x-7">
+        <div>
+          {result.level && (
+            <p className="mb-2 inline-block -rotate-1 rounded-md border-[3px] border-ink bg-mint px-2 font-display text-sm uppercase tracking-wider text-ink">
+              {Word} {result.level.index + 1} de {result.level.total} · {result.level.title}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-4 max-sm:gap-3">
+            <div className="shrink-0 max-sm:[zoom:0.75]">
+              {Cast ? (
+                <Cast mood={result.won ? "win" : "lose"} featured={result.featured} />
+              ) : result.won ? (
+                <CastPair game={game} happy />
+              ) : (
+                <Mascot404 expression="sad" className="w-24 shrink-0" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1 max-sm:basis-40 wideshort:basis-48">
+              <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink max-sm:text-[clamp(1.6rem,8.4vw,2.2rem)] wideshort:text-[clamp(2rem,3.4vw,2.6rem)]">{title}</h2>
+              {text && <p className="mt-1 font-hand text-xl leading-snug text-ink-soft max-sm:text-lg">{text}</p>}
+            </div>
+          </div>
+          {result.won && (
+            <div className="mt-4 flex justify-center gap-2 max-sm:mt-2 shorter:mt-2" aria-label={`${result.stars} de 3 estrelas`} role="img">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  initial={{ scale: 0, rotate: -40 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.25 + i * 0.18, type: "spring", stiffness: 400, damping: 14 }}
+                  className={`w-12 sm:w-20 sm:shorter:w-14 ${i < result.stars ? "" : "opacity-30 grayscale"}`}
+                >
+                  <StarBadge color={i < result.stars ? "sun" : "plum"} className="w-full" />
+                </motion.div>
+              ))}
+            </div>
+          )}
+          {result.summary && (
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.85 }}
+              className="mt-2 text-center font-display text-base uppercase tracking-wide text-ink"
             >
-              <StarBadge color={i < result.stars ? "sun" : "plum"} className="w-full" />
-            </motion.div>
-          ))}
+              {result.summary}
+            </motion.p>
+          )}
+          {result.starHint && !(mission && missionOverridesStars(mission)) ? (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} className="copy-sm mt-0.5 text-center text-ink-soft">
+              {result.starHint}
+            </motion.p>
+          ) : null}
+          <dl className="mt-5 divide-y-2 divide-dashed divide-ink/25 rounded-xl border-[3px] border-ink bg-cream-2 px-4 py-2 max-sm:mt-3 max-sm:px-3 max-sm:py-1 wideshort:mt-4 wideshort:py-1">
+            {result.breakdown.map((row, i) => (
+              <motion.div
+                key={row.label}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + i * 0.12 }}
+                className="flex items-baseline justify-between gap-4 py-1.5 max-sm:py-1 wideshort:py-1"
+              >
+                <dt className="copy text-ink-soft">{row.label}</dt>
+                <dd className={`font-display text-lg tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
+                  {row.value < 0 ? "−" : "+"}
+                  {Math.abs(row.value).toLocaleString("pt-BR")}
+                </dd>
+              </motion.div>
+            ))}
+            <div className="flex items-baseline justify-between gap-4 py-2">
+              <dt className="font-display text-xl uppercase tracking-wide text-ink">Total</dt>
+              <dd className="font-display text-3xl tabular-nums text-ink">
+                <CountUp value={result.score} delay={0.3 + result.breakdown.length * 0.12} />
+              </dd>
+            </div>
+          </dl>
+          {recordNote && <p className="copy-sm mt-2 text-ink-soft">{recordNote}</p>}
         </div>
-      )}
-      {result.summary && (
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.85 }}
-          className="mt-2 text-center font-display text-base uppercase tracking-wide text-ink"
-        >
-          {result.summary}
-        </motion.p>
-      )}
-      {result.starHint && !(mission && missionOverridesStars(mission)) ? (
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} className="copy-sm mt-0.5 text-center text-ink-soft">
-          {result.starHint}
-        </motion.p>
-      ) : null}
-      <dl className="mt-5 divide-y-2 divide-dashed divide-ink/25 rounded-xl border-[3px] border-ink bg-cream-2 px-4 py-2">
-        {result.breakdown.map((row, i) => (
-          <motion.div
-            key={row.label}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 + i * 0.12 }}
-            className="flex items-baseline justify-between gap-4 py-1.5"
-          >
-            <dt className="copy text-ink-soft">{row.label}</dt>
-            <dd className={`font-display text-lg tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
-              {row.value < 0 ? "−" : "+"}
-              {Math.abs(row.value).toLocaleString("pt-BR")}
-            </dd>
-          </motion.div>
-        ))}
-        <div className="flex items-baseline justify-between gap-4 py-2">
-          <dt className="font-display text-xl uppercase tracking-wide text-ink">Total</dt>
-          <dd className="font-display text-3xl tabular-nums text-ink">
-            <CountUp value={result.score} delay={0.3 + result.breakdown.length * 0.12} />
-          </dd>
+        <div className="wideshort:[&>*:first-child]:mt-0">
+          {mission ? <MissionLine view={mission} board={board ?? null} /> : null}
+          {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
+          {!onNext && <NextProgram current={game.slug} />}
+          <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-4 max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:whitespace-nowrap max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
+            {onNext && !mission ? (
+              <InkButton ref={mainRef} tone="sun" onClick={onNext}>
+                <PlayIcon className="size-5 text-ink" /> Próxima {word}
+              </InkButton>
+            ) : null}
+            <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "mint" : "sun"} onClick={onRestart}>
+              {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
+              {mission ? "Tentar a missão de novo" : (result.restartLabel ?? (result.level && word === "fase" ? "Refazer fase" : "Jogar de novo"))}
+            </InkButton>
+            {onNext && mission ? (
+              <InkButton tone="mint" onClick={onNext}>
+                <PlayIcon className="size-5 text-ink" /> Próxima {word}
+              </InkButton>
+            ) : null}
+            {onAlt && result.alt ? (
+              <InkButton tone="cream" onClick={onAlt}>
+                {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}
+              </InkButton>
+            ) : null}
+            {onLevels ? (
+              <InkButton tone="cream" onClick={onLevels}>
+                Escolher {word}
+              </InkButton>
+            ) : (
+              <InkLink href="/games" tone="mint">
+                Ver catálogo
+              </InkLink>
+            )}
+            <InkLink href="/" tone="cream">
+              Voltar à sala
+            </InkLink>
+          </div>
         </div>
-      </dl>
-      {recordNote && <p className="copy-sm mt-2 text-ink-soft">{recordNote}</p>}
-      {mission ? <MissionLine view={mission} board={board ?? null} /> : null}
-      {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
-      {!onNext && <NextProgram current={game.slug} />}
-      <div className="mt-5 flex flex-wrap gap-3">
-        {onNext && !mission ? (
-          <InkButton ref={mainRef} tone="sun" onClick={onNext}>
-            <PlayIcon className="size-5 text-ink" /> Próxima {word}
-          </InkButton>
-        ) : null}
-        <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "mint" : "sun"} onClick={onRestart}>
-          {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
-          {mission ? "Tentar a missão de novo" : (result.restartLabel ?? (result.level && word === "fase" ? "Refazer fase" : "Jogar de novo"))}
-        </InkButton>
-        {onNext && mission ? (
-          <InkButton tone="mint" onClick={onNext}>
-            <PlayIcon className="size-5 text-ink" /> Próxima {word}
-          </InkButton>
-        ) : null}
-        {onAlt && result.alt ? (
-          <InkButton tone="cream" onClick={onAlt}>
-            {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}
-          </InkButton>
-        ) : null}
-        {onLevels ? (
-          <InkButton tone="cream" onClick={onLevels}>
-            Escolher {word}
-          </InkButton>
-        ) : (
-          <InkLink href="/games" tone="mint">
-            Ver catálogo
-          </InkLink>
-        )}
-        <InkLink href="/" tone="cream">
-          Voltar à sala
-        </InkLink>
       </div>
     </OverlayFrame>
   );
