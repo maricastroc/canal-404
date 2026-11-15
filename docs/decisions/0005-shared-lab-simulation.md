@@ -1,5 +1,7 @@
 # 0005: One Laboratório simulation for the browser and the server
 
+> Since [decision 0007](0007-essential-tests-only.md), `sim.test.ts` keeps only the golden step counts and the repeatability check, and `trig.test.ts` only the locked output bits. The one-time equivalence run against Phaser's Matter was removed.
+
 ## Context
 
 The Laboratório is the only game whose result can be reproduced exactly: it steps physics at a fixed rate and has no randomness. But the physics lived inside Phaser's Matter plugin, the scene read part state from its sprites, and the step called `Math.sin` and `Math.cos`. That had three problems:

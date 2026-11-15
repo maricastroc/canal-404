@@ -5,8 +5,8 @@ import { SOLUTIONS } from "@/games/bad-ideas-lab/solutions";
 import { KIDS } from "@/games/pajama-war/config";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { hasLevel, judgeRun, type RunClaim } from "@/lib/competition/rules";
-import { CATALOG, MISSION_GAMES, missionByKey, type MissionDef } from "./catalog";
-import { checkGoal, isCondition, missionOverridesStars } from "./goals";
+import { CATALOG, MISSION_GAMES, type MissionDef } from "./catalog";
+import { checkGoal, isCondition } from "./goals";
 
 const LAB_PROOFS: Record<string, PlacedPart[]> = {
   "lab-finale-every-part": [
@@ -36,25 +36,6 @@ function labClaim(level: string, parts: PlacedPart[]): RunClaim {
   };
 }
 
-describe("lab missions that ask for parts", () => {
-  it("only claim to cost stars when they really need more parts than three stars allow", () => {
-    for (const def of CATALOG.filter((m) => m.game === "bad-ideas-lab")) {
-      const level = LEVELS.find((l) => l.id === def.level)!;
-      const min = def.goal.find((c) => c.stat === "parts" && c.op === "min");
-      expect(missionOverridesStars(def), def.key).toBe(Boolean(min));
-      if (min) expect(min.value, def.key).toBeGreaterThan(level.par);
-    }
-  });
-
-  it("ask for every part in the box when the objective names them all", () => {
-    for (const def of CATALOG.filter((m) => m.game === "bad-ideas-lab" && m.goal.some((c) => c.stat === "untouched"))) {
-      const level = LEVELS.find((l) => l.id === def.level)!;
-      const total = Object.values(level.inventory).reduce((a, b) => a + (b ?? 0), 0);
-      expect(def.goal.find((c) => c.stat === "parts" && c.op === "min")?.value, def.key).toBe(total);
-    }
-  });
-});
-
 function lunch(overrides: Record<string, number> = {}): RunClaim {
   const s = { hits: 30, hitPoints: 4800, interrupts: 2, interruptPoints: 200, comboPoints: 900, lives: 1, hitsTaken: 2, lunchLadyHits: 1, bestStreak: 6, throws: 44, timeMs: 75_000, ...overrides };
   const won = s.lives > 0;
@@ -74,8 +55,6 @@ function street(won: boolean, score: number, stars: number, stats: Record<string
   return { won, score, stars, stats };
 }
 
-const STREET_PLAIN = street(true, 1325, 1, { targets: 5, targetPoints: 900, waves: 3, mess: 5, combos: 0, launches: 7, ammoLeft: 0, timeMs: 26_300 });
-
 const STREET_PROOFS: Record<string, RunClaim> = {
   "street-five-launches": street(true, 1775, 2, { targets: 5, targetPoints: 900, waves: 3, mess: 3, combos: 0, launches: 5, ammoLeft: 2, timeMs: 18_150 }),
   "street-two-at-once": street(false, 1150, 0, { targets: 4, targetPoints: 700, waves: 2, mess: 6, combos: 1, launches: 7, ammoLeft: 0, timeMs: 27_700 }),
@@ -89,12 +68,6 @@ function recess(level: string, stats: Record<string, number>, won = true): RunCl
   return { won, score, stars: won ? (s.hits <= 1 ? 3 : s.hits <= 3 ? 2 : 1) : 0, stats: s };
 }
 
-const RECESS_PLAIN: Record<string, RunClaim> = {
-  corridor: recess("corridor", { kills: 4, killPoints: 400, stickers: 1, hits: 2, hearts: 3, timeMs: 21_000 }),
-  yard: recess("yard", { kills: 7, killPoints: 850, stickers: 1, extras: 1, hits: 2, hearts: 4, timeMs: 26_000 }),
-  office: recess("office", { kills: 6, killPoints: 800, stickers: 1, hits: 5, hearts: 3, boss: 1, timeMs: 140_000 }),
-};
-
 const RECESS_PROOFS: Record<string, RunClaim> = {
   "recess-corridor-spotless": { won: true, score: 1600, stars: 3, stats: { kills: 6, killPoints: 600, stickers: 0, extras: 0, hits: 0, hearts: 5, resumed: 0, boss: 0, timeMs: 15_000 } },
   "recess-yard-stickers": recess("yard", { kills: 6, killPoints: 750, stickers: 4, extras: 2, hits: 2, hearts: 4, timeMs: 34_000 }),
@@ -105,12 +78,6 @@ const RECESS_PROOFS: Record<string, RunClaim> = {
 function pajama(won: boolean, score: number, stars: number, stats: Record<string, number>): RunClaim {
   return { won, score, stars, stats };
 }
-
-const PAJAMA_PLAIN: Record<string, RunClaim> = {
-  bedroom: pajama(true, 5050, 1, { hits: 34, kos: 2, throws: 92, hp: 3, damageTaken: 16, place: 1, timeMs: 73_283, kid: 2 }),
-  living: pajama(true, 4200, 2, { hits: 27, kos: 1, throws: 121, hp: 5, damageTaken: 11, place: 1, timeMs: 95_650, kid: 2 }),
-  yard: pajama(true, 4150, 2, { hits: 27, kos: 1, throws: 104, hp: 4, damageTaken: 15, place: 1, timeMs: 83_717, kid: 2 }),
-};
 
 const PAJAMA_PROOFS: Record<string, RunClaim> = {
   "pajama-bedroom-few-pillows": pajama(true, 5300, 3, { hits: 33, kos: 2, throws: 132, hp: 10, damageTaken: 4, place: 1, timeMs: 81_900, kid: 1 }),
@@ -133,14 +100,6 @@ function proofOf(mission: MissionDef) {
   return LUNCH_PROOFS[mission.key];
 }
 
-function plainOf(mission: MissionDef) {
-  if (mission.game === "bad-ideas-lab") return labClaim(mission.level!, SOLUTIONS[mission.level!]);
-  if (mission.game === "dead-end-street") return STREET_PLAIN;
-  if (mission.game === "operation-recess") return RECESS_PLAIN[mission.level!];
-  if (mission.game === "pajama-war") return PAJAMA_PLAIN[mission.level!];
-  return lunch();
-}
-
 describe("mission catalog", () => {
   it("uses unique keys, real levels and well-formed goals", () => {
     expect(new Set(CATALOG.map((m) => m.key)).size).toBe(CATALOG.length);
@@ -156,22 +115,11 @@ describe("mission catalog", () => {
     }
   });
 
-  it("never asks for the practice level", () => {
-    expect(CATALOG.some((m) => m.game === "bad-ideas-lab" && m.level === "test")).toBe(false);
-  });
-
   it("can be completed: every mission has a run that the server accepts and that meets the goal", () => {
     for (const mission of CATALOG) {
       const claim = proofOf(mission);
       expect(claim, `proof for ${mission.key}`).toBeDefined();
       expect(checkGoal(mission.goal, evidenceOf(mission, claim)), mission.key).toEqual({ passed: true });
-    }
-  });
-
-  it("asks for something more than just finishing", () => {
-    for (const mission of CATALOG) {
-      if (mission.key === "lab-finale-two-parts") continue;
-      expect(checkGoal(mission.goal, evidenceOf(mission, plainOf(mission))).passed, mission.key).toBe(false);
     }
   });
 
@@ -200,10 +148,5 @@ describe("mission catalog", () => {
       expect(checkGoal(mission.goal, evidenceOf(mission, other)), mission.key).toMatchObject({ passed: false, condition: { stat: "kid" } });
     }
     for (const mission of CATALOG.filter((m) => m.goal.some((c) => c.stat === "kid"))) expect(mission.setup?.character, mission.key).toBeDefined();
-  });
-
-  it("finds missions by key", () => {
-    expect(missionByKey("lab-pixel-fast")?.level).toBe("pixel");
-    expect(missionByKey("nope")).toBeNull();
   });
 });

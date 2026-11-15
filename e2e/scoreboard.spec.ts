@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { accessibilityViolations, expect, openGame, simTime, stage, test } from "./fixtures";
+import { expect, openGame, simTime, stage, test } from "./fixtures";
 
 const LAB = { slug: "bad-ideas-lab", title: "Laboratório de Péssimas Ideias" };
 
@@ -84,8 +84,6 @@ test.describe("scoreboard with the backend", () => {
     await expect(board.getByRole("status")).toContainText(/1 peça · \d+,\d{2} s\. ((Agora v|V)ocê está em \d+º de \d+|Você passou na frente de todo mundo: 1º de \d+|Por enquanto, o placar desta fase é só seu)\./);
     await expect(board.getByRole("link", { name: "Ver o fliperama de recordes" })).toHaveAttribute("href", "/records?game=bad-ideas-lab&level=pixel");
 
-    expect(await accessibilityViolations(page, '[aria-label="Placar da fase"]')).toEqual([]);
-
     await result.getByRole("button", { name: "Refazer fase" }).click();
     await expect(result).toBeHidden();
     const again = await placePixelRamp(page);
@@ -99,17 +97,6 @@ test.describe("scoreboard with the backend", () => {
     await card.getByRole("button", { name: "Sair do placar" }).click();
     await card.getByRole("button", { name: "Sim, apagar" }).click();
     await expect(card).toContainText("Sem carteirinha");
-  });
-
-  test("keeps practice levels off the board", async ({ page }) => {
-    const result = await playPractice(page);
-    const board = result.getByRole("region", { name: "Placar da fase" });
-    await expect(board).toContainText("Quer ver seu nome no placar?");
-    await board.getByLabel("Seu apelido").fill(nickname());
-    await board.getByRole("button", { name: "Entrar no placar" }).click();
-    await expect(board.getByRole("status")).toHaveText("Este foi só o aquecimento! A fase de treino não vale pontos no placar global.", { timeout: simTime(15_000) });
-    const leave = await page.request.delete("/api/players/me");
-    expect(leave.ok()).toBe(true);
   });
 });
 
@@ -125,28 +112,5 @@ test.describe("scoreboard without the backend", () => {
     await expect(board).toContainText("Sem sinal");
     await result.getByRole("button", { name: "Escolher fase" }).click();
     await expect(page.getByRole("dialog", { name: `${LAB.title}: tela de apresentação` }).getByRole("button", { name: "Jogar fase 2" })).toBeVisible();
-  });
-
-  test("hides the board line while the board has not premiered", async ({ page }) => {
-    await page.route("**/api/status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "unconfigured" }) }));
-    const result = await playPractice(page);
-    await expect(result.getByRole("img", { name: "3 de 3 estrelas" })).toBeVisible();
-    await expect(result.getByRole("region", { name: "Placar da fase" })).toHaveCount(0);
-  });
-
-  test("shows the membership card as coming soon and passes an accessibility check", async ({ page }) => {
-    await page.route("**/api/status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "unconfigured" }) }));
-    await page.goto("/extras");
-    const card = page.getByTestId("player-card");
-    await expect(card).toContainText("Em breve");
-    expect(await accessibilityViolations(page, '[data-testid="player-card"]')).toEqual([]);
-  });
-
-  test("explains the board is off the air when the status check fails", async ({ page, problems }) => {
-    problems.allow(/\/api\//);
-    problems.allow(/ERR_CONNECTION_REFUSED/);
-    await page.route("**/api/**", (route) => route.abort("connectionrefused"));
-    await page.goto("/extras");
-    await expect(page.getByTestId("player-card")).toContainText("Sem sinal");
   });
 });

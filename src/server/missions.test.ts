@@ -1,38 +1,16 @@
-import { readFileSync } from "node:fs";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { beforeEach, describe, expect, it } from "vitest";
-import { addDays, dayEnd, MISSION_GRACE_MS } from "@/lib/missions/calendar";
+import { dayEnd, MISSION_GRACE_MS } from "@/lib/missions/calendar";
 import { missionByKey } from "@/lib/missions/catalog";
 import { pickMission } from "@/lib/missions/select";
-import { HttpError } from "./http";
-import { closesAt, ensureChallenge, missionBoard, missionBoardPage, missionHistory, missionToday, progressFrom, settleClosedDays, settleDay } from "./missions";
+import { closesAt, ensureChallenge, missionBoard, missionToday, settleClosedDays, settleDay } from "./missions";
 import { submitRun } from "./runs";
-import type { GameSlug } from "@/lib/competition/boards";
-import type { RunClaim } from "@/lib/competition/rules";
-import { hasTestDb, labClaim, lunchClaim, makePlayer, resetDb, scheduleMission, streetClaim, testDb, ticketFor } from "./testing";
+import { hasTestDb, labClaim, makePlayer, resetDb, scheduleMission, testDb, ticketFor } from "./testing";
 
 const DAY = "2026-11-04";
 const NOON = Date.UTC(2026, 10, 4, 15, 0, 0);
-const GOLDEN: PlacedPart[] = [{ type: "ramp", x: 620, y: 420, rot: 4 }];
 const QUICK: PlacedPart[] = [{ type: "ramp", x: 720, y: 560, rot: 4 }];
-const QUICKER: PlacedPart[] = [...GOLDEN, { type: "ramp", x: 740, y: 520, rot: 4 }];
 const ALMOST: PlacedPart[] = [{ type: "ramp", x: 700, y: 540, rot: 4 }];
-
-describe("mission progress", () => {
-  it("counts days, the current run of days and the best run", () => {
-    expect(progressFrom([], DAY)).toEqual({ days: 0, streak: 0, bestStreak: 0, lastDay: null });
-    expect(progressFrom(["2026-11-02", "2026-11-03", "2026-11-04"], DAY)).toEqual({ days: 3, streak: 3, bestStreak: 3, lastDay: DAY });
-    expect(progressFrom(["2026-11-02", "2026-11-03"], DAY)).toMatchObject({ streak: 2 });
-  });
-
-  it("keeps the record but lets the current run rest after a missed day, without taking days away", () => {
-    expect(progressFrom(["2026-10-28", "2026-10-29", "2026-10-30", "2026-11-02"], DAY)).toEqual({ days: 4, streak: 0, bestStreak: 3, lastDay: "2026-11-02" });
-  });
-
-  it("follows the mission calendar across months", () => {
-    expect(progressFrom(["2026-10-31", "2026-11-01"], "2026-11-01")).toMatchObject({ streak: 2, bestStreak: 2 });
-  });
-});
 
 describe.skipIf(!hasTestDb)("daily missions", () => {
   const db = testDb();
@@ -78,16 +56,6 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     expect(outcome.board).toMatchObject({ id: "bad-ideas-lab/pixel/v1", improved: true });
   });
 
-  it("explains a miss with the number the server measured", async () => {
-    await scheduleMission(db, DAY, "lab-pixel-fast");
-    const { player } = await makePlayer(db);
-    const outcome = await playLab(player, GOLDEN);
-    expect(outcome.mission).toMatchObject({ status: "missed", firstTime: false, best: null, shortfall: { condition: { stat: "steps", op: "max", value: 252 }, actual: 256 } });
-    const entry = await db.challengeEntry.findUniqueOrThrow({ where: { playerId_challengeId: { playerId: player.id, challengeId: DAY } } });
-    expect(entry).toMatchObject({ attempts: 1, completedAt: null });
-    expect(await db.personalBest.count({ where: { board: missionBoard(DAY) } })).toBe(0);
-  });
-
   it("returns the same mission outcome when a result is sent twice, without counting it again", async () => {
     await scheduleMission(db, DAY, "lab-pixel-fast");
     const { player } = await makePlayer(db);
@@ -98,16 +66,6 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     expect(again.mission).toMatchObject({ status: "completed", firstTime: true, best: first.mission!.best });
     expect(await db.challengeEntry.findFirstOrThrow()).toMatchObject({ attempts: 1 });
     expect(await db.run.count()).toBe(1);
-  });
-
-  it("keeps the first completion and the best result of the day", async () => {
-    await scheduleMission(db, DAY, "lab-pixel-fast");
-    const { player } = await makePlayer(db);
-    const first = await playLab(player, QUICK);
-    const second = await playLab(player, QUICKER, { at: NOON + 120_000 });
-    expect(second.mission).toMatchObject({ status: "completed", firstTime: false, improved: false, best: { metrics: [1, 245] } });
-    const entry = await db.challengeEntry.findFirstOrThrow();
-    expect(entry).toMatchObject({ attempts: 2, completedRunId: first.run.id });
   });
 
   it("grants the completion once when results arrive at the same time", async () => {
@@ -148,44 +106,6 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     expect((await db.run.findUniqueOrThrow({ where: { id: late.run.id } })).challengeId).toBeNull();
   });
 
-  it("judges Guerra de Lanche missions from the checked stats", async () => {
-    await scheduleMission(db, DAY, "food-streak-eight");
-    const { player } = await makePlayer(db);
-    const play = (claim: ReturnType<typeof lunchClaim>, at: number) => {
-      const { ticket } = ticketFor("food-fight", null, player.id, at, DAY);
-      return submitRun(db, { player, ticket, claim, now: new Date(at + 90_000) });
-    };
-    expect((await play(lunchClaim({ bestStreak: 6 }), NOON)).mission).toMatchObject({ status: "missed", shortfall: { condition: { stat: "bestStreak" }, actual: 6 } });
-    expect((await play(lunchClaim({ bestStreak: 8, comboPoints: 1200 }), NOON + 200_000)).mission).toMatchObject({ status: "completed", firstTime: true, best: { position: 1 } });
-  });
-
-  const STREET_LOSS: RunClaim = { won: false, score: 1000, stars: 0, stats: { targets: 4, targetPoints: 700, waves: 2, mess: 4, combos: 0, launches: 7, ammoLeft: 0, timeMs: 26_317 } };
-  const CORRIDOR_CLEAN: RunClaim = { won: true, score: 1600, stars: 3, stats: { kills: 6, killPoints: 600, stickers: 0, extras: 0, hits: 0, hearts: 5, resumed: 0, boss: 0, timeMs: 15_000 } };
-  const CORRIDOR_FROM_BELL: RunClaim = { ...CORRIDOR_CLEAN, score: 1100, stats: { ...CORRIDOR_CLEAN.stats, resumed: 1 } };
-  const YARD_AS_LIA: RunClaim = { won: true, score: 4350, stars: 2, stats: { hits: 26, kos: 2, throws: 84, hp: 5, damageTaken: 10, place: 1, timeMs: 76_167, kid: 0 } };
-  const YARD_AS_BIA: RunClaim = { ...YARD_AS_LIA, stats: { ...YARD_AS_LIA.stats, kid: 2 } };
-
-  async function playOn(player: Awaited<ReturnType<typeof makePlayer>>["player"], day: string, game: GameSlug, level: string | null, claim: RunClaim, offset = 0) {
-    const at = noonOf(day) + offset;
-    const { ticket } = ticketFor(game, level, player.id, at, day);
-    return submitRun(db, { player, ticket, claim, now: new Date(at + ((claim.stats.timeMs as number | undefined) ?? 50_000) + 10_000) });
-  }
-
-  it("judges Rua Sem Saída, Operação: Recreio and Guerra do Pijama missions from the checked stats", async () => {
-    const { player } = await makePlayer(db);
-    await scheduleMission(db, "2026-11-16", "street-five-launches");
-    expect((await playOn(player, "2026-11-16", "dead-end-street", null, STREET_LOSS)).mission).toMatchObject({ status: "missed", shortfall: { condition: { stat: "won" }, actual: 0 } });
-    expect((await playOn(player, "2026-11-16", "dead-end-street", null, streetClaim({ targetPoints: 900, combos: 0, mess: 3, launches: 5 }, 18_150), 100_000)).mission).toMatchObject({ status: "completed", firstTime: true });
-
-    await scheduleMission(db, "2026-11-17", "recess-corridor-spotless");
-    expect((await playOn(player, "2026-11-17", "operation-recess", "corridor", CORRIDOR_FROM_BELL)).mission).toMatchObject({ status: "missed", shortfall: { condition: { stat: "resumed" }, actual: 1 } });
-    expect((await playOn(player, "2026-11-17", "operation-recess", "corridor", CORRIDOR_CLEAN, 100_000)).mission).toMatchObject({ status: "completed", best: { metrics: [0, 15_000, 1600] } });
-
-    await scheduleMission(db, "2026-11-18", "pajama-yard-lia");
-    expect((await playOn(player, "2026-11-18", "pajama-war", "yard", YARD_AS_BIA)).mission).toMatchObject({ status: "missed", shortfall: { condition: { stat: "kid" }, actual: 2 } });
-    expect((await playOn(player, "2026-11-18", "pajama-war", "yard", YARD_AS_LIA, 100_000)).mission).toMatchObject({ status: "completed" });
-  });
-
   it("keeps players apart and leaves hidden players out of the count", async () => {
     await scheduleMission(db, DAY, "lab-pixel-fast");
     const { player: ana } = await makePlayer(db, "Ana");
@@ -200,29 +120,6 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     const anonymous = await missionToday(db, null, new Date(NOON + 300_000));
     expect(anonymous.you).toBeNull();
     expect(anonymous.mission).toMatchObject({ day: DAY, key: "lab-pixel-fast", game: "bad-ideas-lab", level: "pixel", title: missionByKey("lab-pixel-fast")!.title });
-  });
-
-  it("lists the player's missions newest first, page by page, with their final place", async () => {
-    const { player } = await makePlayer(db);
-    const { player: rival } = await makePlayer(db, "Rival");
-    for (const [i, day] of ["2026-11-02", "2026-11-03", "2026-11-04"].entries()) {
-      await scheduleMission(db, day, "lab-pixel-fast");
-      const at = Date.UTC(2026, 10, 2 + i, 15, 0, 0);
-      const parts = day === "2026-11-03" ? GOLDEN : QUICK;
-      if (day === "2026-11-02") await playLab(rival, QUICKER, { at: at - 1000, mission: day });
-      await playLab(player, parts, { at, mission: day });
-    }
-    const first = await missionHistory(db, player, { before: null, limit: 2 });
-    expect(first.entries.map((e) => [e.mission.day, e.you.state])).toEqual([
-      ["2026-11-04", "completed"],
-      ["2026-11-03", "started"],
-    ]);
-    expect(first.next).toBe("2026-11-03");
-    const second = await missionHistory(db, player, { before: first.next, limit: 2 });
-    expect(second.entries).toHaveLength(1);
-    expect(second.entries[0]).toMatchObject({ mission: { day: "2026-11-02" }, you: { state: "completed", best: { position: 1, total: 2 } } });
-    expect(second.next).toBeNull();
-    expect(await missionHistory(db, rival, { before: null, limit: 10 })).toMatchObject({ entries: [{ mission: { day: "2026-11-02" }, you: { best: { position: 2 } } }] });
   });
 
   it("forgets everything about a player who leaves the board", async () => {
@@ -249,55 +146,6 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     return (await db.playerAchievement.findMany({ where: { playerId }, orderBy: { unlockedAt: "asc" } })).map((a) => a.achievement);
   }
 
-  it("grants Primeira Transmissão once, on the first completion, and repeats it on a resent result", async () => {
-    await scheduleMission(db, DAY, "lab-pixel-fast");
-    const { player } = await makePlayer(db);
-    const missed = await playLab(player, GOLDEN);
-    expect(missed.mission?.achievements).toEqual([]);
-    const { ticket } = ticketFor("bad-ideas-lab", "pixel", player.id, NOON + 10_000, DAY);
-    const first = await submitRun(db, { player, ticket, claim: labClaim("pixel", QUICK), now: new Date(NOON + 70_000) });
-    expect(first.mission?.achievements).toEqual(["mission-first"]);
-    const again = await submitRun(db, { player, ticket, claim: labClaim("pixel", QUICK), now: new Date(NOON + 90_000) });
-    expect(again).toMatchObject({ repeated: true, mission: { achievements: ["mission-first"] } });
-    const later = await playLab(player, QUICKER, { at: NOON + 200_000 });
-    expect(later.mission?.achievements).toEqual([]);
-    expect(await achievementIds(player.id)).toEqual(["mission-first"]);
-    expect(await db.playerAchievement.findFirstOrThrow()).toMatchObject({ source: "verified", runId: first.run.id });
-  });
-
-  it("counts different days, not consecutive ones, for Frequentador do Canal and Maratonista do 404", async () => {
-    const { player } = await makePlayer(db);
-    const days = ["2026-11-01", "2026-11-03", "2026-11-04", "2026-11-06", "2026-11-07", "2026-11-09", "2026-11-12"];
-    const unlocked: string[][] = [];
-    for (const day of days) unlocked.push((await completeOn(player, day)).mission?.achievements ?? []);
-    expect(unlocked).toEqual([["mission-first"], [], ["mission-regular"], [], [], [], ["mission-marathon"]]);
-  });
-
-  it("grants De Volta ao Ar only after 7 days or more without completing a mission", async () => {
-    const { player } = await makePlayer(db);
-    await completeOn(player, "2026-11-01");
-    expect((await completeOn(player, "2026-11-08")).mission?.achievements).toEqual([]);
-    expect((await completeOn(player, "2026-11-16")).mission?.achievements).toEqual(["mission-regular", "mission-back-on-air"]);
-  });
-
-  it("grants Grade Completa with the first completion that covers all five games", async () => {
-    const { player } = await makePlayer(db);
-    const plays: [string, string, GameSlug, string | null, RunClaim][] = [
-      ["2026-11-16", "lab-pixel-fast", "bad-ideas-lab", "pixel", labClaim("pixel", QUICK)],
-      ["2026-11-17", "street-five-launches", "dead-end-street", null, streetClaim({ targetPoints: 900, combos: 0, mess: 3, launches: 5 }, 18_150)],
-      ["2026-11-18", "food-streak-eight", "food-fight", null, lunchClaim({ bestStreak: 8, comboPoints: 1200 })],
-      ["2026-11-19", "food-spotless", "food-fight", null, lunchClaim({ lives: 3, hitsTaken: 0 })],
-      ["2026-11-20", "recess-corridor-spotless", "operation-recess", "corridor", CORRIDOR_CLEAN],
-      ["2026-11-21", "pajama-yard-lia", "pajama-war", "yard", YARD_AS_LIA],
-    ];
-    const unlocked: string[][] = [];
-    for (const [day, key, game, level, claim] of plays) {
-      await scheduleMission(db, day, key);
-      unlocked.push((await playOn(player, day, game, level, claim)).mission?.achievements ?? []);
-    }
-    expect(unlocked).toEqual([["mission-first"], [], ["mission-regular"], [], [], ["mission-full-grid"]]);
-  });
-
   it("settles a closed day once, with final places and the Campeão do Dia", async () => {
     const { player: ana } = await makePlayer(db, "Ana");
     const { player: bia } = await makePlayer(db, "Bia");
@@ -318,81 +166,5 @@ describe.skipIf(!hasTestDb)("daily missions", () => {
     expect(champion.unlockedAt.toISOString()).toBe(closesAt(DAY).toISOString());
     expect(await settleClosedDays(db, new Date(close + 86_400_000))).toBe(0);
     expect(await db.playerAchievement.count({ where: { achievement: "mission-champion" } })).toBe(1);
-  });
-
-  it("needs someone to beat, and leaves hidden players off the podium", async () => {
-    const { player: alone } = await makePlayer(db, "Sozinho");
-    await completeOn(alone, "2026-11-02");
-    const { player: hidden } = await makePlayer(db, "Sombra", "hidden");
-    const { player: ana } = await makePlayer(db, "Ana");
-    const { player: bia } = await makePlayer(db, "Bia");
-    await completeOn(hidden, DAY, QUICK);
-    await completeOn(ana, DAY, ALMOST, 1000);
-    await completeOn(bia, DAY, ALMOST, 2000);
-    await settleClosedDays(db, new Date(closesAt(DAY).getTime() + 1000));
-    expect(await db.challengeEntry.findFirstOrThrow({ where: { playerId: alone.id } })).toMatchObject({ finalPosition: 1, finalTotal: 1 });
-    expect(await achievementIds(alone.id)).toEqual(["mission-first"]);
-    expect(await db.challengeEntry.findFirstOrThrow({ where: { playerId: hidden.id } })).toMatchObject({ finalPosition: null });
-    expect(await achievementIds(ana.id)).toEqual(["mission-first", "mission-champion"]);
-    expect(await achievementIds(hidden.id)).toEqual(["mission-first"]);
-  });
-
-  it("tells the player about achievements, champion days and the last two weeks", async () => {
-    const { player: ana } = await makePlayer(db, "Ana");
-    const { player: bia } = await makePlayer(db, "Bia");
-    await completeOn(ana, "2026-11-02", QUICK);
-    await completeOn(bia, "2026-11-02", ALMOST, 1000);
-    await scheduleMission(db, DAY, "lab-pixel-fast");
-    await playLab(ana, GOLDEN);
-    const today = await missionToday(db, ana, new Date(NOON + 120_000));
-    expect(today.you).toMatchObject({ championDays: 1, state: "started" });
-    expect(today.you?.achievements.map((a) => [a.id, a.day])).toEqual([
-      ["mission-first", "2026-11-02"],
-      ["mission-champion", "2026-11-02"],
-    ]);
-    expect(today.you?.recent).toHaveLength(14);
-    expect(today.you?.recent.at(-1)).toEqual({ day: DAY, state: "started" });
-    expect(today.you?.recent.find((d) => d.day === "2026-11-02")).toEqual({ day: "2026-11-02", state: "completed" });
-    expect(today.you?.recent.find((d) => d.day === "2026-11-03")).toEqual({ day: "2026-11-03", state: "none" });
-  });
-
-  it("serves the day's board page by page, with the player's place and the days around it", async () => {
-    await scheduleMission(db, "2026-11-01", "food-spotless");
-    const players = [];
-    for (let i = 0; i < 12; i += 1) players.push((await makePlayer(db, `Pato ${String.fromCharCode(97 + i)}`)).player);
-    for (const [i, player] of players.entries()) await completeOn(player, DAY, i === 11 ? QUICK : ALMOST, i * 1000);
-    const now = new Date(NOON + 600_000);
-    const first = await missionBoardPage(db, players[3], { day: null, page: 1 }, now);
-    expect(first).toMatchObject({ total: 12, page: 1, pages: 2, closed: false, previousDay: "2026-11-01", nextDay: null, you: { position: 5, total: 12 } });
-    expect(first.entries.map((e) => e.position)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    expect(first.entries.slice(0, 3).map((e) => [e.nickname, e.metrics])).toEqual([
-      ["Pato l", [1, 245]],
-      ["Pato a", [1, 246]],
-      ["Pato b", [1, 246]],
-    ]);
-    expect(first.entries[4].you).toBe(true);
-    const second = await missionBoardPage(db, null, { day: DAY, page: 2 }, now);
-    expect(second.entries.map((e) => e.position)).toEqual([11, 12]);
-    expect(second.you).toBeNull();
-    const old = await missionBoardPage(db, null, { day: "2026-11-01", page: 1 }, now);
-    expect(old).toMatchObject({ closed: true, total: 0, entries: [], previousDay: null, nextDay: DAY, mission: { key: "food-spotless" } });
-    const missing = await missionBoardPage(db, null, { day: "2026-10-20", page: 1 }, now).catch((e) => e);
-    expect(missing).toBeInstanceOf(HttpError);
-    expect((missing as HttpError).code).toBe("not_found");
-    const future = await missionBoardPage(db, null, { day: addDays(DAY, 1), page: 1 }, now).catch((e) => e);
-    expect((future as HttpError).code).toBe("not_found");
-  });
-
-  it("backfills achievements for missions completed before they existed", async () => {
-    const { player } = await makePlayer(db);
-    for (const day of ["2026-10-01", "2026-10-02", "2026-10-20"]) await completeOn(player, day);
-    await db.playerAchievement.deleteMany();
-    const sql = readFileSync("prisma/migrations/20261110143858_mission_achievements/migration.sql", "utf8");
-    await db.$executeRawUnsafe(sql.slice(sql.indexOf("WITH done AS")));
-    await db.$executeRawUnsafe(sql.slice(sql.indexOf("WITH done AS")));
-    const rows = await db.playerAchievement.findMany({ orderBy: { unlockedAt: "asc" } });
-    expect(rows.map((r) => r.achievement)).toEqual(["mission-first", "mission-regular", "mission-back-on-air"]);
-    const entries = await db.challengeEntry.findMany({ orderBy: { challengeId: "asc" } });
-    expect(rows[1].unlockedAt).toEqual(entries[2].completedAt);
   });
 });

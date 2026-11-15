@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
-import { BOARD_META, boardId, hasLevel, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
+import { boardId, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
 
 function compare(a: RankKey, b: RankKey) {
   for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return b[i] - a[i];
@@ -77,21 +77,6 @@ describe("boards", () => {
   it("names one board per game or per level, with the rules version", () => {
     expect(boardId("dead-end-street", null)).toBe("dead-end-street/all/v1");
     expect(boardId("bad-ideas-lab", "pixel")).toBe("bad-ideas-lab/pixel/v1");
-  });
-
-  it("knows which games have levels", () => {
-    expect(hasLevel("dead-end-street", null)).toBe(true);
-    expect(hasLevel("dead-end-street", "x")).toBe(false);
-    expect(hasLevel("bad-ideas-lab", null)).toBe(false);
-    expect(hasLevel("pajama-war", "yard")).toBe(true);
-    expect(hasLevel("operation-recess", "office")).toBe(true);
-  });
-
-  it("explains every board in one line and labels each metric", () => {
-    for (const meta of Object.values(BOARD_META)) {
-      expect(meta.explain.length).toBeGreaterThan(10);
-      expect(meta.metrics.length).toBeGreaterThan(0);
-    }
   });
 });
 

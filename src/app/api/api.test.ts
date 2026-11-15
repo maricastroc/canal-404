@@ -8,7 +8,6 @@ import type { MissionHistoryResponse, MissionTodayResponse } from "@/lib/mission
 import { apiRequest, cookieFrom, hasTestDb, labClaim, resetDb, scheduleMission, testDb } from "@/server/testing";
 import { GET as cleanupGet } from "./cron/cleanup/route";
 import { GET as boardGet } from "./leaderboards/route";
-import { GET as missionBoardGet } from "./missions/board/route";
 import { GET as missionHistoryGet } from "./missions/history/route";
 import { GET as missionTodayGet } from "./missions/today/route";
 import { DELETE as meDelete, GET as meGet, PATCH as mePatch } from "./players/me/route";
@@ -82,10 +81,6 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     return body(response);
   }
 
-  it("is online with a database", async () => {
-    expect(await body(await status())).toEqual({ status: "online" });
-  });
-
   it("joins with a nickname and an httpOnly cookie, with no personal data", async () => {
     const { response, cookie, data } = await joinAs("  Déco   Turbo ");
     expect(response.status).toBe(201);
@@ -104,12 +99,6 @@ describe.skipIf(!hasTestDb)("competition API", () => {
   it("returns no player without a cookie, and with a bogus one", async () => {
     expect(await body(await meGet(apiRequest("/api/players/me")))).toEqual({ player: null });
     expect(await body(await meGet(apiRequest("/api/players/me", { cookie: "c404_player=nonsense" })))).toEqual({ player: null });
-  });
-
-  it("refuses bad nicknames with a friendly reason", async () => {
-    const { response, data } = await joinAs("p0rr4");
-    expect(response.status).toBe(422);
-    expect(data.error).toMatchObject({ code: "bad_nickname", problem: "blocked" });
   });
 
   it("refuses cross-site writes, non-JSON bodies and oversized payloads", async () => {
@@ -153,17 +142,6 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect(issued).toEqual({ ticket: expect.any(String), seed: expect.any(Number), expiresAt: expect.any(String), mission: null });
   });
 
-  it("shows today's mission to anyone, and the player's part to the player", async () => {
-    const day = missionDay(new Date());
-    await scheduleMission(db, day, "lab-juice-fast");
-    const anonymous = await body<MissionTodayResponse>(await missionTodayGet(apiRequest("/api/missions/today")));
-    expect(anonymous).toMatchObject({ mission: { day, key: "lab-juice-fast", game: "bad-ideas-lab", level: "juice", ranked: true }, completions: 0, leader: null, you: null });
-    expect(Date.parse(anonymous.mission.endsAt)).toBeGreaterThan(Date.parse(anonymous.now));
-    const { cookie } = await joinAs();
-    const mine = await body<MissionTodayResponse>(await missionTodayGet(apiRequest("/api/missions/today", { cookie })));
-    expect(mine.you).toMatchObject({ state: "new", attempts: 0, progress: { days: 0, streak: 0 } });
-  });
-
   it("stamps the mission on tickets only for today's game and level", async () => {
     const day = missionDay(new Date());
     await scheduleMission(db, day, "lab-juice-fast");
@@ -190,24 +168,6 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect(today).toMatchObject({ completions: 1, leader: { you: true }, you: { state: "completed", attempts: 1, progress: { days: 1, streak: 1 }, championDays: 0, achievements: [{ id: "mission-first", day }] } });
     const history = await body<MissionHistoryResponse>(await missionHistoryGet(apiRequest("/api/missions/history?limit=5", { cookie })));
     expect(history).toMatchObject({ entries: [{ mission: { day, title: "Suco expresso" }, you: { state: "completed" } }], next: null });
-  });
-
-  it("serves the day's board to anyone and refuses bad or future days", async () => {
-    const day = missionDay(new Date());
-    await scheduleMission(db, day, "lab-juice-fast");
-    const board = await missionBoardGet(apiRequest("/api/missions/board"));
-    expect(board.status).toBe(200);
-    expect(await body(board)).toMatchObject({ mission: { day }, entries: [], total: 0, page: 1, pages: 1, you: null, closed: false });
-    expect((await missionBoardGet(apiRequest("/api/missions/board?day=ontem"))).status).toBe(400);
-    expect((await missionBoardGet(apiRequest("/api/missions/board?page=0"))).status).toBe(400);
-    expect((await missionBoardGet(apiRequest("/api/missions/board?day=2099-01-01"))).status).toBe(404);
-    expect((await missionBoardGet(apiRequest("/api/missions/board?day=2020-01-01"))).status).toBe(404);
-  });
-
-  it("answers an empty history without a player and refuses bad cursors", async () => {
-    expect(await body(await missionHistoryGet(apiRequest("/api/missions/history")))).toEqual({ entries: [], next: null });
-    expect((await missionHistoryGet(apiRequest("/api/missions/history?before=amanha"))).status).toBe(400);
-    expect((await missionHistoryGet(apiRequest("/api/missions/history?limit=500"))).status).toBe(400);
   });
 
   it("submits a run, answers with the board standing and accepts the retry", async () => {

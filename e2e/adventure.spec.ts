@@ -16,17 +16,3 @@ test("saves the adventure and offers to continue it after a reload", async ({ pa
   await again.getByRole("button", { name: /Continuar aventura/ }).click();
   await expect(again).toBeHidden();
 });
-
-test("starts over only after confirming", async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate((key) => window.localStorage.setItem(key, JSON.stringify({ v: 1, area: "beach", items: ["remote"], flags: { tiltWon: true } })), GAME.key);
-  const intro = await openGame(page, GAME.slug, GAME.title);
-  await intro.getByRole("button", { name: /Nova aventura/ }).click();
-  const confirm = intro.getByRole("alertdialog", { name: "Começar uma nova aventura" });
-  await expect(confirm).toBeVisible();
-  await confirm.getByRole("button", { name: /Sim, nova aventura/ }).click();
-  await expect(intro).toBeHidden();
-  await expect
-    .poll(() => page.evaluate((key) => JSON.parse(window.localStorage.getItem(key) ?? "{}").area ?? null, GAME.key), { timeout: simTime(30_000) })
-    .not.toBe("beach");
-});

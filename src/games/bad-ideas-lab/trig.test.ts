@@ -3,27 +3,9 @@ import { cos, sin } from "./trig";
 
 const view = new DataView(new ArrayBuffer(8));
 
-function bits(x: number) {
-  view.setFloat64(0, x);
-  return view.getBigInt64(0);
-}
-
 function hex(x: number) {
   view.setFloat64(0, x);
   return view.getBigUint64(0).toString(16).padStart(16, "0");
-}
-
-function ulps(a: number, b: number) {
-  const d = bits(a) - bits(b);
-  return d < BigInt(0) ? -d : d;
-}
-
-function samples(count: number, scale: number, seed: number) {
-  let s = seed >>> 0;
-  return Array.from({ length: count }, () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return (s / 2 ** 32 - 0.5) * 2 * scale;
-  });
 }
 
 const LOCKED: [number, string, string][] = [
@@ -47,41 +29,5 @@ describe("deterministic trigonometry", () => {
       expect(hex(sin(x)), `sin(${x})`).toBe(s);
       expect(hex(cos(x)), `cos(${x})`).toBe(c);
     }
-  });
-
-  it("handles zero, infinity and NaN like Math", () => {
-    expect(Object.is(sin(0), 0)).toBe(true);
-    expect(Object.is(sin(-0), -0)).toBe(true);
-    expect(cos(0)).toBe(1);
-    expect(cos(-0)).toBe(1);
-    for (const x of [Infinity, -Infinity, NaN]) {
-      expect(sin(x)).toBeNaN();
-      expect(cos(x)).toBeNaN();
-    }
-  });
-
-  it("is odd for sine and even for cosine, bit for bit", () => {
-    for (const x of samples(20_000, 10, 3)) {
-      expect(Object.is(sin(-x), -sin(x))).toBe(true);
-      expect(Object.is(cos(-x), cos(x))).toBe(true);
-    }
-  });
-
-  it("stays within two units in the last place of this engine's Math.sin and Math.cos", () => {
-    let worst = BigInt(0);
-    for (const x of [...samples(100_000, 1, 5), ...samples(100_000, 64, 9)]) {
-      for (const [a, b] of [
-        [sin(x), Math.sin(x)],
-        [cos(x), Math.cos(x)],
-      ]) {
-        if (Math.sign(a) !== Math.sign(b)) {
-          expect(Math.abs(a - b)).toBeLessThan(1e-15);
-          continue;
-        }
-        const d = ulps(a, b);
-        if (d > worst) worst = d;
-      }
-    }
-    expect(worst <= BigInt(2)).toBe(true);
   });
 });

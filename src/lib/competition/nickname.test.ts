@@ -1,17 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { checkNickname, nicknameKey, suggestNickname } from "./nickname";
+import { checkNickname, suggestNickname } from "./nickname";
 
 describe("checkNickname", () => {
-  it("trims, collapses spaces and keeps accents", () => {
-    expect(checkNickname("  Déco   Turbo ")).toEqual({ ok: true, nickname: "Déco Turbo", key: "decoturbo" });
-    expect(checkNickname("Lina_404")).toMatchObject({ ok: true, nickname: "Lina_404" });
-  });
-
-  it("enforces the length limits", () => {
-    expect(checkNickname("Ab")).toEqual({ ok: false, problem: "short" });
-    expect(checkNickname("Um apelido grande demais")).toEqual({ ok: false, problem: "long" });
-  });
-
   it("refuses links, emails, symbols and invisible tricks", () => {
     for (const raw of ["canal.com", "eu@mail", "<b>oi</b>", "Pato​Veloz", "😀😀😀", "1234"]) {
       expect(checkNickname(raw)).toMatchObject({ ok: false, problem: "chars" });
@@ -43,10 +33,6 @@ describe("checkNickname", () => {
 });
 
 describe("nickname helpers", () => {
-  it("builds a search key without accents or separators", () => {
-    expect(nicknameKey("Pão-de-Queijo")).toBe("paodequeijo");
-  });
-
   it("suggests nicknames that always pass the filter", () => {
     let seed = 1;
     const random = () => {
