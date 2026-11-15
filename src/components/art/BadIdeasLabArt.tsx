@@ -1,4 +1,3 @@
-import { LinaHead, type Face } from "@/components/characters/Heads";
 import { P } from "@/lib/palette";
 
 const display = { fontFamily: "var(--font-luckiest)" };
@@ -262,16 +261,16 @@ function CatAwake() {
   );
 }
 
-function Lina({ face }: { face: Face }) {
-  const size = 34;
+type LinaPose = "lab" | "yay";
+
+function Lina({ pose }: { pose: LinaPose }) {
+  const h = 37;
+  const w = (h * 150) / 220;
+  const cx = 21;
   return (
     <g>
-      <ellipse cx={19} cy={125} rx={16} ry={2} fill={P.ink} opacity={0.2} />
-      <g filter="url(#lab-outline)">
-        <svg x={2} y={88} width={size} height={size * 1.11} viewBox="0 0 200 222" overflow="visible">
-          <LinaHead face={face} />
-        </svg>
-      </g>
+      <ellipse cx={cx} cy={FLOOR + 0.6} rx={11} ry={2} fill={P.ink} opacity={0.22} />
+      <image href={`/assets/bad-ideas-lab/lina-${pose}.svg`} x={cx - w / 2} y={FLOOR + 1 - h} width={w} height={h} filter="url(#lab-outline)" />
     </g>
   );
 }
@@ -342,7 +341,7 @@ function RoundButton({ x, y, kind }: Pt & { kind: "rotate" | "remove" }) {
   );
 }
 
-function Stage({ lina, children, tray, areaLit = false }: { lina: Face; children: React.ReactNode; tray: React.ReactNode; areaLit?: boolean }) {
+function Stage({ lina, children, tray, areaLit = false }: { lina: LinaPose; children: React.ReactNode; tray: React.ReactNode; areaLit?: boolean }) {
   return (
     <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
       <Outline />
@@ -352,7 +351,7 @@ function Stage({ lina, children, tray, areaLit = false }: { lina: Face; children
       <Shelf {...SHELF_A} />
       <Shelf {...SHELF_B} />
       {children}
-      <Lina face={lina} />
+      <Lina pose={lina} />
       {tray}
     </svg>
   );
@@ -367,7 +366,7 @@ function BuildPanel() {
   const held = { x: RAMP.x, y: 60 };
   return (
     <Stage
-      lina="normal"
+      lina="lab"
       areaLit
       tray={
         <g>
@@ -405,7 +404,7 @@ function RotateArc({ side }: { side: -1 | 1 }) {
 
 function AdjustPanel() {
   return (
-    <Stage lina="wow" tray={<Tray count={1} />}>
+    <Stage lina="lab" tray={<Tray count={1} />}>
       <Bell />
       <CatAsleep />
       <Ramp x={RAMP.x} y={RAMP.y} len={RAMP.len} angle={0} ghost />
@@ -442,7 +441,7 @@ function TestPanel() {
     `Q${r(c1.x + 6)} ${r(c1.y - 1)} ${hit.x - 3} ${hit.y - 0.6}`,
   ].join(" ");
   return (
-    <Stage lina="happy" tray={<Tray count={1} pressed />}>
+    <Stage lina="yay" tray={<Tray count={1} pressed />}>
       <path d={trail} fill="none" stroke={P.white} strokeWidth={1.8} strokeLinecap="round" strokeDasharray="0.1 3.6" opacity={0.95} />
       <Ramp x={RAMP.x} y={RAMP.y} len={RAMP.len} angle={RAMP.angle} />
       <Marble x={r(b0.x + 9)} y={r(b0.y + 5.2)} faded />
