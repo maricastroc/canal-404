@@ -257,3 +257,8 @@ The resort also reacts to Déco just walking around. Plants, hedges, palms, umbr
 - Hover hints also appear on focus; important actions don't depend on hover.
 - The games accept keyboard, mouse and touch, and announce events through an `aria-live` region.
 - `prefers-reduced-motion` is respected and nothing depends only on audio; sound starts only after an interaction and can be turned off.
+- The Laboratório is built to be played with a screen reader: it describes each level from its geometry, says where a piece is while it moves, explains every attempt, and has query keys (D describes the level, O goes through the objects, I says where the piece is, L repeats the last result). `e2e/lab-access.spec.ts` solves level 2 from the announcements alone.
+
+### VoiceOver session
+
+On 2026-11-14 the Laboratório was played in production with VoiceOver on (macOS 26.6.2, Chrome 157): from the catalog to the tutorial, then from the home page through level 2 and back, winning both levels on the first try. Page changes, the intro dialog, the stage and its keys, piece placement, each attempt and the victory dialog were all read. One problem showed up: the level opening was announced just before focus moved to the stage, and VoiceOver dropped it. Announcements made right before a focus move are now repeated once focus lands, and a second run confirmed the opening is spoken. [docs/voiceover-session.md](docs/voiceover-session.md) has the transcripts of what VoiceOver said, what worked, the fix and what the session didn't cover.
