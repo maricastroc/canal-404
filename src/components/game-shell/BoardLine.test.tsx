@@ -38,14 +38,16 @@ describe("describeBoard", () => {
       stamp: true,
     });
     const alone = describeBoard(LAB, accepted({}, { id: "b", improved: true, previous: null, position: 1, total: 1, best: BEST, verified: false, leader: null }));
-    expect(alone).toMatchObject({ headline: "Placar inaugurado", text: "1 peça · 5,20 s. Por enquanto, o placar desta fase é só seu." });
+    expect(alone).toMatchObject({ headline: "Placar inaugurado", text: "Você inaugurou o placar! Agora é esperar alguém tentar superar sua marca: 1 peça · 5,20 s." });
     expect(alone?.stamp).toBeFalsy();
-    expect(describeBoard(STREET, accepted({}, { id: "b", improved: true, previous: null, position: 1, total: 1, best: { ...BEST, metrics: [2150, 4] }, verified: false, leader: null }))?.text).toBe("2.150 pts · 4 lançamentos. Por enquanto, o placar deste jogo é só seu.");
+    expect(describeBoard(STREET, accepted({}, { id: "b", improved: true, previous: null, position: 1, total: 1, best: { ...BEST, metrics: [2150, 4] }, verified: false, leader: null }))?.text).toBe("Você inaugurou o placar! Agora é esperar alguém tentar superar seus 2.150 pontos.");
   });
 
   it("reminds the player of their best when the run did not beat it", () => {
     const line = describeBoard(STREET, accepted({}, { id: "b", improved: false, previous: null, position: 12, total: 40, best: { ...BEST, metrics: [2150, 4] }, verified: false, leader: null }));
     expect(line?.text).toBe("Seu melhor continua 2.150 pts · 4 lançamentos, 12º de 40.");
+    const alone = describeBoard(STREET, accepted({}, { id: "b", improved: false, previous: null, position: 1, total: 1, best: { ...BEST, metrics: [2150, 4] }, verified: false, leader: null }));
+    expect(alone?.text).toBe("Seu melhor continua 2.150 pts · 4 lançamentos. O placar deste jogo segue só seu: ninguém apareceu para tentar superar.");
   });
 
   it("compares the player's best with the channel record and links to the full board", () => {

@@ -1,11 +1,12 @@
 "use client";
 
-import { animate, motion, useMotionValue, useTransform } from "motion/react";
+import Link from "next/link";
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
-import { MissionIcon, PlayIcon, RestartIcon, UsersIcon } from "@/components/art/Icons";
+import { HouseIcon, MissionIcon, PlayIcon, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { LockIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
@@ -109,7 +110,7 @@ function GameTitle({ game }: { game: GameMeta }) {
   const Logo = GAME_LOGOS[game.slug];
   return Logo ? (
     <h1>
-      <Logo className="w-full max-w-md" />
+      <Logo className="w-full max-w-md" bare />
     </h1>
   ) : (
     <h1 className="font-display text-4xl uppercase text-ink">{game.title}</h1>
@@ -136,6 +137,57 @@ function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
         </span>
       ))}
     </span>
+  );
+}
+
+function StarBurst({ delay }: { delay: number }) {
+  return (
+    <motion.svg
+      viewBox="-50 -50 100 100"
+      aria-hidden
+      className="pointer-events-none absolute -inset-[45%] size-[190%]"
+      initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+      animate={{ scale: [0.5, 1.12, 1.3], opacity: [0, 1, 0], rotate: 0 }}
+      transition={{ delay, duration: 0.5, times: [0, 0.35, 1], ease: "easeOut" }}
+    >
+      {Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+        const r0 = i % 2 ? 30 : 27;
+        const r1 = i % 2 ? 38 : 45;
+        const d = `M${(Math.cos(a) * r0).toFixed(1)} ${(Math.sin(a) * r0).toFixed(1)} L${(Math.cos(a) * r1).toFixed(1)} ${(Math.sin(a) * r1).toFixed(1)}`;
+        return (
+          <g key={i} strokeLinecap="round">
+            <path d={d} stroke="var(--color-ink)" strokeWidth={7} />
+            <path d={d} stroke="var(--color-sun)" strokeWidth={3} />
+          </g>
+        );
+      })}
+    </motion.svg>
+  );
+}
+
+function RewardStars({ stars, className = "" }: { stars: number; className?: string }) {
+  const still = useReducedMotion();
+  return (
+    <div className={`mt-4 flex justify-center gap-2 max-sm:mt-2 shorter:mt-2 ${className}`} aria-label={`${stars} de 3 estrelas`} role="img">
+      {[0, 1, 2].map((i) => {
+        const earned = i < stars;
+        const delay = 0.3 + i * 0.18;
+        return (
+          <div key={i} className="relative w-12 sm:w-20 sm:shorter:w-14">
+            {earned && !still ? <StarBurst delay={delay + 0.12} /> : null}
+            <motion.div
+              initial={still ? false : earned ? { scale: 2.2, rotate: -30, y: -18, opacity: 0 } : { scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, y: 0, opacity: earned ? 1 : 0.3 }}
+              transition={earned ? { delay, type: "spring", stiffness: 560, damping: 14, mass: 0.7, opacity: { delay, duration: 0.08 } } : { delay, duration: 0.25 }}
+              className={`relative ${earned ? "" : "grayscale"}`}
+            >
+              <StarBadge color={earned ? "sun" : "plum"} className="w-full" />
+            </motion.div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -286,8 +338,9 @@ export function IntroPanel({
           {showHelp ? "Esconder instruções" : "Como jogar"}
         </InkButton>
         {!leveled && !mission && (
-          <p className="ml-auto rounded-lg border-[3px] border-ink bg-cream-2 px-3 py-1 font-display text-sm uppercase tracking-wide text-ink">
-            Recorde: {highScore > 0 ? highScore.toLocaleString("pt-BR") : "—"}
+          <p className="flex items-center gap-1.5 px-1 font-display text-sm uppercase leading-none tracking-wide text-ink-soft">
+            <TrophyIcon className="size-4" />
+            <span>Recorde: {highScore > 0 ? highScore.toLocaleString("pt-BR") : "—"}</span>
           </p>
         )}
       </div>
@@ -394,94 +447,84 @@ export function ResultPanel({
           {result.level ? "Melhor resultado!" : "Novo recorde!"}
         </span>
       )}
-      <div className="wideshort:grid wideshort:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] wideshort:items-center wideshort:gap-x-7">
-        <div>
-          {result.level && (
-            <p className="mb-2 inline-block -rotate-1 rounded-md border-[3px] border-ink bg-mint px-2 font-display text-sm uppercase tracking-wider text-ink">
-              {Word} {result.level.index + 1} de {result.level.total} · {result.level.title}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-4 max-sm:gap-3">
-            <div className="shrink-0 max-sm:[zoom:0.75]">
-              {Cast ? (
-                <Cast mood={result.won ? "win" : "lose"} featured={result.featured} />
-              ) : result.won ? (
-                <CastPair game={game} happy />
-              ) : (
-                <Mascot404 expression="sad" className="w-24 shrink-0" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1 max-sm:basis-40 wideshort:basis-48">
-              <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink max-sm:text-[clamp(1.6rem,8.4vw,2.2rem)] wideshort:text-[clamp(2rem,3.4vw,2.6rem)]">{title}</h2>
-              {text && <p className="mt-1 font-hand text-xl leading-snug text-ink-soft max-sm:text-lg">{text}</p>}
+      <div className="wideshort:grid wideshort:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] wideshort:items-start wideshort:gap-x-7">
+        <div className="wideshort:col-span-2 wideshort:flex wideshort:items-center wideshort:gap-6 wideshort:border-b-[3px] wideshort:border-dashed wideshort:border-ink/20 wideshort:pb-4">
+          <div className="min-w-0 wideshort:flex-1">
+            {result.level && (
+              <p className="mb-2 inline-block -rotate-1 rounded-md border-[3px] border-ink bg-mint px-2 font-display text-sm uppercase tracking-wider text-ink">
+                {Word} {result.level.index + 1} de {result.level.total} · {result.level.title}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-4 max-sm:gap-3">
+              <div className="shrink-0 max-sm:[zoom:0.75]">
+                {Cast ? (
+                  <Cast mood={result.won ? "win" : "lose"} featured={result.featured} />
+                ) : result.won ? (
+                  <CastPair game={game} happy />
+                ) : (
+                  <Mascot404 expression="sad" className="w-24 shrink-0" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1 max-sm:basis-40 wideshort:basis-48">
+                <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink max-sm:text-[clamp(1.6rem,8.4vw,2.2rem)] wideshort:text-[clamp(2rem,3.4vw,2.6rem)]">{title}</h2>
+                {text && <p className="mt-1 font-hand text-xl leading-snug text-ink-soft max-sm:text-lg">{text}</p>}
+              </div>
             </div>
           </div>
-          {result.won && (
-            <div className="mt-4 flex justify-center gap-2 max-sm:mt-2 shorter:mt-2" aria-label={`${result.stars} de 3 estrelas`} role="img">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  initial={{ scale: 0, rotate: -40 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ delay: 0.25 + i * 0.18, type: "spring", stiffness: 400, damping: 14 }}
-                  className={`w-12 sm:w-20 sm:shorter:w-14 ${i < result.stars ? "" : "opacity-30 grayscale"}`}
-                >
-                  <StarBadge color={i < result.stars ? "sun" : "plum"} className="w-full" />
-                </motion.div>
-              ))}
-            </div>
-          )}
+          {result.won && <RewardStars stars={result.stars} className="wideshort:mt-0 wideshort:shrink-0 wideshort:pr-2" />}
+        </div>
+        <div className="wideshort:mt-4">
           {result.summary && (
             <motion.p
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.85 }}
-              className="mt-2 text-center font-display text-base uppercase tracking-wide text-ink"
+              className="mt-2 text-center font-display text-base uppercase tracking-wide text-ink wideshort:mt-0 wideshort:text-left"
             >
               {result.summary}
             </motion.p>
           )}
           {result.starHint && !(mission && missionOverridesStars(mission)) ? (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} className="copy-sm mt-0.5 text-center text-ink-soft">
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }} className="copy-sm mt-0.5 text-center text-ink-soft wideshort:text-left">
               {result.starHint}
             </motion.p>
           ) : null}
-          <dl className="mt-5 divide-y-2 divide-dashed divide-ink/25 rounded-xl border-[3px] border-ink bg-cream-2 px-4 py-2 max-sm:mt-3 max-sm:px-3 max-sm:py-1 wideshort:mt-4 wideshort:py-1">
+          <dl className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 px-4 pt-1 max-sm:mt-3 max-sm:px-3 wideshort:mt-3">
             {result.breakdown.map((row, i) => (
               <motion.div
                 key={row.label}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 + i * 0.12 }}
-                className="flex items-baseline justify-between gap-4 py-1.5 max-sm:py-1 wideshort:py-1"
+                className={`flex items-baseline justify-between gap-4 py-2 max-sm:py-1.5 wideshort:py-1.5 ${i ? "border-t-2 border-dashed border-ink/20" : ""}`}
               >
-                <dt className="copy text-ink-soft">{row.label}</dt>
-                <dd className={`font-display text-lg tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
+                <dt className="copy min-w-0 text-ink-soft">{row.label}</dt>
+                <dd className={`shrink-0 text-right font-display text-xl leading-none tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
                   {row.value < 0 ? "−" : "+"}
                   {Math.abs(row.value).toLocaleString("pt-BR")}
                 </dd>
               </motion.div>
             ))}
-            <div className="flex items-baseline justify-between gap-4 py-2">
+            <div className="-mx-4 flex items-baseline justify-between gap-4 rounded-b-[9px] border-t-[3px] border-ink bg-cream px-4 py-2.5 max-sm:-mx-3 max-sm:px-3">
               <dt className="font-display text-xl uppercase tracking-wide text-ink">Total</dt>
-              <dd className="font-display text-3xl tabular-nums text-ink">
+              <dd className="shrink-0 font-display text-4xl leading-none tabular-nums text-ink max-sm:text-3xl">
                 <CountUp value={result.score} delay={0.3 + result.breakdown.length * 0.12} />
               </dd>
             </div>
           </dl>
           {recordNote && <p className="copy-sm mt-2 text-ink-soft">{recordNote}</p>}
         </div>
-        <div className="wideshort:[&>*:first-child]:mt-0">
+        <div className="wideshort:mt-4 wideshort:[&>*:first-child]:mt-0">
           {mission ? <MissionLine view={mission} board={board ?? null} /> : null}
           {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
           {!onNext && <NextProgram current={game.slug} />}
-          <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-4 max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:whitespace-nowrap max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
+          <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-4 max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:whitespace-nowrap max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
             {onNext && !mission ? (
               <InkButton ref={mainRef} tone="sun" onClick={onNext}>
                 <PlayIcon className="size-5 text-ink" /> Próxima {word}
               </InkButton>
             ) : null}
-            <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "mint" : "sun"} onClick={onRestart}>
+            <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "mint" : "sun"} onClick={onRestart} className={onNext && !mission ? "" : "sm:px-7"}>
               {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
               {mission ? "Tentar a missão de novo" : (result.restartLabel ?? (result.level && word === "fase" ? "Refazer fase" : "Jogar de novo"))}
             </InkButton>
@@ -500,13 +543,16 @@ export function ResultPanel({
                 Escolher {word}
               </InkButton>
             ) : (
-              <InkLink href="/games" tone="mint">
+              <InkLink href="/games" tone="cream">
                 Ver catálogo
               </InkLink>
             )}
-            <InkLink href="/" tone="cream">
-              Voltar à sala
-            </InkLink>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-1.5 self-center rounded-md px-2 py-1 font-display text-base uppercase tracking-wide text-ink-soft underline decoration-2 underline-offset-4 hover:text-ink max-sm:col-span-2"
+            >
+              <HouseIcon className="size-4" /> Voltar à sala
+            </Link>
           </div>
         </div>
       </div>
