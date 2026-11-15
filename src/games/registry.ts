@@ -243,15 +243,15 @@ export const GAMES: GameMeta[] = [
   {
     slug: "operation-recess",
     title: "Operação: Recreio",
-    tagline: "O recreio foi cancelado. É hora de recuperá-lo!",
+    tagline: "Os monitores acabaram com o recreio. Bruno não vai deixar barato!",
     description:
-      "Os monitores tomaram conta da escola e proibiram todas as brincadeiras. Pegue a espada de papelão do Bruno, passe pelos corredores e chegue até a direção para trazer o recreio de volta.",
+      "Os monitores proibiram as brincadeiras e transformaram a escola numa zona de silêncio. Agora, Bruno precisa atravessar os corredores, enfrentar os monitores com sua espada de papelão e chegar à diretoria para salvar o recreio.",
     category: "action",
     tags: ["Ação", "Plataforma", "Aventura"],
     status: "available",
     accent: "sky",
     cast: ["bruno", "deco", "lina"],
-    objective: "Passe pelos monitores e chegue à direção. Vença o Inspetor do Silêncio para liberar o recreio.",
+    objective: "Atravesse os corredores, enfrente os monitores e derrote o Inspetor do Silêncio para trazer o recreio de volta!",
     controls: [
       { input: "← → ou A D", action: "Andar" },
       { input: "Espaço, ↑ ou W", action: "Pular (segure para ir mais alto)" },
@@ -260,9 +260,9 @@ export const GAMES: GameMeta[] = [
       { input: "Esc ou P", action: "Pausar" },
     ],
     howTo: [
-      { title: "Corra", text: "Use as setas para andar e espaço para pular." },
-      { title: "Ataque", text: "Aperte J para usar a espada de papelão." },
-      { title: "Avance", text: "Passe pelos monitores e chegue à direção." },
+      { title: "Corra", text: "Use as setas para se mover e pule para superar os obstáculos." },
+      { title: "Ataque", text: "Aperte J para acertar os monitores com a espada de papelão." },
+      { title: "Avance", text: "Abra caminho até a diretoria e prepare-se para enfrentar o Inspetor do Silêncio." },
     ],
     levels: [
       { id: "corridor", title: "Corredor proibido", goal: "Passe pelos monitores." },
