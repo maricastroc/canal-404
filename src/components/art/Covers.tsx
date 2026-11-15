@@ -174,34 +174,81 @@ export function DeadEndStreetCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
+function Gear({ cx, cy, r, teeth, fill, spin = 0 }: { cx: number; cy: number; r: number; teeth: number; fill: string; spin?: number }) {
+  const outer = r;
+  const inner = r * 0.8;
+  const pts: string[] = [];
+  for (let i = 0; i < teeth; i += 1) {
+    const a = ((i / teeth) * 360 + spin) * (Math.PI / 180);
+    const step = (Math.PI * 2) / teeth;
+    const at = (ang: number, rad: number) => `${(cx + Math.cos(ang) * rad).toFixed(1)} ${(cy + Math.sin(ang) * rad).toFixed(1)}`;
+    pts.push(at(a - step * 0.3, inner), at(a - step * 0.18, outer), at(a + step * 0.18, outer), at(a + step * 0.3, inner));
+  }
+  return (
+    <g>
+      <path d={`M${pts.join(" L")} Z`} fill={fill} {...ink} strokeWidth={3} />
+      <circle cx={cx} cy={cy} r={inner * 0.72} fill="none" stroke={P.plum700} strokeWidth={3} opacity={0.6} />
+      <circle cx={cx} cy={cy} r={r * 0.3} fill={P.sun} {...ink} strokeWidth={3} />
+      <circle cx={cx} cy={cy} r={r * 0.1} fill={P.ink} />
+    </g>
+  );
+}
+
 export function BadIdeasLabCover({ decorative }: { decorative?: boolean }) {
   return (
-    <Frame decorative={decorative} bg={P.plum700} label="Capa de Laboratório de Péssimas Ideias: Lina segurando um frasco borbulhante entre engrenagens">
+    <Frame decorative={decorative} bg={P.plum700} label="Capa de Laboratório de Péssimas Ideias: Lina atrás da bancada, com um frasco borbulhando, engrenagens e uma lâmpada acesa">
       <Burst cx={160} cy={120} color={P.plum600} count={14} />
-      <g fill={P.plum500} {...ink} strokeWidth={3}>
-        <path d="M40 46 m-24 0 a24 24 0 1 0 48 0 a24 24 0 1 0 -48 0" />
-        <path d="M274 190 m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0" />
+      <Gear cx={42} cy={52} r={30} teeth={10} fill={P.plum500} spin={8} />
+      <Gear cx={86} cy={24} r={17} teeth={8} fill={P.plum300} spin={4} />
+      <Gear cx={292} cy={186} r={32} teeth={10} fill={P.plum500} spin={12} />
+      <g transform="translate(286 54) rotate(14)">
+        <path d="M-27 -16 L-37 -21 M27 -16 L37 -21 M-24 4 L-35 8 M24 4 L35 8 M0 -38 L0 -48" stroke={P.tangerine} strokeWidth="4" strokeLinecap="round" />
+        <path d="M0 -32 Q21 -32 21 -12 Q21 0 10 8 L10 16 L-10 16 L-10 8 Q-21 0 -21 -12 Q-21 -32 0 -32 Z" fill={P.sunPale} {...ink} strokeWidth={3.5} />
+        <path d="M-12 -16 Q-12 -25 -4 -27" fill="none" stroke={P.white} strokeWidth="3" strokeLinecap="round" />
+        <path d="M-5 -6 L0 -14 L5 -6" fill="none" {...ink} strokeWidth={2.6} />
+        <rect x="-11" y="16" width="22" height="12" rx="3" fill={P.steel} {...ink} strokeWidth={3.5} />
+        <path d="M-11 22 L11 22" stroke={P.ink} strokeWidth="2" />
       </g>
-      <g fill="none" stroke={P.ink} strokeWidth="9" strokeDasharray="7 7">
-        <circle cx="40" cy="46" r="28" />
-        <circle cx="274" cy="190" r="34" />
+      <path d="M22 96 L42 92 L34 110 L50 108 L24 136 L30 116 L16 118 Z" fill={P.sun} {...ink} strokeWidth={3} />
+      <g fill={P.lime} {...ink} strokeWidth={3}>
+        <circle cx="238" cy="58" r="8" />
+        <circle cx="226" cy="38" r="10" />
+        <circle cx="242" cy="16" r="12" />
       </g>
-      <circle cx="40" cy="46" r="8" fill={P.sun} {...ink} strokeWidth={3} />
-      <circle cx="274" cy="190" r="10" fill={P.sun} {...ink} strokeWidth={3} />
-      <rect x="0" y="200" width="320" height="40" fill={P.plum900} />
-      <path d="M0 200 L320 200" stroke={P.ink} strokeWidth="3" />
-      <g>
+      <g fill={P.white} opacity="0.75">
+        <circle cx="235" cy="55" r="2.4" />
+        <circle cx="222" cy="34" r="3" />
+        <circle cx="238" cy="11" r="3.4" />
+      </g>
+      <Kid who="lina" x={64} y={44} size={150} face="wow" rotate={-4} />
+      <g transform="translate(0 -2)">
         <path d="M222 120 L222 80 L242 80 L242 120 L262 186 Q264 200 248 200 L216 200 Q200 200 202 186 Z" fill={P.lime} {...ink} />
         <path d="M206 170 L258 170 L262 186 Q264 200 248 200 L216 200 Q200 200 202 186 Z" fill={P.limeDeep} />
         <path d="M222 120 L222 80 L242 80 L242 120 L262 186 Q264 200 248 200 L216 200 Q200 200 202 186 Z" fill="none" {...ink} />
-        <circle cx="226" cy="150" r="6" fill={P.white} opacity="0.7" />
-        <circle cx="240" cy="132" r="4" fill={P.white} opacity="0.7" />
-        <path d="M232 76 Q214 54 236 40 Q260 26 244 8" fill="none" stroke={P.lime} strokeWidth="10" strokeLinecap="round" />
-        <path d="M232 76 Q214 54 236 40 Q260 26 244 8" fill="none" stroke={P.ink} strokeWidth="2" strokeLinecap="round" strokeDasharray="2 10" />
+        <rect x="218" y="74" width="28" height="8" rx="3" fill={P.lime} {...ink} strokeWidth={3} />
+        <path d="M226 92 L226 118 Q218 146 212 168" fill="none" stroke={P.white} strokeWidth="4" strokeLinecap="round" opacity="0.55" />
+        <circle cx="238" cy="150" r="6" fill={P.white} opacity="0.7" />
+        <circle cx="246" cy="132" r="4" fill={P.white} opacity="0.7" />
+        <circle cx="234" cy="104" r="3" fill={P.white} opacity="0.7" />
       </g>
-      <path d="M280 60 L292 40 L286 58 L300 54 L284 80" fill={P.sun} {...ink} strokeWidth={3} />
-      <path d="M24 130 L36 112 L32 128 L44 126 L30 148" fill={P.sun} {...ink} strokeWidth={3} />
-      <Kid who="lina" x={64} y={44} size={150} face="wow" rotate={-4} />
+      <rect x="0" y="204" width="320" height="36" fill={P.woodDeep} />
+      <rect x="-4" y="197" width="328" height="11" rx="3" fill={P.wood} {...ink} strokeWidth={3.5} />
+      <path d="M6 201 L314 201" stroke="#d99566" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M0 208 L320 208" stroke={P.ink} strokeWidth="3" />
+      <path d="M40 218 L40 240 M120 218 L120 240 M200 218 L200 240 M280 218 L280 240" stroke={P.woodDark} strokeWidth="3" />
+      <g transform="translate(38 184) rotate(18)">
+        <rect x="-30" y="-5" width="60" height="10" rx="4" fill={P.sun} {...ink} strokeWidth={3} />
+        <path d="M-24 -2 L24 -2" stroke="#fff3c4" strokeWidth="2" strokeLinecap="round" />
+        <path d="M-14 -4 L-18 4 M-4 -4 L-8 4 M6 -4 L2 4 M16 -4 L12 4" stroke="#e0a21f" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="-24" cy="0" r="2" fill={P.steel} {...ink} strokeWidth={1.5} />
+        <circle cx="24" cy="0" r="2" fill={P.steel} {...ink} strokeWidth={1.5} />
+      </g>
+      <g transform="translate(25 165)">
+        <circle r="9" fill="#8fd4f7" {...ink} strokeWidth={3} />
+        <path d="M-5.6 1.8 Q-2.8 -4.6 3.6 -2.8 Q0 0 1.8 5.6 Q-3.6 5.6 -5.6 1.8 Z" fill={P.bubblegum} />
+        <circle cx="-3.6" cy="-4" r="2" fill={P.white} />
+      </g>
+      <path d="M10 153 L5 148 M18 150 L16 143" stroke={P.ink} strokeWidth="2.5" strokeLinecap="round" />
     </Frame>
   );
 }
