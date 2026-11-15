@@ -44,7 +44,7 @@ export const GAMES: GameMeta[] = [
     title: "Rua Sem Saída",
     tagline: "Engenhocas, física e muita confusão no quintal do vizinho.",
     description:
-      "Déco e Lina montaram uma engenhoca com carrinho de rolimã, colher de pau gigante e elástico de calcinha. Agora é só lançar objetos absurdos e derrubar os enfeites do quintal do Seu Arlindo antes que a munição acabe.",
+      "Déco e Lina transformaram um carrinho de rolimã numa máquina de lançar objetos. O alvo? Os enfeites do quintal do Seu Arlindo! Acerte os lançamentos, faça a maior bagunça possível e tente bater o recorde antes que a munição acabe.",
     category: "action",
     tags: ["Ação", "Física", "Engenhocas"],
     status: "available",
@@ -59,9 +59,9 @@ export const GAMES: GameMeta[] = [
       { input: "Esc ou P", action: "Pausar" },
     ],
     howTo: [
-      { title: "Puxe", text: "Arraste para trás para preparar o lançamento. Quanto mais puxar, mais longe vai!" },
+      { title: "Puxe", text: "Arraste para trás para preparar o lançamento. Quanto mais puxar, maior será a força!" },
       { title: "Mire", text: "A linha pontilhada mostra por onde o objeto deve passar. Ajuste a mira antes de soltar!" },
-      { title: "Bagunce", text: "Cada objeto tem sua surpresa: o pato quica, o pneu derruba e o balão estoura!" },
+      { title: "Bagunce", text: "Cada objeto causa uma bagunça diferente: o pato quica, o pneu derruba e o balão estoura!" },
     ],
     tips: [
       "Derrubar dois alvos com um lançamento vale bônus.",
