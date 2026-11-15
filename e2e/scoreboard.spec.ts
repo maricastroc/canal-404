@@ -107,7 +107,7 @@ test.describe("scoreboard with the backend", () => {
     await expect(board).toContainText("Quer ver seu nome no placar?");
     await board.getByLabel("Seu apelido").fill(nickname());
     await board.getByRole("button", { name: "Entrar no placar" }).click();
-    await expect(board.getByRole("status")).toHaveText("Fase de treino não entra no placar.", { timeout: simTime(15_000) });
+    await expect(board.getByRole("status")).toHaveText("Este foi só o aquecimento! A fase de treino não vale pontos no placar global.", { timeout: simTime(15_000) });
     const leave = await page.request.delete("/api/players/me");
     expect(leave.ok()).toBe(true);
   });

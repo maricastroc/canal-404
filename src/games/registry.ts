@@ -91,7 +91,7 @@ export const GAMES: GameMeta[] = [
     status: "available",
     accent: "plum",
     cast: ["lina", "bruno"],
-    objective: "Leve a bolinha até o alvo de cada fase. Quanto menos peças você usar, mais estrelas ganha.",
+    objective: "Toda grande invenção começa com uma ideia duvidosa. Monte sua máquina, leve a bolinha até o alvo e tente resolver cada desafio usando o mínimo de peças.",
     controls: [
       { input: "Arrastar (mouse ou dedo)", action: "Tirar uma peça da caixa ou mudar uma peça de lugar" },
       { input: "Tocar numa peça", action: "Mostrar os botões de girar e guardar" },
@@ -116,7 +116,7 @@ export const GAMES: GameMeta[] = [
       { title: "Teste", text: "Aperte LIGAR e veja no que dá. Deu errado? Ajuste e tente de novo." },
     ],
     levels: [
-      { id: "test", title: "Primeiro teste", goal: "Coloque a rampa e ligue a máquina." },
+      { id: "test", title: "Primeiro teste", goal: "Posicione a rampa no lugar indicado e ligue a máquina." },
       { id: "pixel", title: "Bom dia, Pixel", goal: "Faça a bolinha tocar o sino." },
       { id: "toast", title: "Café da manhã", goal: "Faça a bolinha apertar o botão da torradeira." },
       { id: "juice", title: "Suco de laranja", goal: "Leve a laranja até o espremedor." },
@@ -134,7 +134,7 @@ export const GAMES: GameMeta[] = [
     controlsSummary:
       "Laboratório de Péssimas Ideias. Números pegam peças da caixa, S escolhe uma peça montada, setas movem um passo, R e Q giram, Enter coloca, C cancela, X guarda na caixa, espaço liga a máquina. H pede dica, D descreve a fase, O passa pelos objetos, I diz onde a peça está, L repete o resultado do último teste, Esc pausa.",
     copy: {
-      winTitle: "Funcionou!",
+      winTitle: "Teste aprovado!",
       winText: "Mais uma péssima ideia que deu certo.",
       loseTitle: "Não deu...",
       loseText: "Mude as peças e tente de novo.",

@@ -137,6 +137,7 @@ export class LabScene extends Phaser.Scene {
   private ranOnce = false;
   private guideGfx: Phaser.GameObjects.Graphics | null = null;
   private guideArrow: Phaser.GameObjects.Image | null = null;
+  private guideRest = 0;
   private demo: Phaser.GameObjects.Image | null = null;
   private demoTween: Phaser.Tweens.TweenChain | null = null;
   private demoTimer?: Phaser.Time.TimerEvent;
@@ -279,8 +280,10 @@ export class LabScene extends Phaser.Scene {
       ? "Uma marca tracejada mostra onde vai a rampa. Arraste a rampa até a marca. No teclado, aperte 1: a rampa já aparece em cima da marca. Depois aperte Enter para colocar e espaço para ligar a máquina."
       : `Arraste uma peça para a área de montagem ou aperte ${this.keyRange()} para pegar uma. Setas movem, Enter coloca, espaço liga a máquina.`;
     this.announce(`${intro} ${how} Para consultar: D descreve a fase, O passa pelos objetos, I diz onde está a peça, L repete o último resultado.`);
-    this.time.delayedCall(350, () => this.say(level.story, 4600));
+    this.time.delayedCall(350, () => this.say(level.story, 4600, level.guide ? 20 : 24));
     if (level.guide) {
+      this.hud.highlightSlot(level.guide.type);
+      this.time.delayedCall(450, () => this.pulseGuide());
       this.demoTimer = this.time.delayedCall(700, () => this.startDemo());
     } else {
       this.idleTimer = this.time.addEvent({
@@ -319,11 +322,13 @@ export class LabScene extends Phaser.Scene {
     if (!guide) return;
     const g = this.add.graphics().setDepth(8);
     const poly = partPoly(guide.type, guide.x, guide.y, guide.rot).map((p) => new Phaser.Math.Vector2(p.x, p.y));
-    g.fillStyle(0xffffff, 0.45);
+    g.fillStyle(0xffc83d, 0.3);
     g.fillPoints(poly, true);
-    g.lineStyle(9, 0x1d1830, 0.5);
+    g.lineStyle(13, 0x1d1830, 0.85);
     g.strokePoints(poly, true, true);
-    g.lineStyle(7, 0xffc83d, 1);
+    g.lineStyle(8, 0xfbf5e6, 1);
+    g.strokePoints(poly, true, true);
+    g.lineStyle(8, 0xffc83d, 1);
     for (let i = 0; i < poly.length; i += 1) {
       const a = poly[i];
       const b = poly[(i + 1) % poly.length];
@@ -337,10 +342,18 @@ export class LabScene extends Phaser.Scene {
     const top = Math.min(...poly.map((p) => p.y));
     const arrow = addIcon(this, guide.x, top - 50, "arrow-down", 78).setDepth(8);
     this.guideArrow = arrow;
-    if (!this.ctx.reducedMotion) {
-      this.tweens.add({ targets: g, alpha: { from: 1, to: 0.6 }, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-      this.tweens.add({ targets: arrow, y: arrow.y - 16, duration: 420, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-    }
+    this.guideRest = arrow.y;
+  }
+
+  private pulseGuide() {
+    const g = this.guideGfx;
+    const arrow = this.guideArrow;
+    if (!g || !arrow || this.ctx.reducedMotion) return;
+    this.tweens.killTweensOf([g, arrow]);
+    g.setAlpha(1);
+    arrow.setY(this.guideRest);
+    this.tweens.add({ targets: g, alpha: 0.45, duration: 260, yoyo: true, repeat: 2, ease: "Sine.easeInOut", onComplete: () => g.setAlpha(1) });
+    this.tweens.add({ targets: arrow, y: this.guideRest - 18, duration: 260, yoyo: true, repeat: 2, ease: "Sine.easeInOut", onComplete: () => arrow.setY(this.guideRest) });
   }
 
   private atGuide(part: Part) {
@@ -374,7 +387,7 @@ export class LabScene extends Phaser.Scene {
     this.demo = img;
     this.demoTween = this.tweens.chain({
       targets: img,
-      loop: -1,
+      loop: 1,
       tweens: [
         { alpha: 0.85, scale: { from: 0.6, to: 1 }, duration: 260 },
         { x: g.x, y: g.y, duration: 1100, ease: "Sine.easeInOut" },
@@ -493,8 +506,8 @@ export class LabScene extends Phaser.Scene {
     });
   }
 
-  private say(text: string, duration = 2400) {
-    this.bubble.say(wrapLines(text), this.lina.x + 34, this.lina.y - 214, duration);
+  private say(text: string, duration = 2400, wrap = 30) {
+    this.bubble.say(wrapLines(text, wrap), this.lina.x + 34, this.lina.y - 214, duration);
   }
 
   private word(text: string, x: number, y: number, color: string, size = 52) {
@@ -769,7 +782,7 @@ export class LabScene extends Phaser.Scene {
     if (this.mode !== "build") return;
     this.bubble.hide();
     this.stopDemo();
-    this.pickedOnce = true;
+    this.firstPick(type);
     const settled = this.settleCarry();
     if (settled) this.announce(settled);
     if (this.remaining(type) <= 0) {
@@ -784,12 +797,18 @@ export class LabScene extends Phaser.Scene {
     this.beginCarry(part, "pointer", { isNew: true, origin: null, offsetY: lift, fromTray: true, moved: false, startX: pointer.worldX, startY: pointer.worldY });
   }
 
+  private firstPick(type: PartType) {
+    this.pickedOnce = true;
+    this.hud.highlightSlot(null);
+    if (this.level.guide?.type === type) this.pulseGuide();
+  }
+
   private pickWithKeyboard(slot: number) {
     const type = this.slotTypes[slot];
     if (!type) return;
     this.bubble.hide();
     this.stopDemo();
-    this.pickedOnce = true;
+    this.firstPick(type);
     const settled = this.settleCarry();
     const before = settled ? `${settled} ` : "";
     if (this.remaining(type) <= 0) {
@@ -1380,7 +1399,7 @@ export class LabScene extends Phaser.Scene {
 
   private confetti() {
     if (this.ctx.reducedMotion) return;
-    for (let i = 0; i < 70; i += 1) {
+    for (let i = 0; i < 30; i += 1) {
       const x = Phaser.Math.Between(40, W - 40);
       const piece = this.add
         .rectangle(x, Phaser.Math.Between(-160, -20), Phaser.Math.Between(10, 18), Phaser.Math.Between(16, 26), CONFETTI[i % CONFETTI.length])
@@ -1396,27 +1415,6 @@ export class LabScene extends Phaser.Scene {
         delay: Phaser.Math.Between(0, 400),
         ease: "Sine.easeIn",
         onComplete: () => piece.destroy(),
-      });
-    }
-  }
-
-  private starStamp(stars: number) {
-    const y = 470;
-    const gap = 130;
-    for (let i = 0; i < 3; i += 1) {
-      const lit = i < stars;
-      const img = this.add.image(W / 2 + (i - 1) * gap, y, "star").setDepth(26).setVisible(false);
-      if (!lit) img.setTint(0x6d6390).setAlpha(0.6);
-      this.time.delayedCall(700 + i * 260, () => {
-        img.setVisible(true);
-        if (lit) this.ctx.audio.play(LAB_SFX.starPop, { volume: 0.9, pitch: 1 + i * 0.12 });
-        if (this.ctx.reducedMotion) {
-          img.setScale(3);
-          return;
-        }
-        img.setScale(0.4).setAngle(-40);
-        this.tweens.add({ targets: img, scale: 3, angle: 0, duration: 320, ease: "Back.easeOut" });
-        if (lit) this.burst(img.x, img.y, 5, "spark");
       });
     }
   }
@@ -1459,7 +1457,7 @@ export class LabScene extends Phaser.Scene {
     const offGuide = level.guide && !this.parts.some((p) => this.atGuide(p));
     const line = FAIL_LINES[(this.fails - 1) % FAIL_LINES.length];
     const showHint = !offGuide && this.fails === 2;
-    const lineText = offGuide ? "Quase! Coloque a rampa em cima da marca." : showHint ? `Psiu! ${level.hint}` : `${line} ${reason}`;
+    const lineText = offGuide ? "Quase! Leve a rampa até a área marcada." : showHint ? `Psiu! ${level.hint}` : `${line} ${reason}`;
     this.say(lineText, showHint || offGuide ? 5200 : 2400);
     if (showHint) this.showBulb();
     const advice = offGuide ? "Coloque a rampa em cima da marca tracejada." : showHint ? `Dica da Lina: ${level.hint}` : "Mude as peças e tente de novo.";
@@ -1505,17 +1503,12 @@ export class LabScene extends Phaser.Scene {
     const hold = this.goal.celebrate(this.ballImg);
     this.time.delayedCall(260, () => this.sfx("success", 1));
     this.time.delayedCall(620, () => this.sfx("party", 0.8));
-    this.hud.flash("FUNCIONOU!", "#93cf4c", 2000);
     this.mood("yay");
-    this.say(level.win, 2800);
-    this.confetti();
+    this.say(level.cheer ?? level.win, 2600, 26);
+    this.time.delayedCall(this.ctx.reducedMotion ? 0 : 300, () => this.confetti());
     if (!this.ctx.reducedMotion) {
       this.tweens.add({ targets: this.lina, y: this.lina.y - 36, duration: 180, yoyo: true, repeat: 3, ease: "Quad.easeOut" });
-      const cam = this.cameras.main;
-      cam.shake(160, 0.004);
-      cam.zoomTo(1.04, 140, "Quad.easeOut", true, (_c: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-        if (progress === 1) cam.zoomTo(1, 320, "Sine.easeInOut", true);
-      });
+      this.cameras.main.shake(120, 0.003);
     }
 
     const used = this.parts.length;
@@ -1528,7 +1521,13 @@ export class LabScene extends Phaser.Scene {
       { label: saved === 1 ? "Sobrou 1 peça na caixa" : `Sobraram ${saved} peças na caixa`, value: saved * 150 },
       { label: "Ligou e funcionou de primeira", value: firstTry ? 300 : 0 },
     ].filter((row, i) => i === 0 || row.value > 0);
-    this.starStamp(stars);
+    this.time.delayedCall(this.ctx.reducedMotion ? 0 : 320, () =>
+      this.hud.celebrate(stars, (i, lit, x, y) => {
+        if (!lit) return;
+        this.ctx.audio.play(LAB_SFX.starPop, { volume: 0.9, pitch: 1 + i * 0.12 });
+        if (!this.ctx.reducedMotion) this.burst(x, y, 5, "spark");
+      }),
+    );
     const score = breakdown.reduce((a, b) => a + b.value, 0);
     const achievements = ["lab-first"];
     if (used < level.par) achievements.push("lab-minimalist");
@@ -1543,11 +1542,11 @@ export class LabScene extends Phaser.Scene {
       replay: { kind: "lab-placements", version: 1, parts: replay },
       achievements,
       level: { index: this.levelIndex, id: level.id, title: level.title, total: LEVELS.length },
-      copy: { title: "Funcionou!", text: level.win },
+      copy: { title: "Teste aprovado!", text: level.win },
       summary: `Você usou ${used} ${used === 1 ? "peça" : "peças"}.`,
       ...(stars < 3 ? { starHint: `Com ${level.par === 1 ? "1 peça só" : `até ${level.par} peças`}, a fase vale 3 estrelas.` } : {}),
     };
-    this.time.delayedCall(Math.max(hold, 1700) + 900, () => this.ctx.onEvent({ type: "finished", result }));
+    this.time.delayedCall(Math.max(hold, 1500) + 600, () => this.ctx.onEvent({ type: "finished", result }));
   }
 
   update(_time: number, delta: number) {

@@ -25,6 +25,7 @@ export type LevelDef = {
   story: string;
   hint: string;
   win: string;
+  cheer?: string;
   ball: "marble" | "orange";
   pipe: { x: number; y: number; vx: number; vy: number; flip?: boolean };
   blocks: Block[];
@@ -40,10 +41,11 @@ export const LEVELS: LevelDef[] = [
   {
     id: "test",
     title: "Primeiro teste",
-    goalText: "Coloque a rampa e ligue a máquina.",
-    story: "Vamos testar! Arraste a rampa até a marca.",
-    hint: "Arraste a rampa até a marca tracejada. Depois aperte LIGAR.",
-    win: "Viu? É só isso. Agora vamos às invenções de verdade.",
+    goalText: "Posicione a rampa no lugar indicado e ligue a máquina.",
+    story: "Primeiro, arraste a rampa até a área marcada!",
+    hint: "Arraste a rampa até a área marcada. Depois aperte LIGAR.",
+    win: "Primeira invenção funcionando! O laboratório está oficialmente aberto para ideias ainda piores.",
+    cheer: "Funcionou! E olha que essa era a parte fácil!",
     ball: "marble",
     pipe: { x: 200, y: 300, vx: 3, vy: 0 },
     blocks: [

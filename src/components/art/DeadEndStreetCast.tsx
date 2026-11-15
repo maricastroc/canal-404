@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 import { DecoHead, LinaHead, type Face } from "@/components/characters/Heads";
 import { P } from "@/lib/palette";
+import { Fist, Mitten, RaisedArm, castInk as ink, type Pt } from "./castParts";
 import { Fork, Gnome } from "./DeadEndStreetArt";
 
 type Mood = "intro" | "win" | "lose";
-type Pt = { x: number; y: number };
 
-const ink = { stroke: P.ink, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 const LINE = 2.2;
 const TIP = 112;
 const BASE = 196;
@@ -60,25 +59,10 @@ function Kid({ who, face }: { who: Who; face: Face }) {
 
 function Arm({ who, from, hand }: { who: Who; from: Pt; hand: Extract<Hand, { kind: "up" }> }) {
   const k = KIDS[who];
-  const to = hand.to;
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const len = Math.hypot(dx, dy);
-  const via = { x: (from.x + to.x) / 2 - (dy / len) * hand.bend, y: (from.y + to.y) / 2 + (dx / len) * hand.bend };
-  const d = `M${from.x} ${from.y} Q${via.x.toFixed(1)} ${via.y.toFixed(1)} ${to.x} ${to.y}`;
-  const cuff = { x: from.x + dx * 0.3, y: from.y + dy * 0.3 };
-  const sleeve = `M${from.x} ${from.y} L${cuff.x.toFixed(1)} ${cuff.y.toFixed(1)}`;
-  return (
-    <g>
-      <path d={d} fill="none" stroke={P.ink} strokeWidth={11} strokeLinecap="round" />
-      <path d={d} fill="none" stroke={k.skin} strokeWidth={6} strokeLinecap="round" />
-      <path d={sleeve} fill="none" stroke={P.ink} strokeWidth={15} strokeLinecap="round" />
-      <path d={sleeve} fill="none" stroke={k.shirt} strokeWidth={10} strokeLinecap="round" />
-    </g>
-  );
+  return <RaisedArm from={from} to={hand.to} bend={hand.bend} skin={k.skin} shirt={k.shirt} />;
 }
 
-function Fist({ at, skin, fork }: { at: Pt; skin: string; fork?: boolean }) {
+function HandUp({ at, skin, fork }: { at: Pt; skin: string; fork?: boolean }) {
   return (
     <g>
       {fork ? (
@@ -86,20 +70,13 @@ function Fist({ at, skin, fork }: { at: Pt; skin: string; fork?: boolean }) {
           <Fork x={at.x} y={at.y + 10} s={0.82} pouch={{ x: 1, y: -34 }} />
         </g>
       ) : null}
-      <circle cx={at.x} cy={at.y} r={6.6} fill={skin} {...ink} strokeWidth={LINE} />
-      <path d={`M${at.x - 3.4} ${at.y - 1.8} L${at.x + 2.8} ${at.y - 1.8} M${at.x - 3.4} ${at.y + 1.8} L${at.x + 2.8} ${at.y + 1.8}`} {...ink} strokeWidth={1.3} />
+      <Fist at={at} skin={skin} line={LINE} />
     </g>
   );
 }
 
 function FenceHand({ x, skin }: { x: number; skin: string }) {
-  const y = TIP + 7;
-  return (
-    <g {...ink}>
-      <path d={`M${x - 9} ${y + 4.4} Q${x - 10.2} ${y - 8} ${x} ${y - 8.6} Q${x + 10.2} ${y - 8} ${x + 9} ${y + 4.4} Q${x} ${y + 7.8} ${x - 9} ${y + 4.4} Z`} fill={skin} strokeWidth={LINE} />
-      <path d={`M${x - 3} ${y - 0.6} L${x - 3} ${y + 4.6} M${x + 3} ${y - 0.6} L${x + 3} ${y + 4.6}`} strokeWidth={1.2} />
-    </g>
-  );
+  return <Mitten x={x} y={TIP + 7} skin={skin} line={LINE} />;
 }
 
 function Fence() {
@@ -159,7 +136,7 @@ export function DeadEndStreetCast({ mood, className }: { mood: Mood; className?:
       const k = KIDS[who];
       if (hand.kind === "up") {
         arms.push({ who, from: k.shoulders[side], hand });
-        front.push(<Fist key={`${who}-${side}`} at={hand.to} skin={k.skin} fork={hand.fork} />);
+        front.push(<HandUp key={`${who}-${side}`} at={hand.to} skin={k.skin} fork={hand.fork} />);
       } else {
         front.push(<FenceHand key={`${who}-${side}`} x={tip(hand.at)} skin={k.skin} />);
       }
