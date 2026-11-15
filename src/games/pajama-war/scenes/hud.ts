@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import { H, HP, KID_INFO, W, type KidId } from "../config";
 import { INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 
-type Portrait = { kid: KidId; root: Phaser.GameObjects.Container; face: Phaser.GameObjects.Image; hearts: { off: Phaser.GameObjects.Image; on: Phaser.GameObjects.Image }[]; out: Phaser.GameObjects.Container; hp: number };
+type Portrait = { kid: KidId; root: Phaser.GameObjects.Container; face: Phaser.GameObjects.Image; hearts: { off: Phaser.GameObjects.Image; on: Phaser.GameObjects.Image }[]; out: Phaser.GameObjects.Container; badge: Phaser.GameObjects.Container; hp: number; faceUntil: number };
 
 export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number };
 
@@ -24,6 +24,10 @@ export class PajamaHud {
   private timerBox: Phaser.GameObjects.Container;
   private order: Portrait[] = [];
   private k = 1;
+  private tip: Phaser.GameObjects.Container;
+  private tipText: Phaser.GameObjects.Text;
+  private tipBg: Phaser.GameObjects.Graphics;
+  private tipTimer?: Phaser.Time.TimerEvent;
   readonly top: Phaser.GameObjects.Container;
 
   constructor(
@@ -87,6 +91,40 @@ export class PajamaHud {
     const pil = scene.add.image(0, -6, "pillow").setScale(1.05 / 1.25).setAngle(-12);
     const lbl = cartoonText(scene, 0, 64, "JOGAR", { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.2 }).setOrigin(0.5);
     this.throwBtn = scene.add.container(W - 210, H - 200, [bg, pil, lbl]).setDepth(2005).setVisible(false);
+
+    this.tipBg = scene.add.graphics();
+    this.tipText = cartoonText(scene, 0, 0, "", { size: 32, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center", wrap: 900 }).setOrigin(0.5);
+    this.tip = scene.add.container(W / 2, 156, [this.tipBg, this.tipText]).setDepth(2004).setVisible(false).setAngle(-1);
+  }
+
+  hint(text: string, ms = 4800) {
+    this.tipTimer?.remove();
+    this.scene.tweens.killTweensOf(this.tip);
+    this.tipText.setText(text);
+    const w = this.tipText.width + 56;
+    const h = this.tipText.height + 26;
+    const g = this.tipBg;
+    g.clear();
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(-w / 2 + 6, -h / 2 + 7, w, h, 14);
+    g.fillStyle(0xfff3b0, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+    g.lineStyle(5, INK_HEX, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+    this.tip.setVisible(true).setAlpha(1).setScale(this.k);
+    this.tip.setY((this.k === 1 ? 156 : 120 * this.k) + h / 2 - 30);
+    if (!this.reduced) {
+      this.tip.setScale(this.k * 0.6);
+      this.scene.tweens.add({ targets: this.tip, scale: this.k, duration: 280, ease: "Back.easeOut" });
+    }
+    this.tipTimer = this.scene.time.delayedCall(ms, () => {
+      this.scene.tweens.add({ targets: this.tip, alpha: 0, duration: 260, onComplete: () => this.tip.setVisible(false) });
+    });
+  }
+
+  hideHint() {
+    this.tipTimer?.remove();
+    this.tip.setVisible(false);
   }
 
   private makePortrait(kid: KidId, isPlayer: boolean): Portrait {
@@ -125,14 +163,48 @@ export class PajamaHud {
       const you = cartoonText(s, 0, 54, "VOCÊ", { size: 24, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
       parts.push(tg, you);
     }
+    const bg = s.add.graphics();
+    bg.fillStyle(INK_HEX, 1);
+    bg.fillCircle(3, 4, 22);
+    bg.fillStyle(0xffc83d, 1);
+    bg.fillCircle(0, 0, 22);
+    bg.lineStyle(4, INK_HEX, 1);
+    bg.strokeCircle(0, 0, 22);
+    const pil = s.add.image(0, 0, "pillow").setScale(0.36).setTint(0xfff3b0).setAngle(-14);
+    const badge = s.add.container(-38, -40, [bg, pil]).setVisible(false);
     const outBg = s.add.graphics();
     outBg.fillStyle(0x140f26, 0.55);
     outBg.fillCircle(0, 0, 47);
     const outTxt = cartoonText(s, 0, 0, "FORA", { size: 30, color: "#ef4f43", font: this.fonts.display, stroke: 0.2 }).setOrigin(0.5).setAngle(-14);
     const out = s.add.container(0, 0, [outBg, outTxt]).setVisible(false);
-    parts.push(out);
+    parts.push(out, badge);
     const root = s.add.container(0, 0, parts);
-    return { kid, root, face, hearts, out, hp: HP };
+    return { kid, root, face, hearts, out, badge, hp: HP, faceUntil: 0 };
+  }
+
+  private restFace(p: Portrait) {
+    if (p.hp <= 0) return;
+    p.face.setTexture(`face-${p.kid}-${p.hp <= 2 ? "ouch" : "normal"}`);
+  }
+
+  cheerFace(kid: KidId, ms = 650) {
+    const p = this.portraits.get(kid);
+    if (!p || p.hp <= 0) return;
+    p.face.setTexture(`face-${kid}-happy`);
+    const until = this.scene.time.now + ms;
+    p.faceUntil = until;
+    this.scene.time.delayedCall(ms, () => p.face.active && p.faceUntil === until && this.restFace(p));
+  }
+
+  setSpecial(kid: KidId, on: boolean) {
+    const p = this.portraits.get(kid);
+    if (!p) return;
+    this.scene.tweens.killTweensOf(p.badge);
+    p.badge.setVisible(on).setScale(1);
+    if (on && !this.reduced) {
+      p.badge.setScale(0.2);
+      this.scene.tweens.add({ targets: p.badge, scale: 1, duration: 300, ease: "Back.easeOut" });
+    }
   }
 
   setHp(kid: KidId, hp: number, change: "hit" | "regen" | null = null) {
@@ -148,15 +220,19 @@ export class PajamaHud {
     });
     if (change === "hit") {
       p.face.setTexture(`face-${kid}-ouch`);
-      this.scene.time.delayedCall(420, () => p.face.active && p.hp > 0 && p.face.setTexture(`face-${kid}-normal`));
+      const until = this.scene.time.now + 420;
+      p.faceUntil = until;
+      this.scene.time.delayedCall(420, () => p.face.active && p.faceUntil === until && this.restFace(p));
       if (!this.reduced) this.scene.tweens.add({ targets: p.root, x: p.root.x + 8, duration: 50, yoyo: true, repeat: 2 });
     }
+    if (change === "regen" && this.scene.time.now >= p.faceUntil) this.restFace(p);
     if (change === "regen" && !this.reduced) {
       const h = p.hearts[Math.floor((hp - 1) / 2)];
       if (h) this.scene.tweens.add({ targets: h.on, scale: { from: 1.15, to: 0.78 }, duration: 260, ease: "Back.easeOut" });
     }
     if (hp <= 0) {
       p.face.setTexture(`face-${kid}-dizzy`);
+      p.badge.setVisible(false);
       p.out.setVisible(true);
       p.root.setAlpha(0.85);
       if (!this.reduced) {
@@ -167,7 +243,10 @@ export class PajamaHud {
   }
 
   setCheer(kid: KidId) {
-    this.portraits.get(kid)?.face.setTexture(`face-${kid}-happy`);
+    const p = this.portraits.get(kid);
+    if (!p) return;
+    p.faceUntil = Infinity;
+    p.face.setTexture(`face-${kid}-happy`);
   }
 
   setTime(ms: number) {
@@ -197,6 +276,7 @@ export class PajamaHud {
     this.timerBox.setScale(k).setPosition(k === 1 ? W / 2 : 30 + 118 * k, 10);
     this.order.forEach((p, i) => p.root.setScale(k).setPosition(W - 30 - 208 * k - i * 262 * k, 58 * k));
     this.throwBtn.setScale(k).setPosition(W - 210 * k, H - 200 * k);
+    if (this.tip.visible) this.tip.setScale(k);
     this.stickBase.setScale(k);
     this.stickKnob.setScale(k);
   }

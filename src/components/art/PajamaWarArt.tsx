@@ -90,6 +90,7 @@ const SPRITE = { w: 300, h: 224, cx: 150, feet: 213, tall: 212 };
 const HANDS: Partial<Record<Pose, Pt>> = {
   "windup-s": { x: 118, y: 46 },
   "throw-s": { x: 222, y: 123 },
+  cheer: { x: 214, y: 50 },
 };
 
 type Placement = { x: number; feet: number; h: number; flip?: boolean };
@@ -112,11 +113,11 @@ function KidSprite({ who, pose, at, shadow = true }: { who: KidId; pose: Pose; a
   );
 }
 
-function HeldPillow({ who, pose, at, w }: { who: KidId; pose: Pose; at: Placement; w: number }) {
+function HeldPillow({ who, pose, at, w, rotate }: { who: KidId; pose: Pose; at: Placement; w: number; rotate?: number }) {
   const hand = HANDS[pose];
   if (!hand) return null;
   const p = local(at, hand);
-  return <Pillow x={p.x} y={p.y} w={w} rotate={at.flip ? 24 : -24} tint={TINT[who]} />;
+  return <Pillow x={p.x} y={p.y} w={w} rotate={rotate ?? (at.flip ? 24 : -24)} tint={TINT[who]} />;
 }
 
 function Asset({ name, x, y, w, h }: { name: string; x: number; y: number; w: number; h: number }) {
@@ -359,5 +360,153 @@ export function PajamaWarCoverArt() {
       <Feather x={92} y={50} rotate={-10} s={1.2} />
       <Feather x={252} y={130} rotate={20} s={1.1} />
     </>
+  );
+}
+
+const CAST_KIDS: KidId[] = ["lia", "nico", "bia"];
+const CAST_LINE = 2.4;
+
+function isKid(id: string | undefined): id is KidId {
+  return CAST_KIDS.includes(id as KidId);
+}
+
+function Floorboards({ top }: { top: number }) {
+  const left = 8;
+  const right = 292;
+  const bottom = top + 15;
+  const d = `M${left + 9} ${top} L${right - 9} ${top} Q${right} ${top} ${right} ${top + 7} Q${right} ${bottom} ${right - 9} ${bottom} L${left + 9} ${bottom} Q${left} ${bottom} ${left} ${top + 7} Q${left} ${top} ${left + 9} ${top} Z`;
+  return (
+    <g>
+      <path d={d} fill="#b8774a" />
+      <path d={`M${left + 3} ${top + 9} L${right - 3} ${top + 9} Q${right - 4} ${bottom - 1} ${right - 10} ${bottom - 1} L${left + 10} ${bottom - 1} Q${left + 4} ${bottom - 1} ${left + 3} ${top + 9} Z`} fill="#9a5f38" opacity={0.55} />
+      <path d={`M${left + 40} ${top + 4.5} L${left + 96} ${top + 4.5} M${left + 150} ${top + 4.5} L${left + 214} ${top + 4.5} M${left + 66} ${top + 4.5} L${left + 66} ${top + 9} M${left + 182} ${top + 4.5} L${left + 182} ${top + 9}`} stroke="#9a5f38" strokeWidth={1.6} strokeLinecap="round" />
+      <path d={d} fill="none" stroke={P.ink} strokeWidth={CAST_LINE} strokeLinejoin="round" />
+    </g>
+  );
+}
+
+function CastRug({ x, y, rx }: { x: number; y: number; rx: number }) {
+  const ry = rx * 0.2;
+  return (
+    <g>
+      <ellipse cx={x} cy={y} rx={rx} ry={ry} fill={P.plum500} stroke={P.ink} strokeWidth={CAST_LINE} />
+      <ellipse cx={x} cy={y} rx={rx * 0.68} ry={ry * 0.62} fill={P.bubblegum} stroke={P.ink} strokeWidth={1.8} />
+      <ellipse cx={x} cy={y} rx={rx * 0.34} ry={ry * 0.3} fill={P.sun} stroke={P.ink} strokeWidth={1.6} />
+    </g>
+  );
+}
+
+function IntroScene() {
+  const nico: Placement = { x: 154, feet: 140, h: 112 };
+  const lia: Placement = { x: 50, feet: 200, h: 142 };
+  const bia: Placement = { x: 254, feet: 200, h: 136, flip: true };
+  const hand = local(lia, HANDS["throw-s"]!);
+  const pillow = { x: 120, y: 96 };
+  return (
+    <>
+      <Floorboards top={192} />
+      <CastRug x={150} y={195} rx={100} />
+      <SideBed x={92} floor={190} w={116} />
+      <HeldPillow who="nico" pose="windup-s" at={nico} w={36} />
+      <KidSprite who="nico" pose="windup-s" at={nico} shadow={false} />
+      <HeldPillow who="bia" pose="windup-s" at={bia} w={42} />
+      <KidSprite who="bia" pose="windup-s" at={bia} />
+      <KidSprite who="lia" pose="throw-s" at={lia} />
+      <path d={`M${hand.x + 6} ${hand.y - 6} Q${(hand.x + pillow.x) / 2 - 4} ${pillow.y + 4} ${pillow.x - 16} ${pillow.y + 8}`} fill="none" stroke={P.white} strokeWidth={2.4} strokeLinecap="round" strokeDasharray="0.1 5" />
+      <Speed d={`M${pillow.x - 22} ${pillow.y - 6} L${pillow.x - 36} ${pillow.y - 2} M${pillow.x - 22} ${pillow.y + 8} L${pillow.x - 38} ${pillow.y + 14}`} w={2.2} />
+      <Pillow x={pillow.x} y={pillow.y} w={38} rotate={-18} tint={TINT.lia} />
+      <Feather x={96} y={40} rotate={-30} s={1.2} />
+      <Feather x={214} y={30} rotate={30} s={1.1} />
+      <Feather x={22} y={50} rotate={10} s={1} />
+      <Feather x={274} y={52} rotate={-20} s={1} />
+    </>
+  );
+}
+
+function DizzyStars({ x, y, s = 1 }: Pt & { s?: number }) {
+  const star = (cx: number, cy: number, r: number) => {
+    const pts = Array.from({ length: 10 }, (_, i) => {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 ? r * 0.45 : r;
+      return `${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`;
+    }).join(" ");
+    return <polygon key={`${cx}${cy}`} points={pts} fill={P.sun} stroke={P.ink} strokeWidth={1.4} strokeLinejoin="round" />;
+  };
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <ellipse cx={0} cy={0} rx={20} ry={6} fill="none" stroke={P.ink} strokeWidth={1.2} strokeDasharray="2 3" opacity={0.6} />
+      {star(-17, -2, 6)}
+      {star(4, -7, 5)}
+      {star(16, 3, 5.5)}
+    </g>
+  );
+}
+
+function Flat({ who, pose, x, floor, h, dir }: { who: KidId; pose: Pose; x: number; floor: number; h: number; dir: 1 | -1 }) {
+  const s = h / SPRITE.tall;
+  const lift = 34 * s;
+  const head = { x: x - dir * h * 0.86, y: floor - lift - 6 };
+  return (
+    <g>
+      <ellipse cx={x - dir * h * 0.42} cy={floor + 1} rx={h * 0.56} ry={h * 0.06} fill={P.ink} opacity={0.26} />
+      <g transform={`translate(${x} ${floor - lift}) rotate(${dir * -86})`}>
+        <KidSprite who={who} pose={pose} at={{ x: 0, feet: 0, h, flip: dir < 0 }} shadow={false} />
+      </g>
+      <DizzyStars x={head.x} y={head.y - h * 0.3} s={h / 110} />
+    </g>
+  );
+}
+
+function WinScene({ winner }: { winner: KidId }) {
+  const [left, right] = CAST_KIDS.filter((k) => k !== winner);
+  const champ: Placement = { x: 150, feet: 140, h: 118 };
+  return (
+    <>
+      <Floorboards top={192} />
+      <CastRug x={150} y={195} rx={100} />
+      <SideBed x={92} floor={190} w={116} />
+      <KidSprite who={winner} pose="cheer" at={champ} shadow={false} />
+      <HeldPillow who={winner} pose="cheer" at={champ} w={36} rotate={-12} />
+      <Flat who={left} pose="hurt" x={110} floor={210} h={106} dir={1} />
+      <Flat who={right} pose="hurt" x={190} floor={210} h={104} dir={-1} />
+      <Pillow x={136} y={198} w={30} rotate={14} tint={TINT[winner]} />
+      <Pillow x={22} y={200} w={26} rotate={-20} tint={TINT[right]} />
+      <Feather x={98} y={30} rotate={-30} s={1.2} />
+      <Feather x={208} y={20} rotate={34} s={1.2} />
+      <Feather x={24} y={70} rotate={10} s={1} />
+      <Feather x={278} y={78} rotate={-24} s={1} />
+      <Feather x={152} y={4} rotate={60} s={0.9} />
+    </>
+  );
+}
+
+function LoseScene({ who }: { who: KidId }) {
+  const others = CAST_KIDS.filter((k) => k !== who);
+  return (
+    <>
+      <Floorboards top={192} />
+      <CastRug x={136} y={195} rx={104} />
+      <SideBed x={186} floor={190} w={104} />
+      <Flat who={who} pose="hurt" x={196} floor={204} h={134} dir={1} />
+      <Pillow x={160} y={186} w={44} rotate={-14} tint={TINT[others[0]]} />
+      <Pillow x={196} y={190} w={38} rotate={16} tint={TINT[others[1]]} />
+      <g transform="translate(176 58) rotate(26)">
+        <Speed d="M-4 -26 L-6 -44 M8 -24 L10 -40" w={2.2} />
+        <Pillow x={0} y={0} w={38} rotate={0} tint={TINT[others[1]]} />
+      </g>
+      <Impact x={186} y={136} s={1} word="PLOF!" />
+      <Feather x={208} y={36} rotate={30} s={1.1} />
+      <Feather x={40} y={46} rotate={-30} s={1.1} />
+      <Feather x={262} y={150} rotate={-20} s={0.9} />
+    </>
+  );
+}
+
+export function PajamaWarCast({ mood, featured, className }: { mood: "intro" | "win" | "lose"; featured?: string; className?: string }) {
+  const who = isKid(featured) ? featured : "lia";
+  return (
+    <svg viewBox="0 0 300 210" className={className} aria-hidden overflow="visible">
+      {mood === "intro" ? <IntroScene /> : mood === "win" ? <WinScene winner={who} /> : <LoseScene who={who} />}
+    </svg>
   );
 }

@@ -100,6 +100,31 @@ export const PAJAMA_SFX = {
       { kind: "tone", wave: "triangle", from: 1175, duration: 0.2, delay: 0.12, gain: 0.05 },
     ],
   },
+  spring: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 180, to: 640, duration: 0.18, gain: 0.08, glide: "exp", vibrato: { rate: 22, depth: 30 } },
+      { kind: "noise", duration: 0.06, gain: 0.04, filter: { type: "lowpass", from: 900 } },
+    ],
+  },
+  rustle: {
+    layers: [{ kind: "noise", duration: 0.22, gain: 0.025, attack: 0.04, filter: { type: "highpass", from: 2600 } }],
+  },
+  whoosh: {
+    layers: [{ kind: "noise", duration: 0.42, gain: 0.07, attack: 0.18, filter: { type: "bandpass", from: 400, to: 1800, q: 1 } }],
+  },
+  powerup: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 523, duration: 0.07, gain: 0.08 },
+      { kind: "tone", wave: "triangle", from: 784, duration: 0.07, delay: 0.07, gain: 0.08 },
+      { kind: "tone", wave: "triangle", from: 1047, duration: 0.16, delay: 0.14, gain: 0.08 },
+    ],
+  },
+  wave: {
+    layers: [
+      { kind: "noise", duration: 0.32, gain: 0.2, filter: { type: "lowpass", from: 1400, to: 160 } },
+      { kind: "tone", wave: "sine", from: 150, to: 50, duration: 0.3, gain: 0.18 },
+    ],
+  },
 } satisfies Record<string, SoundRecipe>;
 
 export type PajamaSfx = keyof typeof PAJAMA_SFX;

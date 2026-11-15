@@ -215,8 +215,8 @@ export const GAMES: GameMeta[] = [
     ],
     levels: [
       { id: "bedroom", title: "Quarto", goal: "Aprenda a mirar e desviar." },
-      { id: "living", title: "Sala de estar", goal: "Use os móveis para se proteger." },
-      { id: "yard", title: "Quintal", goal: "A guerra vai lá para fora." },
+      { id: "living", title: "Sala de estar", goal: "Use o sofá e as poltronas para ricochetear." },
+      { id: "yard", title: "Quintal", goal: "Pegue o travesseirão antes dos outros." },
     ],
     levelWord: "arena",
     tips: [
@@ -230,8 +230,9 @@ export const GAMES: GameMeta[] = [
       "Quem acabou de jogar fica sem travesseiro por um instante. É a sua chance.",
       "Sem mouse, o espaço mira sozinho no adversário mais perto.",
       "Depois de um tempo, a guerra esquenta.",
-      "Na sala, o sofá segura os travesseiros.",
+      "Na sala, o sofá e as poltronas rebatem os travesseiros. A mira mostra o caminho.",
       "No quintal, a barraca e a árvore servem de escudo.",
+      "O travesseirão do quintal passa por cima de tudo e empurra quem estiver perto.",
     ],
     controlsSummary: "Guerra do Pijama. WASD ou setas andam, o mouse mira, clique ou espaço joga o travesseiro, Esc pausa.",
     copy: {

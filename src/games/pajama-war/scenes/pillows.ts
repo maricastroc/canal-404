@@ -1,9 +1,12 @@
 import * as Phaser from "phaser";
 import { KID_INFO, PILLOW } from "../config";
+import { BOUNCE } from "../nav";
+import { SPECIAL } from "../special";
 import type { Fighter } from "./fighter";
 
 const SIZE = 0.7 / 1.25;
 const MUTED = 0xb8aec8;
+const GOLD = 0xffc83d;
 
 export class Pillow {
   readonly img: Phaser.GameObjects.Image;
@@ -22,6 +25,10 @@ export class Pillow {
   nearPlayer = false;
   nearFoe: Fighter | null = null;
   hitSomeone = false;
+  bounces = 0;
+  range: number = PILLOW.range;
+  readonly lift: number;
+  readonly size: number;
   private spin: number;
 
   constructor(
@@ -32,24 +39,44 @@ export class Pillow {
     angle: number,
     private reduced: boolean,
     speedMul = 1,
+    readonly special = false,
   ) {
     this.x = x;
     this.y = y;
-    this.z = PILLOW.lift;
-    this.vx = Math.cos(angle) * PILLOW.speed * speedMul;
-    this.vy = Math.sin(angle) * PILLOW.speed * speedMul * 0.86;
-    this.spin = (Math.cos(angle) >= 0 ? 1 : -1) * (reduced ? 0 : 720);
-    this.shadow = scene.add.image(x, y, "blob").setDisplaySize(74, 22).setAlpha(0.55).setDepth(30);
-    const color = KID_INFO[owner.kid].color;
-    this.halo = scene.add.image(x, y - this.z, "pillow").setScale(SIZE * 1.24).setTintFill(color).setAlpha(0.95).setDepth(y + 2.9);
+    this.lift = PILLOW.lift * (special ? SPECIAL.lift : 1);
+    this.size = SIZE * (special ? SPECIAL.scale : 1);
+    this.z = this.lift;
+    const speed = PILLOW.speed * speedMul * (special ? SPECIAL.speed : 1);
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed * 0.86;
+    this.spin = (Math.cos(angle) >= 0 ? 1 : -1) * (reduced ? 0 : special ? 420 : 720);
+    const big = special ? 1.5 : 1;
+    this.shadow = scene.add.image(x, y, "blob").setDisplaySize(74 * big, 22 * big).setAlpha(0.55).setDepth(30);
+    const color = special ? 0x1d1830 : KID_INFO[owner.kid].color;
+    const tint = special ? GOLD : KID_INFO[owner.kid].tint;
+    this.halo = scene.add.image(x, y - this.z, "pillow").setScale(this.size * (special ? 1.16 : 1.24)).setTintFill(color).setAlpha(0.95).setDepth(y + 2.9);
     if (!reduced) {
-      for (const a of [0.34, 0.2, 0.1]) this.ghosts.push(scene.add.image(x, y - this.z, "pillow").setScale(SIZE * 0.92).setTint(KID_INFO[owner.kid].tint).setAlpha(a).setDepth(y + 2.8));
+      for (const a of [0.34, 0.2, 0.1]) this.ghosts.push(scene.add.image(x, y - this.z, "pillow").setScale(this.size * 0.92).setTint(tint).setAlpha(a).setDepth(y + 2.8));
     }
-    this.img = scene.add.image(x, y - this.z, "pillow").setScale(SIZE).setTint(KID_INFO[owner.kid].tint).setDepth(y + 3);
+    this.img = scene.add.image(x, y - this.z, "pillow").setScale(this.size).setTint(tint).setDepth(y + 3);
   }
 
   get progress() {
-    return this.dist / PILLOW.range;
+    return this.dist / this.range;
+  }
+
+  bounce(side: number, x: number, y: number) {
+    this.x = x;
+    this.y = y;
+    if (side === 0 || side === 1) this.vx = -this.vx;
+    else this.vy = -this.vy;
+    this.vx *= BOUNCE.slow;
+    this.vy *= BOUNCE.slow;
+    this.bounces += 1;
+    this.range += BOUNCE.bonus;
+    this.spin = -this.spin * 1.4;
+    this.nearPlayer = false;
+    this.nearFoe = null;
   }
 
   update(dt: number) {
@@ -59,7 +86,7 @@ export class Pillow {
     this.dist += Math.hypot(this.vx, this.vy) * dt;
     const p = this.progress;
     const drop = p > 0.72 ? ((p - 0.72) / 0.28) ** 2 : 0;
-    this.z = Math.max(0, PILLOW.lift + Math.sin(Math.min(1, p) * Math.PI) * 22 - drop * PILLOW.lift);
+    this.z = Math.max(0, this.lift + Math.sin(Math.min(1, p) * Math.PI) * (this.special ? 70 : 22) - drop * this.lift);
     this.img.setPosition(this.x, this.y - this.z).setDepth(this.y + 3);
     this.img.angle += this.spin * dt;
     this.halo.setPosition(this.x, this.y - this.z).setAngle(this.img.angle).setDepth(this.y + 2.9);
@@ -71,7 +98,7 @@ export class Pillow {
         gh.setPosition(tr.x, tr.y).setAngle(tr.a).setDepth(this.y + 2.8);
       });
     }
-    const k = 1 - Math.min(1, this.z / 200) * 0.4;
+    const k = (1 - Math.min(1, this.z / 260) * 0.4) * (this.special ? 1.5 : 1);
     this.shadow.setPosition(this.x, this.y + 2).setDisplaySize(70 * k, 20 * k);
     if (p >= 1 || this.z <= 0) this.land();
   }
@@ -86,9 +113,9 @@ export class Pillow {
     this.shadow.setVisible(false);
     this.clearTrail();
     if (this.reduced) {
-      this.img.setAngle(0).setScale(0.55 / 1.25, 0.4 / 1.25);
+      this.img.setAngle(0).setScale(this.size * 0.98, this.size * 0.72);
     } else {
-      this.scene.tweens.add({ targets: this.img, angle: Phaser.Math.Between(-24, 24), scaleY: 0.4 / 1.25, scaleX: 0.58 / 1.25, y: this.y - 8, duration: 160, ease: "Quad.easeOut" });
+      this.scene.tweens.add({ targets: this.img, angle: Phaser.Math.Between(-24, 24), scaleY: this.size * 0.72, scaleX: this.size * 1.04, y: this.y - 8, duration: 160, ease: "Quad.easeOut" });
     }
     this.scene.tweens.add({ targets: this.img, alpha: 0, delay: 700, duration: 400, onComplete: () => this.kill() });
   }
@@ -112,8 +139,8 @@ export class Pillow {
     }
     if (squish) {
       const a = Math.atan2(this.vy, this.vx) * (180 / Math.PI);
-      this.img.setAngle(a + 90).setScale(SIZE * 1.45, SIZE * 0.5);
-      this.scene.tweens.add({ targets: this.img, scaleX: SIZE * 0.9, scaleY: SIZE * 1.1, duration: 90, delay: 50, ease: "Back.easeOut" });
+      this.img.setAngle(a + 90).setScale(this.size * 1.45, this.size * 0.5);
+      this.scene.tweens.add({ targets: this.img, scaleX: this.size * 0.9, scaleY: this.size * 1.1, duration: 90, delay: 50, ease: "Back.easeOut" });
       this.scene.tweens.add({ targets: this.img, x: x - this.vx * 0.08, y: y - 40, angle: this.img.angle + 160, duration: 240, delay: 120, ease: "Quad.easeOut" });
       this.img.setTint(MUTED);
       this.scene.tweens.add({ targets: this.img, alpha: 0, delay: 380, duration: 260, onComplete: () => this.kill() });
@@ -126,7 +153,7 @@ export class Pillow {
       x: x - this.vx * 0.06,
       y: y - 6,
       angle: this.img.angle + 120,
-      scaleY: SIZE * 0.55,
+      scaleY: this.size * 0.55,
       duration: 260,
       ease: "Quad.easeIn",
     });
