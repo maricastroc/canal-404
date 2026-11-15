@@ -1,4 +1,4 @@
-export type React = "wobble" | "swing" | "bounce" | "roll" | "tip" | "flap" | "cat" | "billow";
+export type React = "wobble" | "swing" | "bounce" | "roll" | "tip" | "flap" | "cat" | "billow" | "rustle";
 
 export type PropDef = {
   key: string;
@@ -9,7 +9,10 @@ export type PropDef = {
   flip?: boolean;
   angle?: number;
   origin?: [number, number];
-  block?: { w: number; h: number; dy?: number; tall?: boolean };
+  block?: { w: number; h: number; dx?: number; dy?: number; tall?: boolean };
+  bounce?: boolean;
+  surface?: { x0: number; x1: number; y: number };
+  spring?: [number, number, number][];
   react?: React;
   depth?: number;
   glow?: { dx: number; dy: number; r: number; color: number; alpha?: number };
@@ -30,6 +33,8 @@ export type ArenaDef = {
   cat?: [number, number, number][];
   cushions?: { key: string; x: number; y: number; angle: number }[];
   fireflies?: number;
+  mechanic?: "ricochet" | "special";
+  specialSpots?: [number, number][];
 };
 
 const WARM = 0xffc46b;
@@ -57,15 +62,15 @@ export const ARENAS: ArenaDef[] = [
       { key: "books", x: 210, y: 690, layer: "floor", scale: 0.8 },
       { key: "slippers", x: 1170, y: 1012, layer: "floor", scale: 0.8 },
       { key: "blocks", x: 1500, y: 740, layer: "sort", scale: 0.75, react: "bounce" },
-      { key: "bed-pink", x: 330, y: 590, layer: "sort", scale: 0.92, block: { w: 300, h: 190, dy: -6 } },
-      { key: "bed-blue", x: 1590, y: 590, layer: "sort", scale: 0.92, block: { w: 300, h: 190, dy: -6 } },
+      { key: "bed-pink", x: 330, y: 590, layer: "sort", scale: 0.92, block: { w: 340, h: 190, dx: -20, dy: -6 } },
+      { key: "bed-blue", x: 1590, y: 590, layer: "sort", scale: 0.92, block: { w: 340, h: 190, dx: 20, dy: -6 } },
       { key: "nightstand", x: 1340, y: 452, layer: "sort", scale: 0.9, block: { w: 120, h: 40 } },
       { key: "lamp", x: 1360, y: 344, layer: "sort", scale: 0.78, react: "wobble", glow: { dx: 0, dy: -70, r: 300, color: WARM, alpha: 0.32 } },
       { key: "boombox", x: 800, y: 452, layer: "sort", scale: 0.78, react: "bounce" },
       { key: "teddy", x: 1060, y: 470, layer: "sort", scale: 0.85, react: "tip" },
       { key: "ball", x: 700, y: 560, layer: "sort", scale: 0.8, react: "roll" },
       { key: "toy-chest", x: 300, y: 960, layer: "sort", scale: 0.82, block: { w: 170, h: 56 }, react: "bounce" },
-      { key: "beanbag", x: 1650, y: 950, layer: "sort", scale: 0.86, block: { w: 160, h: 56 }, react: "bounce" },
+      { key: "beanbag", x: 1650, y: 950, layer: "sort", scale: 0.86, block: { w: 200, h: 56, dx: 20 }, react: "bounce" },
     ],
     floorPillows: [
       [470, 820, 0xffd2e6, -14],
@@ -77,7 +82,7 @@ export const ARENAS: ArenaDef[] = [
   {
     id: "living",
     title: "Sala de estar",
-    goal: "Use os móveis para se proteger.",
+    goal: "Use o sofá e as poltronas para ricochetear.",
     theme: "living",
     wallBottom: 350,
     bounds: { x0: 130, y0: 440, x1: 1790, y1: 1020 },
@@ -87,6 +92,7 @@ export const ARENAS: ArenaDef[] = [
       [1450, 620],
     ],
     ai: 0.45,
+    mechanic: "ricochet",
     lights: [],
     props: [
       { key: "window-city", x: 600, y: 336, layer: "wall", scale: 0.84, glow: { dx: 0, dy: -120, r: 250, color: 0x8fa8ff, alpha: 0.16 } },
@@ -95,12 +101,13 @@ export const ARENAS: ArenaDef[] = [
       { key: "rug-living", x: 960, y: 790, layer: "floor", scale: 1.25, origin: [0.5, 0.5] },
       { key: "slippers", x: 720, y: 1012, layer: "floor", scale: 0.8 },
       { key: "bookshelf", x: 1650, y: 470, layer: "sort", scale: 0.9, block: { w: 230, h: 36 } },
-      { key: "tv", x: 330, y: 525, layer: "sort", scale: 0.92, block: { w: 250, h: 70, tall: true }, react: "bounce" },
+      { key: "tv", x: 330, y: 525, layer: "sort", scale: 0.92, block: { w: 300, h: 70, dx: -25, tall: true }, react: "bounce" },
       { key: "floor-lamp", x: 1420, y: 470, layer: "sort", scale: 0.9, react: "wobble", glow: { dx: 0, dy: -270, r: 320, color: WARM, alpha: 0.34 } },
-      { key: "sofa", x: 960, y: 664, layer: "sort", scale: 0.95, block: { w: 440, h: 120, dy: -8, tall: true } },
+      { key: "mattresses", x: 1000, y: 414, layer: "sort", scale: 0.96, surface: { x0: 752, x1: 1248, y: 410 }, react: "bounce", spring: [[-210, -96, -16], [220, -94, 14]] },
+      { key: "sofa", x: 960, y: 664, layer: "sort", scale: 0.95, block: { w: 440, h: 120, dy: -8, tall: true }, bounce: true, spring: [[-196, -194, -10]] },
       { key: "coffee-table", x: 960, y: 920, layer: "sort", scale: 0.82, block: { w: 260, h: 50 }, react: "bounce" },
-      { key: "armchair", x: 380, y: 880, layer: "sort", scale: 0.84, block: { w: 180, h: 60, tall: true } },
-      { key: "armchair", x: 1540, y: 880, layer: "sort", scale: 0.84, flip: true, block: { w: 180, h: 60, tall: true } },
+      { key: "armchair", x: 380, y: 880, layer: "sort", scale: 0.84, block: { w: 180, h: 60, tall: true }, bounce: true, spring: [[30, -94, 10]] },
+      { key: "armchair", x: 1540, y: 880, layer: "sort", scale: 0.84, flip: true, block: { w: 180, h: 60, tall: true }, bounce: true, spring: [[-30, -94, -10]] },
       { key: "plant-big", x: 200, y: 660, layer: "sort", scale: 0.85, react: "wobble", block: { w: 90, h: 34, tall: true } },
       { key: "plant-big", x: 1760, y: 720, layer: "sort", scale: 0.85, flip: true, react: "wobble", block: { w: 90, h: 34, tall: true } },
     ],
@@ -122,7 +129,7 @@ export const ARENAS: ArenaDef[] = [
   {
     id: "yard",
     title: "Quintal",
-    goal: "A guerra vai lá para fora.",
+    goal: "Pegue o travesseirão antes dos outros.",
     theme: "yard",
     wallBottom: 330,
     bounds: { x0: 120, y0: 440, x1: 1800, y1: 1020 },
@@ -132,21 +139,31 @@ export const ARENAS: ArenaDef[] = [
       [1400, 720],
     ],
     ai: 0.62,
+    mechanic: "special",
+    specialSpots: [
+      [960, 700],
+      [300, 830],
+      [1320, 580],
+      [1240, 840],
+      [600, 560],
+      [1700, 820],
+      [800, 850],
+    ],
     lights: [{ y: 150, sag: 70, from: 440, to: 1560, segments: 3 }],
     fireflies: 18,
     props: [
       { key: "moon", x: 1380, y: 214, layer: "wall", scale: 0.8, origin: [0.5, 0.5], glow: { dx: 0, dy: 0, r: 220, color: 0xfff2b0, alpha: 0.22 } },
-      { key: "bush", x: 200, y: 430, layer: "wall", scale: 1.05 },
-      { key: "bush", x: 1730, y: 430, layer: "wall", scale: 1.0, flip: true },
+      { key: "bush", x: 200, y: 430, layer: "wall", scale: 1.05, react: "rustle" },
+      { key: "bush", x: 1730, y: 430, layer: "wall", scale: 1.0, flip: true, react: "rustle" },
       { key: "picnic", x: 960, y: 820, layer: "floor", scale: 1.15, origin: [0.5, 0.5] },
-      { key: "tree", x: 330, y: 610, layer: "sort", scale: 1, block: { w: 70, h: 36, tall: true } },
+      { key: "tree", x: 330, y: 610, layer: "sort", scale: 1, block: { w: 70, h: 36, tall: true }, react: "rustle" },
       { key: "tire-swing", x: 415, y: 335, layer: "sort", scale: 0.9, react: "swing", depth: 611 },
-      { key: "tent", x: 960, y: 570, layer: "sort", scale: 1, react: "billow", block: { w: 330, h: 100, tall: true }, glow: { dx: 0, dy: -100, r: 230, color: WARM, alpha: 0.4 } },
+      { key: "tent", x: 960, y: 570, layer: "sort", scale: 1, react: "billow", block: { w: 330, h: 140, tall: true }, glow: { dx: 0, dy: -100, r: 230, color: WARM, alpha: 0.4 } },
       { key: "screen", x: 1570, y: 540, layer: "sort", scale: 0.85, react: "wobble", block: { w: 150, h: 30 }, glow: { dx: 0, dy: -210, r: 240, color: 0x9fd4ff, alpha: 0.24 } },
       { key: "grill", x: 1520, y: 900, layer: "sort", scale: 0.85, react: "wobble", block: { w: 110, h: 40, tall: true } },
       { key: "cooler", x: 640, y: 960, layer: "sort", scale: 0.8, react: "bounce", block: { w: 120, h: 40 } },
-      { key: "stump", x: 1250, y: 990, layer: "sort", scale: 0.8, block: { w: 100, h: 34 } },
-      { key: "stump", x: 1700, y: 640, layer: "sort", scale: 0.72, block: { w: 90, h: 30 } },
+      { key: "stump", x: 1250, y: 990, layer: "sort", scale: 0.8, block: { w: 100, h: 64, dy: 30 } },
+      { key: "stump", x: 1700, y: 640, layer: "sort", scale: 0.72, block: { w: 130, h: 30, dx: 20 } },
       { key: "gnome", x: 240, y: 930, layer: "sort", scale: 0.9, react: "tip" },
       { key: "lantern", x: 640, y: 480, layer: "sort", scale: 0.8, react: "wobble", glow: { dx: 0, dy: -40, r: 120, color: WARM, alpha: 0.4 } },
       { key: "lantern", x: 1300, y: 480, layer: "sort", scale: 0.8, react: "wobble", glow: { dx: 0, dy: -40, r: 120, color: WARM, alpha: 0.4 } },

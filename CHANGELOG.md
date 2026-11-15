@@ -4,6 +4,20 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Guerra do Pijama: bots mais espertos e arenas com personalidade
+- **Bots that find their way.** Lia, Nico and Bia now plan routes around beds, sofas, the tent and the fence instead of walking into them, notice when something blocks the way and take another route, look for cover when they are low on energy, and keep a clear line to whoever they are attacking. In bot test runs the time a kid spent pushing against a wall or fence dropped from 6–18 s per match to under 0.2 s.
+- **No more hidden corners.** The narrow gaps behind the tent, beside the beds, the TV and the beanbag and behind the stumps are closed, so nobody gets stuck where the art shows no floor.
+- **Sala de estar: ricochets.** The sofa, the armchairs and a new stack of sleepover mattresses behind the sofa bounce a pillow once. Springs mark them, the aim guide shows the bounced path, and the bots bank shots too. The TV and the plants still stop pillows.
+- **Quintal: o travesseirão.** A giant golden pillow drops at fixed times (first at 0:14) on fixed open spots. Whoever grabs it throws one huge pillow that flies over furniture and shoves anyone near the impact without hurting them. It still takes one point of energy, like any pillow, so scores and scoreboard checks are unchanged.
+- **Livelier rooms**: a ceiling fan and a ticking alarm clock in the Quarto, original Canal 404 programs on the living room TV, a cat that stretches, peeks and changes spots, cushions that hop when the sofa bounces a pillow, and in the Quintal a swaying tree, a swinging tire, a tent in the wind and blinking fireflies. Everything pauses with the game and stays still with reduced motion.
+- **Personality**: on the select screen Lia dashes across the card, Nico hits a target and Bia shrugs off a pillow, and hover and selection now look different. In the fight, portraits smile after a hit, worn-out kids sweat, and a bot that dodges you may tease.
+- **Better endings.** The banner says whose room it is ("O quarto é seu!"), stars burst, knocked-out kids get a pillow on the face, and Space, Enter or a click skips straight to the result. The result text follows the arena and whether you had already beaten it, such as "O quarto ficou pequeno pra você! A guerra continua na sala.", and "Você foi a primeira a cair" now matches the kid.
+- **Scenes instead of floating heads.** The intro shows the three mid-fight around a bed (Lia hitting Nico, who stands on it, while Bia winds up), a win shows your kid cheering on the bed with the other two flat on the rug, and a loss shows your kid flat on the rug under a few pillows, all full-body and built from the game's own sprites.
+- **One-time hints** introduce the ricochets and the travesseirão the first time you enter each arena.
+- **The intro dialog fits the screen** in every game: the title and the play button stay visible, only the middle scrolls, and in games with levels "Como jogar" takes the place of the level list. The page behind the games no longer scrolls, which a leaking canvas margin used to cause.
+- Fast key presses on the character select no longer count twice.
+- Balance was measured with bot players before and after. Win rates per arena stayed the same, and matches in the Sala and the Quintal got about 10–15 s shorter. Energy, damage, stars and scoring are unchanged.
+
 ### Fase, missão e placar falando a mesma língua
 - **A missão diz o que pedia.** A missed mission now reads "Missão não cumprida" and names both the number and the target, such as "A máquina usou 1 peça, e a missão pede pelo menos 2 peças.", in every game.
 - **Missions that cost stars say so.** Laboratório missions that need more parts than three stars allow explain this before the run, and the result no longer suggests using fewer parts during them. Operação: Recreio and Guerra do Pijama missions show their own rules on the intro as well as on `/mission`.

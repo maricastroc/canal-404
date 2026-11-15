@@ -46,7 +46,7 @@ export function OverlayFrame({
   className?: string;
 }) {
   return (
-    <div className="absolute inset-0 z-30 grid place-items-center overflow-y-auto bg-plum-950/70 p-3 backdrop-blur-[1px] sm:p-6">
+    <div className="absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-plum-950/70 p-3 backdrop-blur-[1px] sm:p-6">
       <motion.div
         role="dialog"
         aria-modal="true"
@@ -55,7 +55,7 @@ export function OverlayFrame({
         animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
         exit={{ opacity: 0, scale: 0.94 }}
         transition={{ type: "spring", stiffness: 420, damping: 30 }}
-        className={`paper relative w-full border-[3px] border-ink shadow-[var(--shadow-ink-lg)] wobbly ${className}`}
+        className={`paper relative m-auto w-full border-[3px] border-ink shadow-[var(--shadow-ink-lg)] wobbly ${className}`}
       >
         {children}
       </motion.div>
@@ -113,7 +113,7 @@ function GameTitle({ game }: { game: GameMeta }) {
   const Logo = GAME_LOGOS[game.slug];
   return Logo ? (
     <h1>
-      <Logo className="w-full max-w-md" bare />
+      <Logo className="w-full max-w-md shorter:max-w-xs [@media(max-height:540px)]:w-40 [@media(max-height:540px)]:max-w-none" bare />
     </h1>
   ) : (
     <h1 className="font-display text-4xl uppercase text-ink">{game.title}</h1>
@@ -230,106 +230,123 @@ export function IntroPanel({
   const Cast = GAME_CAST[game.slug];
   const totalStars = levels ? levels.stars.reduce((a, b) => a + b, 0) : 0;
   const suggested = levels ? Math.min(levels.suggested, levels.unlocked) : 0;
+  const picking = !mission && !missionPending && leveled && Boolean(game.levels && levels);
+  const help = (
+    <div id="how-to-play-panel" className={picking ? "" : "mt-5 border-t-[3px] border-dashed border-ink/30 pt-4"}>
+      {picking ? <h2 className="mb-3 font-display text-xl uppercase tracking-wide text-ink">Como jogar</h2> : null}
+      <ControlsList game={game} />
+    </div>
+  );
   return (
-    <OverlayFrame label={`${game.title}: tela de apresentação`} className="max-w-3xl p-5 sm:p-7">
-      <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto]">
-        <div>
+    <OverlayFrame label={`${game.title}: tela de apresentação`} className="flex max-h-full max-w-3xl flex-col p-5 sm:p-7 shorter:py-4 [@media(max-height:540px)]:p-4">
+      <div className="grid shrink-0 items-center gap-4 sm:grid-cols-[1fr_auto]">
+        <div className="[@media(max-height:540px)]:flex [@media(max-height:540px)]:items-center [@media(max-height:540px)]:gap-4">
           <GameTitle game={game} />
-          <p className="mt-2 text-lg font-semibold leading-snug text-ink">{game.objective}</p>
+          <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
         </div>
-        <div className="hidden sm:block">{Cast ? <Cast mood="intro" /> : <CastPair game={game} />}</div>
+        <div className="hidden sm:block [@media(max-height:540px)]:hidden">{Cast ? <Cast mood="intro" /> : <CastPair game={game} />}</div>
       </div>
-      {missionNotice ? (
-        <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
-          {missionNotice}{" "}
-          <a href="/mission" className="underline decoration-2 underline-offset-2">
-            Ver a missão de hoje
-          </a>
-          .
-        </p>
-      ) : null}
-      {mission ? <MissionBrief view={mission.view} state={mission.state} /> : null}
-      {missionPending ? (
-        <p role="status" className="mt-4 animate-pulse rounded-xl border-[3px] border-ink bg-plum-800 px-3 py-3 font-display uppercase tracking-wider text-sun">
-          Sintonizando a missão…
-        </p>
-      ) : null}
-      {!mission && !missionPending && leveled && game.levels && levels && (
-        <div className="mt-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="font-display text-xl uppercase tracking-wide text-ink">Escolha a {word}</h2>
-            <p className="font-display text-sm uppercase tracking-wide text-ink-soft">
-              Estrelas: {totalStars}/{game.levels.length * 3}
-            </p>
-          </div>
-          <ol className="mt-3 grid gap-x-2.5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-            {game.levels.map((level, i) => {
-              const locked = i > levels.unlocked;
-              const done = !locked && levels.stars[i] > 0;
-              const current = !locked && i === suggested;
-              return (
-                <li key={level.id} className="relative">
-                  {current ? (
-                    <span aria-hidden className="pointer-events-none absolute -top-2.5 right-3 z-10 rotate-2 rounded-md border-2 border-ink bg-ink px-1.5 font-display text-[11px] uppercase leading-5 tracking-wider text-sun">
-                      A seguir
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={locked}
-                    aria-current={current ? "step" : undefined}
-                    onClick={() => onPlay(i)}
-                    className={`press grid h-full w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-xl border-ink p-2.5 text-left disabled:cursor-not-allowed disabled:border-dashed disabled:border-ink/45 disabled:opacity-70 disabled:shadow-none ${
-                      current ? "border-4 bg-sun shadow-[var(--shadow-ink)]" : "border-[3px] bg-cream-2 shadow-[var(--shadow-ink-sm)]"
-                    }`}
-                  >
-                    <span
-                      className={`relative mt-0.5 grid size-10 shrink-0 place-items-center rounded-full border-[3px] font-display text-lg ${
-                        locked ? "border-ink/45 bg-cream text-ink-soft" : current ? "border-ink bg-ink text-sun" : "border-ink bg-paper text-ink"
+      <div
+        data-testid="intro-body"
+        tabIndex={showHelp ? 0 : undefined}
+        role={showHelp ? "region" : undefined}
+        aria-label={showHelp ? "Como jogar" : undefined}
+        className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun"
+      >
+        {missionNotice ? (
+          <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
+            {missionNotice}{" "}
+            <a href="/mission" className="underline decoration-2 underline-offset-2">
+              Ver a missão de hoje
+            </a>
+            .
+          </p>
+        ) : null}
+        {mission ? <MissionBrief view={mission.view} state={mission.state} /> : null}
+        {missionPending ? (
+          <p role="status" className="mt-4 animate-pulse rounded-xl border-[3px] border-ink bg-plum-800 px-3 py-3 font-display uppercase tracking-wider text-sun">
+            Sintonizando a missão…
+          </p>
+        ) : null}
+        {picking && showHelp ? <div className="mt-5 shorter:mt-3">{help}</div> : null}
+        {picking && !showHelp && game.levels && levels && (
+          <div className="mt-5 shorter:mt-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-display text-xl uppercase tracking-wide text-ink">Escolha a {word}</h2>
+              <p className="font-display text-sm uppercase tracking-wide text-ink-soft">
+                Estrelas: {totalStars}/{game.levels.length * 3}
+              </p>
+            </div>
+            <ol className="mt-3 grid gap-x-2.5 gap-y-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
+              {game.levels.map((level, i) => {
+                const locked = i > levels.unlocked;
+                const done = !locked && levels.stars[i] > 0;
+                const current = !locked && i === suggested;
+                return (
+                  <li key={level.id} className="relative">
+                    {current ? (
+                      <span aria-hidden className="pointer-events-none absolute -top-2.5 right-3 z-10 rotate-2 rounded-md border-2 border-ink bg-ink px-1.5 font-display text-[11px] uppercase leading-5 tracking-wider text-sun">
+                        A seguir
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={locked}
+                      aria-current={current ? "step" : undefined}
+                      onClick={() => onPlay(i)}
+                      className={`press grid h-full w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-xl border-ink p-2.5 text-left disabled:cursor-not-allowed disabled:border-dashed disabled:border-ink/45 disabled:opacity-70 disabled:shadow-none ${
+                        current ? "border-4 bg-sun shadow-[var(--shadow-ink)]" : "border-[3px] bg-cream-2 shadow-[var(--shadow-ink-sm)]"
                       }`}
                     >
-                      {locked ? <LockIcon className="size-5" /> : i + 1}
-                      {done ? (
-                        <span className="absolute -bottom-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-ink bg-lime text-ink">
-                          <CheckIcon className="size-3" />
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="flex min-h-full min-w-0 flex-col">
-                      <span className="block text-balance font-display text-base uppercase leading-tight text-ink">{level.title}</span>
-                      <span className="mt-0.5 block text-xs leading-snug text-ink-soft">
-                        {locked ? (word === "arena" ? "Vença a arena anterior" : "Termine a fase anterior") : level.goal}
+                      <span
+                        className={`relative mt-0.5 grid size-10 shrink-0 place-items-center rounded-full border-[3px] font-display text-lg ${
+                          locked ? "border-ink/45 bg-cream text-ink-soft" : current ? "border-ink bg-ink text-sun" : "border-ink bg-paper text-ink"
+                        }`}
+                      >
+                        {locked ? <LockIcon className="size-5" /> : i + 1}
+                        {done ? (
+                          <span className="absolute -bottom-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-ink bg-lime text-ink">
+                            <CheckIcon className="size-3" />
+                          </span>
+                        ) : null}
                       </span>
-                      {locked ? null : (
-                        <span className="mt-auto flex items-center gap-2 pt-1.5">
-                          <MiniStars count={levels.stars[i]} />
-                          {done ? null : <span className="font-display text-[11px] uppercase tracking-wider text-ink-soft">Sem estrelas</span>}
+                      <span className="flex min-h-full min-w-0 flex-col">
+                        <span className="block text-balance font-display text-base uppercase leading-tight text-ink">{level.title}</span>
+                        <span className="mt-0.5 block text-xs leading-snug text-ink-soft">
+                          {locked ? (word === "arena" ? "Vença a arena anterior" : "Termine a fase anterior") : level.goal}
                         </span>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      )}
-      {resume && <p className="mt-4 font-hand text-xl leading-snug text-ink-soft">Sua aventura está salva. Continue de onde parou.</p>}
-      {confirming ? (
-        <div role="alertdialog" aria-label="Começar uma nova aventura" className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 p-4">
-          <p className="font-display text-lg uppercase tracking-wide text-ink">Começar do zero?</p>
-          <p className="mt-1 leading-snug text-ink-soft">O progresso salvo desta aventura será apagado.</p>
-          <div className="mt-3 flex flex-wrap gap-3">
-            <InkButton tone="tomato" onClick={onNew}>
-              <RestartIcon className="size-5" /> Sim, nova aventura
-            </InkButton>
-            <InkButton tone="cream" onClick={() => setConfirming(false)}>
-              Cancelar
-            </InkButton>
+                        {locked ? null : (
+                          <span className="mt-auto flex items-center gap-2 pt-1.5">
+                            <MiniStars count={levels.stars[i]} />
+                            {done ? null : <span className="font-display text-[11px] uppercase tracking-wider text-ink-soft">Sem estrelas</span>}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
-        </div>
-      ) : null}
-      <div className={`mt-5 flex flex-wrap items-center gap-3 ${missionPending ? "invisible" : ""}`}>
+        )}
+        {resume && <p className="mt-4 font-hand text-xl leading-snug text-ink-soft">Sua aventura está salva. Continue de onde parou.</p>}
+        {confirming ? (
+          <div role="alertdialog" aria-label="Começar uma nova aventura" className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 p-4">
+            <p className="font-display text-lg uppercase tracking-wide text-ink">Começar do zero?</p>
+            <p className="mt-1 leading-snug text-ink-soft">O progresso salvo desta aventura será apagado.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <InkButton tone="tomato" onClick={onNew}>
+                <RestartIcon className="size-5" /> Sim, nova aventura
+              </InkButton>
+              <InkButton tone="cream" onClick={() => setConfirming(false)}>
+                Cancelar
+              </InkButton>
+            </div>
+          </div>
+        ) : null}
+        {showHelp && !picking ? help : null}
+      </div>
+      <div className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 ${missionPending ? "invisible" : ""}`}>
         {mission ? (
           <>
             <InkButton ref={playRef} size="lg" tone="sun" onClick={onStartMission}>
@@ -360,7 +377,7 @@ export function IntroPanel({
           </InkButton>
         )}
         <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="how-to-play-panel">
-          {showHelp ? "Esconder instruções" : "Como jogar"}
+          {showHelp ? (picking ? `Ver ${word}s` : "Esconder instruções") : "Como jogar"}
         </InkButton>
         {!leveled && !mission && (
           <p className="flex items-center gap-1.5 px-1 font-display text-sm uppercase leading-none tracking-wide text-ink-soft">
@@ -369,11 +386,6 @@ export function IntroPanel({
           </p>
         )}
       </div>
-      {showHelp && (
-        <div id="how-to-play-panel" className="mt-5 border-t-[3px] border-dashed border-ink/30 pt-4">
-          <ControlsList game={game} />
-        </div>
-      )}
     </OverlayFrame>
   );
 }

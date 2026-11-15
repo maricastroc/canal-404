@@ -51,6 +51,19 @@ describe("IntroPanel", () => {
     expect(screen.getByRole("button", { name: /Jogar arena 1/ })).toBeInTheDocument();
   });
 
+  it("swaps the arena list for the instructions without hiding the play button", async () => {
+    const { onToggleHelp, rerender, game } = renderIntro("pajama-war", { levels: { stars: [3, 0, 0], unlocked: 1, suggested: 1 } });
+    await userEvent.click(screen.getByRole("button", { name: "Como jogar" }));
+    expect(onToggleHelp).toHaveBeenCalled();
+    rerender(<IntroPanel game={game} highScore={0} showHelp levels={{ stars: [3, 0, 0], unlocked: 1, suggested: 1 }} onPlay={vi.fn()} onToggleHelp={onToggleHelp} />);
+    expect(screen.queryByRole("heading", { name: "Escolha a arena" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Como jogar" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Como jogar" })).toHaveAttribute("tabindex", "0");
+    expect(document.getElementById("how-to-play-panel")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Jogar arena 2/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver arenas" })).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("starts a new adventure when there is no save", async () => {
     const { onNew, onPlay } = renderIntro("off-air-vacation");
     expect(screen.queryByRole("button", { name: /Continuar aventura/ })).not.toBeInTheDocument();

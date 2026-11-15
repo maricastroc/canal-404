@@ -1,5 +1,7 @@
 import * as Phaser from "phaser";
-import { ACCEL, HIT, HP, KID_INFO, KID_SCALE, PILLOW, PILLOW_ANCHORS, SPRITE_ORIGIN_Y, STATS, type Dir, type KidId, type KidStats, type Pose } from "../config";
+import { HIT, HP, KID_INFO, KID_SCALE, PILLOW, PILLOW_ANCHORS, SPRITE_ORIGIN_Y, STATS, type Dir, type KidId, type KidStats, type Pose } from "../config";
+import { coast, drive, move } from "../motion";
+import { SPECIAL } from "../special";
 import type { PajamaSfx } from "../sounds";
 import { KID_RES } from "./BootScene";
 
@@ -12,6 +14,7 @@ export type FighterFx = {
 
 const BASE = KID_SCALE / KID_RES;
 const HELD = 0.62;
+const GOLD = 0xffc83d;
 
 export class Fighter {
   readonly sprite: Phaser.GameObjects.Image;
@@ -36,6 +39,8 @@ export class Fighter {
   readyAt = 0;
   regenScale = 1;
   koAt = 0;
+  special = false;
+  private heldSpecial = false;
   private windupUntil = 0;
   private aim = 0;
   private throwPoseUntil = 0;
@@ -89,6 +94,10 @@ export class Fighter {
     return this.stats.speed;
   }
 
+  private get heldScale() {
+    return (HELD / 1.25) * (this.special ? 1.42 : 1);
+  }
+
   canThrow(t: number) {
     return this.alive && t >= this.readyAt && !this.windupUntil && t >= this.stunUntil;
   }
@@ -104,7 +113,7 @@ export class Fighter {
     else this.throwDir = sy > 0 ? "f" : "k";
     if (Math.abs(cx) > 0.15) this.facing = cx > 0 ? 1 : -1;
     this.setPose(`windup-${this.throwDir}`);
-    if (!this.reduced) this.scene.tweens.add({ targets: this.held, scale: { from: (HELD / 1.25) * 1.18, to: HELD / 1.25 }, duration: windup, ease: "Quad.easeOut" });
+    if (!this.reduced) this.scene.tweens.add({ targets: this.held, scale: { from: this.heldScale * 1.18, to: this.heldScale }, duration: windup, ease: "Quad.easeOut" });
     return true;
   }
 
@@ -112,7 +121,23 @@ export class Fighter {
     this.windupUntil = 0;
   }
 
-  hurt(t: number, fromX: number, fromY: number, dirX: number, dirY: number, by: Fighter | null) {
+  shove(t: number, dirX: number, dirY: number) {
+    if (!this.alive) return;
+    const len = Math.hypot(dirX, dirY) || 1;
+    this.windupUntil = 0;
+    this.stunUntil = Math.max(this.stunUntil, t + SPECIAL.wave.stun);
+    this.vx = (dirX / len) * SPECIAL.wave.push;
+    this.vy = (dirY / len) * SPECIAL.wave.push * 0.7;
+    if (Math.abs(dirX) > 0.2) this.facing = dirX > 0 ? -1 : 1;
+    this.setPose("hurt");
+    if (!this.reduced) {
+      this.scene.tweens.killTweensOf(this.sprite);
+      this.sprite.setAngle(-this.facing * 10);
+      this.scene.tweens.add({ targets: this.sprite, angle: 0, duration: 420, ease: "Back.easeOut" });
+    }
+  }
+
+  hurt(t: number, dirX: number, dirY: number, by: Fighter | null, power = 1) {
     if (!this.alive || t < this.invulnUntil) return false;
     this.hp -= 1;
     this.lastHurtAt = t;
@@ -122,8 +147,8 @@ export class Fighter {
     this.stunUntil = t + HIT.stun;
     this.invulnUntil = t + (this.isPlayer ? HIT.invulnPlayer : HIT.invuln);
     const len = Math.hypot(dirX, dirY) || 1;
-    this.vx = (dirX / len) * HIT.knock;
-    this.vy = (dirY / len) * HIT.knock * 0.7;
+    this.vx = (dirX / len) * HIT.knock * power;
+    this.vy = (dirY / len) * HIT.knock * 0.7 * power;
     if (Math.abs(dirX) > 0.2) this.facing = dirX > 0 ? -1 : 1;
     this.setPose("hurt");
     this.sprite.setTintFill(0xffffff);
@@ -137,8 +162,6 @@ export class Fighter {
       this.scene.tweens.add({ targets: this, squash: 1, duration: 300, ease: "Elastic.easeOut", easeParams: [1.1, 0.4] });
       if (this.hp > 0) this.scene.tweens.add({ targets: this, lift: 16, duration: 110, yoyo: true, ease: "Quad.easeOut" });
     }
-    void fromX;
-    void fromY;
     if (this.hp <= 0) this.knockOut(t, dirX);
     return true;
   }
@@ -146,6 +169,7 @@ export class Fighter {
   private knockOut(t: number, dirX: number) {
     this.alive = false;
     this.koAt = t;
+    this.special = false;
     this.windupUntil = 0;
     this.locked = "hurt";
     this.held.setVisible(false);
@@ -213,13 +237,8 @@ export class Fighter {
       }
     }
     if (t >= this.stunUntil) {
-      const len = Math.hypot(mx, my);
       const k = this.windupUntil ? 0.4 : t < this.throwPoseUntil ? 0.7 : 1;
-      const tx = len > 0.01 ? (mx / Math.max(1, len)) * this.speed * k : 0;
-      const ty = len > 0.01 ? (my / Math.max(1, len)) * this.speed * k * 0.86 : 0;
-      const step = ACCEL * dt;
-      this.vx += Phaser.Math.Clamp(tx - this.vx, -step, step);
-      this.vy += Phaser.Math.Clamp(ty - this.vy, -step, step);
+      drive(this, mx, my, this.speed * k, dt);
       if (!this.windupUntil && t >= this.throwPoseUntil && Math.abs(this.vx) > 60) this.facing = this.vx > 0 ? 1 : -1;
       if (Math.hypot(this.vx, this.vy) > 50) {
         const ax = Math.abs(this.vx);
@@ -229,13 +248,8 @@ export class Fighter {
         } else if (ax > ay * 1.35) this.dir = "s";
         else this.dir = this.vy > 0 ? "f" : "k";
       }
-    } else {
-      const f = Math.exp(-dt * 7);
-      this.vx *= f;
-      this.vy *= f;
-    }
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+    } else coast(this, dt);
+    move(this, dt);
 
     if (this.hp < HP && this.regenScale > 0 && t - this.lastHurtAt > this.stats.regenDelay * this.regenScale && t >= this.regenAt) {
       this.hp += 1;
@@ -248,7 +262,7 @@ export class Fighter {
       this.wasReady = true;
       if (!this.reduced) {
         this.held.setScale(0);
-        this.scene.tweens.add({ targets: this.held, scale: HELD / 1.25, duration: 170, ease: "Back.easeOut" });
+        this.scene.tweens.add({ targets: this.held, scale: this.heldScale, duration: 170, ease: "Back.easeOut" });
       }
       if (this.isPlayer) this.fx.sfx("ready", 0.6);
     }
@@ -300,6 +314,13 @@ export class Fighter {
     const anchor = PILLOW_ANCHORS[this.pose];
     const show = this.alive && !!anchor && (t >= this.readyAt || this.pose.startsWith("windup")) && this.pose !== "hurt";
     this.held.setVisible(show);
+    if (this.heldSpecial !== this.special) {
+      this.heldSpecial = this.special;
+      this.held.setTint(this.special ? GOLD : KID_INFO[this.kid].tint);
+      this.scene.tweens.killTweensOf(this.held);
+      if (this.reduced) this.held.setScale(this.heldScale);
+      else this.scene.tweens.add({ targets: this.held, scale: { from: this.heldScale * 1.4, to: this.heldScale }, duration: 320, ease: "Back.easeOut" });
+    }
     if (show && anchor) {
       const k = BASE * KID_RES;
       this.held

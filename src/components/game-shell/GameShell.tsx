@@ -533,7 +533,7 @@ export function GameShell({ slug }: { slug: string }) {
           aria-label={game.controlsSummary ?? game.title}
           className="absolute inset-0 touch-none select-none outline-none focus-visible:outline-none [&:focus-visible_canvas]:outline-4 [&:focus-visible_canvas]:outline-offset-2 [&:focus-visible_canvas]:outline-sun"
         >
-          <div ref={hostRef} className="h-full w-full [&_canvas]:rounded-xl [&_canvas]:border-[3px] [&_canvas]:border-ink" />
+          <div ref={hostRef} className="flow-root h-full w-full [&_canvas]:rounded-xl [&_canvas]:border-[3px] [&_canvas]:border-ink" />
         </div>
 
         <AnimatePresence>

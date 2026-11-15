@@ -3,10 +3,13 @@ import { KIDS, type KidId } from "./config";
 
 const KEY = "canal404:pajama-war:v1";
 
-export type PajamaStats = { wins: Record<KidId, number>; matches: number; bestTime: number; lastKid: KidId | null };
+export const HINTS = ["ricochet", "special"] as const;
+export type HintId = (typeof HINTS)[number];
+
+export type PajamaStats = { wins: Record<KidId, number>; matches: number; bestTime: number; lastKid: KidId | null; hints: HintId[] };
 
 function empty(): PajamaStats {
-  return { wins: { lia: 0, nico: 0, bia: 0 }, matches: 0, bestTime: 0, lastKid: null };
+  return { wins: { lia: 0, nico: 0, bia: 0 }, matches: 0, bestTime: 0, lastKid: null, hints: [] };
 }
 
 function normalizeStats(value: Json): PajamaStats {
@@ -15,6 +18,7 @@ function normalizeStats(value: Json): PajamaStats {
   stats.matches = Math.max(0, finite(value.matches, 0));
   stats.bestTime = Math.max(0, finite(value.bestTime, 0));
   stats.lastKid = KIDS.includes(value.lastKid as KidId) ? (value.lastKid as KidId) : null;
+  if (Array.isArray(value.hints)) stats.hints = HINTS.filter((h) => (value.hints as unknown[]).includes(h));
   return stats;
 }
 
@@ -28,8 +32,8 @@ export const STATS_SPEC: MigrationSpec<PajamaStats> = {
 export function loadStats(): PajamaStats {
   const loaded = readVersioned(KEY, STATS_SPEC);
   if (loaded.status !== "ok") return empty();
-  const { wins, matches, bestTime, lastKid } = loaded.value;
-  return { wins: { ...wins }, matches, bestTime, lastKid };
+  const { wins, matches, bestTime, lastKid, hints } = loaded.value;
+  return { wins: { ...wins }, matches, bestTime, lastKid, hints: [...hints] };
 }
 
 export function saveStats(stats: PajamaStats) {
@@ -38,4 +42,12 @@ export function saveStats(stats: PajamaStats) {
   } catch {
     return;
   }
+}
+
+export function markHint(id: HintId) {
+  const stats = loadStats();
+  if (stats.hints.includes(id)) return false;
+  stats.hints.push(id);
+  saveStats(stats);
+  return true;
 }

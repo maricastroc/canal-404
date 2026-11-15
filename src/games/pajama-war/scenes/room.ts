@@ -1,9 +1,10 @@
 import * as Phaser from "phaser";
 import { H, W } from "../config";
 import type { ArenaDef, PropDef, React } from "../arenas";
+import { arenaBoxes, NavGrid, solidBoxes, type Box } from "../nav";
 import type { PajamaSfx } from "../sounds";
-
-export type Block = { x0: number; y0: number; x1: number; y1: number; tall: boolean; prop: Prop | null };
+import type { Fonts } from "../../kit/ui";
+import { Ambient } from "./ambient";
 
 const RES = 1.25;
 const BULB_COLORS = [0xffd36b, 0xff8fc4, 0x8ff0d8, 0x9fd4ff, 0xffb36b];
@@ -91,6 +92,37 @@ export function makeTextures(scene: Phaser.Scene) {
     g.fillStyle(0xffffff, 1);
     g.fillRect(0, 0, 18, 10);
   });
+  gfx("spring", 44, 62, (g) => {
+    const loops = [44, 34, 24, 14];
+    for (const y of loops) {
+      g.lineStyle(10, 0x1d1830, 1);
+      g.strokeEllipse(22, y, 30, 11);
+    }
+    for (const y of loops) {
+      g.lineStyle(5, 0xffc83d, 1);
+      g.strokeEllipse(22, y, 30, 11);
+    }
+    g.fillStyle(0x1d1830, 1);
+    g.fillRoundedRect(5, 50, 34, 10, 4);
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillEllipse(22, 7, 26, 10);
+    g.lineStyle(3, 0x1d1830, 1);
+    g.strokeEllipse(22, 7, 26, 10);
+  });
+  gfx("ring", 160, 60, (g) => {
+    g.lineStyle(10, 0x1d1830, 0.85);
+    g.strokeEllipse(80, 30, 148, 48);
+    g.lineStyle(5, 0xffc83d, 1);
+    g.strokeEllipse(80, 30, 148, 48);
+  });
+  gfx("drop", 16, 22, (g) => {
+    g.fillStyle(0x1d1830, 1);
+    g.fillCircle(8, 14, 7);
+    g.fillTriangle(1.5, 12, 14.5, 12, 8, 0);
+    g.fillStyle(0x9fd4ff, 1);
+    g.fillCircle(8, 14, 4.6);
+    g.fillTriangle(4, 12.5, 12, 12.5, 8, 3.5);
+  });
   for (const [name, t] of Object.entries(THEMES)) {
     gfx(`wall-${name}`, 160, 160, (g) => {
       g.fillStyle(t.wall[0], 1);
@@ -138,12 +170,16 @@ export function makeTextures(scene: Phaser.Scene) {
   }
 }
 
+export type Block = Box & { prop: Prop | null };
+
 export class Prop {
   readonly img: Phaser.GameObjects.Image;
   readonly base: { x: number; y: number; angle: number; sx: number; sy: number };
+  readonly springs: Phaser.GameObjects.Image[] = [];
   vx = 0;
   vy = 0;
   busy = false;
+  idleAt = 0;
   private tipped = false;
 
   constructor(
@@ -159,6 +195,37 @@ export class Prop {
     else if (def.layer === "floor") this.img.setDepth(20 + def.y / 1000);
     else this.img.setDepth(def.y);
     this.base = { x: def.x, y: def.y, angle: def.angle ?? 0, sx: s, sy: s };
+    for (const [dx, dy, angle] of def.spring ?? []) {
+      this.springs.push(scene.add.image(def.x + dx, def.y + dy, "spring").setOrigin(0.5, 0.92).setScale(0.82).setAngle(angle).setDepth(this.img.depth + 0.4));
+    }
+  }
+
+  boing(sfx: (n: PajamaSfx, v?: number) => void, power = 1) {
+    sfx("spring", 0.55);
+    if (this.reduced) return;
+    for (const sp of this.springs) {
+      this.scene.tweens.killTweensOf(sp);
+      sp.setScale(0.82, 0.82 * 0.45);
+      this.scene.tweens.add({ targets: sp, scaleY: 0.82, duration: 620, ease: "Elastic.easeOut", easeParams: [1.4, 0.3] });
+    }
+    if (this.busy) return;
+    this.busy = true;
+    this.scene.tweens.add({
+      targets: this.img,
+      scaleY: { from: this.base.sy * (1 - 0.1 * power), to: this.base.sy },
+      scaleX: { from: this.base.sx * (1 + 0.05 * power), to: this.base.sx },
+      duration: 560,
+      ease: "Elastic.easeOut",
+      easeParams: [1.2, 0.35],
+      onComplete: () => (this.busy = false),
+    });
+  }
+
+  springHop(delay: number) {
+    if (this.reduced) return;
+    for (const sp of this.springs) {
+      this.scene.tweens.add({ targets: sp, scaleY: { from: 0.82 * 0.4, to: 0.82 }, delay, duration: 700, ease: "Elastic.easeOut", easeParams: [1.5, 0.3] });
+    }
   }
 
   get react(): React | undefined {
@@ -183,7 +250,10 @@ export class Prop {
     }
     this.busy = true;
     const done = () => (this.busy = false);
-    if (kind === "wobble" || kind === "swing") {
+    if (kind === "rustle") {
+      sfx("rustle", 0.3);
+      scene.tweens.add({ targets: this.img, angle: { from: this.base.angle + dir * 3.5 * p, to: this.base.angle }, duration: 900, ease: "Elastic.easeOut", easeParams: [1.1, 0.3], onComplete: done });
+    } else if (kind === "wobble" || kind === "swing") {
       sfx("wobble", 0.35);
       scene.tweens.add({ targets: this.img, angle: { from: this.base.angle + dir * 14 * p, to: this.base.angle }, duration: 900, ease: "Elastic.easeOut", easeParams: [1.2, 0.3], onComplete: done });
     } else if (kind === "bounce") {
@@ -239,18 +309,22 @@ export class Prop {
 
 export class Room {
   readonly blocks: Block[] = [];
+  readonly boxes: Box[];
+  readonly solid: Box[];
+  readonly nav: NavGrid;
   readonly props: Prop[] = [];
-  private lights: { bulbs: Phaser.GameObjects.Image[]; halos: Phaser.GameObjects.Image[]; pts: { x: number; y: number }[]; wire: Phaser.GameObjects.Graphics; kick: number; def: ArenaDef["lights"][number] }[] = [];
+  readonly ambient: Ambient;
+  private lights: { bulbs: Phaser.GameObjects.Image[]; halos: Phaser.GameObjects.Image[]; pts: { x: number; y: number }[]; cur: { x: number; y: number }[]; wire: Phaser.GameObjects.Graphics; kick: number; def: ArenaDef["lights"][number] }[] = [];
   private floorPillows: { img: Phaser.GameObjects.Image; x: number; y: number }[] = [];
   private theme: Theme;
   private cat: Cat | null = null;
   private cushions: Phaser.GameObjects.Image[] = [];
-  private flies: { img: Phaser.GameObjects.Image; x: number; y: number; vx: number; vy: number; phase: number }[] = [];
 
   constructor(
     private scene: Phaser.Scene,
     readonly def: ArenaDef,
     private reduced: boolean,
+    fonts: Fonts,
   ) {
     makeTextures(scene);
     this.theme = THEMES[def.theme];
@@ -258,10 +332,6 @@ export class Room {
     for (const p of def.props) {
       const prop = new Prop(scene, p, reduced);
       this.props.push(prop);
-      if (p.block) {
-        const dy = p.block.dy ?? 0;
-        this.blocks.push({ x0: p.x - p.block.w / 2, x1: p.x + p.block.w / 2, y0: p.y + dy - p.block.h, y1: p.y + dy, tall: Boolean(p.block.tall), prop });
-      }
       if (p.glow) {
         const g = scene.add
           .image(p.x + p.glow.dx, p.y + p.glow.dy, "glow")
@@ -270,7 +340,7 @@ export class Room {
           .setAlpha(p.glow.alpha ?? 0.3)
           .setBlendMode(Phaser.BlendModes.ADD)
           .setDepth(p.layer === "wall" ? 6 : 25);
-        if (!reduced && p.react === "wobble") scene.tweens.add({ targets: g, alpha: (p.glow.alpha ?? 0.3) * 0.82, duration: 1400, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+        if (!reduced && p.react === "wobble") scene.tweens.add({ targets: g, alpha: (p.glow.alpha ?? 0.3) * (p.key === "lantern" ? 0.7 : 0.82), duration: p.key === "lantern" ? 900 + ((p.x * 7) % 900) : 1400, delay: (p.x * 3) % 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       }
     }
     for (const [x, y, tint, angle] of def.floorPillows) {
@@ -278,18 +348,35 @@ export class Room {
       const img = scene.add.image(x, y, "pillow").setScale(0.6 / RES, 0.42 / RES).setTint(muted).setAlpha(0.92).setAngle(angle).setDepth(24 + y / 1000);
       this.floorPillows.push({ img, x, y });
     }
+    this.boxes = arenaBoxes(def);
+    this.solid = solidBoxes(this.boxes);
+    for (const b of this.boxes) this.blocks.push({ ...b, prop: this.props[b.index] ?? null });
+    this.nav = new NavGrid(def.bounds, this.solid);
     for (const l of def.lights) this.makeLights(l);
     if (def.cat) this.cat = new Cat(scene, def.cat, reduced);
     const sofa = def.props.find((p) => p.key === "sofa");
     for (const c of def.cushions ?? []) {
       this.cushions.push(scene.add.image(c.x, c.y, c.key).setOrigin(0.5, 1).setScale(0.82 / RES).setAngle(c.angle).setDepth((sofa?.y ?? c.y) + 0.5));
     }
-    for (let i = 0; i < (def.fireflies ?? 0); i += 1) {
-      const x = Phaser.Math.Between(def.bounds.x0, def.bounds.x1);
-      const y = Phaser.Math.Between(240, def.bounds.y1 - 40);
-      const img = scene.add.image(x, y, "glow").setDisplaySize(26, 26).setTint(0xd8ff7a).setBlendMode(Phaser.BlendModes.ADD).setDepth(1300).setAlpha(0.8);
-      this.flies.push({ img, x, y, vx: 0, vy: 0, phase: Math.random() * 10 });
-    }
+    this.ambient = new Ambient(scene, this, reduced, fonts);
+  }
+
+  blockOf(index: number) {
+    return this.blocks.find((b) => b.index === index) ?? null;
+  }
+
+  springProps() {
+    return this.props.filter((p) => p.springs.length > 0);
+  }
+
+  hopCushions() {
+    if (this.reduced) return;
+    this.cushions.forEach((c, i) => {
+      if (this.scene.tweens.isTweening(c)) return;
+      const y = c.y;
+      const angle = c.angle;
+      this.scene.tweens.add({ targets: c, y: y - 22 - i * 6, angle: angle + (i % 2 ? 9 : -9), duration: 150, delay: i * 40, yoyo: true, ease: "Quad.easeOut", onComplete: () => c.setPosition(c.x, y).setAngle(angle) });
+    });
   }
 
   private dropCushion(sfx: (n: PajamaSfx, v?: number) => void) {
@@ -377,39 +464,17 @@ export class Room {
       halos.push(s.add.image(p.x, p.y + 20, "glow").setDisplaySize(90, 90).setTint(color).setAlpha(0.42).setBlendMode(Phaser.BlendModes.ADD).setDepth(7.5));
       bulbs.push(s.add.image(p.x, p.y, "bulb").setOrigin(0.5, 0).setTint(color).setDepth(8));
     });
-    this.lights.push({ bulbs, halos, pts, wire, kick: 0, def: l });
+    this.lights.push({ bulbs, halos, pts, cur: pts.map((p) => ({ ...p })), wire, kick: 0, def: l });
   }
 
   blockAt(x: number, y: number, pad = 0) {
-    for (const b of this.blocks) if (x > b.x0 - pad && x < b.x1 + pad && y > b.y0 - pad && y < b.y1 + pad) return b;
+    for (const b of this.solid) if (x > b.x0 - pad && x < b.x1 + pad && y > b.y0 - pad && y < b.y1 + pad) return b;
     return null;
-  }
-
-  tallAt(x: number, y: number) {
-    for (const b of this.blocks) if (b.tall && x > b.x0 - 8 && x < b.x1 + 8 && y > b.y0 - 8 && y < b.y1 + 8) return b;
-    return null;
-  }
-
-  lineBlocked(x0: number, y0: number, x1: number, y1: number) {
-    const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 40);
-    for (let i = 1; i < steps; i += 1) {
-      const k = i / steps;
-      if (this.tallAt(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k)) return true;
-    }
-    return false;
   }
 
   impact(x: number, y: number, power: number, sfx: (n: PajamaSfx, v?: number) => void) {
     this.cat?.scare(x, y, sfx);
-    for (const f of this.flies) {
-      const dx = f.x - x;
-      const dy = f.y - (y - 80);
-      const d = Math.hypot(dx, dy);
-      if (d < 260 && d > 0) {
-        f.vx += (dx / d) * 260;
-        f.vy += (dy / d) * 200;
-      }
-    }
+    this.ambient.impact(x, y, power);
     const sofa = this.def.props.find((p) => p.key === "sofa");
     if (sofa && power >= 0.6 && Math.abs(x - sofa.x) < 260 && Math.abs(y - sofa.y) < 150 && Math.random() < 0.6) this.dropCushion(sfx);
     for (const p of this.props) {
@@ -459,15 +524,7 @@ export class Room {
       p.img.angle += (p.vx / 30) * dt * 57;
     }
     this.cat?.update(t, dt, feet, sfx);
-    for (const f of this.flies) {
-      f.vx *= Math.exp(-dt * 1.4);
-      f.vy *= Math.exp(-dt * 1.4);
-      const wx = this.reduced ? 0 : Math.sin(t / 1300 + f.phase) * 26;
-      const wy = this.reduced ? 0 : Math.cos(t / 1700 + f.phase * 1.3) * 18;
-      f.x = Phaser.Math.Clamp(f.x + (f.vx + wx) * dt, b.x0 - 60, b.x1 + 60);
-      f.y = Phaser.Math.Clamp(f.y + (f.vy + wy) * dt, 200, b.y1);
-      f.img.setPosition(f.x, f.y).setAlpha(this.reduced ? 0.7 : 0.45 + 0.4 * Math.max(0, Math.sin(t / 420 + f.phase * 3)));
-    }
+    this.ambient.update(t, dt);
     for (const fp of this.floorPillows) {
       for (const f of feet) {
         const dx = fp.img.x - f.x;
@@ -486,9 +543,11 @@ export class Room {
       l.kick = Math.max(0, l.kick - dt * 0.9);
       const wire = l.wire;
       wire.clear();
-      const pts = l.pts.map((p, i) => {
+      const pts = l.cur;
+      l.pts.forEach((p, i) => {
         const sway = this.reduced ? 0 : Math.sin(t / 900 + i * 0.5) * 2 + Math.sin(t / 120 + i) * 9 * l.kick;
-        return { x: p.x + sway * 0.4, y: p.y + (i % 6 === 0 ? 0 : sway * 0.3) };
+        pts[i].x = p.x + sway * 0.4;
+        pts[i].y = p.y + (i % 6 === 0 ? 0 : sway * 0.3);
       });
       wire.lineStyle(4, 0x1d1830, 1);
       wire.beginPath();
@@ -515,11 +574,15 @@ export class Room {
 class Cat {
   private img: Phaser.GameObjects.Image;
   private spot = 0;
-  private state: "sleep" | "alert" | "run" = "sleep";
+  private state: "sleep" | "peek" | "alert" | "run" | "walk" = "sleep";
   private until = 0;
   private calmAt = 0;
   private to = { x: 0, y: 0, depth: 0 };
   private time = 0;
+  private idleAt = 7000;
+  private idleStep = 0;
+  private breath: Phaser.Tweens.Tween | null = null;
+  private readonly scale = 0.72 / RES;
 
   constructor(
     private scene: Phaser.Scene,
@@ -527,29 +590,57 @@ class Cat {
     private reduced: boolean,
   ) {
     const [x, y, depth] = spots[0];
-    this.img = scene.add.image(x, y, "cat-sleep").setOrigin(0.5, 1).setScale(0.72 / RES).setDepth(depth || y);
-    if (!reduced) scene.tweens.add({ targets: this.img, scaleY: (0.72 / RES) * 1.04, duration: 1300, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.img = scene.add.image(x, y, "cat-sleep").setOrigin(0.5, 1).setScale(this.scale).setDepth(depth || y);
+    this.breathe();
+  }
+
+  private breathe() {
+    this.breath?.stop();
+    this.breath = null;
+    this.img.setScale(this.scale);
+    if (this.reduced) return;
+    this.breath = this.scene.tweens.add({ targets: this.img, scaleY: this.scale * 1.04, duration: 1300, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  private peek(ms: number) {
+    this.state = "peek";
+    this.until = this.time + ms;
+    this.breath?.stop();
+    this.img.setTexture("cat-alert").setScale(this.scale);
+    if (!this.reduced) this.scene.tweens.add({ targets: this.img, scaleY: { from: this.scale * 0.9, to: this.scale }, duration: 220, ease: "Back.easeOut" });
+  }
+
+  private goTo(index: number, state: "run" | "walk") {
+    this.spot = index;
+    const [tx, ty, td] = this.spots[index];
+    this.to = { x: tx, y: ty, depth: td };
+    this.state = state;
+    this.breath?.stop();
+    this.img.setTexture("cat-run").setScale(this.scale).setFlipX(this.to.x < this.img.x);
+    if (this.reduced) this.img.setPosition(this.to.x, this.to.y);
   }
 
   scare(x: number, y: number, sfx: (n: PajamaSfx, v?: number) => void) {
-    if (this.state !== "sleep" || this.time < this.calmAt) return;
-    if (Math.hypot(x - this.img.x, (y - this.img.y) * 1.3) > 300) return;
+    if ((this.state !== "sleep" && this.state !== "peek") || this.time < this.calmAt) return;
+    const d = Math.hypot(x - this.img.x, (y - this.img.y) * 1.3);
+    if (d > 520) return;
+    if (d > 300) {
+      if (this.state === "sleep") this.peek(900);
+      return;
+    }
     this.state = "alert";
     this.until = this.time + 520;
-    this.img.setTexture("cat-alert");
+    this.breath?.stop();
+    this.img.setTexture("cat-alert").setScale(this.scale);
     sfx("meow", 0.8);
-    if (!this.reduced) {
-      this.scene.tweens.killTweensOf(this.img);
-      this.img.setScale(0.72 / RES);
-      this.scene.tweens.add({ targets: this.img, y: this.img.y - 44, duration: 200, yoyo: true, ease: "Quad.easeOut" });
-    }
+    if (!this.reduced) this.scene.tweens.add({ targets: this.img, y: this.img.y - 44, duration: 200, yoyo: true, ease: "Quad.easeOut" });
     let best = this.spot;
     let far = -1;
     this.spots.forEach(([sx, sy], i) => {
       if (i === this.spot) return;
-      const d = Math.hypot(sx - x, sy - y);
-      if (d > far) {
-        far = d;
+      const dd = Math.hypot(sx - x, sy - y);
+      if (dd > far) {
+        far = dd;
         best = i;
       }
     });
@@ -558,33 +649,65 @@ class Cat {
     this.to = { x: tx, y: ty, depth: td };
   }
 
+  private settle(t: number) {
+    this.img.setPosition(this.to.x, this.to.y).setDepth(this.to.depth || this.to.y).setTexture("cat-sleep").setFlipX(this.to.x > 960);
+    this.state = "sleep";
+    this.calmAt = t + 3500;
+    this.idleAt = t + 8000;
+    this.breathe();
+  }
+
+  private idle(t: number, feet: { x: number; y: number }[]) {
+    this.idleStep += 1;
+    this.idleAt = t + 8500 + (this.idleStep % 3) * 2600;
+    const kind = this.idleStep % 3;
+    if (kind === 1) {
+      this.peek(1300);
+      return;
+    }
+    if (kind === 2) {
+      const next = (this.spot + 1) % this.spots.length;
+      const [nx, ny] = this.spots[next];
+      if (feet.every((f) => Math.hypot(f.x - nx, f.y - ny) > 300 && Math.hypot(f.x - this.img.x, f.y - this.img.y) > 220)) {
+        this.goTo(next, "walk");
+        return;
+      }
+    }
+    this.breath?.stop();
+    this.img.setScale(this.scale);
+    this.scene.tweens.add({ targets: this.img, scaleX: this.scale * 1.14, scaleY: this.scale * 0.9, duration: 520, yoyo: true, hold: 260, ease: "Sine.easeInOut", onComplete: () => this.state === "sleep" && this.breathe() });
+  }
+
   update(t: number, dt: number, feet: { x: number; y: number; vx: number; vy: number }[], sfx: (n: PajamaSfx, v?: number) => void) {
     this.time = t;
+    if (this.state === "peek") {
+      if (t >= this.until) {
+        this.state = "sleep";
+        this.img.setTexture("cat-sleep");
+        this.breathe();
+      }
+      return;
+    }
     if (this.state === "sleep") {
       for (const f of feet) if (Math.hypot(f.x - this.img.x, (f.y - this.img.y) * 1.4) < 120 && Math.hypot(f.vx, f.vy) > 120) this.scare(f.x, f.y, sfx);
+      if (this.state === "sleep" && !this.reduced && t >= this.idleAt) this.idle(t, feet);
       return;
     }
     if (this.state === "alert") {
       if (t < this.until) return;
-      this.state = "run";
-      this.img.setTexture("cat-run").setFlipX(this.to.x < this.img.x);
-      if (this.reduced) {
-        this.img.setPosition(this.to.x, this.to.y);
-      }
+      this.goTo(this.spot, "run");
     }
     const dx = this.to.x - this.img.x;
     const dy = this.to.y - this.img.y;
     const d = Math.hypot(dx, dy);
-    const step = 620 * dt;
+    const step = (this.state === "walk" ? 230 : 620) * dt;
     if (d <= step || this.reduced) {
-      this.img.setPosition(this.to.x, this.to.y).setDepth(this.to.depth || this.to.y).setTexture("cat-sleep").setFlipX(this.to.x > 960);
-      this.state = "sleep";
-      this.calmAt = t + 3500;
-      if (!this.reduced) this.scene.tweens.add({ targets: this.img, scaleY: (0.72 / RES) * 1.04, duration: 1300, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      this.settle(t);
       return;
     }
     this.img.x += (dx / d) * step;
     this.img.y += (dy / d) * step;
     this.img.setDepth(this.img.y + 1);
+    if (this.state === "walk" && !this.reduced) this.img.setScale(this.scale, this.scale * (1 + Math.abs(Math.sin(t / 90)) * 0.05));
   }
 }

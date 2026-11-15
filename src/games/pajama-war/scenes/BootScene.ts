@@ -25,6 +25,7 @@ const PROPS: [string, number, number][] = [
   ["slippers", 120, 70],
   ["books", 110, 80],
   ["sofa", 480, 270],
+  ["mattresses", 520, 130],
   ["cushion-a", 88, 86],
   ["cushion-b", 88, 86],
   ["armchair", 230, 230],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ARENAS } from "./arenas";
 import { KIDS, STATS } from "./config";
-import { loadStats, saveStats } from "./storage";
+import { loadStats, markHint, saveStats } from "./storage";
 
 const KEY = "canal404:pajama-war:v1";
 
@@ -51,36 +51,44 @@ describe("Guerra do Pijama arenas", () => {
 
 describe("Guerra do Pijama stats", () => {
   it("start empty", () => {
-    expect(loadStats()).toEqual({ wins: { lia: 0, nico: 0, bia: 0 }, matches: 0, bestTime: 0, lastKid: null });
+    expect(loadStats()).toEqual({ wins: { lia: 0, nico: 0, bia: 0 }, matches: 0, bestTime: 0, lastKid: null, hints: [] });
   });
 
   it("save and load wins per kid", () => {
-    saveStats({ wins: { lia: 2, nico: 0, bia: 1 }, matches: 5, bestTime: 61000, lastKid: "bia" });
-    expect(loadStats()).toEqual({ wins: { lia: 2, nico: 0, bia: 1 }, matches: 5, bestTime: 61000, lastKid: "bia" });
+    saveStats({ wins: { lia: 2, nico: 0, bia: 1 }, matches: 5, bestTime: 61000, lastKid: "bia", hints: ["ricochet"] });
+    expect(loadStats()).toEqual({ wins: { lia: 2, nico: 0, bia: 1 }, matches: 5, bestTime: 61000, lastKid: "bia", hints: ["ricochet"] });
   });
 
   it("fill missing fields from older saves", () => {
     window.localStorage.setItem(KEY, JSON.stringify({ wins: { nico: 3 } }));
-    expect(loadStats()).toEqual({ wins: { lia: 0, nico: 3, bia: 0 }, matches: 0, bestTime: 0, lastKid: null });
+    expect(loadStats()).toEqual({ wins: { lia: 0, nico: 3, bia: 0 }, matches: 0, bestTime: 0, lastKid: null, hints: [] });
   });
 
   it("upgrade a save written before versions existed", () => {
     const old = JSON.stringify({ wins: { lia: 4 }, matches: 6, lastKid: "lia" });
     window.localStorage.setItem(KEY, old);
-    expect(loadStats()).toEqual({ wins: { lia: 4, nico: 0, bia: 0 }, matches: 6, bestTime: 0, lastKid: "lia" });
+    expect(loadStats()).toEqual({ wins: { lia: 4, nico: 0, bia: 0 }, matches: 6, bestTime: 0, lastKid: "lia", hints: [] });
     expect(JSON.parse(window.localStorage.getItem(KEY)!)).toMatchObject({ version: 1, matches: 6 });
     const backups = Object.keys(window.localStorage).filter((k) => k.startsWith(`${KEY}:backup:v0:`));
     expect(backups.map((k) => window.localStorage.getItem(k))).toEqual([old]);
   });
 
   it("write the save version", () => {
-    saveStats({ wins: { lia: 0, nico: 1, bia: 0 }, matches: 1, bestTime: 0, lastKid: "nico" });
+    saveStats({ wins: { lia: 0, nico: 1, bia: 0 }, matches: 1, bestTime: 0, lastKid: "nico", hints: [] });
     expect(JSON.parse(window.localStorage.getItem(KEY)!).version).toBe(1);
   });
 
   it("recover from a corrupted save", () => {
     window.localStorage.setItem(KEY, "oops");
     expect(loadStats().matches).toBe(0);
+  });
+
+  it("show each arena hint only once and ignore unknown hints", () => {
+    expect(markHint("ricochet")).toBe(true);
+    expect(markHint("ricochet")).toBe(false);
+    expect(loadStats().hints).toEqual(["ricochet"]);
+    window.localStorage.setItem(KEY, JSON.stringify({ version: 1, hints: ["special", "nope", 3] }));
+    expect(loadStats().hints).toEqual(["special"]);
   });
 
   it("never share the empty record between loads", () => {
