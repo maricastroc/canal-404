@@ -23,6 +23,8 @@ const fmt = (ms: number) => {
 };
 
 const HIDE_MS = 8000;
+const STEP_MAX_MS = 50;
+const FRAME_MAX_MS = 200;
 
 function heartsText(hp: number) {
   const whole = Math.floor(hp / 2);
@@ -537,7 +539,27 @@ export class ArenaScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     if (time < this.freezeUntil) return;
-    const dt = Math.min(delta, 50) / 1000;
+    let left = Math.min(delta, FRAME_MAX_MS);
+    while (left > 0 && this.time.now >= this.freezeUntil) {
+      const ms = Math.min(left, STEP_MAX_MS);
+      left -= ms;
+      this.step(ms / 1000);
+    }
+    const t = this.t;
+    for (const f of this.fighters) f.sync(t);
+    this.drawGuide(t);
+    if (this.youTag && this.player) this.youTag.setPosition(this.player.x, this.player.top - 46);
+    if (this.alerts.length) {
+      for (const a of this.alerts) {
+        if (t >= a.until || !a.f.alive || this.mode === "over") a.img.destroy();
+        else a.img.setPosition(a.f.x, a.f.top - 40);
+      }
+      this.alerts = this.alerts.filter((a) => a.img.active);
+    }
+    if (this.player && this.hud) this.hud.avoid(this.player.x, this.player.y - 100);
+  }
+
+  private step(dt: number) {
     const active = this.mode === "play" || this.mode === "attract" || this.mode === "over";
     if (active) this.t += dt * 1000;
     const t = this.t;
@@ -594,18 +616,7 @@ export class ArenaScene extends Phaser.Scene {
       this.updatePillows(t, dt);
     }
     if (this.mode === "play" || this.mode === "intro") this.frameCamera(dt);
-    for (const f of this.fighters) f.sync(t);
     this.room.update(t, dt, this.fighters.filter((f) => f.alive), (n, v) => this.sfx(n, v, 120));
-    this.drawGuide(t);
-    if (this.youTag && this.player) this.youTag.setPosition(this.player.x, this.player.top - 46);
-    if (this.alerts.length) {
-      for (const a of this.alerts) {
-        if (t >= a.until || !a.f.alive || this.mode === "over") a.img.destroy();
-        else a.img.setPosition(a.f.x, a.f.top - 40);
-      }
-      this.alerts = this.alerts.filter((a) => a.img.active);
-    }
-    if (this.player && this.hud) this.hud.avoid(this.player.x, this.player.y - 100);
   }
 
   private flightZ(d: number) {
