@@ -19,6 +19,8 @@ type Checkpoint = { level: number; col: number; score: number; kills: number; ki
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 const OUCH = ["AI!", "UI!", "OPA!"];
+const STEP_MAX_MS = 50;
+const FRAME_MAX_MS = 200;
 const HIT_WORDS = ["POW!", "TOMA!", "PAF!", "BOING!"];
 const learned = new Set<Lesson>();
 
@@ -784,7 +786,15 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     if (this.physics.world.isPaused) this.physics.world.resume();
-    const dt = Math.min(delta, 50) / 1000;
+    let left = Math.min(delta, FRAME_MAX_MS);
+    while (left > 0 && this.time.now >= this.hitStopUntil) {
+      const ms = Math.min(left, STEP_MAX_MS);
+      left -= ms;
+      this.step(ms / 1000);
+    }
+  }
+
+  private step(dt: number) {
     this.t += dt * 1000;
     const t = this.t;
 
