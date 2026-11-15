@@ -49,9 +49,20 @@ describe("Guerra de Lanche", () => {
   });
 
   it("schedules the lunch lady and the brawl inside the round", () => {
-    for (const t of lunch.LUNCH_LADY_TIMES) expect(t).toBeLessThan(lunch.ROUND_MS);
+    for (const t of lunch.LUNCH_LADY.times) expect(t).toBeLessThan(lunch.ROUND_MS);
     expect(lunch.EVENTS.brawlAt + lunch.EVENTS.brawlMs).toBeLessThan(lunch.ROUND_MS);
     expect(lunch.EVENTS.brawlers).toBeLessThanOrEqual(lunch.SLOTS.length);
+  });
+
+  it("spaces the lunch lady passes so each one leaves before the next and none crosses the brawl", () => {
+    const { times, speed, minGap, enterX, exitX } = lunch.LUNCH_LADY;
+    const crossing = (enterX - exitX) / speed;
+    const brawlStart = lunch.EVENTS.brawlAt;
+    const brawlEnd = lunch.EVENTS.brawlAt + lunch.EVENTS.brawlMs;
+    const passes = [...times, brawlEnd].sort((a, b) => a - b);
+    passes.slice(1).forEach((t, i) => expect(t - passes[i]).toBeGreaterThanOrEqual(crossing + minGap));
+    for (const t of times) expect(t + crossing <= brawlStart || t >= brawlEnd).toBe(true);
+    expect(passes.length).toBeGreaterThanOrEqual(5);
   });
 
   it("gives the tougher rival more points and more health", () => {

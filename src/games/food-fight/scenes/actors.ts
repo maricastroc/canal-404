@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { RIVALS, type RivalDef, type RivalKind, type SlotDef } from "../config";
+import { LUNCH_LADY, RIVALS, type RivalDef, type RivalKind, type SlotDef } from "../config";
 import { cartoonText, type Fonts } from "../../kit/ui";
 
 export type RivalState = "hidden" | "rising" | "up" | "windup" | "after" | "stunned" | "lowering";
@@ -330,7 +330,7 @@ export class LunchLady {
   private marker: Phaser.GameObjects.Image;
   active = false;
   angry = false;
-  private speed = 0.24;
+  private speed = LUNCH_LADY.speed;
   private bob = 0;
 
   constructor(
@@ -344,7 +344,7 @@ export class LunchLady {
   start() {
     this.active = true;
     this.angry = false;
-    this.img.setTexture("lunch-lady").setPosition(2060, 706).setVisible(true).setFlipX(false);
+    this.img.setTexture("lunch-lady").setPosition(LUNCH_LADY.enterX, 706).setVisible(true).setFlipX(false);
     this.marker.setVisible(true);
   }
 
@@ -365,7 +365,7 @@ export class LunchLady {
     this.bob += delta;
     if (!this.reduced) this.img.setAngle(Math.sin(this.bob / 140) * 2.5).setY(706 - Math.abs(Math.sin(this.bob / 140)) * 6);
     this.marker.setPosition(this.img.x, this.img.y - 278);
-    if (this.img.x < -160) {
+    if (this.img.x < LUNCH_LADY.exitX) {
       this.active = false;
       this.img.setVisible(false);
       this.marker.setVisible(false);

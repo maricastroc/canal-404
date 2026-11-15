@@ -8,7 +8,7 @@ import {
   FOODS,
   INVULNERABLE_MS,
   LIVES,
-  LUNCH_LADY_TIMES,
+  LUNCH_LADY,
   MILA,
   OUR_TABLE,
   PHASES,
@@ -83,6 +83,8 @@ function rememberTutorial() {
   }
 }
 
+const LADY_LINES = ["Cuidado! Não acerte a tia!", "Lá vem a tia de novo!", "Olha a tia! Mira em outro lugar!", "A tia voltou! Cuidado com a mira!"];
+
 export class LunchScene extends Phaser.Scene {
   private ctx!: GameHostContext;
   private mode: Mode = "attract";
@@ -109,6 +111,8 @@ export class LunchScene extends Phaser.Scene {
   private rivals: Rival[] = [];
   private lunchLady!: LunchLady;
   private lunchLadyIndex = 0;
+  private ladyWasActive = false;
+  private ladyGoneAt = -Infinity;
   private nextSpawnAt = 0;
   private projectiles: Projectile[] = [];
   private decals: Phaser.GameObjects.Image[] = [];
@@ -166,6 +170,8 @@ export class LunchScene extends Phaser.Scene {
     this.incoming = 0;
     this.rivals = [];
     this.lunchLadyIndex = 0;
+    this.ladyWasActive = false;
+    this.ladyGoneAt = -Infinity;
     this.nextSpawnAt = 0;
     this.projectiles = [];
     this.decals = [];
@@ -1124,7 +1130,7 @@ export class LunchScene extends Phaser.Scene {
       },
       achievements,
       copy: won
-        ? { title: "Sinal!", text: "A mesa resistiu até o fim do recreio." }
+        ? { title: "Sinal!", text: "O sinal tocou! A cantina sobreviveu a mais uma guerra de comida." }
         : { title: "Melecado!", text: "Acabaram os guardanapos. Fica pra próxima!" },
       summary: `${this.hits} ${this.hits === 1 ? "acerto" : "acertos"}. Melhor sequência: ${this.bestStreak}.`,
       ...(won && stars < 3 ? { starHint: `Faltaram ${((stars === 1 ? SCORE.twoStars : SCORE.threeStars) - score).toLocaleString("pt-BR")} pontos para a ${stars + 1}ª estrela.` } : {}),
@@ -1141,6 +1147,8 @@ export class LunchScene extends Phaser.Scene {
     this.updateProjectiles();
     this.updateRivals();
     this.lunchLady.update(dt);
+    if (this.ladyWasActive && !this.lunchLady.active) this.ladyGoneAt = this.t;
+    this.ladyWasActive = this.lunchLady.active;
     if (this.poseUntil && this.t >= this.poseUntil && this.mode !== "ending") {
       this.poseUntil = 0;
       this.deco.setTexture("deco-idle");
@@ -1155,10 +1163,14 @@ export class LunchScene extends Phaser.Scene {
     this.hud.setTimer(left, ROUND_MS, false);
     this.updateBrawl();
     this.spawn();
-    if (this.lunchLadyIndex < LUNCH_LADY_TIMES.length && this.roundT >= LUNCH_LADY_TIMES[this.lunchLadyIndex]) {
+    const ladyDue = this.lunchLadyIndex < LUNCH_LADY.times.length && this.roundT >= LUNCH_LADY.times[this.lunchLadyIndex];
+    if (ladyDue && !this.lunchLady.active && !this.brawlUntil && this.t >= this.ladyGoneAt + LUNCH_LADY.minGap) {
+      const line = LADY_LINES[this.lunchLadyIndex % LADY_LINES.length];
       this.lunchLadyIndex += 1;
       this.lunchLady.start();
-      this.milaSay("Cuidado! Não acerte a tia!", 2000, "shout", true);
+      this.sfx("whistle", 0.45);
+      this.word("PRIII!", 1800, 400, "#fbf5e6", 40);
+      this.milaSay(line, 2000, "shout", true);
       this.announce("A tia da cantina está passando. Não acerte ela!");
     }
     const sec = Math.ceil(left / 1000);

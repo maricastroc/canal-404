@@ -468,7 +468,7 @@ export function ResultPanel({
   return (
     <OverlayFrame label={result.won ? `Vitória: ${title}` : `Fim de jogo: ${title}`} className="max-w-2xl p-5 sm:p-7 wideshort:max-w-5xl wideshort:p-5">
       {isRecord && (
-        <span className="absolute -right-3 -top-4 rotate-12 rounded-lg border-[3px] border-ink bg-bubblegum px-3 py-1 font-display text-lg uppercase tracking-wider text-ink shadow-[var(--shadow-ink)]">
+        <span className="absolute -right-3 -top-4 z-10 rotate-12 rounded-lg border-[3px] border-ink bg-bubblegum px-3 py-1 font-display text-lg uppercase tracking-wider text-ink shadow-[var(--shadow-ink)] max-sm:right-1 max-sm:px-2 max-sm:text-base">
           {result.level ? "Melhor resultado!" : "Novo recorde!"}
         </span>
       )}
@@ -492,7 +492,7 @@ export function ResultPanel({
               </div>
               <div className="min-w-0 flex-1 max-sm:basis-40 wideshort:basis-48">
                 <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink max-sm:text-[clamp(1.6rem,8.4vw,2.2rem)] wideshort:text-[clamp(2rem,3.4vw,2.6rem)]">{title}</h2>
-                {text && <p className="mt-1 font-hand text-xl leading-snug text-ink-soft max-sm:text-lg">{text}</p>}
+                {text && <p className="mt-1 text-pretty font-hand text-xl leading-snug text-ink-soft max-sm:text-lg">{text}</p>}
               </div>
             </div>
           </div>
