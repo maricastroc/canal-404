@@ -2,6 +2,7 @@ import { BrunoHead, DecoHead, LinaHead, MilaHead, type Face } from "@/components
 import { P } from "@/lib/palette";
 import { arcPoint, Fork, House, Sparkle4 } from "./DeadEndStreetArt";
 import { OffAirVacationCoverArt } from "./OffAirVacationArt";
+import { OperationRecessCoverArt } from "./OperationRecessArt";
 import { PajamaWarCoverArt } from "./PajamaWarArt";
 
 const ink = { stroke: P.ink, strokeWidth: 4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
@@ -413,65 +414,8 @@ export function StrangeHouseCover({ decorative }: { decorative?: boolean }) {
 
 export function OperationRecessCover({ decorative }: { decorative?: boolean }) {
   return (
-    <Frame decorative={decorative} bg="#f3e6c4" label="Capa de Operação: Recreio: Bruno ergue uma espada de papelão contra um monitor de apito no corredor da escola">
-      <rect x="0" y="0" width="320" height="150" fill="#f3e6c4" />
-      <g fill="#e8d8b0">
-        <rect x="30" y="0" width="8" height="150" />
-        <rect x="110" y="0" width="8" height="150" />
-        <rect x="190" y="0" width="8" height="150" />
-        <rect x="270" y="0" width="8" height="150" />
-      </g>
-      <rect x="0" y="118" width="320" height="52" fill={P.mint} />
-      <path d="M0 118 L320 118" stroke={P.mintDeep} strokeWidth="5" />
-      <rect x="0" y="170" width="320" height="70" fill="#e6dcc4" />
-      {Array.from({ length: 16 }, (_, i) => (
-        <rect key={i} x={(i % 8) * 40 + ((Math.floor(i / 8) % 2) * 20)} y={186 + Math.floor(i / 8) * 26} width="20" height="13" fill="#c9bfa6" />
-      ))}
-      <path d="M0 170 L320 170" stroke={P.ink} strokeWidth="3" />
-      <g transform="translate(202 52)" {...ink}>
-        <rect x="0" y="0" width="34" height="118" rx="3" fill={P.sky} />
-        <rect x="34" y="0" width="34" height="118" rx="3" fill={P.sun} />
-        <rect x="68" y="0" width="34" height="118" rx="3" fill={P.sky} />
-        <path d="M8 14 L26 14 M8 20 L26 20 M42 14 L60 14 M42 20 L60 20 M76 14 L94 14 M76 20 L94 20" strokeWidth={2.5} />
-      </g>
-      <Burst cx={104} cy={120} color="#ffe39a" count={14} r={150} />
-      <g transform="translate(26 22) rotate(-6)">
-        <rect x="0" y="0" width="56" height="70" rx="3" fill={P.white} {...ink} strokeWidth={3} />
-        <rect x="5" y="5" width="46" height="18" fill={P.tomato} />
-        <text x="28" y="18" textAnchor="middle" fontSize="9" fill={P.white} style={{ fontFamily: "var(--font-luckiest)" }}>
-          SILÊNCIO
-        </text>
-        <circle cx="28" cy="44" r="13" fill={P.sunPale} {...ink} strokeWidth={2.5} />
-        <path d="M21 50 L35 50" stroke={P.ink} strokeWidth="3" />
-      </g>
-      <g transform="translate(236 70)">
-        <path d="M-36 100 L-30 46 Q-28 34 -14 32 L14 32 Q28 34 30 46 L36 100 Z" fill="#3f5bd8" {...ink} />
-        <path d="M-28 40 L-8 40 L-8 100 L-32 100 Z" fill={P.sun} {...ink} strokeWidth={3} />
-        <path d="M8 40 L28 40 L32 100 L8 100 Z" fill={P.sun} {...ink} strokeWidth={3} />
-        <path d="M-32 74 L-8 74 M8 74 L32 74" stroke={P.white} strokeWidth="5" />
-        <ellipse cx="0" cy="6" rx="26" ry="28" fill="#f2c9a6" {...ink} />
-        <path d="M-28 -6 Q-26 -32 0 -32 Q26 -32 28 -6 Z" fill={P.leaf} {...ink} />
-        <path d="M-30 -8 L-58 -4 Q-60 2 -52 2 L-26 0 Z" fill={P.leafDeep} {...ink} strokeWidth={3} />
-        <path d="M-18 -4 L-4 2 M18 -4 L4 2" stroke={P.ink} strokeWidth="5" strokeLinecap="round" />
-        <circle cx="-9" cy="6" r="3.5" fill={P.ink} />
-        <circle cx="9" cy="6" r="3.5" fill={P.ink} />
-        <rect x="-30" y="16" width="22" height="11" rx="4" fill="#c9d4e4" {...ink} strokeWidth={3} />
-        <circle cx="-26" cy="22" r="3" fill={P.ink} />
-        <g fill="none" stroke={P.screenDeep} strokeWidth="4" strokeLinecap="round">
-          <path d="M-42 12 Q-50 22 -42 32" />
-          <path d="M-54 6 Q-66 22 -54 38" />
-        </g>
-      </g>
-      <text x="236" y="16" textAnchor="middle" fontSize="40" fill={P.tomato} stroke={P.ink} strokeWidth="6" paintOrder="stroke" style={{ fontFamily: "var(--font-luckiest)" }} transform="translate(0 20)">
-        !
-      </text>
-      <g transform="translate(112 134) rotate(-74)">
-        <rect x="-6" y="-8" width="20" height="16" rx="4" fill="#c9d4e4" {...ink} strokeWidth={3} />
-        <rect x="12" y="-14" width="8" height="28" rx="2" fill="#a96d36" {...ink} strokeWidth={3} />
-        <path d="M20 -7 L104 -7 Q114 0 104 7 L20 7 Z" fill="#d9a066" {...ink} />
-        <path d="M28 -2 L96 -2 M28 3 L90 3" stroke="#b07a44" strokeWidth="2" />
-      </g>
-      <Kid who="bruno" x={44} y={92} size={124} face="normal" rotate={-6} />
+    <Frame decorative={decorative} bg="#f3e6c4" label="Capa de Operação: Recreio: no corredor da escola, Bruno ergue a espada de papelão contra um monitor que apita bloqueando o caminho para a diretoria">
+      <OperationRecessCoverArt />
     </Frame>
   );
 }

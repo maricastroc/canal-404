@@ -3,6 +3,7 @@ import { BadIdeasLabHowToPanel } from "./BadIdeasLabArt";
 import { DeadEndStreetHowToPanel } from "./DeadEndStreetArt";
 import { FoodFightHowToPanel } from "./FoodFightArt";
 import { OffAirVacationHowToPanel, OffAirVacationLogo } from "./OffAirVacationArt";
+import { OperationRecessHowToPanel } from "./OperationRecessArt";
 import { PajamaWarHowToPanel, PajamaWarLogo } from "./PajamaWarArt";
 
 const display = { fontFamily: "var(--font-luckiest)" };
@@ -147,66 +148,6 @@ export function OperationRecessLogo({ className }: { className?: string }) {
         </g>
       </g>
     </svg>
-  );
-}
-
-export function OperationRecessHowToPanel({ step }: { step: 0 | 1 | 2 }) {
-  const bruno = (x: number, y: number) => (
-    <g transform={`translate(${x} ${y})`}>
-      <rect x="-12" y="10" width="24" height="40" rx="6" fill={P.sky} stroke={P.ink} strokeWidth="4" />
-      <circle cx="0" cy="0" r="16" fill="#f6dcc4" stroke={P.ink} strokeWidth="4" />
-      <path d="M-16 -2 Q-14 -18 0 -18 Q14 -18 16 -2 Q8 -10 0 -8 Q-8 -10 -16 -2 Z" fill="#4a2c1c" stroke={P.ink} strokeWidth="3" />
-      <circle cx="-6" cy="2" r="5" fill="none" stroke={P.ink} strokeWidth="2.5" />
-      <circle cx="7" cy="2" r="5" fill="none" stroke={P.ink} strokeWidth="2.5" />
-    </g>
-  );
-  const scene = (children: React.ReactNode) => (
-    <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
-      <rect width="200" height="130" fill="#f3e6c4" />
-      <rect y="78" width="200" height="26" fill={P.mint} />
-      <rect y="104" width="200" height="26" fill="#e6dcc4" stroke={P.ink} strokeWidth="4" />
-      {children}
-    </svg>
-  );
-  if (step === 0) {
-    return scene(
-      <>
-        <path d="M70 92 Q100 30 130 92" fill="none" stroke={P.sun} strokeWidth="5" strokeLinecap="round" strokeDasharray="2 10" />
-        {bruno(100, 48)}
-        <path d="M54 70 L34 70 M42 62 L34 70 L42 78 M146 70 L166 70 M158 62 L166 70 L158 78" fill="none" stroke={P.plum600} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-      </>,
-    );
-  }
-  if (step === 1) {
-    return scene(
-      <>
-        {bruno(62, 54)}
-        <g transform="translate(76 70) rotate(-12)">
-          <path d="M0 -5 L56 -5 Q64 0 56 5 L0 5 Z" fill="#d9a066" stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />
-          <rect x="-8" y="-9" width="8" height="18" rx="2" fill="#a96d36" stroke={P.ink} strokeWidth="3" />
-        </g>
-        <g transform="translate(150 50)">
-          <rect x="-15" y="12" width="30" height="42" rx="6" fill={P.sun} stroke={P.ink} strokeWidth="4" />
-          <circle cx="0" cy="0" r="17" fill="#f2c9a6" stroke={P.ink} strokeWidth="4" />
-          <path d="M-18 -4 Q-16 -22 0 -21 Q16 -22 18 -4 Z" fill={P.leaf} stroke={P.ink} strokeWidth="3.5" />
-          <path d="M-8 4 L-2 6 M8 4 L2 6" stroke={P.ink} strokeWidth="3" strokeLinecap="round" />
-          <path d="M-8 12 Q0 6 8 12" fill="none" stroke={P.ink} strokeWidth="3" />
-        </g>
-        <path d="M134 40 l5 9 l10 -4 l-4 10 l9 5 l-10 3 l3 10 l-9 -5 l-6 8 l-1 -10 l-10 -1 l8 -6 l-6 -8 l10 2 z" fill={P.sun} stroke={P.ink} strokeWidth="2.5" strokeLinejoin="round" />
-      </>,
-    );
-  }
-  return scene(
-    <>
-      <rect x="132" y="30" width="48" height="74" rx="4" fill="#7c4527" stroke={P.ink} strokeWidth="4" />
-      <rect x="126" y="18" width="60" height="16" rx="3" fill={P.sun} stroke={P.ink} strokeWidth="3" />
-      <text x="156" y="30" textAnchor="middle" fontSize="10" fill={P.ink} style={display}>
-        DIREÇÃO
-      </text>
-      <circle cx="170" cy="70" r="3.5" fill={P.sun} stroke={P.ink} strokeWidth="2" />
-      {bruno(70, 54)}
-      <path d="M96 76 L116 76 M108 68 L116 76 L108 84" fill="none" stroke={P.plum600} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-    </>,
   );
 }
 
