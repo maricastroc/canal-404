@@ -53,14 +53,14 @@ export function LoadingScreen({
             className="mt-4 h-9 overflow-hidden rounded-full border-[3px] border-ink bg-cream-2 shadow-[var(--shadow-ink-sm)]"
           >
             <div
-              className="relative h-full rounded-full border-r-[3px] border-ink bg-plum-500 transition-[width] duration-200 ease-out"
+              className="relative h-full overflow-hidden rounded-full border-r-[3px] border-ink bg-plum-500 transition-[width] duration-200 ease-out"
               style={{ width: `${Math.max(6, pct)}%` }}
             >
               <div
                 className="absolute inset-0"
                 style={{
                   backgroundImage:
-                    "repeating-linear-gradient(-45deg, rgba(255,255,255,.18) 0 10px, transparent 10px 20px)",
+                    "linear-gradient(-45deg, rgba(255,255,255,.18) 25%, transparent 25% 50%, rgba(255,255,255,.18) 50% 75%, transparent 75%)",
                   backgroundSize: "40px 40px",
                   animation: "stripe-scroll 0.8s linear infinite",
                 }}
