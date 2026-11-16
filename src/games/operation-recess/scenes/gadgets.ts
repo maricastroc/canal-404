@@ -8,6 +8,11 @@ import { cx, cy } from "./world";
 export type HeroState = { x: number; feet: number; top: number; vx: number; vy: number; grounded: boolean };
 
 const LOCKER_COLORS = [0xef4f43, 0x5cb9f0, 0x63d6c1, 0xffc83d];
+const LOCKER_RATTLE_MS = 460;
+const LOCKER_DEMO_MS = 900;
+const LIGHT_TOP = 150;
+const LIGHT_LOCK_MS = 600;
+const LIGHT_ORANGE = 0xff9b3d;
 
 export function makeGadgetTextures(scene: Phaser.Scene) {
   const tex = scene.textures;
@@ -68,8 +73,11 @@ export class Locker {
   readonly x: number;
   private body: Phaser.GameObjects.Image;
   private door: Phaser.GameObjects.Image;
+  private swing: Phaser.GameObjects.Graphics;
+  private lock: Phaser.GameObjects.Graphics;
   private state: "idle" | "rattle" | "open" | "closing" | "shut" = "idle";
   private until = 0;
+  private rattleFrom = 0;
   private hitUntil = 0;
   private alarm: Phaser.GameObjects.Text | null = null;
 
@@ -77,41 +85,93 @@ export class Locker {
     private api: StageApi,
     col: number,
     index: number,
+    private demo = false,
   ) {
     const scene = api.scene;
     const c = index % LOCKER_COLORS.length;
     this.x = cx(col) + TILE / 2;
     scene.add.image(this.x, FLOOR_Y + 3, "blob").setDepth(8.4).setDisplaySize(110, 26).setAlpha(0.7);
+    this.swing = scene.add.graphics().setDepth(5.6).setVisible(false);
+    this.swing.fillStyle(0xef4f43, 1);
+    this.swing.slice(this.hinge, FLOOR_Y + 2, 96, Math.PI * 0.5, Math.PI * 1.5, false);
+    this.swing.fillPath();
+    this.swing.lineStyle(4, INK_HEX, 0.8);
+    this.swing.beginPath();
+    this.swing.arc(this.hinge, FLOOR_Y + 2, 96, Math.PI * 0.5, Math.PI * 1.5, false);
+    this.swing.strokePath();
+    this.swing.setScale(1, 0.22).setY((FLOOR_Y + 2) * 0.78);
     this.body = scene.add.image(this.x, FLOOR_Y, `locker-body-${c}`).setOrigin(0.5, 1).setDepth(8.5);
-    this.door = scene.add.image(this.x - 40, FLOOR_Y - 6, `locker-door-${c}`).setOrigin(0, 1).setDepth(8.6);
+    this.door = scene.add.image(this.hinge, FLOOR_Y - 6, `locker-door-${c}`).setOrigin(0, 1).setDepth(8.6);
+    this.lock = scene.add.graphics().setDepth(8.7).setVisible(false);
+    const lx = 0;
+    const ly = 0;
+    this.lock.lineStyle(9, INK_HEX, 1);
+    this.lock.beginPath();
+    this.lock.arc(lx, ly - 6, 11, Math.PI, 0, false);
+    this.lock.strokePath();
+    this.lock.lineStyle(4, 0x9aa6b8, 1);
+    this.lock.beginPath();
+    this.lock.arc(lx, ly - 6, 11, Math.PI, 0, false);
+    this.lock.strokePath();
+    this.lock.fillStyle(INK_HEX, 1);
+    this.lock.fillRoundedRect(lx - 17, ly - 8, 34, 28, 6);
+    this.lock.fillStyle(0xffc83d, 1);
+    this.lock.fillRoundedRect(lx - 13, ly - 4, 26, 20, 4);
+    this.lock.fillStyle(INK_HEX, 1);
+    this.lock.fillCircle(lx, ly + 4, 3.5);
+    this.lock.setPosition(this.hinge + 64, FLOOR_Y - 104);
   }
 
   get hinge() {
     return this.x - 40;
   }
 
+  get shaking() {
+    return this.state === "rattle";
+  }
+
+  private rattle(t: number, ms: number) {
+    this.state = "rattle";
+    this.rattleFrom = t;
+    this.until = t + ms;
+    this.alarm = this.api.warn(this.x, FLOOR_Y - 270, ms);
+    this.api.sfx("alert", 0.55);
+    this.swing.setVisible(true).setAlpha(0.15);
+    if (this.api.reduced) return;
+    const reps = Math.max(2, Math.round(ms / 90) - 1);
+    this.api.scene.tweens.add({ targets: this.door, x: this.hinge + 3, duration: 45, yoyo: true, repeat: reps, onComplete: () => this.door.setX(this.hinge) });
+    this.api.scene.tweens.add({ targets: this.body, angle: { from: -1.4, to: 1.4 }, duration: 70, yoyo: true, repeat: Math.round(ms / 140), onComplete: () => this.body.setAngle(0) });
+  }
+
   update(t: number, h: HeroState) {
     switch (this.state) {
       case "idle":
-        if (h.x > this.x - 340 && h.x < this.x - 70 && h.vx > 40 && Math.abs(h.feet - FLOOR_Y) < 120) {
-          this.state = "rattle";
-          this.until = t + 460;
-          this.alarm = this.api.warn(this.x, FLOOR_Y - 270, 460);
-          this.api.sfx("alert", 0.55);
-          if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.door, x: this.hinge + 3, duration: 45, yoyo: true, repeat: 4, onComplete: () => this.door.setX(this.hinge) });
+        if (this.demo && h.x > this.x - 820 && h.x < this.x - 440) {
+          this.demo = false;
+          this.rattle(t, LOCKER_DEMO_MS);
+          return;
+        }
+        if (h.x > this.x - 380 && h.x < this.x - 70 && h.vx > 40 && h.grounded && Math.abs(h.feet - FLOOR_Y) < 10) {
+          this.demo = false;
+          this.rattle(t, LOCKER_RATTLE_MS);
         }
         return;
-      case "rattle":
+      case "rattle": {
+        const k = Phaser.Math.Clamp((t - this.rattleFrom) / (this.until - this.rattleFrom), 0, 1);
+        this.swing.setAlpha(0.15 + 0.4 * k + (Math.floor(t / 80) % 2) * 0.1 * k);
         if (t < this.until) return;
         this.state = "open";
         this.until = t + 1000;
         this.hitUntil = t + 300;
         this.alarm = null;
+        this.swing.setAlpha(0.7);
+        this.api.scene.tweens.add({ targets: this.swing, alpha: 0, delay: 200, duration: 260, onComplete: () => this.swing.setVisible(false) });
         this.api.sfx("door", 0.9);
         this.api.word("BAM!", this.hinge - 50, FLOOR_Y - 230, "#ffc83d", 44);
         if (this.api.reduced) this.door.setScale(-1, 1);
         else this.api.scene.tweens.add({ targets: this.door, scaleX: -1, duration: 110, ease: "Quad.easeOut" });
         return;
+      }
       case "open":
         if (t < this.until) return;
         this.state = "closing";
@@ -131,7 +191,7 @@ export class Locker {
   }
 
   bounds() {
-    return new Phaser.Geom.Rectangle(this.x - 48, FLOOR_Y - 226, 96, 226);
+    return new Phaser.Geom.Rectangle(this.hinge - 86, FLOOR_Y - 226, this.x + 48 - (this.hinge - 86), 226);
   }
 
   slam() {
@@ -139,8 +199,15 @@ export class Locker {
     this.state = "shut";
     this.alarm?.destroy();
     this.alarm = null;
-    this.api.scene.tweens.killTweensOf(this.door);
+    this.api.scene.tweens.killTweensOf([this.door, this.body, this.swing]);
     this.door.setX(this.hinge).setScale(1, 1);
+    this.body.setAngle(0);
+    this.swing.setVisible(false);
+    this.lock.setVisible(true);
+    if (!this.api.reduced) {
+      this.lock.setScale(1.4).setAlpha(0);
+      this.api.scene.tweens.add({ targets: this.lock, scale: 1, alpha: 1, duration: 180, ease: "Back.easeOut" });
+    }
     this.api.sfx("block", 0.9);
     this.api.word("BLAM!", this.x, FLOOR_Y - 250, "#9df0dc", 42);
     return true;
@@ -275,6 +342,8 @@ export class Rope {
   private g: Phaser.GameObjects.Graphics;
   private kids: Phaser.GameObjects.Image[];
   private swept = -1;
+  private slapped = -1;
+  private shadow: Phaser.GameObjects.Image;
   private handY = FLOOR_Y - 118;
   private period: number;
   private curve: Phaser.Curves.QuadraticBezier;
@@ -291,6 +360,7 @@ export class Rope {
       scene.add.image(this.x0 - 34, FLOOR_Y, "kid-lina-a").setOrigin(0.5, 1).setDepth(8.6).setScale(0.86),
       scene.add.image(this.x1 + 34, FLOOR_Y, "kid-mila-a").setOrigin(0.5, 1).setDepth(8.6).setScale(0.86).setFlipX(true),
     ];
+    this.shadow = scene.add.image((this.x0 + this.x1) / 2, FLOOR_Y - 4, "blob").setDepth(5.4).setDisplaySize(this.x1 - this.x0 + 40, 30).setAlpha(0);
     this.g = scene.add.graphics().setDepth(13);
     this.curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(this.x0, this.handY), new Phaser.Math.Vector2((this.x0 + this.x1) / 2, this.handY), new Phaser.Math.Vector2(this.x1, this.handY));
   }
@@ -313,16 +383,25 @@ export class Rope {
     const pose = low > 0 ? "a" : "b";
     this.kids[0].setTexture(`kid-lina-${pose}`);
     this.kids[1].setTexture(`kid-mila-${pose}`);
-    const sweep = Math.floor(t / this.period);
-    if (low > 0.93 && sweep !== this.swept && h.x > this.x0 + 16 && h.x < this.x1 - 16 && h.feet > FLOOR_Y - 30) {
-      this.swept = sweep;
+    this.shadow.setAlpha(0.1 + 0.75 * Math.max(0, low) ** 3);
+    const slap = Math.round(t / this.period);
+    if (low > 0.97 && slap !== this.slapped) {
+      this.slapped = slap;
+      const mid = (this.x0 + this.x1) / 2;
+      if (Math.abs(h.x - mid) < 1100) {
+        this.api.sfx("step", 0.7);
+        if (!this.api.reduced) for (const x of [mid - 90, mid + 90]) this.api.dust(x, FLOOR_Y, x < mid ? 1 : -1);
+      }
+    }
+    if (low > 0.93 && slap !== this.swept && h.x > this.x0 + 16 && h.x < this.x1 - 16 && h.feet > FLOOR_Y - 30) {
+      this.swept = slap;
       return true;
     }
     return false;
   }
 
-  near(x: number) {
-    return x > this.x0 - 500 && x < this.x0;
+  get mid() {
+    return (this.x0 + this.x1) / 2;
   }
 }
 
@@ -381,9 +460,10 @@ export class Searchlight {
   private lamp: Phaser.GameObjects.Image;
   private state: "sweep" | "spot" | "alarm" = "sweep";
   private until = 0;
+  private since = 0;
   private clock = 0;
   spotX: number;
-  private readonly mid: number;
+  readonly mid: number;
   private readonly span: number;
 
   constructor(
@@ -398,47 +478,71 @@ export class Searchlight {
     this.g = scene.add.graphics().setDepth(5.6);
   }
 
-  update(t: number, dt: number, h: HeroState) {
-    if (this.state === "sweep") this.clock += dt * 1000;
-    if (this.state !== "alarm") this.spotX = this.mid + Math.sin((this.clock / this.def.period) * Math.PI * 2) * this.span;
-    else this.spotX = Phaser.Math.Linear(this.spotX, h.x, 0.12);
-    const inside = Math.abs(h.x - this.spotX) < 96 && h.feet > FLOOR_Y - 150;
+  private cone(y: number) {
+    const k = Phaser.Math.Clamp((y - LIGHT_TOP) / (FLOOR_Y - LIGHT_TOP), 0, 1);
+    return { x: this.mid + (this.spotX - this.mid) * k, half: 22 + 96 * k };
+  }
+
+  private covers(h: HeroState) {
+    const c = this.cone(h.feet - 30);
+    return Math.abs(h.x - c.x) < c.half * 0.85;
+  }
+
+  update(t: number, dt: number, h: HeroState, ghost = false) {
+    if (this.state === "sweep") {
+      this.clock += dt * 1000;
+      this.spotX = this.mid + Math.sin((this.clock / this.def.period) * Math.PI * 2) * this.span;
+    }
+    const inside = !ghost && this.covers(h);
     let caught = false;
     if (this.state === "sweep" && inside) {
       this.state = "spot";
-      this.until = t + 340;
-      this.api.warn(h.x, h.top - 70, 340);
+      this.since = t;
+      this.until = t + LIGHT_LOCK_MS;
+      this.api.warn(h.x, h.top - 70, LIGHT_LOCK_MS);
       this.api.sfx("alert", 0.6);
     } else if (this.state === "spot") {
       if (!inside) this.state = "sweep";
       else if (t >= this.until) {
         this.state = "alarm";
-        this.until = t + 1400;
+        this.since = t;
+        this.until = t + 900;
         caught = true;
         this.api.word("FLAGRA!", h.x, h.top - 90, "#ef4f43", 44);
       }
     } else if (this.state === "alarm" && t >= this.until) this.state = "sweep";
-    this.draw();
+    this.draw(t);
     return caught;
   }
 
-  private draw() {
+  private draw(t: number) {
     const g = this.g;
     g.clear();
+    const lock = this.state === "spot" ? Phaser.Math.Clamp((t - this.since) / LIGHT_LOCK_MS, 0, 1) : 0;
     const red = this.state === "alarm";
-    const color = red ? 0xef4f43 : 0xfff2a8;
-    g.fillStyle(color, red ? 0.2 : 0.16);
-    g.fillTriangle(this.mid - 22, 150, this.mid + 22, 150, this.spotX - 118, FLOOR_Y);
-    g.fillTriangle(this.mid + 22, 150, this.spotX - 118, FLOOR_Y, this.spotX + 118, FLOOR_Y);
-    g.fillStyle(color, red ? 0.5 : 0.38);
+    const blink = this.state === "spot" && Math.floor(t / 90) % 2 === 0;
+    const color = red ? 0xef4f43 : this.state === "spot" ? (blink ? LIGHT_ORANGE : 0xffd36b) : 0xfff2a8;
+    const edge = red ? 0xef4f43 : this.state === "spot" ? LIGHT_ORANGE : 0xffc83d;
+    const fade = red ? 1 - Phaser.Math.Clamp((t - this.since) / 900, 0, 1) * 0.5 : 1;
+    g.fillStyle(color, (red ? 0.22 : this.state === "spot" ? 0.26 : 0.16) * fade);
+    g.fillTriangle(this.mid - 22, LIGHT_TOP, this.mid + 22, LIGHT_TOP, this.spotX - 118, FLOOR_Y);
+    g.fillTriangle(this.mid + 22, LIGHT_TOP, this.spotX - 118, FLOOR_Y, this.spotX + 118, FLOOR_Y);
+    g.fillStyle(color, (red ? 0.5 : this.state === "spot" ? 0.58 : 0.38) * fade);
     g.fillEllipse(this.spotX, FLOOR_Y + 6, 236, 34);
-    g.lineStyle(3, red ? 0xef4f43 : 0xffc83d, 0.9);
+    g.lineStyle(3, edge, 0.9);
     g.strokeEllipse(this.spotX, FLOOR_Y + 6, 236, 34);
-    this.lamp.setTint(red ? 0xff8a7a : 0xfff0a0);
+    if (this.state === "spot") {
+      const w = 236 - 150 * lock;
+      g.lineStyle(9, INK_HEX, 0.9);
+      g.strokeEllipse(this.spotX, FLOOR_Y + 6, w, 34 - 16 * lock);
+      g.lineStyle(5, 0xef4f43, 1);
+      g.strokeEllipse(this.spotX, FLOOR_Y + 6, w, 34 - 16 * lock);
+    }
+    this.lamp.setTint(red ? 0xff8a7a : this.state === "spot" ? 0xffc06a : 0xfff0a0);
   }
 
-  near(x: number) {
-    return Math.abs(x - this.mid) < this.span + 600;
+  get reach() {
+    return this.span + 118;
   }
 }
 

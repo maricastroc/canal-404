@@ -5,7 +5,7 @@ import { LEVELS, type LevelDef } from "../levels";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { Inspector } from "./boss";
-import { makeEnemy, Wave, WhistleMonitor, type Enemy, type HeroView, type StageApi } from "./enemies";
+import { makeEnemy, ShieldMonitor, Wave, WhistleMonitor, type Enemy, type HeroView, type StageApi } from "./enemies";
 import { Ball, BallSpawner, Bell, Cart, Item } from "./hazards";
 import { Locker, makeGadgetTextures, Pad, Rope, Searchlight, Watcher, WobblyShelf, type HeroState } from "./gadgets";
 import { RecessHud } from "./hud";
@@ -14,8 +14,10 @@ import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
 
 type Mode = "attract" | "play" | "ko" | "won";
-type Lesson = "walk" | "jump" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "wobbly" | "high";
-type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean };
+type Lesson = "walk" | "jump" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "high";
+type Anchor = () => { x: number; y: number } | null;
+type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean; anchor?: Anchor; tip?: Phaser.GameObjects.Graphics; at?: { x: number; y: number } };
+type Hint = { lesson: Lesson; anchor: Anchor; past: number };
 type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
@@ -25,20 +27,22 @@ const FRAME_MAX_MS = 200;
 const HIT_WORDS = ["POW!", "TOMA!", "PAF!", "BOING!"];
 const learned = new Set<Lesson>();
 const HINTS: Partial<Record<Lesson, string>> = {
-  locker: "ARMÁRIO TREMENDO? VAI ABRIR!",
+  locker: "TREMEU? PARE OU DÊ UMA ESPADADA!",
   watcher: "JORNAL ABAIXOU? ESTÁTUA!",
-  rope: "PULE QUANDO A CORDA PASSAR!",
+  rope: "PULE QUANDO A CORDA DESCER!",
   pad: "PULE NO COLCHONETE!",
-  light: "FUJA DA LUZ DO INSPETOR!",
+  light: "A LUZ PAROU EM VOCÊ? SAIA DELA!",
+  shield: "A PLACA BLOQUEIA: ATAQUE POR TRÁS!",
   wobbly: "PRATELEIRA BAMBA: NÃO PARE!",
   high: "APITO ALTO? FIQUE NO CHÃO!",
 };
 const HINT_SPEECH: Partial<Record<Lesson, string>> = {
-  locker: "Cuidado: armário tremendo vai abrir. Espere ou dê uma espadada nele.",
+  locker: "Armário tremendo abre com tudo. Pare antes da porta ou feche com uma espadada.",
   watcher: "Vigia à frente. Quando ele baixar o jornal, fique parado.",
-  rope: "Corda de pular à frente. Pule quando ela passar pelo chão.",
+  rope: "Corda de pular à frente. Pule quando ela descer para bater no chão.",
   pad: "Colchonete à frente. Pule nele para ir bem alto.",
-  light: "Holofote do Inspetor. Não fique na luz.",
+  light: "Luz do Inspetor. Passe quando ela estiver longe. Se ela parar em você, saia antes que fique vermelha.",
+  shield: "Monitor da placa de PARE. De frente, a placa bloqueia. Ataque pelas costas ou quando ele baixar a placa.",
   wobbly: "Prateleira bamba. Ela cai logo depois que você pisa.",
   high: "Este monitor solta apitos altos e baixos. Pule só os baixos.",
 };
@@ -86,6 +90,7 @@ export class StageScene extends Phaser.Scene {
   private tutorialFrom = 0;
   private lesson: Lesson | null = null;
   private lessonUntil = 0;
+  private lessonPast = Infinity;
   private hintsAt = 0;
   private shown = new Set<Lesson>();
   private chips: Chip[] = [];
@@ -134,6 +139,7 @@ export class StageScene extends Phaser.Scene {
     this.tutorialOn = false;
     this.lesson = null;
     this.lessonUntil = 0;
+    this.lessonPast = Infinity;
     this.hintsAt = 0;
     this.shown = new Set();
     this.chips = [];
@@ -192,7 +198,7 @@ export class StageScene extends Phaser.Scene {
     for (const col of this.level.checkpoints) this.bells.push(new Bell(this, col));
     for (const b of this.level.balls ?? []) this.spawners.push(new BallSpawner(this.api, b, (ball) => this.balls.push(ball)));
     makeGadgetTextures(this);
-    (this.level.lockers ?? []).forEach((col, i) => this.lockers.push(new Locker(this.api, col, i)));
+    (this.level.lockers ?? []).forEach((col, i) => this.lockers.push(new Locker(this.api, col, i, i === 0 && !resume)));
     for (const w of this.level.watchers ?? []) this.watchers.push(new Watcher(this.api, w.col, w.look, this.ctx.fonts.display, (x, dir) => this.mode === "play" && this.waves.push(new Wave(this, x, FLOOR_Y, dir, true))));
     for (const r of this.level.ropes ?? []) this.ropes.push(new Rope(this.api, r));
     for (const col of this.level.pads ?? []) this.pads.push(new Pad(this.api, col));
@@ -312,7 +318,7 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     this.hud.flash(this.level.title.toUpperCase(), "#ffc83d", 1300, this.level.intro);
-    this.hintsAt = this.t + 2400;
+    this.hintsAt = this.t + 900;
     this.announce(`Fase ${this.levelIndex + 1} de ${LEVELS.length}: ${this.level.title}. ${this.level.intro} Setas andam, espaço pula, J ataca.`);
     if (this.levelIndex === 0 && !(["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l))) {
       this.tutorialOn = true;
@@ -387,6 +393,7 @@ export class StageScene extends Phaser.Scene {
     this.shown.add(lesson);
     this.lesson = lesson;
     this.lessonUntil = this.t + 9000;
+    this.lessonPast = Infinity;
     if (lesson === "walk") this.showChip("PARA ANDAR", TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
     if (lesson === "jump") {
       this.showChip(TOUCH_UI ? "PARA PULAR" : "ESPAÇO PARA PULAR", TOUCH_UI ? ["chip-jump"] : []);
@@ -410,7 +417,7 @@ export class StageScene extends Phaser.Scene {
     this.hideChip();
   }
 
-  private showChip(text: string, icons: string[] = []) {
+  private showChip(text: string, icons: string[] = [], anchor?: Anchor) {
     this.hideChip();
     const label = this.add.text(0, 0, text, { fontFamily: this.ctx.fonts.display, fontSize: "24px", color: "#1d1830", padding: { x: 2, y: 3 } }).setOrigin(0, 0.5);
     const iconW = 30;
@@ -433,7 +440,17 @@ export class StageScene extends Phaser.Scene {
     if (icons.length) x += 4;
     label.setX(x);
     parts.push(label);
-    const chip: Chip = { box: this.add.container(this.hero.x, this.hero.top - 34, parts).setDepth(45).setAlpha(0), half: w / 2, lift: 0, dx: 0, leaving: false };
+    let tip: Phaser.GameObjects.Graphics | undefined;
+    if (anchor) {
+      tip = this.add.graphics();
+      tip.fillStyle(INK_HEX, 1);
+      tip.fillTriangle(-14, h / 2 - 2, 14, h / 2 - 2, 0, h / 2 + 18);
+      tip.fillStyle(0xffc83d, 1);
+      tip.fillTriangle(-9, h / 2 - 3, 9, h / 2 - 3, 0, h / 2 + 11);
+      parts.splice(1, 0, tip);
+    }
+    const start = anchor?.() ?? { x: this.hero.x, y: this.hero.top - 34 };
+    const chip: Chip = { box: this.add.container(start.x, start.y, parts).setDepth(45).setAlpha(0), half: w / 2, lift: 0, dx: 0, leaving: false, anchor, tip, at: start };
     this.chips.push(chip);
     if (this.ctx.reducedMotion) {
       this.tweens.add({ targets: chip.box, alpha: 1, duration: 160 });
@@ -465,9 +482,18 @@ export class StageScene extends Phaser.Scene {
     if (!this.chips.length) return;
     const foe = this.enemies.filter((e) => !e.dead && Math.abs(e.x - this.hero.x) < 420).sort((a, b) => Math.abs(a.x - this.hero.x) - Math.abs(b.x - this.hero.x))[0];
     const want = foe ? -Math.sign(foe.x - this.hero.x) * 70 : 0;
+    const view = this.cameras.main.worldView;
     for (const chip of this.chips) {
+      if (chip.anchor) {
+        const at = chip.anchor() ?? chip.at!;
+        chip.at = at;
+        const x = Phaser.Math.Clamp(at.x, view.x + chip.half + 16, view.right - chip.half - 16);
+        const y = Phaser.Math.Clamp(at.y, view.y + 150, view.bottom - 160);
+        chip.box.setPosition(x, y - chip.lift);
+        chip.tip?.setX(Phaser.Math.Clamp(at.x - x, -chip.half + 22, chip.half - 22));
+        continue;
+      }
       chip.dx = Phaser.Math.Linear(chip.dx, want, 0.12);
-      const view = this.cameras.main.worldView;
       const x = Phaser.Math.Clamp(this.hero.x + chip.dx, view.x + chip.half + 16, view.right - chip.half - 16);
       chip.box.setPosition(x, this.hero.top - 34 - chip.lift);
     }
@@ -778,7 +804,6 @@ export class StageScene extends Phaser.Scene {
     if (!this.tutorialOn) return;
     const h = this.hero;
     if (Math.abs(h.x - this.tutorialFrom) > 140) this.learn("walk");
-    if (this.lesson && this.t > this.lessonUntil) this.endLesson();
     if (this.lesson) return;
     if (!learned.has("walk")) return;
     if (!learned.has("jump") && h.x > cx(4)) this.teach("jump");
@@ -933,7 +958,9 @@ export class StageScene extends Phaser.Scene {
     if (this.hero.body.blocked.down && this.world.groundAt(view.x - 70) && this.world.groundAt(view.x + 70) && t > this.invulnUntil) {
       this.safe = { x: this.hero.rect.x, y: this.hero.rect.y };
     }
+    if (this.lesson && (this.t > this.lessonUntil || this.hero.x > this.lessonPast)) this.endLesson();
     this.updateTutorial();
+    this.updateHints(this.hero.x);
     this.updateProgress();
     if (this.exitZone && Phaser.Geom.Intersects.RectangleToRectangle(hr, this.exitZone)) this.win();
     if (this.boss && !this.arena.entered && view.x > this.arena.left + 260) this.enterArena();
@@ -961,9 +988,8 @@ export class StageScene extends Phaser.Scene {
       p.boing();
       this.word("BOING!", p.x, p.top - 60, "#5cb9f0", 40);
     }
-    for (const l of this.spotlights) if (l.update(t, dt, h)) this.hurt(l.spotX);
+    for (const l of this.spotlights) if (l.update(t, dt, h, t < this.invulnUntil)) this.hurt(l.spotX);
     for (const s of this.shelves) s.update(t, h);
-    this.updateHints(h.x);
   }
 
   private trip() {
@@ -972,30 +998,45 @@ export class StageScene extends Phaser.Scene {
     this.hero.knock(this.hero.x + this.hero.facing * 10, this.t, 300, 320);
     this.word("TROPEÇOU!", this.hero.x, this.hero.body.top - 40, "#f06ba8", 40);
     this.sfx("land", 0.9);
-    this.announce("Tropeçou na corda! Pule quando ela passar pelo chão.");
+    this.announce("Tropeçou na corda! Pule quando ela descer.");
+  }
+
+  private nextHint(x: number): Hint | null {
+    const view = this.cameras.main.worldView;
+    const seen = (at: number) => at > view.x + 140 && at < view.right - 140;
+    const fixed = (ax: number, ay: number) => () => ({ x: ax, y: ay });
+    const follow = (e: Enemy) => () => (e.dead ? null : { x: e.x, y: e.body.top - 150 });
+    const fresh = (lesson: Lesson) => !learned.has(lesson) && !this.shown.has(lesson);
+    const locker = this.lockers.find((l) => l.shaking && seen(l.x) && x < l.x);
+    if (locker && fresh("locker")) return { lesson: "locker", anchor: fixed(locker.x, FLOOR_Y - 330), past: locker.x + 60 };
+    const watcher = this.watchers.find((w) => x > w.x - 900 && x < w.x - 400 && seen(w.x));
+    if (watcher && fresh("watcher")) return { lesson: "watcher", anchor: fixed(watcher.x, FLOOR_Y - 500), past: watcher.x };
+    const rope = this.ropes.find((r) => seen(r.mid) && x < r.x0);
+    if (rope && fresh("rope")) return { lesson: "rope", anchor: fixed(rope.mid, FLOOR_Y - 300), past: rope.x1 };
+    const pad = this.pads.find((p) => seen(p.x) && x < p.x - 120);
+    if (pad && fresh("pad")) return { lesson: "pad", anchor: fixed(pad.x, FLOOR_Y - 220), past: pad.x };
+    const light = this.spotlights.find((l) => seen(l.mid) && x < l.mid + l.reach);
+    if (light && fresh("light")) return { lesson: "light", anchor: fixed(light.mid, FLOOR_Y - 330), past: light.mid + light.reach };
+    const shield = this.enemies.find((e) => !e.dead && e instanceof ShieldMonitor && seen(e.x) && x < e.x);
+    if (shield && fresh("shield")) return { lesson: "shield", anchor: follow(shield), past: Infinity };
+    const shelf = this.shelves.find((s) => s.near(x) && seen(s.x0 + s.w / 2));
+    if (shelf && fresh("wobbly")) return { lesson: "wobbly", anchor: fixed(shelf.x0 + shelf.w / 2, shelf.y - 150), past: shelf.x0 + shelf.w };
+    const high = this.enemies.find((e) => !e.dead && e instanceof WhistleMonitor && e.mixed && seen(e.x) && Math.abs(e.x - x) < 900);
+    if (high && fresh("high")) return { lesson: "high", anchor: follow(high), past: Infinity };
+    return null;
   }
 
   private updateHints(x: number) {
     if (this.lesson || this.mode !== "play" || this.t < this.hintsAt) return;
-    const wants: [Lesson, boolean][] = [
-      ["locker", this.lockers.some((l) => x > l.x - 520 && x < l.x - 200)],
-      ["watcher", this.watchers.some((w) => x > w.x - 900 && x < w.x - 400)],
-      ["rope", this.ropes.some((r) => r.near(x))],
-      ["pad", this.pads.some((p) => x > p.x - 520 && x < p.x - 120)],
-      ["light", this.spotlights.some((l) => l.near(x))],
-      ["wobbly", this.shelves.some((s) => s.near(x))],
-      ["high", this.enemies.some((e) => !e.dead && e instanceof WhistleMonitor && e.mixed && Math.abs(e.x - x) < 900)],
-    ];
-    for (const [lesson, on] of wants) {
-      if (!on || learned.has(lesson) || this.shown.has(lesson)) continue;
-      this.shown.add(lesson);
-      learned.add(lesson);
-      this.lesson = lesson;
-      this.lessonUntil = this.t + 4200;
-      this.showChip(HINTS[lesson]!);
-      this.announce(HINT_SPEECH[lesson]!);
-      return;
-    }
+    const hint = this.nextHint(x);
+    if (!hint) return;
+    this.shown.add(hint.lesson);
+    learned.add(hint.lesson);
+    this.lesson = hint.lesson;
+    this.lessonUntil = this.t + 5000;
+    this.lessonPast = hint.past;
+    this.showChip(HINTS[hint.lesson]!, [], hint.anchor);
+    this.announce(HINT_SPEECH[hint.lesson]!);
   }
 
   private resolveAttack(atk: Phaser.Geom.Rectangle, t: number) {
