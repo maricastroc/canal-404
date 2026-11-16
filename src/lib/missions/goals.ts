@@ -211,15 +211,15 @@ export function missionNotes(mission: { game: GameSlug; level?: string | null; g
     const stars = starsFor(parts.value, level.par);
     if (stars < 3) {
       notes.push(
-        `Nesta missão, você precisa usar ${plural(parts.value, "peça", "peças")}. Por isso, pode ganhar até ${plural(stars, "estrela", "estrelas")} na fase. Mas fique tranquilo: para cumprir a missão, o que conta é completar o desafio!`,
+        `Esta missão pede ${plural(parts.value, "peça", "peças")}, então a fase rende no máximo ${plural(stars, "estrela", "estrelas")}. Tudo bem: para a missão, o que conta é concluir o desafio.`,
       );
     }
   }
-  if (mission.game === "operation-recess") notes.push("Na missão, toda tentativa começa do início da fase: os sinos tocam, mas não salvam.");
+  if (mission.game === "operation-recess") notes.push("Na missão, toda tentativa começa do início da fase. Os sinos tocam, mas não salvam o progresso.");
   const kid = mission.setup?.character;
   if (mission.game === "pajama-war" && kid) {
     const index = KIDS.indexOf(kid as KidId);
-    if (index >= 0) notes.push(`Nesta missão você joga com ${kidName(index)}. Sua criança favorita continua a mesma.`);
+    if (index >= 0) notes.push(`Nesta missão, você joga com ${kidName(index)}. Sua criança favorita continua a mesma fora dela.`);
   }
   return notes;
 }
