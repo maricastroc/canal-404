@@ -39,4 +39,4 @@ export const SCORE = { common: 100, whistle: 150, shield: 200, sticker: 50, wave
 export const ZOOM = 1.22;
 export const ARENA_ZOOM = 1;
 export const ARENA_GROW = 1.2;
-export const KID_SCALE = 0.95;
+export const KID_SCALE = 1;

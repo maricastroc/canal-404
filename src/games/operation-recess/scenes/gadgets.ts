@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { FLOOR_Y, TILE } from "../config";
+import { FLOOR_Y, KID_SCALE, TILE } from "../config";
 import type { LevelDef } from "../levels";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import type { StageApi } from "./enemies";
@@ -336,6 +336,8 @@ export class Watcher {
   }
 }
 
+const ROPE_HAND = { x: 59, y: 134 };
+
 export class Rope {
   readonly x0: number;
   readonly x1: number;
@@ -344,7 +346,7 @@ export class Rope {
   private swept = -1;
   private slapped = -1;
   private shadow: Phaser.GameObjects.Image;
-  private handY = FLOOR_Y - 118;
+  private handY = FLOOR_Y - ROPE_HAND.y * KID_SCALE;
   private period: number;
   private curve: Phaser.Curves.QuadraticBezier;
 
@@ -357,8 +359,8 @@ export class Rope {
     this.x1 = cx(def.col + def.w);
     this.period = def.period;
     this.kids = [
-      scene.add.image(this.x0 - 34, FLOOR_Y, "kid-lina-a").setOrigin(0.5, 1).setDepth(8.6).setScale(0.86),
-      scene.add.image(this.x1 + 34, FLOOR_Y, "kid-mila-a").setOrigin(0.5, 1).setDepth(8.6).setScale(0.86).setFlipX(true),
+      scene.add.image(this.x0 - ROPE_HAND.x * KID_SCALE, FLOOR_Y, "kid-lina-a").setOrigin(0.5, 1).setDepth(8.6).setScale(KID_SCALE),
+      scene.add.image(this.x1 + ROPE_HAND.x * KID_SCALE, FLOOR_Y, "kid-mila-a").setOrigin(0.5, 1).setDepth(8.6).setScale(KID_SCALE).setFlipX(true),
     ];
     this.shadow = scene.add.image((this.x0 + this.x1) / 2, FLOOR_Y - 4, "blob").setDepth(5.4).setDisplaySize(this.x1 - this.x0 + 40, 30).setAlpha(0);
     this.g = scene.add.graphics().setDepth(13);
@@ -370,7 +372,7 @@ export class Rope {
     const a = k * Math.PI * 2;
     const low = Math.cos(a);
     const front = Math.sin(a) > 0;
-    const mid = this.handY + 112 * low;
+    const mid = this.handY + (FLOOR_Y - 6 - this.handY) * low;
     const ctrl = 2 * mid - this.handY;
     const g = this.g;
     g.clear().setDepth(front ? 21 : 13);
