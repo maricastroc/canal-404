@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   experimental: {
     turbopackChunking: { minChunkSize: 20000 },
+    globalNotFound: true,
   },
   turbopack: {
     root: process.cwd(),
