@@ -1,23 +1,17 @@
 import * as Phaser from "phaser";
-import { AREA_TITLES, MAP_POS, W, type AreaId } from "../config";
+import { MAP_POS, W, type AreaId } from "../config";
 import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, type FolkKey, type State } from "../save";
-import { FOLK_LINE, FOUND_TEXT, ITEM_INFO, POSTER_INFO, mainObjective, sideQuests } from "../story";
+import { ITEM_ICON, POSTER_AREA, foundText, mainObjective, sideQuests } from "../story";
+import type { VacationText } from "../text/pt-BR";
 import { INK_HEX, type Fonts } from "../../kit/ui";
 
 export type Tab = "missions" | "found" | "collection" | "people" | "map";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "missions", label: "Missões" },
-  { id: "found", label: "Descobertas" },
-  { id: "collection", label: "Coleção" },
-  { id: "people", label: "Personagens" },
-  { id: "map", label: "Mapa" },
-];
+const TABS: Tab[] = ["missions", "found", "collection", "people", "map"];
 const BOOK = { x: 170, y: 110, w: 1580, h: 900 };
 const RULE0 = BOOK.y + 150;
 const RULE = 52;
 const RULES = 14;
 const ruleY = (k: number) => RULE0 + k * RULE;
-const SECRET_NAMES: Record<string, string> = { room404: "O hóspede do quarto 404", machine: "A máquina escondida", lento: "Seu Lento chegou" };
 const FOLKS: FolkKey[] = ["bigodes", "marola", "capi", "tilt", "placar", "marisa", "clique", "lento", "psiu", "cavuca", "chiado", "mascot"];
 const FACE: Record<FolkKey, string> = Object.fromEntries(FOLKS.map((id) => [id, `face-${id}-normal`])) as Record<FolkKey, string>;
 const FOLK_COLOR: Record<FolkKey, number> = {
@@ -55,6 +49,7 @@ export class Journal {
     private scene: Phaser.Scene,
     private fonts: Fonts,
     private reduced: boolean,
+    private text: VacationText,
   ) {
     const dim = scene.add.rectangle(0, 0, W, 1080, 0x140f26, 0.6).setOrigin(0, 0);
     const g = scene.add.graphics();
@@ -82,12 +77,12 @@ export class Journal {
     }
     const parts: Phaser.GameObjects.GameObject[] = [dim, g];
     let x = BOOK.x + 110;
-    for (const t of TABS) {
-      const label = scene.add.text(0, 0, t.label.toUpperCase(), { fontFamily: fonts.display, fontSize: "26px", color: "#1d1830", padding: { x: 2, y: 4 } }).setOrigin(0.5);
+    for (const id of TABS) {
+      const label = scene.add.text(0, 0, text.journal.tabs[id].toUpperCase(), { fontFamily: fonts.display, fontSize: "26px", color: "#1d1830", padding: { x: 2, y: 4 } }).setOrigin(0.5);
       const w = label.width + 56;
       const tg = scene.add.graphics();
       label.setPosition(x + w / 2, BOOK.y + 48);
-      this.tabs.push({ id: t.id, g: tg, t: label, x, w });
+      this.tabs.push({ id, g: tg, t: label, x, w });
       parts.push(tg, label);
       x += w + 14;
     }
@@ -127,8 +122,8 @@ export class Journal {
   }
 
   step(dir: number, s: State, area: AreaId, ax: number, ay: number) {
-    const i = TABS.findIndex((t) => t.id === this.tab);
-    this.switchTo(TABS[(i + dir + TABS.length) % TABS.length].id, s, area, ax, ay);
+    const i = TABS.indexOf(this.tab);
+    this.switchTo(TABS[(i + dir + TABS.length) % TABS.length], s, area, ax, ay);
   }
 
   hit(px: number, py: number): Tab | "close" | null {
@@ -214,9 +209,10 @@ export class Journal {
 
   private fill(s: State, area: AreaId, ax: number, ay: number) {
     const L = BOOK.x + 120;
+    const T = this.text.journal;
     if (this.tab === "missions") {
-      const main = mainObjective(s);
-      this.head(L, 0, "Missão principal");
+      const main = mainObjective(s, this.text);
+      this.head(L, 0, T.mainHead);
       const top = ruleY(0) + 12;
       const h = RULE * 2 - 20;
       const g = this.scene.add.graphics();
@@ -226,18 +222,18 @@ export class Journal {
       g.strokeRoundedRect(L, top, 1340, h, 18);
       this.content.add(g);
       this.content.add(this.scene.add.image(L + 46, top + h / 2, "ui-star").setScale(1));
-      this.txt(L + 92, top + 6, "Descobrir por que o resort continua ligado", 20, "#7b62c4");
+      this.txt(L + 92, top + 6, T.mainGoal, 20, "#7b62c4");
       this.txt(L + 92, top + 34, main.text, 30);
       this.check(L + 1282, top + (h - 38) / 2, main.done);
-      this.head(L, 3, "Missões secundárias");
-      const side = sideQuests(s);
+      this.head(L, 3, T.sideHead);
+      const side = sideQuests(s, this.text);
       side.forEach((q, i) => {
         this.line(L + 8, 4 + i, q.text, 30, q.done ? "#2fa996" : "#1d1830");
         this.check(L + 1282, ruleY(4 + i) - 44, q.done);
       });
       const kb = 5 + side.length;
-      this.head(L, kb, "Na mochila");
-      if (!s.items.length) this.line(L + 8, kb + 1, "Vazia. Por enquanto.", 28, "#7d6fb0");
+      this.head(L, kb, T.bagHead);
+      if (!s.items.length) this.line(L + 8, kb + 1, T.bagEmpty, 28, "#7d6fb0");
       s.items.forEach((it, i) => {
         const x = L + i * 270;
         const y = ruleY(kb) + 12;
@@ -248,16 +244,16 @@ export class Journal {
         box.lineStyle(4, INK_HEX, 1);
         box.strokeRoundedRect(x, y, 250, bh, 16);
         this.content.add(box);
-        this.content.add(this.scene.add.image(x + 46, y + bh / 2, ITEM_INFO[it].icon).setDisplaySize(64, 64));
-        const name = this.txt(x + 88, 0, ITEM_INFO[it].name, 22, "#1d1830", { wordWrap: { width: 150 }, lineSpacing: 0 });
+        this.content.add(this.scene.add.image(x + 46, y + bh / 2, ITEM_ICON[it]).setDisplaySize(64, 64));
+        const name = this.txt(x + 88, 0, this.text.items[it], 22, "#1d1830", { wordWrap: { width: 150 }, lineSpacing: 0 });
         name.setY(y + (bh - name.height) / 2);
       });
       return;
     }
     if (this.tab === "found") {
-      this.head(L, 0, "Descobertas importantes");
-      const found = s.found.filter((f) => FOUND_TEXT[f]);
-      if (!found.length) this.line(L + 8, 1, "Nada ainda. Explore e examine as coisas!", 28, "#7d6fb0");
+      this.head(L, 0, T.foundHead);
+      const found = s.found.filter((f) => foundText(this.text, f));
+      if (!found.length) this.line(L + 8, 1, T.foundEmpty, 28, "#7d6fb0");
       const two = found.length > RULES - 1;
       const per = two ? Math.ceil(found.length / 2) : found.length;
       const size = two ? 23 : 28;
@@ -265,12 +261,12 @@ export class Journal {
         const x = L + (two ? Math.floor(i / per) * 690 : 0);
         const k = 1 + (i % per);
         this.icon("ui-bulb", x + 20, k, size, two ? 0.7 : 0.85);
-        this.line(x + 52, k, FOUND_TEXT[f], size);
+        this.line(x + 52, k, foundText(this.text, f) ?? f, size);
       });
       return;
     }
     if (this.tab === "collection") {
-      this.head(L, 0, `Pôsteres perdidos (${s.posters.length}/${ALL_POSTERS.length})`);
+      this.head(L, 0, T.posters(s.posters.length, ALL_POSTERS.length));
       const top = ruleY(0) + 14;
       const ch = ruleY(6) - 8 - top;
       ALL_POSTERS.forEach((p, i) => {
@@ -284,25 +280,25 @@ export class Journal {
         this.content.add(card);
         if (got) this.content.add(this.scene.add.image(x + 120, top + 112, `poster-${p}`).setDisplaySize(142, 187));
         else this.content.add(this.scene.add.text(x + 120, top + 112, "?", { fontFamily: this.fonts.display, fontSize: "90px", color: "#a8822f" }).setOrigin(0.5));
-        const title = this.txt(x + 120, 0, got ? POSTER_INFO[p].title : AREA_TITLES[POSTER_INFO[p].area], 21, "#1d1830", { align: "center", wordWrap: { width: 216 }, lineSpacing: 0 }).setOrigin(0.5, 0);
+        const title = this.txt(x + 120, 0, got ? this.text.posters[p].title : this.text.areas[POSTER_AREA[p]], 21, "#1d1830", { align: "center", wordWrap: { width: 216 }, lineSpacing: 0 }).setOrigin(0.5, 0);
         title.setY(top + ch - 14 - title.height);
       });
-      this.head(L, 7, `Fichas douradas (${s.tokens.length}/${ALL_TOKENS.length})`);
+      this.head(L, 7, T.tokens(s.tokens.length, ALL_TOKENS.length));
       ALL_TOKENS.forEach((tk, i) => {
         const img = this.scene.add.image(L + 50 + i * 110, (ruleY(8) + ruleY(9)) / 2, "item-token").setDisplaySize(84, 84);
         if (!s.tokens.includes(tk)) img.setTintFill(0xd9c39a);
         this.content.add(img);
       });
-      this.head(L + 700, 7, `Segredos (${s.secrets.length}/${ALL_SECRETS.length})`);
+      this.head(L + 700, 7, T.secrets(s.secrets.length, ALL_SECRETS.length));
       ALL_SECRETS.forEach((sec, i) => {
         const got = s.secrets.includes(sec);
         this.icon(got ? "ui-star" : "ui-dot", L + 722, 8 + i, 28, 0.75);
-        this.line(L + 756, 8 + i, got ? SECRET_NAMES[sec] : "???", 28, got ? "#1d1830" : "#7d6fb0");
+        this.line(L + 756, 8 + i, got ? this.text.secrets[sec] : "???", 28, got ? "#1d1830" : "#7d6fb0");
       });
       return;
     }
     if (this.tab === "people") {
-      this.head(L, 0, `Personagens (${s.met.length}/${FOLKS.length})`);
+      this.head(L, 0, T.people(s.met.length, FOLKS.length));
       FOLKS.forEach((id, i) => {
         const col = i % 3;
         const row = Math.floor(i / 3);
@@ -331,8 +327,8 @@ export class Journal {
           ring.strokeCircle(cx, cy, 52);
           this.content.add(ring);
         } else this.content.add(this.scene.add.text(cx, cy, "?", { fontFamily: this.fonts.display, fontSize: "56px", color: "#a8822f" }).setOrigin(0.5));
-        this.line(x + 124, k, met ? FOLK_LINE[id].name : "???", 27);
-        this.line(x + 124, k + 1, met ? FOLK_LINE[id].line : "Ainda não conheceu.", 22, "#3a3157", { wordWrap: { width: 318 } });
+        this.line(x + 124, k, met ? this.text.speakers[id] : "???", 27);
+        this.line(x + 124, k + 1, met ? this.text.folks[id] : T.notMet, 22, "#3a3157", { wordWrap: { width: 318 } });
       });
       return;
     }
@@ -349,7 +345,7 @@ export class Journal {
       if (a === "station" && !s.visited.includes("station")) continue;
       const [px, py] = MAP_POS[a];
       const known = s.visited.includes(a);
-      const label = this.scene.add.text(0, 0, known ? AREA_TITLES[a].toUpperCase() : "???", { fontFamily: this.fonts.display, fontSize: "24px", color: "#1d1830", padding: { x: 2, y: 4 } }).setOrigin(0.5);
+      const label = this.scene.add.text(0, 0, known ? this.text.areas[a].toUpperCase() : "???", { fontFamily: this.fonts.display, fontSize: "24px", color: "#1d1830", padding: { x: 2, y: 4 } }).setOrigin(0.5);
       const w = label.width + 28;
       const lg = this.scene.add.graphics();
       lg.fillStyle(INK_HEX, 1);
@@ -360,7 +356,7 @@ export class Journal {
       lg.strokeRoundedRect(-w / 2, -22, w, 44, 12);
       this.content.add(this.scene.add.container(mx + px * scale, my + (py + 60) * scale, [lg, label]));
     }
-    const main = mainObjective(s);
+    const main = mainObjective(s, this.text);
     if (main.area && main.area !== "station") {
       const [tx, ty] = MAP_POS[main.area];
       this.content.add(this.scene.add.image(mx + (tx + 70) * scale, my + (ty - 20) * scale, "ui-target").setScale(1.1));
@@ -369,7 +365,7 @@ export class Journal {
       this.content.add(this.scene.add.image(mx + (tx - 90) * scale, my + (ty - 90) * scale, "ui-target").setScale(1.1));
     }
     for (const p of ALL_POSTERS) {
-      const a = POSTER_INFO[p].area;
+      const a = POSTER_AREA[p];
       if (s.posters.includes(p) || !s.visited.includes(a)) continue;
       const [sx, sy] = MAP_POS[a];
       this.content.add(this.scene.add.image(mx + (sx - 70) * scale, my + (sy - 30) * scale, "ui-star").setScale(0.75));
@@ -381,9 +377,9 @@ export class Journal {
     this.pin = pin;
     const lx = mx + 1200 * scale + 30;
     const legend: [string, string][] = [
-      ["ui-pin", "Você está aqui"],
-      ["ui-target", "Missão principal"],
-      ["ui-star", "Pôster por achar"],
+      ["ui-pin", T.here],
+      ["ui-target", T.main],
+      ["ui-star", T.poster],
     ];
     legend.forEach(([icon, label], i) => {
       this.icon(icon, lx + 20, 1 + i * 3, 24, 0.85);

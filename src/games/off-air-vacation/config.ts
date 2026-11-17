@@ -14,15 +14,7 @@ export const SAVE_KEY = "canal404:off-air-vacation:v1";
 export type AreaId = "lobby" | "pool" | "arcade" | "beach" | "forest" | "station" | "room404";
 export type Dir = "f" | "k" | "s";
 
-export const AREA_TITLES: Record<AreaId, string> = {
-  lobby: "Recepção",
-  pool: "Piscina",
-  arcade: "Fliperama",
-  beach: "Praia",
-  forest: "Floresta",
-  station: "Sala de transmissão",
-  room404: "Quarto 404",
-};
+export const AREA_IDS: AreaId[] = ["lobby", "pool", "arcade", "beach", "forest", "station", "room404"];
 
 export const MAP_POS: Record<AreaId, [number, number]> = {
   lobby: [600, 200],

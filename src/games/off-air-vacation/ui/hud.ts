@@ -34,6 +34,7 @@ export class ResortHud {
     private scene: Phaser.Scene,
     private fonts: Fonts,
     private reduced: boolean,
+    private pauseLabel: string,
   ) {
     const mk = (x: number, y: number, icon: string, key: string, action: string) => {
       const g = scene.add.graphics();
@@ -82,7 +83,7 @@ export class ResortHud {
 
     const scan = scene.add.tileSprite(0, 0, W, H, "scanlines").setOrigin(0, 0).setAlpha(0.35);
     const tint = scene.add.rectangle(0, 0, W, H, 0x5cb9f0, 0.08).setOrigin(0, 0);
-    this.vhsText = scene.add.text(W - 70, 150, "▌▌ PAUSA", { fontFamily: "Courier New, monospace", fontSize: "64px", fontStyle: "bold", color: "#ffffff" }).setOrigin(1, 0);
+    this.vhsText = scene.add.text(W - 70, 150, pauseLabel, { fontFamily: "Courier New, monospace", fontSize: "64px", fontStyle: "bold", color: "#ffffff" }).setOrigin(1, 0);
     this.vhsText.setShadow(4, 4, "#1d1830", 0, true, true);
     this.vhs = scene.add.container(0, 0, [tint, scan, this.vhsText]).setDepth(DEPTH - 10).setScrollFactor(0, 0, true).setVisible(false);
   }
@@ -214,7 +215,7 @@ export class ResortHud {
     this.action.setVisible(on && this.touchUi && !this.hidden);
   }
 
-  vhsOn(on: boolean, label = "▌▌ PAUSA") {
+  vhsOn(on: boolean, label = this.pauseLabel) {
     this.vhsText.setText(label);
     this.vhs.setVisible(on);
   }

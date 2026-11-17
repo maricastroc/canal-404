@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Férias Fora do Ar em inglês: o canal inteiro nos dois idiomas
+- **Off-Air Vacation plays in English** at `/en/play/off-air-vacation`: every dialog and choice, quests, the journal and map, items, posters, discoveries, the arcade mini-game, the HUD and screen-reader announcements. Only the active language's text is downloaded.
+- With all six games translated, the "This game is still in Portuguese" note is gone from English game pages.
+- Quests, endings, saves (including adventures saved before this change), score and the scoreboard rules are unchanged.
+
 ### Laboratório em inglês e um seletor de idioma no menu
 - **Bad Ideas Lab plays in English** at `/en/play/bad-ideas-lab`: the tutorial, hints, parts, buttons, results and the whole screen-reader narration (level description, objects, part position and test results). The machines, levels, star rules and the server replay are unchanged.
 - **Language switch in the menu.** The switch is now a PT | EN selector with the current language highlighted, placed right under the navigation in the room's side menu and in the phone menu, and next to the sound button in the section header. Before, it was a lone "PT"/"EN" chip above the sound button.

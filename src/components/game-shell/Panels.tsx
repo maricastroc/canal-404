@@ -9,7 +9,6 @@ import { GAME_CAST } from "@/components/art/GameCast";
 import { HouseIcon, MissionIcon, PlayIcon, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { CheckIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
-import { GameLanguageNote } from "@/components/catalog/GameLanguageNote";
 import { NextProgram } from "@/components/catalog/NextProgram";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
@@ -378,7 +377,6 @@ export function IntroPanel({
         aria-label={showHelp ? copy.howTo : undefined}
         className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun"
       >
-        <GameLanguageNote locale={locale} translated={game.translated} className="mt-4 shorter:mt-3" />
         {missionNotice ? (
           <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
             {missionNotice}{" "}

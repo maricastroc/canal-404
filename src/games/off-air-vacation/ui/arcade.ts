@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { INK_HEX, type Fonts } from "../../kit/ui";
 import type { ResortSfx } from "../sounds";
+import type { VacationText } from "../text/pt-BR";
 import { pinUi } from "./journal";
 
 const FIELD = { x: 560, y: 250, w: 800, h: 520 };
@@ -27,6 +28,7 @@ export class ArcadeGame {
     private fonts: Fonts,
     private reduced: boolean,
     private sfx: (n: ResortSfx, v?: number) => void,
+    private text: VacationText["arcade"],
   ) {
     const dim = scene.add.rectangle(0, 0, 1920, 1080, 0x140f26, 0.7).setOrigin(0, 0);
     const g = scene.add.graphics();
@@ -46,7 +48,7 @@ export class ArcadeGame {
     g.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
     g.lineStyle(6, INK_HEX, 1);
     g.strokeRoundedRect(FIELD.x - 14, FIELD.y - 14, FIELD.w + 28, FIELD.h + 28, 24);
-    const title = scene.add.text(960, FIELD.y - 76, "TILT  —  FASE 404", { fontFamily: fonts.display, fontSize: "46px", color: "#1d1830" }).setOrigin(0.5);
+    const title = scene.add.text(960, FIELD.y - 76, text.title, { fontFamily: fonts.display, fontSize: "46px", color: "#1d1830" }).setOrigin(0.5);
     this.scoreText = scene.add.text(FIELD.x + 20, FIELD.y + 16, "", { fontFamily: "Courier New, monospace", fontSize: "34px", fontStyle: "bold", color: "#7dffb2" });
     this.hint = scene.add.text(960, FIELD.y + FIELD.h + 52, "", { fontFamily: fonts.display, fontSize: "30px", color: "#fbf5e6" }).setOrigin(0.5);
     this.catcher = scene.add.image(960, FIELD.y + FIELD.h - 46, "arc-catcher");
@@ -65,7 +67,7 @@ export class ArcadeGame {
     for (const d of this.drops) d.img.destroy();
     this.drops = [];
     this.catcher.setX(960);
-    this.hint.setText(touch ? "Arraste o dedo para mover" : "← → ou A D para mover");
+    this.hint.setText(touch ? this.text.touch : this.text.keys);
     this.paintScore();
     this.root.setVisible(true);
     return new Promise((resolve) => {
@@ -88,7 +90,7 @@ export class ArcadeGame {
 
   private paintScore() {
     const bars = "▮".repeat(this.score) + "▯".repeat(GOAL - this.score);
-    this.scoreText.setText(`SINAL ${bars}`);
+    this.scoreText.setText(this.text.signal(bars));
   }
 
   update(dt: number, mx: number) {
@@ -129,7 +131,7 @@ export class ArcadeGame {
     if (this.score >= GOAL) {
       this.running = false;
       this.sfx("win", 1);
-      this.hint.setText("FASE COMPLETA!");
+      this.hint.setText(this.text.done);
       for (const d of this.drops) d.img.destroy();
       this.drops = [];
       this.scene.time.delayedCall(900, () => {

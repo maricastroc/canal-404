@@ -3,6 +3,7 @@ import { BookOpen, CircleDot, Hand, Lightbulb, Map as MapIcon, MapPin, Star, Tar
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { CHAR_RES } from "../config";
+import type { VacationText } from "../text/pt-BR";
 
 const BASE = "/assets/off-air-vacation/";
 
@@ -92,7 +93,14 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     const ctx = this.registry.get("ctx") as GameHostContext;
-    ctx.onProgress(1, "scene");
-    this.scene.start("world", { mode: "attract", area: "pool", spawn: "attract" });
+    const load = this.registry.get("textLoad") as Promise<VacationText>;
+    void load.then((text) => {
+      if (!(this.sys.game as Phaser.Game | null)) return;
+      this.registry.set("text", text);
+      ctx.onProgress(1, "scene");
+      const pending = this.registry.get("pending") as object | null;
+      this.registry.set("pending", null);
+      this.scene.start("world", pending ?? { mode: "attract", area: "pool", spawn: "attract" });
+    });
   }
 }

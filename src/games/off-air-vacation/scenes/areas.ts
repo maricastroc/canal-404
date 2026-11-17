@@ -3,6 +3,7 @@ import type { AreaId, Dir } from "../config";
 import type { FolkKey, State } from "../save";
 import type { ResortSfx } from "../sounds";
 import type { Mood } from "../story";
+import type { VacationText } from "../text/pt-BR";
 import type { Fonts } from "../../kit/ui";
 import { splashAt, type CritterDef, type ResidentDef } from "./life";
 import type { Npc, NpcOpts } from "./npc";
@@ -53,6 +54,7 @@ export type SpotDef = {
 export type Builder = {
   world: Phaser.Scene;
   s: State;
+  text: VacationText;
   reduced: boolean;
   vars: Record<string, unknown>;
   size(w: number, h: number, minY: number, maxY: number): void;
@@ -239,12 +241,12 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("poster-club", 2262, 200, { origin: [0.5, 0.5], depth: "wall" });
     b.glow(1200, 660, 1100, 520, 0xffd36b, 0.2, 0.4);
     b.npc("bigodes", 1200, 522, { scale: 0.95, depth: 520, follow: true });
-    b.greet("bigodes", ["Pois não?", "Tudo absolutamente normal."], 360);
+    b.greet("bigodes", b.text.scenery.bigodesGreet, 360);
     b.prop("counter", 1200, 650, { origin: [0.5, 1], depth: 650, rect: [-380, -112, 760, 112] });
     const bell = b.prop("desk-bell", 1360, 470, { origin: [0.5, 1], depth: 651 });
     b.prop("guest-book", 1060, 472, { origin: [0.5, 1], depth: 651, scale: 0.9 });
     b.act("bellRing", async () => {
-      b.fx.word("DING!", 1360, 400, "#ffe39a");
+      b.fx.word(b.text.scenery.ding, 1360, 400, "#ffe39a");
       if (!b.reduced) {
         b.world.tweens.add({ targets: bell, scaleY: { from: 0.7, to: 1 }, scaleX: { from: 1.15, to: 1 }, duration: 260, ease: "Back.easeOut" });
         b.world.tweens.add({ targets: bell, angle: { from: -8, to: 8 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => bell.setAngle(0) });
@@ -326,18 +328,18 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         if (!b.reduced) b.world.tweens.add({ targets: bell, angle: { from: -4, to: 4 }, duration: 80, yoyo: true, repeat: 1, onComplete: () => bell.setAngle(0) });
       },
     });
-    b.spot({ id: "bigodes", x: 1200, y: 700, r: 200, verb: "Conversar", script: "bigodes" });
-    b.spot({ id: "bell", x: 1380, y: 700, r: 90, verb: "Tocar", script: "bell" });
-    b.spot({ id: "guestbook", x: 1040, y: 700, r: 90, verb: "Ler", script: "guestbook" });
-    b.spot({ id: "door404", x: 470, y: 500, r: 140, verb: (st) => (st.items.includes("key") ? "Abrir" : "Examinar"), script: "door404" });
-    b.spot({ id: "frameSunset", x: 830, y: 490, r: 110, verb: "Examinar", script: "frameSunset" });
-    b.spot({ id: "frameTv", x: 960, y: 690, r: 90, verb: "Examinar", script: "frameTv" });
-    b.spot({ id: "clock", x: 1640, y: 500, r: 120, verb: "Examinar", script: "clock" });
-    b.spot({ id: "elevator", x: 1960, y: 500, r: 130, verb: "Examinar", script: "elevator" });
-    b.spot({ id: "poster", x: 2262, y: 500, r: 130, verb: "Examinar", script: "poster:club", hint: "item" });
-    b.spot({ id: "sofa", x: 520, y: 930, r: 160, verb: "Examinar", script: "sofa" });
-    b.spot({ id: "suitcases", x: 1660, y: 870, r: 140, verb: "Examinar", script: "suitcases" });
-    b.spot({ id: "tv", x: 1880, y: 760, r: 140, verb: "Examinar", script: "tvLobby" });
+    b.spot({ id: "bigodes", x: 1200, y: 700, r: 200, verb: b.text.verbs.talk, script: "bigodes" });
+    b.spot({ id: "bell", x: 1380, y: 700, r: 90, verb: b.text.verbs.ring, script: "bell" });
+    b.spot({ id: "guestbook", x: 1040, y: 700, r: 90, verb: b.text.verbs.read, script: "guestbook" });
+    b.spot({ id: "door404", x: 470, y: 500, r: 140, verb: (st) => (st.items.includes("key") ? b.text.verbs.open : b.text.verbs.examine), script: "door404" });
+    b.spot({ id: "frameSunset", x: 830, y: 490, r: 110, verb: b.text.verbs.examine, script: "frameSunset" });
+    b.spot({ id: "frameTv", x: 960, y: 690, r: 90, verb: b.text.verbs.examine, script: "frameTv" });
+    b.spot({ id: "clock", x: 1640, y: 500, r: 120, verb: b.text.verbs.examine, script: "clock" });
+    b.spot({ id: "elevator", x: 1960, y: 500, r: 130, verb: b.text.verbs.examine, script: "elevator" });
+    b.spot({ id: "poster", x: 2262, y: 500, r: 130, verb: b.text.verbs.examine, script: "poster:club", hint: "item" });
+    b.spot({ id: "sofa", x: 520, y: 930, r: 160, verb: b.text.verbs.examine, script: "sofa" });
+    b.spot({ id: "suitcases", x: 1660, y: 870, r: 140, verb: b.text.verbs.examine, script: "suitcases" });
+    b.spot({ id: "tv", x: 1880, y: 760, r: 140, verb: b.text.verbs.examine, script: "tvLobby" });
     b.exit(1050, 1210, 300, 60, "pool", "hotel");
     b.block(820, 432, 760, 110);
     b.frame([0, 0, 2400, 720], [0, 470, 2400, 430]);
@@ -400,7 +402,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.act("duckSqueak", async () => {
       duckSpin = true;
       b.fx.sfx("blipSoft", 0.8, 2.2);
-      b.fx.word("QUÉN!", 1709, 1170, "#ffe39a");
+      b.fx.word(b.text.scenery.quack, 1709, 1170, "#ffe39a");
       if (!b.reduced) b.world.tweens.add({ targets: duck, angle: duck.angle + 360, duration: 600, ease: "Cubic.easeOut" });
       for (let i = 0; i < 10; i += 1) {
         ripple.clear();
@@ -452,8 +454,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       y: 1731,
       lift: 46,
       scale: 0.62,
-      name: "Seu Coaxo",
-      lines: ["Sol de 2004. Bronzeia igual.", "Mergulho? Só depois da digestão. Desde 2004.", "Não conta pro salva-vidas que eu tô sem touca.", "Coaxo. Quer dizer: boa tarde."],
+      name: b.text.scenery.coaxo,
+      lines: b.text.scenery.coaxoLines,
       sound: ["croak", 0.5, 1],
       r: 280,
     });
@@ -474,7 +476,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     }
     b.prop("juice-bar", 380, 1740, { origin: [0.5, 1], rect: [-255, -150, 510, 150], shadow: 540, occlude: [0.96, 0.3, 0.46] });
     const capi = b.npc("capi", 380, 1592, { scale: 0.76, depth: 1560, noShadow: true });
-    b.greet("capi", ["Suquinho?", "Psst. Tenho uma fofoca.", "Hoje o suco é de manga. Ontem também."], 340);
+    b.greet("capi", b.text.scenery.capiGreet, 340);
     let shakeAt = 4000;
     b.onUpdate((t) => {
       if (!capi || capi.busy || t < shakeAt) return;
@@ -503,18 +505,18 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("hibiscus", 2700, 1000, { origin: [0.5, 1], rect: [-80, -40, 160, 40], scale: 0.65, react: "rustle" });
     const poolLento = b.npc("lento", 2300, 1800, { scale: 0.8, show: (st) => Boolean(st.flags.ended), frames: s.flags.gotKey ? { normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" } : { normal: "walk-a", look: "walk-b", talk: "talk", happy: "talk", surprised: "talk" } });
     b.act("lentoKeyless", () => poolLento?.setFrames({ normal: "walk-a-nokey", look: "walk-b-nokey", talk: "talk-nokey", happy: "happy-nokey", surprised: "happy-nokey" }));
-    b.spot({ id: "lento", x: 2300, y: 1840, r: 160, verb: "Conversar", script: "lento", show: (st) => Boolean(st.flags.ended) });
+    b.spot({ id: "lento", x: 2300, y: 1840, r: 160, verb: b.text.verbs.talk, script: "lento", show: (st) => Boolean(st.flags.ended) });
     b.circleBlock(2300, 1794, 40, (st) => Boolean(st.flags.ended));
-    b.spot({ id: "marola", x: 790, y: 1570, r: 180, verb: "Conversar", script: "marola" });
-    b.spot({ id: "flamingo", x: 1420, y: 1610, r: 150, verb: (st) => (st.items.includes("net") && !st.flags.gotWhistle ? "Usar a rede" : "Examinar"), script: "flamingo", hint: "item" });
-    b.spot({ id: "net", x: 2710, y: 1340, r: 120, verb: "Pegar", script: "net", show: (st) => !st.items.includes("net") && !st.flags.gotWhistle, hint: "item" });
-    b.spot({ id: "lounge", x: 1260, y: 1850, r: 120, verb: "Examinar", script: "loungeToken", hint: "secret" });
-    b.spot({ id: "capi", x: 380, y: 1800, r: 170, verb: "Conversar", script: "capi" });
-    b.spot({ id: "juiceMenu", x: 170, y: 1800, r: 90, verb: "Ler", script: "juiceMenu" });
-    b.spot({ id: "poolSign", x: 1150, y: 1610, r: 110, verb: "Ler", script: "poolSign" });
-    b.spot({ id: "towel", x: 960, y: 1850, r: 100, verb: "Examinar", script: "towel" });
-    b.spot({ id: "enterHotel", x: 1200, y: 830, r: 120, verb: "Entrar", script: "enterHotel" });
-    b.spot({ id: "enterArcade", x: 2250, y: 830, r: 120, verb: "Entrar", script: "enterArcade" });
+    b.spot({ id: "marola", x: 790, y: 1570, r: 180, verb: b.text.verbs.talk, script: "marola" });
+    b.spot({ id: "flamingo", x: 1420, y: 1610, r: 150, verb: (st) => (st.items.includes("net") && !st.flags.gotWhistle ? b.text.verbs.useNet : b.text.verbs.examine), script: "flamingo", hint: "item" });
+    b.spot({ id: "net", x: 2710, y: 1340, r: 120, verb: b.text.verbs.take, script: "net", show: (st) => !st.items.includes("net") && !st.flags.gotWhistle, hint: "item" });
+    b.spot({ id: "lounge", x: 1260, y: 1850, r: 120, verb: b.text.verbs.examine, script: "loungeToken", hint: "secret" });
+    b.spot({ id: "capi", x: 380, y: 1800, r: 170, verb: b.text.verbs.talk, script: "capi" });
+    b.spot({ id: "juiceMenu", x: 170, y: 1800, r: 90, verb: b.text.verbs.read, script: "juiceMenu" });
+    b.spot({ id: "poolSign", x: 1150, y: 1610, r: 110, verb: b.text.verbs.read, script: "poolSign" });
+    b.spot({ id: "towel", x: 960, y: 1850, r: 100, verb: b.text.verbs.examine, script: "towel" });
+    b.spot({ id: "enterHotel", x: 1200, y: 830, r: 120, verb: b.text.verbs.enter, script: "enterHotel" });
+    b.spot({ id: "enterArcade", x: 2250, y: 830, r: 120, verb: b.text.verbs.enter, script: "enterArcade" });
     b.act("flamingoLook", async () => {
       const base = b.s.flags.gotWhistle ? "flamingo-empty" : "flamingo";
       b.vars.flamingoBusy = true;
@@ -530,9 +532,9 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       if (!b.reduced) b.world.tweens.add({ targets: towel, scaleY: { from: 0.8, to: 1.15 }, scaleX: { from: 0.8, to: 0.7 }, duration: 220, yoyo: true, repeat: 1 });
       await b.fx.wait(500);
     });
-    b.act("marolaBark", () => b.bark("marola", b.s.flags.whistleReturned ? "Leu? Leia de novo!" : "...sem apito eu só faço cara feia."));
-    b.greet("marola", ["Olho na borda, recruta!", "Sempre alerta!"], 280);
-    b.greet("lento", ["Cheguei... quase."], 260);
+    b.act("marolaBark", () => b.bark("marola", b.s.flags.whistleReturned ? b.text.scenery.marolaSign : b.text.scenery.marolaFrown));
+    b.greet("marola", b.text.scenery.marolaGreet, 280);
+    b.greet("lento", b.text.scenery.lentoPoolGreet, 260);
     const onRim = (x: number, y: number) => x > 880 && x < 1600 && y > 1150 && y < 1570 && !(x > 935 && x < 1548 && y > 1205 && y < 1517);
     b.near(0, 0, 0, {
       zone: onRim,
@@ -541,12 +543,12 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       enter: (t) => {
         b.npcOf("marola")?.setMood(b.s.flags.whistleReturned ? "happy" : "look", 1200, t);
         if (b.s.flags.whistleReturned) b.fx.sfx("whistle", 0.7);
-        b.bark("marola", b.s.flags.whistleReturned ? "SEM CORRER NA BORDA!" : "Ei! Devagar aí!");
+        b.bark("marola", b.s.flags.whistleReturned ? b.text.scenery.marolaRun : b.text.scenery.marolaSlow);
       },
     });
-    b.spot({ id: "poster", x: 2346, y: 1340, r: 120, verb: "Examinar", script: "poster:summer", hint: "item" });
-    b.spot({ id: "signpost", x: 560, y: 1190, r: 110, verb: "Ler", script: "signpost" });
-    b.spot({ id: "duck", x: 1860, y: 1250, r: 110, verb: "Examinar", script: "duck" });
+    b.spot({ id: "poster", x: 2346, y: 1340, r: 120, verb: b.text.verbs.examine, script: "poster:summer", hint: "item" });
+    b.spot({ id: "signpost", x: 560, y: 1190, r: 110, verb: b.text.verbs.read, script: "signpost" });
+    b.spot({ id: "duck", x: 1860, y: 1250, r: 110, verb: b.text.verbs.examine, script: "duck" });
     b.exit(1105, 720, 190, 70, "lobby", "door");
     b.exit(2140, 720, 220, 70, "arcade", "door");
     b.exit(0, 1130, 44, 260, "forest", "east");
@@ -645,7 +647,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
           b.fx.sfx(idx === 3 ? "arcadeBoop" : "arcadeBeep", 0.3, 1.2 + idx * 0.1);
         },
       });
-      b.spot({ id: script, x, y: 610, r: 100, verb: idx === 3 ? "Examinar" : "Jogar", script });
+      b.spot({ id: script, x, y: 610, r: 100, verb: idx === 3 ? b.text.verbs.examine : b.text.verbs.play, script });
       b.act(`burst:${script}`, async () => {
         bursts.set(script, b.world.time.now + 500);
         for (let i = 0; i < 3; i += 1) {
@@ -663,7 +665,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const scr = screens.get("cabD");
       scr?.setVisible(false);
       const bg = b.world.add.rectangle(1171, 298, 98, 80, 0x3a0d18, 1).setOrigin(0, 0).setDepth(531.5);
-      msgBox.setColor("#ff8f86").setText("ERRO 404");
+      msgBox.setColor("#ff8f86").setText(b.text.scenery.error);
       b.world.time.delayedCall(900, () => {
         bg.destroy();
         msgBox.setText("").setColor("#7dffb2");
@@ -679,7 +681,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       await b.fx.wait(320);
       screens.get("cabD")?.setVisible(false);
       const bg = b.world.add.rectangle(1171, 298, 98, 80, 0x0d2a2a, 1).setOrigin(0, 0).setDepth(531.5);
-      for (const line of ["SINAL MAIS FORTE:", "ONDE A ÁGUA", "FAZ CHIADO"]) {
+      for (const line of b.text.scenery.broken) {
         msgBox.setText(line);
         b.fx.sfx("tick", 0.4, 1.6);
         await b.fx.wait(900);
@@ -720,10 +722,10 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     const recText = b.world.add.text(300, 80, "", { fontFamily: "Courier New, monospace", fontSize: "19px", fontStyle: "bold", color: "#ffe39a", lineSpacing: 5 }).setOrigin(0.5, 0).setDepth(3);
     let recSig = "";
     b.onUpdate(() => {
-      const rows = [`1. TILT ....... 404.404`];
-      if (b.s.secrets.includes("machine")) rows.push("2. DEC ........ 999.999");
-      rows.push(`${rows.length + 1}. PLACAR ....... 9.999`);
-      if (b.s.flags.tiltWon) rows.push(`${rows.length + 1}. DÉCO ..... FASE 404 OK`);
+      const rows = [b.text.scenery.boardTilt];
+      if (b.s.secrets.includes("machine")) rows.push(b.text.scenery.boardDec);
+      rows.push(b.text.scenery.boardPlacar(rows.length + 1));
+      if (b.s.flags.tiltWon) rows.push(b.text.scenery.boardDeco(rows.length + 1));
       const sig = rows.join("|");
       if (sig === recSig) return;
       recSig = sig;
@@ -733,43 +735,43 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("poster-pijama", 776, 330, { origin: [0.5, 0.5], depth: "wall", scale: 0.68 });
     const placar = b.npc("placar", 800, 690, { scale: 0.78 });
     b.circleBlock(800, 684, 34);
-    b.greet("placar", ["Sem correr no fliperama.", "Recorde é coisa séria.", "Olha a fila. Não tem fila. Mas olha."], 300);
+    b.greet("placar", b.text.scenery.placarGreet, 300);
     b.act("stamp", async () => {
       b.fx.sfx("kick", 0.8, 0.7);
       b.fx.shake(120, 0.003);
-      b.fx.word("CARIMBADO!", 800, 420, "#ef4f43");
+      b.fx.word(b.text.scenery.stamped, 800, 420, "#ef4f43");
       placar?.setMood("happy", 1500, b.world.time.now);
       await b.fx.wait(700);
     });
     b.prop("claw", 1410, 530, { origin: [0.5, 1], react: "jingle", reactR: 110 });
-    b.spot({ id: "claw", x: 1410, y: 610, r: 100, verb: "Jogar", script: "claw" });
+    b.spot({ id: "claw", x: 1410, y: 610, r: 100, verb: b.text.verbs.play, script: "claw" });
     b.block(110, 470, 1880, 70);
     b.npc("tilt", 1000, 548, { scale: 0.95, depth: 548, bob: 0.008 });
-    b.greet("tilt", b.s.flags.tiltWon ? ["Jogador número 1!", "Meus pixels ainda tremem!"] : ["Psst! Jogador!", "Não olhe pra mim. Olhe. Não olhe."], 280);
+    b.greet("tilt", b.s.flags.tiltWon ? b.text.scenery.tiltGreetWon : b.text.scenery.tiltGreet, 280);
     const tiltGlow = b.glow(1000, 600, 320, 120, 0x7dffb2, 0.25, 0.6);
     b.onUpdate((t) => tiltGlow.setAlpha(b.reduced || b.s.flags.tiltWon ? 0.25 : 0.22 + Math.max(0, Math.sin(t / 380)) * 0.3));
-    b.spot({ id: "tilt", x: 1000, y: 640, r: 170, verb: "Conversar", script: "tilt" });
+    b.spot({ id: "tilt", x: 1000, y: 640, r: 170, verb: b.text.verbs.talk, script: "tilt" });
     b.prop("cab-gold", 1842, 525, { origin: [0.5, 1], depth: 520, show: (st) => Boolean(st.flags.curtainOpen) });
     const gold = b.glow(1842, 360, 260, 340, 0xffe39a, 0.4, 521);
     gold.setVisible(Boolean(b.s.secrets.includes("machine")));
     b.vars.goldGlow = gold;
     b.prop("curtain", 1842, 532, { origin: [0.5, 1], depth: 532, show: (st) => !st.flags.curtainOpen });
     b.prop("curtain-open", 1842, 532, { origin: [0.5, 1], depth: 532, show: (st) => Boolean(st.flags.curtainOpen) });
-    b.spot({ id: "curtain", x: 1842, y: 610, r: 120, verb: "Examinar", script: "curtain", show: (st) => !st.flags.curtainOpen, hint: "secret" });
-    b.spot({ id: "gold", x: 1842, y: 610, r: 120, verb: (st) => (st.tokens.length >= 3 && !st.secrets.includes("machine") ? "Colocar fichas" : "Examinar"), script: "goldMachine", show: (st) => Boolean(st.flags.curtainOpen) });
+    b.spot({ id: "curtain", x: 1842, y: 610, r: 120, verb: b.text.verbs.examine, script: "curtain", show: (st) => !st.flags.curtainOpen, hint: "secret" });
+    b.spot({ id: "gold", x: 1842, y: 610, r: 120, verb: (st) => (st.tokens.length >= 3 && !st.secrets.includes("machine") ? b.text.verbs.insertTokens : b.text.verbs.examine), script: "goldMachine", show: (st) => Boolean(st.flags.curtainOpen) });
     b.prop("prize-counter", 1640, 1010, { origin: [0.5, 1], rect: [-210, -130, 420, 130] });
-    b.spot({ id: "prizes", x: 1640, y: 1060, r: 170, verb: "Examinar", script: "prizes" });
+    b.spot({ id: "prizes", x: 1640, y: 1060, r: 170, verb: b.text.verbs.examine, script: "prizes" });
     b.prop("pinball", 500, 900, { origin: [0.5, 1], rect: [-110, -70, 220, 70], react: "jingle" });
-    b.spot({ id: "pinball", x: 500, y: 950, r: 130, verb: "Jogar", script: "pinball" });
+    b.spot({ id: "pinball", x: 500, y: 950, r: 130, verb: b.text.verbs.play, script: "pinball" });
     b.prop("air-hockey", 1000, 960, { origin: [0.5, 1], rect: [-140, -70, 280, 70], react: "jingle" });
-    b.spot({ id: "hockey", x: 1000, y: 1010, r: 140, verb: "Jogar", script: "hockey" });
+    b.spot({ id: "hockey", x: 1000, y: 1010, r: 140, verb: b.text.verbs.play, script: "hockey" });
     b.prop("stool", 300, 760, { origin: [0.5, 1], circle: 18, react: "spin" });
     b.prop("stool", 620, 790, { origin: [0.5, 1], circle: 18, react: "spin" });
     b.prop("stool", 1300, 760, { origin: [0.5, 1], circle: 18, react: "spin" });
-    b.spot({ id: "poster", x: 1615, y: 620, r: 110, verb: "Examinar", script: "poster:tilt", hint: "item" });
-    b.spot({ id: "records", x: 300, y: 600, r: 90, verb: "Ler", script: "records" });
-    b.spot({ id: "posterPijama", x: 776, y: 594, r: 80, verb: "Examinar", script: "posterPijama" });
-    b.spot({ id: "placar", x: 800, y: 750, r: 160, verb: "Conversar", script: "placar" });
+    b.spot({ id: "poster", x: 1615, y: 620, r: 110, verb: b.text.verbs.examine, script: "poster:tilt", hint: "item" });
+    b.spot({ id: "records", x: 300, y: 600, r: 90, verb: b.text.verbs.read, script: "records" });
+    b.spot({ id: "posterPijama", x: 776, y: 594, r: 80, verb: b.text.verbs.examine, script: "posterPijama" });
+    b.spot({ id: "placar", x: 800, y: 750, r: 160, verb: b.text.verbs.talk, script: "placar" });
     b.exit(880, 1216, 240, 40, "pool", "arcade");
     b.frame([0, 0, 2000, 660], [0, 560, 2000, 360]);
     b.prop("doormat", 1000, 1252, { origin: [0.5, 1], depth: "floor", scale: 0.8 });
@@ -904,7 +906,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     });
     b.act("kioskBell", async () => {
       b.fx.sfx("bell", 0.6, 1.4);
-      b.fx.word("PLIM!", 1960, 640, "#ffe39a");
+      b.fx.word(b.text.scenery.kioskBell, 1960, 640, "#ffe39a");
       await b.fx.wait(400);
     });
     b.prop("poster-surf", 1752, 800, { origin: [0.5, 0.5], scale: 0.42, depth: 931 });
@@ -930,22 +932,22 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("chips", 1452, 1000, { origin: [0.5, 1], depth: 1042, scale: 0.8 });
     b.greet("marisa", () => {
       const f = b.s.flags;
-      if (f.ended) return ["Férias que nunca acabam!", "Vem, a areia tá quentinha."];
-      if (f.gotOrder) return ["Uma garrafa com recado? Clássico.", "O mar voltou. A reprise também."];
-      if (f.seaPaused) return ["O mar parou! Que silêncio bom.", "Aproveita e vê o que ele deixou."];
-      return ["Olha a distância!", "Tô de férias. Não incomode.", "Já viu o farol? Ele pisca esquisito."];
+      if (f.ended) return b.text.scenery.marisaGreetEnded;
+      if (f.gotOrder) return b.text.scenery.marisaGreetOrder;
+      if (f.seaPaused) return b.text.scenery.marisaGreetPaused;
+      return b.text.scenery.marisaGreet;
     }, 260);
     const guard = async (t: number) => {
       marisa?.playSeq(["happy", "talk", "happy", "normal"], 180, t);
       b.fx.sfx("gull", 0.7);
-      b.bark("marisa", "Minhas batatinhas!", null);
+      b.bark("marisa", b.text.scenery.marisaChips, null);
       if (marisa && !b.reduced) b.world.tweens.add({ targets: marisa.sprite, y: marisa.y - 26, duration: 140, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
     };
     b.near(1452, 1060, 120, { cooldown: 6000, enter: (t) => void guard(t) });
     b.act("marisaGuard", () => guard(b.world.time.now));
     const clique = b.npc("clique", 880, 830, { scale: 0.82 });
     b.circleBlock(880, 824, 34);
-    b.greet("clique", () => (b.s.flags.photoDone ? ["Minha foto vai pro jornal do resort!", "Quer ver a foto? Ficou ótima."] : ["Shh! A onda tá vindo!", "Sorria! Não, você não.", "Mais uma. Só mais uma."]), 280);
+    b.greet("clique", () => (b.s.flags.photoDone ? b.text.scenery.cliqueGreetDone : b.text.scenery.cliqueGreet), 280);
     const flashAt = (x: number, y: number) => {
       const fl = b.glow(x, y, 160, 160, 0xffffff, 0.95, 5900);
       b.world.tweens.add({ targets: fl, alpha: 0, scale: 1.6, duration: b.reduced ? 10 : 380, onComplete: () => fl.destroy() });
@@ -970,7 +972,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       if (!clique) return;
       b.vars.seaFrozen = true;
       b.fx.sfx("pause", 1);
-      const vhs = b.vars.seaPaused ? b.fx.wait(2200) : b.fx.vhs("▌▌ PAUSA", 2200);
+      const vhs = b.vars.seaPaused ? b.fx.wait(2200) : b.fx.vhs(b.text.hud.pause, 2200);
       await b.fx.wait(500);
       clique.playSeq(["shoot", "shoot", "shoot", "happy"], 220, b.world.time.now);
       await b.fx.wait(500);
@@ -999,7 +1001,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("rock-a", 2820, 1330, { origin: [0.5, 1], flip: true, rect: [-100, -60, 200, 60] });
     b.prop("shell-big", 650, 860, { origin: [0.5, 1], rect: [-62, -34, 124, 34] });
     b.prop("shells", 900, 1320, { origin: [0.5, 1], depth: "floor" });
-    b.spot({ id: "shells", x: 900, y: 1350, r: 90, verb: "Escutar", script: "shells" });
+    b.spot({ id: "shells", x: 900, y: 1350, r: 90, verb: b.text.verbs.listen, script: "shells" });
     b.prop("shells", 2050, 1260, { origin: [0.5, 1], depth: "floor" });
     b.prop("sandcastle", 1100, 1280, { origin: [0.5, 1], rect: [-90, -50, 180, 50] });
     b.act("crabPop", async () => {
@@ -1037,8 +1039,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       y: 1430,
       scale: 0.62,
       block: 40,
-      name: "Seu Siri",
-      lines: ["Cuidado com o meu castelo! Ah, eu não tenho castelo.", "Sol de 2004. Bronzeia igual.", "Andar de lado é uma escolha de vida.", "A onda das 4:04 é minha favorita. É a única."],
+      name: b.text.scenery.siri,
+      lines: b.text.scenery.siriLines,
       sound: ["blipSoft", 0.5, 1.7],
       r: 280,
     });
@@ -1059,21 +1061,21 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         lento.sprite.setFlipX(ld > 0);
         lento.walkFrame(`${Math.floor(t / 700) % 2 ? "walk-a" : "walk-b"}${b.s.flags.gotKey ? "-nokey" : ""}`, t);
       });
-      b.spot({ id: "lento", x: 2500, y: 1380, r: 170, verb: "Conversar", script: "lento", show: (st) => Boolean(st.flags.whistleReturned && !st.flags.ended), at: () => [lento.x, lento.y + 50] });
+      b.spot({ id: "lento", x: 2500, y: 1380, r: 170, verb: b.text.verbs.talk, script: "lento", show: (st) => Boolean(st.flags.whistleReturned && !st.flags.ended), at: () => [lento.x, lento.y + 50] });
     }
-    b.spot({ id: "marisa", x: 1570, y: 1080, r: 170, verb: "Conversar", script: "marisa" });
-    b.spot({ id: "shore", x: 1250, y: 680, r: 190, verb: (st) => (st.items.includes("remote") && !st.flags.gotOrder && !st.flags.seaPaused ? "Pausar o mar" : "Examinar"), script: "shore", show: (st) => !(st.flags.seaPaused && !st.flags.gotOrder) });
-    b.spot({ id: "bottle", x: 1250, y: 560, r: 130, verb: "Pegar", script: "bottle", show: (st) => Boolean(st.flags.seaPaused && !st.flags.gotOrder), hint: "item" });
-    b.spot({ id: "shell", x: 650, y: 900, r: 110, verb: "Examinar", script: "shellToken", hint: "secret" });
-    b.spot({ id: "kiosk", x: 1980, y: 990, r: 170, verb: "Examinar", script: "kiosk" });
-    b.spot({ id: "poster", x: 1752, y: 990, r: 110, verb: "Examinar", script: "poster:surf", hint: "item" });
-    b.spot({ id: "waveSign", x: 1050, y: 760, r: 110, verb: "Ler", script: "waveSign" });
-    b.spot({ id: "sandcastle", x: 1100, y: 1320, r: 130, verb: "Examinar", script: "sandcastle" });
-    b.spot({ id: "pierEnd", x: 2400, y: 260, r: 160, verb: "Olhar", script: "pierEnd" });
-    b.spot({ id: "surf", x: 2670, y: 1000, r: 130, verb: "Examinar", script: "surf" });
-    b.spot({ id: "clique", x: 880, y: 890, r: 160, verb: "Conversar", script: "clique" });
-    b.spot({ id: "chips", x: 1452, y: 1090, r: 100, verb: "Examinar", script: "chips" });
-    b.greet("lento", ["Boa... tarde...", "Sem... pressa..."], 260);
+    b.spot({ id: "marisa", x: 1570, y: 1080, r: 170, verb: b.text.verbs.talk, script: "marisa" });
+    b.spot({ id: "shore", x: 1250, y: 680, r: 190, verb: (st) => (st.items.includes("remote") && !st.flags.gotOrder && !st.flags.seaPaused ? b.text.verbs.pauseSea : b.text.verbs.examine), script: "shore", show: (st) => !(st.flags.seaPaused && !st.flags.gotOrder) });
+    b.spot({ id: "bottle", x: 1250, y: 560, r: 130, verb: b.text.verbs.take, script: "bottle", show: (st) => Boolean(st.flags.seaPaused && !st.flags.gotOrder), hint: "item" });
+    b.spot({ id: "shell", x: 650, y: 900, r: 110, verb: b.text.verbs.examine, script: "shellToken", hint: "secret" });
+    b.spot({ id: "kiosk", x: 1980, y: 990, r: 170, verb: b.text.verbs.examine, script: "kiosk" });
+    b.spot({ id: "poster", x: 1752, y: 990, r: 110, verb: b.text.verbs.examine, script: "poster:surf", hint: "item" });
+    b.spot({ id: "waveSign", x: 1050, y: 760, r: 110, verb: b.text.verbs.read, script: "waveSign" });
+    b.spot({ id: "sandcastle", x: 1100, y: 1320, r: 130, verb: b.text.verbs.examine, script: "sandcastle" });
+    b.spot({ id: "pierEnd", x: 2400, y: 260, r: 160, verb: b.text.verbs.look, script: "pierEnd" });
+    b.spot({ id: "surf", x: 2670, y: 1000, r: 130, verb: b.text.verbs.examine, script: "surf" });
+    b.spot({ id: "clique", x: 880, y: 890, r: 160, verb: b.text.verbs.talk, script: "clique" });
+    b.spot({ id: "chips", x: 1452, y: 1090, r: 100, verb: b.text.verbs.examine, script: "chips" });
+    b.greet("lento", b.text.scenery.lentoBeachGreet, 260);
     b.exit(0, 1130, 30, 180, "pool", "east");
     b.frame([0, 0, 3000, 680], [0, 640, 3000, 260]);
     b.frame([1674, 475, 572, 455], [1500, 900, 900, 380]);
@@ -1220,7 +1222,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       await b.fx.wait(700);
     });
     b.prop("carousel-horse", 1460, 1420, { origin: [0.5, 1], rect: [-50, -24, 100, 24] });
-    b.spot({ id: "horse", x: 1460, y: 1460, r: 110, verb: "Examinar", script: "horse" });
+    b.spot({ id: "horse", x: 1460, y: 1460, r: 110, verb: b.text.verbs.examine, script: "horse" });
     b.prop("ticket-booth", 2270, 1380, { origin: [0.5, 1], rect: [-140, -84, 280, 84], shadow: 300, occlude: [0.96, 0.3, 0.44] });
     const boothLight = b.glow(2270, 1018, 240, 90, 0xffe39a, 0.3, 1382);
     b.onUpdate((t) => boothLight.setAlpha(b.reduced ? 0.3 : Math.floor(t / 500) % 4 === 0 ? 0.05 : 0.32));
@@ -1237,7 +1239,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.prop("log", 2200, 1490, { origin: [0.5, 1], rect: [-110, -50, 220, 50] });
     b.prop("stump", 720, 1010, { origin: [0.5, 1], rect: [-66, -40, 132, 40] });
     b.npc("psiu", 720, 952, { scale: 0.8, depth: 1011, noShadow: true });
-    b.greet("psiu", ["Psiu.", "...psiu?"], 240);
+    b.greet("psiu", b.text.scenery.psiuGreet, 240);
     const cav = b.npc("cavuca", 1980, 1160, { scale: 0.78, notice: 220 });
     if (cav) {
       let ang = 1.2;
@@ -1259,8 +1261,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
           cav.walkFrame(foot ? "walk-b" : "walk-a", t);
         }
       });
-      b.spot({ id: "cavuca", x: 1980, y: 1160, r: 170, verb: "Conversar", script: "cavuca", at: () => [cav.x, cav.y + 50] });
-      b.greet("cavuca", ["Por aqui! Não. Por ali.", "Já mapeei esta árvore três vezes."], 300);
+      b.spot({ id: "cavuca", x: 1980, y: 1160, r: 170, verb: b.text.verbs.talk, script: "cavuca", at: () => [cav.x, cav.y + 50] });
+      b.greet("cavuca", b.text.scenery.cavucaGreet, 300);
     }
     const peeks: [number, number][] = [
       [356, 1330],
@@ -1358,7 +1360,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         }
         if (d > 1300 || (!onScreen(chi.x, chi.y) && d > 600)) hide(t, false);
       });
-      b.spot({ id: "chiado", x: 356, y: 1330, r: 200, verb: "Observar", script: "chiado", priority: true, show: () => cstate === "curious", at: () => [chi.x, chi.y + 30] });
+      b.spot({ id: "chiado", x: 356, y: 1330, r: 200, verb: b.text.verbs.watch, script: "chiado", priority: true, show: () => cstate === "curious", at: () => [chi.x, chi.y + 30] });
       b.act("chiadoHello", async () => {
         b.fx.sfx("arcadeBeep", 0.5, 1.6);
         chi.playSeq(["happy", "surprised", "happy", "happy"], 200, b.world.time.now);
@@ -1461,12 +1463,12 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         ff.setPosition(bx + ox, by + oy).setAlpha(b.reduced ? 0.6 : 0.3 + Math.max(0, Math.sin(t / 400 + i * 3)) * 0.6);
       });
     }
-    b.spot({ id: "psiu", x: 720, y: 1060, r: 170, verb: "Conversar", script: "psiu" });
-    b.spot({ id: "mushrooms", x: 430, y: 1240, r: 100, verb: "Examinar", script: "mushrooms" });
-    b.spot({ id: "bridge", x: 1090, y: 1030, r: 100, verb: "Olhar a água", script: "bridge" });
-    b.spot({ id: "fall", x: 560, y: 650, r: 200, verb: (st) => (st.items.includes("remote") ? "Pausar a cachoeira" : "Examinar"), script: "fall", show: (st) => !st.flags.fallPaused, hint: "item" });
-    b.spot({ id: "door", x: 560, y: 630, r: 160, verb: "Entrar", script: "stationDoor", show: (st) => Boolean(st.flags.fallPaused) });
-    b.spot({ id: "booth", x: 2140, y: 1430, r: 100, verb: "Comprar bilhete", script: "booth" });
+    b.spot({ id: "psiu", x: 720, y: 1060, r: 170, verb: b.text.verbs.talk, script: "psiu" });
+    b.spot({ id: "mushrooms", x: 430, y: 1240, r: 100, verb: b.text.verbs.examine, script: "mushrooms" });
+    b.spot({ id: "bridge", x: 1090, y: 1030, r: 100, verb: b.text.verbs.lookWater, script: "bridge" });
+    b.spot({ id: "fall", x: 560, y: 650, r: 200, verb: (st) => (st.items.includes("remote") ? b.text.verbs.pauseFall : b.text.verbs.examine), script: "fall", show: (st) => !st.flags.fallPaused, hint: "item" });
+    b.spot({ id: "door", x: 560, y: 630, r: 160, verb: b.text.verbs.enter, script: "stationDoor", show: (st) => Boolean(st.flags.fallPaused) });
+    b.spot({ id: "booth", x: 2140, y: 1430, r: 100, verb: b.text.verbs.buyTicket, script: "booth" });
     const doorGlow = b.glow(560, 450, 240, 320, 0x9df0dc, 0.1, 302.5);
     b.onUpdate((t) => {
       const open = Boolean(b.s.flags.fallPaused);
@@ -1482,12 +1484,12 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       }
       scan.setAlpha(0);
     });
-    b.spot({ id: "placardArch", x: 1500, y: 1195, r: 110, verb: "Ler", script: "placardArch" });
-    b.spot({ id: "placardStatue", x: 2190, y: 955, r: 110, verb: "Ler", script: "placardStatue" });
-    b.spot({ id: "dish", x: 1250, y: 820, r: 130, verb: "Ler", script: "placardDish" });
-    b.spot({ id: "treehouse", x: 2480, y: 1010, r: 140, verb: "Examinar", script: "treehouse" });
-    b.spot({ id: "poster", x: 2270, y: 1430, r: 120, verb: "Examinar", script: "poster:ghost", hint: "item" });
-    b.spot({ id: "log", x: 2200, y: 1530, r: 130, verb: "Examinar", script: "logToken", hint: "secret" });
+    b.spot({ id: "placardArch", x: 1500, y: 1195, r: 110, verb: b.text.verbs.read, script: "placardArch" });
+    b.spot({ id: "placardStatue", x: 2190, y: 955, r: 110, verb: b.text.verbs.read, script: "placardStatue" });
+    b.spot({ id: "dish", x: 1250, y: 820, r: 130, verb: b.text.verbs.read, script: "placardDish" });
+    b.spot({ id: "treehouse", x: 2480, y: 1010, r: 140, verb: b.text.verbs.examine, script: "treehouse" });
+    b.spot({ id: "poster", x: 2270, y: 1430, r: 120, verb: b.text.verbs.examine, script: "poster:ghost", hint: "item" });
+    b.spot({ id: "log", x: 2200, y: 1530, r: 130, verb: b.text.verbs.examine, script: "logToken", hint: "secret" });
     b.exit(2756, 1000, 44, 300, "pool", "west");
     b.frame([270, 0, 580, 760], [180, 600, 900, 420]);
     b.frame([0, 0, 2800, 640], [900, 600, 1900, 300]);
@@ -1541,8 +1543,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const src = b.world.textures.get("deco-idle-f").getSourceImage() as HTMLImageElement;
       const k = Math.min(138 / (src.height - 21), 250 / src.width);
       const face = b.world.add.image(0, 84, "deco-idle-f").setOrigin(0.5, 1 - 11 / src.height).setScale(k);
-      const tag = b.world.add.text(-136, -78, "AQUI", { fontFamily: b.fonts.display, fontSize: "20px", color: "#1d1830" });
-      const live = b.world.add.text(136, -78, "● AO VIVO", { fontFamily: b.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
+      const tag = b.world.add.text(-136, -78, b.text.world.here, { fontFamily: b.fonts.display, fontSize: "20px", color: "#1d1830" });
+      const live = b.world.add.text(136, -78, b.text.world.live, { fontFamily: b.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
       const scan = b.world.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
       const noise = b.world.add.tileSprite(0, 0, 292, 168, "static").setAlpha(0);
       const cont = b.world.add.container(cx, 403, [bg, face, tag, live, scan, noise]).setDepth(2.45).setAlpha(0);
@@ -1567,13 +1569,13 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     });
     b.prop("cables", 440, 1000, { origin: [0.5, 0.5], depth: "floor" });
     b.glow(1000, 300, 1200, 600, 0x5cf0ff, 0.12, 0.6);
-    b.spot({ id: "console", x: 1000, y: 830, r: 220, verb: (st) => (st.items.includes("order") ? "Entregar a ordem" : "Examinar"), script: "console" });
-    b.spot({ id: "button", x: 1660, y: 840, r: 140, verb: "Examinar", script: "button" });
-    b.spot({ id: "calendar", x: 1720, y: 840, r: 90, verb: "Examinar", script: "calendar" });
-    b.spot({ id: "monitors", x: 760, y: 840, r: 110, verb: "Olhar as telas", script: "monitors" });
-    b.spot({ id: "tape", x: 330, y: 840, r: 150, verb: "Examinar", script: "tape" });
-    b.spot({ id: "mug", x: 1320, y: 840, r: 100, verb: "Examinar", script: "mug" });
-    b.spot({ id: "window", x: 220, y: 900, r: 90, verb: "Olhar", script: "stationWindow" });
+    b.spot({ id: "console", x: 1000, y: 830, r: 220, verb: (st) => (st.items.includes("order") ? b.text.verbs.deliverOrder : b.text.verbs.examine), script: "console" });
+    b.spot({ id: "button", x: 1660, y: 840, r: 140, verb: b.text.verbs.examine, script: "button" });
+    b.spot({ id: "calendar", x: 1720, y: 840, r: 90, verb: b.text.verbs.examine, script: "calendar" });
+    b.spot({ id: "monitors", x: 760, y: 840, r: 110, verb: b.text.verbs.lookScreens, script: "monitors" });
+    b.spot({ id: "tape", x: 330, y: 840, r: 150, verb: b.text.verbs.examine, script: "tape" });
+    b.spot({ id: "mug", x: 1320, y: 840, r: 100, verb: b.text.verbs.examine, script: "mug" });
+    b.spot({ id: "window", x: 220, y: 900, r: 90, verb: b.text.verbs.look, script: "stationWindow" });
     b.exit(840, 1040, 240, 40, "forest", "door");
     b.glow(960, 1080, 460, 140, 0xbff7ff, 0.35, 0.45);
     b.prop("doormat", 960, 1082, { origin: [0.5, 1], depth: "floor", scale: 0.8 });
@@ -1613,7 +1615,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.vars.sleeper = sleeper;
     const zz = b.world.add.text(760, 560, "z", { fontFamily: b.fonts.display, fontSize: "44px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 6 }).setDepth(842);
     b.vars.zz = zz;
-    const mumbles = ["...só mais cinco anos...", "zzz... canal 404... zzz", "...não troca de canal...", "...ninguém aperta o botão..."];
+    const mumbles = b.text.scenery.mumbles;
     let mumble = 0;
     b.near(700, 900, 320, {
       cooldown: 14000,
@@ -1636,9 +1638,9 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const k = (t % 1800) / 1800;
       zz.setPosition(760 + Math.sin(k * 6) * 10, 560 - k * 80).setAlpha(sleeper?.sprite.visible ? 1 - k : 0).setScale(0.6 + k * 0.8);
     });
-    b.spot({ id: "mascot", x: 760, y: 900, r: 200, verb: "Conversar", script: "mascot" });
-    b.spot({ id: "cartridge", x: 1340, y: 860, r: 120, verb: "Pegar", script: "cartridge", show: (st) => !st.items.includes("cartridge"), hint: "secret" });
-    b.spot({ id: "tv", x: 1680, y: 860, r: 120, verb: "Examinar", script: "tv404" });
+    b.spot({ id: "mascot", x: 760, y: 900, r: 200, verb: b.text.verbs.talk, script: "mascot" });
+    b.spot({ id: "cartridge", x: 1340, y: 860, r: 120, verb: b.text.verbs.take, script: "cartridge", show: (st) => !st.items.includes("cartridge"), hint: "secret" });
+    b.spot({ id: "tv", x: 1680, y: 860, r: 120, verb: b.text.verbs.examine, script: "tv404" });
     b.exit(840, 1040, 240, 40, "lobby", "door404");
     b.glow(960, 1080, 460, 140, 0xfff1c0, 0.35, 0.45);
     b.prop("doormat", 960, 1082, { origin: [0.5, 1], depth: "floor", scale: 0.8 });

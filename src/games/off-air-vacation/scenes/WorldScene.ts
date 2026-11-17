@@ -1,9 +1,10 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { AREA_TITLES, CHAR_RES, FOOT, H, HINT_R, INTERACT_R, SCORE, W, type AreaId, type Dir } from "../config";
+import { CHAR_RES, FOOT, H, HINT_R, INTERACT_R, SCORE, W, type AreaId, type Dir } from "../config";
 import { ALL_POSTERS, freshState, saveState, type FolkKey, type Item, type State } from "../save";
 import { RESORT_SFX, type ResortSfx } from "../sounds";
-import { FOUND_TEXT, ITEM_INFO, POSTER_INFO, POSTER_SCRIPT, SCRIPTS, SPEAKERS, SPOT_LABELS, hasMain, mainObjective, score, type Director, type Mood, type Speaker } from "../story";
+import { ITEM_ICON, POSTER_SCRIPT, SCRIPTS, SPEAKERS, foundText, hasMain, mainObjective, score, spotLabel, type Director, type Mood, type Speaker } from "../story";
+import type { VacationText } from "../text/pt-BR";
 import { ArcadeGame } from "../ui/arcade";
 import { DialogBox } from "../ui/dialog";
 import { ResortHud } from "../ui/hud";
@@ -52,6 +53,7 @@ const fmt = (ms: number) => {
 
 export class WorldScene extends Phaser.Scene implements Builder {
   s!: State;
+  text!: VacationText;
   reduced = false;
   vars: Record<string, unknown> = {};
   private ctx!: GameHostContext;
@@ -166,6 +168,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
 
   create() {
     this.ctx = this.registry.get("ctx") as GameHostContext;
+    this.text = this.registry.get("text") as VacationText;
     this.reduced = this.ctx.reducedMotion;
     makeTextures(this);
     this.s = (this.registry.get("state") as State | null) ?? freshState();
@@ -176,11 +179,11 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.collectTall();
     this.cameras.main.setBounds(0, 0, this.w, this.h);
 
-    this.hud = new ResortHud(this, this.ctx.fonts, this.reduced);
+    this.hud = new ResortHud(this, this.ctx.fonts, this.reduced, this.text.hud.pause);
     this.hud.enableTouch(TOUCH_UI);
     this.dialog = new DialogBox(this, this.ctx.fonts, this.reduced, () => this.sfx("select", 0.6));
-    this.journal = new Journal(this, this.ctx.fonts, this.reduced);
-    this.arcade = new ArcadeGame(this, this.ctx.fonts, this.reduced, (n, v) => this.sfx(n, v));
+    this.journal = new Journal(this, this.ctx.fonts, this.reduced, this.text);
+    this.arcade = new ArcadeGame(this, this.ctx.fonts, this.reduced, (n, v) => this.sfx(n, v), this.text.arcade);
 
     if (this.mode === "attract") {
       this.hud.hide(true);
@@ -202,10 +205,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.cam = { x: cx0, y: cy0 };
       this.cameras.main.setScroll(this.cam.x, this.cam.y);
       this.save();
-      if (this.mode === "play") this.hud.flashArea(AREA_TITLES[this.area]);
-      this.lastObjective = mainObjective(this.s).text;
+      if (this.mode === "play") this.hud.flashArea(this.text.areas[this.area]);
+      this.lastObjective = mainObjective(this.s, this.text).text;
       this.emitScore();
-      if (this.area === "beach" && this.s.flags.seaPaused && !this.s.flags.gotOrder) this.hud.vhsOn(true, "▌▌ PAUSA");
+      if (this.area === "beach" && this.s.flags.seaPaused && !this.s.flags.gotOrder) this.hud.vhsOn(true, this.text.hud.pause);
     }
     this.refresh();
     this.setupInput();
@@ -215,15 +218,15 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.ctx.onReady();
     }
     if (this.mode === "play") {
-      this.ctx.onEvent({ type: "announce", message: `${AREA_TITLES[this.area]}.` });
+      this.ctx.onEvent({ type: "announce", message: `${this.text.areas[this.area]}.` });
       if (this.intro) this.time.delayedCall(500, () => void this.runScript("intro"));
       if (this.area === "station" && !this.s.flags.stationIntro) {
         this.s.flags.stationIntro = true;
-        this.time.delayedCall(450, () => void this.say("narrator", "Uma sala escondida, cheia de telas. Todas ligadas.").then(() => this.dialog.close()));
+        this.time.delayedCall(450, () => void this.say("narrator", this.text.world.stationIntro).then(() => this.dialog.close()));
       }
       if (this.area === "room404" && !this.s.secrets.includes("room404") && !this.s.flags.roomIntro) {
         this.s.flags.roomIntro = true;
-        this.time.delayedCall(450, () => void this.say("narrator", "Um quarto aconchegante. Alguém está dormindo... e roncando em chiado.").then(() => this.dialog.close()));
+        this.time.delayedCall(450, () => void this.say("narrator", this.text.world.roomIntro).then(() => this.dialog.close()));
       }
     }
     if (this.mode === "party") this.time.delayedCall(400, () => void this.party());
@@ -389,7 +392,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     if (!n || this.mode !== "play") return;
     n.bark(text, this.ctx.fonts.round ?? this.ctx.fonts.body, this.time.now);
     if (sound) this.sfx(sound, 0.5, SPEAKERS[who].pitch);
-    this.ctx.onEvent({ type: "announce", message: `${SPEAKERS[who].name}: ${text}` });
+    this.ctx.onEvent({ type: "announce", message: `${this.text.speakers[who]}: ${text}` });
   }
 
   greet(who: FolkKey, lines: string[] | (() => string[]), r = 300) {
@@ -607,7 +610,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
 
   private labelOf(sp: SpotDef) {
     if (this.npcs.has(sp.id as FolkKey)) return undefined;
-    return SPOT_LABELS[sp.id];
+    return spotLabel(this.text, sp.id);
   }
 
   get fonts() {
@@ -618,6 +621,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     const has = (i: Item) => this.s.items.includes(i);
     return {
       s: this.s,
+      text: this.text,
       say: (who, text, mood) => this.say(who, text, mood),
       ask: async (who, text, options, mood) => {
         await this.say(who, text, mood, true);
@@ -628,9 +632,9 @@ export class WorldScene extends Phaser.Scene implements Builder {
       give: async (i) => {
         if (!has(i)) this.s.items.push(i);
         this.sfx("pick", 0.9);
-        this.popIcon(ITEM_INFO[i].icon);
-        this.hud.toast("Na mochila", ITEM_INFO[i].name, ITEM_INFO[i].icon);
-        this.ctx.onEvent({ type: "announce", message: `Você pegou: ${ITEM_INFO[i].name}.` });
+        this.popIcon(ITEM_ICON[i]);
+        this.hud.toast(this.text.hud.backpack, this.text.items[i], ITEM_ICON[i]);
+        this.ctx.onEvent({ type: "announce", message: this.text.hud.picked(this.text.items[i]) });
         this.refresh();
         this.save();
         await this.wait(450);
@@ -651,7 +655,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         this.emitScore();
         this.sfx("poster", 0.9);
         this.popIcon("item-poster");
-        this.hud.toast("Pôster guardado no diário", `${POSTER_INFO[id].title} (${this.s.posters.length}/${ALL_POSTERS.length})`, "item-poster", 0xff8a3d);
+        this.hud.toast(this.text.hud.posterSaved, `${this.text.posters[id].title} (${this.s.posters.length}/${ALL_POSTERS.length})`, "item-poster", 0xff8a3d);
         if (this.s.posters.length === ALL_POSTERS.length) this.ctx.onEvent({ type: "achievement", id: "offair-posters" });
         this.save();
         await this.wait(300);
@@ -661,7 +665,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         this.emitScore();
         this.sfx("pick", 0.9);
         this.popIcon("item-token");
-        this.hud.toast("Ficha dourada", `${this.s.tokens.length} de 3`, "item-token", 0xffe39a);
+        this.hud.toast(this.text.hud.token, this.text.hud.tokenCount(this.s.tokens.length), "item-token", 0xffe39a);
         this.s.flags.tokensHint = true;
         this.save();
         await this.wait(300);
@@ -671,8 +675,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         this.s.secrets.push(id);
         this.emitScore();
         this.sfx("win", 0.8);
-        const names: Record<string, string> = { room404: "O hóspede do quarto 404", machine: "A máquina escondida", lento: "Seu Lento chegou" };
-        this.hud.toast("Segredo encontrado!", names[id], "ui-star", 0xf06ba8);
+        this.hud.toast(this.text.hud.secretFound, this.text.secrets[id], "ui-star", 0xf06ba8);
         if (id === "room404") this.ctx.onEvent({ type: "achievement", id: "offair-room" });
         this.save();
         await this.wait(300);
@@ -684,7 +687,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         if (this.s.found.includes(id)) return;
         this.s.found.push(id);
         this.sfx("discover", 0.7);
-        this.hud.toast("Descoberta", FOUND_TEXT[id] ?? id, "ui-bulb", 0x9df0dc);
+        this.hud.toast(this.text.hud.discovery, foundText(this.text, id) ?? id, "ui-bulb", 0x9df0dc);
         this.save();
       },
       objective: () => this.announceObjective(),
@@ -710,12 +713,12 @@ export class WorldScene extends Phaser.Scene implements Builder {
   }
 
   private announceObjective() {
-    const m = mainObjective(this.s);
+    const m = mainObjective(this.s, this.text);
     if (m.text === this.lastObjective) return;
     this.lastObjective = m.text;
     this.sfx("quest", 0.8);
-    this.hud.toast(m.done ? "Missão cumprida" : "Missão", m.text, "ui-target", 0xffc83d);
-    this.ctx.onEvent({ type: "announce", message: `Missão: ${m.text}` });
+    this.hud.toast(m.done ? this.text.hud.missionDone : this.text.hud.mission, m.text, "ui-target", 0xffc83d);
+    this.ctx.onEvent({ type: "announce", message: this.text.hud.missionAnnounce(m.text) });
   }
 
   private popIcon(key: string) {
@@ -732,6 +735,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private async say(who: Speaker, text: string, mood: Mood = "normal", keepOpen = false) {
     void keepOpen;
     const info = SPEAKERS[who];
+    const name = this.text.speakers[who];
     const npc = who !== "deco" && who !== "narrator" ? this.npcs.get(who as FolkKey) : undefined;
     if (npc) {
       npc.setMood(mood, 0, 0);
@@ -742,9 +746,9 @@ export class WorldScene extends Phaser.Scene implements Builder {
     if (who === "deco") face = `face-deco-${mood === "happy" ? "happy" : mood === "surprised" ? "wow" : "normal"}`;
     else if (who === "mascot") face = `face-mascot-${mood === "surprised" ? "surprised" : "normal"}`;
     else if (who !== "narrator") face = `face-${who}-${FACE_MOOD[mood]}`;
-    this.ctx.onEvent({ type: "announce", message: info.name ? `${info.name}: ${text}` : text });
+    this.ctx.onEvent({ type: "announce", message: name ? `${name}: ${text}` : text });
     await this.dialog.show({
-      name: info.name,
+      name,
       face,
       label: who === "narrator" ? this.speakLabel : undefined,
       text,
@@ -828,7 +832,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         m?.setFrames({ normal: "normal", talk: "talk-w", look: "look-w", happy: "happy", sad: "normal", surprised: "talk-w" });
         m?.setMood("happy", 1600, this.time.now);
         this.sfx("whistle", 1);
-        if (m) this.word("PRIIIII!", m.x + 90, m.topY - 40, "#fbf5e6");
+        if (m) this.word(this.text.world.whistle, m.x + 90, m.topY - 40, "#fbf5e6");
         if (!this.reduced) this.cameras.main.shake(260, 0.004);
         for (let i = 0; i < 3; i += 1) this.flyGull((m?.x ?? 800) - 300 + i * 220, (m?.topY ?? 1100) - 40 - i * 80, i);
         if (flamingo && !this.reduced) {
@@ -848,7 +852,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       case "rewind": {
         this.sfx("pause", 0.8, 0.7);
-        this.hud.vhsOn(true, "◀◀ REBOBINANDO");
+        this.hud.vhsOn(true, this.text.hud.rewind);
         if (!this.reduced) this.cameras.main.shake(700, 0.002);
         await this.wait(1000);
         this.hud.vhsOn(false);
@@ -870,12 +874,12 @@ export class WorldScene extends Phaser.Scene implements Builder {
       case "pauseSea": {
         this.sfx("pause", 1);
         this.vars.seaPaused = true;
-        this.hud.vhsOn(true, "▌▌ PAUSA");
+        this.hud.vhsOn(true, this.text.hud.pause);
         (this.vars.paintNotch as (on: boolean) => void)?.(true);
         if (!this.reduced) this.cameras.main.shake(200, 0.003);
         this.s.flags.seaPaused = true;
         this.refresh();
-        if (this.npcs.get("clique") && !this.s.flags.photoDone) this.time.delayedCall(700, () => this.bark("clique", "O mar parou?! Cadê minha câmera?!"));
+        if (this.npcs.get("clique") && !this.s.flags.photoDone) this.time.delayedCall(700, () => this.bark("clique", this.text.world.cliqueSea));
         await this.wait(900);
         return;
       }
@@ -883,7 +887,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         const p = this.player;
         if (p && p.y < 700 && p.x > 1040 && p.x < 1460) await this.autoWalk(p.x, 740);
         this.sfx("play", 1);
-        this.hud.vhsOn(true, "▶ PLAY");
+        this.hud.vhsOn(true, this.text.hud.play);
         await this.wait(800);
         this.hud.vhsOn(false);
         this.vars.seaPaused = false;
@@ -895,7 +899,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       case "pauseFall": {
         this.sfx("pause", 1);
-        this.hud.vhsOn(true, "▌▌ PAUSA");
+        this.hud.vhsOn(true, this.text.hud.pause);
         const fall = this.vars.fall as Phaser.GameObjects.TileSprite;
         const scan = this.vars.fallScan as Phaser.GameObjects.TileSprite;
         this.s.flags.fallPaused = true;
@@ -914,7 +918,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       case "monitorsOn": {
         this.sfx("bars", 0.7);
         this.buildFeeds();
-        const msg = cartoonText(this, 1000, 160, "ORDEM RECEBIDA. ENCERRAR?", { size: 44, color: "#ffc83d", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(3);
+        const msg = cartoonText(this, 1000, 160, this.text.world.orderReceived, { size: 44, color: "#ffc83d", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(3);
         this.vars.orderMsg = msg;
         if (!this.reduced) this.tweens.add({ targets: msg, alpha: 0.3, duration: 300, yoyo: true, repeat: 3 });
         await this.wait(1400);
@@ -940,7 +944,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         });
         bars.fillStyle(0x1d1830, 1);
         bars.fillRect(0, H * 0.72, W, H * 0.28);
-        const t = cartoonText(this, W / 2, H * 0.86, "FIM DA TRANSMISSÃO", { size: 72, color: "#fbf5e6", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(9601).setScrollFactor(0);
+        const t = cartoonText(this, W / 2, H * 0.86, this.text.world.endOff, { size: 72, color: "#fbf5e6", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(9601).setScrollFactor(0);
         await this.wait(2000);
         bars.clear();
         bars.fillStyle(0x000000, 1);
@@ -963,8 +967,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
       case "endOn": {
         this.sfx("win", 1);
         const feeds = this.vars.feeds as Phaser.GameObjects.Container[] | undefined;
-        feeds?.forEach((f) => (f.getData("live") as Phaser.GameObjects.Text | undefined)?.setText("● AO VIVO"));
-        const msg = cartoonText(this, 1000, 160, "AO VIVO: FÉRIAS FORA DO AR", { size: 44, color: "#ef4f43", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(3);
+        feeds?.forEach((f) => (f.getData("live") as Phaser.GameObjects.Text | undefined)?.setText(this.text.world.live));
+        const msg = cartoonText(this, 1000, 160, this.text.world.liveTitle, { size: 44, color: "#ef4f43", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(3);
         if (!this.reduced) this.tweens.add({ targets: msg, scale: { from: 0.6, to: 1 }, duration: 300, ease: "Back.easeOut" });
         await this.wait(1200);
         return;
@@ -1079,13 +1083,14 @@ export class WorldScene extends Phaser.Scene implements Builder {
 
   private buildFeeds() {
     if (this.vars.feeds) return;
+    const feed = this.text.world.feeds;
     const ids: [string, string, number][] = [
-      ["bigodes", "RECEPÇÃO", 0xef4f43],
-      ["marola", "PISCINA", 0x5cb9f0],
-      ["tilt", "FLIPERAMA", 0xb9a6ef],
-      ["marisa", "PRAIA", 0xffe39a],
-      ["psiu", "FLORESTA", 0x63d6c1],
-      ["deco", "AQUI", 0xffc83d],
+      ["bigodes", feed.bigodes, 0xef4f43],
+      ["marola", feed.marola, 0x5cb9f0],
+      ["tilt", feed.tilt, 0xb9a6ef],
+      ["marisa", feed.marisa, 0xffe39a],
+      ["psiu", feed.psiu, 0x63d6c1],
+      ["deco", this.text.world.here, 0xffc83d],
     ];
     const feeds = ids.map(([id, label, color], i) => {
       const c = i % 3;
@@ -1100,7 +1105,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const k = Math.min(138 / (src.height - padB - padT), 250 / src.width);
       const face = this.add.image(0, 84, key).setOrigin(0.5, 1 - padB / src.height).setScale(k);
       const tag = this.add.text(-136, -78, label, { fontFamily: this.ctx.fonts.display, fontSize: "20px", color: "#1d1830" });
-      const live = this.add.text(136, -78, "● AO VIVO", { fontFamily: this.ctx.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
+      const live = this.add.text(136, -78, this.text.world.live, { fontFamily: this.ctx.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
       const scan = this.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
       const cont = this.add.container(x, y, [bg, face, tag, live, scan]).setDepth(2.5);
       cont.setData("id", id);
@@ -1167,9 +1172,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.sfx("win", 1);
     await this.wait(900);
     const off = this.s.ending === "off";
-    await this.say("narrator", off ? "O Canal 404 saiu do ar de vez. O resort, não." : "O resort continua no ar. Agora, com um espectador.");
-    await this.say("bigodes", off ? "Festa de despedida que não se despede. Muito normal." : "Bem-vindo, de novo. Check-out: nunca.", "happy");
-    await this.say("deco", "Melhores férias fora do ar da minha vida!", "happy");
+    const T = this.text.world;
+    await this.say("narrator", off ? T.partyOff : T.partyOn);
+    await this.say("bigodes", off ? T.bigodesOff : T.bigodesOn, "happy");
+    await this.say("deco", T.decoParty, "happy");
     this.dialog.close();
     await this.wait(400);
     this.endCard(off);
@@ -1206,8 +1212,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
     g.fillRoundedRect(-480, -150, 960, 300, 36);
     g.lineStyle(8, 0x1d1830, 1);
     g.strokeRoundedRect(-480, -150, 960, 300, 36);
-    const t1 = cartoonText(this, 0, -40, "FÉRIAS FORA DO AR", { size: 72, color: "#f06ba8", font: this.ctx.fonts.display, stroke: 0.18 }).setOrigin(0.5);
-    const t2 = cartoonText(this, 0, 60, off ? "Fim da transmissão" : "Ainda no ar", { size: 46, color: "#1d1830", font: this.ctx.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    const t1 = cartoonText(this, 0, -40, this.text.world.cardTitle, { size: 72, color: "#f06ba8", font: this.ctx.fonts.display, stroke: 0.18 }).setOrigin(0.5);
+    const t2 = cartoonText(this, 0, 60, off ? this.text.world.cardOff : this.text.world.cardOn, { size: 46, color: "#1d1830", font: this.ctx.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
     const card = this.add.container(W / 2, H / 2 - 80, [g, t1, t2]).setDepth(9700);
     pinUi(card);
     if (!this.reduced) {
@@ -1218,11 +1224,12 @@ export class WorldScene extends Phaser.Scene implements Builder {
 
   private finish() {
     const sc = score(this.s);
+    const T = this.text.result;
     const rows = [
-      { label: "Mistério resolvido", value: SCORE.mystery },
-      { label: `Pôsteres (${sc.posters}/5)`, value: sc.posters * SCORE.poster },
-      { label: `Fichas douradas (${sc.tokens}/3)`, value: sc.tokens * SCORE.token },
-      { label: `Segredos (${sc.secrets}/3)`, value: sc.secrets * SCORE.secret },
+      { label: T.mystery, value: SCORE.mystery },
+      { label: T.posters(sc.posters), value: sc.posters * SCORE.poster },
+      { label: T.tokens(sc.tokens), value: sc.tokens * SCORE.token },
+      { label: T.secrets(sc.secrets), value: sc.secrets * SCORE.secret },
     ];
     const total = rows.reduce((a, r) => a + r.value, 0);
     const stars = 1 + (sc.posters >= 3 ? 1 : 0) + (sc.secrets >= 2 ? 1 : 0);
@@ -1245,10 +1252,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
         timeMs: Math.round(this.s.time),
       },
       achievements,
-      copy: off ? { title: "Fim da transmissão!", text: "O canal saiu do ar. As férias, não." } : { title: "Ainda no ar!", text: "O resort continua no ar. Agora com um espectador." },
-      summary: `Tempo ${fmt(this.s.time)} · Pôsteres ${sc.posters}/5 · Segredos ${sc.secrets}/3`,
-      alt: "Nova aventura",
-      restartLabel: "Voltar ao resort",
+      copy: { ...(off ? T.off : T.on) },
+      summary: T.summary(fmt(this.s.time), sc.posters, sc.secrets),
+      alt: T.alt,
+      restartLabel: T.restart,
       featured: this.s.ending ?? "on",
     };
     this.s.x = POOL.party.player[0];
@@ -1597,7 +1604,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         kb.vy = 0;
         splashAt(this, nx, ny, 1);
         this.sfx("splash", 0.6);
-        this.word("SPLASH!", nx, ny - 80, "#9fd4ff");
+        this.word(this.text.world.splash, nx, ny - 80, "#9fd4ff");
         return;
       }
       if (this.blocked(nx, ny)) {
