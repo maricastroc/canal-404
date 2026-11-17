@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { OfflineIcon, RestartIcon } from "@/components/art/Icons";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { connect } from "@/lib/competition/client";
 import { useMissionToday } from "@/lib/missions/hooks";
 import { announceAchievements } from "@/lib/missions/seen";
@@ -11,6 +13,27 @@ import { MissionBoard } from "./MissionBoard";
 import { MissionCartridge } from "./MissionCartridge";
 import { MissionHistory } from "./MissionHistory";
 import { MissionRules, YourCard } from "./MissionPanels";
+
+const COPY = localized({
+  "pt-BR": {
+    soonTitle: "A missão estreia em breve",
+    soonText: "A Missão 404 depende do placar do canal, que ainda não entrou no ar. Enquanto isso, os jogos funcionam normalmente.",
+    catalog: "Ver o catálogo",
+    offlineTitle: "Sem sinal da missão",
+    offlineText: "A antena do canal não respondeu. Os jogos continuam funcionando, e a missão reaparece assim que o sinal voltar.",
+    retry: "Tentar de novo",
+    tuning: "Sintonizando a missão…",
+  },
+  en: {
+    soonTitle: "The mission premieres soon",
+    soonText: "Mission 404 depends on the channel's board, which isn't on the air yet. Meanwhile, the games work as usual.",
+    catalog: "See the catalog",
+    offlineTitle: "No signal from the mission",
+    offlineText: "The channel's antenna didn't answer. The games still work, and the mission comes back as soon as the signal does.",
+    retry: "Try again",
+    tuning: "Tuning in the mission…",
+  },
+});
 
 function Screen({ title, text, children, live, tone = "text-sun", expression = "neutral" }: { title: string; text?: string; children?: React.ReactNode; live?: boolean; tone?: string; expression?: "neutral" | "static" | "sleepy" }) {
   return (
@@ -26,6 +49,7 @@ function Screen({ title, text, children, live, tone = "text-sun", expression = "
 
 export function MissionHub() {
   const mission = useMissionToday();
+  const copy = useCopy(COPY);
   const { competition, data } = mission;
   const [boardDay, setBoardDay] = useState<string | null>(null);
   const boardRef = useRef<HTMLElement>(null);
@@ -38,16 +62,16 @@ export function MissionHub() {
 
   if (mission.status === "unconfigured") {
     return (
-      <Screen title="A missão estreia em breve" text="A Missão 404 depende do placar do canal, que ainda não entrou no ar. Enquanto isso, os jogos funcionam normalmente." tone="text-bubblegum" expression="sleepy">
+      <Screen title={copy.soonTitle} text={copy.soonText} tone="text-bubblegum" expression="sleepy">
         <InkLink href="/games" size="sm" tone="sun">
-          Ver o catálogo
+          {copy.catalog}
         </InkLink>
       </Screen>
     );
   }
   if (mission.status === "offline" || (competition.status === "offline" && !data)) {
     return (
-      <Screen title="Sem sinal da missão" text="A antena do canal não respondeu. Os jogos continuam funcionando, e a missão reaparece assim que o sinal voltar." tone="text-tomato" expression="static">
+      <Screen title={copy.offlineTitle} text={copy.offlineText} tone="text-tomato" expression="static">
         <OfflineIcon className="size-8 text-tomato" />
         <InkButton
           size="sm"
@@ -57,12 +81,12 @@ export function MissionHub() {
             if (state.status === "online") await mission.refresh();
           }}
         >
-          <RestartIcon className="size-4" /> Tentar de novo
+          <RestartIcon className="size-4" /> {copy.retry}
         </InkButton>
       </Screen>
     );
   }
-  if (!data) return <Screen live title="Sintonizando a missão…" tone="animate-pulse text-sun" />;
+  if (!data) return <Screen live title={copy.tuning} tone="animate-pulse text-sun" />;
 
   const joined = Boolean(competition.player);
   return (

@@ -48,16 +48,24 @@ async function shoot(path, name, ready, scale = 1) {
   console.log(`og/${name}.png`);
 }
 
-await shoot(
-  "/",
-  "canal-404",
-  async (page) => {
-    await page.getByRole("button", { name: "Abrir a caixa de pizza" }).waitFor();
-    await page.getByText("Ei! Você voltou!").first().waitFor();
-    await page.waitForTimeout(2500);
-  },
-  ROOM_SCALE,
-);
-for (const slug of SLUGS) await shoot(`/og-card/${slug}`, slug, (page) => page.locator("[data-og-card]").waitFor());
+const LOCALES = [
+  { prefix: "", folder: "", pizza: "Abrir a caixa de pizza", greeting: "Ei! Você voltou!" },
+  { prefix: "/en", folder: "en/", pizza: "Open the pizza box", greeting: "Hey! You're back!" },
+];
+
+for (const { prefix, folder, pizza, greeting } of LOCALES) {
+  await mkdir(new URL(folder, OUT), { recursive: true });
+  await shoot(
+    prefix || "/",
+    `${folder}canal-404`,
+    async (page) => {
+      await page.getByRole("button", { name: pizza }).waitFor();
+      await page.getByText(greeting).first().waitFor();
+      await page.waitForTimeout(2500);
+    },
+    ROOM_SCALE,
+  );
+  for (const slug of SLUGS) await shoot(`${prefix}/og-card/${slug}`, `${folder}${slug}`, (page) => page.locator("[data-og-card]").waitFor());
+}
 
 await browser.close();

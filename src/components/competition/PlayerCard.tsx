@@ -4,13 +4,80 @@ import { useState } from "react";
 import { CardIcon, OfflineIcon, PencilIcon, TrashIcon, TrophyIcon } from "@/components/art/Icons";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { dateFormat } from "@/i18n/format";
+import type { Locale } from "@/i18n/locales";
 import { useSound } from "@/lib/audio/hooks";
 import { join, leave, rename } from "@/lib/competition/client";
 import { useCompetition } from "@/lib/competition/hooks";
 import { NicknameForm } from "./NicknameForm";
 
-function memberSince(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
+const COPY = localized({
+  "pt-BR": {
+    leaveError: "Não deu para falar com o placar agora. Tente de novo daqui a pouco.",
+    header: "Canal 404 · Carteirinha",
+    tuning: "Sintonizando…",
+    member: "Sócio do fliperama",
+    since: (date: string) => `Desde ${date}`,
+    soonTitle: "Em breve",
+    soon: "O placar do canal ainda não estreou. Seu progresso continua salvo neste navegador.",
+    offlineTitle: "Sem sinal",
+    offline: "O placar está fora do ar agora. Os jogos funcionam normalmente.",
+    noCardTitle: "Sem carteirinha",
+    noCard: "Escolha um apelido para aparecer no placar do canal.",
+    records: "Ver recordes",
+    rename: "Trocar apelido",
+    leave: "Sair do placar",
+    save: "Salvar",
+    leaveTitle: "Sair do placar?",
+    leaveText: "Seu apelido e seus resultados saem do placar. O progresso neste navegador continua.",
+    confirm: "Sim, apagar",
+    cancel: "Cancelar",
+    getCard: "Tirar carteirinha",
+    later: "A carteirinha fica disponível quando o placar estiver no ar.",
+    keepsTitle: "O que o placar guarda",
+    keeps: [
+      "O apelido que você escolher e um número de quatro dígitos para diferenciar apelidos iguais.",
+      "Um código secreto guardado neste navegador, que funciona como sua carteirinha. Sem e-mail, sem senha, sem nome.",
+      "Os resultados que você enviar para o placar.",
+    ],
+    clear: "Se você limpar os dados do navegador, a carteirinha se perde. Ao sair do placar, apagamos tudo o que está no servidor na hora.",
+  },
+  en: {
+    leaveError: "Couldn't reach the board right now. Try again in a little while.",
+    header: "Canal 404 · Membership card",
+    tuning: "Tuning in…",
+    member: "Arcade member",
+    since: (date: string) => `Since ${date}`,
+    soonTitle: "Coming soon",
+    soon: "The channel's board hasn't premiered yet. Your progress is still saved in this browser.",
+    offlineTitle: "No signal",
+    offline: "The board is off the air right now. The games work as usual.",
+    noCardTitle: "No membership card",
+    noCard: "Pick a nickname to show up on the channel's board.",
+    records: "See records",
+    rename: "Change nickname",
+    leave: "Leave the board",
+    save: "Save",
+    leaveTitle: "Leave the board?",
+    leaveText: "Your nickname and your results come off the board. Your progress in this browser stays.",
+    confirm: "Yes, delete",
+    cancel: "Cancel",
+    getCard: "Get your card",
+    later: "The membership card becomes available when the board is on the air.",
+    keepsTitle: "What the board keeps",
+    keeps: [
+      "The nickname you pick and a four-digit number to tell identical nicknames apart.",
+      "A secret code saved in this browser that works as your membership card. No email, no password, no name.",
+      "The results you send to the board.",
+    ],
+    clear: "If you clear your browser data, the membership card is lost. When you leave the board, we delete everything on the server right away.",
+  },
+});
+
+function memberSince(iso: string, locale: Locale) {
+  return dateFormat(locale, { month: "long", year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
 }
 
 export function PlayerCard() {
@@ -18,6 +85,8 @@ export function PlayerCard() {
   const [mode, setMode] = useState<"view" | "rename" | "leave">("view");
   const [leaveError, setLeaveError] = useState("");
   const { play } = useSound();
+  const copy = useCopy(COPY);
+  const locale = useLocale();
 
   const confirmLeave = async () => {
     const ok = await leave();
@@ -27,14 +96,14 @@ export function PlayerCard() {
       setLeaveError("");
       return;
     }
-    setLeaveError("Não deu para falar com o placar agora. Tente de novo daqui a pouco.");
+    setLeaveError(copy.leaveError);
   };
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
       <div className="paper relative -rotate-1 overflow-hidden border-[3px] border-ink shadow-[var(--shadow-ink-lg)] wobbly-alt" data-testid="player-card">
         <div className="flex items-center justify-between gap-3 border-b-[3px] border-ink bg-tomato px-4 py-2">
-          <p className="font-display text-sm uppercase tracking-wider text-ink">Canal 404 · Carteirinha</p>
+          <p className="font-display text-sm uppercase tracking-wider text-ink">{copy.header}</p>
           <CardIcon className="size-6 text-ink" />
         </div>
         <div className="flex items-center gap-4 p-4">
@@ -43,30 +112,30 @@ export function PlayerCard() {
           </div>
           <div className="min-w-0">
             {status === "checking" ? (
-              <p className="font-display text-2xl uppercase text-ink-soft">Sintonizando…</p>
+              <p className="font-display text-2xl uppercase text-ink-soft">{copy.tuning}</p>
             ) : player ? (
               <>
-                <p className="font-display text-xs uppercase tracking-widest text-ink-soft">Sócio do fliperama</p>
+                <p className="font-display text-xs uppercase tracking-widest text-ink-soft">{copy.member}</p>
                 <p className="break-words font-display text-3xl leading-none text-ink">{player.nickname}</p>
                 <p className="mt-1 font-display text-lg tabular-nums text-plum-600">#{player.tag}</p>
-                <p className="copy-sm text-ink-soft">Desde {memberSince(player.createdAt)}</p>
+                <p className="copy-sm text-ink-soft">{copy.since(memberSince(player.createdAt, locale))}</p>
               </>
             ) : status === "unconfigured" ? (
               <>
-                <p className="font-display text-2xl uppercase leading-tight text-ink">Em breve</p>
-                <p className="copy-sm mt-1 text-ink-soft">O placar do canal ainda não estreou. Seu progresso continua salvo neste navegador.</p>
+                <p className="font-display text-2xl uppercase leading-tight text-ink">{copy.soonTitle}</p>
+                <p className="copy-sm mt-1 text-ink-soft">{copy.soon}</p>
               </>
             ) : status === "offline" && !player ? (
               <>
                 <p className="flex items-center gap-2 font-display text-2xl uppercase leading-tight text-ink">
-                  <OfflineIcon className="size-6" /> Sem sinal
+                  <OfflineIcon className="size-6" /> {copy.offlineTitle}
                 </p>
-                <p className="copy-sm mt-1 text-ink-soft">O placar está fora do ar agora. Os jogos funcionam normalmente.</p>
+                <p className="copy-sm mt-1 text-ink-soft">{copy.offline}</p>
               </>
             ) : (
               <>
-                <p className="font-display text-2xl uppercase leading-tight text-ink">Sem carteirinha</p>
-                <p className="copy-sm mt-1 text-ink-soft">Escolha um apelido para aparecer no placar do canal.</p>
+                <p className="font-display text-2xl uppercase leading-tight text-ink">{copy.noCardTitle}</p>
+                <p className="copy-sm mt-1 text-ink-soft">{copy.noCard}</p>
               </>
             )}
           </div>
@@ -75,20 +144,20 @@ export function PlayerCard() {
           {player && mode === "view" ? (
             <div className="flex flex-wrap gap-2">
               <InkLink href="/records" tone="sun" size="sm">
-                <TrophyIcon className="size-5" /> Ver recordes
+                <TrophyIcon className="size-5" /> {copy.records}
               </InkLink>
               <InkButton tone="mint" size="sm" onClick={() => setMode("rename")} disabled={status !== "online"}>
-                <PencilIcon className="size-5" /> Trocar apelido
+                <PencilIcon className="size-5" /> {copy.rename}
               </InkButton>
               <InkButton tone="cream" size="sm" onClick={() => setMode("leave")} disabled={status !== "online"}>
-                <TrashIcon className="size-5" /> Sair do placar
+                <TrashIcon className="size-5" /> {copy.leave}
               </InkButton>
             </div>
           ) : null}
           {player && mode === "rename" ? (
             <NicknameForm
               initial={player.nickname}
-              submitLabel="Salvar"
+              submitLabel={copy.save}
               autoFocus
               onCancel={() => setMode("view")}
               onSubmit={async (nickname) => {
@@ -99,15 +168,15 @@ export function PlayerCard() {
             />
           ) : null}
           {player && mode === "leave" ? (
-            <div role="alertdialog" aria-label="Sair do placar" className="rounded-xl border-[3px] border-ink bg-cream-2 p-3">
-              <p className="font-display text-lg uppercase tracking-wide text-ink">Sair do placar?</p>
-              <p className="copy-sm mt-1 text-ink-soft">Seu apelido e seus resultados saem do placar. O progresso neste navegador continua.</p>
+            <div role="alertdialog" aria-label={copy.leave} className="rounded-xl border-[3px] border-ink bg-cream-2 p-3">
+              <p className="font-display text-lg uppercase tracking-wide text-ink">{copy.leaveTitle}</p>
+              <p className="copy-sm mt-1 text-ink-soft">{copy.leaveText}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <InkButton tone="tomato" size="sm" onClick={confirmLeave}>
-                  Sim, apagar
+                  {copy.confirm}
                 </InkButton>
                 <InkButton tone="cream" size="sm" onClick={() => setMode("view")}>
-                  Cancelar
+                  {copy.cancel}
                 </InkButton>
               </div>
               {leaveError ? (
@@ -117,20 +186,18 @@ export function PlayerCard() {
               ) : null}
             </div>
           ) : null}
-          {!player && status === "online" ? <NicknameForm submitLabel="Tirar carteirinha" onSubmit={join} /> : null}
-          {!player && status !== "online" ? <p className="copy-sm text-ink-soft">A carteirinha fica disponível quando o placar estiver no ar.</p> : null}
+          {!player && status === "online" ? <NicknameForm submitLabel={copy.getCard} onSubmit={join} /> : null}
+          {!player && status !== "online" ? <p className="copy-sm text-ink-soft">{copy.later}</p> : null}
         </div>
       </div>
       <div className="paper border-[3px] border-ink p-5 shadow-[var(--shadow-ink)] wobbly">
-        <h3 className="font-display text-xl uppercase tracking-wide text-ink">O que o placar guarda</h3>
+        <h3 className="font-display text-xl uppercase tracking-wide text-ink">{copy.keepsTitle}</h3>
         <ul className="copy mt-2 list-disc space-y-1.5 pl-5 text-ink-soft">
-          <li>O apelido que você escolher e um número de quatro dígitos para diferenciar apelidos iguais.</li>
-          <li>Um código secreto guardado neste navegador, que funciona como sua carteirinha. Sem e-mail, sem senha, sem nome.</li>
-          <li>Os resultados que você enviar para o placar.</li>
+          {copy.keeps.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
         </ul>
-        <p className="copy mt-3 text-ink-soft">
-          Se você limpar os dados do navegador, a carteirinha se perde. Ao sair do placar, apagamos tudo o que está no servidor na hora.
-        </p>
+        <p className="copy mt-3 text-ink-soft">{copy.clear}</p>
       </div>
     </div>
   );

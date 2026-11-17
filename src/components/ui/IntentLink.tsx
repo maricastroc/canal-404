@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/i18n/Link";
 import type { ComponentProps } from "react";
+import { useLocaleRouter } from "@/i18n/client";
 
 export function IntentLink({ href, onPointerEnter, onFocus, onTouchStart, ...rest }: Omit<ComponentProps<typeof Link>, "prefetch" | "href"> & { href: string }) {
-  const router = useRouter();
+  const router = useLocaleRouter();
   const warm = () => router.prefetch(href);
   return (
     <Link

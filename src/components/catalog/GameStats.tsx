@@ -1,10 +1,35 @@
 "use client";
 
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { formatNumber } from "@/i18n/format";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 
+const COPY = localized({
+  "pt-BR": {
+    stars: (n: number) => `${n} de 3 estrelas`,
+    levels: { fase: "Fases", arena: "Arenas" },
+    starsLabel: "Estrelas",
+    plays: "Partidas",
+    record: "Recorde",
+    wins: "Vitórias",
+    best: "Melhor",
+  },
+  en: {
+    stars: (n: number) => `${n} of 3 stars`,
+    levels: { fase: "Levels", arena: "Arenas" },
+    starsLabel: "Stars",
+    plays: "Plays",
+    record: "Record",
+    wins: "Wins",
+    best: "Best",
+  },
+});
+
 function Stars({ count }: { count: number }) {
+  const copy = useCopy(COPY);
   return (
-    <span role="img" className="inline-flex gap-0.5" aria-label={`${count} de 3 estrelas`}>
+    <span role="img" className="inline-flex gap-0.5" aria-label={copy.stars(count)}>
       {[0, 1, 2].map((i) => (
         <span
           key={i}
@@ -22,14 +47,16 @@ function Stars({ count }: { count: number }) {
 export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; levels?: { id: string }[]; levelWord?: "fase" | "arena" }) {
   const progress = useProgress();
   const hydrated = useHydrated();
+  const locale = useLocale();
+  const copy = COPY[locale];
   const record = hydrated ? progress.games[slug] : undefined;
   if (levels) {
     const done = levels.filter((l) => (record?.levels?.[l.id]?.stars ?? 0) > 0).length;
     const stars = levels.reduce((acc, l) => acc + (record?.levels?.[l.id]?.stars ?? 0), 0);
     const levelItems = [
-      { label: levelWord === "arena" ? "Arenas" : "Fases", value: `${done}/${levels.length}` },
-      { label: "Estrelas", value: `${stars}/${levels.length * 3}` },
-      { label: "Partidas", value: record?.plays ? String(record.plays) : "0" },
+      { label: copy.levels[levelWord], value: `${done}/${levels.length}` },
+      { label: copy.starsLabel, value: `${stars}/${levels.length * 3}` },
+      { label: copy.plays, value: record?.plays ? String(record.plays) : "0" },
     ];
     return (
       <div className="flex flex-wrap items-center gap-3">
@@ -43,9 +70,9 @@ export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; 
     );
   }
   const items = [
-    { label: "Recorde", value: record?.highScore ? record.highScore.toLocaleString("pt-BR") : "—" },
-    { label: "Partidas", value: record?.plays ? String(record.plays) : "0" },
-    { label: "Vitórias", value: record?.wins ? String(record.wins) : "0" },
+    { label: copy.record, value: record?.highScore ? formatNumber(record.highScore, locale) : "—" },
+    { label: copy.plays, value: record?.plays ? String(record.plays) : "0" },
+    { label: copy.wins, value: record?.wins ? String(record.wins) : "0" },
   ];
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -56,7 +83,7 @@ export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; 
         </div>
       ))}
       <div className="rounded-lg border-[3px] border-ink bg-cream px-3 py-1.5 text-center shadow-[var(--shadow-ink-sm)]">
-        <p className="font-display text-[11px] uppercase tracking-widest text-ink-soft">Melhor</p>
+        <p className="font-display text-[11px] uppercase tracking-widest text-ink-soft">{copy.best}</p>
         <Stars count={record?.bestStars ?? 0} />
       </div>
     </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useId, type CSSProperties } from "react";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import { useLoopIndex, useTimeline } from "./broadcast";
 import { Caption, display, washed, type TapeProgram } from "./vhs";
@@ -10,11 +12,26 @@ export const RESORT_LOOP = 16000;
 export const RESORT_GLITCH = { from: 6200, to: 7000 };
 
 export const RESORT_SHOTS = [
-  { at: 0, clock: [14, 3, 12], line: "— Pai, me filma!" },
-  { at: 3500, clock: [14, 5, 47], line: "— Anda, o check-in é às duas." },
-  { at: 8600, clock: [14, 6, 3], line: "— Mãe, a TV do quarto ligou sozinha de novo." },
-  { at: 12600, clock: [14, 9, 31], line: "— Pai, a bola!" },
+  { at: 0, clock: [14, 3, 12] },
+  { at: 3500, clock: [14, 5, 47] },
+  { at: 8600, clock: [14, 6, 3] },
+  { at: 12600, clock: [14, 9, 31] },
 ];
+
+const COPY = localized({
+  "pt-BR": {
+    lines: ["— Pai, me filma!", "— Anda, o check-in é às duas.", "— Mãe, a TV do quarto ligou sozinha de novo.", "— Pai, a bola!"],
+    date: "17 JUL 2004",
+    strangeDate: "04 DEZ 2004",
+    calendar: "DEZ 2004",
+  },
+  en: {
+    lines: ["— Dad, film me!", "— Come on, check-in is at two.", "— Mom, the TV in our room turned on by itself again.", "— Dad, the ball!"],
+    date: "JUL 17 2004",
+    strangeDate: "DEC 04 2004",
+    calendar: "DEC 2004",
+  },
+});
 
 const SHOT_MARKS = RESORT_SHOTS.map((shot) => shot.at);
 const GLITCH_MARKS = [0, RESORT_GLITCH.from, RESORT_GLITCH.to];
@@ -81,9 +98,10 @@ function clockText([h, m, s]: number[], ticks: number) {
 }
 
 function CamcorderOsd({ shot, glitch }: { shot: number; glitch: boolean }) {
+  const copy = useCopy(COPY);
   const second = useLoopIndex(RESORT_LOOP / 1000, 1000);
   const ticks = Math.max(0, second - Math.floor(RESORT_SHOTS[shot].at / 1000));
-  const date = glitch ? "04 DEZ 2004" : "17 JUL 2004";
+  const date = glitch ? copy.strangeDate : copy.date;
   const time = glitch ? "04:04:04" : clockText(RESORT_SHOTS[shot].clock, ticks);
   const tint = glitch ? P.screen : P.white;
   return (
@@ -224,6 +242,7 @@ function HotelShot({ sky, glitch }: { sky: string; glitch: boolean }) {
 }
 
 function WindowShot({ glitch }: { glitch: boolean }) {
+  const copy = useCopy(COPY);
   return (
     <>
       <rect x="-40" y="-30" width="374" height="310" fill="#ffc2cf" />
@@ -238,7 +257,7 @@ function WindowShot({ glitch }: { glitch: boolean }) {
         <rect x="0" y="0" width="50" height="58" fill={P.cream} stroke={P.ink} strokeWidth="2.5" />
         <rect x="0" y="0" width="50" height="16" fill={P.tomato} stroke={P.ink} strokeWidth="2.5" />
         <text x="25" y="12.5" textAnchor="middle" fontSize="11" fill={P.cream} style={display}>
-          DEZ 2004
+          {copy.calendar}
         </text>
         {[0, 1, 2, 3, 4].map((row) =>
           [0, 1, 2, 3, 4, 5].map((col) => <rect key={`${row}${col}`} x={5 + col * 7} y={21 + row * 7} width="5" height="5" fill={row === 0 && col === 3 ? P.tomato : P.cream3} />),
@@ -346,6 +365,7 @@ function Shot({ shot, offset, glitch }: { shot: number; offset: number; glitch: 
 }
 
 function ResortVideoScreen() {
+  const copy = useCopy(COPY);
   const { phase: shot, offset } = useTimeline(SHOT_MARKS, RESORT_LOOP);
   const strange = useTimeline(GLITCH_MARKS, RESORT_LOOP);
   const glitch = strange.phase === 1;
@@ -372,7 +392,7 @@ function ResortVideoScreen() {
           <div className="pointer-events-none absolute inset-x-0 top-[36%] h-[9%] bg-white/35 mix-blend-overlay" style={{ animation: "roll-bar 0.8s linear infinite" }} />
         </>
       )}
-      <Caption className="bottom-[22%]">{RESORT_SHOTS[shot].line}</Caption>
+      <Caption className="bottom-[22%]">{copy.lines[shot]}</Caption>
     </div>
   );
 }
@@ -380,5 +400,5 @@ function ResortVideoScreen() {
 export const resortTape: TapeProgram = {
   Screen: ResortVideoScreen,
   loop: RESORT_LOOP,
-  cues: [{ at: RESORT_GLITCH.from, mascot: { expression: "confused", line: "Ué. Que data é essa?" }, sound: "static" }],
+  cues: [{ at: RESORT_GLITCH.from, mascot: { expression: "confused", line: localized({ "pt-BR": "Ué. Que data é essa?", en: "Huh. What date is that?" }) }, sound: "static" }],
 };

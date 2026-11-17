@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { PLAYABLE, type GameMeta } from "@/games/registry";
+import { useLocale } from "@/i18n/client";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { nextPick, programState, type Pick, type ProgramState } from "@/lib/schedule";
 
@@ -29,13 +30,14 @@ export type Schedule = {
 export function useSchedule(): Schedule {
   const hydrated = useHydrated();
   const progress = useProgress();
+  const locale = useLocale();
   const saved = useSyncExternalStore(subscribeStorage, savedSnapshot, () => "");
   return useMemo(() => {
     const savedSlugs = new Set(saved ? saved.split(",") : []);
     return {
       hydrated,
-      next: (exclude: string[] = []) => (hydrated ? nextPick(progress, { exclude }) : null),
+      next: (exclude: string[] = []) => (hydrated ? nextPick(progress, { exclude }, locale) : null),
       state: (game: GameMeta) => (hydrated ? programState(progress, game, savedSlugs.has(game.slug)) : null),
     };
-  }, [hydrated, progress, saved]);
+  }, [hydrated, progress, saved, locale]);
 }

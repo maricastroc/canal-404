@@ -1,15 +1,41 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import type { MouseEvent } from "react";
 import { PLAYABLE } from "@/games/registry";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import { spotStyle, SPOTS, type Spot } from "../layout";
+
+const COPY = localized({
+  "pt-BR": {
+    marquee: ["TODOS", "OS JOGOS"],
+    coin: "FICHA",
+    note: ["CLIQUE", "PARA", "EXPLORAR!"],
+    coinOk: "FICHA OK!",
+    insertCoin: "INSIRA FICHA",
+    memory: (n: number) => `${n} JOGOS NA MEMÓRIA`,
+    hint: (n: number) => `Os ${n} jogos do canal moram dentro do fliperama. Insere uma ficha!`,
+    label: "Todos os jogos: abrir o catálogo no fliperama",
+  },
+  en: {
+    marquee: ["ALL THE", "GAMES"],
+    coin: "COIN",
+    note: ["CLICK", "TO", "EXPLORE!"],
+    coinOk: "COIN OK!",
+    insertCoin: "INSERT COIN",
+    memory: (n: number) => `${n} GAMES IN MEMORY`,
+    hint: (n: number) => `All ${n} of the channel's games live inside the arcade cabinet. Insert a coin!`,
+    label: "All the games: open the catalog in the arcade cabinet",
+  },
+});
 
 const ink = { stroke: P.ink, strokeWidth: 5, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 const display = { fontFamily: "var(--font-luckiest)" };
 
 function ArcadeArt({ active }: { active: boolean }) {
+  const copy = useCopy(COPY);
   return (
     <svg viewBox="0 0 280 664" className="h-full w-full" overflow="visible" aria-hidden>
       <g>
@@ -24,10 +50,10 @@ function ArcadeArt({ active }: { active: boolean }) {
         <rect x="34" y="30" width="212" height="82" rx="8" fill={P.plum900} stroke={P.ink} strokeWidth="4" />
         <g style={{ animation: active ? "none" : "marquee-glow 2.6s ease-in-out infinite" }}>
           <text x="140" y="68" textAnchor="middle" fontSize="38" fill={P.sun} stroke={P.ink} strokeWidth="6" paintOrder="stroke" style={display} transform="rotate(-4 140 68)">
-            TODOS
+            {copy.marquee[0]}
           </text>
           <text x="140" y="104" textAnchor="middle" fontSize="30" fill={P.bubblegum} stroke={P.ink} strokeWidth="6" paintOrder="stroke" style={display} transform="rotate(-4 140 104)">
-            OS JOGOS
+            {copy.marquee[1]}
           </text>
         </g>
         {[48, 232].map((x) => (
@@ -74,7 +100,7 @@ function ArcadeArt({ active }: { active: boolean }) {
           </g>
         ))}
         <text x="95" y="602" textAnchor="middle" fontSize="13" fill={P.cream} style={display} letterSpacing="1">
-          FICHA
+          {copy.coin}
         </text>
         <path d="M26 620 L254 620 L254 640 L26 640 Z" fill={P.ink} />
         <g transform="rotate(7 206 520)">
@@ -82,13 +108,13 @@ function ArcadeArt({ active }: { active: boolean }) {
           <path d="M158 474 L254 470 L258 566 L162 570 Z" fill={P.sunPale} stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />
           <rect x="190" y="462" width="34" height="14" fill={P.mint} opacity="0.85" transform="rotate(-6 207 469)" />
           <text x="207" y="504" textAnchor="middle" fontSize="15" fill={P.ink} style={{ fontFamily: "var(--font-patrick)" }}>
-            CLIQUE
+            {copy.note[0]}
           </text>
           <text x="207" y="524" textAnchor="middle" fontSize="15" fill={P.ink} style={{ fontFamily: "var(--font-patrick)" }}>
-            PARA
+            {copy.note[1]}
           </text>
           <text x="207" y="544" textAnchor="middle" fontSize="15" fill={P.ink} style={{ fontFamily: "var(--font-patrick)" }}>
-            EXPLORAR!
+            {copy.note[2]}
           </text>
           <path d="M184 552 Q206 560 232 550" stroke={P.tomato} strokeWidth="3" fill="none" strokeLinecap="round" />
         </g>
@@ -98,6 +124,7 @@ function ArcadeArt({ active }: { active: boolean }) {
 }
 
 function AttractScreen({ active }: { active: boolean }) {
+  const copy = useCopy(COPY);
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#10122e]">
       <div
@@ -122,16 +149,16 @@ function AttractScreen({ active }: { active: boolean }) {
           <rect x="14" y="5" width="1" height="3" fill="#7b62c4" />
         </svg>
         {active ? (
-          <p className="font-display text-[clamp(8px,1.05vw,17px)] leading-none text-lime">FICHA OK!</p>
+          <p className="font-display text-[clamp(8px,1.05vw,17px)] leading-none text-lime">{copy.coinOk}</p>
         ) : (
           <p
             className="font-display text-[clamp(7px,0.9vw,15px)] leading-none text-sun"
             style={{ animation: "insert-coin 1.1s steps(1) infinite" }}
           >
-            INSIRA FICHA
+            {copy.insertCoin}
           </p>
         )}
-        <p className="font-display text-[clamp(6px,0.62vw,11px)] leading-none text-plum-300">{PLAYABLE.length} JOGOS NA MEMÓRIA</p>
+        <p className="font-display text-[clamp(6px,0.62vw,11px)] leading-none text-plum-300">{copy.memory(PLAYABLE.length)}</p>
       </div>
       <div className="pointer-events-none absolute inset-0 scanlines opacity-60" />
       {active && <div className="pointer-events-none absolute inset-0 bg-white" style={{ animation: "flash-out 420ms ease-out both" }} />}
@@ -151,7 +178,8 @@ export function Arcade({
   onHoverSound: () => void;
 }) {
   const spot = SPOTS.arcade;
-  const hint = `Os ${PLAYABLE.length} jogos do canal moram dentro do fliperama. Insere uma ficha!`;
+  const copy = useCopy(COPY);
+  const hint = copy.hint(PLAYABLE.length);
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
     event.preventDefault();
@@ -172,7 +200,7 @@ export function Arcade({
       className="group absolute block cursor-pointer rounded-2xl [--focus:var(--color-sun)] [&_.arcade-stick]:hover:[transform:rotate(14deg)]"
       style={{ ...spotStyle(spot), zIndex: 11 }}
     >
-      <span className="sr-only">Todos os jogos: abrir o catálogo no fliperama</span>
+      <span className="sr-only">{copy.label}</span>
       <span aria-hidden className="block h-full w-full transition-[transform,filter] duration-200 group-hover:-translate-y-1 group-hover:drop-shadow-[0_0_18px_rgba(255,200,61,0.55)] group-focus-visible:-translate-y-1">
         <ArcadeArt active={active} />
         <span className="absolute overflow-hidden rounded-[7%]" style={{ left: "15%", top: "22.6%", width: "70%", height: "27.1%" }}>

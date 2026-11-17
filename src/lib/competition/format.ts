@@ -1,4 +1,6 @@
-import { BOARD_META, type GameSlug, type Metric } from "./boards";
+import { formatNumber, ordinal as localOrdinal } from "@/i18n/format";
+import type { Locale } from "@/i18n/locales";
+import { boardMeta, type GameSlug, type Metric } from "./boards";
 
 export function formatDuration(ms: number) {
   const total = Math.max(0, Math.round(ms / 1000));
@@ -10,25 +12,25 @@ export function formatDuration(ms: number) {
   return `${seconds}s`;
 }
 
-export function machineSeconds(steps: number) {
-  return `${(steps / 60).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s`;
+export function machineSeconds(steps: number, locale: Locale) {
+  return `${formatNumber(steps / 60, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s`;
 }
 
-export function formatMetric(metric: Metric, value: number) {
-  if (metric.unit === "points") return `${value.toLocaleString("pt-BR")} pts`;
+export function formatMetric(metric: Metric, value: number, locale: Locale) {
+  if (metric.unit === "points") return `${formatNumber(value, locale)} pts`;
   if (metric.unit === "time") return formatDuration(value);
-  if (metric.unit === "steps") return machineSeconds(value);
+  if (metric.unit === "steps") return machineSeconds(value, locale);
   const [one, many] = metric.noun ?? ["", ""];
-  return `${value.toLocaleString("pt-BR")} ${value === 1 ? one : many}`.trim();
+  return `${formatNumber(value, locale)} ${value === 1 ? one : many}`.trim();
 }
 
-export function formatBest(game: GameSlug, metrics: number[], count = 2) {
-  return BOARD_META[game].metrics
-    .slice(0, count)
-    .map((metric, i) => formatMetric(metric, metrics[i] ?? 0))
+export function formatBest(game: GameSlug, metrics: number[], locale: Locale, count = 2) {
+  return boardMeta(game, locale)
+    .metrics.slice(0, count)
+    .map((metric, i) => formatMetric(metric, metrics[i] ?? 0, locale))
     .join(" · ");
 }
 
-export function ordinal(position: number) {
-  return `${position.toLocaleString("pt-BR")}º`;
+export function ordinal(position: number, locale: Locale) {
+  return localOrdinal(position, locale);
 }

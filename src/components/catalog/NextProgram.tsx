@@ -1,20 +1,28 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { GameCover } from "@/components/art/Covers";
 import { PlayIcon } from "@/components/art/Icons";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import { useSchedule } from "./useSchedule";
 
+const COPY = localized({
+  "pt-BR": { unplayed: "Inédito pra você", rerun: "Reprise especial", label: "Depois do intervalo", kicker: "Depois do intervalo…", cta: "Conhecer" },
+  en: { unplayed: "New for you", rerun: "Special rerun", label: "After the break", kicker: "After the break…", cta: "Try it" },
+});
+
 export function NextProgram({ current }: { current: string }) {
   const schedule = useSchedule();
+  const copy = useCopy(COPY);
   const { play, hover } = useSound();
   const pick = schedule.next([current]);
   if (!pick) return null;
   const { game, reason } = pick;
-  const note = reason === "unplayed" ? "Inédito pra você" : "Reprise especial";
+  const note = reason === "unplayed" ? copy.unplayed : copy.rerun;
   return (
-    <aside aria-label="Depois do intervalo" className="mt-5 -rotate-1 rounded-xl border-[3px] border-ink bg-plum-900 p-2.5 shadow-[var(--shadow-ink)]">
+    <aside aria-label={copy.label} className="mt-5 -rotate-1 rounded-xl border-[3px] border-ink bg-plum-900 p-2.5 shadow-[var(--shadow-ink)]">
       <Link
         href={`/play/${game.slug}`}
         onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
@@ -26,12 +34,12 @@ export function NextProgram({ current }: { current: string }) {
           <span aria-hidden className="absolute inset-0 scanlines opacity-50" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-xs uppercase tracking-widest text-sun">Depois do intervalo…</span>
+          <span className="block font-display text-xs uppercase tracking-widest text-sun">{copy.kicker}</span>
           <span className="block break-words font-display text-xl uppercase leading-tight text-cream">{game.title}</span>
           <span className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
             <span className="rounded-md border-2 border-ink bg-mint px-1.5 font-display text-[11px] uppercase tracking-wide text-ink">{note}</span>
             <span className="flex shrink-0 items-center gap-1.5 rounded-full border-[3px] border-ink bg-sun px-3 py-1 font-display text-sm uppercase leading-none text-ink shadow-[0_3px_0_0_var(--color-ink)] transition-transform group-hover:-translate-y-0.5">
-              <PlayIcon className="size-3.5" /> Conhecer
+              <PlayIcon className="size-3.5" /> {copy.cta}
             </span>
           </span>
         </span>

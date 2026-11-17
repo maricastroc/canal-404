@@ -6,22 +6,87 @@ import { ImagesIcon, KeyIcon, LockIcon, PauseIcon, PlayIcon, RadioIcon, TrophyIc
 import { PlayerCard } from "@/components/competition/PlayerCard";
 import { MissionAchievements } from "@/components/missions/MissionAchievements";
 import { InkButton } from "@/components/ui/Primitives";
+import { useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { getAudio } from "@/lib/audio/engine";
 import { useMusicState, useSound } from "@/lib/audio/hooks";
-import { TRACKS } from "@/lib/audio/tracks";
+import { TRACKS, trackText } from "@/lib/audio/tracks";
 import { isTrackUnlocked } from "@/lib/audio/unlocks";
-import { ACHIEVEMENTS, SECRETS } from "@/lib/progress/definitions";
+import { ACHIEVEMENTS, SECRETS, achievementText, secretText } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { resetProgress, setSetting, unlockAchievement } from "@/lib/progress/store";
 import { PosterCard } from "./PosterCard";
 import { POSTERS } from "./posters";
 
 const SECTIONS = [
-  { id: "posters", label: "Pôsteres para baixar", Icon: ImagesIcon, tone: "bg-tangerine" },
-  { id: "tracks", label: "Trilhas sonoras", Icon: RadioIcon, tone: "bg-sky" },
-  { id: "achievements", label: "Conquistas", Icon: TrophyIcon, tone: "bg-sun" },
-  { id: "secrets", label: "Segredos", Icon: KeyIcon, tone: "bg-plum-300" },
+  { id: "posters", Icon: ImagesIcon, tone: "bg-tangerine" },
+  { id: "tracks", Icon: RadioIcon, tone: "bg-sky" },
+  { id: "achievements", Icon: TrophyIcon, tone: "bg-sun" },
+  { id: "secrets", Icon: KeyIcon, tone: "bg-plum-300" },
 ] as const;
+
+const COPY = localized({
+  "pt-BR": {
+    sections: { posters: "Pôsteres para baixar", tracks: "Trilhas sonoras", achievements: "Conquistas", secrets: "Segredos" },
+    sectionsNav: "Seções dos extras",
+    secretsFound: "Segredos encontrados",
+    achievements: "Conquistas",
+    membership: "Carteirinha do placar",
+    postersUnlocked: (count: number, total: number) => `${count}/${total} liberados`,
+    posters: "Pôsteres para baixar",
+    tracksUnlocked: (count: number, total: number) => `${count}/${total} liberadas`,
+    tracks: "Trilhas sonoras",
+    trackNumber: (number: string) => `Faixa ${number}`,
+    trackHidden: ", ainda escondida",
+    stopTrack: (title: string) => `Parar ${title}`,
+    playTrack: (title: string) => `Tocar ${title}`,
+    stop: "Parar",
+    play: "Tocar",
+    trackLocked: "Bloqueada",
+    tracksNote: "As músicas são geradas na hora pelo sintetizador do Canal 404. O rádio da sala toca as mesmas faixas.",
+    achievementDone: "Conquistada.",
+    achievementPending: "Ainda não conquistada.",
+    roomSecrets: "Segredos da sala",
+    hiddenSecret: "Segredo escondido",
+    secretFound: "Encontrado.",
+    secretPending: "Ainda não encontrado.",
+    manage: "Gerenciar progresso",
+    resetWarning: "Isso apaga os segredos, as conquistas, os recordes e as aventuras salvas neste navegador. Tem certeza?",
+    resetConfirm: "Sim, apagar tudo",
+    cancel: "Cancelar",
+    reset: "Apagar meu progresso",
+  },
+  en: {
+    sections: { posters: "Posters to download", tracks: "Soundtracks", achievements: "Achievements", secrets: "Secrets" },
+    sectionsNav: "Extras sections",
+    secretsFound: "Secrets found",
+    achievements: "Achievements",
+    membership: "Scoreboard membership card",
+    postersUnlocked: (count: number, total: number) => `${count}/${total} unlocked`,
+    posters: "Posters to download",
+    tracksUnlocked: (count: number, total: number) => `${count}/${total} unlocked`,
+    tracks: "Soundtracks",
+    trackNumber: (number: string) => `Track ${number}`,
+    trackHidden: ", still hidden",
+    stopTrack: (title: string) => `Stop ${title}`,
+    playTrack: (title: string) => `Play ${title}`,
+    stop: "Stop",
+    play: "Play",
+    trackLocked: "Locked",
+    tracksNote: "The music is generated on the spot by the Canal 404 synthesizer. The radio in the room plays the same tracks.",
+    achievementDone: "Unlocked.",
+    achievementPending: "Not unlocked yet.",
+    roomSecrets: "Room secrets",
+    hiddenSecret: "Hidden secret",
+    secretFound: "Found.",
+    secretPending: "Not found yet.",
+    manage: "Manage progress",
+    resetWarning: "This erases the secrets, achievements, records and saved adventures in this browser. Are you sure?",
+    resetConfirm: "Yes, erase everything",
+    cancel: "Cancel",
+    reset: "Erase my progress",
+  },
+});
 
 function SectionTitle({ id, children, count }: { id: string; children: React.ReactNode; count?: string }) {
   return (
@@ -43,6 +108,8 @@ export function ExtrasHub() {
   const hydrated = useHydrated();
   const music = useMusicState();
   const { play, hover } = useSound();
+  const locale = useLocale();
+  const copy = COPY[locale];
   const [confirming, setConfirming] = useState(false);
   const p = progress;
   const secretsFound = hydrated ? Object.keys(p.secrets).length : 0;
@@ -63,7 +130,7 @@ export function ExtrasHub() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <nav aria-label="Seções dos extras" className="paper border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly sm:p-6">
+      <nav aria-label={copy.sectionsNav} className="paper border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly sm:p-6">
         <ul className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {SECTIONS.map((s, i) => (
             <li key={s.id}>
@@ -76,15 +143,15 @@ export function ExtrasHub() {
                 <span className={`grid size-16 place-items-center rounded-2xl border-[3px] border-ink shadow-[var(--shadow-ink-sm)] ${s.tone}`}>
                   <s.Icon className="size-9 text-ink" />
                 </span>
-                <span className="font-display text-sm uppercase leading-tight tracking-wide text-balance text-ink">{s.label}</span>
+                <span className="font-display text-sm uppercase leading-tight tracking-wide text-balance text-ink">{copy.sections[s.id]}</span>
               </a>
             </li>
           ))}
         </ul>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {[
-            { label: "Segredos encontrados", value: secretsFound, total: SECRETS.length, color: "bg-mint" },
-            { label: "Conquistas", value: achievementsDone, total: ACHIEVEMENTS.length, color: "bg-sun" },
+            { label: copy.secretsFound, value: secretsFound, total: SECRETS.length, color: "bg-mint" },
+            { label: copy.achievements, value: achievementsDone, total: ACHIEVEMENTS.length, color: "bg-sun" },
           ].map((m) => (
             <div key={m.label}>
               <div className="flex justify-between font-display text-sm uppercase tracking-wide text-ink">
@@ -109,13 +176,13 @@ export function ExtrasHub() {
       </nav>
 
       <section aria-labelledby="membership" className="mt-14">
-        <SectionTitle id="membership">Carteirinha do placar</SectionTitle>
+        <SectionTitle id="membership">{copy.membership}</SectionTitle>
         <PlayerCard />
       </section>
 
       <section aria-labelledby="posters" className="mt-14">
-        <SectionTitle id="posters" count={`${POSTERS.filter((po) => hydrated && po.unlock.check(p)).length}/${POSTERS.length} liberados`}>
-          Pôsteres para baixar
+        <SectionTitle id="posters" count={copy.postersUnlocked(POSTERS.filter((po) => hydrated && po.unlock.check(p)).length, POSTERS.length)}>
+          {copy.posters}
         </SectionTitle>
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {POSTERS.map((poster, i) => (
@@ -127,14 +194,15 @@ export function ExtrasHub() {
       </section>
 
       <section aria-labelledby="tracks" className="mt-14">
-        <SectionTitle id="tracks" count={`${TRACKS.filter((t) => hydrated && isTrackUnlocked(t, p)).length}/${TRACKS.length} liberadas`}>
-          Trilhas sonoras
+        <SectionTitle id="tracks" count={copy.tracksUnlocked(TRACKS.filter((t) => hydrated && isTrackUnlocked(t, p)).length, TRACKS.length)}>
+          {copy.tracks}
         </SectionTitle>
         <ul className="paper divide-y-[3px] divide-dashed divide-ink/20 border-[3px] border-ink px-4 shadow-[var(--shadow-ink-lg)] wobbly-alt">
           {TRACKS.map((track, i) => {
             const unlocked = hydrated && isTrackUnlocked(track, p);
             const playing = music.playing && music.trackId === track.id;
             const number = String(i + 1).padStart(2, "0");
+            const text = trackText(track.id, locale);
             return (
               <li key={track.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 py-4">
                 <span
@@ -145,18 +213,18 @@ export function ExtrasHub() {
                 <div className="min-w-0 flex-1 basis-48">
                   {unlocked ? (
                     <>
-                      <p className="font-display text-xl uppercase leading-tight text-ink">{track.title}</p>
+                      <p className="font-display text-xl uppercase leading-tight text-ink">{text.title}</p>
                       <p className="copy-sm text-ink-soft">
-                        <span className="tag-label text-plum-600">{track.station}</span> · {track.mood}
+                        <span className="tag-label text-plum-600">{track.station}</span> · {text.mood}
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="font-display text-xl uppercase leading-tight text-ink">
-                        Faixa {number} <span className="text-plum-600">· ???</span>
-                        <span className="sr-only">, ainda escondida</span>
+                        {copy.trackNumber(number)} <span className="text-plum-600">· ???</span>
+                        <span className="sr-only">{copy.trackHidden}</span>
                       </p>
-                      <p className="copy-sm text-ink-soft">{track.unlock.type === "default" ? "" : track.unlock.label}</p>
+                      <p className="copy-sm text-ink-soft">{track.unlock.type === "default" ? "" : text.unlock}</p>
                     </>
                   )}
                 </div>
@@ -173,32 +241,31 @@ export function ExtrasHub() {
                       size="sm"
                       tone={playing ? "tomato" : "sun"}
                       aria-pressed={playing}
-                      aria-label={playing ? `Parar ${track.title}` : `Tocar ${track.title}`}
+                      aria-label={playing ? copy.stopTrack(text.title) : copy.playTrack(text.title)}
                       onClick={() => toggleTrack(track.id)}
                     >
                       {playing ? <PauseIcon className="size-5 text-ink" /> : <PlayIcon className="size-5 text-ink" />}
-                      {playing ? "Parar" : "Tocar"}
+                      {playing ? copy.stop : copy.play}
                     </InkButton>
                   ) : (
-                    <span className="tag-label inline-block rounded-lg border-2 border-dashed border-ink/40 px-2.5 py-1.5 text-ink-soft">Bloqueada</span>
+                    <span className="tag-label inline-block rounded-lg border-2 border-dashed border-ink/40 px-2.5 py-1.5 text-ink-soft">{copy.trackLocked}</span>
                   )}
                 </div>
               </li>
             );
           })}
         </ul>
-        <p className="copy mt-3 text-cream-2">
-          As músicas são geradas na hora pelo sintetizador do Canal 404. O rádio da sala toca as mesmas faixas.
-        </p>
+        <p className="copy mt-3 text-cream-2">{copy.tracksNote}</p>
       </section>
 
       <section aria-labelledby="achievements" className="mt-14">
         <SectionTitle id="achievements" count={`${achievementsDone}/${ACHIEVEMENTS.length}`}>
-          Conquistas
+          {copy.achievements}
         </SectionTitle>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ACHIEVEMENTS.map((a) => {
             const done = hydrated && Boolean(p.achievements[a.id]);
+            const text = achievementText(a.id, locale);
             return (
               <li
                 key={a.id}
@@ -206,9 +273,9 @@ export function ExtrasHub() {
               >
                 <div className="w-14 shrink-0">{done ? <StarBadge color={a.color} className="w-full" /> : <LockedBadge className="w-full" />}</div>
                 <div className="min-w-0">
-                  <p className={`card-title ${done ? "text-ink" : "text-plum-300"}`}>{a.title}</p>
-                  <p className={`copy-sm mt-1 ${done ? "text-ink-soft" : "text-cream-2"}`}>{done ? a.description : a.hint}</p>
-                  <span className="sr-only">{done ? "Conquistada." : "Ainda não conquistada."}</span>
+                  <p className={`card-title ${done ? "text-ink" : "text-plum-300"}`}>{text.title}</p>
+                  <p className={`copy-sm mt-1 ${done ? "text-ink-soft" : "text-cream-2"}`}>{done ? text.description : text.hint}</p>
+                  <span className="sr-only">{done ? copy.achievementDone : copy.achievementPending}</span>
                 </div>
               </li>
             );
@@ -219,11 +286,12 @@ export function ExtrasHub() {
 
       <section aria-labelledby="secrets" className="mt-14">
         <SectionTitle id="secrets" count={`${secretsFound}/${SECRETS.length}`}>
-          Segredos da sala
+          {copy.roomSecrets}
         </SectionTitle>
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {SECRETS.map((s, i) => {
             const found = hydrated && Boolean(p.secrets[s.id]);
+            const text = secretText(s.id, locale);
             return (
               <li
                 key={s.id}
@@ -233,16 +301,16 @@ export function ExtrasHub() {
                 <div className="min-w-0">
                   <p className={`card-title ${found ? "text-ink" : "text-plum-300"}`}>
                     {found ? (
-                      s.title
+                      text.title
                     ) : (
                       <>
                         <span aria-hidden>? ? ? ? ?</span>
-                        <span className="sr-only">Segredo escondido</span>
+                        <span className="sr-only">{copy.hiddenSecret}</span>
                       </>
                     )}
                   </p>
-                  <p className={`copy-sm mt-1 ${found ? "text-ink-soft" : "text-cream-2"}`}>{found ? s.description : s.hint}</p>
-                  <span className="sr-only">{found ? "Encontrado." : "Ainda não encontrado."}</span>
+                  <p className={`copy-sm mt-1 ${found ? "text-ink-soft" : "text-cream-2"}`}>{found ? text.description : text.hint}</p>
+                  <span className="sr-only">{found ? copy.secretFound : copy.secretPending}</span>
                 </div>
               </li>
             );
@@ -250,12 +318,10 @@ export function ExtrasHub() {
         </ul>
       </section>
 
-      <section aria-label="Gerenciar progresso" className="mt-14 flex flex-wrap items-center justify-center gap-3 text-center">
+      <section aria-label={copy.manage} className="mt-14 flex flex-wrap items-center justify-center gap-3 text-center">
         {confirming ? (
           <>
-            <p className="copy w-full text-cream-2">
-              Isso apaga os segredos, as conquistas, os recordes e as aventuras salvas neste navegador. Tem certeza?
-            </p>
+            <p className="copy w-full text-cream-2">{copy.resetWarning}</p>
             <InkButton
               tone="tomato"
               size="sm"
@@ -265,15 +331,15 @@ export function ExtrasHub() {
                 play("static");
               }}
             >
-              Sim, apagar tudo
+              {copy.resetConfirm}
             </InkButton>
             <InkButton tone="cream" size="sm" onClick={() => setConfirming(false)}>
-              Cancelar
+              {copy.cancel}
             </InkButton>
           </>
         ) : (
           <InkButton tone="cream" size="sm" onClick={() => setConfirming(true)}>
-            Apagar meu progresso
+            {copy.reset}
           </InkButton>
         )}
       </section>

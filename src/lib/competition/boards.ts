@@ -1,3 +1,6 @@
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
+
 export const GAME_SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation"] as const;
 
 export type GameSlug = (typeof GAME_SLUGS)[number];
@@ -68,10 +71,57 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
   },
 };
 
-export const CHECK_TEXT: Record<BoardCheck, string> = {
-  replayed: "O canal monta sua máquina de novo, no servidor, e só aceita o recorde se a bolinha chegar lá.",
-  checked: "O canal confere se os números da partida fecham e se ela durou o tempo mínimo. Isso barra erros e exageros, mas não prova que a partida foi jogada sem trapaça.",
+type BoardText = { explain: string; metrics: { label: string; noun?: readonly [string, string] }[] };
+
+const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
+  "dead-end-street": {
+    explain: "Highest score. Tiebreak: fewest launches.",
+    metrics: [{ label: "Points" }, { label: "Launches", noun: ["launch", "launches"] }],
+  },
+  "bad-ideas-lab": {
+    explain: "Fewest parts wins. Tiebreak: the machine that gets the ball to the target fastest.",
+    metrics: [{ label: "Parts", noun: ["part", "parts"] }, { label: "Ball time" }],
+  },
+  "food-fight": {
+    explain: "Highest score. Tiebreak: fewest puddings taken, then the longest streak.",
+    metrics: [{ label: "Points" }, { label: "Puddings taken", noun: ["pudding taken", "puddings taken"] }, { label: "Best streak", noun: ["hit in a row", "hits in a row"] }],
+  },
+  "operation-recess": {
+    explain: "Fewest hits taken wins. Tiebreak: fastest finish. Runs resumed from a bell don't count.",
+    metrics: [{ label: "Hits taken", noun: ["hit taken", "hits taken"] }, { label: "Time" }, { label: "Points" }],
+  },
+  "pajama-war": {
+    explain: "Whoever ends with the most energy wins. Tiebreak: the fastest win.",
+    metrics: [{ label: "Energy", noun: ["energy", "energy"] }, { label: "Time" }, { label: "Hits", noun: ["hit", "hits"] }],
+  },
+  "off-air-vacation": {
+    explain: "Whoever discovered the most at the resort. Tiebreak: whoever took the least time.",
+    metrics: [{ label: "Points" }, { label: "Time" }, { label: "Discoveries", noun: ["discovery", "discoveries"] }],
+  },
 };
+
+const BOARD_EN = Object.fromEntries(
+  GAME_SLUGS.map((game): [GameSlug, BoardMeta] => {
+    const meta = BOARD_META[game];
+    const text = BOARD_TEXT_EN[game];
+    return [game, { ...meta, explain: text.explain, metrics: meta.metrics.map((m, i): Metric => ({ ...m, ...text.metrics[i] })) }];
+  }),
+) as Record<GameSlug, BoardMeta>;
+
+export function boardMeta(game: GameSlug, locale: Locale): BoardMeta {
+  return locale === "en" ? BOARD_EN[game] : BOARD_META[game];
+}
+
+export const CHECK_TEXT = localized<Record<BoardCheck, string>>({
+  "pt-BR": {
+    replayed: "O canal monta sua máquina de novo, no servidor, e só aceita o recorde se a bolinha chegar lá.",
+    checked: "O canal confere se os números da partida fecham e se ela durou o tempo mínimo. Isso barra erros e exageros, mas não prova que a partida foi jogada sem trapaça.",
+  },
+  en: {
+    replayed: "The channel rebuilds your machine on the server and only accepts the record if the ball gets there.",
+    checked: "The channel checks that the run's numbers add up and that it lasted the minimum time. That stops mistakes and exaggerations, but it doesn't prove the run was played without cheating.",
+  },
+});
 
 export function isGameSlug(value: unknown): value is GameSlug {
   return typeof value === "string" && (GAME_SLUGS as readonly string[]).includes(value);

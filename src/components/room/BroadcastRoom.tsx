@@ -1,14 +1,16 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
+import { useLocale, useLocaleRouter } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { countOf, formatNumber } from "@/i18n/format";
 import { getAudio } from "@/lib/audio/engine";
 import { useMusicState, useSound } from "@/lib/audio/hooks";
-import { KARAOKE_SONG, TRACKS } from "@/lib/audio/tracks";
+import { KARAOKE_SONG, TRACKS, trackText } from "@/lib/audio/tracks";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { setSetting, unlockAchievement, unlockSecret } from "@/lib/progress/store";
 import { SCENE, SPOTS, spotCenter, spotStyle, type Spot } from "./layout";
@@ -50,39 +52,260 @@ import type { TapeCue } from "./tapes/vhs";
 import { useSchedule } from "@/components/catalog/useSchedule";
 import { missionPlace } from "@/components/missions/parts";
 import { useMissionToday } from "@/lib/missions/hooks";
-import { PLAYABLE, type GameMeta } from "@/games/registry";
+import { missionText } from "@/lib/missions/text";
+import { PLAYABLE, playableIn, type GameMeta } from "@/games/registry";
 import { bestRecord, plays, unplayedGames } from "@/lib/schedule";
 import { RoomBackdrop } from "./RoomBackdrop";
 import { RoomButton, RoomLink } from "./RoomObject";
 import { useMascotDirector } from "./useMascotDirector";
 import { unlockedTracks } from "@/lib/audio/unlocks";
 
-const MASCOT_JOKES: { text: string; expression: "happy" | "wink" | "excited" | "confused" | "surprised" }[] = [
-  { text: "Oi! Eu sou o 404. Sim, igual ao erro. Não, eu não estou perdido.", expression: "happy" },
-  { text: "Minha cabeça pega 3 canais e meio. O meio é só chiado.", expression: "wink" },
-  { text: "Se você bater em mim, eu volto a funcionar? Melhor não testar.", expression: "confused" },
-  { text: "Curiosidade: eu fui feito com uma TV que caiu do caminhão de mudança.", expression: "excited" },
-  { text: "Tô de fone porque a trilha do canal não para nunca. NUNCA.", expression: "surprised" },
-];
-
-const BOOK_TIPS = [
-  "Manual de Engenhocas, pág. 12: puxe mais pra trás pra ir mais longe.",
-  "Pág. 31: o pato de borracha quica. Use isso a seu favor.",
-  "Pág. 47: balão d'água empurra tudo em volta quando estoura.",
-  "Pág. 88: o pneu é pesado. Derruba pilhas inteiras.",
-  "Última página: 'Se der errado, culpe o Déco.' — assinado, Lina.",
-];
-
-const CARTRIDGE_LINES: Record<string, string> = {
-  "dead-end-street": "Cartucho RUA: Rua Sem Saída. Tá até gasto de tanto jogar.",
-  "bad-ideas-lab": "Cartucho LAB: Laboratório de Péssimas Ideias. A Lina jura que nenhuma máquina explodiu. Ainda.",
-  "food-fight": "Cartucho LAN: Guerra de Lanche. Ainda tem pudim grudado nele.",
-  "operation-recess": "Cartucho REC: Operação: Recreio. Tem uma espada de papelão desenhada na etiqueta.",
-  "pajama-war": "Cartucho PIJ: Guerra do Pijama. Cheira a travesseiro. Não pergunte.",
-  "off-air-vacation": "Cartucho FÉR: Férias Fora do Ar. Veio com areia dentro.",
-};
+const JOKE_FACES: ("happy" | "wink" | "excited" | "confused" | "surprised")[] = ["happy", "wink", "confused", "excited", "surprised"];
 
 const CART_TAGS = ["dead-end-street", "bad-ideas-lab"];
+
+const COPY = localized({
+  "pt-BR": {
+    jokes: [
+      "Oi! Eu sou o 404. Sim, igual ao erro. Não, eu não estou perdido.",
+      "Minha cabeça pega 3 canais e meio. O meio é só chiado.",
+      "Se você bater em mim, eu volto a funcionar? Melhor não testar.",
+      "Curiosidade: eu fui feito com uma TV que caiu do caminhão de mudança.",
+      "Tô de fone porque a trilha do canal não para nunca. NUNCA.",
+    ],
+    bookTips: [
+      "Manual de Engenhocas, pág. 12: puxe mais pra trás pra ir mais longe.",
+      "Pág. 31: o pato de borracha quica. Use isso a seu favor.",
+      "Pág. 47: balão d'água empurra tudo em volta quando estoura.",
+      "Pág. 88: o pneu é pesado. Derruba pilhas inteiras.",
+      "Última página: 'Se der errado, culpe o Déco.' — assinado, Lina.",
+    ],
+    cartridges: {
+      "dead-end-street": "Cartucho RUA: Rua Sem Saída. Tá até gasto de tanto jogar.",
+      "bad-ideas-lab": "Cartucho LAB: Laboratório de Péssimas Ideias. A Lina jura que nenhuma máquina explodiu. Ainda.",
+      "food-fight": "Cartucho LAN: Guerra de Lanche. Ainda tem pudim grudado nele.",
+      "operation-recess": "Cartucho REC: Operação: Recreio. Tem uma espada de papelão desenhada na etiqueta.",
+      "pajama-war": "Cartucho PIJ: Guerra do Pijama. Cheira a travesseiro. Não pergunte.",
+      "off-air-vacation": "Cartucho FÉR: Férias Fora do Ar. Veio com areia dentro.",
+    } as Record<string, string>,
+    cartridgeOf: (title: string) => `Cartucho de ${title}.`,
+    cartridgeUnplayed: (line: string) => `${line} Você ainda não jogou esse!`,
+    mysteryWarm: "Cartucho ???: tá quentinho. Acho que ele esquenta quando alguém joga tudo do canal...",
+    mysteryCold: "Cartucho ???: esse não tem nome. Às vezes ele esquenta sozinho.",
+    periods: {
+      morning: "Lá fora é de manhã. Aqui dentro é sempre sábado de manhã de 2004.",
+      afternoon: "Tarde ensolarada lá fora. Perfeita pra ficar aqui dentro jogando.",
+      dusk: "O sol tá indo embora. A transmissão, não.",
+      night: "Já é noite! Hora de dormir... ou de só mais uma partida.",
+    } as Record<SkyPeriod, string>,
+    greetNew: "Ei! Visitante novo! Pode mexer em tudo da sala. Quase tudo faz alguma coisa.",
+    greetUnplayed: (title: string) => `Ei! Você voltou! Ainda tem programa inédito pra você: ${title}. Tá passando agora na TV!`,
+    greetBest: (title: string) => `Ei! Você voltou! Já viu todos os programas. Seu melhor recorde é em ${title}. Dá pra bater?`,
+    greetBack: "Ei! Você voltou! Bora jogar alguma coisa?",
+    missionOffAir: (number: string) => `Canal ${number}: plantão fora do ar.`,
+    barsLine: (number: string) => `Canal ${number}: fora do ar. Relaxa, isso é normal aqui.`,
+    cartoonLine: (number: string) => `Canal ${number}: reprise do meu desenho! Eu tô ótimo nesse episódio.`,
+    newLine: (number: string, title: string, tagline: string) => `Canal ${number}: ${title}. Inédito pra você! ${tagline}`,
+    rerunLine: (number: string, title: string, tagline: string) => `Canal ${number}: reprise de ${title}. ${tagline}`,
+    lostChannel: "Peraí... que canal é esse? Eu nunca vi esse canal. Eu SOU o canal!",
+    typedChannel: "Você digitou o nome do canal! A TV obedeceu. Assustador.",
+    launchPlay: "Ligando a transmissão! Segura o controle!",
+    launchGo: "Bora lá!",
+    coin: "Ficha inserida! Abrindo o catálogo...",
+    trophyRecord: (score: number, title: string) => `Seu nome já está na base do troféu: ${formatNumber(score, "pt-BR")} pontos em ${title}. Bora ver o quadro dos campeões!`,
+    trophy: "Melhor Canal de 2004! Agora vamos ver quem manda no fliperama...",
+    radioOff: "Rádio desligado. O silêncio também é uma trilha sonora. Uma bem chata.",
+    radioOn: (title: string) => `Rádio 404 no ar! Tocando: ${title}.`,
+    station: (station: string, title: string, locked: number) =>
+      `${station}: ${title}.${locked > 0 ? ` (Ainda tem ${locked} ${locked > 1 ? "estações escondidas" : "estação escondida"}...)` : ""}`,
+    lightsOff: "Ei, quem apagou a luz? ...Peraí, tá escrito na parede: O CANAL NUNCA SAIU DO AR.",
+    lightsOn: "Luz de volta! Que susto.",
+    plane: "O aviãozinho voou! Ninguém sabe como. Física de desenho animado.",
+    catPurr: "O Pixel tá ronronando! Ele só faz isso com gente muito especial. Ou com quem tem atum.",
+    catFirst: "Esse é o Pixel. O verdadeiro dono da sala. Cuidado.",
+    catAgain: "Ele tá te avaliando. Continua...",
+    pizzaOpen: "ESSA PIZZA É DE 2004. NÃO COMA. Nem cheire. Fecha isso!",
+    pizzaClosed: "Ufa. Melhor assim.",
+    dizzy: "Para... tá tudo... girando... eu vejo... chiado colorido...",
+    shelf: "Ooh, a estante! Escolhe uma. A de etiqueta rasgada... melhor não.",
+    windowLabel: "Janela: ver como está o céu lá fora",
+    windowHint: "A janela segue o seu relógio. Se aí é noite, aqui também é.",
+    planeLabel: "Aviãozinho pendurado no teto",
+    planeHint: "Esse aviãozinho tá pendurado desde 2003. Será que ainda voa?",
+    chaosLabel: "Pôster: Caos faz parte da programação",
+    chaosHint: "O lema oficial do canal. Tá até no contrato.",
+    chaosBack: "Pronto, pôster de volta no lugar.",
+    chaosNote: "Achei um bilhete atrás do pôster: 'Tem pôster pra baixar nos Extras.' Psiu!",
+    dreamLabel: "Pôster: Sonhe, jogue, invente, repita",
+    dreamHint: "Sonhe. Jogue. Invente. Repita. Nessa ordem. Ou não.",
+    dreamLine: "Sonhe, jogue, invente, repita. A Lina pintou isso com tinta de parede. Da parede.",
+    signDoneLabel: (title: string) => `Placa NO AR: Missão 404 de hoje cumprida, ${title}. Ver na TV`,
+    signLabel: (title: string) => `Placa NO AR: ver a Missão 404 de hoje na TV, ${title}`,
+    signDoneHint: "Missão de hoje cumprida. Clica pra ver na TV.",
+    signHint: "Plantão no ar! Clica pra ver a Missão 404 na TV.",
+    trophyLabel: "Troféu de 2004: abrir o quadro dos campeões no fliperama de recordes",
+    trophyHint: "Troféu de Melhor Canal de 2004. O quadro dos campeões fica guardado aqui.",
+    lampOffLabel: "Puxar a cordinha da luminária para apagar a luz",
+    lampOnLabel: "Puxar a cordinha da luminária para acender a luz",
+    lampOffHint: "Tem uma cordinha aí. Cordinhas existem pra serem puxadas.",
+    lampOnHint: "Acende a luz! Tá escuro!",
+    radioOffLabel: "Rádio 404: desligar a música",
+    radioOnLabel: "Rádio 404: ligar a música",
+    radioOffHint: "Clica pra desligar o rádio.",
+    radioOnHint: "Liga o rádio! A trilha do canal toca aqui.",
+    stationLabel: "Trocar a estação do rádio",
+    stationButton: "Estação ▸",
+    lavaLabel: "Lâmpada de lava: trocar de cor",
+    lavaHint: "Lâmpada de lava. Hipnotizante. Não olhe por mais de 3 horas.",
+    lavaLine: "Nova cor! Essa lâmpada muda de humor mais do que eu.",
+    shelfLabel: "Estante de fitas VHS: escolher uma fita",
+    shelfPlayingHint: (label: string) => `Tá passando: ${label}. Quer trocar de fita?`,
+    shelfHint: "Uma das fitas diz NÃO ASSISTA. Hmm.",
+    vcrEjectLabel: (label: string) => `Videocassete: ejetar a fita ${label}`,
+    vcrEmptyLabel: "Videocassete vazio: abrir a estante de fitas",
+    vcrEjectHint: "Aperta pra ejetar a fita.",
+    vcrEmptyHint: "O videocassete tá vazio. As fitas ficam na estante do lado.",
+    mascotLabel: "404, o mascote do canal",
+    hiddenLabel: "Cantinho escuro perto do pufe",
+    hiddenLine: "Um cartucho dourado escondido! Escrito '404'. Eu nem sabia que eu tinha um jogo!",
+    catLabel: "Pixel, o gato, dormindo no pufe: fazer carinho",
+    catHint: "Shhh. O Pixel tá dormindo. Ou fingindo.",
+    pizzaCloseLabel: "Fechar a caixa de pizza",
+    pizzaOpenLabel: "Abrir a caixa de pizza",
+    pizzaHint: "Uma caixa de pizza. Há quanto tempo ela tá aí?",
+    controllersLabel: "Controles de videogame",
+    controllersHint: "Dois controles. O do player 2 tem um botão grudento.",
+    controllersLine: "Player 2 sempre perde. É a regra da casa.",
+    cartridgesLabel: "Cartuchos de jogos espalhados",
+    cartridgesHint: "Cartuchos! Cada um é um jogo do canal.",
+    skateLabel: "Skate do Déco",
+    skateHint: "O skate do Déco. Tem mais adesivo que rodinha.",
+    skateLine: "Esse skate já desceu a Rua Sem Saída 47 vezes. Subiu 0.",
+    booksLabel: "Pilha de livros: Manual de Engenhocas",
+    booksHint: "Manual de Engenhocas, vol. 3. Cheio de dicas pro jogo.",
+    wall: "O CANAL NUNCA SAIU DO AR",
+  },
+  en: {
+    jokes: [
+      "Hi! I'm 404. Yes, like the error. No, I'm not lost.",
+      "My head gets 3 and a half channels. The half is just static.",
+      "If you smack me, will I start working again? Better not find out.",
+      "Fun fact: I was made from a TV that fell off a moving truck.",
+      "I wear headphones because the channel's theme never stops. NEVER.",
+    ],
+    bookTips: [
+      "Gadget Manual, p. 12: pull back farther to launch farther.",
+      "P. 31: the rubber duck bounces. Use that to your advantage.",
+      "P. 47: a water balloon pushes everything around it when it pops.",
+      "P. 88: the tire is heavy. It knocks over whole stacks.",
+      "Last page: 'If it goes wrong, blame Déco.' — signed, Lina.",
+    ],
+    cartridges: {
+      "dead-end-street": "Cartridge STR: Dead End Street. It's worn out from all the playing.",
+      "bad-ideas-lab": "Cartridge LAB: Bad Ideas Lab. Lina swears no machine has exploded. Yet.",
+      "food-fight": "Cartridge FOOD: Food Fight. There's still pudding stuck to it.",
+      "operation-recess": "Cartridge REC: Operation: Recess. There's a cardboard sword drawn on the label.",
+      "pajama-war": "Cartridge PJS: Pajama War. It smells like a pillow. Don't ask.",
+      "off-air-vacation": "Cartridge VAC: Off-Air Vacation. It came with sand inside.",
+    },
+    cartridgeOf: (title: string) => `${title} cartridge.`,
+    cartridgeUnplayed: (line: string) => `${line} You haven't played this one yet!`,
+    mysteryWarm: "Cartridge ???: it's warm. I think it heats up when someone plays everything on the channel...",
+    mysteryCold: "Cartridge ???: this one has no name. Sometimes it heats up on its own.",
+    periods: {
+      morning: "It's morning outside. In here it's always a Saturday morning in 2004.",
+      afternoon: "Sunny afternoon outside. Perfect for staying in here and playing.",
+      dusk: "The sun is going down. The broadcast isn't.",
+      night: "It's already night! Time for bed... or just one more game.",
+    },
+    greetNew: "Hey! A new visitor! You can mess with everything in the room. Almost everything does something.",
+    greetUnplayed: (title: string) => `Hey! You're back! There's still a brand-new show for you: ${title}. It's on TV right now!`,
+    greetBest: (title: string) => `Hey! You're back! You've seen every show. Your best record is in ${title}. Can you beat it?`,
+    greetBack: "Hey! You're back! Want to play something?",
+    missionOffAir: (number: string) => `Channel ${number}: bulletin off the air.`,
+    barsLine: (number: string) => `Channel ${number}: off the air. Relax, that's normal here.`,
+    cartoonLine: (number: string) => `Channel ${number}: a rerun of my cartoon! I look great in this episode.`,
+    newLine: (number: string, title: string, tagline: string) => `Channel ${number}: ${title}. New for you! ${tagline}`,
+    rerunLine: (number: string, title: string, tagline: string) => `Channel ${number}: a rerun of ${title}. ${tagline}`,
+    lostChannel: "Wait... what channel is this? I've never seen this channel. I AM the channel!",
+    typedChannel: "You typed the channel's name! The TV obeyed. Creepy.",
+    launchPlay: "Starting the broadcast! Grab the controller!",
+    launchGo: "Let's go!",
+    coin: "Coin inserted! Opening the catalog...",
+    trophyRecord: (score: number, title: string) => `Your name is already on the trophy base: ${countOf(score, ["point", "points"], "en")} in ${title}. Let's go see the hall of champions!`,
+    trophy: "Best Channel of 2004! Now let's see who rules the arcade...",
+    radioOff: "Radio off. Silence is a soundtrack too. A really boring one.",
+    radioOn: (title: string) => `Radio 404 is on the air! Now playing: ${title}.`,
+    station: (station: string, title: string, locked: number) =>
+      `${station}: ${title}.${locked > 0 ? ` (There ${locked > 1 ? `are still ${locked} hidden stations` : "is still 1 hidden station"}...)` : ""}`,
+    lightsOff: "Hey, who turned off the lights? ...Wait, there's writing on the wall: THE CHANNEL NEVER WENT OFF THE AIR.",
+    lightsOn: "Lights back on! That was scary.",
+    plane: "The little plane flew! Nobody knows how. Cartoon physics.",
+    catPurr: "Pixel is purring! He only does that for very special people. Or people with tuna.",
+    catFirst: "This is Pixel. The real owner of the room. Careful.",
+    catAgain: "He's sizing you up. Keep going...",
+    pizzaOpen: "THIS PIZZA IS FROM 2004. DON'T EAT IT. Don't even sniff it. Close that!",
+    pizzaClosed: "Phew. Much better.",
+    dizzy: "Stop... everything's... spinning... I see... colorful static...",
+    shelf: "Ooh, the shelf! Pick one. The one with the torn label... better not.",
+    windowLabel: "Window: see what the sky looks like outside",
+    windowHint: "The window follows your clock. If it's night where you are, it's night here too.",
+    planeLabel: "Little plane hanging from the ceiling",
+    planeHint: "This little plane has been hanging there since 2003. Does it still fly?",
+    chaosLabel: "Poster: Chaos is part of the programming",
+    chaosHint: "The channel's official motto. It's even in the contract.",
+    chaosBack: "There, poster back in place.",
+    chaosNote: "Found a note behind the poster: 'There are posters to download in Extras.' Psst!",
+    dreamLabel: "Poster: Dream, play, invent, repeat",
+    dreamHint: "Dream. Play. Invent. Repeat. In that order. Or not.",
+    dreamLine: "Dream, play, invent, repeat. Lina painted this with wall paint. From the wall.",
+    signDoneLabel: (title: string) => `ON AIR sign: today's Mission 404 is complete, ${title}. See it on TV`,
+    signLabel: (title: string) => `ON AIR sign: see today's Mission 404 on TV, ${title}`,
+    signDoneHint: "Today's mission is complete. Click to see it on TV.",
+    signHint: "Bulletin on the air! Click to see Mission 404 on TV.",
+    trophyLabel: "2004 trophy: open the hall of champions in the Record arcade",
+    trophyHint: "Best Channel of 2004 trophy. The hall of champions is kept here.",
+    lampOffLabel: "Pull the lamp cord to turn off the light",
+    lampOnLabel: "Pull the lamp cord to turn on the light",
+    lampOffHint: "There's a little cord there. Cords exist to be pulled.",
+    lampOnHint: "Turn the light on! It's dark!",
+    radioOffLabel: "Radio 404: turn off the music",
+    radioOnLabel: "Radio 404: turn on the music",
+    radioOffHint: "Click to turn off the radio.",
+    radioOnHint: "Turn on the radio! The channel's soundtrack plays here.",
+    stationLabel: "Change the radio station",
+    stationButton: "Station ▸",
+    lavaLabel: "Lava lamp: change color",
+    lavaHint: "Lava lamp. Hypnotic. Don't stare for more than 3 hours.",
+    lavaLine: "New color! This lamp changes moods more than I do.",
+    shelfLabel: "VHS tape shelf: pick a tape",
+    shelfPlayingHint: (label: string) => `Now playing: ${label}. Want to switch tapes?`,
+    shelfHint: "One of the tapes says DO NOT WATCH. Hmm.",
+    vcrEjectLabel: (label: string) => `VCR: eject the ${label} tape`,
+    vcrEmptyLabel: "Empty VCR: open the tape shelf",
+    vcrEjectHint: "Press to eject the tape.",
+    vcrEmptyHint: "The VCR is empty. The tapes are on the shelf next to it.",
+    mascotLabel: "404, the channel's mascot",
+    hiddenLabel: "Dark corner by the beanbag",
+    hiddenLine: "A hidden golden cartridge! It says '404'. I didn't even know I had a game!",
+    catLabel: "Pixel the cat, asleep on the beanbag: pet him",
+    catHint: "Shhh. Pixel is sleeping. Or pretending.",
+    pizzaCloseLabel: "Close the pizza box",
+    pizzaOpenLabel: "Open the pizza box",
+    pizzaHint: "A pizza box. How long has that been there?",
+    controllersLabel: "Video game controllers",
+    controllersHint: "Two controllers. Player 2's has a sticky button.",
+    controllersLine: "Player 2 always loses. House rules.",
+    cartridgesLabel: "Scattered game cartridges",
+    cartridgesHint: "Cartridges! Each one is a game from the channel.",
+    skateLabel: "Déco's skateboard",
+    skateHint: "Déco's skateboard. More stickers than wheels.",
+    skateLine: "This skateboard has gone down Dead End Street 47 times. And up it 0 times.",
+    booksLabel: "Stack of books: Gadget Manual",
+    booksHint: "Gadget Manual, vol. 3. Full of tips for the game.",
+    wall: "THE CHANNEL NEVER WENT OFF THE AIR",
+  },
+});
 
 function periodFor(hour: number): SkyPeriod {
   if (hour >= 6 && hour < 12) return "morning";
@@ -91,15 +314,11 @@ function periodFor(hour: number): SkyPeriod {
   return "night";
 }
 
-const PERIOD_LINES: Record<SkyPeriod, string> = {
-  morning: "Lá fora é de manhã. Aqui dentro é sempre sábado de manhã de 2004.",
-  afternoon: "Tarde ensolarada lá fora. Perfeita pra ficar aqui dentro jogando.",
-  dusk: "O sol tá indo embora. A transmissão, não.",
-  night: "Já é noite! Hora de dormir... ou de só mais uma partida.",
-};
-
 export function BroadcastRoom() {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const channels = CHANNELS[locale];
   const reduced = useReducedMotion();
   const hydrated = useHydrated();
   const progress = useProgress();
@@ -128,8 +347,8 @@ export function BroadcastRoom() {
   const momentOf = useCallback((): MissionMoment | null => {
     if (!onAir) return null;
     const left = Date.parse(onAir.view.endsAt) - (Date.now() + onAir.offset);
-    return { title: onAir.view.title, game: missionPlace(onAir.view).game, state: onAir.state, minutesLeft: Math.max(1, Math.ceil(left / 60_000)), position: onAir.best?.position ?? null };
-  }, [onAir]);
+    return { title: missionText(onAir.view, locale).title, game: missionPlace(onAir.view, locale).game, state: onAir.state, minutesLeft: Math.max(1, Math.ceil(left / 60_000)), position: onAir.best?.position ?? null };
+  }, [locale, onAir]);
   const [missionWaitOver, setMissionWaitOver] = useState(false);
   const missionSettled = missionFeed.status !== "loading" || missionWaitOver;
   const greetTimers = useRef<number[]>([]);
@@ -205,24 +424,24 @@ export function BroadcastRoom() {
     greeted.current = true;
     const mission = momentOf();
     const returning = progress.visits > 1;
-    const unplayed = unplayedGames(progress);
-    const best = bestRecord(progress);
+    const unplayed = unplayedGames(progress, locale);
+    const best = bestRecord(progress, locale);
     const text = !returning
-      ? "Ei! Visitante novo! Pode mexer em tudo da sala. Quase tudo faz alguma coisa."
+      ? copy.greetNew
       : unplayed.length > 0 && unplayed.length < PLAYABLE.length
-        ? `Ei! Você voltou! Ainda tem programa inédito pra você: ${unplayed[0].title}. Tá passando agora na TV!`
+        ? copy.greetUnplayed(unplayed[0].title)
         : unplayed.length === 0 && best
-          ? `Ei! Você voltou! Já viu todos os programas. Seu melhor recorde é em ${best.game.title}. Dá pra bater?`
-          : "Ei! Você voltou! Bora jogar alguma coisa?";
+          ? copy.greetBest(best.game.title)
+          : copy.greetBack;
     greetTimers.current.push(
       window.setTimeout(() => {
-        if (returning && mission) say({ ...missionGreeting(mission), duration: 9000, announce: false });
+        if (returning && mission) say({ ...missionGreeting(mission, locale), duration: 9000, announce: false });
         else say({ text, expression: returning ? "happy" : "excited", duration: 9000, announce: false });
         poke();
       }, 450),
     );
-    if (!returning && mission) greetTimers.current.push(window.setTimeout(() => say({ ...missionGreeting(mission), duration: 7000, announce: false }), 9700));
-  }, [hydrated, missionSettled, momentOf, progress, say, poke]);
+    if (!returning && mission) greetTimers.current.push(window.setTimeout(() => say({ ...missionGreeting(mission, locale), duration: 7000, announce: false }), 9700));
+  }, [copy, hydrated, locale, missionSettled, momentOf, progress, say, poke]);
 
   useEffect(() => {
     if (!onAir) return;
@@ -230,9 +449,9 @@ export function BroadcastRoom() {
     missionDay.current = onAir.view.day;
     if (previous && previous !== onAir.view.day) {
       const moment = momentOf();
-      if (moment) say({ ...newMissionLine(moment), duration: 6000 });
+      if (moment) say({ ...newMissionLine(moment, locale), duration: 6000 });
     }
-  }, [onAir, momentOf, say]);
+  }, [locale, onAir, momentOf, say]);
 
   useEffect(() => {
     if (!onAir || onAir.state === "completed") return;
@@ -240,10 +459,10 @@ export function BroadcastRoom() {
     if (wait <= 0 || wait > 2 ** 31 - 1) return;
     const id = window.setTimeout(() => {
       const moment = momentOf();
-      if (moment && moment.state !== "completed") say({ ...missionGreeting(moment), duration: 7000 });
+      if (moment && moment.state !== "completed") say({ ...missionGreeting(moment, locale), duration: 7000 });
     }, wait);
     return () => window.clearTimeout(id);
-  }, [onAir, momentOf, say]);
+  }, [locale, onAir, momentOf, say]);
 
   const lookAtSpot = useCallback((spot: Spot) => {
     const target = spotCenter(spot);
@@ -318,31 +537,31 @@ export function BroadcastRoom() {
 
   const badgeFor = useCallback(
     (id: ChannelId): TvBadge => {
-      const game = CHANNELS[id]?.game;
+      const game = channels[id]?.game;
       if (!game) return null;
       return schedule.state(game) === "unplayed" ? "new" : null;
     },
-    [schedule],
+    [channels, schedule],
   );
 
   const channelLine = useCallback(
     (id: ChannelId) => {
-      const info = CHANNELS[id];
+      const info = channels[id];
       const game = info?.game;
       if (!game) {
         if (id === MISSION_CHANNEL) {
           const moment = momentOf();
-          return moment ? missionChannelLine(moment, info.number) : `Canal ${info.number}: plantão fora do ar.`;
+          return moment ? missionChannelLine(moment, info.number, locale) : copy.missionOffAir(info.number);
         }
-        if (id === "bars") return `Canal ${info.number}: fora do ar. Relaxa, isso é normal aqui.`;
-        if (id === "cartoon") return `Canal ${info.number}: reprise do meu desenho! Eu tô ótimo nesse episódio.`;
+        if (id === "bars") return copy.barsLine(info.number);
+        if (id === "cartoon") return copy.cartoonLine(info.number);
         return info?.name ?? "";
       }
       const badge = badgeFor(id);
-      if (badge === "new") return `Canal ${info.number}: ${game.title}. Inédito pra você! ${game.tagline}`;
-      return `Canal ${info.number}: reprise de ${game.title}. ${game.tagline}`;
+      if (badge === "new") return copy.newLine(info.number, game.title, game.tagline);
+      return copy.rerunLine(info.number, game.title, game.tagline);
     },
-    [badgeFor, momentOf],
+    [badgeFor, channels, copy, locale, momentOf],
   );
 
   const handleKnob = useCallback(() => {
@@ -371,11 +590,11 @@ export function BroadcastRoom() {
     tuneTo(next);
     if (next === "lost") {
       unlockSecret("lost-channel");
-      say({ text: "Peraí... que canal é esse? Eu nunca vi esse canal. Eu SOU o canal!", expression: "surprised", duration: 6500 });
+      say({ text: copy.lostChannel, expression: "surprised", duration: 6500 });
     } else {
       say({ text: channelLine(next), expression: next === "bars" ? "confused" : badgeFor(next) === "new" ? "excited" : "happy", duration: 4200 });
     }
-  }, [badgeFor, channel, channelLine, lastRegular, order, play, poke, reduced, say, tuneTo]);
+  }, [badgeFor, channel, channelLine, copy, lastRegular, order, play, poke, reduced, say, tuneTo]);
 
   const handleSign = useCallback(() => {
     const moment = momentOf();
@@ -385,13 +604,13 @@ export function BroadcastRoom() {
     setKnobAngle((a) => a + 45);
     setLastRegular(MISSION_CHANNEL);
     tuneTo(MISSION_CHANNEL);
-    say({ ...missionSignLine(moment), duration: 4600 });
-  }, [momentOf, play, poke, say, tuneTo]);
+    say({ ...missionSignLine(moment, locale), duration: 4600 });
+  }, [locale, momentOf, play, poke, say, tuneTo]);
 
   const suggestion = useMemo(() => {
-    const current = channel === MISSION_CHANNEL ? onAir?.view.game : CHANNELS[channel]?.game?.slug;
+    const current = channel === MISSION_CHANNEL ? onAir?.view.game : channels[channel]?.game?.slug;
     return schedule.next(current ? [current] : []);
-  }, [channel, onAir, schedule]);
+  }, [channel, channels, onAir, schedule]);
 
   const tuneSuggestion = useCallback(() => {
     if (!suggestion) return;
@@ -402,23 +621,21 @@ export function BroadcastRoom() {
     say({ text: channelLine(suggestion.game.slug), expression: suggestion.reason === "unplayed" ? "excited" : "happy", duration: 4200 });
   }, [channelLine, poke, say, suggestion, tuneTo]);
 
-  const records = useMemo(() => (hydrated ? bestRecord(progress) : null), [hydrated, progress]);
+  const records = useMemo(() => (hydrated ? bestRecord(progress, locale) : null), [hydrated, locale, progress]);
   const playedCarts = useMemo(
-    () => (hydrated ? [...CART_TAGS.map((slug) => plays(progress, slug) > 0), unplayedGames(progress).length === 0] : [false, false, false]),
-    [hydrated, progress],
+    () => (hydrated ? [...CART_TAGS.map((slug) => plays(progress, slug) > 0), unplayedGames(progress, locale).length === 0] : [false, false, false]),
+    [hydrated, locale, progress],
   );
   const cartridgeLine = useCallback(() => {
-    const games: GameMeta[] = PLAYABLE;
+    const games: GameMeta[] = playableIn(locale);
     const index = counters.current.cart++ % (games.length + 1);
     if (index === games.length) {
-      return playedCarts[2]
-        ? "Cartucho ???: tá quentinho. Acho que ele esquenta quando alguém joga tudo do canal..."
-        : "Cartucho ???: esse não tem nome. Às vezes ele esquenta sozinho.";
+      return playedCarts[2] ? copy.mysteryWarm : copy.mysteryCold;
     }
     const game = games[index];
-    const line = CARTRIDGE_LINES[game.slug] ?? `Cartucho de ${game.title}.`;
-    return hydrated && plays(progress, game.slug) === 0 ? `${line} Você ainda não jogou esse!` : line;
-  }, [hydrated, playedCarts, progress]);
+    const line = copy.cartridges[game.slug] ?? copy.cartridgeOf(game.title);
+    return hydrated && plays(progress, game.slug) === 0 ? copy.cartridgeUnplayed(line) : line;
+  }, [copy, hydrated, locale, playedCarts, progress]);
 
   useEffect(() => {
     let buffer = "";
@@ -430,12 +647,12 @@ export function BroadcastRoom() {
         buffer = "";
         tuneTo("lost");
         unlockSecret("lost-channel");
-        say({ text: "Você digitou o nome do canal! A TV obedeceu. Assustador.", expression: "surprised", duration: 6000 });
+        say({ text: copy.typedChannel, expression: "surprised", duration: 6000 });
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [say, tuneTo]);
+  }, [copy, say, tuneTo]);
 
   const launch = useCallback(
     (href: string, isPlay: boolean) => {
@@ -445,32 +662,30 @@ export function BroadcastRoom() {
         return;
       }
       setFlash(true);
-      say({ text: isPlay ? "Ligando a transmissão! Segura o controle!" : "Bora lá!", expression: "excited", duration: 2000, announce: false });
+      say({ text: isPlay ? copy.launchPlay : copy.launchGo, expression: "excited", duration: 2000, announce: false });
       window.setTimeout(() => router.push(href), 320);
     },
-    [play, reduced, router, say],
+    [copy, play, reduced, router, say],
   );
 
   const handleArcade = useCallback(() => {
     play("coin");
     setArcadeActive(true);
-    say({ text: "Ficha inserida! Abrindo o catálogo...", expression: "excited", duration: 2000, announce: false });
+    say({ text: copy.coin, expression: "excited", duration: 2000, announce: false });
     window.setTimeout(() => router.push("/games"), reduced ? 0 : 480);
-  }, [play, reduced, router, say]);
+  }, [copy, play, reduced, router, say]);
 
   const handleTrophy = useCallback(() => {
     play("achievement");
     setShine(true);
     say({
-      text: records
-        ? `Seu nome já está na base do troféu: ${records.score.toLocaleString("pt-BR")} pontos em ${records.game.title}. Bora ver o quadro dos campeões!`
-        : "Melhor Canal de 2004! Agora vamos ver quem manda no fliperama...",
+      text: records ? copy.trophyRecord(records.score, records.game.title) : copy.trophy,
       expression: "excited",
       duration: 2000,
       announce: false,
     });
     window.setTimeout(() => router.push("/records"), reduced ? 0 : 520);
-  }, [play, reduced, records, router, say]);
+  }, [copy, play, reduced, records, router, say]);
 
   const tracks = useMemo(() => unlockedTracks(progress), [progress]);
 
@@ -480,7 +695,7 @@ export function BroadcastRoom() {
     if (radioOn) {
       engine.stopMusic();
       play("toggleOff");
-      say({ text: "Rádio desligado. O silêncio também é uma trilha sonora. Uma bem chata.", expression: "neutral", duration: 4200 });
+      say({ text: copy.radioOff, expression: "neutral", duration: 4200 });
       return;
     }
     const id = tracks.some((t) => t.id === progress.settings.track) ? progress.settings.track : "theme";
@@ -488,8 +703,8 @@ export function BroadcastRoom() {
     engine.startMusic(id);
     unlockAchievement("radio-on");
     const track = TRACKS.find((t) => t.id === id);
-    say({ text: `Rádio 404 no ar! Tocando: ${track?.title}.`, expression: "happy", duration: 4200 });
-  }, [radioOn, play, poke, progress.settings.track, say, tracks]);
+    say({ text: copy.radioOn(track ? trackText(track.id, locale).title : ""), expression: "happy", duration: 4200 });
+  }, [copy, locale, radioOn, play, poke, progress.settings.track, say, tracks]);
 
   const nextStation = useCallback(() => {
     poke();
@@ -500,11 +715,11 @@ export function BroadcastRoom() {
     setSetting("track", next.id);
     const locked = TRACKS.length - tracks.length;
     say({
-      text: `${next.station}: ${next.title}.${locked > 0 ? ` (Ainda tem ${locked} ${locked > 1 ? "estações escondidas" : "estação escondida"}...)` : ""}`,
+      text: copy.station(next.station, trackText(next.id, locale).title, locked),
       expression: "wink",
       duration: 4200,
     });
-  }, [music.trackId, play, poke, say, tracks]);
+  }, [copy, locale, music.trackId, play, poke, say, tracks]);
 
   const handleLamp = useCallback(() => {
     poke();
@@ -513,11 +728,11 @@ export function BroadcastRoom() {
     setLightsOn(next);
     if (!next) {
       unlockSecret("blackout");
-      say({ text: "Ei, quem apagou a luz? ...Peraí, tá escrito na parede: O CANAL NUNCA SAIU DO AR.", expression: "surprised", duration: 6200 });
+      say({ text: copy.lightsOff, expression: "surprised", duration: 6200 });
     } else {
-      say({ text: "Luz de volta! Que susto.", expression: "happy", duration: 2600 });
+      say({ text: copy.lightsOn, expression: "happy", duration: 2600 });
     }
-  }, [lightsOn, play, poke, say]);
+  }, [copy, lightsOn, play, poke, say]);
 
   const handlePlane = useCallback(() => {
     poke();
@@ -525,9 +740,9 @@ export function BroadcastRoom() {
     play("engine");
     setFlying(true);
     unlockSecret("plane");
-    say({ text: "O aviãozinho voou! Ninguém sabe como. Física de desenho animado.", expression: "excited", duration: 4000 });
+    say({ text: copy.plane, expression: "excited", duration: 4000 });
     window.setTimeout(() => setFlying(false), reduced ? 400 : 3200);
-  }, [flying, play, poke, reduced, say]);
+  }, [copy, flying, play, poke, reduced, say]);
 
   const handleCat = useCallback(() => {
     poke();
@@ -537,19 +752,19 @@ export function BroadcastRoom() {
       setCatMood("purr");
       play("purr");
       unlockSecret("cat");
-      say({ text: "O Pixel tá ronronando! Ele só faz isso com gente muito especial. Ou com quem tem atum.", expression: "love", duration: 5000 });
+      say({ text: copy.catPurr, expression: "love", duration: 5000 });
       catPets.current = 0;
     } else {
       setCatMood("awake");
       play("meow");
       say({
-        text: catPets.current === 1 ? "Esse é o Pixel. O verdadeiro dono da sala. Cuidado." : "Ele tá te avaliando. Continua...",
+        text: catPets.current === 1 ? copy.catFirst : copy.catAgain,
         expression: "wink",
         duration: 3800,
       });
     }
     catTimer.current = setTimeout(() => setCatMood("sleep"), 6500);
-  }, [play, poke, say]);
+  }, [copy, play, poke, say]);
 
   const handlePizza = useCallback(() => {
     poke();
@@ -559,11 +774,11 @@ export function BroadcastRoom() {
     if (next) {
       window.setTimeout(() => play("fly"), 300);
       unlockSecret("pizza");
-      say({ text: "ESSA PIZZA É DE 2004. NÃO COMA. Nem cheire. Fecha isso!", expression: "sad", duration: 5000 });
+      say({ text: copy.pizzaOpen, expression: "sad", duration: 5000 });
     } else {
-      say({ text: "Ufa. Melhor assim.", expression: "happy", duration: 2400 });
+      say({ text: copy.pizzaClosed, expression: "happy", duration: 2400 });
     }
-  }, [pizzaOpen, play, poke, say]);
+  }, [copy, pizzaOpen, play, poke, say]);
 
   const handleMascot = useCallback(() => {
     const now = Date.now();
@@ -573,16 +788,16 @@ export function BroadcastRoom() {
       pokes.current = [];
       play("dizzy");
       unlockSecret("poke");
-      say({ text: "Para... tá tudo... girando... eu vejo... chiado colorido...", expression: "dizzy", duration: 4800 });
+      say({ text: copy.dizzy, expression: "dizzy", duration: 4800 });
       poke();
       return;
     }
     play("boing", { pitch: 1 + pokes.current.length * 0.08 });
-    const joke = MASCOT_JOKES[counters.current.joke % MASCOT_JOKES.length];
+    const turn = counters.current.joke % copy.jokes.length;
     counters.current.joke += 1;
-    say({ ...joke, duration: 4600 });
+    say({ text: copy.jokes[turn], expression: JOKE_FACES[turn], duration: 4600 });
     poke();
-  }, [play, poke, say]);
+  }, [copy, play, poke, say]);
 
   const playing = isTape(channel) ? channel : null;
 
@@ -610,11 +825,11 @@ export function BroadcastRoom() {
       setVcrBump((n) => n + 1);
       tuneTo(id, { quiet: true });
       if (id === "tape") unlockSecret("tape");
-      const tape = tapeById(id);
+      const tape = tapeById(id, locale);
       const mood: MascotExpression = id === "tape" ? "surprised" : id === "tape-resort" ? "confused" : id === "tape-karaoke" ? "wink" : "excited";
       sayOnce(`insert:${id}`, tape.insertLine, mood, 5200);
     },
-    [play, sayOnce, tuneTo],
+    [locale, play, sayOnce, tuneTo],
   );
 
   const landTape = useCallback(
@@ -631,8 +846,8 @@ export function BroadcastRoom() {
     play("whoosh", { volume: 0.35 });
     setShelfOrigin(shelfButton.current?.getBoundingClientRect() ?? null);
     setShelfOpen(true);
-    sayOnce("shelf", "Ooh, a estante! Escolhe uma. A de etiqueta rasgada... melhor não.", "excited", 4200);
-  }, [play, poke, sayOnce]);
+    sayOnce("shelf", copy.shelf, "excited", 4200);
+  }, [copy, play, poke, sayOnce]);
 
   const closeShelf = useCallback(() => {
     setShelfOpen(false);
@@ -671,9 +886,9 @@ export function BroadcastRoom() {
       if (!reduced) flyTape(playing, "shelf");
       setVcrBump((n) => n + 1);
       tuneTo(lastRegular, { quiet: true });
-      if (!auto) sayOnce(`eject:${playing}`, tapeById(playing).ejectLine, "wink", 3400);
+      if (!auto) sayOnce(`eject:${playing}`, tapeById(playing, locale).ejectLine, "wink", 3400);
     },
-    [flyTape, lastRegular, play, playing, poke, reduced, sayOnce, tuneTo],
+    [flyTape, lastRegular, locale, play, playing, poke, reduced, sayOnce, tuneTo],
   );
 
   const replay = useCallback(() => {
@@ -691,7 +906,8 @@ export function BroadcastRoom() {
     (cue: TapeCue, tape: TapeId) => {
       if (cue.sound) play(cue.sound, { volume: 0.5 });
       if (cue.mascot) {
-        const { expression, line } = cue.mascot;
+        const { expression } = cue.mascot;
+        const line = cue.mascot.line?.[locale];
         const key = `cue:${tape}:${cue.at}`;
         if (Array.isArray(line)) {
           const turn = rotations.current.get(key) ?? 0;
@@ -705,7 +921,7 @@ export function BroadcastRoom() {
       }
       if (cue.eject) ejectTape(true);
     },
-    [ejectTape, emote, play, say, sayOnce],
+    [ejectTape, emote, locale, play, say, sayOnce],
   );
 
   useTapePlayback(playing, since, take, onCue);
@@ -783,11 +999,11 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.window}
-          label="Janela: ver como está o céu lá fora"
-          hint="A janela segue o seu relógio. Se aí é noite, aqui também é."
+          label={copy.windowLabel}
+          hint={copy.windowHint}
           onHint={onHint}
           onHoverSound={hover}
-          onActivate={() => say2(PERIOD_LINES[period], "happy", "page")}
+          onActivate={() => say2(copy.periods[period], "happy", "page")}
           z={5}
         >
           <WindowArt period={period} />
@@ -795,8 +1011,8 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.plane}
-          label="Aviãozinho pendurado no teto"
-          hint="Esse aviãozinho tá pendurado desde 2003. Será que ainda voa?"
+          label={copy.planeLabel}
+          hint={copy.planeHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={handlePlane}
@@ -808,17 +1024,13 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.posterChaos}
-          label="Pôster: Caos faz parte da programação"
-          hint="O lema oficial do canal. Tá até no contrato."
+          label={copy.chaosLabel}
+          hint={copy.chaosHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={() => {
             setPeeled((p) => !p);
-            say2(
-              peeled ? "Pronto, pôster de volta no lugar." : "Achei um bilhete atrás do pôster: 'Tem pôster pra baixar nos Extras.' Psiu!",
-              "wink",
-              "page",
-            );
+            say2(peeled ? copy.chaosBack : copy.chaosNote, "wink", "page");
           }}
           z={6}
         >
@@ -827,11 +1039,11 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.posterDream}
-          label="Pôster: Sonhe, jogue, invente, repita"
-          hint="Sonhe. Jogue. Invente. Repita. Nessa ordem. Ou não."
+          label={copy.dreamLabel}
+          hint={copy.dreamHint}
           onHint={onHint}
           onHoverSound={hover}
-          onActivate={() => say2("Sonhe, jogue, invente, repita. A Lina pintou isso com tinta de parede. Da parede.", "happy", "page")}
+          onActivate={() => say2(copy.dreamLine, "happy", "page")}
           z={6}
         >
           <PosterDreamArt />
@@ -840,12 +1052,8 @@ export function BroadcastRoom() {
         {onAir ? (
           <RoomButton
             spot={SPOTS.onAir}
-            label={
-              onAir.state === "completed"
-                ? `Placa NO AR: Missão 404 de hoje cumprida, ${onAir.view.title}. Ver na TV`
-                : `Placa NO AR: ver a Missão 404 de hoje na TV, ${onAir.view.title}`
-            }
-            hint={onAir.state === "completed" ? "Missão de hoje cumprida. Clica pra ver na TV." : "Plantão no ar! Clica pra ver a Missão 404 na TV."}
+            label={onAir.state === "completed" ? copy.signDoneLabel(missionText(onAir.view, locale).title) : copy.signLabel(missionText(onAir.view, locale).title)}
+            hint={onAir.state === "completed" ? copy.signDoneHint : copy.signHint}
             onHint={onHint}
             onHoverSound={hover}
             onActivate={handleSign}
@@ -862,8 +1070,8 @@ export function BroadcastRoom() {
         <RoomLink
           spot={SPOTS.trophy}
           href="/records"
-          label="Troféu de 2004: abrir o quadro dos campeões no fliperama de recordes"
-          hint="Troféu de Melhor Canal de 2004. O quadro dos campeões fica guardado aqui."
+          label={copy.trophyLabel}
+          hint={copy.trophyHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={handleTrophy}
@@ -874,9 +1082,9 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.lamp}
-          label={lightsOn ? "Puxar a cordinha da luminária para apagar a luz" : "Puxar a cordinha da luminária para acender a luz"}
+          label={lightsOn ? copy.lampOffLabel : copy.lampOnLabel}
           pressed={!lightsOn}
-          hint={lightsOn ? "Tem uma cordinha aí. Cordinhas existem pra serem puxadas." : "Acende a luz! Tá escuro!"}
+          hint={lightsOn ? copy.lampOffHint : copy.lampOnHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={handleLamp}
@@ -887,9 +1095,9 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.radio}
-          label={radioOn ? "Rádio 404: desligar a música" : "Rádio 404: ligar a música"}
+          label={radioOn ? copy.radioOffLabel : copy.radioOnLabel}
           pressed={radioOn}
-          hint={radioOn ? "Clica pra desligar o rádio." : "Liga o rádio! A trilha do canal toca aqui."}
+          hint={radioOn ? copy.radioOffHint : copy.radioOnHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={toggleRadio}
@@ -932,27 +1140,27 @@ export function BroadcastRoom() {
               type="button"
               onClick={nextStation}
               onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
-              aria-label="Trocar a estação do rádio"
+              aria-label={copy.stationLabel}
               className="press absolute z-[18] -rotate-6 whitespace-nowrap rounded-lg border-[3px] border-ink bg-sun px-[0.6em] py-[0.2em] font-display text-[clamp(10px,0.85vw,14px)] leading-tight text-ink shadow-[var(--shadow-ink-sm)]"
               style={{
                 left: `${((SPOTS.radio.x - 6) / SCENE.w) * 100}%`,
                 top: `${((SPOTS.radio.y - 4) / SCENE.h) * 100}%`,
               }}
             >
-              Estação ▸
+              {copy.stationButton}
             </button>
           </>
         )}
 
         <RoomButton
           spot={SPOTS.lava}
-          label="Lâmpada de lava: trocar de cor"
-          hint="Lâmpada de lava. Hipnotizante. Não olhe por mais de 3 horas."
+          label={copy.lavaLabel}
+          hint={copy.lavaHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={() => {
             setLava((v) => v + 1);
-            say2("Nova cor! Essa lâmpada muda de humor mais do que eu.", "happy", "pop");
+            say2(copy.lavaLine, "happy", "pop");
           }}
           z={15}
           className={lightsOn ? "" : "drop-shadow-[0_0_24px_var(--lava-glow)]"}
@@ -971,8 +1179,8 @@ export function BroadcastRoom() {
           channel={channel}
           badge={badgeFor(channel)}
           next={
-            !playing && suggestion && CHANNELS[suggestion.game.slug]
-              ? { number: CHANNELS[suggestion.game.slug].number, name: suggestion.game.title, onTune: tuneSuggestion }
+            !playing && suggestion && channels[suggestion.game.slug]
+              ? { number: channels[suggestion.game.slug].number, name: channels[suggestion.game.slug].name, onTune: tuneSuggestion }
               : null
           }
           switching={switching}
@@ -988,9 +1196,9 @@ export function BroadcastRoom() {
         <RoomButton
           ref={shelfButton}
           spot={SPOTS.vhs}
-          label="Estante de fitas VHS: escolher uma fita"
+          label={copy.shelfLabel}
           hasPopup="dialog"
-          hint={playing ? `Tá passando: ${tapeById(playing).label}. Quer trocar de fita?` : "Uma das fitas diz NÃO ASSISTA. Hmm."}
+          hint={playing ? copy.shelfPlayingHint(tapeById(playing, locale).label) : copy.shelfHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={openShelf}
@@ -1001,9 +1209,9 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.vcr}
-          label={playing ? `Videocassete: ejetar a fita ${tapeById(playing).label}` : "Videocassete vazio: abrir a estante de fitas"}
+          label={playing ? copy.vcrEjectLabel(tapeById(playing, locale).label) : copy.vcrEmptyLabel}
           hasPopup={playing ? undefined : "dialog"}
-          hint={playing ? "Aperta pra ejetar a fita." : "O videocassete tá vazio. As fitas ficam na estante do lado."}
+          hint={playing ? copy.vcrEjectHint : copy.vcrEmptyHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={playing ? () => ejectTape() : openShelf}
@@ -1017,7 +1225,7 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.mascot}
-          label="404, o mascote do canal"
+          label={copy.mascotLabel}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={handleMascot}
@@ -1034,13 +1242,13 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.hiddenCart}
-          label="Cantinho escuro perto do pufe"
+          label={copy.hiddenLabel}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={() => {
             setHiddenFound(true);
             unlockSecret("cartridge");
-            say2("Um cartucho dourado escondido! Escrito '404'. Eu nem sabia que eu tinha um jogo!", "excited", "coin");
+            say2(copy.hiddenLine, "excited", "coin");
           }}
           z={17}
           className={hiddenFound ? "[&_svg]:-translate-y-2" : ""}
@@ -1050,8 +1258,8 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.cat}
-          label="Pixel, o gato, dormindo no pufe: fazer carinho"
-          hint="Shhh. O Pixel tá dormindo. Ou fingindo."
+          label={copy.catLabel}
+          hint={copy.catHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={handleCat}
@@ -1088,9 +1296,9 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.pizza}
-          label={pizzaOpen ? "Fechar a caixa de pizza" : "Abrir a caixa de pizza"}
+          label={pizzaOpen ? copy.pizzaCloseLabel : copy.pizzaOpenLabel}
           pressed={pizzaOpen}
-          hint="Uma caixa de pizza. Há quanto tempo ela tá aí?"
+          hint={copy.pizzaHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={handlePizza}
@@ -1101,14 +1309,14 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.controllers}
-          label="Controles de videogame"
-          hint="Dois controles. O do player 2 tem um botão grudento."
+          label={copy.controllersLabel}
+          hint={copy.controllersHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={() => {
             setRumble(true);
             window.setTimeout(() => setRumble(false), 500);
-            say2("Player 2 sempre perde. É a regra da casa.", "wink", "rumble");
+            say2(copy.controllersLine, "wink", "rumble");
           }}
           z={19}
           className={rumble ? "[&>span]:[animation:shake_0.25s_linear_2]" : ""}
@@ -1118,8 +1326,8 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.cartridges}
-          label="Cartuchos de jogos espalhados"
-          hint="Cartuchos! Cada um é um jogo do canal."
+          label={copy.cartridgesLabel}
+          hint={copy.cartridgesHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={() => {
@@ -1135,13 +1343,13 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.skate}
-          label="Skate do Déco"
-          hint="O skate do Déco. Tem mais adesivo que rodinha."
+          label={copy.skateLabel}
+          hint={copy.skateHint}
           onHint={onHint}
           onHoverSound={hover}
           onActivate={() => {
             setSkating((n) => n + 1);
-            say2("Esse skate já desceu a Rua Sem Saída 47 vezes. Subiu 0.", "wink", "whoosh");
+            say2(copy.skateLine, "wink", "whoosh");
           }}
           z={21}
         >
@@ -1152,11 +1360,11 @@ export function BroadcastRoom() {
 
         <RoomButton
           spot={SPOTS.books}
-          label="Pilha de livros: Manual de Engenhocas"
-          hint="Manual de Engenhocas, vol. 3. Cheio de dicas pro jogo."
+          label={copy.booksLabel}
+          hint={copy.booksHint}
           onHint={onHint}
           onHoverSound={hover}
-          onActivate={() => say2(BOOK_TIPS[counters.current.book++ % BOOK_TIPS.length], "happy", "page")}
+          onActivate={() => say2(copy.bookTips[counters.current.book++ % copy.bookTips.length], "happy", "page")}
           z={18}
         >
           <BooksArt />
@@ -1188,7 +1396,7 @@ export function BroadcastRoom() {
                 animation: "glow-pulse 2.4s ease-in-out infinite",
               }}
             >
-              O CANAL NUNCA SAIU DO AR
+              {copy.wall}
             </p>
             {[
               [480, 70],

@@ -4,8 +4,31 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon, EjectIcon } from "@/components/art/Icons";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useHydrated } from "@/lib/progress/hooks";
 import { TAPES, tapeById, type Tape, type TapeId } from "./objects/tapes";
+
+const COPY = localized({
+  "pt-BR": {
+    title: "Estante de fitas",
+    hint: "Escolha uma fita pro videocassete.",
+    close: "Fechar a estante",
+    inVcr: "No vídeo",
+    eject: "Ejetar",
+    pickTorn: (torn: string) => `Colocar a fita de etiqueta rasgada: ${torn}…`,
+    pick: (label: string, note: string) => `Colocar a fita ${label}, ${note}`,
+  },
+  en: {
+    title: "Tape shelf",
+    hint: "Pick a tape for the VCR.",
+    close: "Close the shelf",
+    inVcr: "In the VCR",
+    eject: "Eject",
+    pickTorn: (torn: string) => `Put in the tape with the torn label: ${torn}…`,
+    pick: (label: string, note: string) => `Put in the ${label} tape, ${note}`,
+  },
+});
 
 type Props = {
   open: boolean;
@@ -53,11 +76,12 @@ function Cassette({ tape }: { tape: Tape }) {
 }
 
 function PlayingSlot({ tape }: { tape: Tape }) {
+  const copy = useCopy(COPY);
   return (
     <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 rounded-lg border-[3px] border-dashed border-cream-2/70 bg-ink/45 px-2 text-center shadow-[inset_0_4px_10px_rgba(0,0,0,.45)]">
       <span className="flex items-center gap-1.5 font-display text-xs uppercase leading-none tracking-wide text-lime">
         <span aria-hidden className="size-2 rounded-full bg-lime shadow-[0_0_6px_var(--color-lime)]" />
-        No vídeo
+        {copy.inVcr}
       </span>
       <span className="font-hand text-lg font-bold leading-none text-cream">{tape.label}</span>
       <span aria-hidden className="mt-1 h-1.5 w-3/5 rounded-full" style={{ backgroundColor: tape.sticker }} />
@@ -69,13 +93,15 @@ function EmptySlot() {
   return <div aria-hidden className="aspect-[4/3] w-full rounded-lg border-[3px] border-dashed border-cream-2/40 bg-ink/30 shadow-[inset_0_4px_10px_rgba(0,0,0,.4)]" />;
 }
 
-export function tapeAction(tape: Tape) {
-  return tape.torn ? `Colocar a fita de etiqueta rasgada: ${tape.torn}…` : `Colocar a fita ${tape.label}, ${tape.note}`;
+function tapeAction(tape: Tape, copy: (typeof COPY)[keyof typeof COPY]) {
+  return tape.torn ? copy.pickTorn(tape.torn) : copy.pick(tape.label, tape.note);
 }
 
 export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClose, onHoverSound }: Props) {
   const hydrated = useHydrated();
   const reduced = useReducedMotion();
+  const locale = useLocale();
+  const copy = COPY[locale];
   const panel = useRef<HTMLDivElement>(null);
   const [picking, setPicking] = useState<TapeId | null>(null);
   const [lastOpen, setLastOpen] = useState(open);
@@ -127,7 +153,7 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
     ? { x: origin.left + origin.width / 2 - window.innerWidth / 2, y: origin.top + origin.height / 2 - window.innerHeight / 2 }
     : { x: 0, y: 40 };
   const hidden = reduced ? { opacity: 0 } : { opacity: 0, x: from.x, y: from.y, scale: 0.22, rotate: -8 };
-  const playing = inserted ? tapeById(inserted) : null;
+  const playing = inserted ? tapeById(inserted, locale) : null;
 
   return createPortal(
     <AnimatePresence>
@@ -158,10 +184,10 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 id="tape-shelf-title" className="font-display text-[1.6rem] uppercase leading-none tracking-wide text-ink sm:text-3xl">
-                  Estante de fitas
+                  {copy.title}
                 </h2>
                 <p id="tape-shelf-hint" className="mt-1.5 font-hand text-lg leading-snug text-ink">
-                  Escolha uma fita pro videocassete.
+                  {copy.hint}
                 </p>
               </div>
               <button
@@ -171,12 +197,12 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
                 className="press grid size-11 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-cream text-ink shadow-[var(--shadow-ink-sm)]"
               >
                 <CloseIcon className="size-6" />
-                <span className="sr-only">Fechar a estante</span>
+                <span className="sr-only">{copy.close}</span>
               </button>
             </div>
 
             <ul className="mt-5 flex flex-wrap justify-center gap-x-3 gap-y-4 rounded-xl border-[3px] border-ink bg-wood-deep p-3 shadow-[inset_0_-10px_0_rgba(0,0,0,.18)] sm:p-4">
-              {TAPES.map((tape, i) => (
+              {TAPES[locale].map((tape, i) => (
                 <li key={tape.id} className={`w-[calc(50%-0.4rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(20%-0.6rem)] ${i % 2 ? "rotate-1" : "-rotate-1"}`}>
                   {tape.id === inserted ? (
                     <PlayingSlot tape={tape} />
@@ -188,7 +214,7 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
                       disabled={picking !== null}
                       onClick={() => pick(tape.id)}
                       onPointerEnter={(e) => e.pointerType === "mouse" && onHoverSound?.()}
-                      aria-label={tapeAction(tape)}
+                      aria-label={tapeAction(tape, copy)}
                       animate={
                         picking === tape.id
                           ? { y: "-46%", rotate: -7, scale: 1.1, opacity: [1, 1, 0] }
@@ -214,7 +240,7 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
                 <p className="flex min-w-0 items-center gap-2 rounded-md bg-plum-950 px-3 py-2 font-display text-sm uppercase leading-none tracking-wide text-lime">
                   <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-lime shadow-[0_0_8px_var(--color-lime)]" />
                   <span className="truncate">
-                    No vídeo: <span className="text-cream">{playing.label}</span>
+                    {copy.inVcr}: <span className="text-cream">{playing.label}</span>
                   </span>
                 </p>
                 <button
@@ -224,7 +250,7 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
                   className="press flex min-h-11 items-center gap-2 rounded-lg border-[3px] border-ink bg-cream px-4 py-1.5 font-display text-base uppercase tracking-wide text-ink shadow-[0_4px_0_0_var(--color-ink)] active:translate-y-1 active:shadow-none"
                 >
                   <EjectIcon className="size-5" />
-                  Ejetar {playing.label}
+                  {copy.eject} {playing.label}
                 </button>
               </div>
             )}

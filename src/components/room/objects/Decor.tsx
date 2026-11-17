@@ -1,7 +1,34 @@
 import { useId } from "react";
 import { CHAOS_POSTER, PosterTexts } from "@/components/extras/posterArt";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import { TAPES, tapeById, type TapeId } from "./tapes";
+
+const COPY = localized({
+  "pt-BR": {
+    radio: "RÁDIO 404",
+    carts: ["RUA", "LAB", "???"],
+    books: ["GIBIS", "FÍSICA?", "TRUQUES", "ENGENHOCAS"],
+    tornLabel: "NÃO ASSISTA",
+    psst: "psiu!",
+    dream: ["SONHE", "JOGUE", "INVENTE", "REPITA"],
+    onAir: "NO AR",
+    missionDone: "CUMPRIDA",
+    missionLive: "MISSÃO!",
+  },
+  en: {
+    radio: "RADIO 404",
+    carts: ["STR", "LAB", "???"],
+    books: ["COMICS", "PHYSICS?", "TRICKS", "GADGETS"],
+    tornLabel: "DO NOT WATCH",
+    psst: "psst!",
+    dream: ["DREAM", "PLAY", "INVENT", "REPEAT"],
+    onAir: "ON AIR",
+    missionDone: "COMPLETE",
+    missionLive: "MISSION!",
+  },
+});
 
 const ink = { stroke: P.ink, strokeWidth: 5, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 const thin = { stroke: P.ink, strokeWidth: 3.5, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
@@ -10,6 +37,7 @@ const hand = { fontFamily: "var(--font-patrick)" };
 const noHit = { pointerEvents: "none" as const };
 
 export function RadioArt({ on }: { on: boolean }) {
+  const copy = useCopy(COPY);
   return (
     <svg viewBox="0 0 172 120" className="h-full w-full" overflow="visible" aria-hidden>
       <g style={noHit}>
@@ -37,7 +65,7 @@ export function RadioArt({ on }: { on: boolean }) {
         ))}
         <rect x="86" y="46" width="64" height="26" rx="5" fill={on ? P.screen : "#203038"} stroke={P.ink} strokeWidth="3.5" />
         <text x="118" y="86" textAnchor="middle" fontSize="11" fill={P.ink} style={display} letterSpacing="0.8">
-          RÁDIO 404
+          {copy.radio}
         </text>
         <circle cx="96" cy="97" r="6" fill={on ? P.tomato : P.tomatoDeep} stroke={P.ink} strokeWidth="2.5" />
         <circle cx="114" cy="97" r="6" fill={P.sun} stroke={P.ink} strokeWidth="2.5" />
@@ -349,12 +377,13 @@ function Cart({ x, y, r, color, label, lit = false }: { x: number; y: number; r:
 }
 
 export function CartridgesArt({ lit = [] }: { lit?: boolean[] }) {
+  const { carts } = useCopy(COPY);
   return (
     <svg viewBox="0 0 166 78" className="h-full w-full" overflow="visible" aria-hidden>
       <g>
-        <Cart x={34} y={46} r={-18} color={P.tomato} label="RUA" lit={lit[0]} />
-        <Cart x={84} y={40} r={8} color={P.plum300} label="LAB" lit={lit[1]} />
-        <Cart x={134} y={48} r={24} color={P.mint} label="???" lit={lit[2]} />
+        <Cart x={34} y={46} r={-18} color={P.tomato} label={carts[0]} lit={lit[0]} />
+        <Cart x={84} y={40} r={8} color={P.plum300} label={carts[1]} lit={lit[1]} />
+        <Cart x={134} y={48} r={24} color={P.mint} label={carts[2]} lit={lit[2]} />
       </g>
     </svg>
   );
@@ -371,11 +400,12 @@ export function HiddenCartArt() {
 }
 
 export function BooksArt() {
+  const titles = useCopy(COPY).books;
   const books = [
-    { y: 100, h: 20, w: 92, x: 4, c: P.skyDeep, t: "GIBIS" },
-    { y: 78, h: 22, w: 84, x: 10, c: P.tomato, t: "FÍSICA?" },
-    { y: 58, h: 20, w: 88, x: 2, c: P.lime, t: "TRUQUES" },
-    { y: 34, h: 24, w: 80, x: 12, c: P.sun, t: "ENGENHOCAS" },
+    { y: 100, h: 20, w: 92, x: 4, c: P.skyDeep, t: titles[0] },
+    { y: 78, h: 22, w: 84, x: 10, c: P.tomato, t: titles[1] },
+    { y: 58, h: 20, w: 88, x: 2, c: P.lime, t: titles[2] },
+    { y: 34, h: 24, w: 80, x: 12, c: P.sun, t: titles[3] },
   ];
   return (
     <svg viewBox="0 0 100 126" className="h-full w-full" overflow="visible" aria-hidden>
@@ -403,8 +433,10 @@ const TORN_LABEL = "M152 110 L152 46 L156 40 L159 47 L163 39 L166 45 L170 38 L17
 
 export function VhsArt({ missing }: { missing: TapeId[] }) {
   const clip = useId();
-  const upright = TAPES.filter((tape) => !tape.torn);
-  const torn = TAPES.find((tape) => tape.torn)!;
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const upright = TAPES[locale].filter((tape) => !tape.torn);
+  const torn = TAPES[locale].find((tape) => tape.torn)!;
   return (
     <svg viewBox="0 0 236 124" className="h-full w-full" overflow="visible" aria-hidden>
       <defs>
@@ -433,7 +465,7 @@ export function VhsArt({ missing }: { missing: TapeId[] }) {
             <path d="M153 24 L172 24 L171 30 L166 27 L160 31 L154 28 Z" fill={torn.sticker} />
             <g clipPath={`url(#${clip})`}>
               <text x="167" y="66" textAnchor="middle" fontSize="10" fill={P.white} style={display} transform="rotate(-90 167 66)">
-                NÃO ASSISTA
+                {copy.tornLabel}
               </text>
             </g>
           </g>
@@ -445,7 +477,8 @@ export function VhsArt({ missing }: { missing: TapeId[] }) {
 }
 
 export function VcrArt({ playing }: { playing: TapeId | null }) {
-  const tape = playing ? tapeById(playing) : null;
+  const locale = useLocale();
+  const tape = playing ? tapeById(playing, locale) : null;
   return (
     <svg viewBox="598 694 228 86" className="h-full w-full" aria-hidden>
       <rect x="604" y="700" width="216" height="52" rx="6" fill={P.inkSoft} stroke={P.ink} strokeWidth="4" />
@@ -471,6 +504,7 @@ export function VcrArt({ playing }: { playing: TapeId | null }) {
 }
 
 export function PosterChaosArt({ peeled }: { peeled: boolean }) {
+  const copy = useCopy(COPY);
   return (
     <svg viewBox="0 0 150 190" className="h-full w-full" overflow="visible" aria-hidden>
       <g transform="rotate(4 75 95)">
@@ -488,7 +522,7 @@ export function PosterChaosArt({ peeled }: { peeled: boolean }) {
         )}
         {peeled && (
           <text x="128" y="180" textAnchor="middle" fontSize="8" fill={P.ink} style={hand}>
-            psiu!
+            {copy.psst}
           </text>
         )}
       </g>
@@ -497,11 +531,12 @@ export function PosterChaosArt({ peeled }: { peeled: boolean }) {
 }
 
 export function PosterDreamArt() {
+  const { dream } = useCopy(COPY);
   const words: [string, string][] = [
-    ["SONHE", P.sun],
-    ["JOGUE", P.mint],
-    ["INVENTE", P.bubblegum],
-    ["REPITA", P.tangerine],
+    [dream[0], P.sun],
+    [dream[1], P.mint],
+    [dream[2], P.bubblegum],
+    [dream[3], P.tangerine],
   ];
   return (
     <svg viewBox="0 0 140 320" className="h-full w-full" overflow="visible" aria-hidden>
@@ -568,6 +603,7 @@ export function TrophyArt({ shine, record = false }: { shine: boolean; record?: 
 }
 
 export function OnAirSign({ lit, mission = null }: { lit: boolean; mission?: "live" | "done" | null }) {
+  const copy = useCopy(COPY);
   return (
     <svg viewBox="0 0 150 70" className="h-full w-full" overflow="visible" aria-hidden>
       <g>
@@ -588,7 +624,7 @@ export function OnAirSign({ lit, mission = null }: { lit: boolean; mission?: "li
           fill={lit ? P.white : "#8a5560"}
           style={{ fontFamily: "var(--font-luckiest)" }}
         >
-          NO AR
+          {copy.onAir}
         </text>
         <path d="M22 26 Q30 22 40 24" stroke={P.white} strokeWidth="3" fill="none" strokeLinecap="round" opacity={lit ? 0.8 : 0.25} />
       </g>
@@ -597,7 +633,7 @@ export function OnAirSign({ lit, mission = null }: { lit: boolean; mission?: "li
           <rect x={mission === "done" ? 78 : 92} y="-8" width={mission === "done" ? 90 : 72} height="24" rx="6" fill={mission === "live" ? P.lime : P.paper} stroke={P.ink} strokeWidth="3.5" />
           {mission === "done" && <path d="M86 4 L91 9 L99 -1" stroke={P.limeDeep} strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
           <text x={mission === "done" ? 133 : 128} y="10" textAnchor="middle" fontSize={mission === "done" ? 11.5 : 13} letterSpacing={mission === "done" ? 0.4 : 1} fill={P.ink} style={{ fontFamily: "var(--font-luckiest)" }}>
-            {mission === "done" ? "CUMPRIDA" : "MISSÃO!"}
+            {mission === "done" ? copy.missionDone : copy.missionLive}
           </text>
         </g>
       )}

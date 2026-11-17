@@ -3,21 +3,36 @@
 import "./cartoon.css";
 import type { CSSProperties } from "react";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import { useTimeline } from "./broadcast";
 import { Caption, VhsOverlay, chroma, washed, type TapeCue, type TapeProgram } from "./vhs";
 
 type Shot = "wide" | "close" | "sneeze" | "after";
 
-type Beat = { at: number; shot: Shot; expression: MascotExpression; line: string | null; tilt: number; flicker?: number };
+type Beat = { at: number; shot: Shot; expression: MascotExpression; line: number | null; tilt: number; flicker?: number };
+
+const COPY = localized({
+  "pt-BR": {
+    lines: ["— Eu não tô doente. Só tô com um pouco de chiado.", "— Aaa...", "— Aaa... aaa...", "— Aaa... aaa... AAA...", "— Viu? Nem foi nada."],
+    sneeze: "ATCHIM!",
+    episode: "EP. 03 — 404 PEGA UM CHIADO",
+  },
+  en: {
+    lines: ["— I'm not sick. I just have a little static.", "— Ah...", "— Ah... ah...", "— Ah... ah... AH...", "— See? It was nothing."],
+    sneeze: "ACHOO!",
+    episode: "EP. 03 — 404 CATCHES STATIC",
+  },
+});
 
 export const BEATS: Beat[] = [
-  { at: 0, shot: "wide", expression: "sleepy", line: "— Eu não tô doente. Só tô com um pouco de chiado.", tilt: 0 },
-  { at: 3800, shot: "close", expression: "surprised", line: "— Aaa...", tilt: -3, flicker: 900 },
-  { at: 4500, shot: "close", expression: "surprised", line: "— Aaa... aaa...", tilt: -6, flicker: 520 },
-  { at: 5200, shot: "close", expression: "surprised", line: "— Aaa... aaa... AAA...", tilt: -10, flicker: 240 },
+  { at: 0, shot: "wide", expression: "sleepy", line: 0, tilt: 0 },
+  { at: 3800, shot: "close", expression: "surprised", line: 1, tilt: -3, flicker: 900 },
+  { at: 4500, shot: "close", expression: "surprised", line: 2, tilt: -6, flicker: 520 },
+  { at: 5200, shot: "close", expression: "surprised", line: 3, tilt: -10, flicker: 240 },
   { at: 5900, shot: "sneeze", expression: "static", line: null, tilt: 9 },
-  { at: 7500, shot: "after", expression: "dizzy", line: "— Viu? Nem foi nada.", tilt: 0 },
+  { at: 7500, shot: "after", expression: "dizzy", line: 4, tilt: 0 },
 ];
 
 export const CARTOON_LOOP = 9800;
@@ -184,6 +199,7 @@ function CutGlitch({ since }: { since: number }) {
 }
 
 function CartoonTapeScreen() {
+  const copy = useCopy(COPY);
   const { phase, offset } = useTimeline(MARKS, CARTOON_LOOP);
   const beat = BEATS[phase];
   const first = shotStart(phase);
@@ -232,7 +248,7 @@ function CartoonTapeScreen() {
                 className="border-[3px] border-ink bg-sun px-[0.45em] pb-[0.05em] pt-[0.15em] font-display text-[max(11px,10cqw)] leading-none text-ink shadow-[0.12em_0.12em_0_0_var(--color-ink)]"
                 style={{ animation: `cartoon-sign 420ms ease-out ${120 - since}ms both` }}
               >
-                ATCHIM!
+                {copy.sneeze}
               </p>
             </div>
           </>
@@ -251,10 +267,10 @@ function CartoonTapeScreen() {
       </div>
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-[20%] bg-gradient-to-b from-ink/25 to-transparent" />
       <CutGlitch key={`cut${first}`} since={since} />
-      {beat.line && <Caption className="bottom-[17%]">{beat.line}</Caption>}
+      {beat.line !== null && <Caption className="bottom-[17%]">{copy.lines[beat.line]}</Caption>}
       <div className="absolute inset-x-0 bottom-0 z-[5] flex h-[14%] items-center justify-center bg-ink/85 pb-[1.5%]">
         <p className="font-display text-[max(7px,5.8cqw)] leading-none tracking-wide text-sun" style={chroma}>
-          EP. 03 — 404 PEGA UM CHIADO
+          {copy.episode}
         </p>
       </div>
       <div
@@ -266,6 +282,8 @@ function CartoonTapeScreen() {
   );
 }
 
-export const cartoonCues: TapeCue[] = [{ at: SNEEZE_AT, sound: "static", mascot: { expression: "surprised", line: "Eu juro que não tava doente." } }];
+export const cartoonCues: TapeCue[] = [
+  { at: SNEEZE_AT, sound: "static", mascot: { expression: "surprised", line: localized({ "pt-BR": "Eu juro que não tava doente.", en: "I swear I wasn't sick." }) } },
+];
 
 export const cartoonTape: TapeProgram = { Screen: CartoonTapeScreen, loop: CARTOON_LOOP, cues: cartoonCues };

@@ -13,6 +13,22 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    return [
+      { source: "/pt-BR", destination: "/", permanent: true },
+      { source: "/pt-BR/:path*", destination: "/:path*", permanent: true },
+    ];
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        { source: "/", destination: "/pt-BR" },
+        { source: "/:segment((?!(?:en|pt-BR)(?:/|$))[^/]+)/:rest*", destination: "/pt-BR/:segment/:rest*" },
+      ],
+      fallback: [],
+    };
+  },
 };
 
 export default nextConfig;

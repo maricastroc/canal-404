@@ -1,4 +1,13 @@
+"use client";
+
+import { useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
+
+const SLOGAN = localized({
+  "pt-BR": { text: "DESENHOS. JOGOS. BAGUNÇA.", label: "Desenhos. Jogos. Bagunça." },
+  en: { text: "CARTOONS. GAMES. CHAOS.", label: "Cartoons. Games. Chaos." },
+});
 
 const display = { fontFamily: "var(--font-luckiest), 'Arial Black', sans-serif" };
 
@@ -13,12 +22,13 @@ export function Logo({
   title?: string;
   label?: string;
 }) {
+  const motto = SLOGAN[useLocale()];
   return (
     <svg
       viewBox="0 0 360 230"
       className={className}
       role="img"
-      aria-label={label ?? (slogan ? `${title} — Desenhos. Jogos. Bagunça.` : title)}
+      aria-label={label ?? (slogan ? `${title} — ${motto.label}` : title)}
     >
       <path
         d="M30 52 L96 14 L318 22 L346 92 L330 190 L218 214 L40 206 L14 128 Z"
@@ -99,7 +109,7 @@ export function Logo({
             style={display}
             letterSpacing="1.2"
           >
-            DESENHOS. JOGOS. BAGUNÇA.
+            {motto.text}
           </text>
         </g>
       )}

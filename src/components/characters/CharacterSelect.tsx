@@ -1,14 +1,16 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Sparkle } from "@/components/art/Badges";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
+import { useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import { CHARACTERS, type CharacterId } from "@/lib/characters";
-import { GAMES } from "@/games/registry";
+import { gamesIn } from "@/games/registry";
 import { KidBust, type Face } from "./Heads";
 
 function Portrait({ id, face, className }: { id: CharacterId; face: Face; className?: string }) {
@@ -19,13 +21,42 @@ function Portrait({ id, face, className }: { id: CharacterId; face: Face; classN
   return <KidBust who={id} face={face} className={className} />;
 }
 
-const EXTRA_LINES: Record<CharacterId, string[]> = {
-  "404": ["Ei! Isso faz cócegas na antena!", "Sintonizado e pronto pra bagunça!", "Eu tô no ar. Literalmente."],
-  lina: ["Me passa a fita adesiva!", "Se explodir, é sinal que funcionou.", "Já volto, vou desmontar a torradeira."],
-  bruno: ["Isso não estava no plano.", "Anotado. No caderno 14.", "Probabilidade de dar certo: 12%."],
-  deco: ["BORA!", "Quem chegar por último é o Bruno!", "Ops. Isso era importante?"],
-  mila: ["...", "A lua piscou pra mim de novo.", "Você também ouviu a geladeira cantar?"],
-};
+const COPY = localized({
+  "pt-BR": {
+    lines: {
+      "404": ["Ei! Isso faz cócegas na antena!", "Sintonizado e pronto pra bagunça!", "Eu tô no ar. Literalmente."],
+      lina: ["Me passa a fita adesiva!", "Se explodir, é sinal que funcionou.", "Já volto, vou desmontar a torradeira."],
+      bruno: ["Isso não estava no plano.", "Anotado. No caderno 14.", "Probabilidade de dar certo: 12%."],
+      deco: ["BORA!", "Quem chegar por último é o Bruno!", "Ops. Isso era importante?"],
+      mila: ["...", "A lua piscou pra mim de novo.", "Você também ouviu a geladeira cantar?"],
+    } as Record<CharacterId, string[]>,
+    pick: "Escolha um personagem",
+    poke: "Cutucar",
+    likes: "Gosta de",
+    dislikes: "Não suporta",
+    fact: "Curiosidade",
+    appears: "Aparece em",
+    soon: "(em breve)",
+    room: "Na sala de transmissão, em todo intervalo",
+  },
+  en: {
+    lines: {
+      "404": ["Hey! That tickles my antenna!", "Tuned in and ready for chaos!", "I'm on the air. Literally."],
+      lina: ["Pass me the duct tape!", "If it explodes, that means it worked.", "Be right back, I'm taking the toaster apart."],
+      bruno: ["That wasn't part of the plan.", "Noted. In notebook 14.", "Chance it works: 12%."],
+      deco: ["LET'S GO!", "Last one there is Bruno!", "Oops. Was that important?"],
+      mila: ["...", "The moon winked at me again.", "Did you hear the fridge singing too?"],
+    },
+    pick: "Pick a character",
+    poke: "Poke",
+    likes: "Likes",
+    dislikes: "Can't stand",
+    fact: "Fun fact",
+    appears: "Appears in",
+    soon: "(coming soon)",
+    room: "In the broadcast room, during every break",
+  },
+});
 
 export function CharacterSelect() {
   const [selected, setSelected] = useState<CharacterId>("404");
@@ -35,13 +66,16 @@ export function CharacterSelect() {
   const counter = useRef(0);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   const { play, hover } = useSound();
-  const character = CHARACTERS.find((c) => c.id === selected)!;
-  const games = GAMES.filter((g) => g.cast.includes(character.id));
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const characters = CHARACTERS[locale];
+  const character = characters.find((c) => c.id === selected)!;
+  const games = gamesIn(locale).filter((g) => g.cast.includes(character.id));
 
   useEffect(() => {
     const fromHash = () => {
       const id = window.location.hash.replace("#", "") as CharacterId;
-      if (CHARACTERS.some((c) => c.id === id)) {
+      if (characters.some((c) => c.id === id)) {
         setSelected(id);
         document.getElementById("profile")?.scrollIntoView({ block: "nearest" });
       }
@@ -49,11 +83,11 @@ export function CharacterSelect() {
     fromHash();
     window.addEventListener("hashchange", fromHash);
     return () => window.removeEventListener("hashchange", fromHash);
-  }, []);
+  }, [characters]);
 
   const select = (id: CharacterId) => {
     if (id === selected) return;
-    play("pop", { pitch: 0.9 + CHARACTERS.findIndex((c) => c.id === id) * 0.08 });
+    play("pop", { pitch: 0.9 + characters.findIndex((c) => c.id === id) * 0.08 });
     setSelected(id);
     setFace("normal");
     setLine(null);
@@ -62,7 +96,7 @@ export function CharacterSelect() {
 
   const poke = () => {
     counter.current += 1;
-    const lines = EXTRA_LINES[selected];
+    const lines = copy.lines[selected];
     play(character.sound);
     setFace(counter.current % 2 ? "wow" : "happy");
     setLine(lines[counter.current % lines.length]);
@@ -72,13 +106,13 @@ export function CharacterSelect() {
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let next = index;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % CHARACTERS.length;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + CHARACTERS.length) % CHARACTERS.length;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % characters.length;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + characters.length) % characters.length;
     else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = CHARACTERS.length - 1;
+    else if (event.key === "End") next = characters.length - 1;
     else return;
     event.preventDefault();
-    select(CHARACTERS[next].id);
+    select(characters[next].id);
     tabs.current[next]?.focus();
   };
 
@@ -86,13 +120,13 @@ export function CharacterSelect() {
     <div>
       <div
         role="tablist"
-        aria-label="Escolha um personagem"
+        aria-label={copy.pick}
         className="on-dark relative mx-auto flex max-w-5xl flex-wrap justify-center gap-3 rounded-[26px] border-[3px] border-ink bg-plum-800 p-3 shadow-[var(--shadow-ink-lg)] sm:gap-4 sm:p-5"
       >
         <span aria-hidden className="absolute -left-5 -top-6 w-12 rotate-12">
           <Sparkle />
         </span>
-        {CHARACTERS.map((c, i) => {
+        {characters.map((c, i) => {
           const active = c.id === selected;
           return (
             <button
@@ -160,7 +194,7 @@ export function CharacterSelect() {
                   <Portrait id={character.id} face={face} className="mx-auto w-[86%]" />
                 </span>
                 <span className="absolute bottom-2 right-3 rounded-md border-2 border-ink bg-cream px-1.5 font-display text-[10px] uppercase tracking-wide text-ink">
-                  Cutucar<span className="sr-only"> {character.name}</span>!
+                  {copy.poke}<span className="sr-only"> {character.name}</span>!
                 </span>
               </button>
               <div className="mt-4 min-h-20 w-full max-w-xs" aria-live="polite">
@@ -177,21 +211,21 @@ export function CharacterSelect() {
               <p className="mt-3 text-lg leading-relaxed text-ink-soft">{character.bio}</p>
               <dl className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border-[3px] border-ink bg-mint/60 p-3">
-                  <dt className="font-display text-xs uppercase tracking-widest text-ink">Gosta de</dt>
+                  <dt className="font-display text-xs uppercase tracking-widest text-ink">{copy.likes}</dt>
                   <dd className="mt-0.5 leading-snug text-ink">{character.likes}</dd>
                 </div>
                 <div className="rounded-xl border-[3px] border-ink bg-bubblegum/50 p-3">
-                  <dt className="font-display text-xs uppercase tracking-widest text-ink">Não suporta</dt>
+                  <dt className="font-display text-xs uppercase tracking-widest text-ink">{copy.dislikes}</dt>
                   <dd className="mt-0.5 leading-snug text-ink">{character.dislikes}</dd>
                 </div>
                 <div className="rounded-xl border-[3px] border-ink bg-sun/60 p-3 sm:col-span-2">
-                  <dt className="font-display text-xs uppercase tracking-widest text-ink">Curiosidade</dt>
+                  <dt className="font-display text-xs uppercase tracking-widest text-ink">{copy.fact}</dt>
                   <dd className="mt-0.5 font-hand text-xl leading-snug text-ink">{character.fact}</dd>
                 </div>
               </dl>
               <div className="mt-5">
                 <p className="font-display text-sm uppercase tracking-widest text-ink-soft">
-                  Aparece em
+                  {copy.appears}
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {games.length ? (
@@ -202,7 +236,7 @@ export function CharacterSelect() {
                           className="press inline-flex min-h-10 items-center rounded-lg border-[3px] border-ink bg-cream px-3 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]"
                         >
                           {g.title}
-                          {g.status === "coming-soon" && <span className="ml-1.5 text-xs text-ink-soft">(em breve)</span>}
+                          {g.status === "coming-soon" && <span className="ml-1.5 text-xs text-ink-soft">{copy.soon}</span>}
                         </Link>
                       </li>
                     ))
@@ -212,7 +246,7 @@ export function CharacterSelect() {
                         href="/"
                         className="press inline-flex min-h-10 items-center rounded-lg border-[3px] border-ink bg-cream px-3 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]"
                       >
-                        Na sala de transmissão, em todo intervalo
+                        {copy.room}
                       </Link>
                     </li>
                   )}

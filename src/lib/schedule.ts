@@ -1,4 +1,5 @@
-import { PLAYABLE, type GameMeta } from "@/games/registry";
+import { playableIn, type GameMeta } from "@/games/registry";
+import type { Locale } from "@/i18n/locales";
 import type { ProgressState } from "@/lib/progress/store";
 
 export function plays(progress: ProgressState | undefined, slug: string) {
@@ -7,7 +8,8 @@ export function plays(progress: ProgressState | undefined, slug: string) {
 
 export type Pick = { game: GameMeta; reason: "unplayed" | "least" };
 
-export function nextPick(progress: ProgressState | undefined, { exclude = [], games = PLAYABLE }: { exclude?: string[]; games?: GameMeta[] } = {}): Pick {
+export function nextPick(progress: ProgressState | undefined, { exclude = [] }: { exclude?: string[] }, locale: Locale): Pick {
+  const games = playableIn(locale);
   const candidates = games.filter((g) => !exclude.includes(g.slug));
   const pool = candidates.length ? candidates : games;
   const unplayed = pool.find((g) => plays(progress, g.slug) === 0);
@@ -23,13 +25,13 @@ export function programState(progress: ProgressState | undefined, game: GameMeta
   return plays(progress, game.slug) === 0 ? "unplayed" : "rerun";
 }
 
-export function unplayedGames(progress: ProgressState | undefined, games: GameMeta[] = PLAYABLE) {
-  return games.filter((g) => plays(progress, g.slug) === 0);
+export function unplayedGames(progress: ProgressState | undefined, locale: Locale) {
+  return playableIn(locale).filter((g) => plays(progress, g.slug) === 0);
 }
 
-export function bestRecord(progress: ProgressState | undefined, games: GameMeta[] = PLAYABLE) {
+export function bestRecord(progress: ProgressState | undefined, locale: Locale) {
   let best: { game: GameMeta; score: number } | null = null;
-  for (const game of games) {
+  for (const game of playableIn(locale)) {
     const score = progress?.games[game.slug]?.highScore ?? 0;
     if (score > 0 && (!best || score > best.score)) best = { game, score };
   }

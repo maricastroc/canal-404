@@ -2,19 +2,40 @@
 
 import { Sparkle } from "@/components/art/Badges";
 import { Mascot404 } from "@/components/mascot/Mascot404";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 
-export const LOADING_STEPS = [
-  { at: 0, text: "Ligando a transmissão..." },
-  { at: 0.3, text: "Procurando o controle remoto..." },
-  { at: 0.55, text: "Aquecendo os pixels..." },
-  { at: 0.9, text: "Quase lá..." },
-  { at: 1, text: "Pronto! (talvez)" },
-];
+export const LOADING_STEPS = localized({
+  "pt-BR": [
+    { at: 0, text: "Ligando a transmissão..." },
+    { at: 0.3, text: "Procurando o controle remoto..." },
+    { at: 0.55, text: "Aquecendo os pixels..." },
+    { at: 0.9, text: "Quase lá..." },
+    { at: 1, text: "Pronto! (talvez)" },
+  ],
+  en: [
+    { at: 0, text: "Starting the broadcast..." },
+    { at: 0.3, text: "Looking for the remote..." },
+    { at: 0.55, text: "Warming up the pixels..." },
+    { at: 0.9, text: "Almost there..." },
+    { at: 1, text: "Ready! (maybe)" },
+  ],
+});
 
-const DEFAULT_TIPS = ["Toda grande invenção começou como uma péssima ideia.", "Se travar, tente desligar e ligar de novo."];
+const DEFAULT_TIPS = localized({
+  "pt-BR": ["Toda grande invenção começou como uma péssima ideia.", "Se travar, tente desligar e ligar de novo."],
+  en: ["Every great invention started out as a terrible idea.", "If it freezes, try turning it off and on again."],
+});
 
-export function pickTip(seed: number, tips: string[] = DEFAULT_TIPS) {
-  return tips[Math.abs(seed) % tips.length];
+const COPY = localized({
+  "pt-BR": { title: "Carregando", label: "Carregando o jogo", tip: "Dica 404:" },
+  en: { title: "Loading", label: "Loading the game", tip: "404 tip:" },
+});
+
+export function pickTip(seed: number, tips: string[] | undefined, locale: Locale) {
+  const pool = tips ?? DEFAULT_TIPS[locale];
+  return pool[Math.abs(seed) % pool.length];
 }
 
 export function LoadingScreen({
@@ -27,6 +48,8 @@ export function LoadingScreen({
   leaving: boolean;
 }) {
   const pct = Math.round(progress * 100);
+  const copy = useCopy(COPY);
+  const steps = useCopy(LOADING_STEPS);
   return (
     <div
       className={`absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-plum-900 p-4 transition-opacity duration-300 ${leaving ? "pointer-events-none opacity-0" : "opacity-100"}`}
@@ -42,11 +65,11 @@ export function LoadingScreen({
         </div>
         <div className="order-1 sm:order-2">
           <h1 className="font-display text-4xl uppercase tracking-wide text-ink sm:text-5xl">
-            Carregando<span style={{ animation: "blink-caret 1s steps(2) infinite" }}>...</span>
+            {copy.title}<span style={{ animation: "blink-caret 1s steps(2) infinite" }}>...</span>
           </h1>
           <div
             role="progressbar"
-            aria-label="Carregando o jogo"
+            aria-label={copy.label}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={pct}
@@ -69,7 +92,7 @@ export function LoadingScreen({
             </div>
           </div>
           <ul className="mt-4 space-y-1.5" aria-hidden>
-            {LOADING_STEPS.map((step) => {
+            {steps.map((step) => {
               const done = progress >= step.at && (step.at < 1 || progress >= 1);
               return (
                 <li key={step.text} className={`flex items-center gap-2 font-hand text-lg ${done ? "text-ink" : "text-ink/35"}`}>
@@ -84,7 +107,7 @@ export function LoadingScreen({
             })}
           </ul>
           <div className="mt-5 -rotate-2 rounded-xl border-[3px] border-ink bg-sun px-4 py-2 shadow-[var(--shadow-ink)]">
-            <p className="font-display text-sm uppercase tracking-wider text-ink">Dica 404:</p>
+            <p className="font-display text-sm uppercase tracking-wider text-ink">{copy.tip}</p>
             <p className="font-hand text-lg leading-snug text-ink">{tip}</p>
           </div>
         </div>

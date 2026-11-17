@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { useEffect, useState } from "react";
 import { TrophyIcon } from "@/components/art/Icons";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import type { GameSlug } from "@/lib/competition/boards";
 import { pickBoard, rankedLevels } from "@/lib/competition/choice";
@@ -14,8 +16,27 @@ import type { BoardEntry } from "@/lib/competition/types";
 
 type Fetched = { key: string; ok: boolean; leader: BoardEntry | null };
 
+const COPY = localized({
+  "pt-BR": {
+    word: { fase: "Fase", arena: "Arena" },
+    tuning: "Sintonizando o placar…",
+    arcade: "Ver o fliperama de recordes",
+    empty: "O quadro dos campeões ainda está vazio. Que tal colocar seu nome nele?",
+    title: "Quadro dos campeões",
+  },
+  en: {
+    word: { fase: "Level", arena: "Arena" },
+    tuning: "Tuning in the board…",
+    arcade: "Visit the record arcade",
+    empty: "The hall of champions is still empty. How about putting your name on it?",
+    title: "Hall of champions",
+  },
+});
+
 export function ChampionTicker({ slug, levelWord = "fase" }: { slug: GameSlug; levelWord?: "fase" | "arena" }) {
   const { play } = useSound();
+  const copy = useCopy(COPY);
+  const locale = useLocale();
   const competition = useCompetition();
   const { level } = pickBoard(slug, null);
   const key = `${slug}/${level ?? "all"}`;
@@ -35,15 +56,15 @@ export function ChampionTicker({ slug, levelWord = "fase" }: { slug: GameSlug; l
 
   if (competition.status === "unconfigured") return null;
   const current = fetched?.key === key ? fetched : null;
-  const levelInfo = rankedLevels(slug)?.find((l) => l.id === level);
-  const where = levelInfo ? `${levelWord === "arena" ? "Arena" : "Fase"} ${levelInfo.number}: ${levelInfo.title}` : null;
+  const levelInfo = rankedLevels(slug, locale)?.find((l) => l.id === level);
+  const where = levelInfo ? `${copy.word[levelWord]} ${levelInfo.number}: ${levelInfo.title}` : null;
   const text = !current
-    ? "Sintonizando o placar…"
+    ? copy.tuning
     : !current.ok
-      ? "Ver o fliperama de recordes"
+      ? copy.arcade
       : current.leader
-        ? `${current.leader.nickname} #${current.leader.tag} · ${formatBest(slug, current.leader.metrics)}`
-        : "O quadro dos campeões ainda está vazio. Que tal colocar seu nome nele?";
+        ? `${current.leader.nickname} #${current.leader.tag} · ${formatBest(slug, current.leader.metrics, locale)}`
+        : copy.empty;
 
   return (
     <Link
@@ -53,7 +74,10 @@ export function ChampionTicker({ slug, levelWord = "fase" }: { slug: GameSlug; l
     >
       <TrophyIcon className="size-7 text-sun" />
       <span className="relative z-10 flex flex-col">
-        <span className="font-display text-[11px] uppercase tracking-widest text-sun">Quadro dos campeões{where ? ` · ${where}` : ""}</span>
+        <span className="font-display text-[11px] uppercase tracking-widest text-sun">
+          {copy.title}
+          {where ? ` · ${where}` : ""}
+        </span>
         <span className="font-semibold leading-snug">{text}</span>
       </span>
       <span aria-hidden className="pointer-events-none absolute inset-0 scanlines opacity-40" />

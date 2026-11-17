@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useLocale } from "@/i18n/client";
+import { DEFAULT_LOCALE } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 import { SCENE } from "./layout";
 import { TAPES, tapeById, type TapeId } from "./objects/tapes";
@@ -11,7 +13,7 @@ const VCR_SLOT = { x: 676, y: 718 };
 const SIZE = { w: 74, h: 44 };
 
 export function shelfSlot(tape: TapeId) {
-  const index = TAPES.filter((t) => !t.torn).findIndex((t) => t.id === tape);
+  const index = TAPES[DEFAULT_LOCALE].filter((t) => !t.torn).findIndex((t) => t.id === tape);
   if (index >= 0) return { x: 856 + 6 + index * 34 + 15, y: 738 };
   return { x: 1019, y: 736 };
 }
@@ -20,13 +22,13 @@ const x = (value: number) => `${(value / SCENE.w) * 100}%`;
 const y = (value: number) => `${(value / SCENE.h) * 100}%`;
 
 function Cassette({ tape }: { tape: TapeId }) {
-  const { sticker, label, torn } = tapeById(tape);
+  const { sticker, label, torn } = tapeById(tape, useLocale());
   return (
     <svg viewBox="0 0 74 44" className="h-full w-full drop-shadow-[2px_3px_0_rgba(29,24,48,0.55)]" aria-hidden>
       <rect x="2" y="2" width="70" height="40" rx="4" fill={P.inkSoft} stroke={P.ink} strokeWidth="3" />
       <path d={torn ? "M9 7 L48 7 L45 11 L49 15 L44 19 L9 19 Z" : "M9 7 L65 7 L65 19 L9 19 Z"} fill={sticker} stroke={P.ink} strokeWidth="1.5" />
       <text x={torn ? 12 : 37} y="16.5" textAnchor={torn ? "start" : "middle"} fontSize="8" fill={P.ink} style={{ fontFamily: "var(--font-patrick)", fontWeight: 700 }}>
-        {torn ? "Não assis" : label}
+        {torn ?? label}
       </text>
       <rect x="14" y="24" width="46" height="13" rx="3" fill={P.plum950} stroke={P.ink} strokeWidth="1.5" />
       <circle cx="26" cy="30.5" r="4.2" fill="none" stroke={P.cream2} strokeWidth="2" strokeDasharray="2 1.6" />

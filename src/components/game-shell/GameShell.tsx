@@ -1,20 +1,24 @@
 "use client";
 
 import { AnimatePresence } from "motion/react";
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeftIcon, MissionIcon, PauseIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
 import { GAME_LOADERS } from "@/games/loaders";
-import { getGame } from "@/games/registry";
+import { getGame, type GameMeta } from "@/games/registry";
 import type { GameInstance, GameResult, LoadStage, StartOptions } from "@/games/types";
+import { useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { countOf, formatNumber } from "@/i18n/format";
 import { connect, getCompetition, join, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
 import { isDayKey } from "@/lib/missions/calendar";
 import { loadMission } from "@/lib/missions/client";
 import { useMissionToday } from "@/lib/missions/hooks";
 import { announceAchievements } from "@/lib/missions/seen";
+import { missionText } from "@/lib/missions/text";
 import type { MissionView } from "@/lib/missions/types";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
@@ -27,6 +31,63 @@ import type { BoardState } from "./BoardLine";
 import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
+
+type LevelWord = NonNullable<GameMeta["levelWord"]>;
+
+const LEVEL: Record<LevelWord, { word: string; Word: string }> = { fase: { word: "level", Word: "Level" }, arena: { word: "arena", Word: "Arena" } };
+
+const COPY = localized({
+  "pt-BR": {
+    missionGone: "Essa missão já saiu do ar. A missão de hoje está na página da Missão 404.",
+    missionElsewhere: "A missão de hoje é em outro jogo.",
+    missionNoSignal: "Sem sinal da missão agora. Dá para jogar normalmente, mas a partida não conta para a missão.",
+    firstWinUnlocked: (word: LevelWord, next: number) => `Primeira vitória nesta ${word}. ${word === "arena" ? "Arena" : "Fase"} ${next} liberada!`,
+    firstWin: (word: LevelWord) => `Primeira vitória nesta ${word}.`,
+    beatStars: (stars: number) => `Antes, seu melhor aqui era ${stars} ${stars === 1 ? "estrela" : "estrelas"}.`,
+    sameStars: (stars: number) => `Mesmas ${stars} ${stars === 1 ? "estrela" : "estrelas"} de antes, com mais pontos.`,
+    keptStars: (word: LevelWord, stars: number) => `Seu melhor nesta ${word} continua sendo ${stars} ${stars === 1 ? "estrela" : "estrelas"}.`,
+    previousRecord: (score: number) => `Seu recorde anterior era ${formatNumber(score, "pt-BR")}.`,
+    firstRecord: "Primeira partida registrada. Esse é o recorde a bater.",
+    recordStands: (score: number) => `Seu recorde continua ${formatNumber(score, "pt-BR")}.`,
+    levelPrefix: (word: LevelWord, n: number, title: string) => `${word === "arena" ? "Arena" : "Fase"} ${n}, ${title}: `,
+    announceWin: (prefix: string, score: number, stars: number, best: boolean) => `${prefix}vitória! ${score} pontos, ${stars} estrelas.${best ? " Melhor resultado!" : ""}`,
+    announceLose: (prefix: string, score: number) => `${prefix}fim de jogo. ${score} pontos.`,
+    back: "Voltar",
+    mission: (title: string) => `Missão: ${title}`,
+    points: (score: number) => `${formatNumber(score, "pt-BR")} pts`,
+    howTo: "Como jogar",
+    restart: "Recomeçar partida",
+    resume: "Continuar",
+    pause: "Pausar",
+    game: "jogo",
+    rotate: "Dica: gire o celular para ver maior",
+  },
+  en: {
+    missionGone: "That mission is already off the air. Today's mission is on the Mission 404 page.",
+    missionElsewhere: "Today's mission is in another game.",
+    missionNoSignal: "No signal from the mission right now. You can play as usual, but this round won't count for the mission.",
+    firstWinUnlocked: (word: LevelWord, next: number) => `First win in this ${LEVEL[word].word}. ${LEVEL[word].Word} ${next} unlocked!`,
+    firstWin: (word: LevelWord) => `First win in this ${LEVEL[word].word}.`,
+    beatStars: (stars: number) => `Your best here used to be ${countOf(stars, ["star", "stars"], "en")}.`,
+    sameStars: (stars: number) => `Same ${countOf(stars, ["star", "stars"], "en")} as before, with more points.`,
+    keptStars: (word: LevelWord, stars: number) => `Your best in this ${LEVEL[word].word} is still ${countOf(stars, ["star", "stars"], "en")}.`,
+    previousRecord: (score: number) => `Your previous record was ${formatNumber(score, "en")}.`,
+    firstRecord: "First game on the books. That's the record to beat.",
+    recordStands: (score: number) => `Your record is still ${formatNumber(score, "en")}.`,
+    levelPrefix: (word: LevelWord, n: number, title: string) => `${LEVEL[word].Word} ${n}, ${title}: `,
+    announceWin: (prefix: string, score: number, stars: number, best: boolean) => `${prefix}You win! ${countOf(score, ["point", "points"], "en")}, ${countOf(stars, ["star", "stars"], "en")}.${best ? " Best result!" : ""}`,
+    announceLose: (prefix: string, score: number) => `${prefix}Game over. ${countOf(score, ["point", "points"], "en")}.`,
+    back: "Back",
+    mission: (title: string) => `Mission: ${title}`,
+    points: (score: number) => `${formatNumber(score, "en")} pts`,
+    howTo: "How to play",
+    restart: "Restart game",
+    resume: "Resume",
+    pause: "Pause",
+    game: "game",
+    rotate: "Tip: turn your phone sideways for a bigger view",
+  },
+});
 
 type PendingRun = { ticket: Promise<TicketGrant | null> | null; result: GameResult };
 
@@ -52,7 +113,9 @@ function cssFont(variable: string, fallback: string) {
 }
 
 export function GameShell({ slug }: { slug: string }) {
-  const game = getGame(slug)!;
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const game = getGame(slug, locale)!;
   const { play } = useSound();
   const stageRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -85,10 +148,10 @@ export function GameShell({ slug }: { slug: string }) {
     ? null
     : todayMission && !activeMission
       ? todayMission.day !== requestedMission
-        ? "Essa missão já saiu do ar. A missão de hoje está na página da Missão 404."
-        : "A missão de hoje é em outro jogo."
+        ? copy.missionGone
+        : copy.missionElsewhere
       : !todayMission && !missionPending
-        ? "Sem sinal da missão agora. Dá para jogar normalmente, mas a partida não conta para a missão."
+        ? copy.missionNoSignal
         : null;
   const [missionRun, setMissionRun] = useState<MissionView | null>(null);
   const skipMission = useCallback(() => {
@@ -104,7 +167,7 @@ export function GameShell({ slug }: { slug: string }) {
   const loadErrorRef = useRef<unknown>(null);
   const hydrated = useHydrated();
   const [tipSeed] = useState(() => Math.floor(Math.random() * 1000));
-  const tip = pickTip(hydrated ? tipSeed : 0, game.tips);
+  const tip = pickTip(hydrated ? tipSeed : 0, game.tips, locale);
   const levelRecords = progressState.games[slug]?.levels;
   const levelProgress = computeLevelProgress(game.levels, hydrated ? levelRecords : undefined);
 
@@ -257,25 +320,25 @@ export function GameShell({ slug }: { slug: string }) {
                 });
                 let isRecord: boolean;
                 let note: string;
-                const word = getGame(slug)?.levelWord ?? "fase";
+                const text = COPY[locale];
+                const meta = getGame(slug, locale);
+                const word = meta?.levelWord ?? "fase";
                 if (r.level) {
                   const saved = recordLevelResult(slug, r.level.id, r);
                   isRecord = saved.isRecord && saved.previous.stars > 0;
                   const best = saved.record.levels?.[r.level.id]?.stars ?? r.stars;
-                  const Word = word === "arena" ? "Arena" : "Fase";
-                  const stars = (n: number) => `${n} ${n === 1 ? "estrela" : "estrelas"}`;
                   note = !r.won
                     ? ""
                     : saved.previous.stars === 0
-                      ? r.level.index + 1 < r.level.total && !getGame(slug)?.levels?.slice(r.level.index + 1).some((l) => (saved.record.levels?.[l.id]?.stars ?? 0) > 0)
-                        ? `Primeira vitória nesta ${word}. ${Word} ${r.level.index + 2} liberada!`
-                        : `Primeira vitória nesta ${word}.`
+                      ? r.level.index + 1 < r.level.total && !meta?.levels?.slice(r.level.index + 1).some((l) => (saved.record.levels?.[l.id]?.stars ?? 0) > 0)
+                        ? text.firstWinUnlocked(word, r.level.index + 2)
+                        : text.firstWin(word)
                       : r.stars > saved.previous.stars
-                        ? `Antes, seu melhor aqui era ${stars(saved.previous.stars)}.`
+                        ? text.beatStars(saved.previous.stars)
                         : isRecord
-                          ? `Mesmas ${stars(r.stars)} de antes, com mais pontos.`
+                          ? text.sameStars(r.stars)
                           : best > r.stars
-                            ? `Seu melhor nesta ${word} continua sendo ${stars(best)}.`
+                            ? text.keptStars(word, best)
                             : "";
                   setHighScore(saved.record.highScore);
                 } else {
@@ -283,9 +346,9 @@ export function GameShell({ slug }: { slug: string }) {
                   isRecord = saved.isRecord && saved.previousBest > 0;
                   note = saved.isRecord
                     ? saved.previousBest > 0
-                      ? `Seu recorde anterior era ${saved.previousBest.toLocaleString("pt-BR")}.`
-                      : "Primeira partida registrada. Esse é o recorde a bater."
-                    : `Seu recorde continua ${saved.record.highScore.toLocaleString("pt-BR")}.`;
+                      ? text.previousRecord(saved.previousBest)
+                      : text.firstRecord
+                    : text.recordStands(saved.record.highScore);
                   setHighScore(saved.record.highScore);
                   instanceRef.current?.setHighScore(saved.record.highScore);
                 }
@@ -294,12 +357,8 @@ export function GameShell({ slug }: { slug: string }) {
                 });
                 sendToBoard({ ticket: run?.ticket ?? null, result: r });
                 setResult({ result: r, isRecord, note, mission: run?.mission ?? null });
-                const levelText = r.level ? `${word === "arena" ? "Arena" : "Fase"} ${r.level.index + 1}, ${r.level.title}: ` : "";
-                announce(
-                  r.won
-                    ? `${levelText}vitória! ${r.score} pontos, ${r.stars} estrelas.${isRecord ? " Melhor resultado!" : ""}`
-                    : `${levelText}fim de jogo. ${r.score} pontos.`,
-                );
+                const levelText = r.level ? text.levelPrefix(word, r.level.index + 1, r.level.title) : "";
+                announce(r.won ? text.announceWin(levelText, r.score, r.stars, isRecord) : text.announceLose(levelText, r.score));
                 setStage("result");
                 break;
               }
@@ -328,7 +387,7 @@ export function GameShell({ slug }: { slug: string }) {
       instance?.destroy();
       instanceRef.current = null;
     };
-  }, [slug, attempt, setStage, announce, sendToBoard]);
+  }, [slug, attempt, setStage, announce, sendToBoard, locale]);
 
   useEffect(() => {
     const audio = getAudio();
@@ -477,17 +536,17 @@ export function GameShell({ slug }: { slug: string }) {
           className="press flex min-h-10 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-cream px-2.5 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]"
         >
           <ArrowLeftIcon className="size-4" />
-          <span className="hidden sm:inline">Voltar</span>
+          <span className="hidden sm:inline">{copy.back}</span>
         </Link>
         <p className="truncate font-display text-lg uppercase tracking-wide text-sun sm:text-2xl">{game.title}</p>
         {missionRun && canControl ? (
           <p className="hidden min-w-0 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-lime px-2 py-0.5 font-display text-xs uppercase tracking-wide text-ink md:flex">
             <MissionIcon className="size-4" />
-            <span className="truncate">Missão: {missionRun.title}</span>
+            <span className="truncate">{copy.mission(missionText(missionRun, locale).title)}</span>
           </p>
         ) : null}
         <p className="ml-auto hidden rounded-lg border-[3px] border-ink bg-plum-950 px-3 py-0.5 font-display text-sm tabular-nums text-cream sm:block" aria-hidden>
-          {score.toLocaleString("pt-BR")} pts
+          {copy.points(score)}
         </p>
         <button
           type="button"
@@ -496,7 +555,7 @@ export function GameShell({ slug }: { slug: string }) {
             setShowHelp(true);
           }}
           disabled={!canControl}
-          aria-label="Como jogar"
+          aria-label={copy.howTo}
           className="press ml-auto grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-cream shadow-[var(--shadow-ink-sm)] disabled:opacity-40 sm:ml-0"
         >
           <QuestionIcon className="size-6" />
@@ -506,7 +565,7 @@ export function GameShell({ slug }: { slug: string }) {
             type="button"
             onClick={restart}
             disabled={!canControl}
-            aria-label="Recomeçar partida"
+            aria-label={copy.restart}
             className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-mint shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
           >
             <RestartIcon className="size-6" />
@@ -516,7 +575,7 @@ export function GameShell({ slug }: { slug: string }) {
           type="button"
           onClick={stage === "paused" ? resume : pause}
           disabled={!canControl}
-          aria-label={stage === "paused" ? "Continuar" : "Pausar"}
+          aria-label={stage === "paused" ? copy.resume : copy.pause}
           className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-sun text-ink shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
         >
           <PauseIcon className="size-6" />
@@ -529,7 +588,7 @@ export function GameShell({ slug }: { slug: string }) {
           ref={stageRef}
           tabIndex={0}
           role="application"
-          aria-roledescription="jogo"
+          aria-roledescription={copy.game}
           aria-label={game.controlsSummary ?? game.title}
           className="absolute inset-0 touch-none select-none outline-none focus-visible:outline-none [&:focus-visible_canvas]:outline-4 [&:focus-visible_canvas]:outline-offset-2 [&:focus-visible_canvas]:outline-sun"
         >
@@ -607,7 +666,7 @@ export function GameShell({ slug }: { slug: string }) {
         <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center px-3 landscape:hidden sm:hidden">
           {stage === "playing" && (
             <p className="rounded-full border-[3px] border-ink bg-sun px-3 py-1 font-display text-xs uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]">
-              Dica: gire o celular para ver maior
+              {copy.rotate}
             </p>
           )}
         </div>

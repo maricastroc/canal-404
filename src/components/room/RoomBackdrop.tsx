@@ -1,4 +1,11 @@
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
+
+const COPY = localized({
+  "pt-BR": { drawingBy: "por: Lina, 8 anos" },
+  en: { drawingBy: "by: Lina, age 8" },
+});
 
 const ink = { stroke: P.ink, strokeWidth: 5, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
@@ -131,6 +138,7 @@ function Shelf() {
 }
 
 function Doodles() {
+  const copy = useCopy(COPY);
   return (
     <g>
       <g transform="translate(1112 214) rotate(-6 384 252)">
@@ -141,7 +149,7 @@ function Doodles() {
         <path d="M370 270 Q382 282 396 270" stroke={P.ink} strokeWidth="3.5" fill="none" strokeLinecap="round" />
         <path d="M376 214 L366 198 M392 214 L402 198" stroke={P.ink} strokeWidth="3" strokeLinecap="round" />
         <text x="352" y="312" fontSize="12" fill={P.tomato} style={{ fontFamily: "var(--font-patrick)" }}>
-          por: Lina, 8 anos
+          {copy.drawingBy}
         </text>
         <circle cx="385" cy="196" r="6" fill={P.tomato} stroke={P.ink} strokeWidth="3" />
       </g>

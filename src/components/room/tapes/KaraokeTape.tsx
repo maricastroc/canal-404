@@ -3,6 +3,8 @@
 import "./karaoke.css";
 import { Fragment, useId, useLayoutEffect, useRef, type CSSProperties, type RefObject } from "react";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized, type Localized } from "@/i18n/copy";
 import { KARAOKE_SONG, parseNotes, type Track } from "@/lib/audio/tracks";
 import { P } from "@/lib/palette";
 import { useTimeline } from "./broadcast";
@@ -12,13 +14,22 @@ export const STEPS_PER_BAR = 16;
 export const STEP_MS = 60000 / KARAOKE_SONG.bpm / 4;
 export const BAR_MS = STEP_MS * STEPS_PER_BAR;
 
-export const VERSES = [
-  "Meu |a|mor |é |um |chu|vis|co",
-  "que a|pa|re|ce às |qua|tro e |qua|tro",
-  "eu |dei |um |ta|pa |na an|te|na",
-  "e a|go|ra eu |só |pe|go o |ga|to",
-  "Chu|vis|cooo|ooooo!",
-];
+export const VERSES = localized({
+  "pt-BR": [
+    "Meu |a|mor |é |um |chu|vis|co",
+    "que a|pa|re|ce às |qua|tro e |qua|tro",
+    "eu |dei |um |ta|pa |na an|te|na",
+    "e a|go|ra eu |só |pe|go o |ga|to",
+    "Chu|vis|cooo|ooooo!",
+  ],
+  en: [
+    "My |true |love |is |T|V |stat|ic",
+    "that |I |see |at |four-|oh-|four, |yeah",
+    "I |went |and |slapped |the |an|ten|na",
+    "now |I |on|ly |get |the |kit|ty",
+    "T|V |staaa|aaatic!",
+  ],
+});
 
 const FIRST_VERSE_BAR = 1;
 
@@ -43,12 +54,38 @@ export function syllablesFor(verse: string, bar: number, track: Track = KARAOKE_
   }));
 }
 
-export const LYRICS = VERSES.map((verse, line) => syllablesFor(verse, FIRST_VERSE_BAR + line));
+export const LYRICS_BY_LOCALE: Localized<Syllable[][]> = {
+  "pt-BR": VERSES["pt-BR"].map((verse, line) => syllablesFor(verse, FIRST_VERSE_BAR + line)),
+  en: VERSES.en.map((verse, line) => syllablesFor(verse, FIRST_VERSE_BAR + line)),
+};
+export const LYRICS = LYRICS_BY_LOCALE["pt-BR"];
 export const SONG_MS = parseNotes(KARAOKE_SONG.lead.notes).length * STEP_MS;
 export const SCORE_AT = SONG_MS;
 export const RESULT_AT = SCORE_AT + 1200;
 export const SHOW_MS = RESULT_AT + 700;
-export const SCORE = "4,04";
+
+const COPY = localized({
+  "pt-BR": {
+    score: "4,04",
+    roll: ["0,00", "9,87", "3,21", "7,65", "1,09", "8,88", "5,43", "9,99"],
+    sings: "404 canta",
+    titleTop: "♪ Balada do",
+    titleBottom: "Chuvisco ♪",
+    header: "♪ Balada do Chuvisco ♪",
+    scoreLabel: "Nota",
+    noEncore: "Ninguém pediu bis.",
+  },
+  en: {
+    score: "4.04",
+    roll: ["0.00", "9.87", "3.21", "7.65", "1.09", "8.88", "5.43", "9.99"],
+    sings: "404 sings",
+    titleTop: "♪ The Static",
+    titleBottom: "Ballad ♪",
+    header: "♪ The Static Ballad ♪",
+    scoreLabel: "Score",
+    noEncore: "Nobody asked for an encore.",
+  },
+});
 
 const FINALE = LYRICS.length - 1;
 const COUNT_IN = [3, 2, 1];
@@ -114,7 +151,7 @@ const CONFETTI = Array.from({ length: 18 }, (_, i) => ({
   spin: 240 + ((i * 61) % 360),
 }));
 
-const ROLL = ["0,00", "9,87", "3,21", "7,65", "1,09", "8,88", "5,43", "9,99"];
+const ROLL_LENGTH = COPY["pt-BR"].roll.length;
 
 const OUTLINE: CSSProperties = {
   textShadow: [
@@ -433,6 +470,7 @@ function useBallStops(box: RefObject<HTMLDivElement | null>, layout: string) {
 }
 
 function Row({ row, line, current, beat, offset, length }: { row: number; line: number | null; current: number; beat: Beat; offset: number; length: number }) {
+  const lyrics = LYRICS_BY_LOCALE[useLocale()];
   const upcoming = line !== current;
   return (
     <p
@@ -442,7 +480,7 @@ function Row({ row, line, current, beat, offset, length }: { row: number; line: 
     >
       {line === null
         ? " "
-        : LYRICS[line].map((syllable, i) => {
+        : lyrics[line].map((syllable, i) => {
             const state = line < current || (line === current && i < beat.syllable) ? "sung" : line === current && i === beat.syllable ? "active" : "next";
             return (
               <Fragment key={`${line}-${i}`}>
@@ -534,6 +572,7 @@ function Lyrics({ beat, phase, offset }: { beat: Beat; phase: number; offset: nu
 }
 
 function TitleCard({ beat, offset }: { beat: Beat; offset: number }) {
+  const copy = useCopy(COPY);
   const leaving = isFirstSyllable(beat);
   if (beat.kind !== "title" && beat.kind !== "count" && !leaving) return null;
   return (
@@ -541,12 +580,12 @@ function TitleCard({ beat, offset }: { beat: Beat; offset: number }) {
       className="pointer-events-none absolute inset-x-0 top-[12%] z-[4] flex flex-col items-center text-center"
       style={{ animation: leaving ? `karaoke-fade-out 300ms ease-in ${-offset}ms both` : beat.kind === "title" ? `pop-in 0.35s ease-out ${-offset}ms both` : undefined }}
     >
-      <p className="rounded-full border-[0.5cqw] border-ink bg-sun px-[0.6em] py-[0.15em] font-display text-[max(7px,4.6cqw)] uppercase leading-none tracking-wide text-ink">404 canta</p>
+      <p className="rounded-full border-[0.5cqw] border-ink bg-sun px-[0.6em] py-[0.15em] font-display text-[max(7px,4.6cqw)] uppercase leading-none tracking-wide text-ink">{copy.sings}</p>
       <p className="mt-[3%] font-display text-[max(8px,7.4cqw)] uppercase leading-none text-cream" style={OUTLINE}>
-        ♪ Balada do
+        {copy.titleTop}
       </p>
       <p className="mt-[1%] font-display text-[max(10px,11.5cqw)] uppercase leading-none text-sun" style={OUTLINE}>
-        Chuvisco ♪
+        {copy.titleBottom}
       </p>
     </div>
   );
@@ -569,10 +608,11 @@ function CountIn({ beat, phase, offset }: { beat: Beat; phase: number; offset: n
 }
 
 function Header({ beat }: { beat: Beat }) {
+  const copy = useCopy(COPY);
   if (beat.kind === "title" || beat.kind === "count") return null;
   return (
     <p className="pointer-events-none absolute inset-x-0 top-[1.4%] z-[4] text-center font-display text-[max(7px,4.3cqw)] uppercase leading-none tracking-wide text-sun" style={OUTLINE}>
-      ♪ Balada do Chuvisco ♪
+      {copy.header}
     </p>
   );
 }
@@ -597,6 +637,7 @@ function Confetti({ sectionOffset }: { sectionOffset: number }) {
 }
 
 function ScoreCard({ beat, offset, sectionOffset }: { beat: Beat; offset: number; sectionOffset: number }) {
+  const copy = useCopy(COPY);
   if (beat.kind !== "score" && beat.kind !== "result") return null;
   const landed = beat.kind === "result";
   return (
@@ -605,21 +646,21 @@ function ScoreCard({ beat, offset, sectionOffset }: { beat: Beat; offset: number
         className="flex w-full flex-col items-center rounded-[2.4cqw] border-[0.8cqw] border-ink bg-plum-950 px-[6%] pb-[5%] pt-[4%] shadow-[0_1.2cqw_0_0_var(--color-ink)]"
         style={{ animation: `karaoke-drop 520ms ease-out ${landed ? -1000 : -offset}ms both` }}
       >
-        <p className="font-display text-[max(7px,5.4cqw)] uppercase leading-none tracking-widest text-plum-300">Nota</p>
+        <p className="font-display text-[max(7px,5.4cqw)] uppercase leading-none tracking-widest text-plum-300">{copy.scoreLabel}</p>
         <div className={`relative mt-[6%] h-[1em] font-display text-[max(14px,14cqw)] leading-none ${landed ? "" : "overflow-hidden"}`}>
           {landed ? (
             <p key="landed" className="text-lime" style={{ textShadow: "0 0 0.25em rgba(147,207,76,.55)", animation: `karaoke-stamp 420ms ease-out ${-sectionOffset}ms both` }}>
-              {SCORE}
+              {copy.score}
             </p>
           ) : (
             <div
               className="text-lime/80"
               style={{
-                ...vars({ "--roll": `-${ROLL.length - 1}em` }),
-                animation: `karaoke-roll ${RESULT_AT - SCORE_AT - 200}ms steps(${ROLL.length}, jump-none) ${200 - offset}ms both`,
+                ...vars({ "--roll": `-${ROLL_LENGTH - 1}em` }),
+                animation: `karaoke-roll ${RESULT_AT - SCORE_AT - 200}ms steps(${ROLL_LENGTH}, jump-none) ${200 - offset}ms both`,
               }}
             >
-              {ROLL.map((value) => (
+              {copy.roll.map((value) => (
                 <p key={value} className="h-[1em]">
                   {value}
                 </p>
@@ -630,7 +671,7 @@ function ScoreCard({ beat, offset, sectionOffset }: { beat: Beat; offset: number
       </div>
       {landed && (
         <p className="mt-[8%] -rotate-2 text-center" style={{ animation: `karaoke-fade-in 400ms ease-out ${300 - sectionOffset}ms both` }}>
-          <span className="rounded-sm bg-ink/85 px-[0.4em] font-hand text-[max(7px,5.4cqw)] leading-snug text-cream">Ninguém pediu bis.</span>
+          <span className="rounded-sm bg-ink/85 px-[0.4em] font-hand text-[max(7px,5.4cqw)] leading-snug text-cream">{copy.noEncore}</span>
         </p>
       )}
     </div>
@@ -679,7 +720,14 @@ const GATO_AT = LYRICS[3][6].at;
 export const KARAOKE_CUES: TapeCue[] = [
   { at: LYRICS[0][0].at, mascot: { expression: "excited" } },
   { at: GATO_AT, sound: "meow" },
-  { at: RESULT_AT, sound: "victory", mascot: { expression: "wink", line: ["No ensaio deu 10.", "Foi a antena que desafinou."] } },
+  {
+    at: RESULT_AT,
+    sound: "victory",
+    mascot: {
+      expression: "wink",
+      line: localized({ "pt-BR": ["No ensaio deu 10.", "Foi a antena que desafinou."], en: ["I got a 10 in rehearsal.", "It was the antenna that went off-key."] }),
+    },
+  },
 ];
 
 export const karaokeTape: TapeProgram = {
@@ -687,5 +735,5 @@ export const karaokeTape: TapeProgram = {
   length: SHOW_MS,
   song: { track: KARAOKE_SONG, length: SONG_MS },
   cues: KARAOKE_CUES,
-  rewind: "Cantar de novo",
+  rewind: localized({ "pt-BR": "Cantar de novo", en: "Sing again" }),
 };

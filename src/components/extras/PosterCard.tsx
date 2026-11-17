@@ -3,10 +3,31 @@
 import { useEffect, useRef, useState } from "react";
 import { DownloadIcon, LockIcon } from "@/components/art/Icons";
 import { InkButton } from "@/components/ui/Primitives";
+import { useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import { P } from "@/lib/palette";
 import { POSTER_SHADOW } from "./posterArt";
-import type { PosterDef } from "./posters";
+import { POSTER_TEXT, type PosterDef } from "./posters";
+
+const COPY = localized({
+  "pt-BR": {
+    tuning: "Sintonizando…",
+    locked: "Bloqueado",
+    poster: (number: string) => `Pôster ${number}`,
+    saving: "Salvando...",
+    download: "Baixar imagem",
+    downloadSr: (title: string) => `: pôster ${title}`,
+  },
+  en: {
+    tuning: "Tuning in…",
+    locked: "Locked",
+    poster: (number: string) => `Poster ${number}`,
+    saving: "Saving...",
+    download: "Download image",
+    downloadSr: (title: string) => `: poster ${title}`,
+  },
+});
 
 function family(variable: string, fallback: string) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
@@ -94,6 +115,9 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const { play } = useSound();
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const text = POSTER_TEXT[locale][def.id];
 
   useEffect(() => {
     if (!unlocked || !svgRef.current || !canvasRef.current) return;
@@ -136,34 +160,34 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
               {def.art}
             </svg>
             <canvas ref={canvasRef} width={600} height={800} className="h-full w-full" aria-hidden />
-            {!ready && <div className="tag-label absolute inset-0 grid place-items-center text-sm text-cream">Sintonizando…</div>}
+            {!ready && <div className="tag-label absolute inset-0 grid place-items-center text-sm text-cream">{copy.tuning}</div>}
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[repeating-linear-gradient(-45deg,transparent_0_14px,rgb(255_255_255/0.04)_14px_28px)] p-4 text-center text-plum-300">
             <span className="grid size-20 place-items-center rounded-full border-[3px] border-dashed border-plum-500 bg-plum-700">
               <LockIcon className="size-9" />
             </span>
-            <p className="tag-label text-sm">Bloqueado</p>
+            <p className="tag-label text-sm">{copy.locked}</p>
           </div>
         )}
       </div>
       <figcaption className="flex flex-1 flex-col gap-3 px-1 pt-3">
         <p className="card-title text-ink">
           {unlocked ? (
-            def.title
+            text.title
           ) : (
             <>
-              Pôster {String(index + 1).padStart(2, "0")} <span className="text-plum-600">· ???</span>
+              {copy.poster(String(index + 1).padStart(2, "0"))} <span className="text-plum-600">· ???</span>
             </>
           )}
         </p>
         {unlocked ? (
           <InkButton size="sm" tone="mint" onClick={download} disabled={!ready || saving} className="mt-auto self-start">
-            <DownloadIcon className="size-5" /> {saving ? "Salvando..." : "Baixar imagem"}
-            <span className="sr-only">: pôster {def.title}</span>
+            <DownloadIcon className="size-5" /> {saving ? copy.saving : copy.download}
+            <span className="sr-only">{copy.downloadSr(text.title)}</span>
           </InkButton>
         ) : (
-          <p className="copy-sm mt-auto rounded-lg border-2 border-dashed border-ink/40 px-2.5 py-1.5 text-ink-soft">{def.unlock.label}</p>
+          <p className="copy-sm mt-auto rounded-lg border-2 border-dashed border-ink/40 px-2.5 py-1.5 text-ink-soft">{text.unlock}</p>
         )}
       </figcaption>
     </figure>

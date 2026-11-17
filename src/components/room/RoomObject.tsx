@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { forwardRef, type ReactNode } from "react";
 import { spotStyle, type Spot } from "./layout";
 

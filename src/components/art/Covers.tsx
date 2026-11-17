@@ -1,4 +1,6 @@
 import { BrunoHead, DecoHead, LinaHead, MilaHead, type Face } from "@/components/characters/Heads";
+import { localized } from "@/i18n/copy";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 import { arcPoint, Fork, House, Sparkle4 } from "./DeadEndStreetArt";
 import { OffAirVacationCoverArt } from "./OffAirVacationArt";
@@ -41,6 +43,29 @@ function Burst({ cx, cy, color, count = 16, r = 360 }: { cx: number; cy: number;
   );
 }
 
+const COVER_ALT = localized({
+  "pt-BR": {
+    "dead-end-street": "Capa de Rua Sem Saída: Déco e Lina num carrinho com uma colher gigante lançando um tênis em direção a uma pilha de vasos com um gnomo",
+    "bad-ideas-lab": "Capa de Laboratório de Péssimas Ideias: Lina atrás da bancada, com um frasco borbulhando, engrenagens e uma lâmpada acesa",
+    "food-fight": "Capa de Guerra de Lanche: na cantina, Déco se prepara para arremessar um sanduíche enquanto a Mila se protege de um pudim com uma bandeja",
+    "strange-house": "Capa de Casa Estranha: uma casa torta à noite com janelas acesas e uma cadeira flutuando",
+    "operation-recess": "Capa de Operação: Recreio: no corredor da escola, Bruno ergue a espada de papelão contra um monitor que apita bloqueando o caminho para a diretoria",
+    "pajama-war": "Capa de Guerra do Pijama: Lia, Nico e Bia numa guerra de travesseiros no quarto, com penas voando",
+    "off-air-vacation": "Capa de Férias Fora do Ar: Déco chega ao Resort 404 com mala e mapa e encara o Sr. Bigodes, sério demais atrás do balcão da recepção, enquanto o relógio da fachada está parado às 4:04 e a TV ao lado só mostra chuvisco",
+  },
+  en: {
+    "dead-end-street": "Dead End Street cover: Déco and Lina in a cart with a giant spoon, launching a sneaker at a stack of flowerpots with a gnome",
+    "bad-ideas-lab": "Bad Ideas Lab cover: Lina behind the workbench, with a bubbling flask, gears and a lit light bulb",
+    "food-fight": "Food Fight cover: in the cafeteria, Déco gets ready to throw a sandwich while Mila blocks a pudding with a tray",
+    "strange-house": "Strange House cover: a crooked house at night with lit windows and a floating chair",
+    "operation-recess": "Operation: Recess cover: in the school hallway, Bruno raises his cardboard sword at a whistle-blowing hall monitor who blocks the way to the principal's office",
+    "pajama-war": "Pajama War cover: Lia, Nico and Bia in a pillow war in the bedroom, with feathers flying",
+    "off-air-vacation": "Off-Air Vacation cover: Déco arrives at Resort 404 with a suitcase and a map and faces Mr. Bigodes, far too serious behind the front desk, while the clock on the building is stuck at 4:04 and the TV next to it only shows static",
+  },
+});
+
+type CoverProps = { decorative?: boolean; locale?: Locale };
+
 function Frame({ children, bg, label, decorative }: { children: React.ReactNode; bg: string; label: string; decorative?: boolean }) {
   return (
     <svg
@@ -73,11 +98,11 @@ function Pot({ cx, bottom, w, h, fill, rim }: { cx: number; bottom: number; w: n
   );
 }
 
-export function DeadEndStreetCover({ decorative }: { decorative?: boolean }) {
+export function DeadEndStreetCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   const dots = [0.1, 0.2, 0.3, 0.4, 0.62, 0.72, 0.82, 0.92].map((t) => ({ t, ...arcAt(t) }));
   const shoe = arcAt(0.51);
   return (
-    <Frame decorative={decorative} bg="#82d3f7" label="Capa de Rua Sem Saída: Déco e Lina num carrinho com uma colher gigante lançando um tênis em direção a uma pilha de vasos com um gnomo">
+    <Frame decorative={decorative} bg="#82d3f7" label={COVER_ALT[locale]["dead-end-street"]}>
       <rect y="96" width="320" height="70" fill={P.skyPale} opacity={0.55} />
       <g>
         {Array.from({ length: 10 }, (_, i) => {
@@ -195,9 +220,9 @@ function Gear({ cx, cy, r, teeth, fill, spin = 0 }: { cx: number; cy: number; r:
   );
 }
 
-export function BadIdeasLabCover({ decorative }: { decorative?: boolean }) {
+export function BadIdeasLabCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   return (
-    <Frame decorative={decorative} bg={P.plum700} label="Capa de Laboratório de Péssimas Ideias: Lina atrás da bancada, com um frasco borbulhando, engrenagens e uma lâmpada acesa">
+    <Frame decorative={decorative} bg={P.plum700} label={COVER_ALT[locale]["bad-ideas-lab"]}>
       <Burst cx={160} cy={120} color={P.plum600} count={14} />
       <Gear cx={42} cy={52} r={30} teeth={10} fill={P.plum500} spin={8} />
       <Gear cx={86} cy={24} r={17} teeth={8} fill={P.plum300} spin={4} />
@@ -299,12 +324,12 @@ function Grapes({ x, y, rotate = 0 }: { x: number; y: number; rotate?: number })
   );
 }
 
-export function FoodFightCover({ decorative }: { decorative?: boolean }) {
+export function FoodFightCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   const deco = { skin: P.skinTan, shirt: P.sun };
   const mila = { skin: "#f6dcc4", shirt: P.plum800 };
   const flags = [P.tomato, P.sun, P.mint, P.plum500, P.bubblegum, P.sky];
   return (
-    <Frame decorative={decorative} bg={P.tangerine} label="Capa de Guerra de Lanche: na cantina, Déco se prepara para arremessar um sanduíche enquanto a Mila se protege de um pudim com uma bandeja">
+    <Frame decorative={decorative} bg={P.tangerine} label={COVER_ALT[locale]["food-fight"]}>
       <defs>
         <pattern id="ff-cover-cloth" width="20" height="20" patternUnits="userSpaceOnUse">
           <rect width="20" height="20" fill={P.white} />
@@ -369,9 +394,9 @@ export function FoodFightCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
-export function StrangeHouseCover({ decorative }: { decorative?: boolean }) {
+export function StrangeHouseCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   return (
-    <Frame decorative={decorative} bg={P.plum800} label="Capa de Casa Estranha: uma casa torta à noite com janelas acesas e uma cadeira flutuando">
+    <Frame decorative={decorative} bg={P.plum800} label={COVER_ALT[locale]["strange-house"]}>
       {[
         [30, 30],
         [80, 64],
@@ -412,31 +437,31 @@ export function StrangeHouseCover({ decorative }: { decorative?: boolean }) {
   );
 }
 
-export function OperationRecessCover({ decorative }: { decorative?: boolean }) {
+export function OperationRecessCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   return (
-    <Frame decorative={decorative} bg="#f3e6c4" label="Capa de Operação: Recreio: no corredor da escola, Bruno ergue a espada de papelão contra um monitor que apita bloqueando o caminho para a diretoria">
+    <Frame decorative={decorative} bg="#f3e6c4" label={COVER_ALT[locale]["operation-recess"]}>
       <OperationRecessCoverArt />
     </Frame>
   );
 }
 
-export function PajamaWarCover({ decorative }: { decorative?: boolean }) {
+export function PajamaWarCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   return (
-    <Frame decorative={decorative} bg="#5b3f9c" label="Capa de Guerra do Pijama: Lia, Nico e Bia numa guerra de travesseiros no quarto, com penas voando">
+    <Frame decorative={decorative} bg="#5b3f9c" label={COVER_ALT[locale]["pajama-war"]}>
       <PajamaWarCoverArt />
     </Frame>
   );
 }
 
-export function OffAirVacationCover({ decorative }: { decorative?: boolean }) {
+export function OffAirVacationCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   return (
-    <Frame decorative={decorative} bg="#5cb9f0" label="Capa de Férias Fora do Ar: Déco chega ao Resort 404 com mala e mapa e encara o Sr. Bigodes, sério demais atrás do balcão da recepção, enquanto o relógio da fachada está parado às 4:04 e a TV ao lado só mostra chuvisco">
+    <Frame decorative={decorative} bg="#5cb9f0" label={COVER_ALT[locale]["off-air-vacation"]}>
       <OffAirVacationCoverArt />
     </Frame>
   );
 }
 
-export const COVERS: Record<string, (props: { decorative?: boolean }) => React.JSX.Element> = {
+export const COVERS: Record<string, (props: CoverProps) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetCover,
   "bad-ideas-lab": BadIdeasLabCover,
   "food-fight": FoodFightCover,
@@ -445,7 +470,7 @@ export const COVERS: Record<string, (props: { decorative?: boolean }) => React.J
   "off-air-vacation": OffAirVacationCover,
 };
 
-export function GameCover({ slug, decorative }: { slug: string; decorative?: boolean }) {
+export function GameCover({ slug, decorative, locale }: { slug: string } & CoverProps) {
   const Cover = COVERS[slug];
-  return Cover ? <Cover decorative={decorative} /> : null;
+  return Cover ? <Cover decorative={decorative} locale={locale} /> : null;
 }
