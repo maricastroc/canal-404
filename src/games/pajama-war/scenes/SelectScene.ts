@@ -1,6 +1,8 @@
 import * as Phaser from "phaser";
 import type { GameHostContext } from "@/games/types";
+import type { Locale } from "@/i18n/locales";
 import { ARENAS } from "../arenas";
+import { COPY, type PajamaCopy } from "../copy";
 import { H, KID_INFO, KIDS, PILLOW_ANCHORS, SPRITE_ORIGIN_Y, STATS, W, type KidId } from "../config";
 import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
 import { loadStats } from "../storage";
@@ -11,11 +13,7 @@ import { makeTextures } from "./room";
 const CARD = { w: 450, h: 640 };
 const CARD_KID = 1.18;
 const CARD_BG: Record<KidId, number> = { lia: 0xffe46e, nico: 0xcdbcff, bia: 0xffadd2 };
-const BAR_LABELS: [string, string][] = [
-  ["VELOCIDADE", "icon-speed"],
-  ["ATAQUE", "icon-attack"],
-  ["RECUPERAÇÃO", "icon-regen"],
-];
+const BAR_ICONS = ["icon-speed", "icon-attack", "icon-regen"];
 const TOUCH_UI = typeof window !== "undefined" && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
 
 type Card = {
@@ -40,6 +38,8 @@ const TARGET = { x: 148, y: -52 };
 
 export class SelectScene extends Phaser.Scene {
   private ctx!: GameHostContext;
+  private locale!: Locale;
+  private text!: PajamaCopy["select"];
   private cards: Card[] = [];
   private index = 0;
   private loopStart = 0;
@@ -58,6 +58,8 @@ export class SelectScene extends Phaser.Scene {
 
   create() {
     this.ctx = this.registry.get("ctx") as GameHostContext;
+    this.locale = this.ctx.locale;
+    this.text = COPY[this.locale].select;
     makeTextures(this);
     const fonts = this.ctx.fonts;
     const reduced = this.ctx.reducedMotion;
@@ -71,7 +73,7 @@ export class SelectScene extends Phaser.Scene {
       if (!reduced) this.tweens.add({ targets: f, y: f.y + Phaser.Math.Between(30, 70), angle: f.angle + Phaser.Math.Between(-60, 60), duration: Phaser.Math.Between(2600, 4200), yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     }
 
-    const title = cartoonText(this, 0, 0, "ESCOLHA SEU PERSONAGEM!", { size: 60, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    const title = cartoonText(this, 0, 0, this.text.title, { size: 60, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
     const tw = title.width + 70;
     const tg = this.add.graphics();
     tg.fillStyle(INK_HEX, 1);
@@ -83,7 +85,7 @@ export class SelectScene extends Phaser.Scene {
     this.add.container(W / 2, 92, [tg, title]).setAngle(-1.5);
 
     const level = Phaser.Math.Clamp((this.registry.get("level") as number | undefined) ?? 0, 0, ARENAS.length - 1);
-    const at = cartoonText(this, 34, 200, `ARENA ${level + 1}: ${ARENAS[level].title.toUpperCase()}`, { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18 });
+    const at = cartoonText(this, 34, 200, this.text.arena(level + 1, ARENAS[level].title[this.locale]), { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18 });
     void at;
 
     const stats = loadStats();
@@ -91,7 +93,7 @@ export class SelectScene extends Phaser.Scene {
     this.index = Math.max(0, KIDS.indexOf(last));
     KIDS.forEach((kid, i) => this.cards.push(this.makeCard(kid, W / 2 + (i - 1) * 500, 590, stats.wins[kid])));
 
-    const hint = TOUCH_UI ? "Toque num personagem" : "Setas para escolher. Enter para começar.";
+    const hint = TOUCH_UI ? this.text.touchHint : this.text.keysHint;
     cartoonText(this, W / 2, H - 46, hint, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.16 }).setOrigin(0.5);
 
     const btnBg = this.add.graphics();
@@ -102,7 +104,7 @@ export class SelectScene extends Phaser.Scene {
     btnBg.lineStyle(6, INK_HEX, 1);
     btnBg.strokeRoundedRect(-160, -46, 320, 92, 18);
     const play = this.add.image(-92, 0, "icon-play").setScale(0.9);
-    const label = cartoonText(this, 26, 0, "COMEÇAR", { size: 44, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setOrigin(0.5);
+    const label = cartoonText(this, 26, 0, this.text.start, { size: 44, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setOrigin(0.5);
     const btn = this.add.container(W - 230, H - 70, [btnBg, play, label]).setSize(320, 92).setInteractive({ useHandCursor: true });
     btn.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => this.go());
     if (!reduced) this.tweens.add({ targets: btn, scale: 1.05, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
@@ -127,7 +129,7 @@ export class SelectScene extends Phaser.Scene {
       }
     });
     this.choose(this.index, true);
-    this.ctx.onEvent({ type: "announce", message: "Escolha seu personagem: Lia, a veloz. Nico, o atirador. Bia, a resistente. Use as setas e aperte Enter." });
+    this.ctx.onEvent({ type: "announce", message: this.text.intro });
   }
 
   private sfx(name: PajamaSfx, volume = 1) {
@@ -149,7 +151,7 @@ export class SelectScene extends Phaser.Scene {
     const frame = this.add.graphics();
     parts.push(frame);
     parts.push(cartoonText(this, 0, -CARD.h / 2 + 62, info.name.toUpperCase(), { size: 74, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5));
-    parts.push(cartoonText(this, 0, -CARD.h / 2 + 118, info.title.toUpperCase(), { size: 30, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5).setAlpha(0.85));
+    parts.push(cartoonText(this, 0, -CARD.h / 2 + 118, info.title[this.locale].toUpperCase(), { size: 30, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5).setAlpha(0.85));
     const floorY = FLOOR_Y;
     parts.push(this.add.image(0, floorY + 4, "blob").setDisplaySize(190, 46).setAlpha(0.5));
     const fx = this.add.graphics();
@@ -162,7 +164,8 @@ export class SelectScene extends Phaser.Scene {
     const pop = this.add.image(0, 0, kid === "bia" ? "icon-heart-on" : "star").setVisible(false);
     parts.push(heldBack, sprite, held, flyer, pop);
     const bars = STATS[kid].bars;
-    BAR_LABELS.forEach(([label, icon], i) => {
+    BAR_ICONS.forEach((icon, i) => {
+      const label = this.text.bars[i];
       const by = 160 + i * 52;
       parts.push(this.add.image(-CARD.w / 2 + 42, by, icon).setScale(0.82));
       parts.push(cartoonText(this, -CARD.w / 2 + 66, by, label, { size: 24, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5));
@@ -242,7 +245,7 @@ export class SelectScene extends Phaser.Scene {
       this.sfx("pick", 0.8);
       this.time.delayedCall(120, () => this.sfx(KIDS[i] === "lia" ? "step" : KIDS[i] === "nico" ? "throw" : "boing", 0.6));
       const kid = KIDS[i];
-      this.ctx.onEvent({ type: "announce", message: `${KID_INFO[kid].name}, ${KID_INFO[kid].title.toLowerCase()}.` });
+      this.ctx.onEvent({ type: "announce", message: this.text.picked(KID_INFO[kid].name, KID_INFO[kid].title[this.locale]) });
     }
   }
 

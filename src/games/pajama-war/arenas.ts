@@ -1,3 +1,5 @@
+import { localized, type Localized } from "@/i18n/copy";
+
 export type React = "wobble" | "swing" | "bounce" | "roll" | "tip" | "flap" | "cat" | "billow" | "rustle";
 
 export type PropDef = {
@@ -20,8 +22,8 @@ export type PropDef = {
 
 export type ArenaDef = {
   id: string;
-  title: string;
-  goal: string;
+  title: Localized<string>;
+  goal: Localized<string>;
   theme: "bedroom" | "living" | "yard";
   wallBottom: number;
   bounds: { x0: number; y0: number; x1: number; y1: number };
@@ -42,8 +44,8 @@ const WARM = 0xffc46b;
 export const ARENAS: ArenaDef[] = [
   {
     id: "bedroom",
-    title: "Quarto",
-    goal: "Aprenda a mirar e desviar.",
+    title: localized({ "pt-BR": "Quarto", en: "Bedroom" }),
+    goal: localized({ "pt-BR": "Aprenda a mirar e desviar.", en: "Learn to aim and dodge." }),
     theme: "bedroom",
     wallBottom: 350,
     bounds: { x0: 130, y0: 440, x1: 1790, y1: 1020 },
@@ -81,8 +83,8 @@ export const ARENAS: ArenaDef[] = [
   },
   {
     id: "living",
-    title: "Sala de estar",
-    goal: "Use o sofá e as poltronas para ricochetear.",
+    title: localized({ "pt-BR": "Sala de estar", en: "Living room" }),
+    goal: localized({ "pt-BR": "Use o sofá e as poltronas para ricochetear.", en: "Use the sofa and armchairs to bounce your throws." }),
     theme: "living",
     wallBottom: 350,
     bounds: { x0: 130, y0: 440, x1: 1790, y1: 1020 },
@@ -128,8 +130,8 @@ export const ARENAS: ArenaDef[] = [
   },
   {
     id: "yard",
-    title: "Quintal",
-    goal: "Pegue o travesseirão antes dos outros.",
+    title: localized({ "pt-BR": "Quintal", en: "Backyard" }),
+    goal: localized({ "pt-BR": "Pegue o travesseirão antes dos outros.", en: "Grab the giant pillow before the others do." }),
     theme: "yard",
     wallBottom: 330,
     bounds: { x0: 120, y0: 440, x1: 1800, y1: 1020 },

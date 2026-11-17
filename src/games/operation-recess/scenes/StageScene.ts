@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
+import { COPY, levelCopy, type LevelCopy, type RecessCopy } from "../copy";
 import { LEVELS, type LevelDef } from "../levels";
 import { recessStarHint, recessStars } from "../score";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
@@ -22,34 +23,14 @@ type Hint = { lesson: Lesson; anchor: Anchor; past: number };
 type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
-const OUCH = ["AI!", "UI!", "OPA!"];
 const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
-const HIT_WORDS = ["POW!", "TOMA!", "PAF!", "BOING!"];
 const learned = new Set<Lesson>();
-const HINTS: Partial<Record<Lesson, string>> = {
-  locker: "TREMEU? PARE OU DÊ UMA ESPADADA!",
-  watcher: "JORNAL ABAIXOU? ESTÁTUA!",
-  rope: "PULE QUANDO A CORDA DESCER!",
-  pad: "PULE NO COLCHONETE!",
-  light: "A LUZ PAROU EM VOCÊ? SAIA DELA!",
-  shield: "A PLACA BLOQUEIA: ATAQUE POR TRÁS!",
-  wobbly: "PRATELEIRA BAMBA: NÃO PARE!",
-  high: "APITO ALTO? FIQUE NO CHÃO!",
-};
-const HINT_SPEECH: Partial<Record<Lesson, string>> = {
-  locker: "Armário tremendo abre com tudo. Pare antes da porta ou feche com uma espadada.",
-  watcher: "Vigia à frente. Quando ele baixar o jornal, fique parado.",
-  rope: "Corda de pular à frente. Pule quando ela descer para bater no chão.",
-  pad: "Colchonete à frente. Pule nele para ir bem alto.",
-  light: "Luz do Inspetor. Passe quando ela estiver longe. Se ela parar em você, saia antes que fique vermelha.",
-  shield: "Monitor da placa de PARE. De frente, a placa bloqueia. Ataque pelas costas ou quando ele baixar a placa.",
-  wobbly: "Prateleira bamba. Ela cai logo depois que você pisa.",
-  high: "Este monitor solta apitos altos e baixos. Pule só os baixos.",
-};
 
 export class StageScene extends Phaser.Scene {
   private ctx!: GameHostContext;
+  private copy!: RecessCopy;
+  private text!: LevelCopy;
   private levelIndex = 0;
   private level!: LevelDef;
   private world!: World;
@@ -152,6 +133,8 @@ export class StageScene extends Phaser.Scene {
     this.ctx = this.registry.get("ctx") as GameHostContext;
     this.levelIndex = Phaser.Math.Clamp((this.registry.get("level") as number | undefined) ?? 0, 0, LEVELS.length - 1);
     this.level = LEVELS[this.levelIndex];
+    this.copy = COPY[this.ctx.locale];
+    this.text = levelCopy(this.copy, this.level.id);
     const reduced = this.ctx.reducedMotion;
     const cp = this.registry.get("checkpoint") as Checkpoint | null;
     const resume = Boolean(this.registry.get("resume")) && cp?.level === this.levelIndex ? cp : null;
@@ -170,6 +153,7 @@ export class StageScene extends Phaser.Scene {
     this.api = {
       scene: this,
       reduced,
+      words: this.copy.words,
       sfx: (name, volume) => this.sfx(name, volume),
       warn: (x, y, ms) => this.warn(x, y, ms),
       word: (text, x, y, color, size) => this.word(text, x, y, color, size),
@@ -259,7 +243,7 @@ export class StageScene extends Phaser.Scene {
     this.buildingHud = true;
     const vignette = { corridor: 0.32, yard: 0.18, office: 0.5 }[this.level.theme];
     this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setScrollFactor(0).setDepth(50).setAlpha(vignette);
-    this.hud = new RecessHud(this, this.ctx.fonts, this.level.title, this.levelIndex, LEVELS.length, reduced, (a) => this.onPad(a));
+    this.hud = new RecessHud(this, this.ctx.fonts, this.text.title, this.levelIndex, LEVELS.length, reduced, this.ctx.locale, (a) => this.onPad(a));
     this.buildingHud = false;
     this.hud.setHearts(this.hearts);
     this.hud.setScore(this.score);
@@ -315,13 +299,13 @@ export class StageScene extends Phaser.Scene {
     this.hud.showTouch(Boolean(TOUCH_UI));
     this.applyScale();
     if (resumed) {
-      this.hud.flash("DE VOLTA AO SINO!", "#63d6c1", 900);
-      this.announce("Você voltou do último sino. Vai!");
+      this.hud.flash(this.copy.banner.backAtBell, "#63d6c1", 900);
+      this.announce(this.copy.say.resumed);
       return;
     }
-    this.hud.flash(this.level.title.toUpperCase(), "#ffc83d", 1300, this.level.intro);
+    this.hud.flash(this.text.title.toUpperCase(), "#ffc83d", 1300, this.text.intro);
     this.hintsAt = this.t + 900;
-    this.announce(`Fase ${this.levelIndex + 1} de ${LEVELS.length}: ${this.level.title}. ${this.level.intro} Setas andam, espaço pula, J ataca.`);
+    this.announce(this.copy.say.levelStart(this.levelIndex + 1, LEVELS.length, this.text.title, this.text.intro));
     if (this.levelIndex === 0 && !(["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l))) {
       this.tutorialOn = true;
       this.tutorialFrom = this.hero.x;
@@ -396,14 +380,15 @@ export class StageScene extends Phaser.Scene {
     this.lesson = lesson;
     this.lessonUntil = this.t + 9000;
     this.lessonPast = Infinity;
-    if (lesson === "walk") this.showChip("PARA ANDAR", TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
+    const tut = this.copy.tutorial;
+    if (lesson === "walk") this.showChip(tut.walk, TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
     if (lesson === "jump") {
-      this.showChip(TOUCH_UI ? "PARA PULAR" : "ESPAÇO PARA PULAR", TOUCH_UI ? ["chip-jump"] : []);
+      this.showChip(TOUCH_UI ? tut.jumpTouch : tut.jumpKeys, TOUCH_UI ? ["chip-jump"] : []);
       this.hud.pulseJump(true);
     }
     if (lesson === "attack") {
-      this.showChip(TOUCH_UI ? "PARA ATACAR" : "J PARA ATACAR", TOUCH_UI ? ["chip-attack"] : []);
-      this.announce(TOUCH_UI ? "Toque na espada para atacar." : "Aperte J para atacar.");
+      this.showChip(TOUCH_UI ? tut.attackTouch : tut.attackKeys, TOUCH_UI ? ["chip-attack"] : []);
+      this.announce(TOUCH_UI ? tut.attackTouchSay : tut.attackKeysSay);
     }
   }
 
@@ -585,12 +570,12 @@ export class StageScene extends Phaser.Scene {
     this.hero.sprite.setTintFill(0xffffff);
     this.time.delayedCall(80, () => this.hero.sprite.clearTint());
     if (!this.ctx.reducedMotion) this.cameras.main.shake(140, 0.006);
-    this.word(OUCH[this.hits % OUCH.length], this.hero.x, this.hero.body.top - 40, "#ef4f43", 50);
+    this.word(this.copy.words.ouch[this.hits % this.copy.words.ouch.length], this.hero.x, this.hero.body.top - 40, "#ef4f43", 50);
     if (this.hearts <= 0) {
       this.knockOut();
       return;
     }
-    this.announce(this.hearts === 1 ? "Ai! Resta 1 coração." : `Ai! Restam ${this.hearts} corações.`);
+    this.announce(this.copy.say.heartsLeft(this.hearts));
   }
 
   private fell() {
@@ -604,8 +589,8 @@ export class StageScene extends Phaser.Scene {
     }
     this.hero.body.reset(this.safe.x, this.safe.y);
     this.invulnUntil = this.t + INVULN_MS;
-    this.word("OPS!", this.safe.x, FLOOR_Y - 240, "#fbf5e6", 54);
-    this.announce("Você caiu! Perdeu um coração.");
+    this.word(this.copy.words.oops, this.safe.x, FLOOR_Y - 240, "#fbf5e6", 54);
+    this.announce(this.copy.say.fell);
   }
 
   private clearShots() {
@@ -635,32 +620,34 @@ export class StageScene extends Phaser.Scene {
     this.sfx("lose", 1);
     const cp = this.registry.get("checkpoint") as Checkpoint | null;
     if (cp) cp.hits = this.hits;
-    this.hud.flash("TE PEGARAM!", "#ef4f43", 1200, cp ? "Você volta do último sino." : "Bora de novo!");
-    this.announce("Os monitores te pegaram!");
+    const lose = this.copy.result;
+    this.hud.flash(this.copy.banner.caught, "#ef4f43", 1200, cp ? this.copy.banner.caughtFromBell : this.copy.banner.caughtAgain);
+    this.announce(this.copy.say.caught);
     const result: GameResult = {
       won: false,
       score: this.score,
       stars: 0,
       breakdown: this.breakdown(false),
       stats: this.resultStats(false),
-      level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
-      copy: { title: "Pego no flagra!", text: cp ? "Os monitores te levaram pra sala. Jogue de novo e volte do último sino." : "Os monitores te levaram pra sala. Bora de novo?" },
-      ...(cp ? { restartLabel: "Voltar ao sino" } : {}),
-      summary: `Monitores: ${this.kills}. Figurinhas: ${this.stickers}.`,
+      level: { index: this.levelIndex, id: this.level.id, title: this.text.title, total: LEVELS.length },
+      copy: { title: lose.loseTitle, text: cp ? lose.loseFromBell : lose.loseText },
+      ...(cp ? { restartLabel: lose.restartFromBell } : {}),
+      summary: lose.loseSummary(this.kills, this.stickers),
     };
     this.time.delayedCall(1500, () => this.ctx.onEvent({ type: "finished", result }));
   }
 
   private breakdown(won: boolean) {
+    const labels = this.copy.result;
     const rows = [
-      { label: `Monitores (${this.kills})`, value: this.killScore },
-      { label: `Figurinhas (${this.stickers})`, value: this.stickers * SCORE.sticker },
-      { label: `Ondas e bolas (${this.extras})`, value: this.extras * SCORE.wave },
+      { label: labels.monitors(this.kills), value: this.killScore },
+      { label: labels.stickers(this.stickers), value: this.stickers * SCORE.sticker },
+      { label: labels.extras(this.extras), value: this.extras * SCORE.wave },
     ];
     if (won) {
-      rows.push({ label: "Fase concluída", value: SCORE.phase });
-      if (!this.resumed) rows.push({ label: `Corações (${this.hearts})`, value: this.hearts * SCORE.heart });
-      if (this.boss) rows.push({ label: "Inspetor vencido", value: SCORE.boss });
+      rows.push({ label: labels.cleared, value: SCORE.phase });
+      if (!this.resumed) rows.push({ label: labels.hearts(this.hearts), value: this.hearts * SCORE.heart });
+      if (this.boss) rows.push({ label: labels.boss, value: SCORE.boss });
     }
     return rows.filter((r, i) => i === 0 || r.value !== 0);
   }
@@ -695,7 +682,7 @@ export class StageScene extends Phaser.Scene {
     const last = this.levelIndex === LEVELS.length - 1;
     const run = { won: true, hits: this.hits, kills: this.kills, monitors: this.level.enemies.length };
     const stars = recessStars(run);
-    const starHint = recessStarHint(run);
+    const starHint = recessStarHint(run, this.ctx.locale);
     const achievements: string[] = [];
     if (this.levelIndex === 0) achievements.push("recess-first");
     if (this.hits === 0) achievements.push("recess-flawless");
@@ -707,9 +694,9 @@ export class StageScene extends Phaser.Scene {
       breakdown: this.breakdown(true),
       stats: this.resultStats(true),
       achievements,
-      level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
-      copy: last ? { title: "Recreio liberado!", text: "O Inspetor dançou e o pátio é da criançada de novo!" } : { title: "Passou!", text: `${this.level.win} Bora pra próxima!` },
-      summary: `Monitores: ${this.kills}. Batidas: ${this.hits}.`,
+      level: { index: this.levelIndex, id: this.level.id, title: this.text.title, total: LEVELS.length },
+      copy: last ? { title: this.copy.result.finalTitle, text: this.copy.result.finalText } : { title: this.copy.result.passedTitle, text: this.copy.result.passedText(this.text.win) },
+      summary: this.copy.result.winSummary(this.kills, this.hits),
       ...(starHint ? { starHint } : {}),
     };
     if (last) {
@@ -719,9 +706,9 @@ export class StageScene extends Phaser.Scene {
     }
     this.sfx("door", 1);
     this.time.delayedCall(420, () => this.sfx("win", 1));
-    this.hud.flash("PASSOU!", "#93cf4c", 1100, "Bora pra próxima!");
+    this.hud.flash(this.copy.banner.passed, "#93cf4c", 1100, this.copy.banner.next);
     this.kidAtDoor();
-    this.announce(`Passou! Fase ${this.level.title} concluída.`);
+    this.announce(this.copy.say.passed(this.text.title));
     this.time.delayedCall(1600, () => this.ctx.onEvent({ type: "finished", result }));
   }
 
@@ -730,7 +717,7 @@ export class StageScene extends Phaser.Scene {
     const ex = cx(this.level.exit.col) + TILE / 2;
     const name = this.levelIndex === 0 ? "deco" : "lina";
     const kid = this.add.image(ex, FLOOR_Y, `kid-${name}-a`).setOrigin(0.5, 1).setDepth(3.5).setScale(KID_SCALE);
-    this.word("VAMOS!", ex + 60, FLOOR_Y - 270, "#ffc83d", 40);
+    this.word(this.copy.words.letsGo, ex + 60, FLOOR_Y - 270, "#ffc83d", 40);
     this.time.addEvent({ delay: 200, repeat: 6, callback: () => kid.setTexture(kid.texture.key.endsWith("-a") ? `kid-${name}-b` : `kid-${name}-a`) });
     if (this.ctx.reducedMotion) return;
     kid.setAlpha(0).setY(FLOOR_Y + 30);
@@ -747,8 +734,8 @@ export class StageScene extends Phaser.Scene {
     const reduced = this.ctx.reducedMotion;
     this.sfx("bell", 1);
     this.time.delayedCall(300, () => this.sfx("cheer", 1));
-    this.hud.flash("RECREIO LIBERADO!", "#93cf4c", 2800, "O sinal tocou. O pátio é de vocês!");
-    this.announce("O Inspetor foi vencido. Recreio liberado! O pátio é de vocês!");
+    this.hud.flash(this.copy.banner.recess, "#93cf4c", 2800, this.copy.banner.recessSub);
+    this.announce(this.copy.say.recess);
     const left = this.arena.left;
     const kids: [string, number][] = [
       ["deco", left + 360],
@@ -793,9 +780,9 @@ export class StageScene extends Phaser.Scene {
     this.registry.set("bossSeen", true);
     this.boss!.intro(this.t, seen);
     this.hero.grow(ARENA_GROW, 700);
-    if (seen) this.hud.flash("INSPETOR DO SILÊNCIO", "#f06ba8", 700);
-    else this.hud.flash("INSPETOR DO SILÊNCIO", "#f06ba8", 1300, "Ataque quando ele ficar tonto ou cansado.");
-    this.announce("Chefe: Inspetor do Silêncio. Desvie dos ataques e acerte quando ele ficar tonto, cansado ou com a prancheta presa.");
+    if (seen) this.hud.flash(this.copy.hud.boss, "#f06ba8", 700);
+    else this.hud.flash(this.copy.hud.boss, "#f06ba8", 1300, this.copy.banner.bossSub);
+    this.announce(this.copy.say.boss);
   }
 
   private updateProgress() {
@@ -931,8 +918,8 @@ export class StageScene extends Phaser.Scene {
         this.hearts = Math.min(HEARTS, this.hearts + 1);
         this.hud.setHearts(this.hearts, "gained");
         this.sfx("heal", 0.9);
-        this.word("LANCHE!", it.img.x, it.img.y - 50, "#93cf4c", 40);
-        this.announce("Lanche! Mais um coração.");
+        this.word(this.copy.words.snack, it.img.x, it.img.y - 50, "#93cf4c", 40);
+        this.announce(this.copy.say.snack);
       } else {
         this.stickers += 1;
         this.addScore(SCORE.sticker);
@@ -946,13 +933,13 @@ export class StageScene extends Phaser.Scene {
       this.sfx("bell", 0.9);
       if (this.registry.get("checkpoints") === false) {
         this.word("DING!", bell.x, FLOOR_Y - 260, "#63d6c1", 44);
-        this.announce("Sino tocado! Na missão, a fase vale do começo ao fim.");
+        this.announce(this.copy.say.bellMission);
         continue;
       }
-      this.word("SALVO!", bell.x, FLOOR_Y - 260, "#63d6c1", 44);
+      this.word(this.copy.words.saved, bell.x, FLOOR_Y - 260, "#63d6c1", 44);
       const col = Math.round((bell.x - TILE / 2) / TILE);
       this.registry.set("checkpoint", { level: this.levelIndex, col, score: this.score, kills: this.kills, killScore: this.killScore, stickers: this.stickers, extras: this.extras, hits: this.hits } satisfies Checkpoint);
-      this.announce("Sino tocado! Se for pego, você volta daqui.");
+      this.announce(this.copy.say.bellSaved);
     }
 
     if (this.hero.feet > H + 120) {
@@ -1000,9 +987,9 @@ export class StageScene extends Phaser.Scene {
     if (this.t < this.invulnUntil) return;
     this.invulnUntil = this.t + 700;
     this.hero.knock(this.hero.x + this.hero.facing * 10, this.t, 300, 320);
-    this.word("TROPEÇOU!", this.hero.x, this.hero.body.top - 40, "#f06ba8", 40);
+    this.word(this.copy.words.tripped, this.hero.x, this.hero.body.top - 40, "#f06ba8", 40);
     this.sfx("land", 0.9);
-    this.announce("Tropeçou na corda! Pule quando ela descer.");
+    this.announce(this.copy.say.tripped);
   }
 
   private nextHint(x: number): Hint | null {
@@ -1039,8 +1026,10 @@ export class StageScene extends Phaser.Scene {
     this.lesson = hint.lesson;
     this.lessonUntil = this.t + 5000;
     this.lessonPast = hint.past;
-    this.showChip(HINTS[hint.lesson]!, [], hint.anchor);
-    this.announce(HINT_SPEECH[hint.lesson]!);
+    const hints: Partial<Record<Lesson, string>> = this.copy.hints;
+    const speech: Partial<Record<Lesson, string>> = this.copy.hintSpeech;
+    this.showChip(hints[hint.lesson]!, [], hint.anchor);
+    this.announce(speech[hint.lesson]!);
   }
 
   private resolveAttack(atk: Phaser.Geom.Rectangle, t: number) {
@@ -1087,14 +1076,14 @@ export class StageScene extends Phaser.Scene {
         w.kill();
         this.sfx("pop", 0.8);
         this.addExtra();
-        this.word("PLIM!", w.img.x, w.img.y - 40, "#9df0dc", 32);
+        this.word(this.copy.words.wavePop, w.img.x, w.img.y - 40, "#9df0dc", 32);
       }
     }
     for (const b of this.balls) {
       if (b.harmful && Phaser.Geom.Intersects.RectangleToRectangle(atk, b.box())) {
         b.kick(this.hero.facing);
         this.addExtra();
-        this.word("CHUTE!", b.img.x, b.img.y - 50, "#fbf5e6", 34);
+        this.word(this.copy.words.kick, b.img.x, b.img.y - 50, "#fbf5e6", 34);
       }
     }
   }
@@ -1108,7 +1097,7 @@ export class StageScene extends Phaser.Scene {
     if (kill && !boss) this.time.delayedCall(60, () => this.sfx("ko", 0.8));
     this.pow(px, py, kill ? 0.9 : 0.68);
     this.burst(px, py, kill ? 6 : 3);
-    this.word(Phaser.Utils.Array.GetRandom(HIT_WORDS) as string, x + side * 24, top - 34, "#ffc83d", kill ? 54 : 44);
+    this.word(Phaser.Utils.Array.GetRandom(this.copy.words.hits) as string, x + side * 24, top - 34, "#ffc83d", kill ? 54 : 44);
     if (!this.ctx.reducedMotion) this.cameras.main.shake(kill ? 110 : 70, kill ? 0.006 : 0.003);
   }
 
@@ -1139,7 +1128,7 @@ export class StageScene extends Phaser.Scene {
     }
     this.hud.hideTop();
     this.clearShots();
-    this.word("SILÊNCIO... QUEBRADO!", this.boss!.x, FLOOR_Y - 380, "#fbf5e6", 44);
+    this.word(this.copy.words.silenceBroken, this.boss!.x, FLOOR_Y - 380, "#fbf5e6", 44);
     this.time.delayedCall(600, () => this.win());
   }
 }

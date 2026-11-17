@@ -4,10 +4,6 @@ export type EnemyStyle = "patrol" | "rush" | "guard" | "mixed";
 
 export type LevelDef = {
   id: string;
-  title: string;
-  goal: string;
-  intro: string;
-  win: string;
   theme: Theme;
   length: number;
   start: number;
@@ -32,10 +28,6 @@ export type LevelDef = {
 export const LEVELS: LevelDef[] = [
   {
     id: "corridor",
-    title: "Corredor proibido",
-    goal: "Atravesse o corredor sem ser pego.",
-    intro: "Recreio cancelado? Nem pensar! Atravesse o corredor.",
-    win: "Corredor liberado!",
     theme: "corridor",
     length: 72,
     start: 2,
@@ -78,10 +70,6 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: "yard",
-    title: "Pátio ocupado",
-    goal: "Cruze o pátio sem levar apitada.",
-    intro: "Os monitores do apito tomaram o pátio. Pule as ondas!",
-    win: "O pátio é da criançada de novo.",
     theme: "yard",
     length: 80,
     start: 2,
@@ -125,10 +113,6 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: "office",
-    title: "Caminho da direção",
-    goal: "Chegue à diretoria.",
-    intro: "Última parada: a sala do Inspetor do Silêncio.",
-    win: "O recreio está de volta!",
     theme: "office",
     length: 88,
     start: 2,

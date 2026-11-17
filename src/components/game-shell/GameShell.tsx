@@ -276,6 +276,7 @@ export function GameShell({ slug }: { slug: string }) {
           return value * 0.3;
         };
         instance = mod.mount({
+          locale,
           parent: hostRef.current,
           keyboardTarget: stageRef.current,
           fonts,

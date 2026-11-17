@@ -140,7 +140,7 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
                 <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "lg", "self-start")}>
                   <PlayIcon className="size-7 text-ink" /> {copy.play}
                 </IntentLink>
-                <GameLanguageNote locale={locale} />
+                <GameLanguageNote locale={locale} translated={game.translated} />
                 <GameStats slug={game.slug} levels={game.levels} levelWord={game.levelWord} />
                 {isGameSlug(game.slug) ? <ChampionTicker slug={game.slug} levelWord={game.levelWord} /> : null}
               </div>

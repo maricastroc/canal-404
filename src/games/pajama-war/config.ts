@@ -1,13 +1,15 @@
+import { localized, type Localized } from "@/i18n/copy";
+
 export const W = 1920;
 export const H = 1080;
 
 export type KidId = "lia" | "nico" | "bia";
 export const KIDS: KidId[] = ["lia", "nico", "bia"];
 
-export const KID_INFO: Record<KidId, { name: string; title: string; color: number; css: string; pale: number; tint: number }> = {
-  lia: { name: "Lia", title: "A veloz", color: 0x3fae6a, css: "#3fae6a", pale: 0xfff3b0, tint: 0xd9f7e2 },
-  nico: { name: "Nico", title: "O atirador", color: 0x8a6fd6, css: "#8a6fd6", pale: 0xe2d8ff, tint: 0xe6ddff },
-  bia: { name: "Bia", title: "A resistente", color: 0xf06ba8, css: "#f06ba8", pale: 0xffd2e6, tint: 0xffdcec },
+export const KID_INFO: Record<KidId, { name: string; title: Localized<string>; color: number; css: string; pale: number; tint: number }> = {
+  lia: { name: "Lia", title: localized({ "pt-BR": "A veloz", en: "The fast one" }), color: 0x3fae6a, css: "#3fae6a", pale: 0xfff3b0, tint: 0xd9f7e2 },
+  nico: { name: "Nico", title: localized({ "pt-BR": "O atirador", en: "The thrower" }), color: 0x8a6fd6, css: "#8a6fd6", pale: 0xe2d8ff, tint: 0xe6ddff },
+  bia: { name: "Bia", title: localized({ "pt-BR": "A resistente", en: "The tough one" }), color: 0xf06ba8, css: "#f06ba8", pale: 0xffd2e6, tint: 0xffdcec },
 };
 
 export type KidStats = { speed: number; cooldown: number; regenDelay: number; regenEvery: number; bars: [number, number, number] };

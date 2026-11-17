@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { H, HP, KID_INFO, W, type KidId } from "../config";
+import type { PajamaCopy } from "../copy";
 import { INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 
 type Portrait = { kid: KidId; root: Phaser.GameObjects.Container; face: Phaser.GameObjects.Image; hearts: { off: Phaser.GameObjects.Image; on: Phaser.GameObjects.Image }[]; out: Phaser.GameObjects.Container; badge: Phaser.GameObjects.Container; hp: number; faceUntil: number };
@@ -36,6 +37,7 @@ export class PajamaHud {
     arenaTitle: string,
     kids: { kid: KidId; isPlayer: boolean }[],
     private reduced: boolean,
+    private text: PajamaCopy["hud"],
   ) {
     const tag = scene.add.container(150, 58).setAngle(-3);
     const tg = scene.add.graphics();
@@ -89,7 +91,7 @@ export class PajamaHud {
     bg.lineStyle(7, INK_HEX, 1);
     bg.strokeCircle(0, 0, 112);
     const pil = scene.add.image(0, -6, "pillow").setScale(1.05 / 1.25).setAngle(-12);
-    const lbl = cartoonText(scene, 0, 64, "JOGAR", { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.2 }).setOrigin(0.5);
+    const lbl = cartoonText(scene, 0, 64, text.throw, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.2 }).setOrigin(0.5);
     this.throwBtn = scene.add.container(W - 210, H - 200, [bg, pil, lbl]).setDepth(2005).setVisible(false);
 
     this.tipBg = scene.add.graphics();
@@ -160,7 +162,7 @@ export class PajamaHud {
       tg.fillRoundedRect(-44, 38, 88, 32, 9);
       tg.lineStyle(4, INK_HEX, 1);
       tg.strokeRoundedRect(-44, 38, 88, 32, 9);
-      const you = cartoonText(s, 0, 54, "VOCÊ", { size: 24, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+      const you = cartoonText(s, 0, 54, this.text.you, { size: 24, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
       parts.push(tg, you);
     }
     const bg = s.add.graphics();
@@ -175,7 +177,7 @@ export class PajamaHud {
     const outBg = s.add.graphics();
     outBg.fillStyle(0x140f26, 0.55);
     outBg.fillCircle(0, 0, 47);
-    const outTxt = cartoonText(s, 0, 0, "FORA", { size: 30, color: "#ef4f43", font: this.fonts.display, stroke: 0.2 }).setOrigin(0.5).setAngle(-14);
+    const outTxt = cartoonText(s, 0, 0, this.text.out, { size: 30, color: "#ef4f43", font: this.fonts.display, stroke: 0.2 }).setOrigin(0.5).setAngle(-14);
     const out = s.add.container(0, 0, [outBg, outTxt]).setVisible(false);
     parts.push(out, badge);
     const root = s.add.container(0, 0, parts);

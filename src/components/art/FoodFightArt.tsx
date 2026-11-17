@@ -1,3 +1,5 @@
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 
 const display = { fontFamily: "var(--font-luckiest)" };
@@ -143,7 +145,12 @@ function OurTable({ foods }: { foods: (Food | null)[] }) {
   );
 }
 
-function DuckButton({ held }: { held: boolean }) {
+const DUCK = localized({
+  "pt-BR": { idle: "ABAIXAR", held: "ABAIXADO" },
+  en: { idle: "DUCK", held: "DUCKING" },
+});
+
+function DuckButton({ held, locale }: { held: boolean; locale: Locale }) {
   const c = { x: 150, y: 938 };
   return (
     <g>
@@ -153,7 +160,7 @@ function DuckButton({ held }: { held: boolean }) {
         <path d="M0 -30 L0 26 M-24 4 L0 28 L24 4" />
       </g>
       <text x={c.x} y={c.y + (held ? 4 : 0) + 46} textAnchor="middle" fontSize={26} fill={P.ink} style={display}>
-        {held ? "ABAIXADO" : "ABAIXAR"}
+        {held ? DUCK[locale].held : DUCK[locale].idle}
       </text>
     </g>
   );
@@ -225,7 +232,7 @@ function AimPanel() {
   );
 }
 
-function DuckPanel() {
+function DuckPanel({ locale }: { locale: Locale }) {
   const pudding = { x: 470, y: 560 };
   const from = { x: FRONT.x - 70, y: FRONT.upY - 210 * FRONT.scale };
   return (
@@ -249,7 +256,7 @@ function DuckPanel() {
       <g transform={`translate(${MILA.x + 84} ${OUR_TABLE.y - 120}) rotate(18)`}>
         <path d="M0 -38 Q-14 -14 0 -6 Q14 -14 0 -38 Z" fill={P.sky} {...ink} strokeWidth={1.1 * U} />
       </g>
-      <DuckButton held />
+      <DuckButton held locale={locale} />
       <Finger x={222} y={1002} rotate={-56} />
     </Stage>
   );
@@ -280,7 +287,7 @@ function MilaArm({ hand }: { hand: Pt }) {
   );
 }
 
-function ReloadPanel() {
+function ReloadPanel({ locale }: { locale: Locale }) {
   return (
     <Stage>
       <g>
@@ -304,16 +311,16 @@ function ReloadPanel() {
       {sparkle(AMMO_X[4], AMMO_Y - 70, 24)}
       {sparkle(AMMO_X[3] - 4, AMMO_Y - 96, 16)}
       {sparkle(AMMO_X[5] + 8, AMMO_Y - 92, 14)}
-      <DuckButton held />
+      <DuckButton held locale={locale} />
       <Finger x={222} y={1002} rotate={-56} />
     </Stage>
   );
 }
 
-export function FoodFightHowToPanel({ step }: { step: 0 | 1 | 2 }) {
+export function FoodFightHowToPanel({ step, locale }: { step: 0 | 1 | 2; locale: Locale }) {
   if (step === 0) return <AimPanel />;
-  if (step === 1) return <DuckPanel />;
-  return <ReloadPanel />;
+  if (step === 1) return <DuckPanel locale={locale} />;
+  return <ReloadPanel locale={locale} />;
 }
 
 type CastMood = "intro" | "win" | "lose";

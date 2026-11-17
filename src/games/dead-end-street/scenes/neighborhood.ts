@@ -58,6 +58,7 @@ export class Cat {
     private fx: Fx,
     private reduced: boolean,
     private onHiss: () => void,
+    private hiss: string,
   ) {
     this.sprite = scene.add.image(CAT_SPOT.x, CAT_SPOT.y, "cat-sleep").setOrigin(0.5, 1).setDepth(4.5);
     this.zzz = cartoonText(scene, CAT_SPOT.x + 30, CAT_SPOT.y - 76, "z", { size: 34, color: "#fbf5e6", font: fonts.display, stroke: 0.2 })
@@ -96,7 +97,7 @@ export class Cat {
     this.zzz.setVisible(false);
     this.scene.tweens.killTweensOf(this.sprite);
     this.sprite.setScale(1).setTexture("cat-scared");
-    this.fx.word("FSST!", this.sprite.x + 20, this.sprite.y - 150, "#9df0dc", 50, true);
+    this.fx.word(this.hiss, this.sprite.x + 20, this.sprite.y - 150, "#9df0dc", 50, true);
     this.onHiss();
     if (this.reduced) {
       this.scene.tweens.add({
@@ -146,7 +147,7 @@ export class Cat {
   }
 }
 
-export function popLid(scene: Phaser.Scene, can: Phaser.Physics.Matter.Image, fx: Fx, reduced: boolean) {
+export function popLid(scene: Phaser.Scene, can: Phaser.Physics.Matter.Image, fx: Fx, reduced: boolean, word: string) {
   const body = can.body as MatterJS.BodyType;
   const angle = body.angle;
   const top = { x: body.position.x + Math.sin(angle) * 54, y: body.position.y - Math.cos(angle) * 54 };
@@ -154,7 +155,7 @@ export function popLid(scene: Phaser.Scene, can: Phaser.Physics.Matter.Image, fx
   const lid = scene.add.image(top.x, top.y, "lid").setDepth(6).setRotation(angle);
   const dir = top.x > W / 2 ? 1 : -1;
   fx.junk.forEach((e) => fx.burst(e, 2, top.x, top.y));
-  fx.word("CLANG!", top.x, top.y - 80, "#c3ccd8", 64, true);
+  fx.word(word, top.x, top.y - 80, "#c3ccd8", 64, true);
   if (reduced) {
     scene.tweens.add({ targets: lid, y: GROUND_Y - 12, x: top.x + dir * 90, duration: 420, ease: "Quad.easeIn" });
     return;
@@ -182,14 +183,14 @@ export function popLid(scene: Phaser.Scene, can: Phaser.Physics.Matter.Image, fx
   });
 }
 
-export function birdFlyOut(scene: Phaser.Scene, x: number, y: number, fx: Fx, reduced: boolean) {
+export function birdFlyOut(scene: Phaser.Scene, x: number, y: number, fx: Fx, reduced: boolean, word: string) {
   const bird = scene.add.image(x, y, "bird").setDepth(13).setScale(0.5);
   const flap = scene.time.addEvent({
     delay: 90,
     loop: true,
     callback: () => bird.setTexture(bird.texture.key === "bird" ? "bird-down" : "bird"),
   });
-  fx.word("PIU!", x + 60, y - 70, "#5cb9f0", 46, true);
+  fx.word(word, x + 60, y - 70, "#5cb9f0", 46, true);
   scene.tweens.add({
     targets: bird,
     x: x + (reduced ? 120 : 320),

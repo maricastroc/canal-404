@@ -22,7 +22,6 @@ export type ProjectileId = "shoe" | "balloon" | "tire" | "duck";
 
 export type ProjectileDef = {
   id: ProjectileId;
-  name: string;
   tex: string;
   shape: { type: "rectangle"; width: number; height: number } | { type: "circle"; radius: number };
   density: number;
@@ -30,13 +29,11 @@ export type ProjectileDef = {
   friction: number;
   frictionAir: number;
   material: "rubber" | "soft" | "water" | "squeaky";
-  tip: string;
 };
 
 export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
   shoe: {
     id: "shoe",
-    name: "Tênis velho",
     tex: "shoe",
     shape: { type: "rectangle", width: 74, height: 36 },
     density: 0.004,
@@ -44,11 +41,9 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     friction: 0.7,
     frictionAir: 0.004,
     material: "soft",
-    tip: "Confiável e fedido.",
   },
   balloon: {
     id: "balloon",
-    name: "Balão d'água",
     tex: "balloon",
     shape: { type: "circle", radius: 30 },
     density: 0.0022,
@@ -56,11 +51,9 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     friction: 0.4,
     frictionAir: 0.008,
     material: "water",
-    tip: "Estoura e empurra tudo em volta.",
   },
   tire: {
     id: "tire",
-    name: "Pneu de bicicleta",
     tex: "tire",
     shape: { type: "circle", radius: 37 },
     density: 0.009,
@@ -68,11 +61,9 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     friction: 0.9,
     frictionAir: 0.002,
     material: "rubber",
-    tip: "Pesado. Derruba pilhas inteiras.",
   },
   duck: {
     id: "duck",
-    name: "Pato de borracha",
     tex: "duck",
     shape: { type: "circle", radius: 29 },
     density: 0.0016,
@@ -80,7 +71,6 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     friction: 0.3,
     frictionAir: 0.004,
     material: "squeaky",
-    tip: "Quica em tudo. QUÉ!",
   },
 };
 
@@ -100,7 +90,9 @@ export type BodyDef = {
   material: "ceramic" | "wood" | "metal" | "rubber" | "plastic";
 };
 
-export type TargetDef = BodyDef & { points: number; name: string; shout: string; fem?: boolean; wave: number };
+export type TargetId = "gnome" | "flamingo" | "golden-gnome" | "mailbox" | "birdhouse";
+
+export type TargetDef = BodyDef & { id: TargetId; points: number; fem?: boolean; wave: number };
 
 export const TARGETS: TargetDef[] = [
   {
@@ -115,8 +107,6 @@ export const TARGETS: TargetDef[] = [
     chamfer: 8,
     material: "ceramic",
     points: 100,
-    name: "Gnomo de jardim",
-    shout: "MEU GNOMO!",
   },
   {
     id: "flamingo",
@@ -130,8 +120,6 @@ export const TARGETS: TargetDef[] = [
     chamfer: 6,
     material: "plastic",
     points: 150,
-    name: "Flamingo de plástico",
-    shout: "O FLAMINGO NÃO!",
   },
   {
     id: "golden-gnome",
@@ -145,8 +133,6 @@ export const TARGETS: TargetDef[] = [
     chamfer: 8,
     material: "ceramic",
     points: 300,
-    name: "Gnomo dourado",
-    shout: "O GNOMO DE OURO?!",
   },
   {
     id: "mailbox",
@@ -160,9 +146,7 @@ export const TARGETS: TargetDef[] = [
     chamfer: 6,
     material: "metal",
     points: 150,
-    name: "Caixa de correio",
     fem: true,
-    shout: "MINHAS CARTAS!",
   },
   {
     id: "birdhouse",
@@ -176,9 +160,7 @@ export const TARGETS: TargetDef[] = [
     chamfer: 4,
     material: "wood",
     points: 200,
-    name: "Casinha de passarinho",
     fem: true,
-    shout: "OS PASSARINHOS!",
   },
 ];
 
@@ -217,12 +199,10 @@ export const SCORE = {
   record: 2500,
 };
 
-export type WaveDef = { title: string; subtitle: string; arlindo?: string };
+export type WaveId = "warm-up" | "sharp-aim" | "up-high";
 
-export const WAVES: WaveDef[] = [
-  { title: "Aquecimento", subtitle: "Derrube o gnomo e o flamingo" },
-  { title: "Mira fina", subtitle: "O ouro está atrás das caixas", arlindo: "AGORA VOCÊS VÃO VER!" },
-  { title: "Lá no alto", subtitle: "A casinha fica no galho mais alto", arlindo: "ESSA NINGUÉM ALCANÇA!" },
-];
+export type WaveDef = { id: WaveId };
+
+export const WAVES: WaveDef[] = [{ id: "warm-up" }, { id: "sharp-aim" }, { id: "up-high" }];
 
 export const CAT_SPOT = { x: 606, y: 716 };

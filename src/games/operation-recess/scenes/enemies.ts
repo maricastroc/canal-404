@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import type { RecessCopy } from "../copy";
 import type { EnemyKind, EnemyStyle } from "../levels";
 import type { RecessSfx } from "../sounds";
 import type { RoomEvent } from "./scenery";
@@ -8,6 +9,7 @@ export type HeroView = { x: number; feet: number; top: number; grounded: boolean
 export type StageApi = {
   scene: Phaser.Scene;
   reduced: boolean;
+  words: RecessCopy["words"];
   sfx: (name: RecessSfx, volume?: number) => void;
   warn: (x: number, y: number, ms: number) => Phaser.GameObjects.Text;
   word: (text: string, x: number, y: number, color: string, size?: number) => void;
@@ -307,7 +309,7 @@ export class CommonMonitor extends Enemy {
       this.state = "dodge";
       this.until = t + 420;
       this.body.setVelocity(-this.facing * 440, -360);
-      this.api.word("OPA!", this.x, this.body.top - 50, "#fbf5e6", 36);
+      this.api.word(this.api.words.dodge, this.x, this.body.top - 50, "#fbf5e6", 36);
       this.api.sfx("jump", 0.5);
       return "dodge";
     }
@@ -347,7 +349,7 @@ export class CommonMonitor extends Enemy {
             this.faceHero(h);
             this.body.setVelocity(0, this.grounded ? -260 : this.body.velocity.y);
             this.tex("windup");
-            this.api.word("EI!", this.x, this.body.top - 50, "#ffc83d", 38);
+            this.api.word(this.api.words.hey, this.x, this.body.top - 50, "#ffc83d", 38);
           } else this.state = "chase";
           this.api.sfx("shout", 0.5);
           return;
@@ -370,7 +372,7 @@ export class CommonMonitor extends Enemy {
           this.faceHero(h, TURN_SLACK);
           if (!this.called) {
             this.called = true;
-            this.api.word("VEM!", this.x, this.body.top - 50, "#fbf5e6", 36);
+            this.api.word(this.api.words.come, this.x, this.body.top - 50, "#fbf5e6", 36);
             if (!this.api.reduced) this.api.scene.tweens.add({ targets: this, lift: 18, duration: 140, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
           }
         }
@@ -491,7 +493,7 @@ export class WhistleMonitor extends Enemy {
 
   protected onHurt(dir: number, t: number) {
     this.api.sfx("whistle", 0.35);
-    this.api.word("FIU!", this.x, this.body.top - 40, "#9df0dc", 34);
+    this.api.word(this.api.words.whistleHurt, this.x, this.body.top - 40, "#9df0dc", 34);
     this.state = "flee";
     this.until = t + 700;
     this.facing = dir;
@@ -513,7 +515,7 @@ export class WhistleMonitor extends Enemy {
         if (dist < 210 && t > this.hopReady && this.grounded && this.api.groundAt(this.x - this.facing * 190) && this.api.groundAt(this.x - this.facing * 90)) {
           this.hopReady = t + 2600;
           this.body.setVelocity(-this.facing * 420, -420);
-          this.api.word("EI!", this.x, this.body.top - 50, "#fbf5e6", 34);
+          this.api.word(this.api.words.hey, this.x, this.body.top - 50, "#fbf5e6", 34);
           this.api.sfx("jump", 0.5);
           this.nextShot = Math.min(this.nextShot, t + 500);
           return;
@@ -619,7 +621,7 @@ export class ShieldMonitor extends Enemy {
   protected onBlock(t: number) {
     this.api.sfx("block", 0.9);
     this.api.clang(this.x + this.facing * 62, this.body.top + 70);
-    this.api.word("TÓIM!", this.x + this.facing * 60, this.body.top - 30, "#cfe4ff", 38);
+    this.api.word(this.api.words.block, this.x + this.facing * 60, this.body.top - 30, "#cfe4ff", 38);
     if (!this.api.reduced) {
       this.lift = 0;
       this.api.scene.tweens.add({ targets: this.sprite, angle: -this.facing * 5, duration: 70, yoyo: true });
@@ -646,7 +648,7 @@ export class ShieldMonitor extends Enemy {
   protected onHurt(dir: number, t: number) {
     const fromBehind = dir === this.facing;
     if (!fromBehind) return;
-    this.api.word("HÃ?!", this.x, this.body.top - 50, "#fbf5e6", 36);
+    this.api.word(this.api.words.huh, this.x, this.body.top - 50, "#fbf5e6", 36);
     if (this.api.reduced) {
       this.facing = -dir;
       return;

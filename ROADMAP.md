@@ -100,5 +100,7 @@ Depends on the headless simulation and the backend.
 - [ ] Themed events (Halloween, festa junina) built on the daily mission.
 - [ ] Gamepad support.
 - [x] English version of the portal at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
-- [ ] English version of each game: Rua Sem Saída, Guerra do Pijama, Guerra de Lanche, Operação: Recreio, Laboratório de Péssimas Ideias and Férias Fora do Ar.
+- [x] English version of the action games: Rua Sem Saída, Guerra do Pijama, Guerra de Lanche and Operação: Recreio.
+- [ ] English version of Laboratório de Péssimas Ideias (including its spoken narration).
+- [ ] English version of Férias Fora do Ar (story, journal and map).
 - [ ] New shows.

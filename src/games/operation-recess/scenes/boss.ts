@@ -51,7 +51,7 @@ export class Inspector {
     this.sprite.setAngle(0);
     this.tex("blow");
     this.api.sfx("bigWhistle", 0.9);
-    this.api.word("PRIIIII!", this.x, this.body.top - 50, "#fbf5e6", 48);
+    this.api.word(this.api.words.bossWhistle, this.x, this.body.top - 50, "#fbf5e6", 48);
   }
 
   get x() {
@@ -128,7 +128,7 @@ export class Inspector {
           this.until = t + (this.introShort ? 520 : 1000);
           this.tex("blow");
           this.api.sfx("bigWhistle", 1);
-          this.api.word("SILÊNCIO!", this.x - 40, b.top - 70, "#f06ba8", this.introShort ? 52 : 68);
+          this.api.word(this.api.words.silence, this.x - 40, b.top - 70, "#f06ba8", this.introShort ? 52 : 68);
           this.api.room("whistle", -1);
           if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.sprite, scaleX: SCALE * 1.06, scaleY: SCALE * 0.96, duration: 140, yoyo: true, repeat: 1 });
           return;
@@ -185,7 +185,7 @@ export class Inspector {
         this.state = "tired";
         this.until = t + 1500;
         this.tex("hurt");
-        this.api.word("UFA...", this.x, b.top - 40, "#fbf5e6", 40);
+        this.api.word(this.api.words.phew, this.x, b.top - 40, "#fbf5e6", 40);
         return;
       case "stomp":
         if (t < this.until) return;
@@ -206,7 +206,7 @@ export class Inspector {
           this.tex("dizzy");
           this.api.sfx("crash", 1);
           this.api.burst(this.x + this.facing * 80, b.top + 60, 8, "spark");
-          this.api.word("BONC!", this.x + this.facing * 60, b.top - 20, "#ffc83d", 56);
+          this.api.word(this.api.words.bonk, this.x + this.facing * 60, b.top - 20, "#ffc83d", 56);
           this.api.room("crash", this.facing);
           if (!this.api.reduced) this.api.scene.cameras.main.shake(260, 0.012);
         }
@@ -235,7 +235,7 @@ export class Inspector {
         this.shock.setVisible(false);
         this.state = "stuck";
         this.until = t + 1500;
-        this.api.word("PRESA!", this.x + this.facing * 200, FLOOR_Y - 160, "#fbf5e6", 38);
+        this.api.word(this.api.words.stuck, this.x + this.facing * 200, FLOOR_Y - 160, "#fbf5e6", 38);
         return;
       case "tired":
       case "dizzy":
@@ -252,7 +252,7 @@ export class Inspector {
     if (!this.vulnerable) {
       this.api.sfx("block", 0.9);
       this.api.clang(this.x + Math.sign(fromX - this.x) * 70, this.body.top + 120);
-      this.api.word("TÓIM!", this.x + Math.sign(fromX - this.x) * 80, this.body.top + 40, "#cfe4ff", 40);
+      this.api.word(this.api.words.block, this.x + Math.sign(fromX - this.x) * 80, this.body.top + 40, "#cfe4ff", 40);
       return "block";
     }
     this.hp -= 1;

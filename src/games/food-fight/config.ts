@@ -37,13 +37,12 @@ export type RivalDef = {
   points: number;
   size: number;
   windup: number;
-  taunts: string[];
 };
 
 export const RIVALS: Record<RivalKind, RivalDef> = {
-  cap: { kind: "cap", name: "Garoto do boné", hp: 1, points: 100, size: 1, windup: 1, taunts: ["Pega!", "Lá vai!", "Ha!"] },
-  speedy: { kind: "speedy", name: "Pimentinha", hp: 1, points: 150, size: 0.9, windup: 0.7, taunts: ["Vupt!", "Hihi!", "Toma!"] },
-  big: { kind: "big", name: "Grandão", hp: 2, points: 300, size: 1.14, windup: 1.2, taunts: ["Vem!", "Hmpf!", "Pudim duplo!"] },
+  cap: { kind: "cap", name: "Garoto do boné", hp: 1, points: 100, size: 1, windup: 1 },
+  speedy: { kind: "speedy", name: "Pimentinha", hp: 1, points: 150, size: 0.9, windup: 0.7 },
+  big: { kind: "big", name: "Grandão", hp: 2, points: 300, size: 1.14, windup: 1.2 },
 };
 
 export type Phase = {
