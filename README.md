@@ -99,7 +99,7 @@ The suite is kept small on purpose ([decision 0007](docs/decisions/0007-essentia
 
 With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests: idempotent and concurrent submissions, personal bests and board order, hidden players, rate limits, retention, erasure when a player leaves, mission completion and settlement, and the API routes, including how they behave when the database is missing or down.
 
-`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game from its page and start, pause and resume it, open the room and every section from the navigation, check that progress and a Férias adventure survive a reload, play a game and use the menu on a phone, keep a game playable with the board down, and, with the backend, submit a replayed Laboratório run to the board and miss and then complete the day's mission.
+`npm run test:e2e` runs the end-to-end tests with Playwright in Chrome. Locally it reuses a dev server on port 4404 (or starts one there), so it never runs against another project on the usual port 3000; set `PORT` to test another server. They open every game from its page and start, pause and resume it, open the room and every section from the navigation, check that progress and a Férias adventure survive a reload, play a game and use the menu on a phone, keep a game playable with the board down, and, with the backend, submit a replayed Laboratório run to the board and miss and then complete the day's mission. The backend tests need Postgres (`npm run db:up`): without it they are skipped locally, so a failure there only shows up in CI.
 
 `npm run typecheck` and `npm run lint` complete the checks. GitHub Actions runs all of them on every push to `main` and on pull requests; there the end-to-end tests run against a production build.
 
@@ -173,12 +173,12 @@ public/assets/<slug>/    SVG art for each game
 
 ## Adding a game
 
-Games are independent from the portal. Each one exports a `GameModule` with `mount(ctx)` and receives only what it needs from the portal (parent element, fonts, audio, current high score and progress/event callbacks).
+Games are independent from the portal. Each one exports a `GameModule` with `mount(ctx)` and receives only what it needs from the portal (the page's language, parent element, fonts, audio, current high score and progress/event callbacks).
 
-1. Create `src/games/<slug>/` with an `index.ts` that exports `{ mount }` following `src/games/types.ts`.
+1. Create `src/games/<slug>/` with an `index.ts` that exports `{ mount }` following `src/games/types.ts`. Every text the player sees or hears, including what the game sends to the shell (result, breakdown, announcements), goes in `copy.ts` in pt-BR and English with `localized`, picked from `ctx.locale` ([decision 0008](docs/decisions/0008-english-version.md)).
 2. Register the metadata in `src/games/registry.ts`: structure in `BASE` (category, levels, `status: "available"`) and the text (title, controls, how-to, tips) in both languages in `TEXT`.
 3. Add the loader in `src/games/loaders.ts`.
-4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`.
+4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`, with the title in both languages (`GameTitleLogos.tsx`). Labels in the how-to art that copy the game's buttons follow the page's language too.
 
 The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements, screen-reader announcements and the scoreboard. To compete, a game reports integer `stats` in its result and gets a rule in `src/lib/competition/rules.ts` that recomputes its score from them. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`. A game gets daily missions by adding entries to `src/lib/missions/catalog.ts` with goals over stats its rule already checks, plus a proof in `catalog.test.ts` ([decision 0006](docs/decisions/0006-daily-missions.md)).
 
