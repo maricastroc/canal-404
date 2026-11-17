@@ -52,7 +52,7 @@ function LabCast({ mood }: { mood: CastMood }) {
 }
 
 function RecessCast({ mood }: { mood: CastMood }) {
-  return <OperationRecessCast mood={mood} className={mood === "intro" ? "w-56 md:w-72" : "w-44 sm:w-52 sm:shorter:w-40"} />;
+  return <OperationRecessCast mood={mood} className={mood === "intro" ? "w-56 md:w-72" : "w-36 sm:w-44 sm:shorter:w-36"} />;
 }
 
 function CanteenCast({ mood }: { mood: CastMood }) {

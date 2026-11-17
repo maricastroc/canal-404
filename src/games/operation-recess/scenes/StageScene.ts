@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
+import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
 import { LEVELS, type LevelDef } from "../levels";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
@@ -725,7 +725,7 @@ export class StageScene extends Phaser.Scene {
     if (!this.level.exit) return;
     const ex = cx(this.level.exit.col) + TILE / 2;
     const name = this.levelIndex === 0 ? "deco" : "lina";
-    const kid = this.add.image(ex, FLOOR_Y, `kid-${name}-a`).setOrigin(0.5, 1).setDepth(3.5).setScale(0.95);
+    const kid = this.add.image(ex, FLOOR_Y, `kid-${name}-a`).setOrigin(0.5, 1).setDepth(3.5).setScale(KID_SCALE);
     this.word("VAMOS!", ex + 60, FLOOR_Y - 270, "#ffc83d", 40);
     this.time.addEvent({ delay: 200, repeat: 6, callback: () => kid.setTexture(kid.texture.key.endsWith("-a") ? `kid-${name}-b` : `kid-${name}-a`) });
     if (this.ctx.reducedMotion) return;
@@ -753,7 +753,7 @@ export class StageScene extends Phaser.Scene {
     ];
     kids.forEach(([name, x], i) => {
       const fromX = x < left + W / 2 ? left - 120 : left + W + 120;
-      const img = this.add.image(fromX, FLOOR_Y, `kid-${name}-a`).setOrigin(0.5, 1).setDepth(14).setScale(0.95);
+      const img = this.add.image(fromX, FLOOR_Y, `kid-${name}-a`).setOrigin(0.5, 1).setDepth(14).setScale(KID_SCALE * ARENA_GROW);
       if (reduced) img.setX(x);
       else this.tweens.add({ targets: img, x, duration: 900, delay: i * 180, ease: "Quad.easeOut" });
       this.time.addEvent({ delay: 220, repeat: 14, callback: () => img.setTexture(img.texture.key.endsWith("-a") ? `kid-${name}-b` : `kid-${name}-a`) });
@@ -788,7 +788,7 @@ export class StageScene extends Phaser.Scene {
     const seen = Boolean(this.registry.get("bossSeen"));
     this.registry.set("bossSeen", true);
     this.boss!.intro(this.t, seen);
-    this.hero.grow(1.2, 700);
+    this.hero.grow(ARENA_GROW, 700);
     if (seen) this.hud.flash("INSPETOR DO SILÊNCIO", "#f06ba8", 700);
     else this.hud.flash("INSPETOR DO SILÊNCIO", "#f06ba8", 1300, "Ataque quando ele ficar tonto ou cansado.");
     this.announce("Chefe: Inspetor do Silêncio. Desvie dos ataques e acerte quando ele ficar tonto, cansado ou com a prancheta presa.");
