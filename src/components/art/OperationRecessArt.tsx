@@ -279,29 +279,6 @@ function Shout({ x, y, text, size, color, rotate = 0 }: { x: number; y: number; 
   );
 }
 
-function Confetti() {
-  const bits: [number, number, number, string][] = [
-    [34, 40, 20, P.tomato],
-    [70, 18, -30, P.sun],
-    [112, 46, 50, P.mint],
-    [150, 12, -10, P.bubblegum],
-    [196, 34, 35, P.sky],
-    [236, 16, -45, P.sun],
-    [268, 48, 15, P.tomato],
-    [92, 78, -60, P.sky],
-    [214, 74, 70, P.mint],
-    [20, 88, 40, P.bubblegum],
-    [282, 96, -20, P.sun],
-  ];
-  return (
-    <g>
-      {bits.map(([x, y, a, c]) => (
-        <rect key={`${x}-${y}`} x={x - 5} y={y - 3} width={10} height={6} rx={1.5} fill={c} stroke={P.ink} strokeWidth={1.2} transform={`rotate(${a} ${x} ${y})`} />
-      ))}
-    </g>
-  );
-}
-
 function CastIntro() {
   const bruno: At = { x: 92, feet: FLOOR + 6, h: 134 };
   const mon: At = { x: 230, feet: FLOOR + 6, h: 150, flip: true };
@@ -318,42 +295,53 @@ function CastIntro() {
   );
 }
 
+function Burst({ cx, cy, r, fill }: { cx: number; cy: number; r: number; fill: string }) {
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={r} fill={fill} stroke={P.ink} strokeWidth={CAST_LINE} />
+      <path d={`M${cx} ${cy - r - 6} L${cx} ${cy - r - 13} M${cx + r * 0.78} ${cy - r * 0.78 - 4} L${cx + r * 0.78 + 6} ${cy - r * 0.78 - 10} M${cx - r * 0.78} ${cy - r * 0.78 - 4} L${cx - r * 0.78 - 6} ${cy - r * 0.78 - 10}`} stroke={P.ink} strokeWidth={CAST_LINE} strokeLinecap="round" />
+    </g>
+  );
+}
+
+function Bit({ x, y, a, c }: { x: number; y: number; a: number; c: string }) {
+  return <rect x={x - 6} y={y - 3.5} width={12} height={7} rx={1.8} fill={c} stroke={P.ink} strokeWidth={1.6} transform={`rotate(${a} ${x} ${y})`} />;
+}
+
 function CastWin() {
-  const hop = 12;
-  const bruno: At = { x: 150, feet: FLOOR + 6 - hop, h: 140 };
-  const deco: At = { x: 56, feet: FLOOR + 6, h: 124 };
-  const lina: At = { x: 248, feet: FLOOR + 6, h: 120 };
+  const hop = 16;
+  const bruno: At = { x: 100, feet: 170 - hop, h: 150 };
   return (
     <>
-      <Prop name="lockers-a" x={150} bottom={FLOOR + 4} h={98} w0={342} h0={244} />
-      <Confetti />
-      <CastFloor />
-      <Figure kind="kid" name="kid-deco-a" at={deco} />
-      <Figure kind="kid" name="kid-lina-a" at={lina} />
-      <Figure kind="hero" name="hero-cheer" at={bruno} lift={hop} />
-      <Shout x={150} y={34} text="RECREIO!" size={22} color={P.sun} rotate={-4} />
+      <Burst cx={100} cy={94} r={80} fill={P.sunPale} />
+      <ellipse cx={100} cy={172} rx={36} ry={6} fill={P.ink} opacity={0.2} />
+      <BrunoFigure pose="jump" face="thrill" x={bruno.x} feet={bruno.feet} h={bruno.h} />
+      <Prop name="sticker" x={28} bottom={92} h={28} w0={64} h0={64} />
+      <Prop name="sticker" x={176} bottom={140} h={20} w0={64} h0={64} />
+      <Bit x={22} y={128} a={30} c={P.tomato} />
+      <Bit x={180} y={70} a={-35} c={P.mint} />
+      <Bit x={160} y={24} a={20} c={P.bubblegum} />
+      <Bit x={40} y={30} a={-20} c={P.sky} />
     </>
   );
 }
 
 function CastLose() {
-  const bruno: At = { x: 92, feet: FLOOR + 6, h: 130 };
-  const mon: At = { x: 222, feet: FLOOR + 6, h: 152, flip: true };
+  const bruno: At = { x: 100, feet: 172, h: 146 };
   return (
     <>
-      <Prop name="lockers-a" x={150} bottom={FLOOR + 4} h={98} w0={342} h0={244} />
-      <CastFloor />
-      <Figure kind="mon" name="mon-common-attack" at={mon} />
-      <Shout x={238} y={36} text="HAHA!" size={20} color={P.white} rotate={6} />
+      <Burst cx={100} cy={94} r={80} fill="#ffc9c2" />
       <Figure kind="hero" name="hero-hurt" at={bruno} />
-      <Stars x={bruno.x + 6} y={bruno.feet - bruno.h - 4} s={1.6} />
+      <Prop name="wave" x={180} bottom={130} h={74} w0={90} h0={120} flip />
+      <Shout x={166} y={40} text="PRIII!" size={22} color={P.tomato} rotate={10} />
+      <Stars x={112} y={24} s={1.9} />
     </>
   );
 }
 
 export function OperationRecessCast({ mood, className }: { mood: "intro" | "win" | "lose"; className?: string }) {
   return (
-    <svg viewBox="0 0 300 210" className={className} aria-hidden overflow="visible">
+    <svg viewBox={mood === "intro" ? "0 0 300 210" : "0 0 200 190"} className={className} aria-hidden overflow="visible">
       {mood === "intro" ? <CastIntro /> : mood === "win" ? <CastWin /> : <CastLose />}
     </svg>
   );
