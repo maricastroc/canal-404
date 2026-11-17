@@ -1,3 +1,6 @@
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
+
 export const NICKNAME_MIN = 3;
 export const NICKNAME_MAX = 16;
 
@@ -5,14 +8,30 @@ export type NicknameProblem = "short" | "long" | "chars" | "digits" | "blocked" 
 
 export type NicknameCheck = { ok: true; nickname: string; key: string } | { ok: false; problem: NicknameProblem };
 
-export const NICKNAME_PROBLEMS: Record<NicknameProblem, string> = {
-  short: `Use pelo menos ${NICKNAME_MIN} letras.`,
-  long: `Use no máximo ${NICKNAME_MAX} caracteres.`,
-  chars: "Use letras, números, espaço, hífen ou sublinhado.",
-  digits: "Esse apelido parece um número de telefone ou documento. Escolha outro.",
-  blocked: "Esse apelido não passa na censura do canal. Escolha outro.",
-  reserved: "Esse apelido é da equipe do canal. Escolha outro.",
-};
+export const NICKNAME_PROBLEM_TEXT = localized<Record<NicknameProblem, string>>({
+  "pt-BR": {
+    short: `Use pelo menos ${NICKNAME_MIN} letras.`,
+    long: `Use no máximo ${NICKNAME_MAX} caracteres.`,
+    chars: "Use letras, números, espaço, hífen ou sublinhado.",
+    digits: "Esse apelido parece um número de telefone ou documento. Escolha outro.",
+    blocked: "Esse apelido não passa na censura do canal. Escolha outro.",
+    reserved: "Esse apelido é da equipe do canal. Escolha outro.",
+  },
+  en: {
+    short: `Use at least ${NICKNAME_MIN} letters.`,
+    long: `Use ${NICKNAME_MAX} characters at most.`,
+    chars: "Use letters, numbers, spaces, hyphens or underscores.",
+    digits: "That nickname looks like a phone or ID number. Pick another one.",
+    blocked: "That nickname doesn't get past the channel's censors. Pick another one.",
+    reserved: "That nickname belongs to the channel staff. Pick another one.",
+  },
+});
+
+export const NICKNAME_PROBLEMS: Record<NicknameProblem, string> = NICKNAME_PROBLEM_TEXT["pt-BR"];
+
+export function isNicknameProblem(value: unknown): value is NicknameProblem {
+  return typeof value === "string" && Object.keys(NICKNAME_PROBLEM_TEXT["pt-BR"]).includes(value);
+}
 
 const ALLOWED = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9 _-]+$/;
 const HAS_LETTER = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
@@ -105,15 +124,28 @@ export function checkNickname(raw: unknown): NicknameCheck {
   return { ok: true, nickname, key: nicknameKey(nickname) };
 }
 
-const FIRST = ["Pato", "Gnomo", "Pudim", "Chiado", "Rolimã", "Pixel", "Sinal", "Controle", "Travesseiro", "Cartucho", "Fita", "Antena", "Apito", "Lanche", "Bolinha", "Mola"];
-const SECOND = ["Veloz", "Dourado", "Maluco", "Turbo", "Noturno", "Fora do Ar", "Saltitante", "Zapeador", "Teimoso", "Elétrico", "Sem Sinal", "Furioso", "Distraído", "Valente"];
+const SUGGESTIONS = localized<{ first: string[]; second: string[]; join: (a: string, b: string) => string; fallback: string }>({
+  "pt-BR": {
+    first: ["Pato", "Gnomo", "Pudim", "Chiado", "Rolimã", "Pixel", "Sinal", "Controle", "Travesseiro", "Cartucho", "Fita", "Antena", "Apito", "Lanche", "Bolinha", "Mola"],
+    second: ["Veloz", "Dourado", "Maluco", "Turbo", "Noturno", "Fora do Ar", "Saltitante", "Zapeador", "Teimoso", "Elétrico", "Sem Sinal", "Furioso", "Distraído", "Valente"],
+    join: (a, b) => `${a} ${b}`,
+    fallback: "Pato Veloz",
+  },
+  en: {
+    first: ["Duck", "Gnome", "Pudding", "Joystick", "Soapbox", "Pixel", "Signal", "Remote", "Pillow", "Cartridge", "Tape", "Antenna", "Whistle", "Snack", "Ball", "Spring"],
+    second: ["Speedy", "Golden", "Wacky", "Turbo", "Midnight", "Off-Air", "Bouncy", "Zappy", "Stubborn", "Electric", "Fuzzy", "Furious", "Spacey", "Brave"],
+    join: (a, b) => `${b} ${a}`,
+    fallback: "Speedy Duck",
+  },
+});
 
-export function suggestNickname(random: () => number = Math.random) {
+export function suggestNickname(random: () => number, locale: Locale) {
+  const { first, second, join, fallback } = SUGGESTIONS[locale];
   for (let i = 0; i < 20; i += 1) {
-    const a = FIRST[Math.floor(random() * FIRST.length)];
-    const b = SECOND[Math.floor(random() * SECOND.length)];
-    const candidate = `${a} ${b}`;
+    const a = first[Math.floor(random() * first.length)];
+    const b = second[Math.floor(random() * second.length)];
+    const candidate = join(a, b);
     if (candidate.length <= NICKNAME_MAX) return candidate;
   }
-  return "Pato Veloz";
+  return fallback;
 }

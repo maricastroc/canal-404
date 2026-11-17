@@ -3,6 +3,8 @@
 import "./street-ad.css";
 import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import { useTimeline } from "./broadcast";
 import { Outlined, VhsOverlay, washed, type TapeCue, type TapeProgram } from "./vhs";
@@ -28,6 +30,33 @@ const MARKS = AD_FRAMES.map((frame) => frame.at);
 const SHOE = { launch: 240, flight: 520, hit: 240 + 520 * 0.75 };
 const BOING_AT = AD_FRAMES[1].at + SHOE.hit;
 const CALL_AT = AD_FRAMES[4].at + 520;
+
+const COPY = localized({
+  "pt-BR": {
+    bored: ["CANSADO DE", "BRINCAR NA", "CALÇADA?"],
+    street: ["AGORA A RUA", "É SUA!"],
+    boing: "BOING!",
+    pow: "POW!",
+    gnome: "MEU GNOMO!",
+    wreck: "DERRUBE TUDO!",
+    order: "PEÇA JÁ!*",
+    fine: "*Peça pra sua mãe. Estilingue vendido separadamente.",
+    play: "JOGUE JÁ!",
+    fresh: "NOVO!",
+  },
+  en: {
+    bored: ["TIRED OF", "PLAYING ON THE", "SIDEWALK?"],
+    street: ["NOW THE STREET", "IS YOURS!"],
+    boing: "BOING!",
+    pow: "POW!",
+    gnome: "MY GNOME!",
+    wreck: "WRECK IT ALL!",
+    order: "CALL NOW!*",
+    fine: "*Ask your mom first. Slingshot sold separately.",
+    play: "PLAY NOW!",
+    fresh: "NEW!",
+  },
+});
 
 const ENTER: Record<Enter, string> = {
   punch: "ad-punch 260ms ease-out",
@@ -83,21 +112,22 @@ function Scene({ children }: { children: ReactNode }) {
 }
 
 function BoredFrame({ t }: { t: number }) {
+  const { bored } = useCopy(COPY);
   return (
     <Scene>
       <Slam t={t} at={0}>
         <Outlined x={147} y={78} size={31} fill={P.white}>
-          CANSADO DE
+          {bored[0]}
         </Outlined>
       </Slam>
       <Slam t={t} at={110}>
         <Outlined x={147} y={115} size={27} fill={P.sunPale}>
-          BRINCAR NA
+          {bored[1]}
         </Outlined>
       </Slam>
       <Slam t={t} at={220}>
         <Outlined x={147} y={156} size={36} fill={P.white} stroke={8}>
-          CALÇADA?
+          {bored[2]}
         </Outlined>
       </Slam>
     </Scene>
@@ -105,17 +135,18 @@ function BoredFrame({ t }: { t: number }) {
 }
 
 function StreetFrame({ t }: { t: number }) {
+  const copy = useCopy(COPY);
   return (
     <>
       <Scene>
         <Slam t={t} at={0}>
           <Outlined x={147} y={62} size={28} fill={P.white}>
-            AGORA A RUA
+            {copy.street[0]}
           </Outlined>
         </Slam>
         <Slam t={t} at={150}>
           <Outlined x={150} y={106} size={44} fill={P.sun} stroke={9}>
-            É SUA!
+            {copy.street[1]}
           </Outlined>
         </Slam>
         <Pop t={t} at={60} origin="50% 100%">
@@ -127,7 +158,7 @@ function StreetFrame({ t }: { t: number }) {
       </Scene>
       <div className="absolute right-[3%] top-[51%] rotate-12">
         <p className="border-[3px] border-ink bg-sun px-[0.45em] py-[0.1em] font-display text-[max(10px,9.5cqw)] leading-none text-ink shadow-[0.1em_0.1em_0_0_var(--color-ink)]" style={{ animation: play("ad-pop", 340, t, SHOE.hit) }}>
-          BOING!
+          {copy.boing}
         </p>
       </div>
     </>
@@ -135,6 +166,7 @@ function StreetFrame({ t }: { t: number }) {
 }
 
 function YardFrame({ t }: { t: number }) {
+  const copy = useCopy(COPY);
   return (
     <Scene>
       <g style={{ animation: play("ad-rise", 300, t, 760) }}>
@@ -156,18 +188,18 @@ function YardFrame({ t }: { t: number }) {
       <Pop t={t} at={470}>
         <Burst x={128} y={132} r={24} fill={P.sun} />
         <text x={128} y={137} textAnchor="middle" fontSize="13" fill={P.ink} style={{ fontFamily: "var(--font-luckiest)" }}>
-          POW!
+          {copy.pow}
         </text>
       </Pop>
       <Pop t={t} at={930} origin="90% 100%">
         <path d="M114 72 Q114 66 120 66 L206 66 Q212 66 212 72 L212 90 Q212 96 206 96 L204 96 L218 110 L190 96 L120 96 Q114 96 114 90 Z" fill={P.white} stroke={P.ink} strokeWidth="3" strokeLinejoin="round" />
         <text x={163} y={87} textAnchor="middle" fontSize="16" fill={P.tomatoDeep} style={{ fontFamily: "var(--font-luckiest)" }}>
-          MEU GNOMO!
+          {copy.gnome}
         </text>
       </Pop>
       <Slam t={t} at={0}>
         <Outlined x={147} y={56} size={30} fill={P.white}>
-          DERRUBE TUDO!
+          {copy.wreck}
         </Outlined>
       </Slam>
     </Scene>
@@ -175,12 +207,13 @@ function YardFrame({ t }: { t: number }) {
 }
 
 function OrderFrame({ t }: { t: number }) {
+  const copy = useCopy(COPY);
   return (
     <>
       <Scene>
         <Slam t={t} at={0}>
           <Outlined x={147} y={86} size={50} fill={P.sun} stroke={9}>
-            PEÇA JÁ!*
+            {copy.order}
           </Outlined>
         </Slam>
         {["shoe", "balloon", "tire", "duck"].map((name, i) => (
@@ -190,13 +223,14 @@ function OrderFrame({ t }: { t: number }) {
         ))}
       </Scene>
       <p className="absolute inset-x-[9%] top-[41%] text-center font-hand text-[max(7px,5.4cqw)] leading-tight text-cream" style={{ animation: play("ad-fade-up", 260, t, 320) }}>
-        *Peça pra sua mãe. Estilingue vendido separadamente.
+        {copy.fine}
       </p>
     </>
   );
 }
 
 function CallFrame({ t }: { t: number }) {
+  const copy = useCopy(COPY);
   const Logo = GAME_LOGOS["dead-end-street"];
   return (
     <>
@@ -209,7 +243,7 @@ function CallFrame({ t }: { t: number }) {
         </Pop>
         <Slam t={t} at={520}>
           <Outlined x={147} y={162} size={38} fill={P.sun} stroke={8}>
-            JOGUE JÁ!
+            {copy.play}
           </Outlined>
         </Slam>
         <g style={{ opacity: 0, animation: `${play("ad-fade-up", 160, t, 820)}, ad-nudge 0.6s ease-in-out ${980 - t}ms infinite` }}>
@@ -230,7 +264,7 @@ function CallFrame({ t }: { t: number }) {
             <Burst x={0} y={0} r={46} fill={P.tomato} />
           </g>
           <Outlined x={0} y={8} size={22} fill={P.cream} stroke={6}>
-            NOVO!
+            {copy.fresh}
           </Outlined>
         </svg>
       </div>
@@ -276,7 +310,7 @@ function StreetAdScreen() {
 
 export const streetAdCues: TapeCue[] = [
   { at: BOING_AT, sound: "boing" },
-  { at: CALL_AT, mascot: { expression: "excited", line: "Nem precisa pedir pra mãe. É só clicar em Jogar agora!" } },
+  { at: CALL_AT, mascot: { expression: "excited", line: localized({ "pt-BR": "Nem precisa pedir pra mãe. É só clicar em Jogar agora!", en: "No need to ask your mom. Just click Play now!" }) } },
 ];
 
 export const streetAdTape: TapeProgram = { Screen: StreetAdScreen, loop: AD_LOOP, cues: streetAdCues };

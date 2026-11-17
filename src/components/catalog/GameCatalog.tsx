@@ -2,9 +2,17 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { countOf } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
-import { CATEGORY_LABELS, GAMES, type GameCategory } from "@/games/registry";
+import { CATEGORY_LABELS, gamesIn, type GameCategory } from "@/games/registry";
 import { GameCard } from "./GameCard";
+
+const COPY = localized({
+  "pt-BR": { filter: "Filtrar jogos por categoria", all: "Todos", found: ["jogo encontrado", "jogos encontrados"] as [string, string] },
+  en: { filter: "Filter games by category", all: "All", found: ["game found", "games found"] },
+});
 
 type Filter = "all" | GameCategory;
 
@@ -19,16 +27,19 @@ const FILTER_TONES: Record<Filter, string> = {
 export function GameCatalog() {
   const [filter, setFilter] = useState<Filter>("all");
   const { play, hover } = useSound();
-  const categories = Array.from(new Set(GAMES.map((g) => g.category)));
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const games = gamesIn(locale);
+  const categories = Array.from(new Set(games.map((g) => g.category)));
   const filters: Filter[] = ["all", ...categories];
-  const visible = GAMES.filter((g) => filter === "all" || g.category === filter);
+  const visible = games.filter((g) => filter === "all" || g.category === filter);
 
   return (
     <div>
-      <div role="group" aria-label="Filtrar jogos por categoria" className="flex flex-wrap justify-center gap-2.5">
+      <div role="group" aria-label={copy.filter} className="flex flex-wrap justify-center gap-2.5">
         {filters.map((f) => {
           const active = f === filter;
-          const count = f === "all" ? GAMES.length : GAMES.filter((g) => g.category === f).length;
+          const count = f === "all" ? games.length : games.filter((g) => g.category === f).length;
           return (
             <button
               key={f}
@@ -43,14 +54,14 @@ export function GameCatalog() {
                 active ? `${FILTER_TONES[f]} -rotate-2` : "bg-cream-2 hover:bg-cream"
               }`}
             >
-              {f === "all" ? "Todos" : CATEGORY_LABELS[f]}
+              {f === "all" ? copy.all : CATEGORY_LABELS[locale][f]}
               <span className="ml-1.5 text-xs opacity-70">({count})</span>
             </button>
           );
         })}
       </div>
       <p className="sr-only" aria-live="polite">
-        {visible.length} {visible.length === 1 ? "jogo encontrado" : "jogos encontrados"}
+        {countOf(visible.length, copy.found, locale)}
       </p>
       <ul className="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
         <AnimatePresence mode="popLayout" initial={false}>

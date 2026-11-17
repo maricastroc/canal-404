@@ -1,9 +1,12 @@
 import type React from "react";
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 import { BrunoFigure, type BrunoFace, type BrunoPose } from "./BrunoFigure";
 
 const display = { fontFamily: "var(--font-luckiest)" };
 const ART = "/assets/operation-recess";
+const HIT = localized({ "pt-BR": "PÁ!", en: "POW!" });
 
 const C = {
   ceiling: "#3f3170",
@@ -152,7 +155,7 @@ function RunPanel() {
   );
 }
 
-function AttackPanel() {
+function AttackPanel({ locale }: { locale: Locale }) {
   const bruno: At = { x: 66, feet: 122, h: 66 };
   const mon: At = { x: 146, feet: 122, h: 86 };
   const s = bruno.h / REF.hero.tall;
@@ -171,7 +174,7 @@ function AttackPanel() {
       <Speed d={`M${mon.x + 30} ${mon.feet - 70} L${mon.x + 40} ${mon.feet - 74} M${mon.x + 32} ${mon.feet - 58} L${mon.x + 44} ${mon.feet - 58}`} w={1.4} />
       <g style={display} transform={`translate(${tip.x + 8} ${tip.y - 22}) rotate(-10)`}>
         <text textAnchor="middle" fontSize="12" fill={P.sun} stroke={P.ink} strokeWidth="3.4" paintOrder="stroke" strokeLinejoin="round">
-          PÁ!
+          {HIT[locale]}
         </text>
       </g>
     </Panel>
@@ -196,9 +199,9 @@ function AdvancePanel() {
   );
 }
 
-export function OperationRecessHowToPanel({ step }: { step: 0 | 1 | 2 }) {
+export function OperationRecessHowToPanel({ step, locale }: { step: 0 | 1 | 2; locale: Locale }) {
   if (step === 0) return <RunPanel />;
-  if (step === 1) return <AttackPanel />;
+  if (step === 1) return <AttackPanel locale={locale} />;
   return <AdvancePanel />;
 }
 

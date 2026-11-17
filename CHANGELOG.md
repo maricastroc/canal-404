@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Portal em inglês
+- **English at `/en`.** Every page of the portal has an English version under `/en` (`/en/games`, `/en/mission`, `/en/play/food-fight`...). Portuguese URLs did not change, and `/pt-BR/...` redirects to them. A language switch next to the sound button in the navigation reloads the same page in the other language.
+- Translated: navigation and footer, the broadcast room (mascot lines, TV channels, tapes, the karaoke song), the catalog and game pages (titles, how-to, controls, tips), the game shell (intro, pause, loading and results), characters, Missão 404 do Dia (missions, boards, history, stamps), the record arcade, nickname and membership card, extras (posters, music, achievements, secrets), the about page, errors and 404, page titles and share images.
+- The games themselves are still in Portuguese. English game pages say so, and text that comes from inside a game (result breakdown, level titles in the canvas) shows in Portuguese until that game is translated.
+- Numbers, dates and positions follow the page's language (1st, 2nd; 1,234; Monday, November 17). The mission still turns at midnight in Fortaleza; English pages call it midnight in Brazil (UTC−3).
+- Search engines get `hreflang` alternates and a sitemap with both languages. Scores, saves, the scoreboard API and the stored missions did not change.
+
 ### Operação: Recreio: guarda destravado e obstáculos que se explicam
 - **No more shaking guard.** A monitor chasing Bruno turned toward him on every frame. With Bruno standing on the monkey bars or a desk right above it, it overshot by a couple of pixels and turned back forever, shaking in place. Monitors now hold still under Bruno until he comes down, need a small margin before turning, and pause briefly when a patrol hits a wall. The monitor with the STOP sign no longer paces back and forth under him either.
 - **Hints on the obstacle.** The hint balloon now points at the obstacle itself instead of floating over Bruno, appears only once the obstacle is on screen, and goes away once you pass it or after 5 seconds. Before, the balloon never went away in the yard and the office.

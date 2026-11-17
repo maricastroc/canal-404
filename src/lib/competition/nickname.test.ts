@@ -39,6 +39,6 @@ describe("nickname helpers", () => {
       seed = (seed * 16807) % 2147483647;
       return seed / 2147483647;
     };
-    for (let i = 0; i < 200; i += 1) expect(checkNickname(suggestNickname(random))).toMatchObject({ ok: true });
+    for (let i = 0; i < 200; i += 1) expect(checkNickname(suggestNickname(random, "pt-BR"))).toMatchObject({ ok: true });
   });
 });

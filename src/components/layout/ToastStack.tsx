@@ -1,17 +1,43 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/i18n/Link";
+import { useLocale, useLocalPathname } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useEffect, useRef } from "react";
 import { useSound } from "@/lib/audio/hooks";
 import { useToasts } from "@/lib/progress/hooks";
-import { dismissToast, type Toast } from "@/lib/progress/store";
+import { dismissToast, type Toast, type ToastText } from "@/lib/progress/store";
 import { StarBadge, KeyholeBadge } from "@/components/art/Badges";
+
+const COPY = localized({
+  "pt-BR": {
+    secretSr: "Segredo encontrado:",
+    achievementSr: "Conquista desbloqueada:",
+    secretStamp: "Segredo encontrado!",
+    achievementStamp: "Conquista desbloqueada!",
+    seeSecrets: "Ver segredos",
+    seeAchievements: "Ver conquistas",
+    close: "Fechar aviso",
+  },
+  en: {
+    secretSr: "Secret found:",
+    achievementSr: "Achievement unlocked:",
+    secretStamp: "Secret found!",
+    achievementStamp: "Achievement unlocked!",
+    seeSecrets: "See secrets",
+    seeAchievements: "See achievements",
+    close: "Close notification",
+  },
+});
 
 function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
   const { play } = useSound();
   const played = useRef(false);
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const text = (value: ToastText) => (typeof value === "string" ? value : value[locale]);
+  const title = text(toast.title);
 
   useEffect(() => {
     if (!played.current) {
@@ -35,8 +61,8 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
         className="flex max-w-full items-center gap-2 rounded-full border-[3px] border-ink bg-paper py-0.5 pl-1 pr-3 shadow-[var(--shadow-ink-sm)]"
       >
         <span className="w-8 shrink-0">{isSecret ? <KeyholeBadge /> : <StarBadge />}</span>
-        <span className="sr-only">{isSecret ? "Segredo encontrado:" : "Conquista desbloqueada:"}</span>
-        <span className="truncate font-display text-sm uppercase leading-tight tracking-wide text-ink">{toast.title}</span>
+        <span className="sr-only">{isSecret ? copy.secretSr : copy.achievementSr}</span>
+        <span className="truncate font-display text-sm uppercase leading-tight tracking-wide text-ink">{title}</span>
       </motion.li>
     );
   }
@@ -57,17 +83,17 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
             isSecret ? "bg-mint" : "bg-sun"
           }`}
         >
-          {isSecret ? "Segredo encontrado!" : "Conquista desbloqueada!"}
+          {isSecret ? copy.secretStamp : copy.achievementStamp}
         </p>
-        <p className="mt-1 font-display text-lg leading-tight text-ink">{toast.title}</p>
-        <p className="text-sm leading-snug text-ink-soft [@media(max-height:520px)]:hidden">{toast.description}</p>
+        <p className="mt-1 font-display text-lg leading-tight text-ink">{title}</p>
+        <p className="text-sm leading-snug text-ink-soft [@media(max-height:520px)]:hidden">{text(toast.description)}</p>
         {toast.kind !== "info" && (
           <Link
             href={isSecret ? "/extras#secrets" : "/extras#achievements"}
             onClick={() => dismissToast(toast.id)}
             className="mt-1 inline-block font-display text-xs uppercase tracking-wide text-plum-700 underline decoration-2 underline-offset-2 hover:text-ink"
           >
-            {isSecret ? "Ver segredos" : "Ver conquistas"}
+            {isSecret ? copy.seeSecrets : copy.seeAchievements}
           </Link>
         )}
       </div>
@@ -75,7 +101,7 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
         type="button"
         onClick={() => dismissToast(toast.id)}
         className="absolute right-2 top-2 grid size-8 place-items-center rounded-full border-2 border-ink bg-cream-2 font-display text-sm text-ink hover:bg-tomato hover:text-cream"
-        aria-label="Fechar aviso"
+        aria-label={copy.close}
       >
         ×
       </button>
@@ -85,7 +111,7 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
 
 export function ToastStack() {
   const toasts = useToasts();
-  const inGame = usePathname().startsWith("/play");
+  const inGame = useLocalPathname().startsWith("/play");
   return (
     <div
       aria-live="polite"

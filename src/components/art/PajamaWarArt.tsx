@@ -1,8 +1,11 @@
 import type React from "react";
 import { BiaHead, LiaHead, NicoHead, type PajamaFace } from "@/components/characters/PajamaKids";
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 
 const display = { fontFamily: "var(--font-luckiest)" };
+const LAST_STANDING = localized({ "pt-BR": "ÚLTIMO DE PÉ!", en: "LAST ONE STANDING!" });
 const HEADS = { lia: LiaHead, nico: NicoHead, bia: BiaHead };
 
 export function Head({ who, x, y, size, face = "normal", rotate = 0, flip = false }: { who: keyof typeof HEADS; x: number; y: number; size: number; face?: PajamaFace; rotate?: number; flip?: boolean }) {
@@ -43,9 +46,15 @@ export function Feather({ x, y, rotate = 0, s = 1 }: { x: number; y: number; rot
   );
 }
 
-export function PajamaWarLogo({ className }: { className?: string }) {
+const LOGO = localized({
+  "pt-BR": { label: "Guerra do Pijama", first: "GUERRA", tag: "DO", last: "PIJAMA", lastSize: 88, lastX: 216 },
+  en: { label: "Pajama War", first: "PAJAMA", tag: "", last: "WAR", lastSize: 108, lastX: 200 },
+});
+
+export function PajamaWarLogoArt({ className, locale }: { className?: string; locale: Locale }) {
+  const t = LOGO[locale];
   return (
-    <svg viewBox="-24 -22 412 214" className={className} role="img" aria-label="Guerra do Pijama">
+    <svg viewBox="-24 -22 412 214" className={className} role="img" aria-label={t.label}>
       <Pillow x={352} y={16} w={66} rotate={22} />
       <Feather x={-6} y={26} rotate={-30} s={1.4} />
       <Feather x={340} y={92} rotate={40} s={1.2} />
@@ -53,25 +62,27 @@ export function PajamaWarLogo({ className }: { className?: string }) {
       <g style={display}>
         <g transform="rotate(-5 160 60)">
           <text x="164" y="84" textAnchor="middle" fontSize="80" fill={P.ink} letterSpacing="2">
-            GUERRA
+            {t.first}
           </text>
           <text x="158" y="78" textAnchor="middle" fontSize="80" fill={P.white} stroke={P.ink} strokeWidth="10" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
-            GUERRA
+            {t.first}
           </text>
           <path d="M40 32 q10 -8 22 -6" stroke={P.sunPale} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.9" />
         </g>
-        <g transform="rotate(-10 26 112)">
-          <rect x="-12" y="88" width="66" height="40" rx="10" fill={P.sun} stroke={P.ink} strokeWidth="5" />
-          <text x="21" y="119" textAnchor="middle" fontSize="30" fill={P.ink}>
-            DO
-          </text>
-        </g>
+        {t.tag ? (
+          <g transform="rotate(-10 26 112)">
+            <rect x="-12" y="88" width="66" height="40" rx="10" fill={P.sun} stroke={P.ink} strokeWidth="5" />
+            <text x="21" y="119" textAnchor="middle" fontSize="30" fill={P.ink}>
+              {t.tag}
+            </text>
+          </g>
+        ) : null}
         <g transform="rotate(2 210 150)">
-          <text x="222" y="182" textAnchor="middle" fontSize="88" fill={P.ink} letterSpacing="2">
-            PIJAMA
+          <text x={t.lastX + 6} y="182" textAnchor="middle" fontSize={t.lastSize} fill={P.ink} letterSpacing="2">
+            {t.last}
           </text>
-          <text x="216" y="176" textAnchor="middle" fontSize="88" fill={P.bubblegum} stroke={P.ink} strokeWidth="11" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
-            PIJAMA
+          <text x={t.lastX} y="176" textAnchor="middle" fontSize={t.lastSize} fill={P.bubblegum} stroke={P.ink} strokeWidth="11" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            {t.last}
           </text>
           <path d="M98 118 q10 -8 22 -6" stroke={P.white} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.8" />
         </g>
@@ -309,7 +320,7 @@ function HitPanel() {
   );
 }
 
-function StandPanel() {
+function StandPanel({ locale }: { locale: Locale }) {
   const lia: Placement = { x: 92, feet: 116, h: 66 };
   const nico: Placement = { x: 34, feet: 126, h: 52 };
   const bia: Placement = { x: 168, feet: 106, h: 50 };
@@ -326,17 +337,17 @@ function StandPanel() {
       <Feather x={70} y={76} rotate={10} s={0.7} />
       <g style={display} transform="rotate(-4 100 26)">
         <text x="100" y="31" textAnchor="middle" fontSize="13" fill={P.white} stroke={P.ink} strokeWidth="3.6" paintOrder="stroke" strokeLinejoin="round">
-          ÚLTIMO DE PÉ!
+          {LAST_STANDING[locale]}
         </text>
       </g>
     </Panel>
   );
 }
 
-export function PajamaWarHowToPanel({ step }: { step: 0 | 1 | 2 }) {
+export function PajamaWarHowToPanel({ step, locale }: { step: 0 | 1 | 2; locale: Locale }) {
   if (step === 0) return <ChoosePanel />;
   if (step === 1) return <HitPanel />;
-  return <StandPanel />;
+  return <StandPanel locale={locale} />;
 }
 
 export function PajamaWarCoverArt() {

@@ -6,19 +6,38 @@ import { PlayIcon } from "@/components/art/Icons";
 import { IntentLink } from "@/components/ui/IntentLink";
 import { inkStyle, toneBg } from "@/components/ui/Primitives";
 import { getGame } from "@/games/registry";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import { dayStamp } from "@/lib/missions/format";
+import { missionText } from "@/lib/missions/text";
 import type { MissionTodayResponse } from "@/lib/missions/types";
 import { MissionClock, missionHref, missionPlace, StateChip } from "./parts";
 
-const PLAY_LABEL = { new: "Jogar missão", started: "Tentar de novo", completed: "Jogar de novo" } as const;
+const COPY = localized({
+  "pt-BR": {
+    play: { new: "Jogar missão", started: "Tentar de novo", completed: "Jogar de novo" },
+    bulletin: "Plantão",
+    show: "Missão 404 do dia",
+    done: "Missão cumprida!",
+  },
+  en: {
+    play: { new: "Play mission", started: "Try again", completed: "Play again" },
+    bulletin: "Bulletin",
+    show: "Mission 404 of the Day",
+    done: "Mission complete!",
+  },
+});
 
 export function MissionCartridge({ data, offset }: { data: MissionTodayResponse; offset: number }) {
   const { mission, you } = data;
-  const game = getGame(mission.game);
-  const place = missionPlace(mission);
+  const copy = useCopy(COPY);
+  const locale = useLocale();
+  const game = getGame(mission.game, locale);
+  const place = missionPlace(mission, locale);
+  const text = missionText(mission, locale);
   const state = you?.state ?? "new";
-  const stamp = dayStamp(mission.day);
+  const stamp = dayStamp(mission.day, locale);
   const still = useReducedMotion();
   const { play, hover } = useSound();
   return (
@@ -36,8 +55,8 @@ export function MissionCartridge({ data, offset }: { data: MissionTodayResponse;
         <div className="paper relative overflow-hidden rounded-xl border-[3px] border-ink">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b-[3px] border-ink bg-tomato px-3 py-1.5">
             <p className="flex items-center gap-2 font-display text-sm uppercase tracking-wider text-ink">
-              <span className="rounded bg-ink px-1.5 text-[11px] leading-5 text-sun">Plantão</span>
-              Missão 404 do dia
+              <span className="rounded bg-ink px-1.5 text-[11px] leading-5 text-sun">{copy.bulletin}</span>
+              {copy.show}
             </p>
             <p className="font-display text-sm uppercase tracking-wider text-ink">
               <time dateTime={mission.day}>
@@ -59,7 +78,7 @@ export function MissionCartridge({ data, offset }: { data: MissionTodayResponse;
                   transition={{ type: "spring", stiffness: 380, damping: 15, delay: 0.25 }}
                   className="pointer-events-none absolute -bottom-3 -right-3 whitespace-nowrap rounded-lg border-[3px] border-ink bg-lime px-2.5 py-0.5 font-display text-lg uppercase tracking-wider text-ink shadow-[var(--shadow-ink)]"
                 >
-                  Missão cumprida!
+                  {copy.done}
                 </motion.span>
               ) : null}
             </div>
@@ -67,9 +86,9 @@ export function MissionCartridge({ data, offset }: { data: MissionTodayResponse;
               <p className={`inline-block rounded-md border-2 border-ink px-2 font-display text-xs uppercase leading-5 tracking-wider text-ink ${game ? toneBg(game.accent) : "bg-sun"}`}>{place.game}</p>
               {place.level ? <p className="mt-1.5 font-display text-sm uppercase tracking-wide text-ink-soft">{place.level}</p> : null}
               <h2 id="mission-title" className="mt-1 font-display text-[clamp(1.9rem,5vw,2.9rem)] uppercase leading-[0.95] tracking-wide text-ink">
-                {mission.title}
+                {text.title}
               </h2>
-              <p className="copy-lede mt-2 text-ink">{mission.objective}</p>
+              <p className="copy-lede mt-2 text-ink">{text.objective}</p>
             </div>
           </div>
         </div>
@@ -81,7 +100,7 @@ export function MissionCartridge({ data, offset }: { data: MissionTodayResponse;
               onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
               onClick={() => play("confirm")}
             >
-              <PlayIcon className="size-7" /> {PLAY_LABEL[state]}
+              <PlayIcon className="size-7" /> {copy.play[state]}
             </IntentLink>
             <StateChip state={state} />
           </div>

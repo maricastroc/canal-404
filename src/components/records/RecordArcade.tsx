@@ -1,14 +1,17 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CardIcon, OfflineIcon, PlayIcon, RestartIcon, TrophyIcon, VerifiedIcon } from "@/components/art/Icons";
 import { IntentLink } from "@/components/ui/IntentLink";
 import { InkButton, InkLink, inkStyle, toneBg } from "@/components/ui/Primitives";
 import { getGame, type GameMeta } from "@/games/registry";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { formatNumber } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
-import { BOARD_META, CHECK_TEXT, GAME_SLUGS, type GameSlug, type Metric } from "@/lib/competition/boards";
+import { boardMeta, CHECK_TEXT, GAME_SLUGS, type GameSlug, type Metric } from "@/lib/competition/boards";
 import { pickBoard, rankedLevels, type BoardLevel } from "@/lib/competition/choice";
 import { connect, fetchBoard } from "@/lib/competition/client";
 import { formatMetric, ordinal } from "@/lib/competition/format";
@@ -29,19 +32,97 @@ type View =
 
 const PLACE_COLOR = ["text-sun", "text-cream", "text-tangerine"];
 
-function levelName(game: GameMeta, level: BoardLevel | null) {
+const COPY = localized({
+  "pt-BR": {
+    word: { fase: "Fase", arena: "Arena" },
+    words: { fase: "Fases", arena: "Arenas" },
+    games: "Jogos do fliperama",
+    cartridge: (n: number) => `Cartucho ${n}`,
+    you: "Você",
+    tested: "Máquina testada pelo canal",
+    testedSr: "máquina testada pelo canal",
+    position: "Pos.",
+    nickname: "Apelido",
+    tuning: "Sintonizando o placar…",
+    closedTitle: "O fliperama ainda não abriu",
+    closedText: "Os jogos funcionam normalmente. Enquanto isso, seus recordes ficam guardados neste computador, em Extras.",
+    myRecords: "Ver meus recordes",
+    offlineTitle: "Sem sinal no fliperama",
+    offlineText: "Não deu para falar com o placar agora. Os jogos continuam funcionando.",
+    retry: "Tentar de novo",
+    emptyTitle: "Ninguém marcou ponto aqui",
+    emptyText: (where: string) => `O primeiro lugar ${where} está vago. Que tal ser a primeira pessoa no placar?`,
+    play: (title: string) => `Jogar ${title}`,
+    best: "Melhores do canal",
+    people: (n: number) => (n === 1 ? "1 pessoa no placar" : `${formatNumber(n, "pt-BR")} pessoas no placar`),
+    yourPlace: "Seu lugar",
+    soon: "Quando o placar estrear, seu apelido aparece aqui.",
+    playsAs: "Você joga como",
+    standing: (place: string, total: number, best: string) => `${place} de ${formatNumber(total, "pt-BR")}: ${best}`,
+    noRecord: "Você ainda não tem recorde neste placar.",
+    noCard: "Sem carteirinha ainda. Jogue uma partida e escolha um apelido no fim, ou",
+    getCard: "tire a carteirinha em Extras",
+    beat: "Tentar bater",
+    playNow: "Jogar agora",
+    rules: "Regras da casa",
+    tie: "Empate em tudo? Fica na frente quem chegou primeiro.",
+    check: "Como o canal confere",
+    where: { fase: "desta fase", arena: "desta arena", game: "deste jogo" },
+    caption: (game: string, level: string | null) => `Melhores do canal em ${game}${level ? `, ${level}` : ""}`,
+  },
+  en: {
+    word: { fase: "Level", arena: "Arena" },
+    words: { fase: "Levels", arena: "Arenas" },
+    games: "Arcade games",
+    cartridge: (n: number) => `Cartridge ${n}`,
+    you: "You",
+    tested: "Machine tested by the channel",
+    testedSr: "machine tested by the channel",
+    position: "Pos.",
+    nickname: "Nickname",
+    tuning: "Tuning in the board…",
+    closedTitle: "The arcade isn't open yet",
+    closedText: "The games work as usual. Meanwhile, your records are saved on this computer, in Extras.",
+    myRecords: "See my records",
+    offlineTitle: "No signal at the arcade",
+    offlineText: "Couldn't reach the board right now. The games still work.",
+    retry: "Try again",
+    emptyTitle: "Nobody has scored here",
+    emptyText: (where: string) => `First place ${where} is up for grabs. How about being the first person on the board?`,
+    play: (title: string) => `Play ${title}`,
+    best: "Channel's best",
+    people: (n: number) => (n === 1 ? "1 person on the board" : `${formatNumber(n, "en")} people on the board`),
+    yourPlace: "Your place",
+    soon: "When the board premieres, your nickname shows up here.",
+    playsAs: "You play as",
+    standing: (place: string, total: number, best: string) => `${place} of ${formatNumber(total, "en")}: ${best}`,
+    noRecord: "You don't have a record on this board yet.",
+    noCard: "No membership card yet. Play a run and pick a nickname at the end, or",
+    getCard: "get your membership card in Extras",
+    beat: "Try to beat it",
+    playNow: "Play now",
+    rules: "House rules",
+    tie: "Tied on everything? Whoever got there first stays ahead.",
+    check: "How the channel checks",
+    where: { fase: "on this level", arena: "in this arena", game: "in this game" },
+    caption: (game: string, level: string | null) => `Channel's best in ${game}${level ? `, ${level}` : ""}`,
+  },
+});
+
+function levelName(game: GameMeta, level: BoardLevel | null, word: Record<"fase" | "arena", string>) {
   if (!level) return null;
-  const word = game.levelWord === "arena" ? "Arena" : "Fase";
-  return `${word} ${level.number}: ${level.title}`;
+  return `${word[game.levelWord === "arena" ? "arena" : "fase"]} ${level.number}: ${level.title}`;
 }
 
 function GamePicker({ current }: { current: GameSlug }) {
   const { play, hover } = useSound();
+  const copy = useCopy(COPY);
+  const locale = useLocale();
   return (
-    <nav aria-label="Jogos do fliperama">
+    <nav aria-label={copy.games}>
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {GAME_SLUGS.map((slug, i) => {
-          const game = getGame(slug)!;
+          const game = getGame(slug, locale)!;
           const active = slug === current;
           return (
             <li key={slug} className="flex">
@@ -60,7 +141,7 @@ function GamePicker({ current }: { current: GameSlug }) {
                     <span key={n} className="flex-1 rounded-sm bg-ink/70" />
                   ))}
                 </span>
-                <span className="font-display text-[11px] uppercase tracking-wider text-ink">Cartucho {i + 1}</span>
+                <span className="font-display text-[11px] uppercase tracking-wider text-ink">{copy.cartridge(i + 1)}</span>
                 <span className="font-display text-sm uppercase leading-tight tracking-wide">{game.title}</span>
               </Link>
             </li>
@@ -73,7 +154,9 @@ function GamePicker({ current }: { current: GameSlug }) {
 
 function LevelPicker({ game, levels, current }: { game: GameMeta & { slug: GameSlug }; levels: BoardLevel[]; current: string | null }) {
   const { play } = useSound();
-  const word = game.levelWord === "arena" ? "Arenas" : "Fases";
+  const copy = useCopy(COPY);
+  const kind = game.levelWord === "arena" ? "arena" : "fase";
+  const word = copy.words[kind];
   return (
     <nav aria-label={word} className="px-3 pt-3">
       <ul className="flex flex-wrap justify-center gap-2">
@@ -90,7 +173,7 @@ function LevelPicker({ game, levels, current }: { game: GameMeta & { slug: GameS
                   active ? "bg-sun" : "bg-plum-300 hover:bg-cream"
                 }`}
               >
-                <span className="sr-only">{game.levelWord === "arena" ? "Arena" : "Fase"} </span>
+                <span className="sr-only">{copy.word[kind]} </span>
                 {level.number}
                 <span aria-hidden className="mx-1">·</span>
                 {level.title}
@@ -104,30 +187,32 @@ function LevelPicker({ game, levels, current }: { game: GameMeta & { slug: GameS
 }
 
 function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" | "nickname" | "tag" | "you" | "metrics"> & { verified?: boolean }; metrics: readonly Metric[]; verified: boolean }) {
+  const copy = useCopy(COPY);
+  const locale = useLocale();
   return (
     <tr className={entry.you ? "bg-sun/15" : "odd:bg-white/[0.03]"}>
       <td className={`rounded-l-lg py-1.5 pl-2 pr-1 font-display text-lg leading-none ${PLACE_COLOR[entry.position - 1] ?? "text-plum-300"}`}>
         <span className="inline-flex items-center gap-1">
           {entry.position === 1 ? <TrophyIcon className="size-4" /> : null}
-          {ordinal(entry.position)}
+          {ordinal(entry.position, locale)}
         </span>
       </td>
       <td className="px-1 py-1.5">
         <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <span className="font-semibold text-cream">{entry.nickname}</span>
           <span className="text-sm text-plum-300">#{entry.tag}</span>
-          {entry.you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">Você</span> : null}
+          {entry.you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">{copy.you}</span> : null}
           {verified && entry.verified ? (
-            <span className="inline-flex text-mint" title="Máquina testada pelo canal">
+            <span className="inline-flex text-mint" title={copy.tested}>
               <VerifiedIcon className="size-4" />
-              <span className="sr-only">máquina testada pelo canal</span>
+              <span className="sr-only">{copy.testedSr}</span>
             </span>
           ) : null}
         </span>
       </td>
       {metrics.map((metric, i) => (
-        <td key={metric.label} className={`whitespace-nowrap px-1 py-1.5 text-right text-sm text-cream-2 last:rounded-r-lg last:pr-2 ${i === 2 ? "hidden sm:table-cell" : ""}`}>
-          {formatMetric(metric, entry.metrics[i] ?? 0)}
+        <td key={i} className={`whitespace-nowrap px-1 py-1.5 text-right text-sm text-cream-2 last:rounded-r-lg last:pr-2 ${i === 2 ? "hidden sm:table-cell" : ""}`}>
+          {formatMetric(metric, entry.metrics[i] ?? 0, locale)}
         </td>
       ))}
     </tr>
@@ -135,7 +220,8 @@ function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" 
 }
 
 function BoardTable({ game, data, caption }: { game: GameSlug; data: LeaderboardResponse; caption: string }) {
-  const meta = BOARD_META[game];
+  const copy = useCopy(COPY);
+  const meta = boardMeta(game, useLocale());
   const replayed = meta.check === "replayed";
   const standing = data.you?.standing;
   const outside = standing && standing.position > data.entries.length ? standing : null;
@@ -145,13 +231,13 @@ function BoardTable({ game, data, caption }: { game: GameSlug; data: Leaderboard
       <thead>
         <tr className="font-display text-[11px] uppercase tracking-wider text-plum-300">
           <th scope="col" className="w-14 pl-2 font-normal">
-            Pos.
+            {copy.position}
           </th>
           <th scope="col" className="px-1 font-normal">
-            Apelido
+            {copy.nickname}
           </th>
           {meta.metrics.map((metric, i) => (
-            <th key={metric.label} scope="col" className={`px-1 text-right font-normal last:pr-2 ${i === 2 ? "hidden sm:table-cell" : ""}`}>
+            <th key={i} scope="col" className={`px-1 text-right font-normal last:pr-2 ${i === 2 ? "hidden sm:table-cell" : ""}`}>
               {metric.label}
             </th>
           ))}
@@ -191,38 +277,39 @@ function ScreenMessage({ title, text, tone = "text-sun", children, live, tall }:
 }
 
 function Screen({ view, game, caption, where, onRetry }: { view: View; game: GameMeta & { slug: GameSlug }; caption: string; where: string; onRetry: () => void }) {
+  const copy = useCopy(COPY);
   return (
     <div aria-busy={view.kind === "loading"} className="relative m-3 overflow-hidden rounded-xl border-[3px] border-ink bg-[#10122e] text-cream shadow-[inset_0_0_40px_rgba(157,240,220,0.12)]">
       <div className="relative z-10 p-2 sm:p-3">
-        {view.kind === "loading" ? <ScreenMessage live tall title="Sintonizando o placar…" tone="animate-pulse text-sun" /> : null}
+        {view.kind === "loading" ? <ScreenMessage live tall title={copy.tuning} tone="animate-pulse text-sun" /> : null}
         {view.kind === "unconfigured" ? (
-          <ScreenMessage title="O fliperama ainda não abriu" text="Os jogos funcionam normalmente. Enquanto isso, seus recordes ficam guardados neste computador, em Extras." tone="text-bubblegum">
+          <ScreenMessage title={copy.closedTitle} text={copy.closedText} tone="text-bubblegum">
             <InkLink href="/extras" size="sm" tone="sun">
-              Ver meus recordes
+              {copy.myRecords}
             </InkLink>
           </ScreenMessage>
         ) : null}
         {view.kind === "offline" ? (
-          <ScreenMessage title="Sem sinal no fliperama" text="Não deu para falar com o placar agora. Os jogos continuam funcionando." tone="text-tomato">
+          <ScreenMessage title={copy.offlineTitle} text={copy.offlineText} tone="text-tomato">
             <OfflineIcon className="size-8 text-tomato" />
             <InkButton size="sm" tone="sun" onClick={onRetry}>
-              <RestartIcon className="size-4" /> Tentar de novo
+              <RestartIcon className="size-4" /> {copy.retry}
             </InkButton>
           </ScreenMessage>
         ) : null}
         {view.kind === "empty" ? (
-          <ScreenMessage title="Ninguém marcou ponto aqui" text={`O primeiro lugar ${where} está vago. Que tal ser a primeira pessoa no placar?`} tone="text-lime">
+          <ScreenMessage title={copy.emptyTitle} text={copy.emptyText(where)} tone="text-lime">
             <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "sm")}>
-              <PlayIcon className="size-4" /> Jogar {game.title}
+              <PlayIcon className="size-4" /> {copy.play(game.title)}
             </IntentLink>
           </ScreenMessage>
         ) : null}
         {view.kind === "board" ? (
           <>
-            <p className="pb-1 text-center font-display text-sm uppercase tracking-[0.3em] text-screen">Melhores do canal</p>
+            <p className="pb-1 text-center font-display text-sm uppercase tracking-[0.3em] text-screen">{copy.best}</p>
             <BoardTable game={game.slug} data={view.data} caption={caption} />
             <p className="pt-2 text-center text-xs font-semibold text-plum-300">
-              {view.data.total === 1 ? "1 pessoa no placar" : `${view.data.total.toLocaleString("pt-BR")} pessoas no placar`}
+              {copy.people(view.data.total)}
             </p>
           </>
         ) : null}
@@ -234,58 +321,69 @@ function Screen({ view, game, caption, where, onRetry }: { view: View; game: Gam
 
 function PlayerPanel({ game, view, status, nickname, tag }: { game: GameMeta & { slug: GameSlug }; view: View; status: string; nickname?: string; tag?: string }) {
   const standing = view.kind === "board" || view.kind === "empty" ? view.data.you?.standing : null;
-  const meta = BOARD_META[game.slug];
+  const copy = useCopy(COPY);
+  const locale = useLocale();
+  const meta = boardMeta(game.slug, locale);
   return (
     <section aria-labelledby="player-panel-title" className="paper rounded-2xl border-[3px] border-ink p-4 text-ink shadow-[var(--shadow-ink)]">
       <h2 id="player-panel-title" className="flex items-center gap-2 font-display text-lg uppercase tracking-wide">
-        <CardIcon className="size-5" /> Seu lugar
+        <CardIcon className="size-5" /> {copy.yourPlace}
       </h2>
       {status === "unconfigured" ? (
-        <p className="mt-2 font-semibold">Quando o placar estrear, seu apelido aparece aqui.</p>
+        <p className="mt-2 font-semibold">{copy.soon}</p>
       ) : nickname ? (
         <>
           <p className="mt-2 font-semibold">
-            Você joga como <span className="font-display tracking-wide">{nickname}</span> <span className="text-ink-soft">#{tag}</span>.
+            {copy.playsAs} <span className="font-display tracking-wide">{nickname}</span> <span className="text-ink-soft">#{tag}</span>.
           </p>
           {standing ? (
             <p className="mt-2 rounded-lg border-2 border-ink bg-sun px-2 py-1.5 font-semibold">
-              {ordinal(standing.position)} de {standing.total.toLocaleString("pt-BR")}: {meta.metrics.slice(0, 2).map((m, i) => formatMetric(m, standing.best.metrics[i] ?? 0)).join(" · ")}
+              {copy.standing(
+                ordinal(standing.position, locale),
+                standing.total,
+                meta.metrics
+                  .slice(0, 2)
+                  .map((m, i) => formatMetric(m, standing.best.metrics[i] ?? 0, locale))
+                  .join(" · "),
+              )}
             </p>
           ) : (
-            <p className="mt-2 font-semibold text-ink-soft">Você ainda não tem recorde neste placar.</p>
+            <p className="mt-2 font-semibold text-ink-soft">{copy.noRecord}</p>
           )}
         </>
       ) : (
         <p className="mt-2 font-semibold">
-          Sem carteirinha ainda. Jogue uma partida e escolha um apelido no fim, ou{" "}
+          {copy.noCard}{" "}
           <Link href="/extras#membership" className="underline decoration-2 underline-offset-2">
-            tire a carteirinha em Extras
+            {copy.getCard}
           </Link>
           .
         </p>
       )}
       <IntentLink href={`/play/${game.slug}`} className={inkStyle("tomato", "md", "mt-3 w-full justify-center")}>
-        <PlayIcon className="size-4" /> {standing ? "Tentar bater" : "Jogar agora"}
+        <PlayIcon className="size-4" /> {standing ? copy.beat : copy.playNow}
       </IntentLink>
     </section>
   );
 }
 
 function RulesNote({ game }: { game: GameSlug }) {
-  const meta = BOARD_META[game];
+  const copy = useCopy(COPY);
+  const locale = useLocale();
+  const meta = boardMeta(game, locale);
   return (
     <section aria-labelledby="rules-title" className="relative -rotate-1 rounded-2xl border-[3px] border-ink bg-paper p-4 pt-5 text-ink shadow-[var(--shadow-ink)]">
       <span aria-hidden className="absolute -top-3 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2 bg-mint/85" />
       <h2 id="rules-title" className="font-display text-lg uppercase tracking-wide">
-        Regras da casa
+        {copy.rules}
       </h2>
       <p className="mt-1 font-semibold">{meta.explain}</p>
-      <p className="mt-2 text-sm">Empate em tudo? Fica na frente quem chegou primeiro.</p>
+      <p className="mt-2 text-sm">{copy.tie}</p>
       <h3 className="mt-3 flex items-center gap-1.5 font-display text-sm uppercase tracking-wider">
         {meta.check === "replayed" ? <VerifiedIcon className="size-4 text-mint-deep" /> : null}
-        Como o canal confere
+        {copy.check}
       </h3>
-      <p className="mt-1 text-sm">{CHECK_TEXT[meta.check]}</p>
+      <p className="mt-1 text-sm">{CHECK_TEXT[locale][meta.check]}</p>
     </section>
   );
 }
@@ -295,6 +393,8 @@ export function RecordArcade() {
   const { game: slug, level } = pickBoard(params.get("game"), params.get("level"));
   const key = `${slug}/${level ?? "all"}`;
   const competition = useCompetition();
+  const copy = useCopy(COPY);
+  const locale = useLocale();
   const [attempt, setAttempt] = useState(0);
   const [fetched, setFetched] = useState<Fetched | null>(null);
   const reachable = competition.status === "online" || competition.status === "offline";
@@ -322,12 +422,12 @@ export function RecordArcade() {
             ? { kind: "empty", data: fetched.data }
             : { kind: "board", data: fetched.data };
 
-  const game = { ...getGame(slug)!, slug };
-  const levels = rankedLevels(slug);
+  const game = { ...getGame(slug, locale)!, slug };
+  const levels = rankedLevels(slug, locale);
   const current = levels?.find((l) => l.id === level) ?? null;
-  const name = levelName(game, current);
-  const where = current ? (game.levelWord === "arena" ? "desta arena" : "desta fase") : "deste jogo";
-  const caption = `Melhores do canal em ${game.title}${name ? `, ${name}` : ""}`;
+  const name = levelName(game, current, copy.word);
+  const where = current ? copy.where[game.levelWord === "arena" ? "arena" : "fase"] : copy.where.game;
+  const caption = copy.caption(game.title, name);
 
   const retry = async () => {
     await connect(true);

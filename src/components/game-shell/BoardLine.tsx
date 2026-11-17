@@ -1,75 +1,162 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { motion, useReducedMotion } from "motion/react";
 import { OfflineIcon, TrophyIcon } from "@/components/art/Icons";
 import { NicknameForm } from "@/components/competition/NicknameForm";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import type { GameMeta } from "@/games/registry";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { formatNumber } from "@/i18n/format";
+import type { Locale } from "@/i18n/locales";
 import type { JoinOutcome, SubmitOutcome } from "@/lib/competition/client";
 import { formatBest, ordinal } from "@/lib/competition/format";
 import { BOARD_META, isGameSlug, type GameSlug } from "@/lib/competition/boards";
+import { serverMessage } from "@/lib/competition/errors";
 import { recordsHref } from "@/lib/competition/links";
 
 export type BoardState = { phase: "sending" } | { phase: "join" } | { phase: "done"; outcome: SubmitOutcome };
 
 type Line = { headline?: string; text: string; rival?: string; href?: string; live?: boolean; offline?: boolean; record?: boolean; stamp?: boolean };
 
-export function boardLabel(game: GameMeta) {
-  return game.levels ? `Placar da ${game.levelWord ?? "fase"}` : "Placar do jogo";
+const COPY = localized({
+  "pt-BR": {
+    label: { fase: "Placar da fase", arena: "Placar da arena", game: "Placar do jogo" },
+    here: { fase: "desta fase", arena: "desta arena", game: "deste jogo" },
+    queued: "Placar fora do ar. Guardamos o resultado e enviamos quando o sinal voltar.",
+    rejectedTitle: "O placar não aceitou",
+    rejected: "O placar não aceitou este resultado.",
+    expired: "Esse resultado demorou demais para chegar ao placar.",
+    limited: "Muitos envios seguidos. Espere um pouco.",
+    noTicket: "O placar estava fora do ar quando a partida começou. Este resultado ficou só no seu progresso.",
+    practice: "Este foi só o aquecimento! A fase de treino não vale pontos no placar global.",
+    resumed: "Partidas retomadas do sino não entram no placar. Jogue a fase inteira para competir.",
+    noPoints: "Sem pontos, sem placar. Fica para a próxima!",
+    place: (position: string, total: number) => `${position} de ${formatNumber(total, "pt-BR")}`,
+    rival: (name: string, best: string) => `Recorde do canal: ${name} · ${best}.`,
+    notWonBest: (here: string, best: string, place: string) => `Só vitórias entram no placar ${here}. Seu melhor continua ${best}, ${place}.`,
+    notWon: (here: string) => `Só vitórias entram no placar ${here}.`,
+    openedTitle: "Placar inaugurado",
+    opened: (mark: string) => `Você inaugurou o placar! Agora é esperar alguém tentar superar ${mark}.`,
+    recordTitle: "Recorde do canal!",
+    record: (best: string, total: number) => `${best}. Você passou na frente de todo mundo: 1º de ${formatNumber(total, "pt-BR")}.`,
+    joinedTitle: "Você entrou no placar",
+    joined: (best: string, place: string) => `${best}. Você está em ${place}.`,
+    personalTitle: "Novo recorde pessoal!",
+    personal: (best: string, place: string) => `${best}. Agora você está em ${place}.`,
+    aloneBest: (best: string, here: string) => `Seu melhor continua ${best}. O placar ${here} segue só seu: ninguém apareceu para tentar superar.`,
+    holder: "O recorde do canal continua com você.",
+    stillBest: (best: string, place: string) => `Seu melhor continua ${best}, ${place}.`,
+    registered: "Resultado registrado no placar.",
+    points: (points: number) => `seus ${formatNumber(points, "pt-BR")} ${points === 1 ? "ponto" : "pontos"}`,
+    mark: (best: string) => `sua marca: ${best}`,
+    stamp: "Recorde!",
+    sending: "Transmitindo seu resultado…",
+    live: "Ao vivo",
+    noSignal: "Sem sinal",
+    join: "Quer ver seu nome no placar? Escolha um apelido e este resultado entra na disputa.",
+    joinButton: "Entrar no placar",
+    arcade: "Ver o fliperama de recordes",
+  },
+  en: {
+    label: { fase: "Level board", arena: "Arena board", game: "Game board" },
+    here: { fase: "for this level", arena: "for this arena", game: "for this game" },
+    queued: "The board is off the air. We saved your result and will send it when the signal comes back.",
+    rejectedTitle: "The board didn't accept it",
+    rejected: "The board didn't accept this result.",
+    expired: "This result took too long to reach the board.",
+    limited: "Too many submissions in a row. Wait a little.",
+    noTicket: "The board was off the air when the run started. This result only went into your progress.",
+    practice: "That was just the warm-up! The practice level doesn't count on the global board.",
+    resumed: "Runs resumed from a bell don't go on the board. Play the whole level to compete.",
+    noPoints: "No points, no board. Better luck next time!",
+    place: (position: string, total: number) => `${position} of ${formatNumber(total, "en")}`,
+    rival: (name: string, best: string) => `Channel record: ${name} · ${best}.`,
+    notWonBest: (here: string, best: string, place: string) => `Only wins go on the board ${here}. Your best is still ${best}, ${place}.`,
+    notWon: (here: string) => `Only wins go on the board ${here}.`,
+    openedTitle: "Board opened",
+    opened: (mark: string) => `You opened the board! Now wait for someone to try to beat ${mark}.`,
+    recordTitle: "Channel record!",
+    record: (best: string, total: number) => `${best}. You got ahead of everyone: 1st of ${formatNumber(total, "en")}.`,
+    joinedTitle: "You made the board",
+    joined: (best: string, place: string) => `${best}. You're in ${place}.`,
+    personalTitle: "New personal record!",
+    personal: (best: string, place: string) => `${best}. Now you're in ${place}.`,
+    aloneBest: (best: string, here: string) => `Your best is still ${best}. The board ${here} is still all yours: nobody has shown up to try to beat it.`,
+    holder: "The channel record is still yours.",
+    stillBest: (best: string, place: string) => `Your best is still ${best}, ${place}.`,
+    registered: "Result recorded on the board.",
+    points: (points: number) => `your ${formatNumber(points, "en")} ${points === 1 ? "point" : "points"}`,
+    mark: (best: string) => `your mark: ${best}`,
+    stamp: "Record!",
+    sending: "Broadcasting your result…",
+    live: "Live",
+    noSignal: "No signal",
+    join: "Want to see your name on the board? Pick a nickname and this result joins the race.",
+    joinButton: "Join the board",
+    arcade: "Visit the record arcade",
+  },
+});
+
+type Copy = (typeof COPY)[Locale];
+
+function levelKind(game: GameMeta) {
+  return game.levels ? (game.levelWord === "arena" ? "arena" : "fase") : "game";
 }
 
-export function describeBoard(game: GameMeta, outcome: SubmitOutcome): Line | null {
-  const word = game.levelWord ?? "fase";
-  const here = game.levels ? `desta ${word}` : "deste jogo";
+export function boardLabel(game: GameMeta, locale: Locale) {
+  return COPY[locale].label[levelKind(game)];
+}
+
+export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Locale): Line | null {
+  const copy = COPY[locale];
+  const here = copy.here[levelKind(game)];
   switch (outcome.kind) {
     case "queued":
-      return { text: "Placar fora do ar. Guardamos o resultado e enviamos quando o sinal voltar.", offline: true };
+      return { text: copy.queued, offline: true };
     case "rejected":
-      return { headline: "O placar não aceitou", text: outcome.message };
+      return { headline: copy.rejectedTitle, text: serverMessage(outcome.error, copy.rejected, locale) };
     case "not-joined":
       return null;
     case "unranked":
       if (outcome.why === "unconfigured") return null;
-      if (outcome.why === "expired") return { text: "Esse resultado demorou demais para chegar ao placar." };
-      if (outcome.why === "limited") return { text: outcome.message ?? "Muitos envios seguidos. Espere um pouco." };
-      return { text: "O placar estava fora do ar quando a partida começou. Este resultado ficou só no seu progresso.", offline: true };
+      if (outcome.why === "expired") return { text: copy.expired };
+      if (outcome.why === "limited") return { text: serverMessage(outcome.error, copy.limited, locale) };
+      return { text: copy.noTicket, offline: true };
     case "accepted": {
       const { run, board } = outcome.response;
-      if (!board) return { text: "Este foi só o aquecimento! A fase de treino não vale pontos no placar global." };
-      if (run.ineligible === "resumed") return { text: "Partidas retomadas do sino não entram no placar. Jogue a fase inteira para competir." };
-      if (run.ineligible === "no_points") return { text: "Sem pontos, sem placar. Fica para a próxima!" };
+      if (!board) return { text: copy.practice };
+      if (run.ineligible === "resumed") return { text: copy.resumed };
+      if (run.ineligible === "no_points") return { text: copy.noPoints };
       const slug = isGameSlug(game.slug) ? game.slug : null;
-      const best = board.best && slug ? formatBest(slug, board.best.metrics) : "";
-      const place = board.position ? `${ordinal(board.position)} de ${board.total.toLocaleString("pt-BR")}` : "";
+      const best = board.best && slug ? formatBest(slug, board.best.metrics, locale) : "";
+      const place = board.position ? copy.place(ordinal(board.position, locale), board.total) : "";
       const alone = board.position === 1 && board.total === 1;
       const href = slug ? recordsHref(slug, levelOfBoard(board.id)) : undefined;
       const leader = board.leader;
-      const rival = leader && !leader.you && slug ? `Recorde do canal: ${leader.nickname} #${leader.tag} · ${formatBest(slug, leader.metrics)}.` : undefined;
+      const rival = leader && !leader.you && slug ? copy.rival(`${leader.nickname} #${leader.tag}`, formatBest(slug, leader.metrics, locale)) : undefined;
       if (run.ineligible === "not_won") {
-        return { text: board.best ? `Só vitórias entram no placar ${here}. Seu melhor continua ${best}, ${place}.` : `Só vitórias entram no placar ${here}.`, rival, href };
+        return { text: board.best ? copy.notWonBest(here, best, place) : copy.notWon(here), rival, href };
       }
       if (board.improved && board.position) {
-        if (alone) return { headline: "Placar inaugurado", text: `Você inaugurou o placar! Agora é esperar alguém tentar superar ${markToBeat(slug, board.best?.metrics ?? [], best)}.`, href, live: true, record: true };
-        if (board.position === 1) return { headline: "Recorde do canal!", text: `${best}. Você passou na frente de todo mundo: 1º de ${board.total.toLocaleString("pt-BR")}.`, href, live: true, record: true, stamp: true };
-        if (!board.previous) return { headline: "Você entrou no placar", text: `${best}. Você está em ${place}.`, rival, href, live: true };
-        return { headline: "Novo recorde pessoal!", text: `${best}. Agora você está em ${place}.`, rival, href, live: true, record: true };
+        if (alone) return { headline: copy.openedTitle, text: copy.opened(markToBeat(slug, board.best?.metrics ?? [], best, copy)), href, live: true, record: true };
+        if (board.position === 1) return { headline: copy.recordTitle, text: copy.record(best, board.total), href, live: true, record: true, stamp: true };
+        if (!board.previous) return { headline: copy.joinedTitle, text: copy.joined(best, place), rival, href, live: true };
+        return { headline: copy.personalTitle, text: copy.personal(best, place), rival, href, live: true, record: true };
       }
-      if (board.best && alone) return { text: `Seu melhor continua ${best}. O placar ${here} segue só seu: ninguém apareceu para tentar superar.`, href, live: true };
-      const holder = leader?.you ? "O recorde do canal continua com você." : undefined;
-      if (board.best) return { text: `Seu melhor continua ${best}, ${place}.`, rival: rival ?? holder, href, live: true };
-      return { text: "Resultado registrado no placar.", rival, href, live: true };
+      if (board.best && alone) return { text: copy.aloneBest(best, here), href, live: true };
+      const holder = leader?.you ? copy.holder : undefined;
+      if (board.best) return { text: copy.stillBest(best, place), rival: rival ?? holder, href, live: true };
+      return { text: copy.registered, rival, href, live: true };
     }
   }
 }
 
-function markToBeat(slug: GameSlug | null, metrics: number[], best: string) {
+function markToBeat(slug: GameSlug | null, metrics: number[], best: string, copy: Copy) {
   const first = slug ? BOARD_META[slug].metrics[0] : null;
-  if (first?.unit === "points") {
-    const points = metrics[0] ?? 0;
-    return `seus ${points.toLocaleString("pt-BR")} ${points === 1 ? "ponto" : "pontos"}`;
-  }
-  return `sua marca: ${best}`;
+  if (first?.unit === "points") return copy.points(metrics[0] ?? 0);
+  return copy.mark(best);
 }
 
 function levelOfBoard(id: string) {
@@ -79,6 +166,7 @@ function levelOfBoard(id: string) {
 
 function RecordStamp() {
   const still = useReducedMotion();
+  const copy = useCopy(COPY);
   return (
     <motion.span
       aria-hidden
@@ -87,19 +175,21 @@ function RecordStamp() {
       transition={{ type: "spring", stiffness: 420, damping: 16, delay: 0.7 }}
       className="inline-flex items-center gap-1 rounded-md border-[3px] border-ink bg-tomato px-2 font-display text-sm uppercase leading-6 tracking-wider text-ink shadow-[var(--shadow-ink-sm)]"
     >
-      <TrophyIcon className="size-4" /> Recorde!
+      <TrophyIcon className="size-4" /> {copy.stamp}
     </motion.span>
   );
 }
 
 export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: BoardState; onJoin: (nickname: string) => Promise<JoinOutcome> }) {
-  const label = boardLabel(game);
+  const copy = useCopy(COPY);
+  const locale = useLocale();
+  const label = boardLabel(game, locale);
   const line =
     state.phase === "sending"
-      ? ({ text: "Transmitindo seu resultado…", live: true } satisfies Line)
+      ? ({ text: copy.sending, live: true } satisfies Line)
       : state.phase === "join"
         ? null
-        : describeBoard(game, state.outcome);
+        : describeBoard(game, state.outcome, locale);
   if (state.phase === "done" && !line) return null;
   return (
     <motion.section
@@ -113,19 +203,19 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
         <span className="rounded-md border-2 border-ink bg-sun px-1.5 font-display text-xs uppercase leading-5 tracking-wider text-ink">{label}</span>
         {line?.live ? (
           <span className="flex items-center gap-1 font-display text-xs uppercase leading-5 tracking-wider text-lime">
-            <span aria-hidden className="size-2 animate-pulse rounded-full bg-lime" /> Ao vivo
+            <span aria-hidden className="size-2 animate-pulse rounded-full bg-lime" /> {copy.live}
           </span>
         ) : null}
         {line?.offline ? (
           <span className="flex items-center gap-1 font-display text-xs uppercase leading-5 tracking-wider text-sun">
-            <OfflineIcon className="size-4" /> Sem sinal
+            <OfflineIcon className="size-4" /> {copy.noSignal}
           </span>
         ) : null}
       </div>
       {state.phase === "join" ? (
         <>
-          <p className="copy mt-1.5 font-semibold">Quer ver seu nome no placar? Escolha um apelido e este resultado entra na disputa.</p>
-          <NicknameForm dark submitLabel="Entrar no placar" onSubmit={onJoin} />
+          <p className="copy mt-1.5 font-semibold">{copy.join}</p>
+          <NicknameForm dark submitLabel={copy.joinButton} onSubmit={onJoin} />
         </>
       ) : (
         <div className="mt-1.5 flex items-start gap-3">
@@ -144,7 +234,7 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
       )}
       {state.phase === "done" && line?.href ? (
         <Link href={line.href} className="mt-2 inline-flex items-center gap-1.5 font-display text-sm uppercase tracking-wider text-sun underline decoration-2 underline-offset-4 hover:text-cream">
-          <TrophyIcon className="size-4" /> Ver o fliperama de recordes
+          <TrophyIcon className="size-4" /> {copy.arcade}
         </Link>
       ) : null}
     </motion.section>

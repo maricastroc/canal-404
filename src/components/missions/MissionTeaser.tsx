@@ -1,17 +1,28 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { MissionIcon } from "@/components/art/Icons";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import { useMissionToday } from "@/lib/missions/hooks";
+import { missionText } from "@/lib/missions/text";
 import { missionPlace, StateChip } from "./parts";
+
+const COPY = localized({
+  "pt-BR": { label: "Missão 404 do dia" },
+  en: { label: "Mission 404 of the Day" },
+});
 
 export function MissionTeaser() {
   const feed = useMissionToday();
   const { play, hover } = useSound();
+  const copy = useCopy(COPY);
+  const locale = useLocale();
   if (feed.status !== "ready" || !feed.data) return null;
   const { mission, you } = feed.data;
-  const place = missionPlace(mission);
+  const place = missionPlace(mission, locale);
+  const text = missionText(mission, locale);
   return (
     <Link
       href="/mission"
@@ -23,9 +34,11 @@ export function MissionTeaser() {
         <MissionIcon className="size-7" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-xs uppercase tracking-widest text-sun">Missão 404 do dia · {place.game}</span>
-        <span className="block truncate font-display text-xl uppercase leading-tight tracking-wide">{mission.title}</span>
-        <span className="block truncate text-sm font-semibold text-cream-2">{mission.objective}</span>
+        <span className="block font-display text-xs uppercase tracking-widest text-sun">
+          {copy.label} · {place.game}
+        </span>
+        <span className="block truncate font-display text-xl uppercase leading-tight tracking-wide">{text.title}</span>
+        <span className="block truncate text-sm font-semibold text-cream-2">{text.objective}</span>
       </span>
       <StateChip state={you?.state ?? "new"} />
     </Link>

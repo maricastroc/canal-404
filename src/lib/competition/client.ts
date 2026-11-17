@@ -6,12 +6,14 @@ export type CompetitionState = { status: CompetitionStatus | "checking"; player:
 
 export type SubmitOutcome =
   | { kind: "accepted"; response: SubmitResponse }
-  | { kind: "rejected"; message: string }
+  | { kind: "rejected"; error: ApiError | null }
   | { kind: "not-joined" }
   | { kind: "queued" }
-  | { kind: "unranked"; why: "no-ticket" | "unconfigured" | "expired" | "limited"; message?: string };
+  | { kind: "unranked"; why: "no-ticket" | "unconfigured" | "expired" | "limited"; error?: ApiError | null };
 
-type Call<T> = { ok: true; status: number; data: T } | { ok: false; status: number; error: ApiErrorBody["error"] | null };
+export type ApiError = ApiErrorBody["error"];
+
+type Call<T> = { ok: true; status: number; data: T } | { ok: false; status: number; error: ApiError | null };
 
 const TIMEOUT_MS = 6000;
 const STATUS_TTL_MS = 60_000;
@@ -59,7 +61,7 @@ export async function apiCall<T>(path: string, init: { method?: string; body?: u
     });
     const data = (await response.json().catch(() => null)) as unknown;
     if (response.ok) return { ok: true, status: response.status, data: data as T };
-    const error = isRecord(data) && isRecord(data.error) ? (data.error as ApiErrorBody["error"]) : null;
+    const error = isRecord(data) && isRecord(data.error) ? (data.error as ApiError) : null;
     return { ok: false, status: response.status, error };
   } catch {
     return { ok: false, status: 0, error: null };
@@ -124,8 +126,8 @@ async function send(ticket: string, claim: Claim): Promise<SubmitOutcome | "netw
   }
   if (code === "not_joined") return { kind: "not-joined" };
   if (code === "expired_ticket") return { kind: "unranked", why: "expired" };
-  if (code === "rate_limited") return { kind: "unranked", why: "limited", message: response.error?.message };
-  return { kind: "rejected", message: response.error?.message ?? "O placar não aceitou este resultado." };
+  if (code === "rate_limited") return { kind: "unranked", why: "limited", error: response.error };
+  return { kind: "rejected", error: response.error };
 }
 
 type OutboxItem = { ticket: string; claim: Claim; savedAt: number };
@@ -200,7 +202,7 @@ export async function submitResult(ticket: Promise<TicketGrant | null> | null, r
   return { kind: "queued" };
 }
 
-export type JoinOutcome = { ok: true; player: PublicPlayer } | { ok: false; message: string };
+export type JoinOutcome = { ok: true; player: PublicPlayer } | { ok: false; offline: boolean; error: ApiError | null };
 
 async function identity(method: "POST" | "PATCH", nickname: string): Promise<JoinOutcome> {
   const response = await apiCall<{ player: PublicPlayer }>(method === "POST" ? "/api/players" : "/api/players/me", { method, body: { nickname } });
@@ -210,8 +212,8 @@ async function identity(method: "POST" | "PATCH", nickname: string): Promise<Joi
     if (method === "POST") void flushOutbox();
     return { ok: true, player: response.data.player };
   }
-  if (response.status === 0 || response.status >= 500) return { ok: false, message: "O placar está fora do ar agora. Tente de novo daqui a pouco." };
-  return { ok: false, message: response.error?.message ?? "Não deu para salvar o apelido." };
+  if (response.status === 0 || response.status >= 500) return { ok: false, offline: true, error: response.error };
+  return { ok: false, offline: false, error: response.error };
 }
 
 export function join(nickname: string) {

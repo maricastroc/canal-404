@@ -4,6 +4,8 @@ import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon } from "@/components/art/Icons";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { TvScreen } from "./objects/Tv";
 import { TV_BOX, TV_KNOB, TvKnob, TvSet } from "./objects/TvSet";
 
@@ -13,11 +15,17 @@ type Props = Omit<ComponentProps<typeof TvScreen>, "onZoom" | "next" | "screenRe
   knobAngle: number;
 };
 
+const COPY = localized({
+  "pt-BR": { dialog: "TV de perto", back: "Voltar pra sala", help: "Aperte Esc ou clique fora da TV para voltar à sala." },
+  en: { dialog: "TV up close", back: "Back to the room", help: "Press Esc or click outside the TV to go back to the room." },
+});
+
 const OPEN = { duration: 420, easing: "cubic-bezier(.2,.9,.3,1.12)" };
 const CLOSE = { duration: 300, easing: "cubic-bezier(.5,0,.75,0)" };
 
 export function TvZoom({ getOrigin, onClose, knobAngle, ...screen }: Props) {
   const reduced = useReducedMotion();
+  const copy = useCopy(COPY);
   const root = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const screenEl = useRef<HTMLDivElement>(null);
@@ -107,7 +115,7 @@ export function TvZoom({ getOrigin, onClose, knobAngle, ...screen }: Props) {
       ref={root}
       role="dialog"
       aria-modal="true"
-      aria-label="TV de perto"
+      aria-label={copy.dialog}
       className="fixed inset-0 z-[80] grid place-items-center overflow-hidden bg-plum-950/85 p-4 backdrop-blur-[3px]"
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
@@ -126,7 +134,7 @@ export function TvZoom({ getOrigin, onClose, knobAngle, ...screen }: Props) {
         className="press absolute right-3 top-3 z-10 flex min-h-11 items-center gap-2 rounded-xl border-[3px] border-ink bg-cream px-3 py-1.5 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)] sm:right-5 sm:top-5"
       >
         <CloseIcon className="size-5" />
-        Voltar pra sala
+        {copy.back}
       </button>
       <div
         ref={frame}
@@ -152,7 +160,7 @@ export function TvZoom({ getOrigin, onClose, knobAngle, ...screen }: Props) {
           className="inset-[4%] tvset:inset-auto tvset:left-[10.417%] tvset:top-[14.5%] tvset:h-[61.5%] tvset:w-[61.25%]"
         />
       </div>
-      <p className="pointer-events-none absolute inset-x-4 bottom-3 text-center copy-sm text-cream-2 sm:bottom-5">Aperte Esc ou clique fora da TV para voltar à sala.</p>
+      <p className="pointer-events-none absolute inset-x-4 bottom-3 text-center copy-sm text-cream-2 sm:bottom-5">{copy.help}</p>
     </div>,
     document.body,
   );

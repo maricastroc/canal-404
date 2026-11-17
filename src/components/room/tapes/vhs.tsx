@@ -1,12 +1,13 @@
 import type { ComponentType, CSSProperties, ReactNode } from "react";
 import type { MascotExpression } from "@/components/mascot/Mascot404";
+import type { Localized } from "@/i18n/copy";
 import type { SfxName } from "@/lib/audio/sfx";
 import type { Track } from "@/lib/audio/tracks";
 import { P } from "@/lib/palette";
 
 export type TapeCue = {
   at: number;
-  mascot?: { expression: MascotExpression; line?: string | string[] };
+  mascot?: { expression: MascotExpression; line?: Localized<string> | Localized<string[]> };
   sound?: SfxName;
   eject?: boolean;
 };
@@ -17,7 +18,7 @@ export type TapeProgram = {
   length?: number;
   cues?: TapeCue[];
   song?: { track: Track; length: number };
-  rewind?: string;
+  rewind?: Localized<string>;
 };
 
 export const display = { fontFamily: "var(--font-luckiest)" };

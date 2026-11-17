@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/i18n/Link";
 import { Logo } from "@/components/art/Logo";
+import { useCopy, useLocalPathname, useLocale } from "@/i18n/client";
 import { useSound } from "@/lib/audio/hooks";
-import { isActive, NAV_ITEMS } from "./nav";
+import { LanguageSwitch } from "./LanguageSwitch";
+import { isActive, NAV_COPY, navItems } from "./nav";
 import { NavIcon } from "./NavIcon";
 import { SoundToggle } from "./SoundToggle";
 import { VisitorCounter } from "./VisitorCounter";
@@ -12,7 +13,9 @@ import { VisitorCounter } from "./VisitorCounter";
 const tilts = ["-rotate-2", "rotate-1", "-rotate-1", "rotate-2", "-rotate-2", "rotate-1", "-rotate-1", "rotate-2"];
 
 export function SideNav({ className = "" }: { className?: string }) {
-  const pathname = usePathname();
+  const pathname = useLocalPathname();
+  const locale = useLocale();
+  const copy = useCopy(NAV_COPY);
   const { play, hover } = useSound();
   return (
     <aside className={`on-dark pointer-events-none flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-color:var(--color-plum-500)_transparent] [scrollbar-width:thin] short:gap-3 short:py-4 shorter:gap-2 shorter:py-3 ${className}`}>
@@ -21,11 +24,11 @@ export function SideNav({ className = "" }: { className?: string }) {
         className="pointer-events-auto block w-full shrink-0 -rotate-3 transition-transform hover:rotate-0 hover:scale-[1.03]"
         onClick={() => play("click")}
       >
-        <Logo label="CANAL 404 — Desenhos. Jogos. Bagunça. Página inicial" className="w-full drop-shadow-[0_8px_0_rgba(20,15,38,0.45)] short:mx-auto short:h-[118px] short:w-auto shorter:h-[76px]" />
+        <Logo label={copy.homeWithSlogan} className="w-full drop-shadow-[0_8px_0_rgba(20,15,38,0.45)] short:mx-auto short:h-[118px] short:w-auto shorter:h-[76px]" />
       </Link>
-      <nav aria-label="Principal" className="pointer-events-auto mt-1">
+      <nav aria-label={copy.main} className="pointer-events-auto mt-1">
         <ul className="flex flex-col gap-3 short:gap-2 shorter:gap-1.5">
-          {NAV_ITEMS.map((item, i) => {
+          {navItems(locale).map((item, i) => {
             const active = isActive(pathname, item.href);
             return (
               <li key={item.href} className={tilts[i]}>
@@ -51,7 +54,10 @@ export function SideNav({ className = "" }: { className?: string }) {
       </nav>
       <div className="pointer-events-auto mt-auto flex shrink-0 items-end justify-between gap-3 pb-1">
         <VisitorCounter className="short:py-1.5 shorter:py-1" />
-        <SoundToggle compact />
+        <div className="flex flex-col items-end gap-2 short:gap-1.5">
+          <LanguageSwitch />
+          <SoundToggle compact />
+        </div>
       </div>
     </aside>
   );

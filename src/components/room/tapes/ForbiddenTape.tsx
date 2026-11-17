@@ -2,6 +2,8 @@
 
 import type { CSSProperties } from "react";
 import { Mascot404 } from "@/components/mascot/Mascot404";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import { useTimeline } from "./broadcast";
 import { display, inkOutline, VhsOverlay, washed, type TapeProgram } from "./vhs";
@@ -9,7 +11,7 @@ import "./forbidden.css";
 
 export const FORBIDDEN_BEATS = { dance: 0, notice: 2800, stare: 4000, disguise: 5400, lunge: 6900, noise: 7900, card: 8500 };
 export const FORBIDDEN_LENGTH = 10000;
-export const FORBIDDEN_MESSAGE = ["NÃO ERA PRA", "VOCÊ VER ISSO"];
+export const FORBIDDEN_MESSAGE = localized({ "pt-BR": ["NÃO ERA PRA", "VOCÊ VER ISSO"], en: ["YOU SHOULDN'T", "BE SEEING THIS"] });
 
 const MARKS = Object.values(FORBIDDEN_BEATS);
 const COUNTER_MARKS = [0, 800, 1800, 2800, 3800, 4800, 5800, 6800, 7800, 8800];
@@ -93,6 +95,7 @@ function Glove() {
 }
 
 function Shot({ beat, offset }: { beat: number; offset: number }) {
+  const message = useCopy(FORBIDDEN_MESSAGE);
   const delay = `${-offset}ms`;
   if (beat === Beat.Dance || beat === Beat.Notice) {
     const dancing = beat === Beat.Dance;
@@ -174,9 +177,9 @@ function Shot({ beat, offset }: { beat: number; offset: number }) {
       <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "var(--static)", backgroundSize: "120px" }} />
       <div className="absolute inset-0 flex items-center justify-center px-[8%] pt-[6%]" style={{ animation: "forbidden-card 700ms steps(6) both", animationDelay: delay }}>
         <p className="text-center font-hand text-[max(13px,12cqw)] font-bold leading-[1.05] text-sun" style={inkOutline}>
-          {FORBIDDEN_MESSAGE[0]}
+          {message[0]}
           <br />
-          {FORBIDDEN_MESSAGE[1]}
+          {message[1]}
         </p>
       </div>
     </div>
@@ -203,6 +206,16 @@ export const forbiddenTape: TapeProgram = {
   cues: [
     { at: FORBIDDEN_BEATS.notice, mascot: { expression: "surprised" } },
     { at: FORBIDDEN_BEATS.noise, sound: "static" },
-    { at: FORBIDDEN_LENGTH, eject: true, mascot: { expression: "wink", line: ["Isso nunca aconteceu.", "Era só um alongamento.", "Essa fita vai pro fundo da estante."] } },
+    {
+      at: FORBIDDEN_LENGTH,
+      eject: true,
+      mascot: {
+        expression: "wink",
+        line: localized({
+          "pt-BR": ["Isso nunca aconteceu.", "Era só um alongamento.", "Essa fita vai pro fundo da estante."],
+          en: ["That never happened.", "I was just stretching.", "This tape is going to the back of the shelf."],
+        }),
+      },
+    },
   ],
 };

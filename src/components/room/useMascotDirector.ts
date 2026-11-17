@@ -2,6 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MascotExpression } from "@/components/mascot/Mascot404";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+
+const COPY = localized({
+  "pt-BR": {
+    wake: "Hã?! Eu não tava dormindo. Tava... economizando tela.",
+    sleep: "Zzz... (o 404 entrou em modo de descanso de tela)",
+  },
+  en: {
+    wake: "Huh?! I wasn't sleeping. I was... saving my screen.",
+    sleep: "Zzz... (404 went into screensaver mode)",
+  },
+});
 
 export type MascotLine = {
   text: string;
@@ -11,6 +24,7 @@ export type MascotLine = {
 };
 
 export function useMascotDirector(idleAfter = 26000) {
+  const copy = useCopy(COPY);
   const [line, setLine] = useState<MascotLine | null>(null);
   const [expression, setExpression] = useState<MascotExpression>("neutral");
   const [hint, setHintState] = useState<string | null>(null);
@@ -62,12 +76,12 @@ export function useMascotDirector(idleAfter = 26000) {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     if (sleeping.current) {
       sleeping.current = false;
-      say({ text: "Hã?! Eu não tava dormindo. Tava... economizando tela.", expression: "surprised", duration: 3600 });
+      say({ text: copy.wake, expression: "surprised", duration: 3600 });
     }
     idleTimer.current = setTimeout(() => {
-      say({ text: "Zzz... (o 404 entrou em modo de descanso de tela)", expression: "sleepy", duration: 0, announce: false });
+      say({ text: copy.sleep, expression: "sleepy", duration: 0, announce: false });
     }, idleAfter);
-  }, [idleAfter, say]);
+  }, [copy, idleAfter, say]);
 
   useEffect(() => {
     return () => {

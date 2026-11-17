@@ -1,19 +1,37 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCopy } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import { SCENE, SPOTS, spotCenter } from "./layout";
 
 const ZONES = [
-  { label: "Janela", spot: SPOTS.window },
-  { label: "Rádio", spot: SPOTS.radio },
-  { label: "TV", spot: SPOTS.tv },
-  { label: "Fliperama", spot: SPOTS.arcade },
-];
+  { id: "window", spot: SPOTS.window },
+  { id: "radio", spot: SPOTS.radio },
+  { id: "tv", spot: SPOTS.tv },
+  { id: "arcade", spot: SPOTS.arcade },
+] as const;
+
+const COPY = localized({
+  "pt-BR": {
+    zones: { window: "Janela", radio: "Rádio", tv: "TV", arcade: "Fliperama" },
+    left: "Olhar para a esquerda da sala",
+    right: "Olhar para a direita da sala",
+    nav: "Ir para um canto da sala",
+  },
+  en: {
+    zones: { window: "Window", radio: "Radio", tv: "TV", arcade: "Arcade" },
+    left: "Look at the left side of the room",
+    right: "Look at the right side of the room",
+    nav: "Go to a corner of the room",
+  },
+});
 
 export function RoomPanner({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const { play } = useSound();
+  const copy = useCopy(COPY);
   const [edges, setEdges] = useState({ start: true, end: true });
 
   const measure = useCallback(() => {
@@ -62,7 +80,7 @@ export function RoomPanner({ children }: { children: React.ReactNode }) {
           type="button"
           onClick={() => nudge(-1)}
           disabled={edges.start}
-          aria-label="Olhar para a esquerda da sala"
+          aria-label={copy.left}
           className="press pointer-events-auto grid size-12 place-items-center rounded-full border-[3px] border-ink bg-sun font-display text-xl text-ink shadow-[var(--shadow-ink-sm)] transition-opacity disabled:pointer-events-none disabled:opacity-0"
         >
           ◀
@@ -71,16 +89,16 @@ export function RoomPanner({ children }: { children: React.ReactNode }) {
           type="button"
           onClick={() => nudge(1)}
           disabled={edges.end}
-          aria-label="Olhar para a direita da sala"
+          aria-label={copy.right}
           className="press pointer-events-auto grid size-12 place-items-center rounded-full border-[3px] border-ink bg-sun font-display text-xl text-ink shadow-[var(--shadow-ink-sm)] transition-opacity disabled:pointer-events-none disabled:opacity-0"
         >
           ▶
         </button>
       </div>
-      <nav aria-label="Ir para um canto da sala" className="on-dark flex flex-col items-center px-3 pt-3 xl:hidden">
+      <nav aria-label={copy.nav} className="on-dark flex flex-col items-center px-3 pt-3 xl:hidden">
         <ul className="flex flex-wrap justify-center gap-1.5 rounded-full border-[3px] border-ink bg-plum-800 p-1 shadow-[var(--shadow-ink-sm)]">
           {ZONES.map((zone) => (
-            <li key={zone.label}>
+            <li key={zone.id}>
               <button
                 type="button"
                 onClick={() => {
@@ -89,7 +107,7 @@ export function RoomPanner({ children }: { children: React.ReactNode }) {
                 }}
                 className="min-h-10 rounded-full px-3.5 font-display text-xs uppercase tracking-wide text-cream hover:bg-plum-600 focus-visible:bg-plum-600"
               >
-                {zone.label}
+                {copy.zones[zone.id]}
               </button>
             </li>
           ))}

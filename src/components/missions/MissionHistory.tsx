@@ -3,17 +3,49 @@
 import { useEffect, useState } from "react";
 import { TapeIcon } from "@/components/art/Icons";
 import { InkButton } from "@/components/ui/Primitives";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
+import { countOf } from "@/i18n/format";
 import { fetchMissionHistory } from "@/lib/missions/client";
 import { dayStamp, formatMissionBest, formatPlace } from "@/lib/missions/format";
+import { missionText } from "@/lib/missions/text";
 import type { MissionHistoryItem } from "@/lib/missions/types";
 import { missionPlace, StateChip } from "./parts";
 
 type Loaded = { key: string; items: MissionHistoryItem[]; next: string | null; failed: boolean };
 
+const COPY = localized({
+  "pt-BR": {
+    tries: ["tentativa", "tentativas"] as [string, string],
+    seeBoard: "Ver placar",
+    of: (title: string) => ` de ${title}`,
+    title: "Fitas gravadas",
+    intro: "Cada missão jogada fica guardada aqui. Escolha uma fita para rever o placar daquele dia.",
+    rewinding: "Rebobinando…",
+    failed: "As fitas não quiseram sair da estante agora. Tente de novo daqui a pouco.",
+    empty: "A estante ainda está vazia. Jogue a missão de hoje e amanhã ela aparece aqui como sua primeira fita.",
+    more: "Mais fitas",
+  },
+  en: {
+    tries: ["try", "tries"],
+    seeBoard: "See board",
+    of: (title: string) => ` for ${title}`,
+    title: "Recorded tapes",
+    intro: "Every mission you play is saved here. Pick a tape to see that day's board again.",
+    rewinding: "Rewinding…",
+    failed: "The tapes didn't want to leave the shelf just now. Try again in a little while.",
+    empty: "The shelf is still empty. Play today's mission and tomorrow it shows up here as your first tape.",
+    more: "More tapes",
+  },
+});
+
 function Tape({ item, onBoard }: { item: MissionHistoryItem; onBoard: (day: string) => void }) {
   const { mission, you } = item;
-  const stamp = dayStamp(mission.day);
-  const place = missionPlace(mission);
+  const copy = useCopy(COPY);
+  const locale = useLocale();
+  const stamp = dayStamp(mission.day, locale);
+  const place = missionPlace(mission, locale);
+  const text = missionText(mission, locale);
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-[3px] border-ink bg-[#221c3a] p-2 shadow-[var(--shadow-ink-sm)] sm:col-span-3 sm:grid sm:grid-cols-subgrid sm:p-2.5">
       <time dateTime={mission.day} className="grid w-16 shrink-0 place-items-center rounded border-2 border-ink bg-[#10122e] py-1 font-display leading-tight text-screen">
@@ -21,7 +53,7 @@ function Tape({ item, onBoard }: { item: MissionHistoryItem; onBoard: (day: stri
         <span className="text-base tabular-nums">{stamp.date}</span>
       </time>
       <div className="min-w-0 flex-1 basis-40 -rotate-[0.4deg] rounded-sm border-2 border-ink/40 bg-paper px-3 py-1 [background-image:repeating-linear-gradient(to_bottom,transparent_0,transparent_21px,rgb(92_185_240/0.35)_21px,rgb(92_185_240/0.35)_22px)]">
-        <p className="truncate font-hand text-lg leading-snug text-ink">{mission.title}</p>
+        <p className="truncate font-hand text-lg leading-snug text-ink">{text.title}</p>
         <p className="copy-sm text-ink-soft">
           {place.game}
           {place.level ? (
@@ -35,12 +67,13 @@ function Tape({ item, onBoard }: { item: MissionHistoryItem; onBoard: (day: stri
       <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:w-auto sm:flex-col sm:items-end sm:justify-center sm:text-right">
         <StateChip state={you.state} past />
         <p className="copy-sm text-cream-2">
-          {you.best ? `${formatMissionBest(mission.game, you.best.metrics)} · ${formatPlace(you.best.position, you.best.total)}` : you.attempts > 0 ? (you.attempts === 1 ? "1 tentativa" : `${you.attempts} tentativas`) : null}
+          {you.best ? `${formatMissionBest(mission.game, you.best.metrics, locale)} · ${formatPlace(you.best.position, you.best.total, locale)}` : you.attempts > 0 ? countOf(you.attempts, copy.tries, locale) : null}
           {mission.ranked ? (
             <>
               {you.best || you.attempts > 0 ? " · " : null}
               <button type="button" onClick={() => onBoard(mission.day)} className="tag-label text-sun underline decoration-2 underline-offset-2 hover:text-cream">
-                Ver placar<span className="sr-only"> de {mission.title}</span>
+                {copy.seeBoard}
+                <span className="sr-only">{copy.of(text.title)}</span>
               </button>
             </>
           ) : null}
@@ -54,6 +87,7 @@ export function MissionHistory({ playerId, today, onBoard }: { playerId: string;
   const key = `${playerId}/${today}`;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [busy, setBusy] = useState(false);
+  const copy = useCopy(COPY);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,18 +113,18 @@ export function MissionHistory({ playerId, today, onBoard }: { playerId: string;
   return (
     <section aria-labelledby="mission-history-title" className="rounded-2xl border-[3px] border-ink bg-plum-800 p-4 text-cream shadow-[var(--shadow-ink)] sm:p-5">
       <h2 id="mission-history-title" className="flex items-center gap-2 font-display text-lg uppercase tracking-wide text-sun">
-        <TapeIcon className="size-5" /> Fitas gravadas
+        <TapeIcon className="size-5" /> {copy.title}
       </h2>
-      <p className="copy-sm mt-1 text-cream-2">Cada missão jogada fica guardada aqui. Escolha uma fita para rever o placar daquele dia.</p>
+      <p className="copy-sm mt-1 text-cream-2">{copy.intro}</p>
       <div aria-busy={!current} className="mt-3">
         {!current ? (
-          <p className="font-display uppercase tracking-wider text-cream-2">Rebobinando…</p>
+          <p className="font-display uppercase tracking-wider text-cream-2">{copy.rewinding}</p>
         ) : current.failed ? (
-          <p className="copy text-cream-2">As fitas não quiseram sair da estante agora. Tente de novo daqui a pouco.</p>
+          <p className="copy text-cream-2">{copy.failed}</p>
         ) : past.length === 0 ? (
           <div className="flex items-center gap-3 rounded-xl border-[3px] border-dashed border-plum-500 px-4 py-4">
             <TapeIcon className="size-8 shrink-0 text-plum-300" />
-            <p className="copy text-cream-2">A estante ainda está vazia. Jogue a missão de hoje e amanhã ela aparece aqui como sua primeira fita.</p>
+            <p className="copy text-cream-2">{copy.empty}</p>
           </div>
         ) : (
           <ul className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
@@ -101,7 +135,7 @@ export function MissionHistory({ playerId, today, onBoard }: { playerId: string;
         )}
         {current?.next ? (
           <InkButton tone="cream" size="sm" className="mt-3" onClick={more} disabled={busy}>
-            {busy ? "Rebobinando…" : "Mais fitas"}
+            {busy ? copy.rewinding : copy.more}
           </InkButton>
         ) : null}
       </div>

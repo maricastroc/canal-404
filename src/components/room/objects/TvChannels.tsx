@@ -2,7 +2,10 @@ import { COVERS } from "@/components/art/Covers";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { Feather, Head, Pillow } from "@/components/art/PajamaWarArt";
-import { PLAYABLE, type GameMeta } from "@/games/registry";
+import { getGame, PLAYABLE, playableIn, type GameMeta } from "@/games/registry";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized, type Localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 import { MissionScreen } from "../MissionOnAir";
 import { TAPE_PROGRAMS } from "../tapes";
@@ -19,42 +22,87 @@ export type Channel = {
   hint?: string;
 };
 
-const GAME_CHANNELS: Channel[] = PLAYABLE.map((game, i) => ({
-  id: game.slug,
-  number: String(i + 1).padStart(2, "0"),
-  name: game.title,
-  game,
-  cta: { href: `/play/${game.slug}`, label: "Jogar agora", context: game.title, play: true },
-}));
-
-const SPECIAL_CHANNELS: Channel[] = [
-  { id: "bars", number: String(GAME_CHANNELS.length + 1).padStart(2, "0"), name: "Fora do ar: barras coloridas" },
-  {
-    id: "cartoon",
-    number: String(GAME_CHANNELS.length + 2).padStart(2, "0"),
-    name: "Desenho: 404 e o Controle Perdido",
-    cta: { href: "/characters", label: "Personagens", context: "conhecer a turma do CANAL 404" },
-    hint: "Reprise do meu desenho! Clica pra conhecer a turma.",
+const COPY = localized({
+  "pt-BR": {
+    playNow: "Jogar agora",
+    bars: "Fora do ar: barras coloridas",
+    cartoon: "Desenho: 404 e o Controle Perdido",
+    cartoonCta: "Personagens",
+    cartoonContext: "conhecer a turma do CANAL 404",
+    cartoonHint: "Reprise do meu desenho! Clica pra conhecer a turma.",
+    lost: "Transmissão perdida",
+    mission: "Missão 404 do Dia",
+    streetHint: "Um comercial de 2004 da Rua Sem Saída. Clica na tela pra jogar.",
+    streetLogo: [
+      { text: "RUA", size: 54 },
+      { text: "SEM SAÍDA", size: 32 },
+    ],
+    noSignal: "SEM SINAL",
+    cartoonEpisode: "EP. 12 — O CONTROLE PERDIDO",
+    lostTitle: "TRANSMISSÃO PERDIDA",
+    lostStamp: "31/12/2007 — 23:59",
+    lostMessage: "Se você está vendo isso, o canal nunca saiu do ar.",
   },
-  { id: "lost", number: "00", name: "Transmissão perdida" },
-  { id: "mission", number: String(GAME_CHANNELS.length + 3).padStart(2, "0"), name: "Missão 404 do Dia" },
-];
+  en: {
+    playNow: "Play now",
+    bars: "Off the air: color bars",
+    cartoon: "Cartoon: 404 and the Lost Remote",
+    cartoonCta: "Characters",
+    cartoonContext: "meet the CANAL 404 crew",
+    cartoonHint: "A rerun of my cartoon! Click to meet the crew.",
+    lost: "Lost broadcast",
+    mission: "Mission 404 of the Day",
+    streetHint: "A 2004 commercial for Dead End Street. Click the screen to play.",
+    streetLogo: [
+      { text: "DEAD END", size: 44 },
+      { text: "STREET", size: 32 },
+    ],
+    noSignal: "NO SIGNAL",
+    cartoonEpisode: "EP. 12 — THE LOST REMOTE",
+    lostTitle: "LOST BROADCAST",
+    lostStamp: "12/31/2007 — 11:59 PM",
+    lostMessage: "If you're seeing this, the channel never went off the air.",
+  },
+});
 
-const TAPE_CHANNELS: Channel[] = TAPES.map((tape) => ({
-  id: tape.id,
-  number: "AV",
-  name: tape.name,
-  ...(tape.id === "tape-street"
-    ? {
-        cta: { href: "/play/dead-end-street", label: "Jogar agora", context: "Rua Sem Saída", play: true, pill: true },
-        hint: "Um comercial de 2004 da Rua Sem Saída. Clica na tela pra jogar.",
-      }
-    : {}),
-}));
+function buildChannels(locale: Locale): Record<ChannelId, Channel> {
+  const copy = COPY[locale];
+  const games: Channel[] = playableIn(locale).map((game, i) => ({
+    id: game.slug,
+    number: String(i + 1).padStart(2, "0"),
+    name: game.title,
+    game,
+    cta: { href: `/play/${game.slug}`, label: copy.playNow, context: game.title, play: true },
+  }));
+  const special: Channel[] = [
+    { id: "bars", number: String(games.length + 1).padStart(2, "0"), name: copy.bars },
+    {
+      id: "cartoon",
+      number: String(games.length + 2).padStart(2, "0"),
+      name: copy.cartoon,
+      cta: { href: "/characters", label: copy.cartoonCta, context: copy.cartoonContext },
+      hint: copy.cartoonHint,
+    },
+    { id: "lost", number: "00", name: copy.lost },
+    { id: "mission", number: String(games.length + 3).padStart(2, "0"), name: copy.mission },
+  ];
+  const tapes: Channel[] = TAPES[locale].map((tape) => ({
+    id: tape.id,
+    number: "AV",
+    name: tape.name,
+    ...(tape.id === "tape-street"
+      ? {
+          cta: { href: "/play/dead-end-street", label: copy.playNow, context: getGame("dead-end-street", locale)?.title ?? "", play: true, pill: true },
+          hint: copy.streetHint,
+        }
+      : {}),
+  }));
+  return Object.fromEntries([...games, ...special, ...tapes].map((c) => [c.id, c]));
+}
 
-export const CHANNELS: Record<ChannelId, Channel> = Object.fromEntries([...GAME_CHANNELS, ...SPECIAL_CHANNELS, ...TAPE_CHANNELS].map((c) => [c.id, c]));
+export const CHANNELS: Localized<Record<ChannelId, Channel>> = { "pt-BR": buildChannels("pt-BR"), en: buildChannels("en") };
 
-export const CHANNEL_ORDER: ChannelId[] = [...GAME_CHANNELS.map((c) => c.id), "bars", "cartoon"];
+export const CHANNEL_ORDER: ChannelId[] = [...PLAYABLE.map((game) => game.slug), "bars", "cartoon"];
 
 export const MISSION_CHANNEL: ChannelId = "mission";
 
@@ -82,6 +130,7 @@ function Cloud({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
 }
 
 function StreetScreen() {
+  const [top, bottom] = useCopy(COPY).streetLogo;
   return (
     <svg viewBox="0 0 294 246" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
       <rect width="294" height="246" fill="#82d3f7" />
@@ -107,11 +156,11 @@ function StreetScreen() {
         </g>
       </g>
       <g transform="rotate(-8 150 90)" style={display}>
-        <text x="150" y="88" textAnchor="middle" fontSize="54" fill={P.sun} stroke={P.ink} strokeWidth="8" paintOrder="stroke" strokeLinejoin="round">
-          RUA
+        <text x="150" y="88" textAnchor="middle" fontSize={top.size} fill={P.sun} stroke={P.ink} strokeWidth="8" paintOrder="stroke" strokeLinejoin="round">
+          {top.text}
         </text>
-        <text x="152" y="124" textAnchor="middle" fontSize="32" fill={P.white} stroke={P.ink} strokeWidth="7" paintOrder="stroke" strokeLinejoin="round">
-          SEM SAÍDA
+        <text x="152" y="124" textAnchor="middle" fontSize={bottom.size} fill={P.white} stroke={P.ink} strokeWidth="7" paintOrder="stroke" strokeLinejoin="round">
+          {bottom.text}
         </text>
       </g>
     </svg>
@@ -167,6 +216,7 @@ function GameScreen({ game }: { game: GameMeta }) {
 }
 
 function BarsScreen() {
+  const copy = useCopy(COPY);
   const bars = ["#f2efe6", "#f7d94c", "#5fd8e6", "#68d36a", "#e05fd0", "#ea4a46", "#3f5bd8"];
   return (
     <div className="absolute inset-0">
@@ -185,7 +235,7 @@ function BarsScreen() {
         <rect x="126" y="200" width="44" height="40" fill={P.plum600} />
       </svg>
       <div className="absolute left-1/2 top-[34%] -translate-x-1/2 -translate-y-1/2 rotate-[-3deg] border-[3px] border-ink bg-ink px-3 py-1 font-display text-[max(10px,8.8cqw)] tracking-wide text-cream">
-        SEM SINAL
+        {copy.noSignal}
       </div>
       <Mascot404 expression="static" className="absolute bottom-[4%] right-[6%] w-[22%]" />
     </div>
@@ -193,6 +243,7 @@ function BarsScreen() {
 }
 
 function CartoonScreen() {
+  const copy = useCopy(COPY);
   return (
     <div className="absolute inset-0 bg-[#ffe7a8]">
       <svg viewBox="0 0 294 246" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
@@ -214,30 +265,32 @@ function CartoonScreen() {
         <Mascot404 pose="full" expression="excited" className="w-full" />
       </div>
       <p className="absolute inset-x-0 bottom-[3%] text-center font-display text-[max(7px,5.8cqw)] tracking-wide text-sun">
-        EP. 12 — O CONTROLE PERDIDO
+        {copy.cartoonEpisode}
       </p>
     </div>
   );
 }
 
 function LostScreen() {
+  const copy = useCopy(COPY);
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-[6%] bg-plum-950 px-[8%] text-center">
       <p
         className="font-display text-[max(10px,10.2cqw)] leading-none text-mint"
         style={{ animation: "glitch 2.2s steps(1) infinite" }}
       >
-        TRANSMISSÃO PERDIDA
+        {copy.lostTitle}
       </p>
-      <p className="font-hand text-[max(8px,6.8cqw)] leading-tight text-cream">31/12/2007 — 23:59</p>
+      <p className="font-hand text-[max(8px,6.8cqw)] leading-tight text-cream">{copy.lostStamp}</p>
       <p className="font-hand text-[max(8px,7.1cqw)] leading-tight text-sun">
-        Se você está vendo isso, o canal nunca saiu do ar.
+        {copy.lostMessage}
       </p>
     </div>
   );
 }
 
 export function ChannelContent({ id }: { id: ChannelId }) {
+  const channels = CHANNELS[useLocale()];
   switch (id) {
     case "dead-end-street":
       return <StreetScreen />;
@@ -245,7 +298,7 @@ export function ChannelContent({ id }: { id: ChannelId }) {
       return (
         <>
           <PajamaScreen />
-          <ChannelLogo game={CHANNELS[id].game!} />
+          <ChannelLogo game={channels[id].game!} />
         </>
       );
     case "bars":
@@ -261,6 +314,6 @@ export function ChannelContent({ id }: { id: ChannelId }) {
     const { Screen } = TAPE_PROGRAMS[id];
     return <Screen />;
   }
-  const game = CHANNELS[id]?.game;
+  const game = channels[id]?.game;
   return game ? <GameScreen game={game} /> : <BarsScreen />;
 }

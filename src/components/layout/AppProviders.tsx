@@ -2,13 +2,15 @@
 
 import { MotionConfig } from "motion/react";
 import { useEffect } from "react";
+import { LocaleProvider } from "@/i18n/client";
+import type { Locale } from "@/i18n/locales";
 import { getAudio } from "@/lib/audio/engine";
 import { useProgress } from "@/lib/progress/hooks";
 import { registerVisit } from "@/lib/progress/store";
 import { reportError } from "@/lib/telemetry";
 import { ToastStack } from "./ToastStack";
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({ locale, children }: { locale: Locale; children: React.ReactNode }) {
   const progress = useProgress();
 
   useEffect(() => {
@@ -42,9 +44,11 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <MotionConfig reducedMotion="user">
-      {children}
-      <ToastStack />
-    </MotionConfig>
+    <LocaleProvider locale={locale}>
+      <MotionConfig reducedMotion="user">
+        {children}
+        <ToastStack />
+      </MotionConfig>
+    </LocaleProvider>
   );
 }

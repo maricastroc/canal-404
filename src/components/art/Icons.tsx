@@ -14,6 +14,7 @@ import {
   House,
   Images,
   KeyRound,
+  Languages,
   LayoutGrid,
   Lock,
   Menu,
@@ -78,6 +79,7 @@ export const EjectIcon = make(Eject);
 export const CloseIcon = make(X);
 export const ZoomIcon = make(ZoomIn);
 export const RewindIcon = make(Rewind, true);
+export const LanguageIcon = make(Languages);
 export const MissionIcon = make(Target);
 export const TimerIcon = make(Timer);
 export const TapeIcon = make(CassetteTape);

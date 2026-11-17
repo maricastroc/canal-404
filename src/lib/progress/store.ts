@@ -1,8 +1,10 @@
+import { localized, type Localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import {
   ACHIEVEMENTS,
   SECRETS,
-  achievementById,
-  secretById,
+  achievementText,
+  secretText,
   type AchievementId,
   type SecretId,
 } from "./definitions";
@@ -39,12 +41,21 @@ export type ProgressState = {
   counters: Record<string, number>;
 };
 
+export type ToastText = string | Localized<string>;
+
 export type Toast = {
   id: number;
   kind: "secret" | "achievement" | "info";
-  title: string;
-  description: string;
+  title: ToastText;
+  description: ToastText;
 };
+
+export function toastText(read: (locale: Locale) => { title: string; description: string }) {
+  return {
+    title: localized({ "pt-BR": read("pt-BR").title, en: read("en").title }),
+    description: localized({ "pt-BR": read("pt-BR").description, en: read("en").description }),
+  };
+}
 
 const STORAGE_KEY = "canal404:progress:v1";
 const DATA_PREFIX = "canal404:";
@@ -257,14 +268,7 @@ export function unlockAchievement(id: AchievementId) {
   ensureLoaded();
   if (state.achievements[id]) return false;
   commit({ ...state, achievements: { ...state.achievements, [id]: Date.now() } });
-  const def = achievementById(id);
-  if (def) {
-    pushToast({
-      kind: "achievement",
-      title: def.title,
-      description: def.description,
-    });
-  }
+  if (ACHIEVEMENT_SET.has(id)) pushToast({ kind: "achievement", ...toastText((locale) => achievementText(id, locale)) });
   return true;
 }
 
@@ -272,10 +276,7 @@ export function unlockSecret(id: SecretId) {
   ensureLoaded();
   if (state.secrets[id]) return false;
   commit({ ...state, secrets: { ...state.secrets, [id]: Date.now() } });
-  const def = secretById(id);
-  if (def) {
-    pushToast({ kind: "secret", title: def.title, description: def.description });
-  }
+  if (SECRET_SET.has(id)) pushToast({ kind: "secret", ...toastText((locale) => secretText(id, locale)) });
   const found = Object.keys(state.secrets).length;
   if (found >= 3) unlockAchievement("explorer");
   if (found >= SECRETS.length) unlockAchievement("secret-hunter");

@@ -1,19 +1,23 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/i18n/Link";
 import { useEffect, useRef, useState } from "react";
 import { MenuIcon } from "@/components/art/Icons";
 import { Logo } from "@/components/art/Logo";
+import { useCopy, useLocalPathname, useLocale } from "@/i18n/client";
 import { useSound } from "@/lib/audio/hooks";
-import { isActive, NAV_ITEMS } from "./nav";
+import { LanguageSwitch } from "./LanguageSwitch";
+import { isActive, NAV_COPY, navItems } from "./nav";
 import { NavIcon } from "./NavIcon";
 import { SoundToggle } from "./SoundToggle";
 import { VisitorCounter } from "./VisitorCounter";
 
 export function TopBar({ className = "" }: { className?: string }) {
-  const pathname = usePathname();
+  const pathname = useLocalPathname();
+  const locale = useLocale();
+  const copy = useCopy(NAV_COPY);
+  const items = navItems(locale);
   const { play, hover } = useSound();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -60,11 +64,11 @@ export function TopBar({ className = "" }: { className?: string }) {
     <header className={`on-dark relative z-50 border-b-[3px] border-ink bg-plum-800 ${className}`}>
       <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-3 px-3 sm:px-5">
         <Link href="/" className="shrink-0 -rotate-2 transition-transform hover:rotate-0" onClick={() => play("click")}>
-          <Logo slogan={false} label="CANAL 404 — página inicial" className="h-14 w-auto drop-shadow-[0_4px_0_rgba(20,15,38,0.5)]" />
+          <Logo slogan={false} label={copy.home} className="h-14 w-auto drop-shadow-[0_4px_0_rgba(20,15,38,0.5)]" />
         </Link>
-        <nav aria-label="Principal" className="ml-auto hidden md:block">
+        <nav aria-label={copy.main} className="ml-auto hidden md:block">
           <ul className="flex items-center gap-1.5 lg:gap-2">
-            {NAV_ITEMS.map((item) => {
+            {items.map((item) => {
               const active = isActive(pathname, item.href) || (item.href === "/games" && pathname.startsWith("/games"));
               return (
                 <li key={item.href}>
@@ -85,7 +89,8 @@ export function TopBar({ className = "" }: { className?: string }) {
             })}
           </ul>
         </nav>
-        <SoundToggle compact className="ml-auto md:ml-2" />
+        <LanguageSwitch className="ml-auto h-12 md:ml-2 md:h-auto" />
+        <SoundToggle compact />
         <button
           ref={menuButton}
           type="button"
@@ -95,7 +100,7 @@ export function TopBar({ className = "" }: { className?: string }) {
           }}
           aria-expanded={open}
           aria-controls="menu-drawer"
-          aria-label={open ? "Fechar menu" : "Abrir menu"}
+          aria-label={open ? copy.closeMenu : copy.openMenu}
           className="press grid size-12 place-items-center rounded-xl border-[3px] border-ink bg-sun shadow-[var(--shadow-ink-sm)] md:hidden"
         >
           <MenuIcon open={open} className="size-7" />
@@ -119,7 +124,7 @@ export function TopBar({ className = "" }: { className?: string }) {
               ref={drawer}
               role="dialog"
               aria-modal="true"
-              aria-label="Menu do canal"
+              aria-label={copy.menu}
               initial={{ y: -30, opacity: 0, rotate: -2 }}
               animate={{ y: 0, opacity: 1, rotate: 0 }}
               exit={{ y: -20, opacity: 0 }}
@@ -127,7 +132,7 @@ export function TopBar({ className = "" }: { className?: string }) {
               className="paper fixed inset-x-3 top-[5.2rem] z-50 max-h-[calc(100svh-6rem)] overflow-y-auto border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly md:hidden"
             >
               <ul className="flex flex-col gap-3">
-                {NAV_ITEMS.map((item, i) => {
+                {items.map((item, i) => {
                   const active = isActive(pathname, item.href);
                   return (
                     <li key={item.href} className={i % 2 ? "rotate-1" : "-rotate-1"}>
@@ -152,8 +157,9 @@ export function TopBar({ className = "" }: { className?: string }) {
                   );
                 })}
               </ul>
-              <div className="mt-5 flex justify-center">
+              <div className="mt-5 flex items-center justify-center gap-4">
                 <VisitorCounter />
+                <LanguageSwitch wide />
               </div>
             </motion.div>
           </>

@@ -1,14 +1,31 @@
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import type { ProgressState } from "@/lib/progress/store";
 import { CHAOS_POSTER, posterInk as ink, type PosterText } from "./posterArt";
 
+export type PosterId = "chaos" | "dream" | "dead-end-street" | "off-air";
+
+export const POSTER_TEXT = localized<Record<PosterId, { title: string; unlock: string }>>({
+  "pt-BR": {
+    chaos: { title: "Caos faz parte da programação", unlock: "Liberado desde 2004" },
+    dream: { title: "Sonhe, jogue, invente, repita", unlock: "Liberado desde 2004" },
+    "dead-end-street": { title: "Rua Sem Saída: a bagunça oficial do bairro", unlock: "Vença uma partida de Rua Sem Saída." },
+    "off-air": { title: "Fora do ar (ou não)", unlock: "Encontre 3 segredos na sala de transmissão." },
+  },
+  en: {
+    chaos: { title: "Chaos is part of the programming", unlock: "Unlocked since 2004" },
+    dream: { title: "Dream, play, invent, repeat", unlock: "Unlocked since 2004" },
+    "dead-end-street": { title: "Dead End Street: the neighborhood's official mess", unlock: "Win a game of Dead End Street." },
+    "off-air": { title: "Off the air (or not)", unlock: "Find 3 secrets in the broadcast room." },
+  },
+});
+
 export type PosterDef = {
-  id: string;
-  title: string;
+  id: PosterId;
   file: string;
-  unlock: { label: string; check: (p: ProgressState) => boolean };
+  unlock: { check: (p: ProgressState) => boolean };
   art: React.ReactNode;
   texts: PosterText[];
 };
@@ -16,16 +33,14 @@ export type PosterDef = {
 export const POSTERS: PosterDef[] = [
   {
     id: "chaos",
-    title: "Caos faz parte da programação",
     file: "canal404-poster-chaos.png",
-    unlock: { label: "Liberado desde 2004", check: () => true },
+    unlock: { check: () => true },
     ...CHAOS_POSTER,
   },
   {
     id: "dream",
-    title: "Sonhe, jogue, invente, repita",
     file: "canal404-poster-dream.png",
-    unlock: { label: "Liberado desde 2004", check: () => true },
+    unlock: { check: () => true },
     art: (
       <g>
         <rect width="600" height="800" fill={P.plum700} />
@@ -61,10 +76,8 @@ export const POSTERS: PosterDef[] = [
   },
   {
     id: "dead-end-street",
-    title: "Rua Sem Saída: a bagunça oficial do bairro",
     file: "canal404-poster-dead-end-street.png",
     unlock: {
-      label: "Vença uma partida de Rua Sem Saída.",
       check: (p) => Boolean(p.achievements["street-win"]),
     },
     art: (
@@ -92,10 +105,8 @@ export const POSTERS: PosterDef[] = [
   },
   {
     id: "off-air",
-    title: "Fora do ar (ou não)",
     file: "canal404-poster-off-air.png",
     unlock: {
-      label: "Encontre 3 segredos na sala de transmissão.",
       check: (p) => Object.keys(p.secrets).length >= 3,
     },
     art: (

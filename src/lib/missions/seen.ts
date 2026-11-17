@@ -1,4 +1,4 @@
-import { pushToast } from "@/lib/progress/store";
+import { pushToast, toastText } from "@/lib/progress/store";
 import { missionAchievement, type MissionAchievementId } from "./achievements";
 
 const KEY = "canal404:mission-achievements:v1";
@@ -17,8 +17,7 @@ export function announceAchievements(playerId: string, ids: readonly MissionAchi
   const seen = readSeen();
   const fresh = ids.filter((id) => !seen.includes(`${playerId}:${id}`));
   for (const id of fresh) {
-    const def = missionAchievement(id);
-    pushToast({ kind: "achievement", title: def.title, description: def.description });
+    pushToast({ kind: "achievement", ...toastText((locale) => missionAchievement(id, locale)) });
   }
   if (fresh.length) {
     try {

@@ -3,6 +3,8 @@
 import type { CSSProperties, MouseEvent, Ref } from "react";
 import { PlayIcon, RewindIcon, ZoomIcon } from "@/components/art/Icons";
 import { IntentLink } from "@/components/ui/IntentLink";
+import { useCopy, useLocale } from "@/i18n/client";
+import { localized } from "@/i18n/copy";
 import { missionCta, missionHint, useMissionOnAir } from "../MissionOnAir";
 import { spotStyle, SPOTS, type Spot } from "../layout";
 import { useBroadcast, useTimeline } from "../tapes/broadcast";
@@ -17,7 +19,32 @@ export type TvBadge = "new" | null;
 
 export type TvNext = { number: string; name: string; onTune: () => void };
 
-const BADGE_LABEL: Record<Exclude<TvBadge, null>, string> = { new: "Inédito" };
+const COPY = localized({
+  "pt-BR": {
+    badge: { new: "Inédito" },
+    newHint: (title: string) => `${title}: programa inédito pra você! Clica na tela pra jogar.`,
+    rerunHint: (title: string) => `Reprise de ${title}! Clica na tela pra jogar.`,
+    zoomScreen: "Clica na tela pra ver de perto.",
+    nextLabel: (name: string, number: string) => `A seguir: ${name}, canal ${number}. Sintonizar agora`,
+    next: "A seguir",
+    knobHint: "Esse botão muda de canal. Dizem que tem um canal que não devia existir...",
+    zoomHint: "Chega mais perto da TV.",
+    knobLabel: (number: string, name: string) => `Mudar de canal. Canal atual: ${number}, ${name}`,
+    zoomLabel: "Ver a TV de perto",
+  },
+  en: {
+    badge: { new: "New" },
+    newHint: (title: string) => `${title}: a brand-new show for you! Click the screen to play.`,
+    rerunHint: (title: string) => `A rerun of ${title}! Click the screen to play.`,
+    zoomScreen: "Click the screen for a closer look.",
+    nextLabel: (name: string, number: string) => `Up next: ${name}, channel ${number}. Tune in now`,
+    next: "Up next",
+    knobHint: "This knob changes the channel. They say there's a channel that shouldn't exist...",
+    zoomHint: "Get closer to the TV.",
+    knobLabel: (number: string, name: string) => `Change channel. Current channel: ${number}, ${name}`,
+    zoomLabel: "See the TV up close",
+  },
+});
 
 export const SCREEN_RADIUS = `${(34 / TV_SCREEN.w) * 100}% / ${(34 / TV_SCREEN.h) * 100}%`;
 
@@ -41,6 +68,7 @@ type ScreenProps = {
 };
 
 function RewindButton({ channel, onHoverSound, raised }: { channel: ChannelId; onHoverSound?: () => void; raised: boolean }) {
+  const locale = useLocale();
   const program = isTape(channel) ? TAPE_PROGRAMS[channel] : null;
   const { replay } = useBroadcast();
   const { phase } = useTimeline([0, program?.length ?? Number.MAX_SAFE_INTEGER]);
@@ -55,7 +83,7 @@ function RewindButton({ channel, onHoverSound, raised }: { channel: ChannelId; o
         style={{ animation: "pop-in 0.3s ease-out both" }}
       >
         <RewindIcon className="size-[1em] text-ink" />
-        {program.rewind}
+        {program.rewind[locale]}
       </button>
     </div>
   );
@@ -63,8 +91,11 @@ function RewindButton({ channel, onHoverSound, raised }: { channel: ChannelId; o
 
 export function TvScreen({ channel, badge, next = null, switching, osd, flash, rewinding, onLaunch, onZoom, onHint, onHoverSound, screenRef, className = "", style }: ScreenProps) {
   const spot = SPOTS.tv;
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const channels = CHANNELS[locale];
   const mission = useMissionOnAir();
-  const info = channel === "mission" && mission ? { ...CHANNELS[channel], cta: missionCta(mission), hint: missionHint(mission) } : CHANNELS[channel];
+  const info = channel === "mission" && mission ? { ...channels[channel], cta: missionCta(mission, locale), hint: missionHint(mission, locale) } : channels[channel];
   const { take, since } = useBroadcast();
   const fullCta = info.cta && !info.cta.pill;
 
@@ -77,10 +108,10 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
 
   const screenHint = info.game
     ? badge === "new"
-      ? `${info.game.title}: programa inédito pra você! Clica na tela pra jogar.`
-      : `Reprise de ${info.game.title}! Clica na tela pra jogar.`
+      ? copy.newHint(info.game.title)
+      : copy.rerunHint(info.game.title)
     : (info.hint ?? null);
-  const ctaContext = info.cta ? (badge ? `${info.cta.context}, ${BADGE_LABEL[badge].toLowerCase()}` : info.cta.context) : "";
+  const ctaContext = info.cta ? (badge ? `${info.cta.context}, ${copy.badge[badge].toLowerCase()}` : info.cta.context) : "";
 
   return (
     <div
@@ -102,7 +133,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
           onClick={onZoom}
           onPointerEnter={(e) => {
             if (e.pointerType !== "mouse") return;
-            onHint?.(screenHint ?? "Clica na tela pra ver de perto.", spot);
+            onHint?.(screenHint ?? copy.zoomScreen, spot);
           }}
           onPointerLeave={(e) => e.pointerType === "mouse" && onHint?.(null, spot)}
           className="absolute inset-0 z-[9] cursor-zoom-in"
@@ -143,7 +174,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
           aria-hidden
           className="pointer-events-none absolute left-[5%] top-[6%] z-[15] -rotate-6 rounded-[4px] border-[2.5px] border-ink bg-sun px-[0.5em] py-[0.15em] font-display text-[max(7px,5.3cqw)] uppercase leading-none tracking-wide text-ink shadow-[0_2px_0_0_var(--color-ink)]"
         >
-          {BADGE_LABEL[badge]}
+          {copy.badge[badge]}
         </span>
       )}
       {next && (
@@ -151,10 +182,10 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
           type="button"
           onClick={next.onTune}
           onPointerEnter={(e) => e.pointerType === "mouse" && onHoverSound?.()}
-          aria-label={`A seguir: ${next.name}, canal ${next.number}. Sintonizar agora`}
+          aria-label={copy.nextLabel(next.name, next.number)}
           className="absolute inset-x-0 bottom-0 z-20 flex h-[13%] min-h-6 items-center gap-[0.5em] overflow-hidden border-t-[2px] border-ink bg-plum-950/90 px-[6%] text-left [--focus:var(--color-sun)] focus-visible:outline-offset-[-4px] hover:bg-plum-900"
         >
-          <span className="shrink-0 rounded-[3px] bg-sun px-[0.4em] font-display text-[max(8px,4.2cqw)] uppercase leading-[1.5] text-ink">A seguir</span>{" "}
+          <span className="shrink-0 rounded-[3px] bg-sun px-[0.4em] font-display text-[max(8px,4.2cqw)] uppercase leading-[1.5] text-ink">{copy.next}</span>{" "}
           <span className="line-clamp-2 min-w-0 font-display text-[max(8px,4.5cqw)] uppercase leading-[1.1] tracking-wide text-cream">{next.name}</span>
           <span aria-hidden className="ml-auto shrink-0 font-display text-[max(7px,5.3cqw)] leading-none text-sun">
             ▸
@@ -214,7 +245,9 @@ type Props = Omit<ScreenProps, "screenRef" | "style" | "className"> & {
 
 export function Tv({ knobAngle, zoomed, onKnob, onZoom, screenRef, zoomButtonRef, ...screen }: Props) {
   const spot = SPOTS.tv;
-  const info = CHANNELS[screen.channel];
+  const locale = useLocale();
+  const copy = useCopy(COPY);
+  const info = CHANNELS[locale][screen.channel];
   const { onHint, onHoverSound } = screen;
   const screenStyle = {
     left: pct(TV_SCREEN.x, TV_BOX.w),
@@ -234,8 +267,8 @@ export function Tv({ knobAngle, zoomed, onKnob, onZoom, screenRef, zoomButtonRef
     width: pct(TV_ZOOM_BUTTON.r * 2, TV_BOX.w),
     height: pct(TV_ZOOM_BUTTON.r * 2, TV_BOX.h),
   };
-  const knobHint = "Esse botão muda de canal. Dizem que tem um canal que não devia existir...";
-  const zoomHint = "Chega mais perto da TV.";
+  const knobHint = copy.knobHint;
+  const zoomHint = copy.zoomHint;
 
   return (
     <div className="absolute" style={{ ...spotStyle(spot), zIndex: 12 }}>
@@ -246,7 +279,7 @@ export function Tv({ knobAngle, zoomed, onKnob, onZoom, screenRef, zoomButtonRef
       <button
         type="button"
         onClick={onKnob}
-        aria-label={`Mudar de canal. Canal atual: ${info.number}, ${info.name}`}
+        aria-label={copy.knobLabel(info.number, info.name)}
         onPointerEnter={(e) => {
           if (e.pointerType !== "mouse") return;
           onHoverSound?.();
@@ -264,7 +297,7 @@ export function Tv({ knobAngle, zoomed, onKnob, onZoom, screenRef, zoomButtonRef
         ref={zoomButtonRef}
         type="button"
         onClick={onZoom}
-        aria-label="Ver a TV de perto"
+        aria-label={copy.zoomLabel}
         aria-haspopup="dialog"
         onPointerEnter={(e) => {
           if (e.pointerType !== "mouse") return;

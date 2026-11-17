@@ -1,15 +1,84 @@
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import type { Wave } from "./types";
+
+export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke";
 
 export type TrackUnlock =
   | { type: "default" }
-  | { type: "achievement"; id: string; label: string }
-  | { type: "secrets"; count: number; label: string };
+  | { type: "achievement"; id: string }
+  | { type: "secrets"; count: number };
+
+export type TrackText = {
+  title: string;
+  mood: string;
+  unlock: string;
+};
+
+export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
+  "pt-BR": {
+    theme: {
+      title: "Tema do Canal 404",
+      mood: "A vinheta oficial. Toca desde 2004 sem parar.",
+      unlock: "",
+    },
+    recess: {
+      title: "Vinheta de Intervalo",
+      mood: "Música de espera para quando o lanche está no micro-ondas.",
+      unlock: "Ligue o rádio da sala de transmissão.",
+    },
+    street: {
+      title: "Rua Sem Saída (Tema)",
+      mood: "Trilha oficial da maior bagunça do bairro.",
+      unlock: "Faça seu primeiro lançamento em Rua Sem Saída.",
+    },
+    "sign-off": {
+      title: "Fim de Transmissão",
+      mood: "A música que tocava quando o canal saía do ar. Ou não saía.",
+      unlock: "Encontre 5 segredos na sala de transmissão.",
+    },
+    karaoke: {
+      title: "Balada do Chuvisco",
+      mood: "A fita do karaokê do 404. Ninguém pediu bis.",
+      unlock: "",
+    },
+  },
+  en: {
+    theme: {
+      title: "Canal 404 Theme",
+      mood: "The official jingle. Playing nonstop since 2004.",
+      unlock: "",
+    },
+    recess: {
+      title: "Commercial Break Jingle",
+      mood: "Hold music for when your snack is in the microwave.",
+      unlock: "Turn on the radio in the broadcast room.",
+    },
+    street: {
+      title: "Dead End Street (Theme)",
+      mood: "The official soundtrack of the neighborhood's biggest mess.",
+      unlock: "Make your first launch in Dead End Street.",
+    },
+    "sign-off": {
+      title: "Sign-Off",
+      mood: "The song that played when the channel went off the air. Or didn't.",
+      unlock: "Find 5 secrets in the broadcast room.",
+    },
+    karaoke: {
+      title: "The Static Ballad",
+      mood: "404's karaoke tape. Nobody asked for an encore.",
+      unlock: "",
+    },
+  },
+});
+
+export function trackText(id: TrackId, locale: Locale) {
+  return TRACK_TEXT[locale][id];
+}
 
 export type Track = {
-  id: string;
-  title: string;
+  id: TrackId;
   station: string;
-  mood: string;
   bpm: number;
   swing?: number;
   lead: { wave: Wave; notes: string; gain: number; octave?: number; vibrato?: number };
@@ -24,9 +93,7 @@ const bars = (...parts: string[]) => parts.join(" ");
 export const TRACKS: Track[] = [
   {
     id: "theme",
-    title: "Tema do Canal 404",
     station: "FM 404.0",
-    mood: "A vinheta oficial. Toca desde 2004 sem parar.",
     bpm: 126,
     lead: {
       wave: "pulse",
@@ -66,9 +133,7 @@ export const TRACKS: Track[] = [
   },
   {
     id: "recess",
-    title: "Vinheta de Intervalo",
     station: "FM 88.4",
-    mood: "Música de espera para quando o lanche está no micro-ondas.",
     bpm: 92,
     swing: 0.18,
     lead: {
@@ -108,13 +173,11 @@ export const TRACKS: Track[] = [
       snare: "....x.......x...",
       hat: "..x...x...x...x.",
     },
-    unlock: { type: "achievement", id: "radio-on", label: "Ligue o rádio da sala de transmissão." },
+    unlock: { type: "achievement", id: "radio-on" },
   },
   {
     id: "street",
-    title: "Rua Sem Saída (Tema)",
     station: "FM 101.3",
-    mood: "Trilha oficial da maior bagunça do bairro.",
     bpm: 148,
     lead: {
       wave: "square",
@@ -150,13 +213,11 @@ export const TRACKS: Track[] = [
       snare: "....x.......x...",
       hat: "xxxxxxxxxxxxxxxx",
     },
-    unlock: { type: "achievement", id: "first-launch", label: "Faça seu primeiro lançamento em Rua Sem Saída." },
+    unlock: { type: "achievement", id: "first-launch" },
   },
   {
     id: "sign-off",
-    title: "Fim de Transmissão",
     station: "AM 404",
-    mood: "A música que tocava quando o canal saía do ar. Ou não saía.",
     bpm: 76,
     lead: {
       wave: "sine",
@@ -195,15 +256,13 @@ export const TRACKS: Track[] = [
       snare: "........x.......",
       hat: "....x.......x...",
     },
-    unlock: { type: "secrets", count: 5, label: "Encontre 5 segredos na sala de transmissão." },
+    unlock: { type: "secrets", count: 5 },
   },
 ];
 
 export const KARAOKE_SONG: Track = {
   id: "karaoke",
-  title: "Balada do Chuvisco",
   station: "AV",
-  mood: "A fita do karaokê do 404. Ninguém pediu bis.",
   bpm: 75,
   lead: {
     wave: "pulse",

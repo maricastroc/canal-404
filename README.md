@@ -4,7 +4,7 @@
 
 A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and six complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama** and **Férias Fora do Ar**.
 
-The code, file names and ids are in English. Everything the visitor reads on screen is in Brazilian Portuguese.
+The code, file names and ids are in English. The portal is in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)); the games themselves are still Portuguese only.
 
 ## Screenshots
 
@@ -130,13 +130,16 @@ With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests
 | `/about` | The channel's fictional history |
 | `/api/*` | Scoreboard API: `status`, `players`, `players/me`, `runs/tickets`, `runs`, `leaderboards`, `missions/today`, `missions/board`, `missions/history`, `cron/cleanup` |
 
+Every page also exists in English under `/en` (`/en/games`, `/en/play/food-fight`...). Unprefixed URLs are pt-BR, `/pt-BR/...` redirects to them, and the switch in the navigation reloads the same page in the other language.
+
 Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama) and `off-air-vacation` (Férias Fora do Ar).
 
 ## Structure
 
 ```
 src/
-  app/                   routes (App Router); (sections) groups the pages with the site chrome
+  app/[lang]/            routes (App Router) for pt-BR and en; (sections) groups the pages with the site chrome
+  i18n/                  locales, typed bilingual copy, locale-aware Link/router and number/date formatting
   components/
     room/                broadcast room, objects and mascot director
     mascot/              404 mascot (expressions, poses, gaze)
@@ -173,7 +176,7 @@ public/assets/<slug>/    SVG art for each game
 Games are independent from the portal. Each one exports a `GameModule` with `mount(ctx)` and receives only what it needs from the portal (parent element, fonts, audio, current high score and progress/event callbacks).
 
 1. Create `src/games/<slug>/` with an `index.ts` that exports `{ mount }` following `src/games/types.ts`.
-2. Register the metadata in `src/games/registry.ts` (title, category, controls, how-to, `status: "available"`).
+2. Register the metadata in `src/games/registry.ts`: structure in `BASE` (category, levels, `status: "available"`) and the text (title, controls, how-to, tips) in both languages in `TEXT`.
 3. Add the loader in `src/games/loaders.ts`.
 4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`.
 
