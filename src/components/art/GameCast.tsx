@@ -3,6 +3,7 @@ import { KidBust } from "@/components/characters/Heads";
 import { BadIdeasLabCast } from "./BadIdeasLabCast";
 import { DeadEndStreetCast } from "./DeadEndStreetCast";
 import { FoodFightCast } from "./FoodFightArt";
+import { OffAirVacationResult } from "./OffAirVacationArt";
 import { OperationRecessCast } from "./OperationRecessArt";
 import { PajamaWarCast } from "./PajamaWarArt";
 import { PajamaBust, type PajamaKidId } from "@/components/characters/PajamaKids";
@@ -35,12 +36,7 @@ function ResortCast({ mood, featured }: { mood: CastMood; featured?: string }) {
       </div>
     );
   }
-  return (
-    <div className="flex shrink-0 items-end">
-      <KidBust who="deco" face="happy" className="w-20 -rotate-3 sm:w-24" />
-      <FolkBust id={featured === "off" ? "psiu" : "tilt"} mood="happy" className="-ml-4 w-20 rotate-6 sm:w-24" />
-    </div>
-  );
+  return <OffAirVacationResult ending={featured === "off" ? "off" : "on"} className="w-36 sm:w-44 sm:shorter:w-36" />;
 }
 
 function StreetCast({ mood }: { mood: CastMood }) {
