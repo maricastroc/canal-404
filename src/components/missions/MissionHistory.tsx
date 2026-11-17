@@ -33,7 +33,7 @@ function Tape({ item, onBoard }: { item: MissionHistoryItem; onBoard: (day: stri
         </p>
       </div>
       <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:w-auto sm:flex-col sm:items-end sm:justify-center sm:text-right">
-        <StateChip state={you.state} />
+        <StateChip state={you.state} past />
         <p className="copy-sm text-cream-2">
           {you.best ? `${formatMissionBest(mission.game, you.best.metrics)} · ${formatPlace(you.best.position, you.best.total)}` : you.attempts > 0 ? (you.attempts === 1 ? "1 tentativa" : `${you.attempts} tentativas`) : null}
           {mission.ranked ? (
@@ -81,7 +81,7 @@ export function MissionHistory({ playerId, today, onBoard }: { playerId: string;
       <h2 id="mission-history-title" className="flex items-center gap-2 font-display text-lg uppercase tracking-wide text-sun">
         <TapeIcon className="size-5" /> Fitas gravadas
       </h2>
-      <p className="copy-sm mt-1 text-cream-2">Cada missão que você joga vira uma fita. Rebobine para ver como ficou o placar daquele dia.</p>
+      <p className="copy-sm mt-1 text-cream-2">Cada missão jogada fica guardada aqui. Escolha uma fita para rever o placar daquele dia.</p>
       <div aria-busy={!current} className="mt-3">
         {!current ? (
           <p className="font-display uppercase tracking-wider text-cream-2">Rebobinando…</p>

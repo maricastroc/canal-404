@@ -113,7 +113,7 @@ export const CATALOG: readonly MissionDef[] = [
     game: "food-fight",
     level: null,
     title: "Oito seguidos",
-    objective: "Acerte 8 colegas seguidos. Errar, bater na bandeja ou levar pudim zera a sequência.",
+    objective: "Acerte 8 colegas seguidos. Errar, bater na bandeja ou ser atingido por um pudim zera a sequência.",
     goal: [{ stat: "bestStreak", op: "min", value: 8 }],
     ranked: true,
   },
@@ -123,7 +123,7 @@ export const CATALOG: readonly MissionDef[] = [
     game: "food-fight",
     level: null,
     title: "Sem uma mancha",
-    objective: "Chegue ao sinal sem levar nenhum pudim.",
+    objective: "Chegue ao sinal sem ser atingido por nenhum pudim.",
     goal: [
       { stat: "won", op: "min", value: 1 },
       { stat: "hitsTaken", op: "max", value: 0 },
@@ -195,7 +195,7 @@ export const CATALOG: readonly MissionDef[] = [
     game: "dead-end-street",
     level: null,
     title: "Três estrelas na rua",
-    objective: "Vença com pelo menos 2.050 pontos. Cada objeto que sobra vale 250.",
+    objective: "Vença a Rua Sem Saída com pelo menos 2.050 pontos. Cada objeto que sobrar vale 250.",
     goal: [
       { stat: "won", op: "min", value: 1 },
       { stat: "score", op: "min", value: 2050 },
@@ -260,7 +260,7 @@ export const CATALOG: readonly MissionDef[] = [
     game: "operation-recess",
     level: "office",
     title: "Inspetor sem chance",
-    objective: "Vença o Inspetor do Silêncio levando no máximo 3 batidas no Caminho da direção inteiro.",
+    objective: "Vença o Inspetor do Silêncio levando no máximo 3 batidas em todo o Caminho da direção.",
     goal: [
       { stat: "won", op: "min", value: 1 },
       { stat: "resumed", op: "max", value: 0 },
@@ -287,7 +287,7 @@ export const CATALOG: readonly MissionDef[] = [
     game: "pajama-war",
     level: "living",
     title: "Nocaute duplo",
-    objective: "Na Sala de estar, nocauteie você mesmo os dois adversários e fique de pé no final.",
+    objective: "Na Sala de estar, dê o nocaute final nos dois adversários e termine de pé.",
     goal: [
       { stat: "won", op: "min", value: 1 },
       { stat: "kos", op: "min", value: 2 },

@@ -22,9 +22,9 @@ export function YourCard({ data, joined }: { data: MissionTodayResponse; joined:
       </h2>
       {!joined || !you || !progress ? (
         <>
-          <p className="copy mt-2">Jogue a missão e escolha um apelido no fim da partida. É com ele que você entra no placar e monta o seu boletim.</p>
+          <p className="copy mt-2">Jogue a missão e escolha um apelido no fim da partida. Com ele, você entra no placar e começa o seu boletim.</p>
           <p className="copy-sm mt-2 text-ink-soft">
-            Já tem carteirinha? Ela vale só no navegador em que foi tirada.{" "}
+            Já tem carteirinha? Ela só vale no navegador em que foi tirada.{" "}
             <Link href="/extras#membership" className="font-semibold text-ink underline decoration-2 underline-offset-2">
               Ver minha carteirinha
             </Link>
@@ -38,8 +38,8 @@ export function YourCard({ data, joined }: { data: MissionTodayResponse; joined:
               : you.state === "started"
                 ? you.attempts > 0
                   ? `${plural(you.attempts, "tentativa", "tentativas")} hoje. Ainda dá tempo!`
-                  : "Missão começada. Termine a partida para ela valer."
-                : "A missão de hoje ainda está esperando por você."}
+                  : "Você começou a missão. Termine a partida para ela contar."
+                : "Você ainda não encarou a missão de hoje!"}
           </p>
           {you.best ? (
             <p className="copy mt-2 rounded-lg border-2 border-ink bg-sun px-2 py-1.5 font-semibold">
@@ -48,18 +48,18 @@ export function YourCard({ data, joined }: { data: MissionTodayResponse; joined:
           ) : null}
           <dl className="mt-3 grid grid-cols-2 gap-2 text-center">
             <div className="rounded-lg border-2 border-ink bg-cream-2 px-2 py-1.5">
-              <dt className="tag-label text-ink-soft">Missões cumpridas</dt>
+              <dt className="tag-label text-ink-soft">Missões concluídas</dt>
               <dd className="font-display text-2xl tabular-nums">{progress.days.toLocaleString("pt-BR")}</dd>
             </div>
             <div className="rounded-lg border-2 border-ink bg-cream-2 px-2 py-1.5">
-              <dt className="tag-label text-ink-soft">{progress.streak >= 2 ? "Dias seguidos" : "Melhor sequência"}</dt>
+              <dt className="tag-label text-ink-soft">{progress.streak >= 2 ? "Dias seguidos" : "Maior sequência"}</dt>
               <dd className="font-display text-2xl tabular-nums">
                 {progress.streak >= 2 ? progress.streak : progress.bestStreak}
                 <span className="sr-only">{progress.streak >= 2 ? " dias seguidos" : progress.bestStreak === 1 ? " dia" : " dias"}</span>
               </dd>
             </div>
           </dl>
-          {progress.days > 0 && progress.streak < 2 ? <p className="copy-sm mt-2 text-ink-soft">Sem pressa: missão cumprida nunca sai do boletim.</p> : null}
+          {progress.days > 0 && progress.streak < 2 ? <p className="copy-sm mt-2 text-ink-soft">As missões mudam, mas suas conquistas ficam!</p> : null}
           <Grade days={you.recent} />
           <Seals unlocked={you.achievements.map((a) => a.id)} championDays={you.championDays} />
         </>
@@ -69,17 +69,17 @@ export function YourCard({ data, joined }: { data: MissionTodayResponse; joined:
 }
 
 const GRADE = {
-  completed: { className: "bg-lime text-ink", label: "missão cumprida" },
-  started: { className: "bg-sun text-ink", label: "tentou" },
-  none: { className: "bg-cream-2 text-ink-soft", label: "sem missão" },
+  completed: { className: "bg-lime text-ink", label: "concluída" },
+  started: { className: "bg-sun text-ink", label: "tentada" },
+  none: { className: "bg-cream-2 text-ink-soft", label: "não jogada" },
 } as const;
 
 function Grade({ days }: { days: RecentDay[] }) {
   const today = days[days.length - 1]?.day;
   return (
     <div className="mt-3">
-      <p className="tag-label text-ink-soft">Sua grade · últimos 14 dias</p>
-      <ol aria-label="Seus últimos 14 dias de missão" className="mt-1 grid grid-cols-7 gap-1">
+      <p className="tag-label text-ink-soft">Suas missões · últimos 14 dias</p>
+      <ol aria-label="Suas missões nos últimos 14 dias" className="mt-1 grid grid-cols-7 gap-1">
         {days.map((d) => (
           <li
             key={d.day}
@@ -87,20 +87,20 @@ function Grade({ days }: { days: RecentDay[] }) {
           >
             <span aria-hidden>{d.state === "completed" ? "★" : Number(d.day.slice(8))}</span>
             <span className="sr-only">
-              {dayName(d.day)}: {GRADE[d.state].label}
+              {dayName(d.day)}: missão {GRADE[d.state].label}
             </span>
           </li>
         ))}
       </ol>
       <p aria-hidden className="mt-1.5 flex flex-wrap gap-x-3 text-xs font-semibold text-ink-soft">
         <span className="inline-flex items-center gap-1">
-          <span className="size-2.5 rounded-sm border border-ink bg-lime" /> cumprida
+          <span className="size-2.5 rounded-sm border border-ink bg-lime" /> {GRADE.completed.label}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="size-2.5 rounded-sm border border-ink bg-sun" /> tentou
+          <span className="size-2.5 rounded-sm border border-ink bg-sun" /> {GRADE.started.label}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="size-2.5 rounded-sm border border-ink bg-cream-2" /> sem missão jogada
+          <span className="size-2.5 rounded-sm border border-ink bg-cream-2" /> {GRADE.none.label}
         </span>
       </p>
     </div>
@@ -151,9 +151,10 @@ export function MissionRules({ mission }: { mission: MissionView }) {
         Como funciona
       </h2>
       <ul className="copy-sm mt-1.5 list-disc space-y-1.5 pl-5 marker:text-ink-soft">
-        <li>Uma missão por dia, igual para todo mundo. Ela troca à meia-noite, no horário de Fortaleza.</li>
-        <li>Jogue pelo botão da missão. Começou antes da meia-noite? Vale se terminar até 1h.</li>
-        <li>Tente quantas vezes quiser: no placar fica a sua melhor partida.</li>
+        <li>Uma missão diferente por dia, igual para todo mundo.</li>
+        <li>A missão muda à meia-noite, no horário de Fortaleza. Começou antes disso? Dá para terminar até 1h.</li>
+        <li>Jogue pelo botão da missão para a partida contar.</li>
+        <li>Tente quantas vezes quiser. O placar fica com a sua melhor partida.</li>
         {notes.map((note) => (
           <li key={note}>{note}</li>
         ))}
@@ -162,8 +163,8 @@ export function MissionRules({ mission }: { mission: MissionView }) {
         <VerifiedIcon className="mt-0.5 size-4 shrink-0 text-mint-deep" />
         <span>
           {replayed
-            ? "O canal monta sua máquina de novo e confere o tempo e as peças que a bolinha tocou."
-            : "O canal confere os números de cada partida. Resultado impossível não entra no placar."}
+            ? "O canal remonta sua máquina e confere o tempo e as peças que a bolinha tocou. Assim o placar fica justo."
+            : "As partidas são verificadas para manter o placar justo."}
         </span>
       </p>
     </section>

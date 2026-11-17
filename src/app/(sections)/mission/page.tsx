@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata({
   title: "Missão 404 do Dia",
-  description: "Um desafio novo por dia em um jogo do Canal 404, igual para todo mundo. Cumpra a missão, suba no placar do dia e guarde suas fitas.",
+  description: "Todo dia tem uma missão diferente em um jogo do Canal 404, igual para todo mundo. Conclua o desafio, suba no placar do dia e guarde suas fitas.",
   path: "/mission",
 });
 
@@ -19,7 +19,7 @@ export default function MissionPage() {
           Missão 404 do Dia
         </h1>
         <p className="mx-auto copy-lede mt-3 max-w-2xl text-cream-2">
-          Todo dia, um desafio novo em um dos jogos do canal. É o mesmo para todo mundo e vale até a meia-noite.
+          Todo dia tem uma missão diferente em um dos jogos do canal. Todo mundo recebe o mesmo desafio, que fica disponível até a meia-noite.
         </p>
       </div>
       <MissionHub />

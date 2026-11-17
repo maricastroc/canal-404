@@ -47,7 +47,7 @@ export function MissionHub() {
   }
   if (mission.status === "offline" || (competition.status === "offline" && !data)) {
     return (
-      <Screen title="Sem sinal da missão" text="A antena do canal não respondeu. Os jogos continuam funcionando, e a missão volta assim que o sinal voltar." tone="text-tomato" expression="static">
+      <Screen title="Sem sinal da missão" text="A antena do canal não respondeu. Os jogos continuam funcionando, e a missão reaparece assim que o sinal voltar." tone="text-tomato" expression="static">
         <OfflineIcon className="size-8 text-tomato" />
         <InkButton
           size="sm"

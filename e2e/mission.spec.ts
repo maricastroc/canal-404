@@ -80,7 +80,7 @@ test.describe("daily mission with the backend", () => {
     const cartridge = page.getByTestId("mission-cartridge");
     await expect(cartridge.getByRole("heading", { name: def.title })).toBeVisible();
     await expect(cartridge).toContainText("Fase 2: Bom dia, Pixel");
-    await expect(cartridge).toContainText("Não iniciada");
+    await expect(cartridge).toContainText("Ainda não jogou");
 
     await cartridge.getByRole("link", { name: "Jogar missão" }).click();
     await expect(page).toHaveURL(`/play/bad-ideas-lab?mission=${day}`);

@@ -50,13 +50,13 @@ function EmptyBoard({ closed, href }: { closed: boolean; href: string | null }) 
         ))}
       </ol>
       <div className="text-center sm:text-left">
-        <p className="font-display text-xl uppercase leading-tight tracking-wide text-lime">{closed ? "Placar em branco" : "O primeiro lugar está vago"}</p>
+        <p className="font-display text-xl uppercase leading-tight tracking-wide text-lime">{closed ? "Placar em branco" : "O topo do placar está vago!"}</p>
         <p className="copy mt-1 text-cream-2">
-          {closed ? "Ninguém cumpriu essa missão. Acontece até nas melhores emissoras." : "Ninguém cumpriu a missão ainda. Quem cumprir primeiro estreia no topo do placar."}
+          {closed ? "Ninguém concluiu essa missão. Acontece até nas melhores emissoras." : "Ninguém concluiu a missão ainda. Que tal ser o primeiro?"}
         </p>
         {href ? (
           <IntentLink href={href} className={inkStyle("sun", "sm", "mt-3")}>
-            <PlayIcon className="size-4" /> Ser o primeiro
+            <PlayIcon className="size-4" /> Tentar a missão
           </IntentLink>
         ) : null}
       </div>
@@ -159,7 +159,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
               </InkButton>
             </div>
           ) : !view.mission.ranked ? (
-            <p className="copy py-5 text-center text-cream-2">Essa missão não teve placar: valia só cumprir.</p>
+            <p className="copy py-5 text-center text-cream-2">Essa missão não teve placar: bastava concluir.</p>
           ) : view.entries.length === 0 ? (
             <EmptyBoard closed={view.closed} href={isToday && !view.closed ? missionHref(view.mission) : null} />
           ) : (
