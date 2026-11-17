@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
+import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
+import { recessStars } from "@/games/operation-recess/score";
 import { boardId, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
+
+const RECESS_MONITORS = Object.fromEntries(RECESS_LEVELS.map((l) => [l.id, l.enemies.length]));
 
 function compare(a: RankKey, b: RankKey) {
   for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return b[i] - a[i];
@@ -57,7 +61,7 @@ function recess(level: string, overrides: Partial<Record<string, number>> = {}, 
   const hits = overrides.hits ?? 1;
   const s = { kills: 3, killPoints: 300, stickers: 2, extras: 0, hits, hearts: won ? Math.max(1, 5 - hits) : 0, resumed: 0, boss: 0, timeMs: 95_000, ...overrides } as Record<string, number>;
   const score = s.killPoints + s.stickers * 50 + s.extras * 10 + (won ? 500 + (s.resumed ? 0 : s.hearts * 100) + (s.boss ? 1500 : 0) : 0);
-  return { won, score, stars: won ? (s.hits <= 1 ? 3 : s.hits <= 3 ? 2 : 1) : 0, stats: s };
+  return { won, score, stars: recessStars({ won, hits: s.hits, kills: s.kills, monitors: RECESS_MONITORS[level] }), stats: s };
 }
 
 function pajama(overrides: Partial<Record<string, number>> = {}): RunClaim {
@@ -281,6 +285,18 @@ describe("Operação: Recreio", () => {
     expect(v.evidence).toEqual({ bumps: 0, resumed: 0, stickersLeft: 0, monitorsLeft: 0, won: 1, score: v.score });
     const left = ok(judgeRun("operation-recess", "corridor", recess("corridor")));
     expect(left.evidence).toMatchObject({ bumps: 1, stickersLeft: 2, monitorsLeft: 3 });
+  });
+
+  it("gives the third star only for knocking out every monitor of the level", () => {
+    expect(RECESS_MONITORS).toEqual({ corridor: 6, yard: 9, office: 9 });
+    const runner = recess("corridor", { hits: 0, kills: 0, killPoints: 0 });
+    expect(ok(judgeRun("operation-recess", "corridor", runner)).stars).toBe(2);
+    expect(judgeRun("operation-recess", "corridor", { ...runner, stars: 3 })).toMatchObject({ ok: false, reason: "score_mismatch" });
+    expect(ok(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 3, hearts: 2, kills: 6, killPoints: 600 }))).stars).toBe(3);
+    expect(ok(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 0, kills: 5, killPoints: 500 }))).stars).toBe(2);
+    expect(ok(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 4, hearts: 1, kills: 6, killPoints: 600 }))).stars).toBe(2);
+    expect(ok(judgeRun("operation-recess", "corridor", recess("corridor", { hits: 4, hearts: 1 }))).stars).toBe(1);
+    expect(ok(judgeRun("operation-recess", "yard", recess("yard", { kills: 9, killPoints: 4 * 100 + 5 * 150, hits: 2, hearts: 3 }))).stars).toBe(3);
   });
 
   it("checks the boss flag, kill points and the shortest possible run", () => {

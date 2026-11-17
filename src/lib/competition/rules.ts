@@ -7,6 +7,7 @@ import { ROUND_MS, RIVALS, SCORE as LUNCH_SCORE } from "@/games/food-fight/confi
 import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
 import { EXTRAS_CAP, HEARTS, RUN, SCORE as RECESS_SCORE, TILE } from "@/games/operation-recess/config";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
+import { recessStars } from "@/games/operation-recess/score";
 import { ARENAS } from "@/games/pajama-war/arenas";
 import { HIT as PAJAMA_HIT, HP, KIDS, PILLOW, SCORE as PAJAMA_SCORE, STATS as KID_STATS } from "@/games/pajama-war/config";
 import type { GameReplay, GameStats } from "@/games/types";
@@ -332,7 +333,7 @@ const operationRecess: GameRule = {
       s.stickers * RECESS_SCORE.sticker +
       s.extras * RECESS_SCORE.wave +
       (won ? RECESS_SCORE.phase + (s.resumed ? 0 : s.hearts * RECESS_SCORE.heart) + (s.boss ? RECESS_SCORE.boss : 0) : 0);
-    const stars = won ? (s.hits <= 1 ? 3 : s.hits <= 3 ? 2 : 1) : 0;
+    const stars = recessStars({ won, hits: s.hits, kills: s.kills, monitors: def.enemies.length });
     const ineligible: IneligibleReason | undefined = !won ? "not_won" : s.resumed ? "resumed" : undefined;
     return settle(claim, { won, score, stars, rank: [-s.hits, -s.timeMs, score], minElapsedMs: s.timeMs }, ineligible, undefined, {
       bumps: s.hits,
