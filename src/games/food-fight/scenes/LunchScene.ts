@@ -15,6 +15,8 @@ import {
   PHASES,
   RELOAD_MS,
   ROUND_MS,
+  RIVAL_KINDS,
+  RIVAL_LOOKS,
   SCORE,
   SLOTS,
   THROW_GAP_MS,
@@ -424,7 +426,7 @@ export class LunchScene extends Phaser.Scene {
     this.hud.setTimer(0, ROUND_MS, true);
     const r = this.rivals[1];
     this.tutorialRival = r;
-    r.rise("cap", this.t, 0, { hold: true });
+    r.rise("cap", 1, this.t, 0, { hold: true });
     r.taunt("Ha!");
     this.time.delayedCall(320, () => {
       if (this.tutorial === "throw") this.hud.showPointer(r.face().x, r.face().y);
@@ -437,7 +439,7 @@ export class LunchScene extends Phaser.Scene {
     this.tutorial = "duck";
     const r = this.rivals[2];
     this.tutorialRival = r;
-    r.rise("cap", this.t, 400);
+    r.rise("cap", 3, this.t, 400);
     this.announce("Agora ele vai jogar um pudim. Segure a seta para baixo, ou o botão ABAIXAR, até o pudim passar.");
   }
 
@@ -485,6 +487,17 @@ export class LunchScene extends Phaser.Scene {
     return phase;
   }
 
+  private pickLook(kind: RivalKind) {
+    const taken = new Set(this.rivals.filter((r) => r.visible && r.def.kind === kind).map((r) => r.look));
+    const free = RIVAL_LOOKS.filter((look) => !taken.has(look));
+    return Phaser.Utils.Array.GetRandom(free.length ? free : RIVAL_LOOKS) as number;
+  }
+
+  private pickKind() {
+    const open = RIVAL_KINDS.filter((kind) => this.rivals.filter((r) => r.visible && r.def.kind === kind).length < RIVAL_LOOKS.length);
+    return Phaser.Utils.Array.GetRandom(open.length ? open : RIVAL_KINDS) as RivalKind;
+  }
+
   private spawn() {
     if (this.brawlUntil) return;
     const phase = this.phaseAt(this.roundT);
@@ -500,11 +513,11 @@ export class LunchScene extends Phaser.Scene {
     if (firstTray) kind = "cap";
     const tray = kind === "cap" && trayTime && (firstTray || Math.random() < EVENTS.trayChance);
     const feint = !tray && this.roundT > 8000 && Math.random() < 0.15;
-    r.rise(kind, this.t, Phaser.Math.Between(tray ? 520 : 260, tray ? 900 : 600), { feint, tray });
+    r.rise(kind, this.pickLook(kind), this.t, Phaser.Math.Between(tray ? 520 : 260, tray ? 900 : 600), { feint, tray });
     if (firstTray) {
       this.trayIntroduced = true;
-      this.milaSay("Olha a bandeja! Espere ele baixar.", 2600, "shout", true);
-      this.announce(`Um garoto com bandeja na mesa ${r.slot.key}. Acerte quando ele baixar a bandeja.`);
+      this.milaSay("Olha a bandeja! Espere baixar.", 2600, "shout", true);
+      this.announce(`Bandeja levantada na mesa ${r.slot.key}. Acerte quando ela baixar.`);
     } else if (tray && Math.random() < 0.4) {
       r.taunt("Bandeja!");
     } else if (Math.random() < 0.3) {
@@ -533,7 +546,7 @@ export class LunchScene extends Phaser.Scene {
     for (const r of free.slice(0, Math.max(0, EVENTS.brawlers - busy))) {
       const roll = Math.random();
       const kind: RivalKind = roll < 0.2 ? "big" : roll < 0.5 ? "speedy" : "cap";
-      r.rise(kind, this.t, 0, { hold: true, brawl: true });
+      r.rise(kind, this.pickLook(kind), this.t, 0, { hold: true, brawl: true });
     }
   }
 
@@ -908,8 +921,8 @@ export class LunchScene extends Phaser.Scene {
     });
     if (!this.trayHinted) {
       this.trayHinted = true;
-      this.milaSay("Bateu na bandeja! Espere ele baixar.", 2200, "shout", true);
-      this.announce("Bateu na bandeja. Espere ele baixar para jogar o pudim.");
+      this.milaSay("Bateu na bandeja! Espere baixar.", 2200, "shout", true);
+      this.announce("Bateu na bandeja. Espere a bandeja baixar.");
     } else if (Math.random() < 0.5) {
       r.taunt("Hehe!");
     }
@@ -1117,7 +1130,8 @@ export class LunchScene extends Phaser.Scene {
       if (r.state === "hidden") {
         const rr = r;
         this.time.delayedCall(150 + i * 120, () => {
-          rr.rise("cap", this.t, 0, { hold: true });
+          const kind = this.pickKind();
+          rr.rise(kind, this.pickLook(kind), this.t, 0, { hold: true });
           rr.taunt("HAHA!");
         });
         i += 1;

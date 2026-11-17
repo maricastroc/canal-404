@@ -25,6 +25,7 @@ export class Rival {
   private dizzy: Phaser.GameObjects.Text;
   state: RivalState = "hidden";
   def: RivalDef = RIVALS.cap;
+  look = 1;
   hp = 1;
   until = 0;
   readyAt = 0;
@@ -45,7 +46,7 @@ export class Rival {
     private reduced: boolean,
   ) {
     const depth = slot.row === "back" ? 3 : 6;
-    this.body = scene.add.image(0, 0, "rival-cap-up").setOrigin(0.5, 1);
+    this.body = scene.add.image(0, 0, "rival-cap-1-up").setOrigin(0.5, 1);
     this.splat = scene.add.image(0, -150, "splat-food").setScale(0.9).setVisible(false);
     this.tray = scene.add.image(0, TRAY_UP_Y, "tray").setAngle(-5).setVisible(false);
     this.headSplat = scene.add.image(0, -204, "splat-pudding").setScale(0.62).setVisible(false);
@@ -99,8 +100,13 @@ export class Rival {
     return this.container.y - 228 * this.scale;
   }
 
-  rise(kind: RivalKind, now: number, idle: number, opts: { feint?: boolean; hold?: boolean; tray?: boolean; brawl?: boolean } = {}) {
+  private texture(pose: "up" | "windup") {
+    return `rival-${this.def.kind}-${this.look}-${pose}`;
+  }
+
+  rise(kind: RivalKind, look: number, now: number, idle: number, opts: { feint?: boolean; hold?: boolean; tray?: boolean; brawl?: boolean } = {}) {
     this.def = RIVALS[kind];
+    this.look = look;
     this.hp = this.def.hp;
     this.feint = Boolean(opts.feint);
     this.hold = Boolean(opts.hold);
@@ -111,7 +117,7 @@ export class Rival {
     this.splatTimer?.remove();
     this.poseTimer?.remove();
     this.stopFidget();
-    this.body.setTexture(`rival-${kind}-up`).clearTint().setFlipX(false);
+    this.body.setTexture(this.texture("up")).clearTint().setFlipX(false);
     this.splat.setVisible(false);
     this.headSplat.setVisible(false);
     this.scene.tweens.killTweensOf(this.tray);
@@ -141,7 +147,7 @@ export class Rival {
     this.windupStart = now;
     this.windupMs = ms;
     this.until = now + ms;
-    this.body.setTexture(`rival-${this.def.kind}-windup`);
+    this.body.setTexture(this.texture("windup"));
     if (this.shielded) {
       this.shielded = false;
       if (this.reduced) this.tray.setY(TRAY_DOWN_Y);
@@ -193,7 +199,7 @@ export class Rival {
     this.alert.setVisible(false);
     this.splatTimer?.remove();
     this.poseTimer?.remove();
-    this.body.setTexture(`rival-${this.def.kind}-up`).setFlipX(false);
+    this.body.setTexture(this.texture("up")).setFlipX(false);
     this.splat.setVisible(true).setAngle(Phaser.Math.Between(-20, 20));
     this.dizzy.setVisible(true);
     if (!this.reduced) {
@@ -225,9 +231,9 @@ export class Rival {
   throwPose(dir: number) {
     if (this.state !== "up") return;
     this.poseTimer?.remove();
-    this.body.setTexture(`rival-${this.def.kind}-windup`).setFlipX(dir < 0);
+    this.body.setTexture(this.texture("windup")).setFlipX(dir < 0);
     this.poseTimer = this.scene.time.delayedCall(300, () => {
-      if (this.state === "up") this.body.setTexture(`rival-${this.def.kind}-up`).setFlipX(false);
+      if (this.state === "up") this.body.setTexture(this.texture("up")).setFlipX(false);
     });
   }
 

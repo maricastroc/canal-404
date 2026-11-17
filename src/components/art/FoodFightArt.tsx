@@ -105,7 +105,7 @@ function Rival({ kind, pose, x, upY, scale, clip }: { kind: "cap" | "speedy" | "
   const h = SIZES.rival.h * scale;
   return (
     <g clipPath={`url(#${clip})`}>
-      <Sprite name={`rival-${kind}-${pose}`} x={x} y={upY} w={w} h={h} />
+      <Sprite name={`rival-${kind}-1-${pose}`} x={x} y={upY} w={w} h={h} />
     </g>
   );
 }

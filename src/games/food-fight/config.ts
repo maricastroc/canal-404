@@ -27,6 +27,9 @@ export const SLOTS: SlotDef[] = [
 
 export type RivalKind = "cap" | "speedy" | "big";
 
+export const RIVAL_KINDS: RivalKind[] = ["cap", "speedy", "big"];
+export const RIVAL_LOOKS = [1, 2, 3, 4];
+
 export type RivalDef = {
   kind: RivalKind;
   name: string;
@@ -39,7 +42,7 @@ export type RivalDef = {
 
 export const RIVALS: Record<RivalKind, RivalDef> = {
   cap: { kind: "cap", name: "Garoto do boné", hp: 1, points: 100, size: 1, windup: 1, taunts: ["Pega!", "Lá vai!", "Ha!"] },
-  speedy: { kind: "speedy", name: "Pimentinha", hp: 1, points: 150, size: 0.9, windup: 0.7, taunts: ["Rápida!", "Hihi!", "Toma!"] },
+  speedy: { kind: "speedy", name: "Pimentinha", hp: 1, points: 150, size: 0.9, windup: 0.7, taunts: ["Vupt!", "Hihi!", "Toma!"] },
   big: { kind: "big", name: "Grandão", hp: 2, points: 300, size: 1.14, windup: 1.2, taunts: ["Vem!", "Hmpf!", "Pudim duplo!"] },
 };
 
