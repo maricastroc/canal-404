@@ -52,12 +52,10 @@ export function SideNav({ className = "" }: { className?: string }) {
           })}
         </ul>
       </nav>
+      <LanguageSwitch variant="row" className="pointer-events-auto shrink-0 rotate-1" />
       <div className="pointer-events-auto mt-auto flex shrink-0 items-end justify-between gap-3 pb-1">
         <VisitorCounter className="short:py-1.5 shorter:py-1" />
-        <div className="flex flex-col items-end gap-2 short:gap-1.5">
-          <LanguageSwitch />
-          <SoundToggle compact />
-        </div>
+        <SoundToggle compact />
       </div>
     </aside>
   );

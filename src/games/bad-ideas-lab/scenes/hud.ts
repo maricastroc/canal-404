@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { H, PARTS, W, type PartType } from "../config";
+import type { LabCopy, LevelText } from "../copy";
 import type { LevelDef } from "../levels";
 import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
 import { addIcon, setIcon, type IconName } from "../icons";
@@ -92,6 +93,8 @@ export class LabHud {
     private scene: Phaser.Scene,
     private fonts: Fonts,
     level: LevelDef,
+    text: LevelText,
+    private copy: LabCopy,
     index: number,
     total: number,
     slotTypes: PartType[],
@@ -103,18 +106,18 @@ export class LabHud {
     const cardW = LEVEL_CARD_W;
     const cardH = CARD_H;
     paper(lg, 0, 0, cardW, cardH, 22);
-    const kicker = cartoonText(scene, 22, 12, `FASE ${index + 1} DE ${total}`, { size: 24, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
-    const title = cartoonText(scene, 20, 40, level.title.toUpperCase(), { size: 42, color: INK, font: fonts.display, stroke: 0, shadow: false });
+    const kicker = cartoonText(scene, 22, 12, copy.hud.level(index + 1, total), { size: 24, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
+    const title = cartoonText(scene, 20, 40, text.title.toUpperCase(), { size: 42, color: INK, font: fonts.display, stroke: 0, shadow: false });
     title.setShadow(3, 3, "#dcc394", 0, false, true);
     fitText(title, cardW - 40, 42, 26);
-    const goal = scene.add.text(22, 90, level.goalText, { fontFamily: fonts.hand, fontSize: "27px", color: "#3a3157", padding: { x: 2, y: 2 } });
+    const goal = scene.add.text(22, 90, text.goal, { fontFamily: fonts.hand, fontSize: "27px", color: "#3a3157", padding: { x: 2, y: 2 } });
     fitText(goal, cardW - 40, 27, 18);
     this.levelCard = scene.add.container(24, CARD_TOP, [lg, kicker, title, goal]).setDepth(20);
 
     const pg = scene.add.graphics();
     const pw = PARTS_CARD_W;
     darkPanel(pg, -pw, 0, pw, cardH);
-    const plabel = cartoonText(scene, -pw + 20, 12, "PEÇAS", { size: 24, color: "#9df0dc", font: fonts.display, shadow: false, stroke: 0.16 });
+    const plabel = cartoonText(scene, -pw + 20, 12, copy.hud.parts, { size: 24, color: "#9df0dc", font: fonts.display, shadow: false, stroke: 0.16 });
     this.usedText = cartoonText(scene, -pw + 20, 86, "0", { size: 64, color: "#ffc83d", font: fonts.display }).setOrigin(0, 0.5);
     this.parText = scene.add.text(-pw + 128, 104, "", { fontFamily: fonts.hand, fontSize: "22px", color: "#f7ecd4", padding: { x: 2, y: 2 } }).setOrigin(0, 0.5);
     const children: Phaser.GameObjects.GameObject[] = [pg, plabel, this.usedText, this.parText];
@@ -141,12 +144,12 @@ export class LabHud {
     x += 28 - GAP;
     tg.lineStyle(3, INK_HEX, 0.2);
     tg.lineBetween(x - 14, cy - SLOT_H / 2 + 6, x - 14, cy + SLOT_H / 2 - 6);
-    this.hintBtn = this.makeButton("DICA", BTN.hint, TOOL_H, 0xb9a6ef, x + BTN.hint / 2, cy, ["hint"], () => this.handlers.onHint(), 24);
+    this.hintBtn = this.makeButton(copy.hud.hint, BTN.hint, TOOL_H, 0xb9a6ef, x + BTN.hint / 2, cy, ["hint"], () => this.handlers.onHint(), 24);
     x += BTN.hint + GAP;
-    this.clearBtn = this.makeButton("LIMPAR", BTN.clear, TOOL_H, 0xfbf5e6, x + BTN.clear / 2, cy, ["trash"], () => this.handlers.onClear(), 24);
+    this.clearBtn = this.makeButton(copy.hud.clear, BTN.clear, TOOL_H, 0xfbf5e6, x + BTN.clear / 2, cy, ["trash"], () => this.handlers.onClear(), 24);
     x += BTN.clear + RUN_GAP;
     tg.lineBetween(x - RUN_GAP / 2, cy - SLOT_H / 2 + 6, x - RUN_GAP / 2, cy + SLOT_H / 2 - 6);
-    this.runBtn = this.makeButton("LIGAR", BTN.run, SLOT_H, 0x93cf4c, x + BTN.run / 2, cy, ["play"], () => this.handlers.onRun(), 36);
+    this.runBtn = this.makeButton(copy.hud.run, BTN.run, SLOT_H, 0x93cf4c, x + BTN.run / 2, cy, ["play"], () => this.handlers.onRun(), 36);
     trayChildren.push(this.hintBtn.root, this.clearBtn.root, this.runBtn.root);
     this.tray = scene.add.container(W / 2, H - TRAY_BOTTOM, trayChildren).setDepth(20);
 
@@ -175,6 +178,7 @@ export class LabHud {
   private makeSlot(type: PartType, key: number, x: number, y: number): Slot {
     const scene = this.scene;
     const def = PARTS[type];
+    const label = this.copy.parts[type].noun.word.toUpperCase();
     const g = scene.add.graphics();
     g.fillStyle(0xfffaf0, 1);
     g.fillRoundedRect(-SLOT_W / 2, -SLOT_H / 2, SLOT_W, SLOT_H, 16);
@@ -183,7 +187,7 @@ export class LabHud {
     const icon = scene.add.image(0, -12, def.tex);
     icon.setScale(Math.min(100 / icon.width, 46 / icon.height));
     if (type === "fan") icon.setX(-6);
-    const name = cartoonText(scene, 0, 30, def.name.toUpperCase(), { size: 22, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    const name = cartoonText(scene, 0, 30, label, { size: 22, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
     const keyChip = scene.add.graphics();
     keyChip.fillStyle(0x2b2150, 1);
     keyChip.fillRoundedRect(-SLOT_W / 2 + 8, -SLOT_H / 2 + 8, 26, 26, 7);
@@ -302,12 +306,12 @@ export class LabHud {
       if (lit) s.clearTint();
       else s.setTint(0x6d6390);
     });
-    this.parText.setText(par === 1 ? "3 estrelas: 1 peça" : `3 estrelas: até ${par} peças`);
+    this.parText.setText(this.copy.hud.par(par));
   }
 
   setRunning(on: boolean) {
     this.running = on;
-    this.runBtn.label.setText(on ? "DESLIGAR" : "LIGAR");
+    this.runBtn.label.setText(on ? this.copy.hud.stop : this.copy.hud.run);
     this.runBtn.label.setFontSize(on ? 30 : 36);
     centerGlyphs(this.runBtn.label);
     drawButtonBg(this.runBtn.bg, this.runBtn.w, this.runBtn.h, on ? 0xef4f43 : 0x93cf4c);
@@ -409,7 +413,7 @@ export class LabHud {
   celebrate(stars: number, onStar: (index: number, lit: boolean, x: number, y: number) => void) {
     const scene = this.scene;
     const s = Math.min(this.uiScale, 1.2);
-    const title = cartoonText(scene, W / 2, 196, "FUNCIONOU!", { size: 96, color: "#93cf4c", font: this.fonts.display, stroke: 0.2 })
+    const title = cartoonText(scene, W / 2, 196, this.copy.hud.worked, { size: 96, color: "#93cf4c", font: this.fonts.display, stroke: 0.2 })
       .setOrigin(0.5)
       .setDepth(26);
     const plateW = 318;

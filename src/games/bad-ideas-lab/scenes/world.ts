@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { FLOOR_Y } from "../config";
+import type { LabCopy } from "../copy";
 import type { Block, LevelDef, Rect } from "../levels";
 import { INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 
@@ -97,7 +98,7 @@ export function drawBlock(scene: Phaser.Scene, b: Block) {
   return scene.add.container(b.x, b.y, [g]).setAngle(b.angle ?? 0).setDepth(3);
 }
 
-export function drawBuildArea(scene: Phaser.Scene, r: Rect, fonts: Fonts) {
+export function drawBuildArea(scene: Phaser.Scene, r: Rect, fonts: Fonts, text: string) {
   const g = scene.add.graphics();
   g.fillStyle(0xffffff, 0.14);
   g.fillRoundedRect(r.x, r.y, r.w, r.h, 18);
@@ -119,7 +120,7 @@ export function drawBuildArea(scene: Phaser.Scene, r: Rect, fonts: Fonts) {
   edge(r.x + inset, r.y + 18, r.x + inset, r.y + r.h - 18);
   edge(r.x + r.w - inset, r.y + 18, r.x + r.w - inset, r.y + r.h - 18);
   const label = scene.add
-    .text(r.x + 16, r.y + 10, "monte aqui", {
+    .text(r.x + 16, r.y + 10, text, {
       fontFamily: fonts.hand,
       fontSize: "24px",
       color: "#fbf5e6",
@@ -148,6 +149,7 @@ type FxHelpers = {
   burst: (x: number, y: number, count: number, tex?: string) => void;
   sfx: (name: "ding" | "toaster" | "squish" | "click" | "tvOn" | "meow", volume?: number) => void;
   reduced: boolean;
+  text: LabCopy["world"];
 };
 
 function findCeiling(blocks: Block[], x: number, y: number) {
@@ -177,7 +179,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
         layers,
         celebrate: () => {
           fx.sfx("ding", 0.8);
-          fx.word("NA MOSCA!", goal.x, goal.y - 120, "#ffc83d", 60);
+          fx.word(fx.text.bullseye, goal.x, goal.y - 120, "#ffc83d", 60);
           fx.burst(goal.x, goal.y, 14, "star");
           scene.tweens.killTweensOf(board);
           if (!fx.reduced) {
@@ -211,7 +213,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
       let zzz: Phaser.GameObjects.Text | null = null;
       if (level.decor.includes("cat")) {
         cat = scene.add.image(goal.x + 130, FLOOR_Y + 4, "cat-sleep").setOrigin(0.5, 1).setDepth(13);
-        zzz = cartoonText(scene, goal.x + 100, FLOOR_Y - 90, "z z", { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setDepth(13);
+        zzz = cartoonText(scene, goal.x + 100, FLOOR_Y - 90, fx.text.zzz, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setDepth(13);
         layers.push(cat, zzz);
         if (!fx.reduced) {
           scene.tweens.add({ targets: zzz, y: FLOOR_Y - 120, alpha: { from: 1, to: 0.2 }, duration: 1800, repeat: -1 });
@@ -222,7 +224,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
         layers,
         celebrate: () => {
           fx.sfx("ding", 1);
-          fx.word("DING!", goal.x, goal.y - 110, "#ffc83d", 64);
+          fx.word(fx.text.ding, goal.x, goal.y - 110, "#ffc83d", 64);
           fx.burst(goal.x, goal.y, 14, "spark");
           if (!fx.reduced) {
             scene.tweens.add({ targets: bell, angle: { from: -22, to: 22 }, duration: 160, yoyo: true, repeat: 4, ease: "Sine.easeInOut", onComplete: () => bell.setAngle(0) });
@@ -234,7 +236,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
               scene.tweens.killTweensOf(c);
               c.setTexture("cat-scared").setScale(1);
               fx.sfx("meow", 0.9);
-              fx.word("MIAU!", c.x, c.y - 140, "#f06ba8", 48);
+              fx.word(fx.text.meow, c.x, c.y - 140, "#f06ba8", 48);
               if (!fx.reduced) scene.tweens.add({ targets: c, y: c.y - 60, duration: 180, yoyo: true, ease: "Quad.easeOut" });
             });
           }
@@ -250,7 +252,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
         layers,
         celebrate: () => {
           fx.sfx("toaster", 1);
-          fx.word("PLIM!", goal.x, goal.y - 170, "#ffc83d", 60);
+          fx.word(fx.text.toast, goal.x, goal.y - 170, "#ffc83d", 60);
           if (fx.reduced) {
             toast.setPosition(goal.x + 6, goal.y - 130);
           } else {
@@ -292,7 +294,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
         layers,
         celebrate: (ball) => {
           fx.sfx("squish", 1);
-          fx.word("SPLOSH!", goal.x, goal.y - 80, "#ff8a3d", 60);
+          fx.word(fx.text.juice, goal.x, goal.y - 80, "#ff8a3d", 60);
           fx.burst(goal.x, goal.y + 30, 12, "drop");
           const level = { v: 0 };
           const draw = () => {
@@ -338,7 +340,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
         celebrate: () => {
           fx.sfx("click", 1);
           remote.setTint(0xfff3c4);
-          fx.word("CLIQUE!", goal.x, goal.y - 90, "#9df0dc", 52);
+          fx.word(fx.text.click, goal.x, goal.y - 90, "#9df0dc", 52);
           if (screen && tvLabel) {
             const s = screen;
             const label = tvLabel;

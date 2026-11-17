@@ -20,12 +20,6 @@ export type Rect = { x: number; y: number; w: number; h: number };
 
 export type LevelDef = {
   id: string;
-  title: string;
-  goalText: string;
-  story: string;
-  hint: string;
-  win: string;
-  cheer?: string;
   ball: "marble" | "orange";
   pipe: { x: number; y: number; vx: number; vy: number; flip?: boolean };
   blocks: Block[];
@@ -40,12 +34,6 @@ export type LevelDef = {
 export const LEVELS: LevelDef[] = [
   {
     id: "test",
-    title: "Primeiro teste",
-    goalText: "Posicione a rampa no lugar indicado e ligue a máquina.",
-    story: "Primeiro, arraste a rampa até a área marcada!",
-    hint: "Arraste a rampa até a área marcada. Depois aperte LIGAR.",
-    win: "Primeira invenção funcionando! O laboratório está oficialmente aberto para ideias ainda piores.",
-    cheer: "Funcionou! E olha que essa era a parte fácil!",
     ball: "marble",
     pipe: { x: 200, y: 300, vx: 3, vy: 0 },
     blocks: [
@@ -61,11 +49,6 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: "pixel",
-    title: "Bom dia, Pixel",
-    goalText: "Faça a bolinha tocar o sino.",
-    story: "O Pixel está dormindo. Vamos acordar ele com o sino!",
-    hint: "Coloque uma rampa logo depois da prateleira, descendo para a direita.",
-    win: "O Pixel acordou. E está bravo.",
     ball: "marble",
     pipe: { x: 190, y: 250, vx: 2.5, vy: 0 },
     blocks: [
@@ -80,11 +63,6 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: "toast",
-    title: "Café da manhã",
-    goalText: "Faça a bolinha apertar o botão da torradeira.",
-    story: "A bolinha cai no buraco. Use a mola para jogar ela até a torradeira.",
-    hint: "Coloque a mola no fundo do buraco, inclinada para a direita.",
-    win: "Torrada pronta! Meio queimada, como a Lina gosta.",
     ball: "marble",
     pipe: { x: 200, y: 230, vx: 3, vy: 0 },
     blocks: [
@@ -100,11 +78,6 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: "juice",
-    title: "Suco de laranja",
-    goalText: "Leve a laranja até o espremedor.",
-    story: "A laranja para no meio da bancada. Use o vento para levar ela até o espremedor.",
-    hint: "Coloque o ventilador na bancada, atrás da laranja, soprando para a direita.",
-    win: "Suco espremido na hora. Com caroço.",
     ball: "orange",
     pipe: { x: 230, y: 380, vx: 2, vy: 0 },
     blocks: [{ x: 450, y: 675, w: 700, h: 30, kind: "counter" }],
@@ -116,11 +89,6 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: "remote",
-    title: "Cadê o controle?",
-    goalText: "Faça a bolinha apertar o botão do controle.",
-    story: "O controle está do outro lado da garagem. A bolinha vai ter que voltar.",
-    hint: "Use as duas esteiras com as setas para a esquerda, uma mais baixa que a outra.",
-    win: "A TV ligou! E está passando... o 404?",
     ball: "marble",
     pipe: { x: 1730, y: 240, vx: -2.5, vy: 0, flip: true },
     blocks: [
@@ -135,11 +103,6 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: "finale",
-    title: "A pior ideia de todas",
-    goalText: "Faça a bolinha tocar o sino atrás do muro.",
-    story: "O sino está atrás do muro. Vale usar tudo o que tem na caixa!",
-    hint: "Use a mola para passar por cima do muro. Depois, uma esteira leva a bolinha até o sino.",
-    win: "DING! A máquina mais inútil do mundo funcionou.",
     ball: "marble",
     pipe: { x: 170, y: 260, vx: 3, vy: 0 },
     blocks: [

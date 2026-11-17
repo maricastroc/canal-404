@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Laboratório em inglês e um seletor de idioma no menu
+- **Bad Ideas Lab plays in English** at `/en/play/bad-ideas-lab`: the tutorial, hints, parts, buttons, results and the whole screen-reader narration (level description, objects, part position and test results). The machines, levels, star rules and the server replay are unchanged.
+- **Language switch in the menu.** The switch is now a PT | EN selector with the current language highlighted, placed right under the navigation in the room's side menu and in the phone menu, and next to the sound button in the section header. Before, it was a lone "PT"/"EN" chip above the sound button.
+
 ### Jogos de ação em inglês
 - **Rua Sem Saída, Guerra de Lanche, Guerra do Pijama and Operação: Recreio play in English** at `/en/play/...`: on-screen text, HUD, tutorials and hints, character select, results, star hints and screen-reader announcements. Their English pages no longer show the "still in Portuguese" note.
 - Signs and posters drawn into the art stay in Portuguese, as in the portal.

@@ -89,8 +89,8 @@ export function TopBar({ className = "" }: { className?: string }) {
             })}
           </ul>
         </nav>
-        <LanguageSwitch className="ml-auto h-12 md:ml-2 md:h-auto" />
-        <SoundToggle compact />
+        <LanguageSwitch className="ml-2 hidden md:flex" />
+        <SoundToggle compact className="ml-auto md:ml-2" />
         <button
           ref={menuButton}
           type="button"
@@ -157,9 +157,9 @@ export function TopBar({ className = "" }: { className?: string }) {
                   );
                 })}
               </ul>
-              <div className="mt-5 flex items-center justify-center gap-4">
+              <LanguageSwitch variant="drawer" className="mt-3 rotate-1" />
+              <div className="mt-5 flex justify-center">
                 <VisitorCounter />
-                <LanguageSwitch wide />
               </div>
             </motion.div>
           </>
