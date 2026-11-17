@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
 import { LEVELS, type LevelDef } from "../levels";
+import { recessStarHint, recessStars } from "../score";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { Inspector } from "./boss";
@@ -262,6 +263,7 @@ export class StageScene extends Phaser.Scene {
     this.buildingHud = false;
     this.hud.setHearts(this.hearts);
     this.hud.setScore(this.score);
+    this.hud.setMonitors(this.kills, this.level.enemies.length);
     this.updateProgress();
     this.setupInput();
 
@@ -691,7 +693,9 @@ export class StageScene extends Phaser.Scene {
     this.hud.setScore(this.score);
     this.ctx.onEvent({ type: "score", score: this.score });
     const last = this.levelIndex === LEVELS.length - 1;
-    const stars = this.hits <= 1 ? 3 : this.hits <= 3 ? 2 : 1;
+    const run = { won: true, hits: this.hits, kills: this.kills, monitors: this.level.enemies.length };
+    const stars = recessStars(run);
+    const starHint = recessStarHint(run);
     const achievements: string[] = [];
     if (this.levelIndex === 0) achievements.push("recess-first");
     if (this.hits === 0) achievements.push("recess-flawless");
@@ -706,7 +710,7 @@ export class StageScene extends Phaser.Scene {
       level: { index: this.levelIndex, id: this.level.id, title: this.level.title, total: LEVELS.length },
       copy: last ? { title: "Recreio liberado!", text: "O Inspetor dançou e o pátio é da criançada de novo!" } : { title: "Passou!", text: `${this.level.win} Bora pra próxima!` },
       summary: `Monitores: ${this.kills}. Batidas: ${this.hits}.`,
-      ...(stars < 3 ? { starHint: stars === 1 ? "Com até 3 batidas, a fase vale 2 estrelas. Com até 1, vale 3." : "Com até 1 batida, a fase vale 3 estrelas." } : {}),
+      ...(starHint ? { starHint } : {}),
     };
     if (last) {
       this.celebrate();
@@ -1055,6 +1059,7 @@ export class StageScene extends Phaser.Scene {
       this.onEnemyHit(e.x, top, e.body.bottom, res === "kill");
       if (res === "kill") {
         this.kills += 1;
+        this.hud.setMonitors(this.kills, this.level.enemies.length, true);
         const pts = e.kind === "shield" ? SCORE.shield : e.kind === "whistle" ? SCORE.whistle : SCORE.common;
         this.killScore += pts;
         this.addScore(pts);

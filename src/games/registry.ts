@@ -263,7 +263,7 @@ export const GAMES: GameMeta[] = [
     ],
     howTo: [
       { title: "Corra", text: "Poça escorrega e buraco derruba. Na corda, pule quando ela descer. Armário tremeu? Pare ou feche com uma espadada." },
-      { title: "Ataque", text: "Aperte J para acertar os monitores. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
+      { title: "Ataque", text: "Aperte J para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
       { title: "Avance", text: "Se a luz do Inspetor parar em você, saia dela. Toque os sinos para salvar o caminho até a diretoria." },
     ],
     levels: [
@@ -272,6 +272,7 @@ export const GAMES: GameMeta[] = [
       { id: "office", title: "Caminho da direção", goal: "Vença o Inspetor do Silêncio." },
     ],
     tips: [
+      "Passou correndo? Vale 2 estrelas. A 3ª é de quem derruba todos os monitores.",
       "Apareceu um ! em cima do monitor? Lá vem ataque.",
       "Onda de apito: pule por cima ou corte com a espada.",
       "Apito alto passa por cima. Fique no chão e espere.",

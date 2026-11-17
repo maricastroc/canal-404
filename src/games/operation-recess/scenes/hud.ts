@@ -7,14 +7,17 @@ type PadAction = keyof TouchState;
 type Pad = { action: PadAction; bg: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; hit: Phaser.GameObjects.Arc; r: number; color: number; x: number; y: number; base: number };
 
 const BAR_W = 520;
+const CARD_H = 156;
 
 export class RecessHud {
   uiScale = 1;
   readonly touch: TouchState = { left: false, right: false, jump: false, attack: false };
   private card: Phaser.GameObjects.Container;
-  private cardBounds = new Phaser.Geom.Rectangle(20, 10, 380, 124);
+  private cardBounds = new Phaser.Geom.Rectangle(20, 10, 380, CARD_H);
   private hearts: Phaser.GameObjects.Image[] = [];
   private scoreText: Phaser.GameObjects.Text;
+  private monitorText: Phaser.GameObjects.Text;
+  private monitorsDone = false;
   private progress: Phaser.GameObjects.Container;
   private progressBar: Phaser.GameObjects.Graphics;
   private progressBounds = new Phaser.Geom.Rectangle(W / 2 - 300, 10, 600, 90);
@@ -37,7 +40,7 @@ export class RecessHud {
     private onPress: (action: PadAction) => void,
   ) {
     const g = scene.add.graphics();
-    paper(g, 0, 0, 380, 124, 20);
+    paper(g, 0, 0, 380, CARD_H, 20);
     const kicker = cartoonText(scene, 18, 10, `FASE ${index + 1} DE ${total}`, { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
     const name = cartoonText(scene, 16, 32, title.toUpperCase(), { size: 28, color: INK, font: fonts.display, stroke: 0, shadow: false });
     fitText(name, 350, 28, 18);
@@ -49,6 +52,12 @@ export class RecessHud {
     }
     this.scoreText = cartoonText(scene, 364, 92, "0", { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.2 }).setOrigin(1, 0.5);
     items.push(this.scoreText);
+    const rule = scene.add.graphics();
+    rule.lineStyle(3, INK_HEX, 0.15);
+    rule.lineBetween(18, 118, 362, 118);
+    const label = cartoonText(scene, 18, 137, "MONITORES", { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+    this.monitorText = cartoonText(scene, 364, 137, "0/0", { size: 24, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(1, 0.5);
+    items.push(rule, label, this.monitorText);
     this.card = scene.add.container(20, 10, items).setDepth(60).setScrollFactor(0, 0, true);
 
     const pg = scene.add.graphics();
@@ -144,7 +153,7 @@ export class RecessHud {
     const s = this.uiScale;
     const cs = Math.min(s, 1.3);
     this.card.setScale(cs);
-    this.cardBounds.setTo(20, 10, 380 * cs, 124 * cs);
+    this.cardBounds.setTo(20, 10, 380 * cs, CARD_H * cs);
     this.progress.setScale(Math.min(s, 1.2));
     this.bossBox.setScale(Math.min(s, 1.2));
     this.progressBounds.setTo(W / 2 - 320 * Math.min(s, 1.2), 10, 640 * Math.min(s, 1.2), 100 * Math.min(s, 1.2));
@@ -189,6 +198,17 @@ export class RecessHud {
         this.scene.tweens.add({ targets: img, scale: 1, duration: 360, ease: "Back.easeOut" });
       }
     });
+  }
+
+  setMonitors(kills: number, total: number, changed = false) {
+    const done = total > 0 && kills >= total;
+    this.monitorText.setText(done ? `TODOS! ${kills}/${total}` : `${kills}/${total}`).setColor(done ? "#2fa996" : INK);
+    const first = done && !this.monitorsDone;
+    this.monitorsDone = done;
+    if (!changed || this.reduced) return;
+    this.scene.tweens.killTweensOf(this.monitorText);
+    this.monitorText.setScale(first ? 1.5 : 1.25);
+    this.scene.tweens.add({ targets: this.monitorText, scale: 1, duration: first ? 420 : 220, ease: "Back.easeOut" });
   }
 
   setScore(n: number) {

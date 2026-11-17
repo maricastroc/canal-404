@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { LEVELS } from "@/games/bad-ideas-lab/levels";
 import { SOLUTIONS } from "@/games/bad-ideas-lab/solutions";
+import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
+import { recessStars } from "@/games/operation-recess/score";
 import { KIDS } from "@/games/pajama-war/config";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { hasLevel, judgeRun, type RunClaim } from "@/lib/competition/rules";
@@ -65,13 +67,13 @@ const STREET_PROOFS: Record<string, RunClaim> = {
 function recess(level: string, stats: Record<string, number>, won = true): RunClaim {
   const s = { kills: 0, killPoints: 0, stickers: 0, extras: 0, hits: 0, hearts: 5, resumed: 0, boss: 0, timeMs: 120_000, ...stats };
   const score = s.killPoints + s.stickers * 50 + s.extras * 10 + (won ? 500 + (s.resumed ? 0 : s.hearts * 100) + (s.boss ? 1500 : 0) : 0);
-  return { won, score, stars: won ? (s.hits <= 1 ? 3 : s.hits <= 3 ? 2 : 1) : 0, stats: s };
+  return { won, score, stars: recessStars({ won, hits: s.hits, kills: s.kills, monitors: RECESS_LEVELS.find((l) => l.id === level)!.enemies.length }), stats: s };
 }
 
 const RECESS_PROOFS: Record<string, RunClaim> = {
   "recess-corridor-spotless": { won: true, score: 1600, stars: 3, stats: { kills: 6, killPoints: 600, stickers: 0, extras: 0, hits: 0, hearts: 5, resumed: 0, boss: 0, timeMs: 15_000 } },
   "recess-yard-stickers": recess("yard", { kills: 6, killPoints: 750, stickers: 4, extras: 2, hits: 2, hearts: 4, timeMs: 34_000 }),
-  "recess-yard-monitors": { won: true, score: 2060, stars: 2, stats: { kills: 9, killPoints: 1150, stickers: 0, extras: 1, hits: 3, hearts: 4, resumed: 0, boss: 0, timeMs: 20_500 } },
+  "recess-yard-monitors": { won: true, score: 2060, stars: 3, stats: { kills: 9, killPoints: 1150, stickers: 0, extras: 1, hits: 3, hearts: 4, resumed: 0, boss: 0, timeMs: 20_500 } },
   "recess-office-boss": recess("office", { kills: 6, killPoints: 800, stickers: 1, hits: 3, hearts: 3, boss: 1, timeMs: 150_000 }),
 };
 
