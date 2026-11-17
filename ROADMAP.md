@@ -102,5 +102,5 @@ Depends on the headless simulation and the backend.
 - [x] English version of the portal at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
 - [x] English version of the action games: Rua Sem Saída, Guerra do Pijama, Guerra de Lanche and Operação: Recreio.
 - [x] English version of Laboratório de Péssimas Ideias, including its screen-reader narration.
-- [ ] English version of Férias Fora do Ar (story, journal and map).
+- [x] English version of Férias Fora do Ar (story, journal and map), loading only the active language.
 - [ ] New shows.

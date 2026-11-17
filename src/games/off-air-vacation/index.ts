@@ -1,12 +1,20 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
+import type { Locale } from "@/i18n/locales";
 import { H, W } from "./config";
 import { clearState, freshState, loadState } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { WorldScene } from "./scenes/WorldScene";
+import type { VacationText } from "./text/pt-BR";
+
+const TEXT_LOADERS: Record<Locale, () => Promise<{ TEXT: VacationText }>> = {
+  "pt-BR": () => import("./text/pt-BR"),
+  en: () => import("./text/en"),
+};
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
+  const text = TEXT_LOADERS[ctx.locale]().then((m) => m.TEXT);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,
@@ -25,12 +33,17 @@ function mount(ctx: GameHostContext): GameInstance {
       preBoot: (g) => {
         g.registry.set("ctx", ctx);
         g.registry.set("state", null);
+        g.registry.set("textLoad", text);
       },
       postBoot: () => ctx.onProgress(0.05, "art"),
     },
   });
 
   const open = (data: object) => {
+    if (!game.registry.get("text")) {
+      game.registry.set("pending", data);
+      return;
+    }
     if (game.scene.isPaused("world")) game.scene.resume("world");
     const scene = game.scene.getScene("world");
     if (game.scene.isActive("world")) scene.scene.restart(data);

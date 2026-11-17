@@ -1,5 +1,5 @@
 import { finite, isRecord, readVersioned, type Json, type MigrationSpec } from "@/lib/progress/migrate";
-import { AREA_TITLES, SAVE_KEY, type AreaId, type Dir } from "./config";
+import { AREA_IDS, SAVE_KEY, type AreaId, type Dir } from "./config";
 
 export type Item = "net" | "whistle" | "remote" | "order" | "key" | "cartridge";
 export type PosterId = "club" | "summer" | "tilt" | "surf" | "ghost";
@@ -53,7 +53,6 @@ export function freshState(): State {
   };
 }
 
-const AREAS = Object.keys(AREA_TITLES) as AreaId[];
 const DIRS: Dir[] = ["f", "k", "s"];
 
 function only<T extends string>(value: unknown, allowed: readonly T[]): T[] {
@@ -63,7 +62,7 @@ function only<T extends string>(value: unknown, allowed: readonly T[]): T[] {
 
 function normalizeState(value: Json): State {
   const fresh = freshState();
-  const area = AREAS.includes(value.area as AreaId) ? (value.area as AreaId) : fresh.area;
+  const area = AREA_IDS.includes(value.area as AreaId) ? (value.area as AreaId) : fresh.area;
   const sameArea = area === value.area;
   const flags: Record<string, boolean> = {};
   if (isRecord(value.flags)) for (const [name, on] of Object.entries(value.flags)) if (typeof on === "boolean") flags[name] = on;
@@ -81,7 +80,7 @@ function normalizeState(value: Json): State {
     secrets: only(value.secrets, ALL_SECRETS),
     met: only(value.met, ALL_FOLKS),
     found: Array.isArray(value.found) ? [...new Set(value.found.filter((f): f is string => typeof f === "string"))] : [],
-    visited: only(value.visited, AREAS),
+    visited: only(value.visited, AREA_IDS),
     time: Math.max(0, finite(value.time, 0)),
     ending: value.ending === "off" || value.ending === "on" ? value.ending : null,
   };

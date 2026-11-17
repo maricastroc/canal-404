@@ -13,7 +13,6 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkLink, inkStyle, PaperPanel, Tag } from "@/components/ui/Primitives";
 import { IntentLink } from "@/components/ui/IntentLink";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
-import { GameLanguageNote } from "@/components/catalog/GameLanguageNote";
 import { CATEGORY_LABELS, GAMES, getGame } from "@/games/registry";
 import { localized } from "@/i18n/copy";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/locales";
@@ -140,7 +139,6 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
                 <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "lg", "self-start")}>
                   <PlayIcon className="size-7 text-ink" /> {copy.play}
                 </IntentLink>
-                <GameLanguageNote locale={locale} translated={game.translated} />
                 <GameStats slug={game.slug} levels={game.levels} levelWord={game.levelWord} />
                 {isGameSlug(game.slug) ? <ChampionTicker slug={game.slug} levelWord={game.levelWord} /> : null}
               </div>

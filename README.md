@@ -4,7 +4,7 @@
 
 A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and six complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama** and **Férias Fora do Ar**.
 
-The code, file names and ids are in English. The portal is in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)); every game except Férias Fora do Ar also plays in English.
+The code, file names and ids are in English. The portal and all six games are in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
 
 ## Screenshots
 
