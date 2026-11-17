@@ -16,14 +16,11 @@ export type PartType = "ramp" | "spring" | "fan" | "belt";
 
 export type PartDef = {
   type: PartType;
-  name: string;
-  plural: string;
   tex: string;
   w: number;
   h: number;
   rotations: number[];
   initial: number;
-  tip: string;
 };
 
 export const PART_ORDER: PartType[] = ["ramp", "spring", "fan", "belt"];
@@ -31,47 +28,35 @@ export const PART_ORDER: PartType[] = ["ramp", "spring", "fan", "belt"];
 export const PARTS: Record<PartType, PartDef> = {
   ramp: {
     type: "ramp",
-    name: "Rampa",
-    plural: "rampas",
     tex: "ramp",
     w: 200,
     h: 24,
     rotations: [-45, -30, -15, 0, 15, 30, 45],
     initial: 4,
-    tip: "Gire para escolher a inclinação.",
   },
   spring: {
     type: "spring",
-    name: "Mola",
-    plural: "molas",
     tex: "spring",
     w: 100,
     h: 48,
     rotations: [-30, -15, 0, 15, 30],
     initial: 3,
-    tip: "Joga a bolinha para onde aponta.",
   },
   fan: {
     type: "fan",
-    name: "Ventilador",
-    plural: "ventiladores",
     tex: "fan-body",
     w: 96,
     h: 112,
     rotations: [0, 180],
     initial: 0,
-    tip: "Sopra tudo que passa na frente.",
   },
   belt: {
     type: "belt",
-    name: "Esteira",
-    plural: "esteiras",
     tex: "belt",
     w: 240,
     h: 34,
     rotations: [0, 180],
     initial: 0,
-    tip: "Leva a bolinha na direção das setas.",
   },
 };
 

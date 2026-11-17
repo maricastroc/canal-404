@@ -43,7 +43,7 @@ type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "p
 
 const BASE = {
   "dead-end-street": { category: "action", status: "available", accent: "sun", cast: ["deco", "lina", "bruno"], translated: true },
-  "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"] },
+  "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"], translated: true },
   "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], translated: true },
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], translated: true },
   "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"], translated: true },
@@ -402,7 +402,7 @@ const TEXT = gameText({
       howTo: [
         { title: "Build", text: "Drag a part from the box to the dashed area." },
         { title: "Adjust", text: "Tap the part to rotate it or put it away. To move it, just drag it again." },
-        { title: "Test", text: "Press LIGAR (the on switch) and see what happens. Didn't work? Adjust and try again." },
+        { title: "Test", text: "Press START and see what happens. Didn't work? Adjust and try again." },
       ],
       levels: [
         { title: "First test", goal: "Put the ramp in the marked spot and turn on the machine." },

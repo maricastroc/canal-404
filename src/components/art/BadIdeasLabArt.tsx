@@ -1,3 +1,5 @@
+import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 
 const display = { fontFamily: "var(--font-luckiest)" };
@@ -131,13 +133,18 @@ function Shelf({ from, to }: { from: Pt; to: Pt }) {
   );
 }
 
-function BuildArea({ lit = false }: { lit?: boolean }) {
+const LABELS = localized({
+  "pt-BR": { build: "monte aqui", run: "LIGAR" },
+  en: { build: "build here", run: "START" },
+});
+
+function BuildArea({ lit = false, label }: { lit?: boolean; label: string }) {
   return (
     <g>
       <rect x={AREA.x} y={AREA.y} width={AREA.w} height={AREA.h} rx={3.5} fill={P.white} opacity={lit ? 0.3 : 0.16} />
       <rect x={AREA.x} y={AREA.y} width={AREA.w} height={AREA.h} rx={3.5} fill="none" stroke={P.paper} strokeWidth={1.3} strokeDasharray="4 2.8" strokeLinecap="round" />
       <text x={AREA.x + 2.6} y={AREA.y + 6.4} fontSize={5.6} fill={P.paper} stroke={P.ink} strokeWidth={1.4} paintOrder="stroke" strokeLinejoin="round" style={handFont}>
-        monte aqui
+        {label}
       </text>
     </g>
   );
@@ -279,7 +286,7 @@ function RampIcon({ x, y, len }: Pt & { len: number }) {
   return <Ramp x={x} y={y} len={len} angle={0} />;
 }
 
-function Tray({ count, pressed = false, slotLit = false }: { count: number; pressed?: boolean; slotLit?: boolean }) {
+function Tray({ count, pressed = false, slotLit = false, label }: { count: number; pressed?: boolean; slotLit?: boolean; label: string }) {
   return (
     <g>
       <rect x={TRAY.x + 1.4} y={TRAY.y + 1.6} width={TRAY.w} height={TRAY.h} rx={4.5} fill={P.ink} opacity={0.35} />
@@ -302,7 +309,7 @@ function Tray({ count, pressed = false, slotLit = false }: { count: number; pres
         <rect x={RUN.x} y={RUN.y} width={RUN.w} height={RUN.h} rx={2.8} fill={P.lime} {...ink} strokeWidth={LINE.mid} />
         <path d={`M${RUN.x + 4.4} ${RUN.y + 4.6} L${RUN.x + 9.4} ${RUN.y + 8} L${RUN.x + 4.4} ${RUN.y + 11.4} Z`} fill={P.white} {...ink} strokeWidth={0.9} />
         <text x={RUN.x + 22.4} y={RUN.y + 10.8} textAnchor="middle" fontSize={7} fill={P.ink} style={display}>
-          LIGAR
+          {label}
         </text>
       </g>
     </g>
@@ -341,12 +348,12 @@ function RoundButton({ x, y, kind }: Pt & { kind: "rotate" | "remove" }) {
   );
 }
 
-function Stage({ lina, children, tray, areaLit = false }: { lina: LinaPose; children: React.ReactNode; tray: React.ReactNode; areaLit?: boolean }) {
+function Stage({ lina, children, tray, areaLit = false, locale }: { lina: LinaPose; children: React.ReactNode; tray: React.ReactNode; areaLit?: boolean; locale: Locale }) {
   return (
     <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
       <Outline />
       <Backdrop />
-      <BuildArea lit={areaLit} />
+      <BuildArea lit={areaLit} label={LABELS[locale].build} />
       <Pipe />
       <Shelf {...SHELF_A} />
       <Shelf {...SHELF_B} />
@@ -362,15 +369,16 @@ function rampEnd(side: -1 | 1): Pt {
   return { x: RAMP.x + side * (RAMP.len / 2) * Math.cos(a), y: RAMP.y + side * (RAMP.len / 2) * Math.sin(a) };
 }
 
-function BuildPanel() {
+function BuildPanel({ locale }: { locale: Locale }) {
   const held = { x: RAMP.x, y: 60 };
   return (
     <Stage
+      locale={locale}
       lina="lab"
       areaLit
       tray={
         <g>
-          <Tray count={1} slotLit />
+          <Tray count={1} slotLit label={LABELS[locale].run} />
           <path d={`M${SLOT.x + SLOT.w / 2} ${SLOT.y - 1} Q${SLOT.x + 6} 84 ${held.x - 4} 70`} fill="none" stroke={P.ink} strokeWidth={3.2} strokeLinecap="round" strokeDasharray="0.1 4.4" />
           <path d={`M${SLOT.x + SLOT.w / 2} ${SLOT.y - 1} Q${SLOT.x + 6} 84 ${held.x - 4} 70`} fill="none" stroke={P.white} strokeWidth={1.6} strokeLinecap="round" strokeDasharray="0.1 4.4" />
         </g>
@@ -402,9 +410,9 @@ function RotateArc({ side }: { side: -1 | 1 }) {
   );
 }
 
-function AdjustPanel() {
+function AdjustPanel({ locale }: { locale: Locale }) {
   return (
-    <Stage lina="lab" tray={<Tray count={1} />}>
+    <Stage lina="lab" locale={locale} tray={<Tray count={1} label={LABELS[locale].run} />}>
       <Bell />
       <CatAsleep />
       <Ramp x={RAMP.x} y={RAMP.y} len={RAMP.len} angle={0} ghost />
@@ -418,7 +426,7 @@ function AdjustPanel() {
   );
 }
 
-function TestPanel() {
+function TestPanel({ locale }: { locale: Locale }) {
   const lo = rampEnd(-1);
   const hi = rampEnd(1);
   const lift = (p: Pt, a: number) => ({ x: p.x + Math.sin((a * Math.PI) / 180) * MARBLE_R, y: p.y - Math.cos((a * Math.PI) / 180) * MARBLE_R - 1.8 });
@@ -441,7 +449,7 @@ function TestPanel() {
     `Q${r(c1.x + 6)} ${r(c1.y - 1)} ${hit.x - 3} ${hit.y - 0.6}`,
   ].join(" ");
   return (
-    <Stage lina="yay" tray={<Tray count={1} pressed />}>
+    <Stage lina="yay" locale={locale} tray={<Tray count={1} pressed label={LABELS[locale].run} />}>
       <path d={trail} fill="none" stroke={P.white} strokeWidth={1.8} strokeLinecap="round" strokeDasharray="0.1 3.6" opacity={0.95} />
       <Ramp x={RAMP.x} y={RAMP.y} len={RAMP.len} angle={RAMP.angle} />
       <Marble x={r(b0.x + 9)} y={r(b0.y + 5.2)} faded />
@@ -464,8 +472,8 @@ function TestPanel() {
   );
 }
 
-export function BadIdeasLabHowToPanel({ step }: { step: 0 | 1 | 2 }) {
-  if (step === 0) return <BuildPanel />;
-  if (step === 1) return <AdjustPanel />;
-  return <TestPanel />;
+export function BadIdeasLabHowToPanel({ step, locale }: { step: 0 | 1 | 2; locale: Locale }) {
+  if (step === 0) return <BuildPanel locale={locale} />;
+  if (step === 1) return <AdjustPanel locale={locale} />;
+  return <TestPanel locale={locale} />;
 }
