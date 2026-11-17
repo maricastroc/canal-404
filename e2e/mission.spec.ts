@@ -118,7 +118,7 @@ test.describe("daily mission with the backend", () => {
     await expect(report).toContainText(/Missão cumprida às \d{2}:\d{2}, em 2 tentativas\./);
     await expect(report).toContainText(/1 peça · 4,08 s · \d+º de \d+/);
     await expect(report).toContainText("Selos da missão · 1 de 6");
-    await expect(report.getByRole("list", { name: "Seus últimos 14 dias de missão" }).getByRole("listitem")).toHaveCount(14);
+    await expect(report.getByRole("list", { name: "Suas missões nos últimos 14 dias" }).getByRole("listitem")).toHaveCount(14);
     const dayBoard = page.getByRole("region", { name: "Placar do dia" });
     await expect(dayBoard.getByRole("row", { name: /Você/ })).toContainText("4,08 s");
 
