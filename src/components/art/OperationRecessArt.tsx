@@ -282,7 +282,9 @@ function Shout({ x, y, text, size, color, rotate = 0 }: { x: number; y: number; 
   );
 }
 
-function CastIntro() {
+const WHISTLE = localized({ "pt-BR": "PRIII!", en: "FWEET!" });
+
+function CastIntro({ locale }: { locale: Locale }) {
   const bruno: At = { x: 92, feet: FLOOR + 6, h: 134 };
   const mon: At = { x: 230, feet: FLOOR + 6, h: 150, flip: true };
   return (
@@ -291,7 +293,7 @@ function CastIntro() {
       <CastFloor />
       <Prop name="paper-pile" x={166} bottom={FLOOR + 12} h={11} w0={120} h0={50} />
       <Figure kind="mon" name="mon-whistle-blow" at={mon} />
-      <Shout x={196} y={44} text="PRIII!" size={20} color={P.tomato} rotate={-8} />
+      <Shout x={196} y={44} text={WHISTLE[locale]} size={20} color={P.tomato} rotate={-8} />
       <Speed d={`M${bruno.x - 62} ${bruno.feet - 88} L${bruno.x - 78} ${bruno.feet - 87} M${bruno.x - 60} ${bruno.feet - 70} L${bruno.x - 80} ${bruno.feet - 69} M${bruno.x - 62} ${bruno.feet - 52} L${bruno.x - 76} ${bruno.feet - 51}`} w={2.2} />
       <Figure kind="hero" name="hero-run-a" at={bruno} />
     </>
@@ -329,23 +331,23 @@ function CastWin() {
   );
 }
 
-function CastLose() {
+function CastLose({ locale }: { locale: Locale }) {
   const bruno: At = { x: 100, feet: 172, h: 146 };
   return (
     <>
       <Burst cx={100} cy={94} r={80} fill="#ffc9c2" />
       <Figure kind="hero" name="hero-hurt" at={bruno} />
       <Prop name="wave" x={180} bottom={130} h={74} w0={90} h0={120} flip />
-      <Shout x={166} y={40} text="PRIII!" size={22} color={P.tomato} rotate={10} />
+      <Shout x={166} y={40} text={WHISTLE[locale]} size={22} color={P.tomato} rotate={10} />
       <Stars x={112} y={24} s={1.9} />
     </>
   );
 }
 
-export function OperationRecessCast({ mood, className }: { mood: "intro" | "win" | "lose"; className?: string }) {
+export function OperationRecessCast({ mood, locale, className }: { mood: "intro" | "win" | "lose"; locale: Locale; className?: string }) {
   return (
     <svg viewBox={mood === "intro" ? "0 0 300 210" : "0 0 200 190"} className={className} aria-hidden overflow="visible">
-      {mood === "intro" ? <CastIntro /> : mood === "win" ? <CastWin /> : <CastLose />}
+      {mood === "intro" ? <CastIntro locale={locale} /> : mood === "win" ? <CastWin /> : <CastLose locale={locale} />}
     </svg>
   );
 }

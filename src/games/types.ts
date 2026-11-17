@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/locales";
 import type { SoundRecipe } from "@/lib/audio/types";
 
 export type GameStats = Record<string, number>;
@@ -38,6 +39,7 @@ export type GameEvent =
 export type LoadStage = "code" | "art" | "scene";
 
 export type GameHostContext = {
+  locale: Locale;
   parent: HTMLElement;
   keyboardTarget: HTMLElement;
   fonts: { display: string; body: string; hand: string; round?: string };

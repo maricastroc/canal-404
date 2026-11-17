@@ -1,9 +1,10 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
+import type { Locale } from "@/i18n/locales";
 import { getGameRecord } from "@/lib/progress/store";
 import { ARENAS } from "../arenas";
 import { BODY, ESCALATE, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, type KidId } from "../config";
-import { resultCopy, winShout } from "../copy";
+import { COPY, resultCopy, winShout, type PajamaCopy } from "../copy";
 import { matchScore } from "../score";
 import { firstTallHit, FLOOR_Y, pointOnTrace, resolveBody, separateBodies, traceShot, type Point } from "../nav";
 import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
@@ -21,12 +22,6 @@ type Mode = "attract" | "intro" | "play" | "over";
 type Aim = { angle: number; target: Fighter | null; x: number; y: number; free: boolean };
 
 const TOUCH_UI = typeof window !== "undefined" && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
-const HIT_WORDS = ["POF!", "PAF!", "FLOF!", "TUF!"];
-const TAUNTS = ["ERROU!", "NEM PERTO!", "HA!"];
-const HINTS = {
-  ricochet: "Use os móveis para fazer seus travesseiros ricochetearem!",
-  special: "Um travesseiro especial pode aparecer! Pegue antes dos outros!",
-};
 const SKIP_AFTER = 450;
 
 const fmt = (ms: number) => {
@@ -38,16 +33,10 @@ const HIDE_MS = 8000;
 const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
 
-function heartsText(hp: number) {
-  const whole = Math.floor(hp / 2);
-  const half = hp % 2 === 1;
-  if (whole === 0) return "Resta meio coração";
-  const hearts = `${whole} ${whole === 1 ? "coração" : "corações"}`;
-  return `${whole === 1 ? "Resta" : "Restam"} ${hearts}${half ? " e meio" : ""}`;
-}
-
 export class ArenaScene extends Phaser.Scene {
   private ctx!: GameHostContext;
+  private locale!: Locale;
+  private text!: PajamaCopy["arena"];
   private levelIndex = 0;
   private mode: Mode = "attract";
   private t = 0;
@@ -142,6 +131,8 @@ export class ArenaScene extends Phaser.Scene {
 
   create() {
     this.ctx = this.registry.get("ctx") as GameHostContext;
+    this.locale = this.ctx.locale;
+    this.text = COPY[this.locale].arena;
     const reduced = this.ctx.reducedMotion;
     this.levelIndex = Phaser.Math.Clamp((this.registry.get("level") as number | undefined) ?? 0, 0, ARENAS.length - 1);
     const arena = ARENAS[this.levelIndex];
@@ -180,7 +171,7 @@ export class ArenaScene extends Phaser.Scene {
     this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setAlpha(arena.theme === "yard" ? 0.7 : 0.55).setDepth(1900);
     this.hurtFlash = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setTint(0xef4f43).setAlpha(0).setDepth(1901);
     if (!this.attract) {
-      this.hud = new PajamaHud(this, this.ctx.fonts, arena.title, order.map((kid, i) => ({ kid, isPlayer: i === 0 })), reduced);
+      this.hud = new PajamaHud(this, this.ctx.fonts, arena.title[this.locale], order.map((kid, i) => ({ kid, isPlayer: i === 0 })), reduced, COPY[this.locale].hud);
       this.hud.enableTouch(TOUCH_UI);
     }
     this.buildingHud = false;
@@ -244,14 +235,14 @@ export class ArenaScene extends Phaser.Scene {
     const hud = this.hud!;
     const p = this.player!;
     const arena = ARENAS[this.levelIndex];
-    hud.flash("PRONTOS?", "#fbf5e6", 700, "Último de pé vence!");
+    hud.flash(this.text.ready, "#fbf5e6", 700, this.text.readySub);
     this.sfx("beep", 0.8);
-    this.ctx.onEvent({ type: "announce", message: `${arena.title}. Você é ${p.kid === "nico" ? "o" : "a"} ${KID_INFO[p.kid].name}. Acerte os outros dois. Último de pé vence!` });
+    this.ctx.onEvent({ type: "announce", message: this.text.intro(arena.title[this.locale], p.kid) });
     this.time.delayedCall(950, () => {
       if (this.mode !== "intro") return;
       this.mode = "play";
       this.engagedAt = this.t;
-      hud.flash("JÁ!", "#ffc83d", 520);
+      hud.flash(this.text.go, "#ffc83d", 520);
       this.sfx("go", 0.9);
       this.showYou();
       this.introduceMechanic();
@@ -269,7 +260,7 @@ export class ArenaScene extends Phaser.Scene {
       if (!this.ctx.reducedMotion) this.time.delayedCall(60, () => this.sfx("spring", 0.6));
     }
     if (!markHint(arena.mechanic)) return;
-    const text = HINTS[arena.mechanic];
+    const text = this.text.hints[arena.mechanic];
     this.time.delayedCall(700, () => {
       if (this.mode !== "play") return;
       this.hud?.hint(text);
@@ -280,7 +271,7 @@ export class ArenaScene extends Phaser.Scene {
   private showYou() {
     const p = this.player;
     if (!p) return;
-    const label = cartoonText(this, 0, 0, "VOCÊ", { size: 30, color: "#1d1830", font: this.ctx.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    const label = cartoonText(this, 0, 0, this.text.you, { size: 30, color: "#1d1830", font: this.ctx.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
     const g = this.add.graphics();
     const w = label.width + 26;
     g.fillStyle(0x1d1830, 1);
@@ -806,9 +797,9 @@ export class ArenaScene extends Phaser.Scene {
         this.feathers(x, y - 40, 8, 90);
         this.dust(x - 30, y, -1);
         this.dust(x + 30, y, 1);
-        this.word("TRAVESSEIRÃO!", x, y - 150, "#ffc83d", 40);
+        this.word(this.text.giant, x, y - 150, "#ffc83d", 40);
       });
-      this.ctx.onEvent({ type: "announce", message: "Um travesseirão caiu no quintal! Quem pegar joga um travesseiro gigante.", transient: true });
+      this.ctx.onEvent({ type: "announce", message: this.text.giantDropped, transient: true });
       return;
     }
     if (ev.kind === "expire") {
@@ -822,8 +813,8 @@ export class ArenaScene extends Phaser.Scene {
     this.drop = null;
     this.sfx("powerup", f.isPlayer ? 0.9 : 0.55);
     this.hud?.setSpecial(f.kid, true);
-    this.word(f.isPlayer ? "É SEU!" : "PEGOU!", f.x, f.top - 30, f.isPlayer ? "#ffc83d" : KID_INFO[f.kid].css, 36);
-    this.ctx.onEvent({ type: "announce", message: f.isPlayer ? "Você pegou o travesseirão! O próximo travesseiro é gigante." : `${KID_INFO[f.kid].name} pegou o travesseirão!`, transient: !f.isPlayer });
+    this.word(f.isPlayer ? this.text.yours : this.text.grabbed, f.x, f.top - 30, f.isPlayer ? "#ffc83d" : KID_INFO[f.kid].css, 36);
+    this.ctx.onEvent({ type: "announce", message: f.isPlayer ? this.text.youGrabbed : this.text.kidGrabbed(KID_INFO[f.kid].name), transient: !f.isPlayer });
   }
 
   private wave(x: number, y: number, owner: Fighter, victim: Fighter | null) {
@@ -837,7 +828,7 @@ export class ArenaScene extends Phaser.Scene {
       if (dx * dx + dy * dy > 1) continue;
       f.shove(t, f.x - x || 1, f.y - y);
       if (f.isPlayer) touchedPlayer = true;
-      this.word("UÉ!", f.x, f.top - 20, "#fbf5e6", 30);
+      this.word(this.text.shoved, f.x, f.top - 20, "#fbf5e6", 30);
     }
     this.sfx("wave", touchedPlayer || victim?.isPlayer ? 1 : 0.6);
     this.room.impact(x, y, 1.3, (n, v) => this.sfx(n, v, 120));
@@ -969,10 +960,10 @@ export class ArenaScene extends Phaser.Scene {
     const foes = this.fighters.filter((f) => f.alive && !f.isPlayer);
     const hiding = this.mode === "play" && Boolean(p?.alive) && foes.length === 2 && t - this.engagedAt > HIDE_MS;
     if (hiding && !this.truce) {
-      const lines = ["ESCONDIDO?", "VEM BRINCAR!"];
+      const lines = this.text.hiding;
       foes.forEach((f, i) => this.word(lines[i % lines.length], f.x, f.top - 40, "#ff8a3d", 34));
       this.sfx("warn", 0.8);
-      this.ctx.onEvent({ type: "announce", message: "Trégua! Os outros dois vão atrás de você. Acerte alguém para desfazer." });
+      this.ctx.onEvent({ type: "announce", message: this.text.truce });
     }
     this.truce = hiding;
     return hiding ? p : null;
@@ -985,14 +976,14 @@ export class ArenaScene extends Phaser.Scene {
     const pl = this.player;
     if (p.nearPlayer && pl && pl.alive && now - this.lastUfa > 1400) {
       this.lastUfa = now;
-      this.word("UFA!", pl.x + 40, pl.top - 30, "#9df0dc", 34);
+      this.word(this.text.phew, pl.x + 40, pl.top - 30, "#9df0dc", 34);
     } else if (p.nearFoe && p.nearFoe.alive && now - this.lastQuase > 1200) {
       this.lastQuase = now;
       const foe = p.nearFoe;
       if (now - this.lastTaunt > 5000 && Math.random() < 0.4) {
         this.lastTaunt = now;
-        this.word(Phaser.Utils.Array.GetRandom(TAUNTS) as string, foe.x, foe.top - 30, foe.isPlayer ? "#fbf5e6" : KID_INFO[foe.kid].css, 32);
-      } else this.word("QUASE!", foe.x, foe.top - 30, "#fbf5e6", 32);
+        this.word(Phaser.Utils.Array.GetRandom(this.text.taunts) as string, foe.x, foe.top - 30, foe.isPlayer ? "#fbf5e6" : KID_INFO[foe.kid].css, 32);
+      } else this.word(this.text.close, foe.x, foe.top - 30, "#fbf5e6", 32);
     }
   }
 
@@ -1004,7 +995,7 @@ export class ArenaScene extends Phaser.Scene {
     }
     this.alerts.push({ f, img, until: t + this.aiWindup + 60 });
     this.sfx("warn", 0.7);
-    this.ctx.onEvent({ type: "announce", message: `${KID_INFO[f.kid].name} vai jogar em você!`, transient: true });
+    this.ctx.onEvent({ type: "announce", message: this.text.incoming(KID_INFO[f.kid].name), transient: true });
   }
 
   private onHit(p: Pillow, f: Fighter) {
@@ -1024,7 +1015,7 @@ export class ArenaScene extends Phaser.Scene {
       this.tweens.add({ targets: this.hurtFlash, alpha: 0, duration: 420, ease: "Quad.easeOut" });
     }
     this.feathers(f.x, y, f.alive ? 7 : 16, f.alive ? 80 : 140);
-    this.word(Phaser.Utils.Array.GetRandom(HIT_WORDS) as string, f.x + Phaser.Math.Between(-20, 20), f.top - 20, "#ffc83d", f.alive ? 46 : 56);
+    this.word(Phaser.Utils.Array.GetRandom(this.text.hitWords) as string, f.x + Phaser.Math.Between(-20, 20), f.top - 20, "#ffc83d", f.alive ? 46 : 56);
     this.sfx("hit", playerInvolved ? 0.95 : 0.55);
     if (f.isPlayer && this.time.now - this.lastOuch > 300) {
       this.lastOuch = this.time.now;
@@ -1037,7 +1028,7 @@ export class ArenaScene extends Phaser.Scene {
     this.room.impact(f.x, f.y, 0.7, (n, v) => this.sfx(n, v, 120));
     p.stop(p.x, p.y, p.z, true);
     if (p.special) {
-      this.word("TUM!", f.x, f.top - 80, "#ffc83d", 64);
+      this.word(this.text.thump, f.x, f.top - 80, "#ffc83d", 64);
       this.wave(f.x, f.y, owner, f);
     }
     if (!this.attract && owner.alive) this.hud?.cheerFace(owner.kid);
@@ -1046,7 +1037,7 @@ export class ArenaScene extends Phaser.Scene {
       return;
     }
     this.hud?.setHp(f.kid, f.hp, "hit");
-    if (f.isPlayer && f.alive) this.ctx.onEvent({ type: "announce", message: `Acertaram você! ${heartsText(f.hp)}.` });
+    if (f.isPlayer && f.alive) this.ctx.onEvent({ type: "announce", message: this.text.hit(this.text.hearts(f.hp)) });
     if (owner.isPlayer) this.ctx.onEvent({ type: "score", score: owner.hits * SCORE.hit + owner.kos * SCORE.ko });
     if (!f.alive) this.onKo(f, owner);
   }
@@ -1054,13 +1045,13 @@ export class ArenaScene extends Phaser.Scene {
   private onKo(f: Fighter, by: Fighter) {
     by.kos += 1;
     this.sfx("ko", 1);
-    this.word("NOCAUTE!", f.x, f.top - 70, "#ef4f43", 60);
+    this.word(this.text.knockout, f.x, f.top - 70, "#ef4f43", 60);
     this.time.delayedCall(650, () => {
       this.feathers(f.x, f.y - 40, 12, 120);
       this.orbitStars(f);
     });
     const name = KID_INFO[f.kid].name;
-    this.ctx.onEvent({ type: "announce", message: f.isPlayer ? "Você foi nocauteado!" : `${name} está fora!` });
+    this.ctx.onEvent({ type: "announce", message: f.isPlayer ? this.text.youOut : this.text.kidOut(name) });
     this.checkEnd();
   }
 
@@ -1081,15 +1072,15 @@ export class ArenaScene extends Phaser.Scene {
     if (this.heatStage === 0 && this.matchTime >= ESCALATE.heat) {
       this.heatStage = 1;
       for (const f of this.fighters) f.regenScale = 1.7;
-      this.hud?.flash("ESQUENTOU!", "#ff8a3d", 1500, "A energia volta mais devagar.");
+      this.hud?.flash(this.text.heat, "#ff8a3d", 1500, this.text.heatSub);
       this.sfx("alarm", 0.8);
-      this.ctx.onEvent({ type: "announce", message: "A guerra esquentou! A energia volta mais devagar." });
+      this.ctx.onEvent({ type: "announce", message: this.text.heatSay });
     } else if (this.heatStage === 1 && this.matchTime >= ESCALATE.final) {
       this.heatStage = 2;
       for (const f of this.fighters) f.regenScale = 0;
-      this.hud?.flash("SEM DESCANSO!", "#ef4f43", 1600, "Ninguém recupera mais energia.");
+      this.hud?.flash(this.text.final, "#ef4f43", 1600, this.text.finalSub);
       this.sfx("alarm", 1);
-      this.ctx.onEvent({ type: "announce", message: "Sem descanso! Ninguém recupera mais energia." });
+      this.ctx.onEvent({ type: "announce", message: this.text.finalSay });
     }
   }
 
@@ -1133,15 +1124,15 @@ export class ArenaScene extends Phaser.Scene {
         }
       }
       if (won) {
-        hud.flash("VOCÊ VENCEU!", "#ffc83d", 1900, winShout(this.levelIndex), true);
+        hud.flash(this.text.youWin, "#ffc83d", 1900, winShout(this.levelIndex, this.locale), true);
         this.starBurst();
         this.sfx("win", 1);
         this.time.delayedCall(350, () => this.sfx("cheer", 0.9));
       } else if (winner) {
-        hud.flash(`${KID_INFO[winner.kid].name.toUpperCase()} VENCEU!`, "#fbf5e6", 1900, "Mais uma partida?", true);
+        hud.flash(this.text.kidWins(KID_INFO[winner.kid].name), "#fbf5e6", 1900, this.text.again, true);
         this.sfx("lose", 1);
       } else {
-        hud.flash("NOCAUTE!", "#ef4f43", 1900, "Você saiu da guerra.");
+        hud.flash(this.text.knockout, "#ef4f43", 1900, this.text.lost);
         this.sfx("lose", 1);
       }
     });
@@ -1149,7 +1140,7 @@ export class ArenaScene extends Phaser.Scene {
 
     const hits = p.hits;
     const kos = p.kos;
-    const { rows, score, stars } = matchScore({ won, place: placement, hits, kos, hp: p.alive ? p.hp : 0 });
+    const { rows, score, stars } = matchScore({ won, place: placement, hits, kos, hp: p.alive ? p.hp : 0 }, this.locale);
     const stats = loadStats();
     stats.matches += 1;
     if (!this.registry.get("forcedKid")) stats.lastKid = p.kid;
@@ -1172,7 +1163,7 @@ export class ArenaScene extends Phaser.Scene {
       kid: p.kid,
       winner: winner ? winner.kid : null,
       beatenBefore: ARENAS.map((a) => (record.levels?.[a.id]?.stars ?? 0) > 0),
-    });
+    }, this.locale);
     const result: GameResult = {
       won,
       score,
@@ -1189,11 +1180,11 @@ export class ArenaScene extends Phaser.Scene {
         kid: KIDS.indexOf(p.kid),
       },
       achievements,
-      level: { index: this.levelIndex, id: arena.id, title: arena.title, total: ARENAS.length },
+      level: { index: this.levelIndex, id: arena.id, title: arena.title[this.locale], total: ARENAS.length },
       copy,
-      summary: `Tempo ${fmt(this.matchTime)} · Travesseiros ${p.throws} · Acertos ${hits}`,
-      ...(won && stars < 3 ? { starHint: stars === 1 ? "Termine com 4 de energia ou mais para 2 estrelas, e com 7 para 3." : "Termine com 7 de energia ou mais para 3 estrelas." } : {}),
-      alt: "Trocar personagem",
+      summary: this.text.summary(fmt(this.matchTime), p.throws, hits),
+      ...(won && stars < 3 ? { starHint: this.text.starHint(stars) } : {}),
+      alt: this.text.alt,
       featured: p.kid,
     };
     this.ctx.onEvent({ type: "score", score });

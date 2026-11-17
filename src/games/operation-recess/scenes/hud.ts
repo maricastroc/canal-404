@@ -1,6 +1,9 @@
 import * as Phaser from "phaser";
+import { formatNumber } from "@/i18n/format";
+import type { Locale } from "@/i18n/locales";
 import { H, HEARTS, W } from "../config";
 import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
+import { COPY, type RecessCopy } from "../copy";
 
 export type TouchState = { left: boolean; right: boolean; jump: boolean; attack: boolean };
 type PadAction = keyof TouchState;
@@ -29,6 +32,7 @@ export class RecessHud {
   private pointers = new Map<number, PadAction>();
   private touchOn = false;
   private jumpPulse?: Phaser.Tweens.Tween;
+  private copy: RecessCopy["hud"];
 
   constructor(
     private scene: Phaser.Scene,
@@ -37,11 +41,13 @@ export class RecessHud {
     index: number,
     total: number,
     private reduced: boolean,
+    private locale: Locale,
     private onPress: (action: PadAction) => void,
   ) {
+    this.copy = COPY[locale].hud;
     const g = scene.add.graphics();
     paper(g, 0, 0, 380, CARD_H, 20);
-    const kicker = cartoonText(scene, 18, 10, `FASE ${index + 1} DE ${total}`, { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
+    const kicker = cartoonText(scene, 18, 10, this.copy.level(index + 1, total), { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
     const name = cartoonText(scene, 16, 32, title.toUpperCase(), { size: 28, color: INK, font: fonts.display, stroke: 0, shadow: false });
     fitText(name, 350, 28, 18);
     const items: Phaser.GameObjects.GameObject[] = [g, kicker, name];
@@ -55,7 +61,7 @@ export class RecessHud {
     const rule = scene.add.graphics();
     rule.lineStyle(3, INK_HEX, 0.15);
     rule.lineBetween(18, 118, 362, 118);
-    const label = cartoonText(scene, 18, 137, "MONITORES", { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+    const label = cartoonText(scene, 18, 137, this.copy.monitors, { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
     this.monitorText = cartoonText(scene, 364, 137, "0/0", { size: 24, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(1, 0.5);
     items.push(rule, label, this.monitorText);
     this.card = scene.add.container(20, 10, items).setDepth(60).setScrollFactor(0, 0, true);
@@ -68,7 +74,7 @@ export class RecessHud {
 
     const bg = scene.add.graphics();
     darkPanel(bg, -320, 0, 640, 96);
-    const bossName = cartoonText(scene, 0, 12, "INSPETOR DO SILÊNCIO", { size: 26, color: "#f06ba8", font: fonts.display, stroke: 0.18 }).setOrigin(0.5, 0);
+    const bossName = cartoonText(scene, 0, 12, this.copy.boss, { size: 26, color: "#f06ba8", font: fonts.display, stroke: 0.18 }).setOrigin(0.5, 0);
     this.bossBar = scene.add.graphics();
     this.bossBox = scene.add.container(W / 2, 12, [bg, bossName, this.bossBar]).setDepth(60).setScrollFactor(0, 0, true).setVisible(false);
 
@@ -202,7 +208,7 @@ export class RecessHud {
 
   setMonitors(kills: number, total: number, changed = false) {
     const done = total > 0 && kills >= total;
-    this.monitorText.setText(done ? `TODOS! ${kills}/${total}` : `${kills}/${total}`).setColor(done ? "#2fa996" : INK);
+    this.monitorText.setText(done ? this.copy.allMonitors(kills, total) : `${kills}/${total}`).setColor(done ? "#2fa996" : INK);
     const first = done && !this.monitorsDone;
     this.monitorsDone = done;
     if (!changed || this.reduced) return;
@@ -212,7 +218,7 @@ export class RecessHud {
   }
 
   setScore(n: number) {
-    this.scoreText.setText(n.toLocaleString("pt-BR"));
+    this.scoreText.setText(formatNumber(n, this.locale));
     if (!this.reduced) {
       this.scene.tweens.killTweensOf(this.scoreText);
       this.scoreText.setScale(1.25);

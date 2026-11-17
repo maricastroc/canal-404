@@ -1,5 +1,8 @@
 import * as Phaser from "phaser";
+import type { Locale } from "@/i18n/locales";
+import { formatNumber } from "@/i18n/format";
 import { H, PROJECTILES, W, WAVES, type ProjectileId, type TargetDef } from "../config";
+import { COPY, type StreetCopy } from "../copy";
 
 export { Bubble, CREAM_HEX, INK, INK_HEX, cartoonText, fitText, type Fonts } from "../../kit/ui";
 import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
@@ -51,6 +54,7 @@ export class Hud {
   private bannerBg: Phaser.GameObjects.Graphics;
   private bannerTimer?: Phaser.Time.TimerEvent;
   private lastForceLevel = -1;
+  private copy: StreetCopy;
   uiScale = 1;
 
   constructor(
@@ -58,13 +62,16 @@ export class Hud {
     private fonts: Fonts,
     targets: TargetDef[],
     private reduced: boolean,
+    private locale: Locale,
   ) {
+    this.copy = COPY[locale];
+    const hud = this.copy.hud;
     const panelH = ROUNDS.h;
     const g1 = scene.add.graphics();
     darkPanel(g1, 0, 0, 300, panelH);
     g1.lineStyle(3, 0xb9a6ef, 0.28);
     g1.lineBetween(22, 106, 278, 106);
-    const scoreLabel = cartoonText(scene, 20, 10, "PONTOS", { size: 26, color: "#b9a6ef", font: fonts.display, shadow: false, stroke: 0.16 });
+    const scoreLabel = cartoonText(scene, 20, 10, hud.score, { size: 26, color: "#b9a6ef", font: fonts.display, shadow: false, stroke: 0.16 });
     this.scoreText = cartoonText(scene, 16, 66, "0", { size: 58, color: "#ffc83d", font: fonts.display }).setOrigin(0, 0.5);
     this.recordText = cartoonText(scene, 20, 126, "", { size: 22, color: "#f7ecd4", font: fonts.display, shadow: false, stroke: 0.16 }).setOrigin(0, 0.5);
     this.scoreBox = scene.add.container(26, 22, [g1, scoreLabel, this.scoreText, this.recordText]).setDepth(20);
@@ -72,7 +79,7 @@ export class Hud {
     const g2 = scene.add.graphics();
     const rw = ROUNDS.w;
     darkPanel(g2, -rw, 0, rw, panelH);
-    this.roundText = cartoonText(scene, -rw + 20, 8, "RODADA 1/3", { size: 26, color: "#9df0dc", font: fonts.display, shadow: false, stroke: 0.16 });
+    this.roundText = cartoonText(scene, -rw + 20, 8, hud.round(1, WAVES.length), { size: 26, color: "#9df0dc", font: fonts.display, shadow: false, stroke: 0.16 });
     this.slotGfx = scene.add.graphics();
     const roundChildren: Phaser.GameObjects.GameObject[] = [g2, this.roundText, this.slotGfx];
     let sx = -rw + ROUNDS.pad;
@@ -143,7 +150,7 @@ export class Hud {
     this.forceLevel = scene.add.image(204, PILL_MID, "icon-force-2").setDisplaySize(40, 40);
     this.forceText = cartoonText(scene, 230, PILL_TEXT_Y, "50%", { size: 40, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
     const pillRow = scene.add.container(0, PILL_TOP - 8, [pg, angleIcon, this.angleText, this.forcePill, this.forceTrack, this.forceLevel, this.forceText]);
-    this.pills = scene.add.container(TAG.pillsX, -tagH + 6, [label(4, "ÂNGULO"), label(178, "FORÇA"), pillRow]);
+    this.pills = scene.add.container(TAG.pillsX, -tagH + 6, [label(4, hud.angle), label(178, hud.power), pillRow]);
     this.drawForcePill(0xff8a3d);
 
     this.queue = scene.add.container(TAG.queueX, mid);
@@ -218,18 +225,18 @@ export class Hud {
   }
 
   setScore(score: number, pulse: boolean) {
-    this.scoreText.setText(score.toLocaleString("pt-BR"));
+    this.scoreText.setText(formatNumber(score, this.locale));
     if (pulse && !this.reduced) {
       this.scene.tweens.add({ targets: this.scoreText, scale: { from: 1.22, to: 1 }, duration: 240, ease: "Back.easeOut" });
     }
   }
 
   setRecord(value: number) {
-    this.recordText.setText(value > 0 ? `RECORDE ${value.toLocaleString("pt-BR")}` : "SEM RECORDE AINDA");
+    this.recordText.setText(value > 0 ? this.copy.hud.record(formatNumber(value, this.locale)) : this.copy.hud.noRecord);
   }
 
   setRound(index: number) {
-    this.roundText.setText(`RODADA ${index + 1}/${WAVES.length}`);
+    this.roundText.setText(this.copy.hud.round(index + 1, WAVES.length));
     this.currentRound = index;
     this.drawSlots();
     if (!this.reduced) this.scene.tweens.add({ targets: this.roundText, scale: { from: 1.25, to: 1 }, duration: 260, ease: "Back.easeOut" });
@@ -265,12 +272,12 @@ export class Hud {
     this.tag.setVisible(true);
     this.tagIcon.setTexture(def.tex);
     this.tagIcon.setScale(Math.min(54 / this.tagIcon.width, 54 / this.tagIcon.height));
-    this.tagName.setText(def.name.toUpperCase());
+    this.tagName.setText(this.copy.projectiles[id].name.toUpperCase());
     fitText(this.tagName, TAG.pillsX - 44 - 112, 36, 24);
-    this.tagTip.setText(hint ?? def.tip);
+    this.tagTip.setText(hint ?? this.copy.projectiles[id].tip);
     fitText(this.tagTip, TAG.pillsX - 44 - 114, 22, 17);
     this.queue.removeAll(true);
-    const label = this.scene.add.text(0, -30, queue.length ? "DEPOIS" : "ÚLTIMO!", {
+    const label = this.scene.add.text(0, -30, queue.length ? this.copy.hud.next : this.copy.hud.last, {
       fontFamily: this.fonts.display,
       fontSize: "18px",
       color: queue.length ? SOFT : "#c4352c",
@@ -308,7 +315,7 @@ export class Hud {
     if (!active) return;
     this.angleText.setText(`${Math.round(angle)}°`);
     const pct = Math.round(power * 100);
-    this.forceText.setText(power < 0.12 ? "PUXE!" : `${pct}%`);
+    this.forceText.setText(power < 0.12 ? this.copy.hud.pull : `${pct}%`);
     const level = Math.max(0, Math.min(FORCE_ICONS.length - 1, Math.ceil(power * (FORCE_ICONS.length - 1) - 0.001)));
     const max = power >= 0.98;
     const key = max ? FORCE_ICONS.length : level;

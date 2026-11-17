@@ -1,4 +1,6 @@
 import * as Phaser from "phaser";
+import type { GameHostContext } from "@/games/types";
+import { COPY, type PajamaCopy } from "../copy";
 import { cartoonText, INK_HEX, type Fonts } from "../../kit/ui";
 import type { Prop, Room } from "./room";
 
@@ -59,6 +61,7 @@ class TvShow {
     private fonts: Fonts,
     depth: number,
     private reduced: boolean,
+    private text: PajamaCopy["tv"],
   ) {
     this.g = scene.add.graphics().setDepth(depth);
     this.label = cartoonText(scene, (TV.x0 + TV.x1) / 2, (TV.y0 + TV.y1) / 2, "404", { size: 38, color: "#ffc83d", font: fonts.display, stroke: 0.22 }).setOrigin(0.5).setDepth(depth + 0.01);
@@ -128,7 +131,7 @@ class TvShow {
     g.fillStyle(INK_HEX, 1);
     g.fillRoundedRect(TV.x0 + w / 2 - 46, TV.y0 + h * 0.36 - 22, 92, 44, 10);
     this.label.setVisible(true).setText("404").setFontSize(34).setPosition(TV.x0 + w / 2, TV.y0 + h * 0.36).setScale(still ? 1 : 1 + Math.max(0, Math.sin(t / 260)) * 0.08);
-    this.small.setVisible(true).setText("NO AR").setPosition(TV.x0 + w / 2, TV.y0 + h * 0.86);
+    this.small.setVisible(true).setText(this.text.onAir).setPosition(TV.x0 + w / 2, TV.y0 + h * 0.86);
   }
 
   private cartoon(t: number) {
@@ -154,7 +157,7 @@ class TvShow {
     g.fillTriangle(x - 20, y - 5, x - 20, y + 5, x - 28 - Math.abs(Math.sin(t / 50)) * 8, y);
     g.fillStyle(0x2b2150, 1);
     g.fillRect(TV.x0, TV.y1 - 18, w, 18);
-    this.small.setVisible(true).setText("FOGUETE 404").setPosition(TV.x0 + w / 2, TV.y1 - 9);
+    this.small.setVisible(true).setText(this.text.cartoon).setPosition(TV.x0 + w / 2, TV.y1 - 9);
   }
 
   private weather(t: number) {
@@ -176,7 +179,7 @@ class TvShow {
       const k = ((t / 1100 + i / 3) % 1 + 1) % 1;
       d.setVisible(true).setPosition(cx - 4 + i * 22, cy + 18 + k * 36).setAngle(Math.sin(t / 200 + i) * 30).setAlpha(Math.min(1, (1 - k) * 4));
     });
-    this.small.setVisible(true).setText("PREVISÃO").setPosition(TV.x0 + w * 0.72, TV.y0 + 30);
+    this.small.setVisible(true).setText(this.text.forecast).setPosition(TV.x0 + w * 0.72, TV.y0 + 30);
     g.fillStyle(0x2b2150, 1);
     g.fillRect(TV.x0, TV.y1 - 26, w, 26);
     g.fillStyle(0xffc83d, 1);
@@ -222,7 +225,7 @@ export class Ambient {
     }
     if (theme === "living") {
       const tv = room.props.find((p) => p.def.key === "tv");
-      this.tv = new TvShow(scene, fonts, (tv?.img.depth ?? 525) + 0.3, reduced);
+      this.tv = new TvShow(scene, fonts, (tv?.img.depth ?? 525) + 0.3, reduced, COPY[(scene.registry.get("ctx") as GameHostContext).locale].tv);
     }
     const b = room.def.bounds;
     const n = room.def.fireflies ?? 0;

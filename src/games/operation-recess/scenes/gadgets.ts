@@ -310,14 +310,14 @@ export class Watcher {
         this.api.scene.tweens.add({ targets: this.eye, scale: 1, duration: 160, ease: "Back.easeOut" });
         this.api.scene.tweens.add({ targets: this.paper, y: this.paperY + 78, duration: 150, ease: "Quad.easeOut" });
       }
-      this.api.word("ESTÁTUA!", this.x, FLOOR_Y - 400, "#ffc83d", 40);
+      this.api.word(this.api.words.freeze, this.x, FLOOR_Y - 400, "#ffc83d", 40);
       return;
     }
     if (!this.caught && Math.abs(h.x - this.x) < 780 && (Math.abs(h.vx) > 45 || !h.grounded)) {
       this.caught = true;
       const dir = Math.sign(h.x - this.x) || 1;
       this.eye.setTint(0xff9b8a);
-      this.api.word("TE VI!", this.x, FLOOR_Y - 400, "#ef4f43", 48);
+      this.api.word(this.api.words.sawYou, this.x, FLOOR_Y - 400, "#ef4f43", 48);
       this.api.sfx("bigWhistle", 0.8);
       this.api.scene.time.delayedCall(320, () => this.onCaught(this.x + dir * 90, dir));
     }
@@ -510,7 +510,7 @@ export class Searchlight {
         this.since = t;
         this.until = t + 900;
         caught = true;
-        this.api.word("FLAGRA!", h.x, h.top - 90, "#ef4f43", 44);
+        this.api.word(this.api.words.caught, h.x, h.top - 90, "#ef4f43", 44);
       }
     } else if (this.state === "alarm" && t >= this.until) this.state = "sweep";
     this.draw(t);

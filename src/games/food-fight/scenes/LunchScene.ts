@@ -25,6 +25,7 @@ import {
   type Phase,
   type RivalKind,
 } from "../config";
+import { COPY, type FoodFightCopy } from "../copy";
 import { LUNCH_SFX, type LunchSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
 import { Cook, LunchLady, Rival } from "./actors";
@@ -51,18 +52,6 @@ type Projectile = {
 
 type Target = { kind: "rival"; rival: Rival } | { kind: "lunchLady" } | { kind: "point"; x: number; y: number };
 
-const HIT_WORDS: Record<Food, string[]> = {
-  sandwich: ["NA CARA!", "SPLAT!"],
-  apple: ["TOC!", "PLOFT!"],
-  grapes: ["BLEC!", "SPLAT!"],
-  banana: ["PLAFT!", "NA CARA!"],
-};
-const GLOAT_LINES = ["HAHA!", "Acertei!"];
-const SULK_LINES = ["Errei!", "Ah, não!"];
-const PHEW_LINES = ["Ufa!", "Passou raspando!", "Essa foi perto!"];
-const OUCH_LINES = ["Eca!", "Melecou!", "Que nojo!"];
-const CHEER_LINES = ["Boa!", "Na mosca!", "Isso!"];
-
 function bezier(a: Pt, c: Pt, b: Pt, k: number): Pt {
   const u = 1 - k;
   return { x: u * u * a.x + 2 * u * k * c.x + k * k * b.x, y: u * u * a.y + 2 * u * k * c.y + k * k * b.y };
@@ -86,12 +75,9 @@ function rememberTutorial() {
   }
 }
 
-const LADY_LINES = ["Cuidado! Não acerte a tia!", "Lá vem a tia de novo!", "Olha a tia! Mira em outro lugar!", "A tia voltou! Cuidado com a mira!"];
-
-const COOK_LINES = ["Lá vem a merendeira! Joga os lanches antes!", "A merendeira de novo! Gasta o lanche!", "Esconde... não, joga o lanche! Ela vem aí!"];
-
 export class LunchScene extends Phaser.Scene {
   private ctx!: GameHostContext;
+  private copy!: FoodFightCopy;
   private mode: Mode = "attract";
   private t = 0;
   private roundStart = 0;
@@ -209,6 +195,7 @@ export class LunchScene extends Phaser.Scene {
 
   create() {
     this.ctx = this.registry.get("ctx") as GameHostContext;
+    this.copy = COPY[this.ctx.locale];
     this.highScore = (this.registry.get("highScore") as number | undefined) ?? this.ctx.highScore;
     const reduced = this.ctx.reducedMotion;
     const fonts = this.ctx.fonts;
@@ -255,7 +242,7 @@ export class LunchScene extends Phaser.Scene {
     this.overlay = this.add.image(380, 560, "splat-screen").setDepth(25).setScale(1.7).setVisible(false);
     this.bubble = new Bubble(this, fonts, "right", 32, 16);
 
-    this.hud = new LunchHud(this, fonts, reduced);
+    this.hud = new LunchHud(this, fonts, reduced, this.ctx.locale);
     this.hud.setRecord(this.highScore);
     this.hud.setLives(this.lives);
     this.hud.setScore(0);
@@ -427,12 +414,12 @@ export class LunchScene extends Phaser.Scene {
     const r = this.rivals[1];
     this.tutorialRival = r;
     r.rise("cap", 1, this.t, 0, { hold: true });
-    r.taunt("Ha!");
+    r.taunt(this.copy.tutorial.taunt);
     this.time.delayedCall(320, () => {
       if (this.tutorial === "throw") this.hud.showPointer(r.face().x, r.face().y);
     });
-    this.milaSay("Toque no garoto para jogar um lanche!", 5000, "shout", true);
-    this.announce("Treino. Um garoto apareceu na mesa 2. Toque nele, ou aperte espaço, para jogar um lanche.");
+    this.milaSay(this.copy.tutorial.tapSay, 5000, "shout", true);
+    this.announce(this.copy.tutorial.tapAnnounce);
   }
 
   private tutorialDuck() {
@@ -440,7 +427,7 @@ export class LunchScene extends Phaser.Scene {
     const r = this.rivals[2];
     this.tutorialRival = r;
     r.rise("cap", 3, this.t, 400);
-    this.announce("Agora ele vai jogar um pudim. Segure a seta para baixo, ou o botão ABAIXAR, até o pudim passar.");
+    this.announce(this.copy.tutorial.duckAnnounce);
   }
 
   private endTutorial() {
@@ -469,11 +456,11 @@ export class LunchScene extends Phaser.Scene {
     this.hud.setStreak(0);
     this.updateScore();
     this.hud.setTimer(ROUND_MS, ROUND_MS, false);
-    this.hud.flash("PREPARE-SE!", "#ffc83d", 700, "Defenda a mesa até o sinal tocar");
+    this.hud.flash(this.copy.countdown.title, "#ffc83d", 700, this.copy.countdown.sub);
     this.sfx("beep", 0.8);
-    this.announce("Prepare-se! Defenda a mesa até o sinal tocar.");
+    this.announce(this.copy.countdown.announce);
     this.time.delayedCall(1300, () => {
-      this.hud.flash("VAI!", "#93cf4c", 500);
+      this.hud.flash(this.copy.countdown.go, "#93cf4c", 500);
       this.sfx("go", 0.9);
       this.mode = "playing";
       this.roundStart = this.t;
@@ -516,12 +503,12 @@ export class LunchScene extends Phaser.Scene {
     r.rise(kind, this.pickLook(kind), this.t, Phaser.Math.Between(tray ? 520 : 260, tray ? 900 : 600), { feint, tray });
     if (firstTray) {
       this.trayIntroduced = true;
-      this.milaSay("Olha a bandeja! Espere baixar.", 2600, "shout", true);
-      this.announce(`Bandeja levantada na mesa ${r.slot.key}. Acerte quando ela baixar.`);
+      this.milaSay(this.copy.tray.say, 2600, "shout", true);
+      this.announce(this.copy.tray.announce(r.slot.key));
     } else if (tray && Math.random() < 0.4) {
-      r.taunt("Bandeja!");
+      r.taunt(this.copy.tray.taunt);
     } else if (Math.random() < 0.3) {
-      r.taunt(Phaser.Utils.Array.GetRandom(r.def.taunts) as string);
+      r.taunt(Phaser.Utils.Array.GetRandom(this.copy.taunts[r.def.kind]) as string);
     }
     this.nextSpawnAt = this.t + Phaser.Math.Between(phase.gap[0], phase.gap[1]);
   }
@@ -534,10 +521,10 @@ export class LunchScene extends Phaser.Scene {
     for (const r of this.rivals) {
       if (r.visible && r.state !== "lowering") r.lower(() => (r.readyAt = this.t + 150));
     }
-    this.hud.flash("BAGUNÇA!", "#ffc83d", 1300, "Eles brigam entre si. Vale o dobro!");
+    this.hud.flash(this.copy.brawl.title, "#ffc83d", 1300, this.copy.brawl.sub);
     this.sfx("crowd", 1);
-    this.milaSay("Agora! Eles estão distraídos!", 2000, "cheer", true);
-    this.announce("Bagunça! A turma rival está brigando entre si. Cada acerto vale o dobro.");
+    this.milaSay(this.copy.brawl.say, 2000, "cheer", true);
+    this.announce(this.copy.brawl.announce);
   }
 
   private fillBrawl() {
@@ -580,21 +567,21 @@ export class LunchScene extends Phaser.Scene {
       if (!b.brawl || b.state !== "up") return;
       b.getSplatted();
       this.sfx("splat", 0.3, 1.25);
-      if (Math.random() < 0.35) a.taunt("HAHA!");
+      if (Math.random() < 0.35) a.taunt(this.copy.brawl.gloat);
     });
   }
 
   private endBrawl() {
     this.brawlUntil = 0;
     this.sfx("whistle", 1);
-    this.word("PRIIII!", 1760, 470, "#fbf5e6", 56);
+    this.word(this.copy.brawl.whistle, 1760, 470, "#fbf5e6", 56);
     for (const r of this.rivals) {
       if (r.visible && r.state !== "lowering") r.lower(() => (r.readyAt = this.t + 900));
     }
     this.nextSpawnAt = this.t + 1700;
     this.lunchLady.start();
-    this.milaSay("Xiii, a tia! Não acerte ela.", 2000, "shout", true);
-    this.announce("A tia da cantina apitou e está passando. Não acerte ela!");
+    this.milaSay(this.copy.brawl.endSay, 2000, "shout", true);
+    this.announce(this.copy.brawl.endAnnounce);
   }
 
   private updateRivals() {
@@ -604,17 +591,17 @@ export class LunchScene extends Phaser.Scene {
       if (this.mode !== "playing" && this.mode !== "tutorial") continue;
       if (r.state === "up" && !r.hold && this.t >= r.until) {
         if (r.feint) {
-          r.taunt("Hehe!");
+          r.taunt(this.copy.feint);
           r.lower(() => (r.readyAt = this.t + Phaser.Math.Between(300, 900)));
         } else {
           const tut = this.tutorial === "duck" && r === this.tutorialRival;
           r.startWindup(this.t, tut ? 2200 : phase.windup * r.def.windup);
           this.sfx("windup", 0.7);
           if (tut) {
-            this.milaSay("Lá vem pudim! Segure ABAIXAR!", 3200, "shout", true);
+            this.milaSay(this.copy.tutorial.duckSay, 3200, "shout", true);
             this.hud.pulseDuck(true);
           } else {
-            this.announce(`Pudim vindo da mesa ${r.slot.key}!`, "windup", 900);
+            this.announce(this.copy.pudding.incoming(r.slot.key), "windup", 900);
           }
         }
       } else if (r.state === "windup" && this.t >= r.until) {
@@ -687,7 +674,7 @@ export class LunchScene extends Phaser.Scene {
     if (!safe) {
       img.destroy();
       if (thrower.celebrate()) {
-        thrower.taunt(Phaser.Utils.Array.GetRandom(GLOAT_LINES) as string);
+        thrower.taunt(Phaser.Utils.Array.GetRandom(this.copy.gloat) as string);
         this.sfx("laugh", 0.7);
       }
       this.takeHit(big, tut);
@@ -696,13 +683,13 @@ export class LunchScene extends Phaser.Scene {
     }
     if (this.ducking) {
       this.sfx("phew", 0.8);
-      this.word("UFA!", DECO.x + 20, 690, "#9df0dc", 46);
-      if (Math.random() < 0.5 && thrower.sulk()) thrower.taunt(Phaser.Utils.Array.GetRandom(SULK_LINES) as string);
+      this.word(this.copy.pudding.phew, DECO.x + 20, 690, "#9df0dc", 46);
+      if (Math.random() < 0.5 && thrower.sulk()) thrower.taunt(Phaser.Utils.Array.GetRandom(this.copy.sulk) as string);
       if (tut) {
-        this.milaSay("Isso! Agora é pra valer!", 1800, "cheer", true);
+        this.milaSay(this.copy.tutorial.dodged, 1800, "cheer", true);
         this.time.delayedCall(900, () => this.endTutorial());
       } else if (Math.random() < 0.3) {
-        this.milaSay(Phaser.Utils.Array.GetRandom(PHEW_LINES) as string, 1100, "peek");
+        this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.phew) as string, 1100, "peek");
       }
     }
     const to = { x: WALL_SPLAT.x + Phaser.Math.Between(-60, 60), y: WALL_SPLAT.y + Phaser.Math.Between(-80, 40) };
@@ -739,19 +726,19 @@ export class LunchScene extends Phaser.Scene {
     this.tweens.add({ targets: o, alpha: 0, delay: this.ctx.reducedMotion ? 250 : 420, duration: this.ctx.reducedMotion ? 350 : 550, onComplete: () => o.setVisible(false) });
     if (!this.ctx.reducedMotion) this.cameras.main.shake(140, 0.006);
     if (tut) {
-      this.milaSay("Eca! Da próxima vez, segure ABAIXAR.", 2400, "shout", true);
-      this.announce("Levou pudim! No treino não conta. Da próxima vez, segure a seta para baixo.");
+      this.milaSay(this.copy.tutorial.hitSay, 2400, "shout", true);
+      this.announce(this.copy.tutorial.hitAnnounce);
       return;
     }
     this.lives -= 1;
     this.hitsTaken += 1;
     this.hud.setLives(this.lives);
-    this.milaSay(Phaser.Utils.Array.GetRandom(OUCH_LINES) as string, 1100, "shout");
+    this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.ouch) as string, 1100, "shout");
     if (this.lives <= 0) {
       this.lose();
       return;
     }
-    this.announce(`Levou pudim! ${this.lives === 1 ? "Resta 1 guardanapo." : `Restam ${this.lives} guardanapos.`}`);
+    this.announce(this.copy.pudding.hit(this.lives));
   }
 
   private throwAuto() {
@@ -767,7 +754,7 @@ export class LunchScene extends Phaser.Scene {
       }
     }
     if (!best) {
-      this.announce("Ninguém de pé agora.", "nobody", 1500);
+      this.announce(this.copy.throwing.nobody, "nobody", 1500);
       return;
     }
     this.tryThrow({ kind: "rival", rival: best });
@@ -810,7 +797,7 @@ export class LunchScene extends Phaser.Scene {
     if (this.ducking) {
       if (this.t - (this.lastSaid.get("duckhint") ?? -9999) > 2500) {
         this.lastSaid.set("duckhint", this.t);
-        this.milaSay("Solte ABAIXAR para jogar!", 1400, "shout");
+        this.milaSay(this.copy.throwing.releaseDuck, 1400, "shout");
       }
       return;
     }
@@ -820,8 +807,8 @@ export class LunchScene extends Phaser.Scene {
       this.sfx("empty", 0.8);
       if (this.t - (this.lastSaid.get("empty") ?? -9999) > 2200) {
         this.lastSaid.set("empty", this.t);
-        this.milaSay("Acabou o lanche! Abaixe para pegar mais.", 1800, "shout");
-        this.announce("Acabou o lanche! Abaixe para pegar mais.");
+        this.milaSay(this.copy.throwing.empty, 1800, "shout");
+        this.announce(this.copy.throwing.empty);
         this.hud.pulseDuck(true);
         this.time.delayedCall(1600, () => this.tutorial !== "duck" && this.hud.pulseDuck(false));
       }
@@ -861,11 +848,11 @@ export class LunchScene extends Phaser.Scene {
     const escaped = target.kind === "rival" && (target.rival.state === "lowering" || target.rival.state === "hidden");
     if (target.kind !== "lunchLady" && this.lunchLady.covers(to)) {
       this.lunchLadyHit();
-      if (escaped) this.announce("O lanche passou por cima e acertou a tia!");
+      if (escaped) this.announce(this.copy.throwing.overLady);
       return;
     }
     if (escaped && target.kind === "rival") {
-      this.word("ESCAPOU!", to.x, to.y - 40, "#fbf5e6", target.rival.slot.row === "back" ? 28 : 34);
+      this.word(this.copy.throwing.escaped, to.x, to.y - 40, "#fbf5e6", target.rival.slot.row === "back" ? 28 : 34);
     }
     if (target.kind === "lunchLady" && this.lunchLady.active) {
       const c = this.lunchLady.center();
@@ -912,7 +899,7 @@ export class LunchScene extends Phaser.Scene {
     this.hud.setStreak(0);
     this.sfx("clang", 0.9);
     const back = r.slot.row === "back";
-    this.word("TÓIM!", r.slot.x, r.top() - 40, "#fbf5e6", back ? 34 : 42);
+    this.word(this.copy.tray.word, r.slot.x, r.top() - 40, "#fbf5e6", back ? 34 : 42);
     const img = this.add.image(at.x, at.y, food).setDepth(13).setScale(back ? 0.5 : 0.65);
     const to = { x: at.x + Phaser.Math.Between(-110, 110), y: r.slot.tableY + 6 };
     this.launch(img, at, to, 420, 70, back ? 0.45 : 0.6, () => {
@@ -921,10 +908,10 @@ export class LunchScene extends Phaser.Scene {
     });
     if (!this.trayHinted) {
       this.trayHinted = true;
-      this.milaSay("Bateu na bandeja! Espere baixar.", 2200, "shout", true);
-      this.announce("Bateu na bandeja. Espere a bandeja baixar.");
+      this.milaSay(this.copy.tray.hitSay, 2200, "shout", true);
+      this.announce(this.copy.tray.hitAnnounce);
     } else if (Math.random() < 0.5) {
-      r.taunt("Hehe!");
+      r.taunt(this.copy.feint);
     }
   }
 
@@ -936,7 +923,7 @@ export class LunchScene extends Phaser.Scene {
     if (out.result === "hurt") {
       this.sfx("bonk", 0.9);
       this.hitScore += 50;
-      this.word("AI!", f.x, top - 40, "#fbf5e6", back ? 36 : 44);
+      this.word(this.copy.throwing.ouch, f.x, top - 40, "#fbf5e6", back ? 36 : 44);
       this.popScore("+50", f.x, top + 4);
       this.updateScore();
       return;
@@ -955,28 +942,28 @@ export class LunchScene extends Phaser.Scene {
       this.interrupts += 1;
       this.interruptScore += bonus;
       this.time.delayedCall(this.ctx.reducedMotion ? 0 : 240, () => this.sfx("plop", 0.9));
-      if (this.interrupts === 1 || Math.random() < 0.25) this.milaSay("Bem na hora!", 1100, "cheer");
-      this.announce("Na hora H! O pudim caiu na cabeça dele.", "interrupt", 2500);
+      if (this.interrupts === 1 || Math.random() < 0.25) this.milaSay(this.copy.throwing.interruptSay, 1100, "cheer");
+      this.announce(this.copy.throwing.interruptAnnounce, "interrupt", 2500);
     }
     this.updateScore();
-    const word = bonus ? "NA HORA H!" : (Phaser.Utils.Array.GetRandom(HIT_WORDS[food]) as string);
+    const word = bonus ? this.copy.throwing.interruptWord : (Phaser.Utils.Array.GetRandom(this.copy.hitWords[food]) as string);
     this.word(word, f.x, top - 44, bonus ? "#63d6c1" : "#ffc83d", back ? 38 : 48);
     this.popScore(`+${points + combo + bonus}`, f.x, top + 4, r.brawl ? "#ffc83d" : "#9df0dc");
     this.burst(f.x, f.y, 4, "spark");
     this.hud.setStreak(this.streak);
     if (this.streak > 0 && this.streak % 5 === 0) {
       this.sfx("combo", 0.9);
-      this.milaSay(Phaser.Utils.Array.GetRandom(CHEER_LINES) as string, 1000, "cheer");
+      this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.cheer) as string, 1000, "cheer");
     }
-    this.announce("Acertou!", "hit", 1200);
+    this.announce(this.copy.throwing.hit, "hit", 1200);
     if (this.tutorial === "throw" && r === this.tutorialRival) {
       this.hud.hidePointer();
-      this.milaSay("Boa! Agora cuidado...", 1400, "cheer", true);
+      this.milaSay(this.copy.tutorial.thrown, 1400, "cheer", true);
       this.time.delayedCall(1100, () => this.tutorialDuck());
     } else if (this.tutorial === "duck" && r === this.tutorialRival) {
       this.hud.pulseDuck(false);
-      this.milaSay("Boa! Acertar antes dele jogar também vale.", 2200, "cheer", true);
-      this.announce("Boa! Acertar antes dele jogar também vale.");
+      this.milaSay(this.copy.tutorial.early, 2200, "cheer", true);
+      this.announce(this.copy.tutorial.early);
       this.time.delayedCall(1500, () => this.endTutorial());
     }
   }
@@ -996,9 +983,9 @@ export class LunchScene extends Phaser.Scene {
     this.cook.warn();
     this.cookTook = 0;
     this.sfx("clang", 0.45);
-    this.word("TÉC TÉC!", 150, 500, "#fbf5e6", 40);
-    this.milaSay(COOK_LINES[(this.cookIndex - 1) % COOK_LINES.length], 2200, "shout", true);
-    this.announce("A merendeira está vindo pegar os lanches da mesa! Jogue antes que ela chegue.");
+    this.word(this.copy.cook.word, 150, 500, "#fbf5e6", 40);
+    this.milaSay(this.copy.cookLines[(this.cookIndex - 1) % this.copy.cookLines.length], 2200, "shout", true);
+    this.announce(this.copy.cook.announce);
   }
 
   private confiscate(food: Food, from: { x: number; y: number }) {
@@ -1024,14 +1011,14 @@ export class LunchScene extends Phaser.Scene {
     const at = { x: this.cook.img.x + 70, y: this.cook.img.y - this.cook.img.displayHeight - 10 };
     if (take > 0) {
       this.sfx("plop", 0.8);
-      this.word("CONFISCADO!", at.x, at.y, "#ef4f43", 44);
-      this.milaSay(take === 1 ? "Ei! Ela levou um lanche!" : `Ei! Ela levou ${take} lanches!`, 1800, "shout", true);
-      this.announce(`A merendeira confiscou ${take === 1 ? "1 lanche" : `${take} lanches`}. Abaixe depois que ela sair para pegar mais.`);
+      this.word(this.copy.cook.took, at.x, at.y, "#ef4f43", 44);
+      this.milaSay(this.copy.cook.tookSay(take), 1800, "shout", true);
+      this.announce(this.copy.cook.tookAnnounce(take));
     } else {
       this.sfx("laugh", 0.6);
-      this.word("NADA?!", at.x, at.y, "#fbf5e6", 44);
-      this.milaSay("Ha! Não sobrou nada pra ela!", 1800, "cheer", true);
-      this.announce("A mesa estava vazia. A merendeira saiu sem nada.");
+      this.word(this.copy.cook.nothing, at.x, at.y, "#fbf5e6", 44);
+      this.milaSay(this.copy.cook.nothingSay, 1800, "cheer", true);
+      this.announce(this.copy.cook.nothingAnnounce);
     }
   }
 
@@ -1044,10 +1031,10 @@ export class LunchScene extends Phaser.Scene {
     const c = this.lunchLady.center();
     this.sfx("splat", 0.7);
     this.sfx("honk", 0.9);
-    this.word("EI!", c.x, c.y - 140, "#ef4f43", 56);
+    this.word(this.copy.lady.hey, c.x, c.y - 140, "#ef4f43", 56);
     this.popScore(`-${SCORE.lunchLadyPenalty}`, c.x, c.y - 70);
-    this.milaSay("Opa... a tia não!", 1500, "shout", true);
-    this.announce(`Você acertou a tia da cantina! Menos ${SCORE.lunchLadyPenalty} pontos.`);
+    this.milaSay(this.copy.lady.hitSay, 1500, "shout", true);
+    this.announce(this.copy.lady.hitAnnounce(SCORE.lunchLadyPenalty));
   }
 
   private updateDuck(dt: number) {
@@ -1111,10 +1098,10 @@ export class LunchScene extends Phaser.Scene {
       this.tweens.add({ targets: this.bell, angle: { from: -12, to: 12 }, duration: 60, yoyo: true, repeat: 9, onComplete: () => this.bell.setAngle(0) });
       this.tweens.add({ targets: [this.deco, this.mila], y: "-=30", duration: 180, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
     }
-    this.word("TRIIIM!", 1690, 270, "#ffc83d", 56);
-    this.hud.flash("SINAL!", "#ffc83d", 1500, "A mesa resistiu!");
+    this.word(this.copy.win.ring, 1690, 270, "#ffc83d", 56);
+    this.hud.flash(this.copy.win.title, "#ffc83d", 1500, this.copy.win.sub);
     this.burst(DECO.x, 520, 14);
-    this.announce("Triiim! O sinal tocou. A mesa resistiu!");
+    this.announce(this.copy.win.announce);
     this.time.delayedCall(1900, () => this.finish(true));
   }
 
@@ -1124,7 +1111,7 @@ export class LunchScene extends Phaser.Scene {
     this.setPose("splat");
     this.mila.setTexture("mila-shout");
     this.sfx("lose", 1);
-    this.hud.flash("MELECADO!", "#ef4f43", 1500, "Acabaram os guardanapos");
+    this.hud.flash(this.copy.lose.title, "#ef4f43", 1500, this.copy.lose.sub);
     let i = 0;
     for (const r of this.rivals) {
       if (r.state === "hidden") {
@@ -1132,12 +1119,12 @@ export class LunchScene extends Phaser.Scene {
         this.time.delayedCall(150 + i * 120, () => {
           const kind = this.pickKind();
           rr.rise(kind, this.pickLook(kind), this.t, 0, { hold: true });
-          rr.taunt("HAHA!");
+          rr.taunt(this.copy.brawl.gloat);
         });
         i += 1;
       }
     }
-    this.announce("Acabaram os guardanapos. Você ficou melecado!");
+    this.announce(this.copy.lose.announce);
     this.time.delayedCall(2000, () => this.finish(false));
   }
 
@@ -1165,14 +1152,15 @@ export class LunchScene extends Phaser.Scene {
     this.mode = "over";
     const lifeBonus = won ? this.lives * SCORE.lifeBonus : 0;
     const clean = won && this.hitsTaken === 0 ? SCORE.cleanBonus : 0;
+    const text = this.copy.result;
     const breakdown = [
-      { label: `Acertos (${this.hits})`, value: this.hitScore },
-      { label: `Na hora H (${this.interrupts})`, value: this.interruptScore },
-      { label: "Sequências", value: this.comboScore },
+      { label: text.hits(this.hits), value: this.hitScore },
+      { label: text.interrupts(this.interrupts), value: this.interruptScore },
+      { label: text.streaks, value: this.comboScore },
     ];
-    if (won) breakdown.push({ label: "Guardanapos sobrando", value: lifeBonus });
-    if (clean) breakdown.push({ label: "Roupa limpinha", value: clean });
-    if (this.lunchLadyPenalty) breakdown.push({ label: "Bronca da tia", value: -this.lunchLadyPenalty });
+    if (won) breakdown.push({ label: text.napkinsLeft, value: lifeBonus });
+    if (clean) breakdown.push({ label: text.spotless, value: clean });
+    if (this.lunchLadyPenalty) breakdown.push({ label: text.scolding, value: -this.lunchLadyPenalty });
     const score = Math.max(0, breakdown.reduce((a, b) => a + b.value, 0));
     const rows = breakdown.filter((row, i) => i === 0 || row.value !== 0);
     const stars = won ? (score >= SCORE.threeStars ? 3 : score >= SCORE.twoStars ? 2 : 1) : 0;
@@ -1200,11 +1188,9 @@ export class LunchScene extends Phaser.Scene {
         timeMs: Math.round(this.roundT),
       },
       achievements,
-      copy: won
-        ? { title: "Sinal!", text: "O sinal tocou! A cantina sobreviveu a mais uma guerra de comida." }
-        : { title: "Melecado!", text: "Acabaram os guardanapos. Fica pra próxima!" },
-      summary: `${this.hits} ${this.hits === 1 ? "acerto" : "acertos"}. Melhor sequência: ${this.bestStreak}.${this.confiscated ? ` ${this.confiscated} ${this.confiscated === 1 ? "lanche confiscado" : "lanches confiscados"}.` : ""}`,
-      ...(won && stars < 3 ? { starHint: `Faltaram ${((stars === 1 ? SCORE.twoStars : SCORE.threeStars) - score).toLocaleString("pt-BR")} pontos para a ${stars + 1}ª estrela.` } : {}),
+      copy: won ? text.won : text.lost,
+      summary: text.summary(this.hits, this.bestStreak, this.confiscated),
+      ...(won && stars < 3 ? { starHint: text.starHint((stars === 1 ? SCORE.twoStars : SCORE.threeStars) - score, stars + 1) } : {}),
     };
     this.ctx.onEvent({ type: "finished", result });
   }
@@ -1237,13 +1223,13 @@ export class LunchScene extends Phaser.Scene {
     this.spawn();
     const ladyDue = this.lunchLadyIndex < LUNCH_LADY.times.length && this.roundT >= LUNCH_LADY.times[this.lunchLadyIndex];
     if (ladyDue && !this.lunchLady.active && !this.brawlUntil && this.t >= this.ladyGoneAt + LUNCH_LADY.minGap) {
-      const line = LADY_LINES[this.lunchLadyIndex % LADY_LINES.length];
+      const line = this.copy.ladyLines[this.lunchLadyIndex % this.copy.ladyLines.length];
       this.lunchLadyIndex += 1;
       this.lunchLady.start();
       this.sfx("whistle", 0.45);
-      this.word("PRIII!", 1800, 400, "#fbf5e6", 40);
+      this.word(this.copy.lady.whistle, 1800, 400, "#fbf5e6", 40);
       this.milaSay(line, 2000, "shout", true);
-      this.announce("A tia da cantina está passando. Não acerte ela!");
+      this.announce(this.copy.lady.announce);
     }
     const cookDue = this.cookIndex < COOK.times.length && this.roundT >= COOK.times[this.cookIndex];
     if (cookDue && !this.cook.busy && !this.brawlUntil) {
@@ -1253,8 +1239,8 @@ export class LunchScene extends Phaser.Scene {
     const sec = Math.ceil(left / 1000);
     if (left <= 10000 && !this.warnedLast) {
       this.warnedLast = true;
-      this.hud.flash("ÚLTIMOS 10 SEGUNDOS!", "#ef4f43", 900);
-      this.announce("Faltam 10 segundos!");
+      this.hud.flash(this.copy.lastSeconds.title, "#ef4f43", 900);
+      this.announce(this.copy.lastSeconds.announce);
     }
     if (left <= 10000 && sec !== this.lastSecond) {
       this.lastSecond = sec;

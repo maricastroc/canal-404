@@ -1,5 +1,8 @@
 import * as Phaser from "phaser";
+import { formatNumber } from "@/i18n/format";
+import type { Locale } from "@/i18n/locales";
 import { H, LIVES, SLOTS, W } from "../config";
+import { COPY, type FoodFightCopy } from "../copy";
 import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
 
 const DUCK = { x: 150, y: H - 128, r: 86, press: 5, iconY: -16, iconSize: 88, labelY: 42 };
@@ -28,15 +31,18 @@ export class LunchHud {
   private pointer: Phaser.GameObjects.Container;
   private pointerTween?: Phaser.Tweens.Tween;
   private duckState: "idle" | "danger" | "down" = "idle";
+  private copy: FoodFightCopy["hud"];
 
   constructor(
     private scene: Phaser.Scene,
     private fonts: Fonts,
     private reduced: boolean,
+    private locale: Locale,
   ) {
+    this.copy = COPY[locale].hud;
     const lg = scene.add.graphics();
     paper(lg, 0, 0, 330, 116, 20);
-    const lLabel = cartoonText(scene, 18, 10, "GUARDANAPOS", { size: 22, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
+    const lLabel = cartoonText(scene, 18, 10, this.copy.napkins, { size: 22, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
     const lives: Phaser.GameObjects.GameObject[] = [lg, lLabel];
     for (let i = 0; i < LIVES; i += 1) {
       const n = scene.add.image(56 + i * 92, 74, "napkin").setScale(0.95);
@@ -53,14 +59,14 @@ export class LunchHud {
 
     const sg = scene.add.graphics();
     darkPanel(sg, -300, 0, 300, 134);
-    const sLabel = cartoonText(scene, -280, 10, "PONTOS", { size: 24, color: "#b9a6ef", font: fonts.display, shadow: false, stroke: 0.16 });
+    const sLabel = cartoonText(scene, -280, 10, this.copy.score, { size: 24, color: "#b9a6ef", font: fonts.display, shadow: false, stroke: 0.16 });
     this.scoreText = cartoonText(scene, -284, 62, "0", { size: 54, color: "#ffc83d", font: fonts.display }).setOrigin(0, 0.5);
     this.recordText = cartoonText(scene, -280, 112, "", { size: 21, color: "#f7ecd4", font: fonts.display, shadow: false, stroke: 0.16 }).setOrigin(0, 0.5);
     this.scoreBox = scene.add.container(W - 24, 22, [sg, sLabel, this.scoreText, this.recordText]).setDepth(20);
 
     this.duckBg = scene.add.graphics();
     this.duckIcon = scene.add.image(0, DUCK.iconY, "icon-duck").setDisplaySize(DUCK.iconSize, DUCK.iconSize);
-    this.duckLabel = cartoonText(scene, 0, DUCK.labelY, "ABAIXAR", { size: 26, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    this.duckLabel = cartoonText(scene, 0, DUCK.labelY, this.copy.duck, { size: 26, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
     this.duckHit = scene.add.circle(0, 0, DUCK.r + 14, 0xffffff, 0);
     this.duck = scene.add.container(DUCK.x, DUCK.y, [this.duckBg, this.duckIcon, this.duckLabel, this.duckHit]).setDepth(21);
     this.duckHit.setInteractive({ useHandCursor: true });
@@ -120,7 +126,7 @@ export class LunchHud {
     if (state === this.duckState) return;
     this.duckState = state;
     this.drawDuck();
-    this.duckLabel.setText(state === "down" ? "ABAIXADO" : state === "danger" ? "ABAIXA!" : "ABAIXAR");
+    this.duckLabel.setText(state === "down" ? this.copy.ducking : state === "danger" ? this.copy.duckNow : this.copy.duck);
     fitText(this.duckLabel, DUCK.r * 1.7, 26, 18);
   }
 
@@ -164,7 +170,7 @@ export class LunchHud {
 
   setTimer(msLeft: number, total: number, training: boolean) {
     if (training) {
-      this.timerText.setText("TREINO").setFontSize(44).setColor("#9df0dc");
+      this.timerText.setText(this.copy.practice).setFontSize(44).setColor("#9df0dc");
       this.timerBar.clear();
       return;
     }
@@ -182,7 +188,7 @@ export class LunchHud {
   }
 
   setScore(score: number, pop = false) {
-    this.scoreText.setText(score.toLocaleString("pt-BR"));
+    this.scoreText.setText(formatNumber(score, this.locale));
     if (pop && !this.reduced) {
       this.scene.tweens.killTweensOf(this.scoreText);
       this.scoreText.setScale(1.25);
@@ -191,7 +197,7 @@ export class LunchHud {
   }
 
   setRecord(value: number) {
-    this.recordText.setText(value > 0 ? `RECORDE ${value.toLocaleString("pt-BR")}` : "");
+    this.recordText.setText(value > 0 ? this.copy.record(value) : "");
   }
 
   setStreak(n: number) {
@@ -199,7 +205,7 @@ export class LunchHud {
       this.streak.setVisible(false);
       return;
     }
-    this.streak.setText(`SEQUÊNCIA x${n}`).setVisible(true);
+    this.streak.setText(this.copy.streak(n)).setVisible(true);
     if (!this.reduced) {
       const base = Math.min(this.uiScale, 1.3);
       this.streak.setScale(base * 1.3);

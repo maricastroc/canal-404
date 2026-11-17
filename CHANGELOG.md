@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Jogos de ação em inglês
+- **Rua Sem Saída, Guerra de Lanche, Guerra do Pijama and Operação: Recreio play in English** at `/en/play/...`: on-screen text, HUD, tutorials and hints, character select, results, star hints and screen-reader announcements. Their English pages no longer show the "still in Portuguese" note.
+- Signs and posters drawn into the art stay in Portuguese, as in the portal.
+- Gameplay, scoring, stats, stars, saves and the scoreboard and mission rules are unchanged.
+
 ### Portal em inglês
 - **English at `/en`.** Every page of the portal has an English version under `/en` (`/en/games`, `/en/mission`, `/en/play/food-fight`...). Portuguese URLs did not change, and `/pt-BR/...` redirects to them. A language switch next to the sound button in the navigation reloads the same page in the other language.
 - Translated: navigation and footer, the broadcast room (mascot lines, TV channels, tapes, the karaoke song), the catalog and game pages (titles, how-to, controls, tips), the game shell (intro, pause, loading and results), characters, Missão 404 do Dia (missions, boards, history, stamps), the record arcade, nickname and membership card, extras (posters, music, achievements, secrets), the about page, errors and 404, page titles and share images.

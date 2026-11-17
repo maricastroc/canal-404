@@ -369,7 +369,7 @@ export function IntroPanel({
           <GameTitle game={game} />
           <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
         </div>
-        <div className="hidden sm:block [@media(max-height:540px)]:hidden">{Cast ? <Cast mood="intro" /> : <CastPair game={game} />}</div>
+        <div className="hidden sm:block [@media(max-height:540px)]:hidden">{Cast ? <Cast mood="intro" locale={locale} /> : <CastPair game={game} />}</div>
       </div>
       <div
         data-testid="intro-body"
@@ -378,7 +378,7 @@ export function IntroPanel({
         aria-label={showHelp ? copy.howTo : undefined}
         className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun"
       >
-        <GameLanguageNote locale={locale} className="mt-4 shorter:mt-3" />
+        <GameLanguageNote locale={locale} translated={game.translated} className="mt-4 shorter:mt-3" />
         {missionNotice ? (
           <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
             {missionNotice}{" "}
@@ -623,7 +623,7 @@ export function ResultPanel({
             <div className="flex flex-wrap items-center gap-4 max-sm:gap-3">
               <div className="shrink-0 max-sm:[zoom:0.75]">
                 {Cast ? (
-                  <Cast mood={result.won ? "win" : "lose"} featured={result.featured} />
+                  <Cast mood={result.won ? "win" : "lose"} featured={result.featured} locale={locale} />
                 ) : result.won ? (
                   <CastPair game={game} happy />
                 ) : (

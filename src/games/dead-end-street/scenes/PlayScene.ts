@@ -29,6 +29,7 @@ import {
   type ProjectileId,
   type TargetDef,
 } from "../config";
+import { COPY, type StreetCopy } from "../copy";
 import { GAME_SFX, type GameSfx } from "../sounds";
 import { Fx } from "./fx";
 import { Arlindo, birdFlyOut, Cat, popLid } from "./neighborhood";
@@ -66,17 +67,9 @@ type Impact = {
 const SHADOW = { x: 5, y: 6, alpha: 0.26 };
 const KNOCKED_TINT = 0xd4cddc;
 
-const HIT_LINES = ["NA MOSCA!", "ISSO!", "BOA!", "EM CHEIO!"];
-const MISS_LINES = ["ERREI!", "FOI O VENTO!", "OPS!", "MIRA TORTA!"];
-const IMPACT_WORDS: Record<ProjectileId, string[]> = {
-  shoe: ["PLOFT!", "TUM!", "PAF!"],
-  balloon: ["SPLASH!"],
-  tire: ["BONK!", "TÓIM!", "CRASH!"],
-  duck: ["QUÉ!", "QUÉÉ!"],
-};
-
 export class PlayScene extends Phaser.Scene {
   private ctx!: GameHostContext;
+  private copy!: StreetCopy;
   private phase: Phase = "attract";
   private acc = 0;
   private targets: TargetState[] = [];
@@ -187,6 +180,7 @@ export class PlayScene extends Phaser.Scene {
 
   create() {
     this.ctx = this.registry.get("ctx") as GameHostContext;
+    this.copy = COPY[this.ctx.locale];
     this.highScore = (this.registry.get("highScore") as number | undefined) ?? this.ctx.highScore;
     const engine = this.matter.world.engine;
     engine.positionIterations = 10;
@@ -201,10 +195,10 @@ export class PlayScene extends Phaser.Scene {
     this.buildLevel();
     this.buildLauncher();
     this.arlindo = new Arlindo(this, this.ctx.fonts, reduced);
-    this.cat = new Cat(this, this.ctx.fonts, this.fx, reduced, () => this.sfx("hiss", 0.9));
+    this.cat = new Cat(this, this.ctx.fonts, this.fx, reduced, () => this.sfx("hiss", 0.9), this.copy.words.hiss);
     this.decoBubble = new Bubble(this, this.ctx.fonts, "left", 36, 16);
     this.linaBubble = new Bubble(this, this.ctx.fonts, "left", 36, 16);
-    this.hud = new Hud(this, this.ctx.fonts, TARGETS, reduced);
+    this.hud = new Hud(this, this.ctx.fonts, TARGETS, reduced, this.ctx.locale);
     this.hud.setRecord(this.highScore);
     this.targets.forEach((t) => (t.def.wave > 1 ? this.hud.lockTarget(t.index) : this.hud.revealTarget(t.index)));
     this.setupInput();
@@ -244,10 +238,11 @@ export class PlayScene extends Phaser.Scene {
   begin() {
     if (this.phase !== "attract") return;
     this.hud.setRound(0);
-    this.hud.showBanner(`RODADA 1 DE ${WAVES.length}`, WAVES[0].title, WAVES[0].subtitle, 2400);
+    const first = this.copy.waves[WAVES[0].id];
+    this.hud.showBanner(this.copy.roundOf(1, WAVES.length), first.title, first.subtitle, 2400);
     this.ctx.onEvent({
       type: "announce",
-      message: `Partida iniciada. Rodada 1 de ${WAVES.length}: ${WAVES[0].subtitle}. Arraste para trás e solte, ou use as setas para mirar e espaço para lançar.`,
+      message: this.copy.announce.start(WAVES.length, first.subtitle),
     });
     this.loadNext();
     this.targets.filter((t) => t.def.wave === 1).forEach((t, i) => this.time.delayedCall(500 + i * 220, () => this.cueTarget(t)));
@@ -530,7 +525,7 @@ export class PlayScene extends Phaser.Scene {
     this.aimAnnounce = this.time.delayedCall(700, () => {
       this.ctx.onEvent({
         type: "announce",
-        message: `Ângulo ${Math.round(this.aimAngle)} graus, força ${Math.round(this.aimPower * 100)} por cento.`,
+        message: this.copy.announce.aim(Math.round(this.aimAngle), Math.round(this.aimPower * 100)),
       });
     });
   }
@@ -625,9 +620,9 @@ export class PlayScene extends Phaser.Scene {
         const jolt = rel > 5 && Phaser.Math.Distance.Between(x, y, topX, topY) < 95;
         if (direct || jolt) {
           prop.popped = true;
-          popLid(this, prop.obj, this.fx, this.ctx.reducedMotion);
+          popLid(this, prop.obj, this.fx, this.ctx.reducedMotion, this.copy.words.clang);
           this.sfx("clang", 1);
-          if (!this.arlindo.busy) this.arlindo.shout("MINHA LATA!", 1300);
+          if (!this.arlindo.busy) this.arlindo.shout(this.copy.arlindo.trashCan, 1300);
         }
       }
       if (material === "squeaky") {
@@ -655,7 +650,7 @@ export class PlayScene extends Phaser.Scene {
           } else if (id === "duck") {
             this.fx.burst(this.fx.sparks, 7, x, y);
           }
-          if (id !== "balloon" && !nearHit) this.fx.word(Phaser.Utils.Array.GetRandom(IMPACT_WORDS[id]), x, y - 80, "#ffc83d", 74);
+          if (id !== "balloon" && !nearHit) this.fx.word(Phaser.Utils.Array.GetRandom(this.copy.impactWords[id]), x, y - 80, "#ffc83d", 74);
           if (rel > 9) this.fx.ring(x, y, 0xfffaf0, 80);
         } else {
           if (id === "tire" && rel > 5) {
@@ -664,7 +659,7 @@ export class PlayScene extends Phaser.Scene {
           }
           if (id === "duck" && rel > 3) {
             this.fx.burst(this.fx.sparks, 3, x, y);
-            if (rel > 7 && !nearHit) this.fx.word("QUÉ!", x, y - 60, "#ffc83d", 54);
+            if (rel > 7 && !nearHit) this.fx.word(this.copy.words.quack, x, y - 60, "#ffc83d", 54);
           }
         }
         if (rel > 13 && id !== "tire" && !this.ctx.reducedMotion) this.cameras.main.shake(130, 0.0035);
@@ -696,9 +691,10 @@ export class PlayScene extends Phaser.Scene {
     this.readyPop.value = 0.2;
     this.tweens.add({ targets: this.readyPop, value: 1, duration: 300, ease: "Back.easeOut" });
     this.phase = "ready";
-    this.hud.showTag(def.id, this.ammo.slice(this.shot), this.launches === 0 ? "Puxe e solte! (ou setas + espaço)" : undefined);
+    this.hud.showTag(def.id, this.ammo.slice(this.shot), this.launches === 0 ? this.copy.firstHint : undefined);
     this.sfx("load", 0.8);
-    this.ctx.onEvent({ type: "announce", message: `Próximo objeto: ${def.name}. ${def.tip}` });
+    const text = this.copy.projectiles[def.id];
+    this.ctx.onEvent({ type: "announce", message: this.copy.announce.next(text.name, text.tip) });
   }
 
   private tryFire() {
@@ -780,7 +776,7 @@ export class PlayScene extends Phaser.Scene {
     this.time.delayedCall(70, () => this.fx.ring(x, y, 0xa9dcf7, 110));
     this.cat.notifyImpact(x, y, 10);
     this.sfx("splash", 1);
-    this.fx.word("SPLASH!", x, y - 80, "#5cb9f0", 84, true);
+    this.fx.word(this.copy.words.splash, x, y - 80, "#5cb9f0", 84, true);
     this.freeze(60);
     if (!this.ctx.reducedMotion) this.cameras.main.shake(170, 0.004);
     this.time.delayedCall(450, () => this.endShot());
@@ -789,13 +785,13 @@ export class PlayScene extends Phaser.Scene {
   private shotReaction() {
     if (this.shotHits > 0 || this.finishing) return;
     if (this.shotNearest < 120) {
-      this.decoSay("QUASE!!");
+      this.decoSay(this.copy.nearMiss);
       this.sfx("nearMiss", 0.9);
     } else if (this.shotMess > 0) {
-      this.decoSay("PELO MENOS\nFEZ BAGUNÇA!");
+      this.decoSay(this.copy.messOnly);
       this.sfx("miss", 0.5);
     } else {
-      this.decoSay(Phaser.Utils.Array.GetRandom(MISS_LINES));
+      this.decoSay(Phaser.Utils.Array.GetRandom(this.copy.missLines));
       this.sfx("miss", 0.8);
       if (!this.ctx.reducedMotion) {
         this.tweens.add({ targets: this.deco, angle: -8, scaleY: 0.94, duration: 160, yoyo: true, hold: 260, ease: "Sine.easeOut" });
@@ -843,7 +839,7 @@ export class PlayScene extends Phaser.Scene {
     const { x, y } = (t.obj.body as MatterJS.BodyType).position;
     this.lastHit = { at: this.time.now, x, y };
     const gold = t.def.id === "golden-gnome";
-    this.fx.popup(`+${t.def.points}`, x, y - 80, gold ? "#ffe39a" : "#ffc83d", gold ? 70 : 60, gold ? "OURO!" : undefined);
+    this.fx.popup(`+${t.def.points}`, x, y - 80, gold ? "#ffe39a" : "#ffc83d", gold ? 70 : 60, gold ? this.copy.words.gold : undefined);
     this.fx.burst(this.fx.stars, gold ? 16 : 10, x, y);
     this.fx.ring(x, y, gold ? 0xffc83d : 0xfffaf0, 100);
     this.flashBody(t.obj.body as MatterJS.BodyType);
@@ -857,33 +853,33 @@ export class PlayScene extends Phaser.Scene {
     if (t.def.id === "birdhouse") {
       t.obj.setTexture("birdhouse-empty");
       t.shadow?.setTexture("birdhouse-empty");
-      birdFlyOut(this, x + 4, y + 2, this.fx, this.ctx.reducedMotion);
+      birdFlyOut(this, x + 4, y + 2, this.fx, this.ctx.reducedMotion, this.copy.words.tweet);
       this.sfx("tweet", 1);
     }
     this.sfx("target", 1);
     this.freeze(this.shotHits === 1 ? 50 : 30);
-    this.arlindo.shout(t.def.shout);
+    this.arlindo.shout(this.copy.targets[t.def.id].shout);
     this.flyToHud(t, x, y);
     const obj = t.obj;
     const bodyId = (obj.body as MatterJS.BodyType).id;
     this.knocked.add(bodyId);
     this.time.delayedCall(650, () => obj.active && obj.setTint(KNOCKED_TINT));
     this.hop(this.lina, 24);
-    let message = `${t.def.name} ${t.def.fem ? "derrubada" : "derrubado"}! Mais ${t.def.points} pontos.`;
+    let message = this.copy.announce.knocked(this.copy.targets[t.def.id].name, Boolean(t.def.fem), t.def.points);
     if (this.shotHits >= 2 && this.phase === "flying") {
       this.comboScore += SCORE.comboBonus;
       this.addScore(SCORE.comboBonus);
-      this.fx.word(`COMBO x${this.shotHits}!`, W / 2, 340, "#f06ba8", 96, true);
+      this.fx.word(this.copy.words.combo(this.shotHits), W / 2, 340, "#f06ba8", 96, true);
       this.fx.flash(0.3);
       this.freeze(90);
       this.sfx("combo", 1);
-      this.decoSay("COMBOOO!", 1100);
+      this.decoSay(this.copy.comboShout, 1100);
       this.hop(this.deco, 36, 1);
       this.hop(this.lina, 36, 1);
       this.ctx.onEvent({ type: "achievement", id: "domino-effect" });
-      message += ` Combo de ${this.shotHits}! Mais ${SCORE.comboBonus}.`;
+      message += this.copy.announce.combo(this.shotHits, SCORE.comboBonus);
     } else if (this.shotHits === 1) {
-      this.linaSay(Phaser.Utils.Array.GetRandom(HIT_LINES));
+      this.linaSay(Phaser.Utils.Array.GetRandom(this.copy.hitLines));
     }
     this.ctx.onEvent({ type: "announce", message });
     const waveTargets = this.targets.filter((tt) => tt.def.wave === this.wave + 1);
@@ -894,7 +890,7 @@ export class PlayScene extends Phaser.Scene {
     const next = this.wave + 1;
     this.waveScore += SCORE.waveBonus;
     this.addScore(SCORE.waveBonus);
-    this.time.delayedCall(380, () => this.fx.popup(`+${SCORE.waveBonus}`, W / 2, 470, "#9df0dc", 54, "RODADA COMPLETA!"));
+    this.time.delayedCall(380, () => this.fx.popup(`+${SCORE.waveBonus}`, W / 2, 470, "#9df0dc", 54, this.copy.words.roundClear));
     this.sfx("waveClear", 0.9);
     if (next >= WAVES.length) {
       if (!this.finishing) {
@@ -904,7 +900,7 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     this.pendingWave = next;
-    this.ctx.onEvent({ type: "announce", message: `Rodada ${this.wave + 1} completa! Mais ${SCORE.waveBonus} pontos.` });
+    this.ctx.onEvent({ type: "announce", message: this.copy.announce.roundClear(this.wave + 1, SCORE.waveBonus) });
     if (this.phase !== "flying") this.time.delayedCall(700, () => this.startInterlude());
   }
 
@@ -931,13 +927,13 @@ export class PlayScene extends Phaser.Scene {
       this.aimPower = this.savedAim.power;
     }
     this.phase = "interlude";
-    const def = WAVES[w];
+    const def = this.copy.waves[WAVES[w].id];
     this.hud.setRound(w);
-    this.hud.showBanner(`RODADA ${w + 1} DE ${WAVES.length}`, def.title, def.subtitle, 1500);
+    this.hud.showBanner(this.copy.roundOf(w + 1, WAVES.length), def.title, def.subtitle, 1500);
     if (def.arlindo) this.time.delayedCall(250, () => this.arlindo.shout(def.arlindo!, 1500));
     this.cat.comeBack();
     this.clearSpent();
-    this.ctx.onEvent({ type: "announce", message: `Rodada ${w + 1} de ${WAVES.length}: ${def.title}. ${def.subtitle}.` });
+    this.ctx.onEvent({ type: "announce", message: this.copy.announce.round(w + 1, WAVES.length, def.title, def.subtitle) });
     this.targets
       .filter((t) => t.def.wave === w + 1)
       .forEach((t, i) => this.time.delayedCall(420 + i * 260, () => this.spawnTarget(t, true)));
@@ -988,7 +984,7 @@ export class PlayScene extends Phaser.Scene {
       this.messScore += messPoints;
       this.shotMess += messPoints;
       this.addScore(messPoints);
-      this.fx.popup(`+${messPoints}`, mx / n, my / n - 70, "#fbf5e6", 40, "BAGUNÇA");
+      this.fx.popup(`+${messPoints}`, mx / n, my / n - 70, "#fbf5e6", 40, this.copy.words.mess);
       this.sfx("mess", 0.6, 80);
     }
     if (this.phase === "flying" && this.flying) {
@@ -1036,20 +1032,21 @@ export class PlayScene extends Phaser.Scene {
         this.hop(this.deco, 34, 3);
         this.hop(this.lina, 34, 3);
       }
-      this.arlindo.shout("MEU JARDIM!!!", 2200);
+      this.arlindo.shout(this.copy.arlindo.win, 2200);
     } else {
       this.sfx("defeat", 1);
-      this.arlindo.shout("E NÃO VOLTEM!", 2000);
+      this.arlindo.shout(this.copy.arlindo.lose, 2000);
       this.tweens.add({ targets: [this.deco, this.lina], scaleY: 0.92, angle: -4, duration: 400, ease: "Sine.easeOut" });
     }
     const knocked = this.targets.filter((t) => t.hit).length;
     const messy = this.props.filter((p) => p.messy).length;
     const nextStar = stars === 1 ? SCORE.twoStars : stars === 2 ? SCORE.threeStars : 0;
+    const text = this.copy.summary;
     const summary = [
-      `Lançamentos: ${this.shot} de ${this.ammo.length}.`,
-      `Alvos: ${knocked} de ${TARGETS.length}.`,
-      `Bagunça: ${messy} de ${this.props.length} coisas fora do lugar.`,
-      nextStar ? `Faltaram ${nextStar - this.score} pontos para a próxima estrela.` : "",
+      text.launches(this.shot, this.ammo.length),
+      text.targets(knocked, TARGETS.length),
+      text.mess(messy, this.props.length),
+      nextStar ? text.nextStar(nextStar - this.score) : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -1058,11 +1055,11 @@ export class PlayScene extends Phaser.Scene {
       score: this.score,
       stars,
       breakdown: [
-        { label: "Alvos derrubados", value: this.targetScore },
-        { label: "Rodadas completas", value: this.waveScore },
-        { label: "Bagunça no quintal", value: this.messScore },
-        { label: "Combos", value: this.comboScore },
-        { label: "Munição de sobra", value: ammoBonus },
+        { label: this.copy.breakdown.targets, value: this.targetScore },
+        { label: this.copy.breakdown.waves, value: this.waveScore },
+        { label: this.copy.breakdown.mess, value: this.messScore },
+        { label: this.copy.breakdown.combos, value: this.comboScore },
+        { label: this.copy.breakdown.ammo, value: ammoBonus },
       ].filter((row, i) => i === 0 || row.value !== 0),
       stats: {
         targets: knocked,

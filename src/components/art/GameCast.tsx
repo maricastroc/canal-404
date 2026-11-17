@@ -1,4 +1,5 @@
 import type React from "react";
+import type { Locale } from "@/i18n/locales";
 import { KidBust } from "@/components/characters/Heads";
 import { BadIdeasLabCast } from "./BadIdeasLabCast";
 import { DeadEndStreetCast } from "./DeadEndStreetCast";
@@ -47,15 +48,15 @@ function LabCast({ mood }: { mood: CastMood }) {
   return <BadIdeasLabCast mood={mood} className={mood === "intro" ? "w-56 md:w-64" : "w-44 sm:w-52 sm:shorter:w-40"} />;
 }
 
-function RecessCast({ mood }: { mood: CastMood }) {
-  return <OperationRecessCast mood={mood} className={mood === "intro" ? "w-56 md:w-72" : "w-36 sm:w-44 sm:shorter:w-36"} />;
+function RecessCast({ mood, locale }: { mood: CastMood; locale: Locale }) {
+  return <OperationRecessCast mood={mood} locale={locale} className={mood === "intro" ? "w-56 md:w-72" : "w-36 sm:w-44 sm:shorter:w-36"} />;
 }
 
 function CanteenCast({ mood }: { mood: CastMood }) {
   return <FoodFightCast mood={mood} className={mood === "intro" ? "w-56 md:w-64" : "w-44 sm:w-52 sm:shorter:w-40"} />;
 }
 
-export const GAME_CAST: Record<string, (props: { mood: CastMood; featured?: string }) => React.JSX.Element> = {
+export const GAME_CAST: Record<string, (props: { mood: CastMood; featured?: string; locale: Locale }) => React.JSX.Element> = {
   "dead-end-street": StreetCast,
   "bad-ideas-lab": LabCast,
   "food-fight": CanteenCast,

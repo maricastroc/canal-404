@@ -13,7 +13,7 @@ describe("Guerra do Pijama scoring", () => {
         for (const hits of [kos, kos + 3, 18]) {
           for (const hp of place === 1 ? [1, 3, 4, 6, 7, HP] : [0]) {
             const won = place === 1;
-            const { score, stars, rows } = matchScore({ won, place, hits, kos, hp });
+            const { score, stars, rows } = matchScore({ won, place, hits, kos, hp }, "pt-BR");
             expect(rows.reduce((a, r) => a + r.value, 0)).toBe(score);
             const damageTaken = HP - hp + 2;
             const stats = { hits, kos, throws: hits + 20, hp, damageTaken, place, timeMs: 95_000, kid: 2 };
