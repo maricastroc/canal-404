@@ -7,7 +7,7 @@ import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
 import { P } from "@/lib/palette";
-import { POSTER_SHADOW } from "./posterArt";
+import { POSTER_SHADOW, type PosterText } from "./posterArt";
 import { POSTER_TEXT, type PosterDef } from "./posters";
 
 const COPY = localized({
@@ -73,7 +73,7 @@ async function embeddedFonts(variables: string[]) {
   return `<style>svg{${[...names.values()].join(";")}}${faces.join("")}</style>`;
 }
 
-async function drawPoster(canvas: HTMLCanvasElement, svg: SVGSVGElement, def: PosterDef) {
+async function drawPoster(canvas: HTMLCanvasElement, svg: SVGSVGElement, texts: PosterText[]) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const display = family("--font-luckiest", "Arial Black, sans-serif");
@@ -88,7 +88,7 @@ async function drawPoster(canvas: HTMLCanvasElement, svg: SVGSVGElement, def: Po
   await img.decode();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  for (const t of def.texts) {
+  for (const t of texts) {
     ctx.save();
     ctx.translate(t.x, t.y);
     ctx.rotate(((t.rotate ?? 0) * Math.PI) / 180);
@@ -122,13 +122,13 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
   useEffect(() => {
     if (!unlocked || !svgRef.current || !canvasRef.current) return;
     let cancelled = false;
-    drawPoster(canvasRef.current, svgRef.current, def)
+    drawPoster(canvasRef.current, svgRef.current, def.texts[locale])
       .then(() => !cancelled && setReady(true))
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [def, unlocked]);
+  }, [def, unlocked, locale]);
 
   const download = () => {
     const canvas = canvasRef.current;

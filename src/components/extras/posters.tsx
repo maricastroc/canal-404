@@ -1,6 +1,6 @@
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
-import { localized } from "@/i18n/copy";
+import { localized, type Localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 import type { ProgressState } from "@/lib/progress/store";
 import { CHAOS_POSTER, posterInk as ink, type PosterText } from "./posterArt";
@@ -27,7 +27,7 @@ export type PosterDef = {
   file: string;
   unlock: { check: (p: ProgressState) => boolean };
   art: React.ReactNode;
-  texts: PosterText[];
+  texts: Localized<PosterText[]>;
 };
 
 export const POSTERS: PosterDef[] = [
@@ -67,12 +67,20 @@ export const POSTERS: PosterDef[] = [
         <rect x="18" y="18" width="564" height="764" fill="none" {...ink} strokeWidth={12} />
       </g>
     ),
-    texts: [
-      { text: "SONHE", x: 300, y: 190, size: 112, color: P.sun, rotate: -4, stroke: 18 },
-      { text: "JOGUE", x: 300, y: 330, size: 112, color: P.mint, rotate: 3, stroke: 18 },
-      { text: "INVENTE", x: 300, y: 470, size: 100, color: P.bubblegum, rotate: -3, stroke: 18 },
-      { text: "REPITA", x: 214, y: 610, size: 100, color: P.tangerine, rotate: 3, stroke: 18 },
-    ],
+    texts: localized<PosterText[]>({
+      "pt-BR": [
+        { text: "SONHE", x: 300, y: 190, size: 112, color: P.sun, rotate: -4, stroke: 18 },
+        { text: "JOGUE", x: 300, y: 330, size: 112, color: P.mint, rotate: 3, stroke: 18 },
+        { text: "INVENTE", x: 300, y: 470, size: 100, color: P.bubblegum, rotate: -3, stroke: 18 },
+        { text: "REPITA", x: 214, y: 610, size: 100, color: P.tangerine, rotate: 3, stroke: 18 },
+      ],
+      en: [
+        { text: "DREAM", x: 300, y: 190, size: 112, color: P.sun, rotate: -4, stroke: 18 },
+        { text: "PLAY", x: 300, y: 330, size: 112, color: P.mint, rotate: 3, stroke: 18 },
+        { text: "INVENT", x: 300, y: 470, size: 100, color: P.bubblegum, rotate: -3, stroke: 18 },
+        { text: "REPEAT", x: 214, y: 610, size: 100, color: P.tangerine, rotate: 3, stroke: 18 },
+      ],
+    }),
   },
   {
     id: "dead-end-street",
@@ -97,11 +105,18 @@ export const POSTERS: PosterDef[] = [
         <rect x="18" y="18" width="564" height="764" fill="none" {...ink} strokeWidth={12} />
       </g>
     ),
-    texts: [
-      { text: "RUA", x: 230, y: 230, size: 170, color: P.lime, rotate: -7, stroke: 22 },
-      { text: "SEM SAÍDA", x: 300, y: 350, size: 92, color: P.sun, rotate: -4, stroke: 18 },
-      { text: "a bagunça oficial do bairro", x: 300, y: 760, size: 40, color: P.ink, font: "hand", stroke: 0 },
-    ],
+    texts: localized<PosterText[]>({
+      "pt-BR": [
+        { text: "RUA", x: 230, y: 230, size: 170, color: P.lime, rotate: -7, stroke: 22 },
+        { text: "SEM SAÍDA", x: 300, y: 350, size: 92, color: P.sun, rotate: -4, stroke: 18 },
+        { text: "a bagunça oficial do bairro", x: 300, y: 760, size: 40, color: P.ink, font: "hand", stroke: 0 },
+      ],
+      en: [
+        { text: "DEAD END", x: 290, y: 220, size: 112, color: P.lime, rotate: -7, stroke: 22 },
+        { text: "STREET", x: 300, y: 350, size: 100, color: P.sun, rotate: -4, stroke: 18 },
+        { text: "the neighborhood's official mess", x: 300, y: 760, size: 36, color: P.ink, font: "hand", stroke: 0 },
+      ],
+    }),
   },
   {
     id: "off-air",
@@ -121,9 +136,15 @@ export const POSTERS: PosterDef[] = [
         <rect x="18" y="18" width="564" height="764" fill="none" {...ink} strokeWidth={12} />
       </g>
     ),
-    texts: [
-      { text: "FORA DO AR", x: 300, y: 110, size: 92, color: P.white, rotate: -3, stroke: 18 },
-      { text: "o canal nunca saiu do ar", x: 300, y: 740, size: 40, color: "#b7ff8a", font: "hand", stroke: 0 },
-    ],
+    texts: localized<PosterText[]>({
+      "pt-BR": [
+        { text: "FORA DO AR", x: 300, y: 110, size: 92, color: P.white, rotate: -3, stroke: 18 },
+        { text: "o canal nunca saiu do ar", x: 300, y: 740, size: 40, color: "#b7ff8a", font: "hand", stroke: 0 },
+      ],
+      en: [
+        { text: "OFF THE AIR", x: 300, y: 110, size: 86, color: P.white, rotate: -3, stroke: 18 },
+        { text: "the channel never went off the air", x: 300, y: 740, size: 34, color: "#b7ff8a", font: "hand", stroke: 0 },
+      ],
+    }),
   },
 ];
