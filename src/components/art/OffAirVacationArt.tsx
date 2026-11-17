@@ -960,3 +960,40 @@ export function OffAirVacationHowToPanel({ step }: { step: 0 | 1 | 2 }) {
   if (step === 1) return <TalkPanel />;
   return <NotePanel />;
 }
+
+const CAST = { cx: 150, feet: 216, tall: 212, w: 300, h: 224 };
+
+function OnAirSign({ lit }: { lit: boolean }) {
+  const w = lit ? 76 : 98;
+  return (
+    <g transform={`translate(${lit ? 44 : 54} 40) rotate(-9)`}>
+      {lit && <path d="M-38 -26 L-45 -33 M0 -27 L0 -37 M38 -26 L45 -33" stroke={P.ink} strokeWidth={2.6} strokeLinecap="round" />}
+      <rect x={-w / 2} y={-16} width={w} height={32} rx={8} transform="translate(2 3)" fill={P.ink} />
+      <rect x={-w / 2} y={-16} width={w} height={32} rx={8} fill={lit ? P.tomato : P.plum700} stroke={P.ink} strokeWidth={2.6} />
+      <rect x={-w / 2 + 5} y={-11} width={w - 10} height={22} rx={5} fill="none" stroke={lit ? "#ffb0a8" : P.plum500} strokeWidth={1.4} />
+      <text x={0} y={lit ? 7.5 : 6.5} textAnchor="middle" fontSize={lit ? 21 : 17} fill={lit ? P.white : P.cream3} style={display}>
+        {lit ? "NO AR" : "FORA DO AR"}
+      </text>
+    </g>
+  );
+}
+
+export function OffAirVacationResult({ ending, className }: { ending: "on" | "off"; className?: string }) {
+  const on = ending === "on";
+  const h = 162;
+  const s = h / CAST.tall;
+  return (
+    <svg viewBox="0 0 200 190" className={className} aria-hidden overflow="visible">
+      <circle cx={100} cy={96} r={80} fill={on ? P.skyPale : "#c9eee3"} stroke={P.ink} strokeWidth={2.4} />
+      <ellipse cx={104} cy={176} rx={46} ry={6} fill={P.ink} opacity={0.22} />
+      <g transform={`translate(110 176) scale(${s.toFixed(4)}) translate(${-CAST.cx} ${-CAST.feet})`}>
+        <image href={`${ART}/deco-cheer.svg`} width={CAST.w} height={CAST.h} />
+      </g>
+      <OnAirSign lit={on} />
+      <g fill={P.sun} stroke={P.ink} strokeWidth={1.8} strokeLinejoin="round">
+        <path d="M178 66 l3 7 l7 1 l-5 5 l1 7 l-6 -3 l-6 3 l1 -7 l-5 -5 l7 -1 z" />
+        <path d="M24 136 l2.4 5.4 l5.6 0.8 l-4 4 l1 5.6 l-5 -2.6 l-5 2.6 l1 -5.6 l-4 -4 l5.6 -0.8 z" />
+      </g>
+    </svg>
+  );
+}
