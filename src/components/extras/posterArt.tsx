@@ -1,4 +1,5 @@
 import { Mascot404 } from "@/components/mascot/Mascot404";
+import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
 
 export type PosterText = {
@@ -66,9 +67,16 @@ export const CHAOS_POSTER = {
       <rect x="40" y="40" width="520" height="720" fill="none" stroke={P.ink} strokeWidth="4" strokeDasharray="14 12" />
     </g>
   ),
-  texts: [
-    { text: "CAOS", x: 300, y: 196, size: 160, color: P.white, rotate: -6, stroke: 22 },
-    { text: "FAZ PARTE DA", x: 300, y: 664, size: 40, color: P.ink },
-    { text: "PROGRAMAÇÃO", x: 300, y: 728, size: 62, color: P.sun, rotate: -2, stroke: 12 },
-  ] satisfies PosterText[],
+  texts: localized<PosterText[]>({
+    "pt-BR": [
+      { text: "CAOS", x: 300, y: 196, size: 160, color: P.white, rotate: -6, stroke: 22 },
+      { text: "FAZ PARTE DA", x: 300, y: 664, size: 40, color: P.ink },
+      { text: "PROGRAMAÇÃO", x: 300, y: 728, size: 62, color: P.sun, rotate: -2, stroke: 12 },
+    ],
+    en: [
+      { text: "CHAOS", x: 300, y: 192, size: 136, color: P.white, rotate: -6, stroke: 22 },
+      { text: "IS PART OF THE", x: 300, y: 664, size: 40, color: P.ink },
+      { text: "PROGRAMMING", x: 300, y: 728, size: 62, color: P.sun, rotate: -2, stroke: 12 },
+    ],
+  }),
 };

@@ -505,13 +505,14 @@ export function VcrArt({ playing }: { playing: TapeId | null }) {
 
 export function PosterChaosArt({ peeled }: { peeled: boolean }) {
   const copy = useCopy(COPY);
+  const locale = useLocale();
   return (
     <svg viewBox="0 0 150 190" className="h-full w-full" overflow="visible" aria-hidden>
       <g transform="rotate(4 75 95)">
         <rect x="10" y="12" width="132" height="172" fill={P.ink} opacity="0.4" transform="translate(5 5)" />
         <svg x="10" y="12" width="132" height="172" viewBox="0 0 600 800" preserveAspectRatio="none">
           {CHAOS_POSTER.art}
-          <PosterTexts texts={CHAOS_POSTER.texts} />
+          <PosterTexts texts={CHAOS_POSTER.texts[locale]} />
         </svg>
         <rect x="10" y="12" width="132" height="172" fill="none" stroke={P.ink} strokeWidth="4.5" />
         <rect x="58" y="4" width="36" height="14" fill={P.mint} opacity="0.85" transform="rotate(-5 76 11)" />
