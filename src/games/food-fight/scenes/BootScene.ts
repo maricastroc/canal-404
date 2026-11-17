@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowBigDown, Ban, Pointer } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { RIVAL_KINDS, RIVAL_LOOKS } from "../config";
 
 const BASE = "/assets/food-fight/";
 
@@ -16,12 +17,12 @@ const ASSETS: [key: string, file: string, width: number, height: number][] = [
   ["mila-peek", "mila-peek.svg", 220, 240],
   ["mila-shout", "mila-shout.svg", 220, 240],
   ["mila-cheer", "mila-cheer.svg", 220, 240],
-  ["rival-cap-up", "rival-cap-up.svg", 200, 250],
-  ["rival-cap-windup", "rival-cap-windup.svg", 200, 250],
-  ["rival-speedy-up", "rival-speedy-up.svg", 200, 250],
-  ["rival-speedy-windup", "rival-speedy-windup.svg", 200, 250],
-  ["rival-big-up", "rival-big-up.svg", 200, 250],
-  ["rival-big-windup", "rival-big-windup.svg", 200, 250],
+  ...RIVAL_KINDS.flatMap((kind) =>
+    RIVAL_LOOKS.flatMap((look): [string, string, number, number][] => [
+      [`rival-${kind}-${look}-up`, `rival-${kind}-${look}-up.svg`, 200, 250],
+      [`rival-${kind}-${look}-windup`, `rival-${kind}-${look}-windup.svg`, 200, 250],
+    ]),
+  ),
   ...[0, 1, 2, 3].flatMap((i): [string, string, number, number][] => [
     [`lady-walk-${i}`, `lady-walk-${i}.svg`, 220, 520],
     [`lady-angry-${i}`, `lady-angry-${i}.svg`, 220, 520],

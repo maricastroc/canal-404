@@ -168,9 +168,9 @@ export const GAMES: GameMeta[] = [
     tips: [
       "Viu um ponto de exclamação? Prepare-se para abaixar.",
       "Abaixado, a Mila te passa mais lanches.",
-      "O Grandão precisa levar dois lanches.",
-      "A Pimentinha joga rápido. Acerte ela primeiro.",
-      "Garoto com bandeja? Espere ele baixar.",
+      "Os grandões de moletom precisam levar dois lanches.",
+      "Quem sobe de sorriso aberto joga rápido. Acerte primeiro.",
+      "Rival com bandeja? Espere baixar.",
       "Acertar quem vai jogar pudim vale bônus.",
       "Na bagunça, cada acerto vale o dobro.",
       "Acertar a tia da cantina tira pontos.",
