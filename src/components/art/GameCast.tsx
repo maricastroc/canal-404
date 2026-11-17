@@ -17,7 +17,8 @@ function isPajamaKid(id: string | undefined): id is PajamaKidId {
 }
 
 function PajamaCast({ mood, featured }: { mood: CastMood; featured?: string }) {
-  return <PajamaWarCast mood={mood} featured={featured} className={mood === "intro" ? "w-56 md:w-72" : "w-44 sm:w-52 sm:shorter:w-40"} />;
+  const size = mood === "intro" ? "w-56 md:w-72" : mood === "win" ? "w-36 sm:w-44 sm:shorter:w-36" : "w-44 sm:w-52 sm:shorter:w-40";
+  return <PajamaWarCast mood={mood} featured={featured} className={size} />;
 }
 
 function isFolk(id: string | undefined): id is FolkId {

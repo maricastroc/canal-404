@@ -423,21 +423,22 @@ function IntroScene() {
   );
 }
 
+function Star({ x, y, r, rotate = 0, line = 1.4 }: Pt & { r: number; rotate?: number; line?: number }) {
+  const pts = Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    return `${(x + Math.cos(a) * rr).toFixed(1)},${(y + Math.sin(a) * rr).toFixed(1)}`;
+  }).join(" ");
+  return <polygon points={pts} transform={rotate ? `rotate(${rotate} ${x} ${y})` : undefined} fill={P.sun} stroke={P.ink} strokeWidth={line} strokeLinejoin="round" />;
+}
+
 function DizzyStars({ x, y, s = 1 }: Pt & { s?: number }) {
-  const star = (cx: number, cy: number, r: number) => {
-    const pts = Array.from({ length: 10 }, (_, i) => {
-      const a = -Math.PI / 2 + (i * Math.PI) / 5;
-      const rr = i % 2 ? r * 0.45 : r;
-      return `${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`;
-    }).join(" ");
-    return <polygon key={`${cx}${cy}`} points={pts} fill={P.sun} stroke={P.ink} strokeWidth={1.4} strokeLinejoin="round" />;
-  };
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
       <ellipse cx={0} cy={0} rx={20} ry={6} fill="none" stroke={P.ink} strokeWidth={1.2} strokeDasharray="2 3" opacity={0.6} />
-      {star(-17, -2, 6)}
-      {star(4, -7, 5)}
-      {star(16, 3, 5.5)}
+      <Star x={-17} y={-2} r={6} />
+      <Star x={4} y={-7} r={5} />
+      <Star x={16} y={3} r={5.5} />
     </g>
   );
 }
@@ -459,23 +460,23 @@ function Flat({ who, pose, x, floor, h, dir }: { who: KidId; pose: Pose; x: numb
 
 function WinScene({ winner }: { winner: KidId }) {
   const [left, right] = CAST_KIDS.filter((k) => k !== winner);
-  const champ: Placement = { x: 150, feet: 140, h: 118 };
+  const champ: Placement = { x: 100, feet: 145, h: 144 };
   return (
     <>
-      <Floorboards top={192} />
-      <CastRug x={150} y={195} rx={100} />
-      <SideBed x={92} floor={190} w={116} />
-      <KidSprite who={winner} pose="cheer" at={champ} shadow={false} />
-      <HeldPillow who={winner} pose="cheer" at={champ} w={36} rotate={-12} />
-      <Flat who={left} pose="hurt" x={110} floor={210} h={106} dir={1} />
-      <Flat who={right} pose="hurt" x={190} floor={210} h={104} dir={-1} />
-      <Pillow x={136} y={198} w={30} rotate={14} tint={TINT[winner]} />
-      <Pillow x={22} y={200} w={26} rotate={-20} tint={TINT[right]} />
-      <Feather x={98} y={30} rotate={-30} s={1.2} />
-      <Feather x={208} y={20} rotate={34} s={1.2} />
-      <Feather x={24} y={70} rotate={10} s={1} />
-      <Feather x={278} y={78} rotate={-24} s={1} />
-      <Feather x={152} y={4} rotate={60} s={0.9} />
+      <circle cx={100} cy={96} r={82} fill={P.sunPale} stroke={P.ink} strokeWidth={CAST_LINE} />
+      <ellipse cx={100} cy={179} rx={62} ry={7} fill={P.ink} opacity={0.24} />
+      <Pillow x={76} y={164} w={66} rotate={-7} tint={TINT[left]} />
+      <Pillow x={126} y={166} w={62} rotate={9} tint={TINT[right]} />
+      <path d="M66 146 L58 141 M134 146 L142 141 M100 152 L100 158" stroke={P.ink} strokeWidth={CAST_LINE} strokeLinecap="round" />
+      <g transform={`rotate(-7 ${champ.x} ${champ.feet})`}>
+        <KidSprite who={winner} pose="cheer" at={champ} shadow={false} />
+        <HeldPillow who={winner} pose="cheer" at={champ} w={42} rotate={-14} />
+      </g>
+      <Star x={22} y={70} r={13} rotate={-14} line={2.2} />
+      <Star x={180} y={108} r={10} rotate={12} line={2} />
+      <Star x={30} y={128} r={7} rotate={8} line={1.8} />
+      <Feather x={164} y={62} rotate={36} s={1.2} />
+      <Feather x={4} y={100} rotate={-24} s={1.1} />
     </>
   );
 }
@@ -505,7 +506,7 @@ function LoseScene({ who }: { who: KidId }) {
 export function PajamaWarCast({ mood, featured, className }: { mood: "intro" | "win" | "lose"; featured?: string; className?: string }) {
   const who = isKid(featured) ? featured : "lia";
   return (
-    <svg viewBox="0 0 300 210" className={className} aria-hidden overflow="visible">
+    <svg viewBox={mood === "win" ? "0 0 200 190" : "0 0 300 210"} className={className} aria-hidden overflow="visible">
       {mood === "intro" ? <IntroScene /> : mood === "win" ? <WinScene winner={who} /> : <LoseScene who={who} />}
     </svg>
   );
