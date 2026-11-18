@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "@/i18n/Link";
+import { IntentLink } from "@/components/ui/IntentLink";
 import { forwardRef, type ReactNode } from "react";
 import { spotStyle, type Spot } from "./layout";
 
@@ -76,7 +76,7 @@ export const RoomButton = forwardRef<HTMLButtonElement, ButtonProps>(function Ro
 
 export function RoomLink({ spot, href, label, hint, onHint, onHoverSound, hit = "shape", className = "", children, onActivate, z = 10 }: LinkProps) {
   return (
-    <Link
+    <IntentLink
       href={href}
       onClick={(event) => {
         if (!onActivate || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
@@ -101,6 +101,6 @@ export function RoomLink({ spot, href, label, hint, onHint, onHoverSound, hit = 
     >
       <span className="sr-only">{label}</span>
       <span className={art}>{children}</span>
-    </Link>
+    </IntentLink>
   );
 }

@@ -2,9 +2,9 @@
 
 import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
+import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
-import { OffAirVacationLogoArt } from "./OffAirVacationArt";
-import { PajamaWarLogoArt } from "./PajamaWarArt";
+import { Feather, Pillow } from "./PajamaWarProps";
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
@@ -176,6 +176,94 @@ export function OperationRecessLogo({ className }: { className?: string }) {
           </text>
           <path d="M58 104 q10 -8 22 -6" stroke={P.white} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.8" />
         </g>
+      </g>
+    </svg>
+  );
+}
+
+const PAJAMA_WAR = localized({
+  "pt-BR": { label: "Guerra do Pijama", first: "GUERRA", tag: "DO", last: "PIJAMA", lastSize: 88, lastX: 216 },
+  en: { label: "Pajama War", first: "PAJAMA", tag: "", last: "WAR", lastSize: 108, lastX: 200 },
+});
+
+function PajamaWarLogoArt({ className, locale }: { className?: string; locale: Locale }) {
+  const t = PAJAMA_WAR[locale];
+  return (
+    <svg viewBox="-24 -22 412 214" className={className} role="img" aria-label={t.label}>
+      <Pillow x={352} y={16} w={66} rotate={22} />
+      <Feather x={-6} y={26} rotate={-30} s={1.4} />
+      <Feather x={340} y={92} rotate={40} s={1.2} />
+      <Feather x={18} y={148} rotate={10} s={1.1} />
+      <g style={display}>
+        <g transform="rotate(-5 160 60)">
+          <text x="164" y="84" textAnchor="middle" fontSize="80" fill={P.ink} letterSpacing="2">
+            {t.first}
+          </text>
+          <text x="158" y="78" textAnchor="middle" fontSize="80" fill={P.white} stroke={P.ink} strokeWidth="10" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            {t.first}
+          </text>
+          <path d="M40 32 q10 -8 22 -6" stroke={P.sunPale} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.9" />
+        </g>
+        {t.tag ? (
+          <g transform="rotate(-10 26 112)">
+            <rect x="-12" y="88" width="66" height="40" rx="10" fill={P.sun} stroke={P.ink} strokeWidth="5" />
+            <text x="21" y="119" textAnchor="middle" fontSize="30" fill={P.ink}>
+              {t.tag}
+            </text>
+          </g>
+        ) : null}
+        <g transform="rotate(2 210 150)">
+          <text x={t.lastX + 6} y="182" textAnchor="middle" fontSize={t.lastSize} fill={P.ink} letterSpacing="2">
+            {t.last}
+          </text>
+          <text x={t.lastX} y="176" textAnchor="middle" fontSize={t.lastSize} fill={P.bubblegum} stroke={P.ink} strokeWidth="11" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            {t.last}
+          </text>
+          <path d="M98 118 q10 -8 22 -6" stroke={P.white} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.8" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+const OFF_AIR_VACATION = localized({
+  "pt-BR": { label: "Férias Fora do Ar", first: "FÉRIAS", firstSize: 88, screen: "FORA DO AR", screenSize: 48 },
+  en: { label: "Off-Air Vacation", first: "OFF-AIR", firstSize: 76, screen: "VACATION", screenSize: 52 },
+});
+
+function OffAirVacationLogoArt({ className, locale }: { className?: string; locale: Locale }) {
+  const t = OFF_AIR_VACATION[locale];
+  return (
+    <svg viewBox="-24 -26 424 222" className={className} role="img" aria-label={t.label}>
+      <circle cx="350" cy="14" r="30" fill={P.sunPale} stroke={P.ink} strokeWidth="5" />
+      <g stroke={P.sun} strokeWidth="5" strokeLinecap="round">
+        <path d="M350 -24 L350 -34 M384 -6 L394 -12 M390 30 L400 34 M316 -6 L306 -12" />
+      </g>
+      <g style={display}>
+        <g transform="rotate(-5 170 60)">
+          <text x="176" y="88" textAnchor="middle" fontSize={t.firstSize} fill={P.ink} letterSpacing="2">
+            {t.first}
+          </text>
+          <text x="170" y="82" textAnchor="middle" fontSize={t.firstSize} fill={P.sun} stroke={P.ink} strokeWidth="11" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            {t.first}
+          </text>
+          <path d="M44 34 q10 -8 22 -6" stroke={P.white} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.85" />
+        </g>
+        <g transform="rotate(2 190 150)">
+          <rect x="18" y="104" width="352" height="76" rx="18" fill={P.ink} transform="translate(6 7)" />
+          <rect x="18" y="104" width="352" height="76" rx="18" fill={P.plum700} stroke={P.ink} strokeWidth="6" />
+          <rect x="30" y="114" width="328" height="56" rx="10" fill={P.screen} stroke={P.ink} strokeWidth="4" />
+          <g stroke={P.screenDeep} strokeWidth="3" opacity="0.8">
+            <path d="M36 124 L352 124 M36 136 L352 136 M36 148 L352 148 M36 160 L352 160" />
+          </g>
+          <text x="194" y="162" textAnchor="middle" fontSize={t.screenSize} fill={P.white} stroke={P.ink} strokeWidth="9" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            {t.screen}
+          </text>
+        </g>
+      </g>
+      <g transform="translate(-8 120) rotate(-18)">
+        <path d="M0 0 Q20 -26 46 -18 Q22 -12 0 0 Z" fill={P.leaf} stroke={P.ink} strokeWidth={3.5} strokeLinejoin="round" strokeLinecap="round" />
+        <path d="M0 0 Q12 -34 34 -40 Q18 -18 0 0 Z" fill={P.lime} stroke={P.ink} strokeWidth={3.5} strokeLinejoin="round" strokeLinecap="round" />
       </g>
     </svg>
   );

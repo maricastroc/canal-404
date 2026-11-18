@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "@/i18n/Link";
+import { IntentLink } from "@/components/ui/IntentLink";
 import type { MouseEvent } from "react";
 import { PLAYABLE } from "@/games/registry";
 import { useCopy } from "@/i18n/client";
@@ -186,7 +186,7 @@ export function Arcade({
     onActivate();
   };
   return (
-    <Link
+    <IntentLink
       href="/games"
       onClick={handleClick}
       onPointerEnter={(e) => {
@@ -207,6 +207,6 @@ export function Arcade({
           <AttractScreen active={active} />
         </span>
       </span>
-    </Link>
+    </IntentLink>
   );
 }

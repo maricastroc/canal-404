@@ -1,11 +1,13 @@
+import dynamic from "next/dynamic";
 import { BrunoHead, DecoHead, LinaHead, MilaHead, type Face } from "@/components/characters/Heads";
 import { localized } from "@/i18n/copy";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 import { arcPoint, Fork, House, Sparkle4 } from "./DeadEndStreetArt";
-import { OffAirVacationCoverArt } from "./OffAirVacationArt";
-import { OperationRecessCoverArt } from "./OperationRecessArt";
-import { PajamaWarCoverArt } from "./PajamaWarArt";
+
+const OffAirVacationCoverArt = dynamic(() => import("./OffAirVacationArt").then((m) => m.OffAirVacationCoverArt));
+const OperationRecessCoverArt = dynamic(() => import("./OperationRecessArt").then((m) => m.OperationRecessCoverArt));
+const PajamaWarCoverArt = dynamic(() => import("./PajamaWarArt").then((m) => m.PajamaWarCoverArt));
 
 const ink = { stroke: P.ink, strokeWidth: 4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 

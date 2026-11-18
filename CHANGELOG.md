@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Páginas mais leves
+- **Each page now downloads about half the JavaScript it used to.** The about page went from about 1.2 MB to 560 KB, extras and records to under 700 KB, and the broadcast room to under 1 MB. Menu, footer and room links now load the next page when you point at, focus or touch them, instead of loading every section in advance.
+- The room loads the VHS tapes when the shelf opens and the art of each game's cover only when its channel is on the TV. The phone menu and the achievement notices load their animations the first time they appear.
+- **Smoother room.** The mascot's eyes still follow the pointer, but moving the mouse no longer redraws the whole room, which cuts the work per pointer move by about 40%.
+- Same pages, animations and art.
+
 ### Next.js 16.4.6
 - Updated Next.js (and its ESLint config) from 16.4.3 to 16.4.6, which fixes two cache leak advisories (GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8). The channel doesn't use the affected `use cache` APIs, but on 16.4.3 `npm run build` ended with a security error.
 

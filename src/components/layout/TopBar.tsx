@@ -1,17 +1,18 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
-import Link from "@/i18n/Link";
-import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { IntentLink } from "@/components/ui/IntentLink";
+import { useCallback, useRef, useState } from "react";
 import { MenuIcon } from "@/components/art/Icons";
 import { Logo } from "@/components/art/Logo";
 import { useCopy, useLocalPathname, useLocale } from "@/i18n/client";
 import { useSound } from "@/lib/audio/hooks";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { isActive, NAV_COPY, navItems } from "./nav";
-import { NavIcon } from "./NavIcon";
+import { NavLink } from "./NavLink";
 import { SoundToggle } from "./SoundToggle";
-import { VisitorCounter } from "./VisitorCounter";
+
+const MenuDrawer = dynamic(() => import("./MenuDrawer").then((m) => m.MenuDrawer), { ssr: false });
 
 export function TopBar({ className = "" }: { className?: string }) {
   const pathname = useLocalPathname();
@@ -21,7 +22,8 @@ export function TopBar({ className = "" }: { className?: string }) {
   const { play, hover } = useSound();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const drawer = useRef<HTMLDivElement>(null);
+  const [opened, setOpened] = useState(false);
+  const close = useCallback(() => setOpen(false), [setOpen]);
   const [lastPath, setLastPath] = useState(pathname);
 
   if (pathname !== lastPath) {
@@ -29,52 +31,21 @@ export function TopBar({ className = "" }: { className?: string }) {
     setOpen(false);
   }
 
-  useEffect(() => {
-    if (!open) return;
-    const first = drawer.current?.querySelector<HTMLElement>("a, button");
-    first?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        menuButton.current?.focus();
-      }
-      if (event.key === "Tab" && drawer.current) {
-        const items = Array.from(drawer.current.querySelectorAll<HTMLElement>("a, button"));
-        const firstItem = items[0];
-        const lastItem = items[items.length - 1];
-        if (event.shiftKey && document.activeElement === firstItem) {
-          event.preventDefault();
-          lastItem.focus();
-        } else if (!event.shiftKey && document.activeElement === lastItem) {
-          event.preventDefault();
-          firstItem.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = overflow;
-    };
-  }, [open]);
 
   return (
     <header className={`on-dark relative z-50 border-b-[3px] border-ink bg-plum-800 ${className}`}>
       <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-3 px-3 sm:px-5">
-        <Link href="/" className="shrink-0 -rotate-2 transition-transform hover:rotate-0" onClick={() => play("click")}>
+        <IntentLink href="/" className="shrink-0 -rotate-2 transition-transform hover:rotate-0" onClick={() => play("click")}>
           <Logo slogan={false} label={copy.home} className="h-14 w-auto drop-shadow-[0_4px_0_rgba(20,15,38,0.5)]" />
-        </Link>
+        </IntentLink>
         <nav aria-label={copy.main} className="ml-auto hidden md:block">
           <ul className="flex items-center gap-1.5 lg:gap-2">
             {items.map((item) => {
               const active = isActive(pathname, item.href) || (item.href === "/games" && pathname.startsWith("/games"));
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                  prefetch={item.prefetch}
+                  <NavLink
+                    item={item}
                     aria-current={isActive(pathname, item.href) ? "page" : undefined}
                     onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
                     onClick={() => play("click")}
@@ -83,7 +54,7 @@ export function TopBar({ className = "" }: { className?: string }) {
                     }`}
                   >
                     {item.short}
-                  </Link>
+                  </NavLink>
                 </li>
               );
             })}
@@ -96,6 +67,7 @@ export function TopBar({ className = "" }: { className?: string }) {
           type="button"
           onClick={() => {
             play(open ? "back" : "click");
+            setOpened(true);
             setOpen((v) => !v);
           }}
           aria-expanded={open}
@@ -106,65 +78,7 @@ export function TopBar({ className = "" }: { className?: string }) {
           <MenuIcon open={open} className="size-7" />
         </button>
       </div>
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 top-[4.5rem] z-40 bg-plum-950/70 md:hidden"
-              onClick={() => setOpen(false)}
-              aria-hidden
-            />
-            <motion.div
-              key="drawer"
-              id="menu-drawer"
-              ref={drawer}
-              role="dialog"
-              aria-modal="true"
-              aria-label={copy.menu}
-              initial={{ y: -30, opacity: 0, rotate: -2 }}
-              animate={{ y: 0, opacity: 1, rotate: 0 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 420, damping: 30 }}
-              className="paper fixed inset-x-3 top-[5.2rem] z-50 max-h-[calc(100svh-6rem)] overflow-y-auto border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly md:hidden"
-            >
-              <ul className="flex flex-col gap-3">
-                {items.map((item, i) => {
-                  const active = isActive(pathname, item.href);
-                  return (
-                    <li key={item.href} className={i % 2 ? "rotate-1" : "-rotate-1"}>
-                      <Link
-                        href={item.href}
-                        prefetch={item.prefetch}
-                        aria-current={active ? "page" : undefined}
-                        onClick={() => {
-                          play("click");
-                          setOpen(false);
-                        }}
-                        className={`press flex min-h-14 items-center gap-3 border-[3px] border-ink py-1.5 pl-2 pr-4 font-display text-lg uppercase tracking-wide text-ink shadow-[var(--shadow-ink)] wobbly-sm ${
-                          active ? item.color : "bg-cream"
-                        }`}
-                      >
-                        <span className={`grid size-11 place-items-center rounded-lg border-[2.5px] border-ink ${active ? "bg-cream" : item.color}`}>
-                          <NavIcon icon={item.icon} className="size-8" />
-                        </span>
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-              <LanguageSwitch variant="drawer" className="mt-3 rotate-1" />
-              <div className="mt-5 flex justify-center">
-                <VisitorCounter />
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {opened && <MenuDrawer open={open} pathname={pathname} menuButton={menuButton} onClose={close} />}
     </header>
   );
 }
