@@ -23,7 +23,7 @@ Canal 404 grows in small, verifiable deliveries. Player experience drives the or
 - [x] Guerra do Pijama: hiding no longer pays; the other two call a truce against a player who stays out of the fight.
 - [x] Guerra de Lanche: food that misses a kid can hit the lunch lady behind them, for every input; Space avoids kids standing in front of her.
 - [x] Laboratório on phones: the parts tray and level card shrink just enough to keep the whole build area visible.
-- [ ] Férias Fora do Ar: residents fade when hidden behind tall props; critters respect furniture.
+- [x] Férias Fora do Ar: tall props fade when a resident walks behind them, as they already did for Déco (shopkeepers posed behind their own counters keep them solid), and walking and hopping critters stay off furniture.
 - [x] Trim the portal's JavaScript: pages went from about 1.2 MB to between 560 KB and 980 KB, and the broadcast room no longer re-renders on every pointer move ([0010](docs/decisions/0010-page-javascript.md)).
 
 ## Stage 2: Competition and coming back

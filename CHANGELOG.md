@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Férias Fora do Ar: ninguém some atrás dos móveis
+- **Residents stay visible.** The juice bar, kiosk, shed, trees and other tall props already turned see-through when Déco walked behind them. Now they do the same when a resident walks behind them. Residents who work behind their own counter, like Capi at the juice bar, keep it solid.
+- **Critters respect furniture.** The lobby kitten no longer walks over the sofa or the suitcases while following Déco. Critters that walk or hop pick spots they can stand on and stop or turn back at anything solid. Frogs still hop into the stream.
+
 ### Páginas mais leves
 - **Each page now downloads about half the JavaScript it used to.** The about page went from about 1.2 MB to 560 KB, extras and records to under 700 KB, and the broadcast room to under 1 MB. Menu, footer and room links now load the next page when you point at, focus or touch them, instead of loading every section in advance.
 - The room loads the VHS tapes when the shelf opens and the art of each game's cover only when its channel is on the TV. The phone menu and the achievement notices load their animations the first time they appear.

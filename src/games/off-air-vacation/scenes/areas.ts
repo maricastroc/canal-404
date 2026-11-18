@@ -78,6 +78,7 @@ export type Builder = {
   surface(fn: (x: number, y: number) => Surface | null): void;
   announce(message: string): void;
   pushHero(x: number, y: number): boolean;
+  isBlocked(x: number, y: number): boolean;
   arrow(x: number, y: number, angle: number): void;
   frame(rect: [number, number, number, number], zone: [number, number, number, number]): void;
   fonts: Fonts;
