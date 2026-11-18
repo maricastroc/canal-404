@@ -23,15 +23,6 @@ function mount(ctx: GameHostContext): GameInstance {
       touch: { capture: true },
       activePointers: 2,
     },
-    physics: {
-      default: "matter",
-      matter: {
-        gravity: { x: 0, y: 1.35 },
-        autoUpdate: false,
-        enableSleeping: false,
-        debug: false,
-      },
-    },
     banner: false,
     audio: { noAudio: true },
     disableContextMenu: true,

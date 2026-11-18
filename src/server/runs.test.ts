@@ -4,10 +4,14 @@ import { cleanup } from "./cleanup";
 import { HttpError } from "./http";
 import { consume, LIMITS } from "./rate-limit";
 import { submitRun } from "./runs";
-import { boardOf, hasTestDb, makePlayer, resetDb, streetClaim, testDb, ticketFor } from "./testing";
+import { boardOf, hasTestDb, lunchClaim, makePlayer, resetDb, testDb, ticketFor } from "./testing";
 
 const START = Date.UTC(2026, 10, 3, 15, 0, 0);
-const STREET = boardOf("dead-end-street", null);
+const BOARD = boardOf("food-fight", null);
+
+function claimWith(interrupts: number, timeMs = 75_000) {
+  return lunchClaim({ interrupts, interruptPoints: interrupts * 100, timeMs });
+}
 
 async function rejectionOf(promise: Promise<unknown>) {
   try {
@@ -26,34 +30,34 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     await resetDb(db);
   });
 
-  function submitStreet(playerId: string, score: Parameters<typeof streetClaim>[0], at: number, player: Awaited<ReturnType<typeof makePlayer>>["player"]) {
-    const { ticket } = ticketFor("dead-end-street", null, playerId, at);
-    return submitRun(db, { player, ticket, claim: streetClaim(score), now: new Date(at + 90_000) });
+  function submitLunch(playerId: string, interrupts: number, at: number, player: Awaited<ReturnType<typeof makePlayer>>["player"]) {
+    const { ticket } = ticketFor("food-fight", null, playerId, at);
+    return submitRun(db, { player, ticket, claim: claimWith(interrupts), now: new Date(at + 90_000) });
   }
 
   it("stores a checked run and makes it the personal best", async () => {
     const { player } = await makePlayer(db);
-    const outcome = await submitStreet(player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START, player);
-    expect(outcome.run).toMatchObject({ verification: "checked", eligible: true, score: 1900, stars: 2 });
-    expect(outcome.board).toMatchObject({ id: STREET, improved: true, previous: null, position: 1, total: 1 });
-    const best = await db.personalBest.findUnique({ where: { playerId_board: { playerId: player.id, board: STREET } } });
-    expect(best).toMatchObject({ runId: outcome.run.id, score: 1900, rank1: 1900, rank2: -5 });
+    const outcome = await submitLunch(player.id, 2, START, player);
+    expect(outcome.run).toMatchObject({ verification: "checked", eligible: true, score: 6000, stars: 1 });
+    expect(outcome.board).toMatchObject({ id: BOARD, improved: true, previous: null, position: 1, total: 1 });
+    const best = await db.personalBest.findUnique({ where: { playerId_board: { playerId: player.id, board: BOARD } } });
+    expect(best).toMatchObject({ runId: outcome.run.id, score: 6000, rank1: 6000, rank2: -2 });
   });
 
   it("only replaces the personal best with a better result", async () => {
     const { player } = await makePlayer(db);
-    await submitStreet(player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START, player);
-    const worse = await submitStreet(player.id, { targetPoints: 900, combos: 0, mess: 0, launches: 6 }, START + 1000, player);
-    expect(worse.board).toMatchObject({ improved: false, best: { score: 1900 } });
-    const better = await submitStreet(player.id, { targetPoints: 900, combos: 2, mess: 6, launches: 4 }, START + 2000, player);
-    expect(better.board).toMatchObject({ improved: true, previous: { score: 1900 }, best: { score: 2300 } });
+    await submitLunch(player.id, 2, START, player);
+    const worse = await submitLunch(player.id, 0, START + 1000, player);
+    expect(worse.board).toMatchObject({ improved: false, best: { score: 6000 } });
+    const better = await submitLunch(player.id, 6, START + 2000, player);
+    expect(better.board).toMatchObject({ improved: true, previous: { score: 6000 }, best: { score: 6400 } });
     expect(await db.run.count({ where: { playerId: player.id } })).toBe(3);
   });
 
   it("is idempotent: the same ticket never creates a second run", async () => {
     const { player } = await makePlayer(db);
-    const { ticket } = ticketFor("dead-end-street", null, player.id, START);
-    const claim = streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 5 });
+    const { ticket } = ticketFor("food-fight", null, player.id, START);
+    const claim = claimWith(2);
     const first = await submitRun(db, { player, ticket, claim, now: new Date(START + 90_000) });
     const again = await submitRun(db, { player, ticket, claim, now: new Date(START + 95_000) });
     expect(again.repeated).toBe(true);
@@ -64,8 +68,8 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
 
   it("handles the same ticket sent many times at once", async () => {
     const { player } = await makePlayer(db);
-    const { ticket } = ticketFor("dead-end-street", null, player.id, START);
-    const claim = streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 5 });
+    const { ticket } = ticketFor("food-fight", null, player.id, START);
+    const claim = claimWith(2);
     const results = await Promise.all(Array.from({ length: 8 }, () => submitRun(db, { player, ticket, claim, now: new Date(START + 90_000) })));
     expect(new Set(results.map((r) => r.run.id)).size).toBe(1);
     expect(results.filter((r) => !r.repeated).length).toBe(1);
@@ -74,11 +78,11 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
 
   it("keeps the best of many concurrent submissions", async () => {
     const { player } = await makePlayer(db);
-    const mess = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    const results = await Promise.all(mess.map((m, i) => submitStreet(player.id, { targetPoints: 900, combos: 1, mess: m, launches: 5 }, START + i, player)));
+    const interrupts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const results = await Promise.all(interrupts.map((m, i) => submitLunch(player.id, m, START + i, player)));
     const best = await db.personalBest.findMany({ where: { playerId: player.id } });
     expect(best).toHaveLength(1);
-    expect(best[0].score).toBe(900 + 100 + 300 + 9 * 25 + 500);
+    expect(best[0].score).toBe(5800 + 9 * 100);
     expect(results.some((r) => r.board && "improved" in r.board && r.board.improved)).toBe(true);
     expect(await db.run.count()).toBe(10);
   });
@@ -87,33 +91,33 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     const a = await makePlayer(db, "Primeira");
     const b = await makePlayer(db, "Segunda");
     const c = await makePlayer(db, "Terceira");
-    await submitStreet(a.player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START + 3000, a.player);
-    await submitStreet(b.player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START, b.player);
-    await submitStreet(c.player.id, { targetPoints: 900, combos: 2, mess: 4, launches: 4 }, START + 6000, c.player);
-    const top = await topOfBoard(db, "dead-end-street", STREET, 10, a.player.id);
+    await submitLunch(a.player.id, 2, START + 3000, a.player);
+    await submitLunch(b.player.id, 2, START, b.player);
+    await submitLunch(c.player.id, 5, START + 6000, c.player);
+    const top = await topOfBoard(db, "food-fight", BOARD, 10, a.player.id);
     expect(top.entries.map((e) => e.nickname)).toEqual(["Terceira", "Segunda", "Primeira"]);
     expect(top.entries.map((e) => e.position)).toEqual([1, 2, 3]);
     expect(top.entries[2].you).toBe(true);
-    expect(await standing(db, "dead-end-street", STREET, a.player.id)).toMatchObject({ position: 3, total: 3 });
-    expect(await standing(db, "dead-end-street", STREET, b.player.id)).toMatchObject({ position: 2, total: 3 });
+    expect(await standing(db, "food-fight", BOARD, a.player.id)).toMatchObject({ position: 3, total: 3 });
+    expect(await standing(db, "food-fight", BOARD, b.player.id)).toMatchObject({ position: 2, total: 3 });
   });
 
   it("hides hidden players from everyone else but still shows them their place", async () => {
     const visible = await makePlayer(db, "Visivel");
     const hidden = await makePlayer(db, "Escondido", "hidden");
-    await submitStreet(visible.player.id, { targetPoints: 900, combos: 0, mess: 0, launches: 6 }, START, visible.player);
-    await submitStreet(hidden.player.id, { targetPoints: 900, combos: 2, mess: 9, launches: 4 }, START, hidden.player);
-    const top = await topOfBoard(db, "dead-end-street", STREET, 10, null);
+    await submitLunch(visible.player.id, 0, START, visible.player);
+    await submitLunch(hidden.player.id, 9, START, hidden.player);
+    const top = await topOfBoard(db, "food-fight", BOARD, 10, null);
     expect(top.entries.map((e) => e.nickname)).toEqual(["Visivel"]);
     expect(top.total).toBe(1);
-    expect(await standing(db, "dead-end-street", STREET, hidden.player.id)).toMatchObject({ position: 1, total: 2 });
-    expect(await standing(db, "dead-end-street", STREET, visible.player.id)).toMatchObject({ position: 1, total: 1 });
+    expect(await standing(db, "food-fight", BOARD, hidden.player.id)).toMatchObject({ position: 1, total: 2 });
+    expect(await standing(db, "food-fight", BOARD, visible.player.id)).toMatchObject({ position: 1, total: 1 });
   });
 
   it("stores rejected runs without touching the board and explains why", async () => {
     const { player } = await makePlayer(db);
-    const { ticket } = ticketFor("dead-end-street", null, player.id, START);
-    const claim = { ...streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 5 }), score: 99_999 };
+    const { ticket } = ticketFor("food-fight", null, player.id, START);
+    const claim = { ...claimWith(2), score: 99_999 };
     expect(await rejectionOf(submitRun(db, { player, ticket, claim, now: new Date(START + 90_000) }))).toMatchObject({ code: "rejected", reason: "score_mismatch" });
     const run = await db.run.findUnique({ where: { ticketId: ticket.id } });
     expect(run).toMatchObject({ verification: "rejected", eligible: false, flags: ["score_mismatch"], board: null });
@@ -123,37 +127,37 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
 
   it("rejects results that arrive faster than the match could be played", async () => {
     const { player } = await makePlayer(db);
-    const { ticket } = ticketFor("dead-end-street", null, player.id, START);
-    const claim = streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 5 }, 70_000);
+    const { ticket } = ticketFor("food-fight", null, player.id, START);
+    const claim = claimWith(2);
     expect(await rejectionOf(submitRun(db, { player, ticket, claim, now: new Date(START + 10_000) }))).toMatchObject({ code: "rejected", reason: "too_fast" });
   });
 
   it("refuses a ticket issued to another player and a run someone else already sent", async () => {
     const owner = await makePlayer(db, "Dona");
     const other = await makePlayer(db, "Outra");
-    const claim = streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 5 });
-    const bound = ticketFor("dead-end-street", null, owner.player.id, START).ticket;
+    const claim = claimWith(2);
+    const bound = ticketFor("food-fight", null, owner.player.id, START).ticket;
     expect(await rejectionOf(submitRun(db, { player: other.player, ticket: bound, claim, now: new Date(START + 90_000) }))).toMatchObject({ code: "wrong_player" });
-    const open = ticketFor("dead-end-street", null, null, START).ticket;
+    const open = ticketFor("food-fight", null, null, START).ticket;
     await submitRun(db, { player: owner.player, ticket: open, claim, now: new Date(START + 90_000) });
     expect(await rejectionOf(submitRun(db, { player: other.player, ticket: open, claim, now: new Date(START + 90_000) }))).toMatchObject({ code: "conflict" });
   });
 
   it("pauses a player after too many rejected results", async () => {
     const { player } = await makePlayer(db);
-    const bad = { ...streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 5 }), score: 1 };
+    const bad = { ...claimWith(2), score: 1 };
     for (let i = 0; i < LIMITS.rejected.max; i += 1) {
-      const { ticket } = ticketFor("dead-end-street", null, player.id, START + i);
+      const { ticket } = ticketFor("food-fight", null, player.id, START + i);
       await rejectionOf(submitRun(db, { player, ticket, claim: bad, now: new Date(START + 90_000) }));
     }
-    const { ticket } = ticketFor("dead-end-street", null, player.id, START);
-    const good = streetClaim({ targetPoints: 900, combos: 1, mess: 4, launches: 5 });
+    const { ticket } = ticketFor("food-fight", null, player.id, START);
+    const good = claimWith(2);
     expect(await rejectionOf(submitRun(db, { player, ticket, claim: good, now: new Date(START + 90_000) }))).toMatchObject({ code: "rate_limited" });
   });
 
   it("erases everything about a player when they leave", async () => {
     const { player } = await makePlayer(db);
-    await submitStreet(player.id, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, START, player);
+    await submitLunch(player.id, 2, START, player);
     await db.playerAchievement.create({ data: { playerId: player.id, achievement: "street-win", source: "verified" } });
     await db.player.delete({ where: { id: player.id } });
     expect(await db.run.count()).toBe(0);
@@ -182,8 +186,8 @@ describe.skipIf(!hasTestDb)("rate limits and retention", () => {
   it("deletes old rate limits, old runs that are not records, and long-gone players", async () => {
     const { player } = await makePlayer(db);
     const old = START - 120 * 24 * 60 * 60 * 1000;
-    const kept = await submitStreet(player, { targetPoints: 900, combos: 1, mess: 4, launches: 5 }, old);
-    await submitStreet(player, { targetPoints: 900, combos: 0, mess: 0, launches: 6 }, old + 1000);
+    const kept = await submitLunch(player, 2, old);
+    await submitLunch(player, 0, old + 1000);
     await consume(db, { name: "old", max: 5, windowMs: 60_000 }, "x", new Date(old));
     const gone = await makePlayer(db, "Sumido");
     await db.player.update({ where: { id: gone.player.id }, data: { lastSeenAt: new Date(START - 800 * 24 * 60 * 60 * 1000) } });
@@ -192,8 +196,8 @@ describe.skipIf(!hasTestDb)("rate limits and retention", () => {
     expect(await db.run.findMany({ select: { id: true } })).toEqual([{ id: kept.run.id }]);
   });
 
-  async function submitStreet(player: Awaited<ReturnType<typeof makePlayer>>["player"], score: Parameters<typeof streetClaim>[0], at: number) {
-    const { ticket } = ticketFor("dead-end-street", null, player.id, at);
-    return submitRun(db, { player, ticket, claim: streetClaim(score), now: new Date(at + 90_000) });
+  async function submitLunch(player: Awaited<ReturnType<typeof makePlayer>>["player"], interrupts: number, at: number) {
+    const { ticket } = ticketFor("food-fight", null, player.id, at);
+    return submitRun(db, { player, ticket, claim: claimWith(interrupts), now: new Date(at + 90_000) });
   }
 });

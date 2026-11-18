@@ -71,17 +71,6 @@ export function labClaim(level: string, parts: PlacedPart[], options: { steps?: 
   };
 }
 
-export function streetClaim(score: { targetPoints: number; combos: number; mess: number; launches: number }, timeMs = 60_000): RunClaim {
-  const ammoLeft = 7 - score.launches;
-  const total = score.targetPoints + score.combos * 100 + 3 * 100 + score.mess * 25 + ammoLeft * 250;
-  return {
-    won: true,
-    score: total,
-    stars: total >= 2050 ? 3 : total >= 1500 ? 2 : 1,
-    stats: { targets: 5, targetPoints: score.targetPoints, waves: 3, mess: score.mess, combos: score.combos, launches: score.launches, ammoLeft, timeMs },
-  };
-}
-
 export function apiRequest(path: string, init: { method?: string; body?: unknown; cookie?: string; headers?: Record<string, string> } = {}) {
   const headers: Record<string, string> = { host: "localhost:4404", ...init.headers };
   if (init.body !== undefined) headers["content-type"] = "application/json";

@@ -10,6 +10,8 @@ const REJECTIONS_EN: Record<string, string> = {
   score_mismatch: "The score doesn't match what happened in the run.",
   bad_replay: "The machine you sent can't be built in this level.",
   replay_failed: "The channel's lab built this machine and the ball didn't get there.",
+  bad_launches: "The launches you sent don't fit a Dead End Street match.",
+  launches_failed: "The channel replayed your launches and the match didn't go that way.",
   too_fast: "This run ended too fast to be true.",
 };
 

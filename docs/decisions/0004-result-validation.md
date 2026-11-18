@@ -1,5 +1,7 @@
 # 0004: How results are ranked and validated
 
+> Since [decision 0009](0009-street-replay.md), Rua Sem Saída is replayed on the server like the Laboratório, and its plausibility checks below were replaced by the replay.
+
 ## Context
 
 A public board invites cheating, and the browser can send anything. The games are very different: one deterministic physics puzzle, one physics toy with wall-clock timers, three real-time action games with unseeded randomness, and one multi-session adventure. A single "highest score wins" board would be unfair for some games and meaningless for others, and calling plausibility checks "anti-cheat" would be dishonest.

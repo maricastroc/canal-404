@@ -6,6 +6,8 @@ import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
 import { KIDS } from "@/games/pajama-war/config";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
+import { replayStreet, type Launch } from "@/games/dead-end-street/sim";
+import { THREE_STAR_WIN } from "@/games/dead-end-street/solutions";
 import { hasLevel, judgeRun, type RunClaim } from "@/lib/competition/rules";
 import { CATALOG, MISSION_GAMES, type MissionDef } from "./catalog";
 import { checkGoal, isCondition } from "./goals";
@@ -53,15 +55,18 @@ const LUNCH_PROOFS: Record<string, RunClaim> = {
   "food-right-on-time": lunch({ interrupts: 5, interruptPoints: 500 }),
 };
 
-function street(won: boolean, score: number, stars: number, stats: Record<string, number>): RunClaim {
-  return { won, score, stars, stats };
+function streetClaim(launches: Launch[]): RunClaim {
+  const replay = replayStreet(launches);
+  if (!replay.ok) throw new Error(replay.problem);
+  const { won, score, stars, stats } = replay.tally;
+  return { won, score, stars, stats: { ...stats, timeMs: 30_000 }, replay: { kind: "street-launches", version: 1, launches } };
 }
 
-const STREET_PROOFS: Record<string, RunClaim> = {
-  "street-five-launches": street(true, 1775, 2, { targets: 5, targetPoints: 900, waves: 3, mess: 3, combos: 0, launches: 5, ammoLeft: 2, timeMs: 18_150 }),
-  "street-two-at-once": street(false, 1150, 0, { targets: 4, targetPoints: 700, waves: 2, mess: 6, combos: 1, launches: 7, ammoLeft: 0, timeMs: 27_700 }),
-  "street-three-stars": street(true, 2175, 3, { targets: 5, targetPoints: 900, waves: 3, mess: 5, combos: 1, launches: 4, ammoLeft: 3, timeMs: 14_900 }),
-  "street-yard-chaos": street(false, 1075, 0, { targets: 4, targetPoints: 700, waves: 2, mess: 7, combos: 0, launches: 7, ammoLeft: 0, timeMs: 27_583 }),
+const STREET_PROOFS: Record<string, Launch[]> = {
+  "street-five-launches": THREE_STAR_WIN,
+  "street-two-at-once": THREE_STAR_WIN,
+  "street-three-stars": THREE_STAR_WIN,
+  "street-yard-chaos": THREE_STAR_WIN,
 };
 
 function recess(level: string, stats: Record<string, number>, won = true): RunClaim {
@@ -96,7 +101,7 @@ function evidenceOf(mission: MissionDef, claim: RunClaim) {
 
 function proofOf(mission: MissionDef) {
   if (mission.game === "bad-ideas-lab") return labClaim(mission.level!, LAB_PROOFS[mission.key]);
-  if (mission.game === "dead-end-street") return STREET_PROOFS[mission.key];
+  if (mission.game === "dead-end-street") return streetClaim(STREET_PROOFS[mission.key]);
   if (mission.game === "operation-recess") return RECESS_PROOFS[mission.key];
   if (mission.game === "pajama-war") return PAJAMA_PROOFS[mission.key];
   return LUNCH_PROOFS[mission.key];
