@@ -10,6 +10,9 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 - **Smoother room.** The mascot's eyes still follow the pointer, but moving the mouse no longer redraws the whole room, which cuts the work per pointer move by about 40%.
 - Same pages, animations and art.
 
+### Next.js 16.4.6
+- Updated Next.js (and its ESLint config) from 16.4.3 to 16.4.6, which fixes two cache leak advisories (GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8). The channel doesn't use the affected `use cache` APIs, but on 16.4.3 `npm run build` ended with a security error.
+
 ### Rua Sem Saída refeita no servidor
 - **The server now replays every Rua Sem Saída match** before it enters the board. The result carries the launches (when, at what angle and with what power), and the channel plays them again with the game's own physics. Only a match that ends with the same score is accepted, and the board marks it "Lançamentos refeitos pelo canal". Before, the server only checked that the numbers added up.
 - The game's physics and rules moved out of Phaser into a simulation shared with the server. Shot endings, reloads, round breaks and target spawns now count simulation steps instead of clock time, so hit-stops pause them too. While you aim, the yard stops moving once everything has settled.
