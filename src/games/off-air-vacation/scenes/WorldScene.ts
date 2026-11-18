@@ -73,6 +73,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private props: PropRec[] = [];
   private spots: SpotDef[] = [];
   private npcs = new Map<FolkKey, Npc>();
+  private residents: Phaser.GameObjects.Image[] = [];
+  private staged = new Map<object, Set<Phaser.GameObjects.Image>>();
   private updaters: ((t: number, dt: number) => void)[] = [];
   private kicks: Kick[] = [];
   private hintMarks = new Map<string, Phaser.GameObjects.Image>();
@@ -145,6 +147,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.props = [];
     this.spots = [];
     this.npcs = new Map();
+    this.residents = [];
+    this.staged = new Map();
     this.updaters = [];
     this.kicks = [];
     this.hintMarks = new Map();
@@ -354,7 +358,9 @@ export class WorldScene extends Phaser.Scene implements Builder {
   }
 
   resident(def: ResidentDef) {
-    return resident(this, def);
+    const img = resident(this, def);
+    this.residents.push(img);
+    return img;
   }
 
   surface(fn: (x: number, y: number) => Surface | null) {
@@ -363,6 +369,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
 
   announce(message: string) {
     if (this.mode === "play") this.ctx.onEvent({ type: "announce", message });
+  }
+
+  isBlocked(x: number, y: number) {
+    return this.blocked(x, y);
   }
 
   pushHero(x: number, y: number) {
@@ -1041,12 +1051,18 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private fadeTall(dt: number) {
     const p = this.player;
     if (!p) return;
-    const top = p.top;
-    const body = p.y - top;
+    const behind = (a: { x: number; y: number; top: number }, t: (typeof this.tall)[number]) =>
+      a.y < t.img.y - 24 && a.x > t.x0 && a.x < t.x1 && Math.min(a.y, t.y1) - Math.max(a.top, t.y0) > (a.y - a.top) * 0.6;
+    const actors: { key: object; x: number; y: number; top: number }[] = [{ key: p, x: p.x, y: p.y, top: p.top }];
+    for (const n of this.npcs.values()) if (n.sprite.visible) actors.push({ key: n, x: n.x, y: n.y, top: n.topY });
+    for (const r of this.residents) if (r.visible) actors.push({ key: r, x: r.x, y: r.depth, top: r.y - r.displayHeight });
+    for (const a of actors) {
+      if (a.key === p || this.staged.has(a.key)) continue;
+      this.staged.set(a.key, new Set(this.tall.filter((t) => t.img.visible && behind(a, t)).map((t) => t.img)));
+    }
     for (const t of this.tall) {
       if (!t.img.visible) continue;
-      const covered = Math.min(p.y, t.y1) - Math.max(top, t.y0);
-      const hidden = p.y < t.img.y - 24 && p.x > t.x0 && p.x < t.x1 && covered > body * 0.6;
+      const hidden = actors.some((a) => behind(a, t) && !this.staged.get(a.key)?.has(t.img));
       const goal = hidden ? t.alpha * 0.55 : t.alpha;
       const a = t.img.alpha + (goal - t.img.alpha) * Math.min(1, dt * 8);
       if (Math.abs(a - t.img.alpha) > 0.002) t.img.setAlpha(a);

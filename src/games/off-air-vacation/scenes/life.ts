@@ -45,6 +45,9 @@ export function critter(b: Builder, def: CritterDef) {
   let vy = 0;
   let hopping = false;
   const speed = def.speed ?? 60;
+  const solid = (px: number, py: number) => b.isBlocked(px, py) && !def.water?.(px, py);
+  const grounded = (def.mode === "walk" || def.mode === "hop") && !solid(def.x, def.y);
+  const free = (px: number, py: number) => !grounded || !solid(px, py);
   const depthOf = () => def.depth ?? y;
   const place = () => {
     img.setPosition(x, y).setDepth(depthOf());
@@ -54,8 +57,14 @@ export function critter(b: Builder, def: CritterDef) {
     if (Math.abs(dx) > 2) img.setFlipX(def.faceLeft ? dx > 0 : dx < 0);
   };
   const pick = () => {
-    tx = x0 + Math.random() * (x1 - x0);
-    ty = y0 + Math.random() * (y1 - y0);
+    for (let i = 0; i < 12; i += 1) {
+      tx = x0 + Math.random() * (x1 - x0);
+      ty = y0 + Math.random() * (y1 - y0);
+      if (free(tx, ty)) return true;
+    }
+    tx = x;
+    ty = y;
+    return false;
   };
   const vanish = (t: number) => {
     state = "away";
@@ -65,7 +74,10 @@ export function critter(b: Builder, def: CritterDef) {
     else scene.tweens.add({ targets: img, alpha: 0, scaleY: scale * 0.2, duration: 220, onComplete: () => img.setVisible(false) });
   };
   const appear = () => {
-    pick();
+    if (!pick()) {
+      until = scene.time.now + 1500;
+      return;
+    }
     x = tx;
     y = ty;
     place();
@@ -141,7 +153,10 @@ export function critter(b: Builder, def: CritterDef) {
         pick();
         const d = Math.hypot(tx - x, ty - y);
         const k = Math.min(1, 160 / Math.max(1, d));
-        hop(x + (tx - x) * k, y + (ty - y) * k, 420);
+        const nx = x + (tx - x) * k;
+        const ny = y + (ty - y) * k;
+        if (!free(nx, ny)) return;
+        hop(nx, ny, 420);
         if (Math.random() < 0.4) sound();
       }
       return;
@@ -175,8 +190,16 @@ export function critter(b: Builder, def: CritterDef) {
       img.setTexture(def.rest ?? def.frames[0]);
       return;
     }
-    x += ((tx - x) / d) * speed * dt;
-    y += ((ty - y) / d) * speed * dt;
+    const nx = x + ((tx - x) / d) * speed * dt;
+    const ny = y + ((ty - y) / d) * speed * dt;
+    if (!free(nx, ny)) {
+      state = "idle";
+      until = t + 600 + Math.random() * 1200;
+      img.setTexture(def.rest ?? def.frames[0]);
+      return;
+    }
+    x = nx;
+    y = ny;
     place();
     if (def.mode === "swim") {
       img.setAngle(Phaser.Math.RadToDeg(Math.atan2(ty - y, tx - x)));
@@ -237,6 +260,11 @@ export function critter(b: Builder, def: CritterDef) {
       }
       nx = Phaser.Math.Clamp(nx, x0 - 120, x1 + 120);
       ny = Phaser.Math.Clamp(ny, y0 - 80, y1 + 80);
+      if (!wet && !free(nx, ny)) {
+        state = "idle";
+        until = t + 1200;
+        return;
+      }
       hop(nx, ny, 380, () => {
         if (wet) {
           b.fx.sfx("plop", 0.5, 1.1);
@@ -267,10 +295,16 @@ export function critter(b: Builder, def: CritterDef) {
       const d = Math.hypot(gx - x, gy - y);
       if (d > 14) {
         const sp = Math.min(380, d * 3);
-        x += ((gx - x) / d) * sp * dt;
-        y += ((gy - y) / d) * sp * dt;
-        x = Phaser.Math.Clamp(x, x0 - 200, x1 + 200);
-        y = Phaser.Math.Clamp(y, y0 - 100, y1 + 100);
+        const nx = Phaser.Math.Clamp(x + ((gx - x) / d) * sp * dt, x0 - 200, x1 + 200);
+        const ny = Phaser.Math.Clamp(y + ((gy - y) / d) * sp * dt, y0 - 100, y1 + 100);
+        if (free(nx, ny)) {
+          x = nx;
+          y = ny;
+        } else if (free(nx, y)) {
+          x = nx;
+        } else if (free(x, ny)) {
+          y = ny;
+        }
         place();
         face(gx - x);
         img.setTexture(Math.floor(t / 130) % 2 ? def.frames[0] : def.frames[1]);
@@ -303,8 +337,9 @@ export function critter(b: Builder, def: CritterDef) {
       if (t > until) vanish(t);
       return;
     }
-    x += vx * dt;
-    if (x > x1 + 60 || x < x0 - 60) vx = -vx;
+    const nx = x + vx * dt;
+    if (nx > x1 + 60 || nx < x0 - 60 || !free(nx, y)) vx = -vx;
+    else x = nx;
     place();
     face(vx);
     img.setTexture(Math.floor(t / 70) % 2 ? def.frames[0] : def.frames[1]);
