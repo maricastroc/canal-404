@@ -1,6 +1,8 @@
 # 0005: One Laboratório simulation for the browser and the server
 
 > Since [decision 0007](0007-essential-tests-only.md), `sim.test.ts` keeps only the golden step counts and the repeatability check, and `trig.test.ts` only the locked output bits. The one-time equivalence run against Phaser's Matter was removed.
+>
+> Since [decision 0009](0009-street-replay.md), `trig.ts` and the Matter patches live in `src/lib/physics/`, shared with Rua Sem Saída.
 
 ## Context
 

@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
+import type { Matter } from "@/lib/physics/matter";
 import {
   AMMO,
   ANCHOR,
@@ -8,61 +9,27 @@ import {
   BAND_BACK,
   BAND_FRONT,
   GRAVITY_PER_STEP,
-  GRAVITY_Y,
   GROUND_Y,
-  H,
   MAX_PULL,
   MAX_SPEED,
   MIN_POWER,
   MIN_SPEED,
-  PROJECTILES,
-  PROPS,
   SCORE,
-  STATICS,
   STEP_MS,
   TARGETS,
   W,
   WAGON,
   WAVES,
-  type BodyDef,
   type ProjectileDef,
-  type ProjectileId,
-  type TargetDef,
 } from "../config";
 import { COPY, type StreetCopy } from "../copy";
+import { ANGLE_STEPS, POWER_STEPS, StreetSim, type SimImpact, type SimTargetState, type StreetTally } from "../sim";
 import { GAME_SFX, type GameSfx } from "../sounds";
 import { Fx } from "./fx";
 import { Arlindo, birdFlyOut, Cat, popLid } from "./neighborhood";
 import { Bubble, Hud } from "./ui";
 
-type Phase = "attract" | "ready" | "aiming" | "flying" | "settling" | "interlude" | "over";
-
-type Pose = { x: number; y: number; angle: number };
-
-type TargetState = {
-  def: TargetDef;
-  index: number;
-  obj: Phaser.Physics.Matter.Image | null;
-  shadow: Phaser.GameObjects.Image | null;
-  rest: Pose | null;
-  hit: boolean;
-  active: boolean;
-  armedAt: number;
-};
-
-type PropState = { def: BodyDef; obj: Phaser.Physics.Matter.Image; rest: Pose; messy: boolean; popped: boolean };
-
-type Material = "ceramic" | "wood" | "metal" | "rubber" | "plastic" | "soft" | "water" | "squeaky" | "static";
-
-type Impact = {
-  a: MatterJS.BodyType;
-  b: MatterJS.BodyType;
-  rel: number;
-  x: number;
-  y: number;
-  flying: boolean;
-  other: MatterJS.BodyType | null;
-};
+type Material = "ceramic" | "wood" | "metal" | "rubber" | "plastic" | "soft" | "water" | "squeaky";
 
 const SHADOW = { x: 5, y: 6, alpha: 0.26 };
 const KNOCKED_TINT = 0xd4cddc;
@@ -70,44 +37,22 @@ const KNOCKED_TINT = 0xd4cddc;
 export class PlayScene extends Phaser.Scene {
   private ctx!: GameHostContext;
   private copy!: StreetCopy;
-  private phase: Phase = "attract";
+  private sim!: StreetSim;
+  private aiming = false;
   private acc = 0;
-  private targets: TargetState[] = [];
-  private props: PropState[] = [];
-  private ammo: ProjectileId[] = [];
-  private shot = 0;
-  private wave = 0;
-  private pendingWave: number | null = null;
-  private current: ProjectileDef | null = null;
+  private sprites = new Map<number, Phaser.GameObjects.Image>();
+  private shadows = new Map<number, Phaser.GameObjects.Image>();
+  private materials = new Map<number, Material>();
+  private knocked = new Set<number>();
+  private popped = new Set<number>();
   private readyImage: Phaser.GameObjects.Image | null = null;
   private readyPop = { value: 1 };
-  private flying: Phaser.Physics.Matter.Image | null = null;
-  private flyingDef: ProjectileDef | null = null;
-  private spent: Phaser.Physics.Matter.Image[] = [];
   private flyStart = 0;
-  private slowSteps = 0;
-  private pendingBurst = false;
-  private shotHits = 0;
-  private shotMess = 0;
-  private shotNearest = Infinity;
-  private shotImpacts = 0;
-  private firstImpactAt = 0;
-  private score = 0;
-  private targetScore = 0;
-  private messScore = 0;
-  private comboScore = 0;
-  private waveScore = 0;
   private highScore = 0;
   private aimAngle = 35;
   private aimPower = 0.5;
   private savedAim = { angle: 35, power: 0.5 };
   private dragStart: Phaser.Math.Vector2 | null = null;
-  private materials = new Map<number, Material>();
-  private targetByBody = new Map<number, TargetState>();
-  private propByBody = new Map<number, PropState>();
-  private pendingHits = new Set<TargetState>();
-  private knocked = new Set<number>();
-  private impacts: Impact[] = [];
   private bandBack!: Phaser.GameObjects.Graphics;
   private bandFront!: Phaser.GameObjects.Graphics;
   private aimGfx!: Phaser.GameObjects.Graphics;
@@ -122,8 +67,6 @@ export class PlayScene extends Phaser.Scene {
   private lastSound = new Map<string, number>();
   private lastHit = { at: -1000, x: 0, y: 0 };
   private freezeUntil = 0;
-  private finishing = false;
-  private launches = 0;
   private charged = false;
   private keys!: Record<"left" | "right" | "up" | "down" | "a" | "d" | "w" | "s", Phaser.Input.Keyboard.Key>;
   private holdSince = 0;
@@ -136,43 +79,21 @@ export class PlayScene extends Phaser.Scene {
   }
 
   init() {
-    this.phase = "attract";
+    this.aiming = false;
     this.acc = 0;
-    this.targets = [];
-    this.props = [];
-    this.ammo = [...AMMO];
-    this.shot = 0;
-    this.wave = 0;
-    this.pendingWave = null;
-    this.current = null;
+    this.sprites = new Map();
+    this.shadows = new Map();
+    this.materials = new Map();
+    this.knocked = new Set();
+    this.popped = new Set();
     this.readyImage = null;
     this.readyPop = { value: 1 };
-    this.flying = null;
-    this.flyingDef = null;
-    this.spent = [];
-    this.pendingBurst = false;
-    this.shotHits = 0;
-    this.shotMess = 0;
-    this.shotNearest = Infinity;
-    this.shotImpacts = 0;
-    this.score = 0;
-    this.targetScore = 0;
-    this.messScore = 0;
-    this.comboScore = 0;
-    this.waveScore = 0;
     this.aimAngle = 35;
     this.aimPower = 0.5;
     this.dragStart = null;
-    this.materials = new Map();
-    this.targetByBody = new Map();
-    this.propByBody = new Map();
-    this.pendingHits = new Set();
-    this.impacts = [];
     this.lastSound = new Map();
     this.lastHit = { at: -1000, x: 0, y: 0 };
     this.freezeUntil = 0;
-    this.finishing = false;
-    this.launches = 0;
     this.charged = false;
     this.bandSnap = 0;
     this.playMs = 0;
@@ -182,16 +103,25 @@ export class PlayScene extends Phaser.Scene {
     this.ctx = this.registry.get("ctx") as GameHostContext;
     this.copy = COPY[this.ctx.locale];
     this.highScore = (this.registry.get("highScore") as number | undefined) ?? this.ctx.highScore;
-    const engine = this.matter.world.engine;
-    engine.positionIterations = 10;
-    engine.velocityIterations = 8;
-    this.matter.world.autoUpdate = false;
-    this.matter.world.setGravity(0, GRAVITY_Y);
     const reduced = this.ctx.reducedMotion;
 
     this.buildBackground();
-    this.buildStatics();
     this.fx = new Fx(this, this.ctx.fonts, reduced);
+    this.sim = new StreetSim({
+      load: (def, shot) => this.onLoad(def, shot),
+      impact: (imp) => this.onImpact(imp),
+      hit: (t, shotHits, combo) => this.onHit(t, shotHits, combo),
+      mess: (points, x, y) => this.onMess(points, x, y),
+      score: (score) => this.onScore(score),
+      burst: (x, y, balloon) => this.onBurst(x, y, balloon),
+      waveCleared: (wave, last) => this.onWaveCleared(wave, last),
+      interlude: (wave, spent) => this.onInterlude(wave, spent),
+      spawn: (t) => this.spawnTarget(t, true),
+      shotEnd: (shot) => this.onShotEnd(shot.hits, shot.mess, shot.nearest),
+      outOfAmmo: () => this.hud.setAim(null, null),
+      finish: (tally) => this.finish(tally),
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.sim.destroy());
     this.buildLevel();
     this.buildLauncher();
     this.arlindo = new Arlindo(this, this.ctx.fonts, reduced);
@@ -200,18 +130,14 @@ export class PlayScene extends Phaser.Scene {
     this.linaBubble = new Bubble(this, this.ctx.fonts, "left", 36, 16);
     this.hud = new Hud(this, this.ctx.fonts, TARGETS, reduced, this.ctx.locale);
     this.hud.setRecord(this.highScore);
-    this.targets.forEach((t) => (t.def.wave > 1 ? this.hud.lockTarget(t.index) : this.hud.revealTarget(t.index)));
+    this.sim.targets.forEach((t) => (t.def.wave > 1 ? this.hud.lockTarget(t.index) : this.hud.revealTarget(t.index)));
     this.setupInput();
-    this.setupCollisions();
-
-    for (let i = 0; i < 90; i += 1) this.matter.world.step(STEP_MS);
-    for (const t of this.targets) if (t.obj) t.rest = this.poseOf(t.obj);
-    for (const p of this.props) p.rest = this.poseOf(p.obj);
 
     this.applyScale();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyScale, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.applyScale, this));
 
+    this.syncSprites();
     this.drawBands();
     this.drawAim();
 
@@ -236,7 +162,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   begin() {
-    if (this.phase !== "attract") return;
+    if (this.sim.phase !== "attract") return;
     this.hud.setRound(0);
     const first = this.copy.waves[WAVES[0].id];
     this.hud.showBanner(this.copy.roundOf(1, WAVES.length), first.title, first.subtitle, 2400);
@@ -244,8 +170,8 @@ export class PlayScene extends Phaser.Scene {
       type: "announce",
       message: this.copy.announce.start(WAVES.length, first.subtitle),
     });
-    this.loadNext();
-    this.targets.filter((t) => t.def.wave === 1).forEach((t, i) => this.time.delayedCall(500 + i * 220, () => this.cueTarget(t)));
+    this.sim.start();
+    this.sim.targets.filter((t) => t.def.wave === 1).forEach((t, i) => this.time.delayedCall(500 + i * 220, () => this.cueTarget(t)));
   }
 
   setHighScore(value: number) {
@@ -260,11 +186,6 @@ export class PlayScene extends Phaser.Scene {
       this.lastSound.set(name, this.time.now);
     }
     this.ctx.audio.play(GAME_SFX[name], { volume: Phaser.Math.Clamp(volume, 0.05, 1.2) });
-  }
-
-  private poseOf(obj: Phaser.Physics.Matter.Image): Pose {
-    const body = obj.body as MatterJS.BodyType;
-    return { x: body.position.x, y: body.position.y, angle: body.angle };
   }
 
   private buildBackground() {
@@ -292,59 +213,25 @@ export class PlayScene extends Phaser.Scene {
     this.add.image(0, 0, "yard").setOrigin(0).setDepth(3);
   }
 
-  private buildStatics() {
-    for (const s of STATICS) {
-      const body = this.matter.add.rectangle(s.x, s.y, s.w, s.h, {
-        isStatic: true,
-        label: s.label,
-        friction: 0.9,
-        restitution: 0.1,
-      });
-      this.materials.set(body.id, "static");
-    }
-  }
-
-  private addBody(def: BodyDef, label: string, yOffset = 0) {
-    const obj = this.matter.add.image(def.x, def.y + yOffset, def.tex, undefined, {
-      shape: { type: "rectangle", width: def.w, height: def.h },
-      chamfer: def.chamfer ? { radius: def.chamfer } : undefined,
-      density: def.density,
-      friction: def.friction ?? 0.7,
-      frictionStatic: 1,
-      restitution: def.restitution ?? 0.08,
-      frictionAir: 0.008,
-      label,
-    });
-    obj.setDepth(5);
-    this.materials.set((obj.body as MatterJS.BodyType).id, def.material);
-    return obj;
+  private addSprite(body: Matter.Body, tex: string, material: Material, depth = 5) {
+    const sprite = this.add.image(body.position.x, body.position.y, tex).setRotation(body.angle).setDepth(depth);
+    this.sprites.set(body.id, sprite);
+    this.materials.set(body.id, material);
+    return sprite;
   }
 
   private buildLevel() {
-    for (const def of PROPS) {
-      const obj = this.addBody(def, `prop:${def.id}`);
-      const state: PropState = { def, obj, rest: this.poseOf(obj), messy: false, popped: false };
-      this.props.push(state);
-      this.propByBody.set((obj.body as MatterJS.BodyType).id, state);
-    }
-    TARGETS.forEach((def, index) => {
-      const state: TargetState = { def, index, obj: null, shadow: null, rest: null, hit: false, active: false, armedAt: 0 };
-      this.targets.push(state);
-      if (def.wave === 1) this.spawnTarget(state, false);
-    });
+    for (const p of this.sim.props) this.addSprite(p.body, p.def.tex, p.def.material);
+    for (const t of this.sim.targets) if (t.body) this.spawnTarget(t, false);
   }
 
-  private spawnTarget(t: TargetState, animate: boolean) {
-    const obj = this.addBody(t.def, `target:${t.def.id}`, animate ? -36 : 0);
-    t.obj = obj;
-    t.shadow = this.add.image(obj.x + SHADOW.x, obj.y + SHADOW.y, t.def.tex).setTintFill(0x1d1830).setAlpha(SHADOW.alpha).setDepth(4.9);
-    t.active = true;
-    t.rest = null;
-    t.armedAt = animate ? this.time.now + 900 : 0;
-    this.targetByBody.set((obj.body as MatterJS.BodyType).id, t);
+  private spawnTarget(t: SimTargetState, animate: boolean) {
+    const body = t.body!;
+    const sprite = this.addSprite(body, t.def.tex, t.def.material);
+    this.shadows.set(body.id, this.add.image(sprite.x + SHADOW.x, sprite.y + SHADOW.y, t.def.tex).setTintFill(0x1d1830).setAlpha(SHADOW.alpha).setDepth(4.9));
     if (animate) {
-      obj.setAlpha(0);
-      this.tweens.add({ targets: obj, alpha: 1, duration: 220 });
+      sprite.setAlpha(0);
+      this.tweens.add({ targets: sprite, alpha: 1, duration: 220 });
       this.fx.burst(this.fx.puff, 6, t.def.x, t.def.y);
       this.fx.burst(this.fx.sparks, 5, t.def.x, t.def.y - 20);
       this.sfx("spawn", 0.9);
@@ -353,8 +240,8 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private cueTarget(t: TargetState) {
-    if (!t.obj || t.hit || this.finishing) return;
+  private cueTarget(t: SimTargetState) {
+    if (!t.body || t.hit || this.sim.finishing) return;
     const x = t.def.x;
     const y = t.def.y - t.def.h / 2 - 46;
     const g = this.add.graphics().setDepth(13);
@@ -375,14 +262,17 @@ export class PlayScene extends Phaser.Scene {
     this.tweens.add({ targets: g, y: y - 12, duration: 300, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: fade });
   }
 
-  private syncShadows() {
-    for (const t of this.targets) {
-      if (!t.obj || !t.shadow) continue;
-      t.shadow.setPosition(t.obj.x + SHADOW.x, t.obj.y + SHADOW.y).setRotation(t.obj.rotation).setAlpha(t.obj.alpha * SHADOW.alpha);
+  private syncSprites() {
+    for (const body of this.sim.engine.world.bodies) {
+      const sprite = this.sprites.get(body.id);
+      if (!sprite) continue;
+      sprite.setPosition(body.position.x, body.position.y).setRotation(body.angle);
+      const shadow = this.shadows.get(body.id);
+      if (shadow) shadow.setPosition(sprite.x + SHADOW.x, sprite.y + SHADOW.y).setRotation(sprite.rotation).setAlpha(sprite.alpha * SHADOW.alpha);
     }
   }
 
-  private flyToHud(t: TargetState, x: number, y: number) {
+  private flyToHud(t: SimTargetState, x: number, y: number) {
     if (this.ctx.reducedMotion) {
       this.hud.checkTarget(t.index);
       return;
@@ -433,6 +323,10 @@ export class PlayScene extends Phaser.Scene {
     this.linaBubble.say(text, 470, 650, duration);
   }
 
+  private get aimable() {
+    return this.sim.phase === "ready" && !this.aiming;
+  }
+
   private setupInput() {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys({
@@ -452,7 +346,7 @@ export class PlayScene extends Phaser.Scene {
         this.ctx.onEvent({ type: "pause-request" });
         return;
       }
-      if (this.phase !== "ready") return;
+      if (!this.aimable) return;
       if (key === " " || key === "enter") {
         event.preventDefault();
         this.tryFire();
@@ -476,26 +370,25 @@ export class PlayScene extends Phaser.Scene {
     });
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (this.phase !== "ready") return;
+      if (!this.aimable) return;
       this.savedAim = { angle: this.aimAngle, power: this.aimPower };
       this.dragStart = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY);
-      this.phase = "aiming";
+      this.aiming = true;
       this.aimPower = 0;
       this.charged = false;
       this.sfx("stretch", 0.6);
     });
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-      if (this.phase !== "aiming" || !this.dragStart) return;
+      if (!this.aiming || !this.dragStart) return;
       this.setAimFromPull(pointer.worldX - this.dragStart.x, pointer.worldY - this.dragStart.y);
     });
     const release = () => {
-      if (this.phase !== "aiming") return;
+      if (!this.aiming) return;
+      this.aiming = false;
       this.dragStart = null;
       if (this.aimPower >= MIN_POWER) {
-        this.phase = "ready";
         this.tryFire();
       } else {
-        this.phase = "ready";
         this.aimAngle = this.savedAim.angle;
         this.aimPower = this.savedAim.power;
       }
@@ -558,219 +451,134 @@ export class PlayScene extends Phaser.Scene {
     return { x: Math.cos(rad) * speed, y: -Math.sin(rad) * speed };
   }
 
-  private setupCollisions() {
-    this.matter.world.on("collisionstart", (event: Phaser.Physics.Matter.Events.CollisionStartEvent) => {
-      for (const pair of event.pairs) {
-        const a = pair.bodyA.parent ?? pair.bodyA;
-        const b = pair.bodyB.parent ?? pair.bodyB;
-        const rel = Math.hypot(a.velocity.x - b.velocity.x, a.velocity.y - b.velocity.y);
-        const flyingBody = this.flying?.body as MatterJS.BodyType | undefined;
-        const involvesFlying = Boolean(flyingBody && (a.id === flyingBody.id || b.id === flyingBody.id));
-        if (involvesFlying && this.flyingDef?.id === "balloon" && this.time.now - this.flyStart > 60) {
-          this.pendingBurst = true;
-        }
-        if (involvesFlying && rel > 8 && this.phase === "flying") {
-          const other = a.id === flyingBody!.id ? b : a;
-          const target = this.targetByBody.get(other.id);
-          if (target && !target.hit && target.rest) this.pendingHits.add(target);
-        }
-        if (rel < 2.2) continue;
-        const support = pair.collision.supports?.[0];
-        this.impacts.push({
-          a,
-          b,
-          rel,
-          x: support?.x ?? (a.position.x + b.position.x) / 2,
-          y: support?.y ?? (a.position.y + b.position.y) / 2,
-          flying: involvesFlying,
-          other: involvesFlying ? (a.id === flyingBody!.id ? b : a) : null,
-        });
-      }
-    });
-  }
-
-  private flashBody(body: MatterJS.BodyType) {
-    const go = (body as MatterJS.BodyType & { gameObject?: Phaser.Physics.Matter.Image }).gameObject;
-    if (!go || !go.active) return;
-    go.setTintFill(0xffffff);
+  private flashBody(body: Matter.Body) {
+    const sprite = this.sprites.get(body.id);
+    if (!sprite || !sprite.active) return;
+    sprite.setTintFill(0xffffff);
     this.time.delayedCall(70, () => {
-      if (!go.active) return;
-      if (this.knocked.has(body.id)) go.setTint(KNOCKED_TINT);
-      else go.clearTint();
+      if (!sprite.active) return;
+      if (this.knocked.has(body.id)) sprite.setTint(KNOCKED_TINT);
+      else sprite.clearTint();
     });
   }
 
-  private processImpacts() {
-    if (!this.impacts.length) return;
-    const list = this.impacts;
-    this.impacts = [];
+  private onImpact(imp: SimImpact) {
+    const { a, b, rel, x, y } = imp;
     const recentHit = this.time.now - this.lastHit.at < 160;
-    for (const imp of list) {
-      const { a, b, rel, x, y } = imp;
-      const fast = a.isStatic ? b : b.isStatic ? a : a.speed > b.speed ? a : b;
-      const material = this.materials.get(fast.id) ?? "soft";
-      const volume = Phaser.Math.Clamp(rel / 14, 0.15, 1);
-      this.cat.notifyImpact(x, y, rel);
-      for (const prop of this.props) {
-        if (prop.popped || prop.def.tex !== "trash-can") continue;
-        const cb = prop.obj.body as MatterJS.BodyType;
-        const direct = (a.id === cb.id || b.id === cb.id) && rel > 3.5;
-        const topX = cb.position.x + Math.sin(cb.angle) * 54;
-        const topY = cb.position.y - Math.cos(cb.angle) * 54;
-        const jolt = rel > 5 && Phaser.Math.Distance.Between(x, y, topX, topY) < 95;
-        if (direct || jolt) {
-          prop.popped = true;
-          popLid(this, prop.obj, this.fx, this.ctx.reducedMotion, this.copy.words.clang);
-          this.sfx("clang", 1);
-          if (!this.arlindo.busy) this.arlindo.shout(this.copy.arlindo.trashCan, 1300);
+    const fast = a.isStatic ? b : b.isStatic ? a : a.speed > b.speed ? a : b;
+    const material = this.materials.get(fast.id) ?? "soft";
+    const volume = Phaser.Math.Clamp(rel / 14, 0.15, 1);
+    this.cat.notifyImpact(x, y, rel);
+    for (const prop of this.sim.props) {
+      const cb = prop.body;
+      if (this.popped.has(cb.id) || prop.def.tex !== "trash-can") continue;
+      const direct = (a.id === cb.id || b.id === cb.id) && rel > 3.5;
+      const topX = cb.position.x + Math.sin(cb.angle) * 54;
+      const topY = cb.position.y - Math.cos(cb.angle) * 54;
+      const jolt = rel > 5 && Phaser.Math.Distance.Between(x, y, topX, topY) < 95;
+      const sprite = this.sprites.get(cb.id);
+      if ((direct || jolt) && sprite) {
+        this.popped.add(cb.id);
+        popLid(this, sprite, { x: cb.position.x, y: cb.position.y, angle: cb.angle }, this.fx, this.ctx.reducedMotion, this.copy.words.clang);
+        this.sfx("clang", 1);
+        if (!this.arlindo.busy) this.arlindo.shout(this.copy.arlindo.trashCan, 1300);
+      }
+    }
+    if (material === "squeaky") {
+      this.sfx("squeak", volume, 120);
+    } else if (material !== "water") {
+      const map: Record<string, GameSfx> = { ceramic: "ceramic", wood: "wood", metal: "metal", rubber: "rubber", plastic: "wood", soft: "thud" };
+      this.sfx(map[material] ?? "thud", volume, 70);
+    }
+    const flyingDef = this.sim.flyingDef;
+    if (imp.flying && flyingDef) {
+      const id = flyingDef.id;
+      const nearHit = recentHit && Phaser.Math.Distance.Between(x, y, this.lastHit.x, this.lastHit.y) < 180;
+      const other = imp.other;
+      if (other && !other.isStatic && rel > 7) this.flashBody(other);
+      if (imp.firstOfShot && rel > 5) {
+        if (id === "shoe") {
+          this.fx.burst(this.fx.puff, 5, x, y);
+          this.fx.burst(this.fx.stink, 5, x, y - 20);
+          this.sfx("stinky", 0.8);
+        } else if (id === "tire") {
+          this.fx.burst(this.fx.puff, 8, x, y);
+          this.sfx("bonk", volume + 0.2);
+          if (!this.ctx.reducedMotion) this.cameras.main.shake(170, 0.005);
+        } else if (id === "duck") {
+          this.fx.burst(this.fx.sparks, 7, x, y);
+        }
+        if (id !== "balloon" && !nearHit) this.fx.word(Phaser.Utils.Array.GetRandom(this.copy.impactWords[id]), x, y - 80, "#ffc83d", 74);
+        if (rel > 9) this.fx.ring(x, y, 0xfffaf0, 80);
+      } else if (!imp.firstOfShot) {
+        if (id === "tire" && rel > 5) {
+          this.sfx("boing", 0.7, 260);
+          this.fx.burst(this.fx.puff, 3, x, y);
+        }
+        if (id === "duck" && rel > 3) {
+          this.fx.burst(this.fx.sparks, 3, x, y);
+          if (rel > 7 && !nearHit) this.fx.word(this.copy.words.quack, x, y - 60, "#ffc83d", 54);
         }
       }
-      if (material === "squeaky") {
-        this.sfx("squeak", volume, 120);
-      } else if (material !== "static" && material !== "water") {
-        const map: Record<string, GameSfx> = { ceramic: "ceramic", wood: "wood", metal: "metal", rubber: "rubber", plastic: "wood", soft: "thud" };
-        this.sfx(map[material] ?? "thud", volume, 70);
-      }
-      if (imp.flying && this.flyingDef) {
-        this.shotImpacts += 1;
-        if (!this.firstImpactAt) this.firstImpactAt = this.time.now;
-        const id = this.flyingDef.id;
-        const nearHit = recentHit && Phaser.Math.Distance.Between(x, y, this.lastHit.x, this.lastHit.y) < 180;
-        const other = imp.other;
-        if (other && !other.isStatic && rel > 7) this.flashBody(other);
-        if (this.shotImpacts === 1 && rel > 5) {
-          if (id === "shoe") {
-            this.fx.burst(this.fx.puff, 5, x, y);
-            this.fx.burst(this.fx.stink, 5, x, y - 20);
-            this.sfx("stinky", 0.8);
-          } else if (id === "tire") {
-            this.fx.burst(this.fx.puff, 8, x, y);
-            this.sfx("bonk", volume + 0.2);
-            if (!this.ctx.reducedMotion) this.cameras.main.shake(170, 0.005);
-          } else if (id === "duck") {
-            this.fx.burst(this.fx.sparks, 7, x, y);
-          }
-          if (id !== "balloon" && !nearHit) this.fx.word(Phaser.Utils.Array.GetRandom(this.copy.impactWords[id]), x, y - 80, "#ffc83d", 74);
-          if (rel > 9) this.fx.ring(x, y, 0xfffaf0, 80);
-        } else {
-          if (id === "tire" && rel > 5) {
-            this.sfx("boing", 0.7, 260);
-            this.fx.burst(this.fx.puff, 3, x, y);
-          }
-          if (id === "duck" && rel > 3) {
-            this.fx.burst(this.fx.sparks, 3, x, y);
-            if (rel > 7 && !nearHit) this.fx.word(this.copy.words.quack, x, y - 60, "#ffc83d", 54);
-          }
-        }
-        if (rel > 13 && id !== "tire" && !this.ctx.reducedMotion) this.cameras.main.shake(130, 0.0035);
-      } else if (rel > 8) {
-        this.fx.burst(this.fx.puff, 3, x, y);
-      }
+      if (rel > 13 && id !== "tire" && !this.ctx.reducedMotion) this.cameras.main.shake(130, 0.0035);
+    } else if (rel > 8) {
+      this.fx.burst(this.fx.puff, 3, x, y);
     }
   }
 
-  private addScore(points: number) {
-    this.score += points;
-    this.hud.setScore(this.score, true);
-    this.ctx.onEvent({ type: "score", score: this.score });
+  private onScore(score: number) {
+    this.hud.setScore(score, true);
+    this.ctx.onEvent({ type: "score", score });
   }
 
   private freeze(ms: number) {
     this.freezeUntil = Math.max(this.freezeUntil, this.time.now + ms);
   }
 
-  private loadNext() {
-    if (this.shot >= this.ammo.length) return;
-    const def = PROJECTILES[this.ammo[this.shot]];
-    this.shot += 1;
-    this.current = def;
+  private onLoad(def: ProjectileDef, shot: number) {
     this.charged = this.aimPower >= 0.98;
     this.linaBubble.hide();
     const pos = this.pulledPosition();
     this.readyImage = this.add.image(pos.x, pos.y, def.tex).setDepth(8);
     this.readyPop.value = 0.2;
     this.tweens.add({ targets: this.readyPop, value: 1, duration: 300, ease: "Back.easeOut" });
-    this.phase = "ready";
-    this.hud.showTag(def.id, this.ammo.slice(this.shot), this.launches === 0 ? this.copy.firstHint : undefined);
+    this.hud.showTag(def.id, AMMO.slice(shot), this.sim.launches.length === 0 ? this.copy.firstHint : undefined);
     this.sfx("load", 0.8);
     const text = this.copy.projectiles[def.id];
     this.ctx.onEvent({ type: "announce", message: this.copy.announce.next(text.name, text.tip) });
   }
 
   private tryFire() {
-    if (this.phase !== "ready" || !this.current || !this.readyImage) return;
-    if (this.pendingWave !== null || this.finishing) return;
-    if (this.aimPower < MIN_POWER) return;
-    const def = this.current;
-    const pos = this.pulledPosition();
-    const vel = this.launchVelocity();
+    if (!this.sim.canLaunch || !this.readyImage || this.aimPower < MIN_POWER) return;
+    const def = this.sim.current!;
+    const angle = Phaser.Math.Clamp(Math.round(this.aimAngle * 100), ANGLE_STEPS.min, ANGLE_STEPS.max);
+    const power = Phaser.Math.Clamp(Math.round(this.aimPower * 1000), POWER_STEPS.min, POWER_STEPS.max);
+    const body = this.sim.launch(angle, power);
+    if (!body) return;
+    this.aimAngle = angle / 100;
+    this.aimPower = power / 1000;
     this.readyImage.destroy();
     this.readyImage = null;
-    const obj = this.matter.add.image(pos.x, pos.y, def.tex, undefined, {
-      shape: def.shape,
-      chamfer: def.shape.type === "rectangle" ? { radius: 12 } : undefined,
-      density: def.density,
-      restitution: def.restitution,
-      friction: def.friction,
-      frictionAir: def.frictionAir,
-      label: `projectile:${def.id}`,
-    });
-    obj.setDepth(8);
-    obj.setVelocity(vel.x, vel.y);
-    obj.setAngularVelocity(def.id === "shoe" ? 0.12 : def.id === "duck" ? -0.06 : 0.03);
-    this.materials.set((obj.body as MatterJS.BodyType).id, def.material);
-    this.flying = obj;
-    this.flyingDef = def;
+    const sprite = this.addSprite(body, def.tex, def.material, 8);
     this.flyStart = this.time.now;
-    this.slowSteps = 0;
-    this.shotHits = 0;
-    this.shotMess = 0;
-    this.shotNearest = Infinity;
-    this.shotImpacts = 0;
-    this.firstImpactAt = 0;
-    this.pendingBurst = false;
-    this.phase = "flying";
     this.bandSnap = this.time.now;
-    this.launches += 1;
-    this.fx.startTrail(def.id, obj);
+    const launches = this.sim.launches.length;
+    this.fx.startTrail(def.id, sprite);
     this.fx.burst(this.fx.puff, 3, (BAND_BACK.x + BAND_FRONT.x) / 2, ANCHOR.y);
     this.sfx("launch", 0.6 + this.aimPower * 0.5);
     this.sfx("twang", 0.8);
-    if (this.wave === 0 && this.launches === 1) this.hud.hideBanner();
+    if (this.sim.wave === 0 && launches === 1) this.hud.hideBanner();
     this.decoBubble.hide();
     this.aimGfx.clear();
     this.hop(this.deco, 32);
     this.ctx.onEvent({ type: "launch" });
-    if (this.launches === 1) this.ctx.onEvent({ type: "achievement", id: "first-launch" });
+    if (launches === 1) this.ctx.onEvent({ type: "achievement", id: "first-launch" });
   }
 
-  private burstBalloon() {
-    this.pendingBurst = false;
-    const balloon = this.flying;
-    if (!balloon) return;
-    const body = balloon.body as MatterJS.BodyType;
-    const { x, y } = body.position;
-    const radius = 250;
-    const all = [
-      ...this.targets.filter((t) => t.obj).map((t) => t.obj as Phaser.Physics.Matter.Image),
-      ...this.props.map((p) => p.obj),
-      ...this.spent,
-    ];
-    for (const obj of all) {
-      const b = obj.body as MatterJS.BodyType | null;
-      if (!b) continue;
-      const dx = b.position.x - x;
-      const dy = b.position.y - y;
-      const d = Math.hypot(dx, dy);
-      if (d > radius || d < 1) continue;
-      const strength = 0.032 * (1 - d / radius) * b.mass;
-      const nx = dx / d;
-      const ny = dy / d - 0.45;
-      this.matter.body.applyForce(b, b.position, { x: nx * strength, y: ny * strength });
-    }
+  private onBurst(x: number, y: number, balloon: Matter.Body) {
     this.fx.stopTrail();
-    balloon.destroy();
-    this.flying = null;
+    this.sprites.get(balloon.id)?.destroy();
+    this.sprites.delete(balloon.id);
     this.fx.burst(this.fx.drops, 30, x, y);
     this.fx.ring(x, y, 0x5cb9f0, 170);
     this.time.delayedCall(70, () => this.fx.ring(x, y, 0xa9dcf7, 110));
@@ -779,15 +587,15 @@ export class PlayScene extends Phaser.Scene {
     this.fx.word(this.copy.words.splash, x, y - 80, "#5cb9f0", 84, true);
     this.freeze(60);
     if (!this.ctx.reducedMotion) this.cameras.main.shake(170, 0.004);
-    this.time.delayedCall(450, () => this.endShot());
   }
 
-  private shotReaction() {
-    if (this.shotHits > 0 || this.finishing) return;
-    if (this.shotNearest < 120) {
+  private onShotEnd(hits: number, mess: number, nearest: number) {
+    this.fx.stopTrail();
+    if (hits > 0 || this.sim.finishing) return;
+    if (nearest < 120) {
       this.decoSay(this.copy.nearMiss);
       this.sfx("nearMiss", 0.9);
-    } else if (this.shotMess > 0) {
+    } else if (mess > 0) {
       this.decoSay(this.copy.messOnly);
       this.sfx("miss", 0.5);
     } else {
@@ -799,50 +607,16 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private endShot() {
-    if (this.phase !== "flying") return;
-    this.fx.stopTrail();
-    if (this.flying) {
-      this.spent.push(this.flying);
-      this.flying = null;
-    }
-    this.flyingDef = null;
-    this.phase = "settling";
-    this.shotReaction();
-    if (this.finishing) return;
-    if (this.pendingWave !== null) {
-      this.time.delayedCall(450, () => this.startInterlude());
-      return;
-    }
-    this.queueNextOrEnd(this.shotHits === 0 ? 650 : 380);
-  }
-
-  private queueNextOrEnd(delay = 380) {
-    if (this.shot < this.ammo.length) {
-      this.time.delayedCall(delay, () => {
-        if (this.phase === "settling" && !this.finishing) this.loadNext();
-      });
-    } else {
-      this.hud.setAim(null, null);
-      this.time.delayedCall(2400, () => {
-        if (!this.finishing) this.finish(false);
-      });
-    }
-  }
-
-  private hitTarget(t: TargetState) {
-    if (!t.obj) return;
-    t.hit = true;
-    this.shotHits += 1;
-    this.targetScore += t.def.points;
-    this.addScore(t.def.points);
-    const { x, y } = (t.obj.body as MatterJS.BodyType).position;
+  private onHit(t: SimTargetState, shotHits: number, combo: boolean) {
+    const body = t.body!;
+    const sprite = this.sprites.get(body.id);
+    const { x, y } = body.position;
     this.lastHit = { at: this.time.now, x, y };
     const gold = t.def.id === "golden-gnome";
     this.fx.popup(`+${t.def.points}`, x, y - 80, gold ? "#ffe39a" : "#ffc83d", gold ? 70 : 60, gold ? this.copy.words.gold : undefined);
     this.fx.burst(this.fx.stars, gold ? 16 : 10, x, y);
     this.fx.ring(x, y, gold ? 0xffc83d : 0xfffaf0, 100);
-    this.flashBody(t.obj.body as MatterJS.BodyType);
+    this.flashBody(body);
     if (t.def.id === "flamingo") this.fx.burst(this.fx.feathers, 12, x, y);
     if (t.def.material === "wood") this.fx.burst(this.fx.splinters, 8, x, y);
     if (t.def.material === "ceramic") this.fx.burst(this.fx.sparks, 6, x, y);
@@ -851,25 +625,21 @@ export class PlayScene extends Phaser.Scene {
       this.sfx("rustle", 0.9);
     }
     if (t.def.id === "birdhouse") {
-      t.obj.setTexture("birdhouse-empty");
-      t.shadow?.setTexture("birdhouse-empty");
+      sprite?.setTexture("birdhouse-empty");
+      this.shadows.get(body.id)?.setTexture("birdhouse-empty");
       birdFlyOut(this, x + 4, y + 2, this.fx, this.ctx.reducedMotion, this.copy.words.tweet);
       this.sfx("tweet", 1);
     }
     this.sfx("target", 1);
-    this.freeze(this.shotHits === 1 ? 50 : 30);
+    this.freeze(shotHits === 1 ? 50 : 30);
     this.arlindo.shout(this.copy.targets[t.def.id].shout);
     this.flyToHud(t, x, y);
-    const obj = t.obj;
-    const bodyId = (obj.body as MatterJS.BodyType).id;
-    this.knocked.add(bodyId);
-    this.time.delayedCall(650, () => obj.active && obj.setTint(KNOCKED_TINT));
+    this.knocked.add(body.id);
+    this.time.delayedCall(650, () => sprite?.active && sprite.setTint(KNOCKED_TINT));
     this.hop(this.lina, 24);
     let message = this.copy.announce.knocked(this.copy.targets[t.def.id].name, Boolean(t.def.fem), t.def.points);
-    if (this.shotHits >= 2 && this.phase === "flying") {
-      this.comboScore += SCORE.comboBonus;
-      this.addScore(SCORE.comboBonus);
-      this.fx.word(this.copy.words.combo(this.shotHits), W / 2, 340, "#f06ba8", 96, true);
+    if (combo) {
+      this.fx.word(this.copy.words.combo(shotHits), W / 2, 340, "#f06ba8", 96, true);
       this.fx.flash(0.3);
       this.freeze(90);
       this.sfx("combo", 1);
@@ -877,140 +647,49 @@ export class PlayScene extends Phaser.Scene {
       this.hop(this.deco, 36, 1);
       this.hop(this.lina, 36, 1);
       this.ctx.onEvent({ type: "achievement", id: "domino-effect" });
-      message += this.copy.announce.combo(this.shotHits, SCORE.comboBonus);
-    } else if (this.shotHits === 1) {
+      message += this.copy.announce.combo(shotHits, SCORE.comboBonus);
+    } else if (shotHits === 1) {
       this.linaSay(Phaser.Utils.Array.GetRandom(this.copy.hitLines));
     }
     this.ctx.onEvent({ type: "announce", message });
-    const waveTargets = this.targets.filter((tt) => tt.def.wave === this.wave + 1);
-    if (waveTargets.every((tt) => tt.hit)) this.onWaveCleared();
   }
 
-  private onWaveCleared() {
-    const next = this.wave + 1;
-    this.waveScore += SCORE.waveBonus;
-    this.addScore(SCORE.waveBonus);
+  private onMess(points: number, x: number, y: number) {
+    this.fx.popup(`+${points}`, x, y - 70, "#fbf5e6", 40, this.copy.words.mess);
+    this.sfx("mess", 0.6, 80);
+  }
+
+  private onWaveCleared(wave: number, last: boolean) {
     this.time.delayedCall(380, () => this.fx.popup(`+${SCORE.waveBonus}`, W / 2, 470, "#9df0dc", 54, this.copy.words.roundClear));
     this.sfx("waveClear", 0.9);
-    if (next >= WAVES.length) {
-      if (!this.finishing) {
-        this.finishing = true;
-        this.time.delayedCall(1300, () => this.finish(true));
-      }
-      return;
-    }
-    this.pendingWave = next;
-    this.ctx.onEvent({ type: "announce", message: this.copy.announce.roundClear(this.wave + 1, SCORE.waveBonus) });
-    if (this.phase !== "flying") this.time.delayedCall(700, () => this.startInterlude());
+    if (!last) this.ctx.onEvent({ type: "announce", message: this.copy.announce.roundClear(wave + 1, SCORE.waveBonus) });
   }
 
-  private clearSpent() {
-    const gone = this.spent;
-    this.spent = [];
-    for (const obj of gone) {
-      if (!obj.active) continue;
-      obj.setStatic(true);
-      obj.setSensor(true);
-      this.fx.burst(this.fx.puff, 6, obj.x, obj.y);
-      this.tweens.add({ targets: obj, alpha: 0, scale: 0.6, duration: this.ctx.reducedMotion ? 80 : 260, onComplete: () => obj.destroy() });
-    }
-  }
-
-  private startInterlude() {
-    if (this.pendingWave === null || this.finishing || this.phase === "over") return;
-    const w = this.pendingWave;
-    this.pendingWave = null;
-    this.wave = w;
-    if (this.phase === "aiming") {
+  private onInterlude(w: number, spent: Matter.Body[]) {
+    if (this.aiming) {
+      this.aiming = false;
       this.dragStart = null;
       this.aimAngle = this.savedAim.angle;
       this.aimPower = this.savedAim.power;
     }
-    this.phase = "interlude";
     const def = this.copy.waves[WAVES[w].id];
     this.hud.setRound(w);
     this.hud.showBanner(this.copy.roundOf(w + 1, WAVES.length), def.title, def.subtitle, 1500);
     if (def.arlindo) this.time.delayedCall(250, () => this.arlindo.shout(def.arlindo!, 1500));
     this.cat.comeBack();
-    this.clearSpent();
+    for (const body of spent) {
+      const sprite = this.sprites.get(body.id);
+      this.sprites.delete(body.id);
+      if (!sprite?.active) continue;
+      this.fx.burst(this.fx.puff, 6, sprite.x, sprite.y);
+      this.tweens.add({ targets: sprite, alpha: 0, scale: 0.6, duration: this.ctx.reducedMotion ? 80 : 260, onComplete: () => sprite.destroy() });
+    }
     this.ctx.onEvent({ type: "announce", message: this.copy.announce.round(w + 1, WAVES.length, def.title, def.subtitle) });
-    this.targets
-      .filter((t) => t.def.wave === w + 1)
-      .forEach((t, i) => this.time.delayedCall(420 + i * 260, () => this.spawnTarget(t, true)));
-    this.time.delayedCall(1450, () => {
-      if (this.phase !== "interlude") return;
-      if (this.readyImage) {
-        this.phase = "ready";
-      } else {
-        this.phase = "settling";
-        this.queueNextOrEnd(0);
-      }
-    });
   }
 
-  private checkWorld() {
-    if (this.pendingHits.size) {
-      for (const t of this.pendingHits) if (!t.hit) this.hitTarget(t);
-      this.pendingHits.clear();
-    }
-    for (const t of this.targets) {
-      if (!t.active || t.hit || !t.obj) continue;
-      const b = t.obj.body as MatterJS.BodyType;
-      if (!t.rest) {
-        if (this.time.now >= t.armedAt) t.rest = this.poseOf(t.obj);
-        continue;
-      }
-      const dist = Math.hypot(b.position.x - t.rest.x, b.position.y - t.rest.y);
-      const turn = Math.abs(Phaser.Math.Angle.Wrap(b.angle - t.rest.angle));
-      if (turn > 0.7 || dist > 44 || b.position.y > H + 80) this.hitTarget(t);
-    }
-    let messPoints = 0;
-    let mx = 0;
-    let my = 0;
-    for (const p of this.props) {
-      if (p.messy) continue;
-      const b = p.obj.body as MatterJS.BodyType;
-      const dist = Math.hypot(b.position.x - p.rest.x, b.position.y - p.rest.y);
-      const turn = Math.abs(Phaser.Math.Angle.Wrap(b.angle - p.rest.angle));
-      if (turn > 0.35 || dist > 26) {
-        p.messy = true;
-        messPoints += SCORE.messBonus;
-        mx += b.position.x;
-        my += b.position.y;
-      }
-    }
-    if (messPoints > 0) {
-      const n = messPoints / SCORE.messBonus;
-      this.messScore += messPoints;
-      this.shotMess += messPoints;
-      this.addScore(messPoints);
-      this.fx.popup(`+${messPoints}`, mx / n, my / n - 70, "#fbf5e6", 40, this.copy.words.mess);
-      this.sfx("mess", 0.6, 80);
-    }
-    if (this.phase === "flying" && this.flying) {
-      const b = this.flying.body as MatterJS.BodyType;
-      this.cat.notifyFlyby(b.position.x, b.position.y);
-      for (const t of this.targets) {
-        if (!t.active || t.hit || !t.obj) continue;
-        const tb = t.obj.body as MatterJS.BodyType;
-        const d = Math.hypot(tb.position.x - b.position.x, tb.position.y - b.position.y);
-        if (d < this.shotNearest) this.shotNearest = d;
-      }
-      const out = b.position.x < -160 || b.position.x > W + 160 || b.position.y > H + 160;
-      this.slowSteps = b.speed < 0.6 ? this.slowSteps + 1 : 0;
-      const settledAfterImpact = this.firstImpactAt > 0 && this.time.now - this.firstImpactAt > 2600;
-      if (out || this.slowSteps > 26 || settledAfterImpact || this.time.now - this.flyStart > 7000) this.endShot();
-    }
-  }
-
-  private finish(won: boolean) {
-    if (this.phase === "over") return;
-    this.finishing = true;
-    this.phase = "over";
+  private finish(tally: StreetTally) {
+    const { won, score, stars, ammoBonus } = tally;
     this.fx.stopTrail();
-    const unused = won ? this.ammo.length - this.shot + (this.readyImage ? 1 : 0) : 0;
-    const ammoBonus = unused * SCORE.ammoBonus;
-    if (ammoBonus > 0) this.addScore(ammoBonus);
     if (this.readyImage) {
       this.tweens.add({ targets: this.readyPop, value: 0, duration: 200 });
     }
@@ -1019,11 +698,10 @@ export class PlayScene extends Phaser.Scene {
     this.hud.hideBanner();
     this.decoBubble.hide();
     this.linaBubble.hide();
-    const stars = won ? (this.score >= SCORE.threeStars ? 3 : this.score >= SCORE.twoStars ? 2 : 1) : 0;
     const achievements: string[] = [];
     if (won) achievements.push("street-win");
     if (stars === 3) achievements.push("three-stars");
-    if (this.score >= SCORE.record) achievements.push("high-scorer");
+    if (score >= SCORE.record) achievements.push("high-scorer");
     if (won) {
       this.sfx("victory", 1);
       this.fx.burst(this.fx.stars, 40, W / 2, 200);
@@ -1038,39 +716,29 @@ export class PlayScene extends Phaser.Scene {
       this.arlindo.shout(this.copy.arlindo.lose, 2000);
       this.tweens.add({ targets: [this.deco, this.lina], scaleY: 0.92, angle: -4, duration: 400, ease: "Sine.easeOut" });
     }
-    const knocked = this.targets.filter((t) => t.hit).length;
-    const messy = this.props.filter((p) => p.messy).length;
     const nextStar = stars === 1 ? SCORE.twoStars : stars === 2 ? SCORE.threeStars : 0;
     const text = this.copy.summary;
     const summary = [
-      text.launches(this.shot, this.ammo.length),
-      text.targets(knocked, TARGETS.length),
-      text.mess(messy, this.props.length),
-      nextStar ? text.nextStar(nextStar - this.score) : "",
+      text.launches(tally.shots, AMMO.length),
+      text.targets(tally.stats.targets, TARGETS.length),
+      text.mess(tally.stats.mess, this.sim.props.length),
+      nextStar ? text.nextStar(nextStar - score) : "",
     ]
       .filter(Boolean)
       .join(" ");
     const result: GameResult = {
       won,
-      score: this.score,
+      score,
       stars,
       breakdown: [
-        { label: this.copy.breakdown.targets, value: this.targetScore },
-        { label: this.copy.breakdown.waves, value: this.waveScore },
-        { label: this.copy.breakdown.mess, value: this.messScore },
-        { label: this.copy.breakdown.combos, value: this.comboScore },
+        { label: this.copy.breakdown.targets, value: tally.targetScore },
+        { label: this.copy.breakdown.waves, value: tally.waveScore },
+        { label: this.copy.breakdown.mess, value: tally.messScore },
+        { label: this.copy.breakdown.combos, value: tally.comboScore },
         { label: this.copy.breakdown.ammo, value: ammoBonus },
       ].filter((row, i) => i === 0 || row.value !== 0),
-      stats: {
-        targets: knocked,
-        targetPoints: this.targetScore,
-        waves: Math.round(this.waveScore / SCORE.waveBonus),
-        mess: messy,
-        combos: Math.round(this.comboScore / SCORE.comboBonus),
-        launches: this.launches,
-        ammoLeft: unused,
-        timeMs: Math.round(this.playMs),
-      },
+      stats: { ...tally.stats, timeMs: Math.round(this.playMs) },
+      replay: { kind: "street-launches", version: 1, launches: this.sim.launches.map((l) => ({ ...l })) },
       achievements,
       summary,
     };
@@ -1083,7 +751,8 @@ export class PlayScene extends Phaser.Scene {
     back.clear();
     front.clear();
     let target = { x: ANCHOR.x, y: ANCHOR.y + 4 };
-    const holding = this.readyImage && (this.phase === "ready" || this.phase === "aiming" || this.phase === "interlude");
+    const phase = this.sim.phase;
+    const holding = this.readyImage && (phase === "ready" || phase === "interlude");
     if (holding && this.readyImage) {
       target = { x: this.readyImage.x, y: this.readyImage.y };
     } else if (this.time.now - this.bandSnap < 260) {
@@ -1118,10 +787,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private drawSpeedLines(g: Phaser.GameObjects.Graphics) {
-    if (!this.flying || this.phase !== "flying") return;
+    const b = this.sim.flying;
+    if (!b || this.sim.phase !== "flying") return;
     const age = this.time.now - this.flyStart;
     if (age > 340 || this.ctx.reducedMotion) return;
-    const b = this.flying.body as MatterJS.BodyType;
     const len = Math.hypot(b.velocity.x, b.velocity.y);
     if (len < 1) return;
     const nx = b.velocity.x / len;
@@ -1139,10 +808,11 @@ export class PlayScene extends Phaser.Scene {
   private drawAim() {
     const g = this.aimGfx;
     g.clear();
-    const aiming = (this.phase === "ready" || this.phase === "aiming" || this.phase === "interlude") && this.readyImage;
-    if (!aiming || !this.readyImage) {
+    const phase = this.sim.phase;
+    const showing = (phase === "ready" || phase === "interlude") && this.readyImage;
+    if (!showing || !this.readyImage) {
       this.drawSpeedLines(g);
-      if (this.phase !== "attract") this.hud.setAim(null, null);
+      if (phase !== "attract") this.hud.setAim(null, null);
       return;
     }
     const pos = this.pulledPosition();
@@ -1152,9 +822,9 @@ export class PlayScene extends Phaser.Scene {
     this.readyImage.setAngle(-this.aimAngle);
     this.readyImage.setScale((1 + p * 0.22) * pop, (1 - p * 0.14) * pop);
     this.hud.setAim(this.aimAngle, p);
-    if (p < MIN_POWER || this.phase === "interlude") return;
+    if (p < MIN_POWER || phase === "interlude") return;
     const vel = this.launchVelocity();
-    const air = 1 - (this.current?.frictionAir ?? 0.004);
+    const air = 1 - (this.sim.current?.frictionAir ?? 0.004);
     let x = pos.x;
     let y = pos.y;
     let vx = vel.x;
@@ -1178,34 +848,36 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
-    if (this.phase !== "attract" && this.phase !== "over") {
+    const phase = this.sim.phase;
+    if (phase !== "attract" && phase !== "over") {
       this.playMs += delta;
       this.handleHeldKeys();
     }
-    if (this.phase !== "attract") {
+    if (phase !== "attract") {
       if (this.time.now < this.freezeUntil) {
         this.acc = 0;
       } else {
         this.acc += Math.min(delta, 100);
         let steps = 0;
         while (this.acc >= STEP_MS && steps < 6) {
-          this.matter.world.step(STEP_MS);
           this.acc -= STEP_MS;
           steps += 1;
-          if (this.pendingBurst) this.burstBalloon();
-          if (this.phase !== "over") this.checkWorld();
-          this.processImpacts();
+          if (!this.sim.step()) {
+            this.acc = 0;
+            break;
+          }
         }
         if (steps === 6) this.acc = 0;
       }
     }
-    this.syncShadows();
+    this.syncSprites();
+    if (this.sim.phase === "flying" && this.sim.flying) this.cat.notifyFlyby(this.sim.flying.position.x, this.sim.flying.position.y);
     this.drawBands();
     this.drawAim();
   }
 
   private handleHeldKeys() {
-    if (this.phase !== "ready") return;
+    if (!this.aimable) return;
     if (this.time.now - this.holdSince < 230) return;
     const k = this.keys;
     const rate = this.game.loop.delta / 1000;

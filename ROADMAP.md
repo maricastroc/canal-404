@@ -90,7 +90,7 @@ Decision: [0006](docs/decisions/0006-daily-missions.md).
 
 Depends on the headless simulation and the backend.
 
-- [ ] Rua Sem Saída replay: timers on step counters, a launch log in the result and a server replay.
+- [x] Rua Sem Saída replay: timers on step counters, a launch log in the result and a server replay ([0009](docs/decisions/0009-street-replay.md)).
 - [ ] Laboratório level editor inside the game's own workshop.
 - [ ] Publishing only levels with a solution proven by the server, with size and complexity limits and validated input.
 - [ ] Sharing by link, and playing other players' levels safely.

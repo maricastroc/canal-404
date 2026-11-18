@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Rua Sem Saída refeita no servidor
+- **The server now replays every Rua Sem Saída match** before it enters the board. The result carries the launches (when, at what angle and with what power), and the channel plays them again with the game's own physics. Only a match that ends with the same score is accepted, and the board marks it "Lançamentos refeitos pelo canal". Before, the server only checked that the numbers added up.
+- The game's physics and rules moved out of Phaser into a simulation shared with the server. Shot endings, reloads, round breaks and target spawns now count simulation steps instead of clock time, so hit-stops pause them too. While you aim, the yard stops moving once everything has settled.
+- **The Rua Sem Saída board starts over** (version 2). Older records can't be replayed, so they no longer show.
+- Same rounds, targets, projectiles, scoring and missions. Corners of the props are built with a fixed number of segments, so bounces can differ very slightly from before.
+
 ### Férias Fora do Ar em inglês: o canal inteiro nos dois idiomas
 - **Off-Air Vacation plays in English** at `/en/play/off-air-vacation`: every dialog and choice, quests, the journal and map, items, posters, discoveries, the arcade mini-game, the HUD and screen-reader announcements. Only the active language's text is downloaded.
 - With all six games translated, the "This game is still in Portuguese" note is gone from English game pages.

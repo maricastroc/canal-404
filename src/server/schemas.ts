@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { AMMO } from "@/games/dead-end-street/config";
+import { ANGLE_STEPS, MAX_STEPS, POWER_STEPS } from "@/games/dead-end-street/sim";
 import { GAME_SLUGS } from "@/lib/competition/rules";
 import { isDayKey } from "@/lib/missions/calendar";
 
@@ -12,7 +14,7 @@ export const statsSchema = z
   .record(statKey, z.number().int().min(-INT).max(INT))
   .refine((stats) => Object.keys(stats).length <= 24, "estatísticas demais");
 
-export const replaySchema = z
+const labReplaySchema = z
   .object({
     kind: z.literal("lab-placements"),
     version: z.literal(1),
@@ -30,6 +32,26 @@ export const replaySchema = z
       .max(16),
   })
   .strict();
+
+const streetReplaySchema = z
+  .object({
+    kind: z.literal("street-launches"),
+    version: z.literal(1),
+    launches: z
+      .array(
+        z
+          .object({
+            at: z.number().int().min(0).max(MAX_STEPS),
+            angle: z.number().int().min(ANGLE_STEPS.min).max(ANGLE_STEPS.max),
+            power: z.number().int().min(POWER_STEPS.min).max(POWER_STEPS.max),
+          })
+          .strict(),
+      )
+      .max(AMMO.length),
+  })
+  .strict();
+
+export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema]);
 
 export const submitSchema = z
   .object({

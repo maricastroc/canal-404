@@ -2,7 +2,8 @@ import { GRID, PARTS, STEP_MS, type PartType } from "@/games/bad-ideas-lab/confi
 import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
-import { AMMO, PROPS, SCORE as STREET_SCORE, TARGETS, WAVES } from "@/games/dead-end-street/config";
+import { AMMO, PROPS, STEP_MS as STREET_STEP_MS, TARGETS, WAVES } from "@/games/dead-end-street/config";
+import { replayStreet } from "@/games/dead-end-street/sim";
 import { ROUND_MS, RIVALS, SCORE as LUNCH_SCORE } from "@/games/food-fight/config";
 import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
 import { EXTRAS_CAP, HEARTS, RUN, SCORE as RECESS_SCORE, TILE } from "@/games/operation-recess/config";
@@ -19,7 +20,7 @@ export { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type 
 
 export type RunClaim = { won: boolean; score: number; stars: number; stats: GameStats; replay?: GameReplay };
 
-export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed";
+export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed";
 
 export type Verification = "checked" | "replayed";
 
@@ -107,27 +108,19 @@ function subsetSums(values: number[], size: number) {
   return out;
 }
 
-const WAVE_COUNT = WAVES.length;
-const TARGETS_BY_WAVE = Array.from({ length: WAVE_COUNT }, (_, i) => TARGETS.filter((t) => t.wave === i + 1).map((t) => t.points));
-const TARGETS_BEFORE = TARGETS_BY_WAVE.reduce<number[]>((acc, wave) => [...acc, acc[acc.length - 1] + wave.length], [0]);
-const POINTS_BEFORE = TARGETS_BY_WAVE.reduce<number[]>((acc, wave) => [...acc, acc[acc.length - 1] + wave.reduce((a, b) => a + b, 0)], [0]);
-const MIN_SHOT_MS = 700;
-const COMBOS_BEFORE = TARGETS_BY_WAVE.reduce<number[]>((acc, wave) => [...acc, acc[acc.length - 1] + Math.max(0, wave.length - 1)], [0]);
-const STREET_INTERLUDE_MS = 1900;
-const STREET_FINALE_MS = 1300;
-const STREET_RELOAD_MS = 380;
-const STREET_MIN_WIN_MS = (WAVE_COUNT - 1) * STREET_INTERLUDE_MS + STREET_FINALE_MS;
+const STREET_STATS = ["targets", "targetPoints", "waves", "mess", "combos", "launches", "ammoLeft"] as const;
+const STREET_POINTS = TARGETS.reduce((sum, t) => sum + t.points, 0);
 
 const deadEndStreet: GameRule = {
   game: "dead-end-street",
-  version: 1,
+  version: 2,
   levels: null,
-  stats: ["targets", "targetPoints", "waves", "mess", "combos", "launches", "ammoLeft", "timeMs"],
+  stats: [...STREET_STATS, "timeMs"],
   judge(_level, claim) {
     const r = read(claim.stats, {
       targets: [0, TARGETS.length],
-      targetPoints: [0, POINTS_BEFORE[WAVE_COUNT]],
-      waves: [0, WAVE_COUNT],
+      targetPoints: [0, STREET_POINTS],
+      waves: [0, WAVES.length],
       mess: [0, PROPS.length],
       combos: [0, TARGETS.length],
       launches: [0, AMMO.length],
@@ -135,32 +128,21 @@ const deadEndStreet: GameRule = {
       timeMs: [0, 60 * 60 * 1000],
     });
     if (!r.ok) return reject("bad_stats", r.detail);
-    const s = r.values;
-    const won = s.waves === WAVE_COUNT;
-    if (s.targets < TARGETS_BEFORE[s.waves]) return reject("inconsistent", "rodada concluída sem todos os alvos");
-    const open = s.waves < WAVE_COUNT ? TARGETS_BY_WAVE[s.waves] : [];
-    const extra = s.targets - TARGETS_BEFORE[s.waves];
-    if (!won && extra >= open.length) return reject("inconsistent", "alvos de uma rodada que não começou");
-    if (!subsetSums(open, extra).has(s.targetPoints - POINTS_BEFORE[s.waves])) return reject("inconsistent", "pontos de alvos impossíveis");
-    if (s.combos > Math.min(s.launches, COMBOS_BEFORE[s.waves])) return reject("inconsistent", "combos demais");
-    if (won && s.launches + s.ammoLeft !== AMMO.length) return reject("inconsistent", "munição não confere");
-    if (won && s.launches < WAVE_COUNT) return reject("inconsistent", "vitória com lançamentos de menos");
-    if (!won && (s.ammoLeft !== 0 || s.launches !== AMMO.length)) return reject("inconsistent", "derrota com munição sobrando");
-    if (s.timeMs < s.launches * MIN_SHOT_MS) return reject("inconsistent", "lançamentos rápidos demais");
-    if (won && s.timeMs < STREET_MIN_WIN_MS + STREET_RELOAD_MS * (s.launches - WAVE_COUNT)) return reject("inconsistent", "rodadas rápidas demais");
-    const score =
-      s.targetPoints +
-      s.combos * STREET_SCORE.comboBonus +
-      s.waves * STREET_SCORE.waveBonus +
-      s.mess * STREET_SCORE.messBonus +
-      (won ? s.ammoLeft * STREET_SCORE.ammoBonus : 0);
-    const stars = won ? (score >= STREET_SCORE.threeStars ? 3 : score >= STREET_SCORE.twoStars ? 2 : 1) : 0;
+    const log = claim.replay;
+    if (!log || log.kind !== "street-launches" || log.version !== 1 || !Array.isArray(log.launches)) return reject("bad_launches", "lançamentos ausentes");
+    const replay = replayStreet(log.launches);
+    if (!replay.ok) {
+      if (replay.problem === "bad_log") return reject("bad_launches", "lançamentos fora das regras");
+      return reject("launches_failed", replay.problem === "illegal_launch" ? "lançamento fora de hora" : "a partida refeita não terminou");
+    }
+    const t = replay.tally;
+    const flags = STREET_STATS.every((key) => r.values[key] === t.stats[key]) ? [] : ["stats_mismatch"];
     return settle(
       claim,
-      { won, score, stars, rank: [score, -s.launches, 0], minElapsedMs: s.timeMs },
-      score > 0 ? undefined : "no_points",
-      undefined,
-      { launches: s.launches, combos: s.combos, mess: s.mess },
+      { won: t.won, score: t.score, stars: t.stars, rank: [t.score, -t.stats.launches, 0], minElapsedMs: replay.steps * STREET_STEP_MS },
+      t.score > 0 ? undefined : "no_points",
+      { verification: "replayed", flags },
+      { launches: t.stats.launches, combos: t.stats.combos, mess: t.stats.mess },
     );
   },
 };

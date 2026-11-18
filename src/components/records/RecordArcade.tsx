@@ -11,7 +11,7 @@ import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { formatNumber } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
-import { boardMeta, CHECK_TEXT, GAME_SLUGS, type GameSlug, type Metric } from "@/lib/competition/boards";
+import { boardMeta, checkText, GAME_SLUGS, type GameSlug, type Metric } from "@/lib/competition/boards";
 import { pickBoard, rankedLevels, type BoardLevel } from "@/lib/competition/choice";
 import { connect, fetchBoard } from "@/lib/competition/client";
 import { formatMetric, ordinal } from "@/lib/competition/format";
@@ -39,8 +39,6 @@ const COPY = localized({
     games: "Jogos do fliperama",
     cartridge: (n: number) => `Cartucho ${n}`,
     you: "Você",
-    tested: "Máquina testada pelo canal",
-    testedSr: "máquina testada pelo canal",
     position: "Pos.",
     nickname: "Apelido",
     tuning: "Sintonizando o placar…",
@@ -76,8 +74,6 @@ const COPY = localized({
     games: "Arcade games",
     cartridge: (n: number) => `Cartridge ${n}`,
     you: "You",
-    tested: "Machine tested by the channel",
-    testedSr: "machine tested by the channel",
     position: "Pos.",
     nickname: "Nickname",
     tuning: "Tuning in the board…",
@@ -186,7 +182,7 @@ function LevelPicker({ game, levels, current }: { game: GameMeta & { slug: GameS
   );
 }
 
-function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" | "nickname" | "tag" | "you" | "metrics"> & { verified?: boolean }; metrics: readonly Metric[]; verified: boolean }) {
+function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" | "nickname" | "tag" | "you" | "metrics"> & { verified?: boolean }; metrics: readonly Metric[]; verified?: string }) {
   const copy = useCopy(COPY);
   const locale = useLocale();
   return (
@@ -203,9 +199,9 @@ function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" 
           <span className="text-sm text-plum-300">#{entry.tag}</span>
           {entry.you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">{copy.you}</span> : null}
           {verified && entry.verified ? (
-            <span className="inline-flex text-mint" title={copy.tested}>
+            <span className="inline-flex text-mint" title={verified}>
               <VerifiedIcon className="size-4" />
-              <span className="sr-only">{copy.testedSr}</span>
+              <span className="sr-only">{verified}</span>
             </span>
           ) : null}
         </span>
@@ -222,7 +218,7 @@ function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" 
 function BoardTable({ game, data, caption }: { game: GameSlug; data: LeaderboardResponse; caption: string }) {
   const copy = useCopy(COPY);
   const meta = boardMeta(game, useLocale());
-  const replayed = meta.check === "replayed";
+  const verified = checkText(game, useLocale()).verified;
   const standing = data.you?.standing;
   const outside = standing && standing.position > data.entries.length ? standing : null;
   return (
@@ -245,7 +241,7 @@ function BoardTable({ game, data, caption }: { game: GameSlug; data: Leaderboard
       </thead>
       <tbody>
         {data.entries.map((entry) => (
-          <Row key={`${entry.position}-${entry.tag}`} entry={entry} metrics={meta.metrics} verified={replayed} />
+          <Row key={`${entry.position}-${entry.tag}`} entry={entry} metrics={meta.metrics} verified={verified} />
         ))}
         {outside && data.you ? (
           <>
@@ -257,7 +253,7 @@ function BoardTable({ game, data, caption }: { game: GameSlug; data: Leaderboard
             <Row
               entry={{ position: outside.position, nickname: data.you.nickname, tag: data.you.tag, you: true, metrics: outside.best.metrics, verified: outside.verified }}
               metrics={meta.metrics}
-              verified={replayed}
+              verified={verified}
             />
           </>
         ) : null}
@@ -383,7 +379,7 @@ function RulesNote({ game }: { game: GameSlug }) {
         {meta.check === "replayed" ? <VerifiedIcon className="size-4 text-mint-deep" /> : null}
         {copy.check}
       </h3>
-      <p className="mt-1 text-sm">{CHECK_TEXT[locale][meta.check]}</p>
+      <p className="mt-1 text-sm">{checkText(game, locale).explain}</p>
     </section>
   );
 }

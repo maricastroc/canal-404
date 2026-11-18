@@ -5,7 +5,9 @@ export type GameStats = Record<string, number>;
 
 export type PlacedPartReplay = { type: string; x: number; y: number; rot: number };
 
-export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] };
+export type LaunchReplay = { at: number; angle: number; power: number };
+
+export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 1; launches: LaunchReplay[] };
 
 export type GameResult = {
   won: boolean;

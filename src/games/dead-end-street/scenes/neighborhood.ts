@@ -147,10 +147,9 @@ export class Cat {
   }
 }
 
-export function popLid(scene: Phaser.Scene, can: Phaser.Physics.Matter.Image, fx: Fx, reduced: boolean, word: string) {
-  const body = can.body as MatterJS.BodyType;
-  const angle = body.angle;
-  const top = { x: body.position.x + Math.sin(angle) * 54, y: body.position.y - Math.cos(angle) * 54 };
+export function popLid(scene: Phaser.Scene, can: Phaser.GameObjects.Image, pose: { x: number; y: number; angle: number }, fx: Fx, reduced: boolean, word: string) {
+  const angle = pose.angle;
+  const top = { x: pose.x + Math.sin(angle) * 54, y: pose.y - Math.cos(angle) * 54 };
   can.setTexture("trash-can-open");
   const lid = scene.add.image(top.x, top.y, "lid").setDepth(6).setRotation(angle);
   const dir = top.x > W / 2 ? 1 : -1;

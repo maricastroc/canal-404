@@ -95,7 +95,7 @@ npm run test:e2e
 
 The suite is kept small on purpose ([decision 0007](docs/decisions/0007-essential-tests-only.md)): it only guards what breaks silently and costs a lot. Copy, timings, layout, visuals, balance and game content are checked by playing, not by tests.
 
-`npm test` runs the unit tests with Vitest (about 4 seconds): saving, loading, migrating, backing up and erasing progress and game saves; the server judge for every game (tampered and impossible results, ranking and tie-breaks); signed tickets; nicknames; the client outbox; the mission calendar, goals, selection and a proof that every mission can be completed; and the Laboratório simulation, which must keep the golden step counts the server replays.
+`npm test` runs the unit tests with Vitest (about 4 seconds): saving, loading, migrating, backing up and erasing progress and game saves; the server judge for every game (tampered and impossible results, ranking and tie-breaks); signed tickets; nicknames; the client outbox; the mission calendar, goals, selection and a proof that every mission can be completed; and the Laboratório and Rua Sem Saída simulations, which must keep the golden results the server replays.
 
 With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests: idempotent and concurrent submissions, personal bests and board order, hidden players, rate limits, retention, erasure when a player leaves, mission completion and settlement, and the API routes, including how they behave when the database is missing or down.
 
@@ -155,7 +155,7 @@ src/
     loaders.ts           dynamic import for each playable game
     types.ts             contract between the portal and the games
     kit/                 shared Phaser helpers (cartoon text, panels, speech bubble, Lucide icons)
-    dead-end-street/     slingshot game (Phaser scenes, waves, sounds)
+    dead-end-street/     slingshot game (simulation shared with the server, Phaser scenes, waves, sounds)
     bad-ideas-lab/       machine puzzle (levels, geometry, scenes, sounds)
     food-fight/          cafeteria food fight (scenes, rivals, sounds)
     operation-recess/    side-scrolling action platformer (phases, hero, enemies, boss, sounds)
@@ -165,6 +165,7 @@ src/
   lib/
     audio/               Web Audio engine, effects and music
     competition/         ranking rules, nickname filter and the browser client for the scoreboard
+    physics/             deterministic Matter.js setup and trigonometry shared by the replayed games
     progress/            persistence, secrets and achievements
   server/                scoreboard backend: database, identity, tickets, submissions, boards, limits
 prisma/                  schema and versioned migrations
@@ -186,13 +187,15 @@ The portal handles loading with a real progress bar, the intro screen, pause, re
 
 A slingshot mounted on a wagon: pull back (mouse or touch) or use the arrow keys to aim and Space to launch. Three short rounds in Seu Arlindo's yard (close targets, then behind obstacles, then up high) with seven launches of four projectile types with different physics. The neighborhood reacts: the cat runs, the trash can lid flies, the bird escapes the birdhouse. Points per target, round, mess, combos and leftover ammo; the high score is saved locally.
 
+The physics and the rules live in `sim.ts`, outside Phaser, with timers counted in simulation steps. Each result carries the launches (step, angle and power), and the server replays them with the same simulation before the match enters the board ([decision 0009](docs/decisions/0009-street-replay.md)).
+
 ## Laboratório de Péssimas Ideias (`bad-ideas-lab`)
 
 A physics puzzle in Lina's garage. The first level is a quick test: one ramp, a dashed marker showing where it goes and an arrow on the LIGAR button. Then come five silly problems: wake the cat with the bell, press the toaster button, get an orange into the juicer, bring the ball back to the TV remote, and the worst idea of all.
 
 Each level has a box of counted parts (ramps, springs, fans and conveyor belts) and a dashed build area. Parts can be dragged with mouse or finger, or placed with the keyboard: numbers pick, arrows move, R rotates, Enter places, Space runs the machine and H asks for a hint. When a run fails, the ball's path stays on screen, Lina reacts and, on the second failure, gives a hint. Stars depend on how many parts were used.
 
-The physics lives in `sim.ts`, outside Phaser, so the browser and the server run the same simulation: a pinned `matter-js`, fixed 1/60 s steps and deterministic trigonometry (`trig.ts`), so a machine ends the same way in every browser. The scene only draws, plays sounds and narrates what the simulation reports. The server replays every machine sent to the board ([decision 0005](docs/decisions/0005-shared-lab-simulation.md)). The levels were calibrated with the same rules (`config.ts`, `levels.ts` and `geometry.ts`): each one has tested solutions (`solutions.ts`), and single-part shortcuts don't work.
+The physics lives in `sim.ts`, outside Phaser, so the browser and the server run the same simulation: a pinned `matter-js`, fixed 1/60 s steps and deterministic trigonometry (`src/lib/physics/trig.ts`), so a machine ends the same way in every browser. The scene only draws, plays sounds and narrates what the simulation reports. The server replays every machine sent to the board ([decision 0005](docs/decisions/0005-shared-lab-simulation.md)). The levels were calibrated with the same rules (`config.ts`, `levels.ts` and `geometry.ts`): each one has tested solutions (`solutions.ts`), and single-part shortcuts don't work.
 
 ## Guerra de Lanche (`food-fight`)
 

@@ -1,13 +1,12 @@
-import Matter from "matter-js";
+import { DEG_TO_RAD, Matter } from "@/lib/physics/matter";
+import { cos, sin } from "@/lib/physics/trig";
 import { BALL_BODY, BALL_R, BELT_SPEED, FAN_ACCEL, FAN_HALF, FAN_REACH, FLOOR_Y, GRAVITY_Y, H, PARTS, RUN_TIMEOUT, SPRING_SPEED, STEP_MS, SURFACE, W, partAngle, partFacing } from "./config";
 import { ballInSensor, goalLayout, sceneBlocks, type PlacedPart, type Sensor } from "./geometry";
 import type { LevelDef } from "./levels";
-import { cos, sin } from "./trig";
 
 export const MAX_STEPS = Math.round(RUN_TIMEOUT / STEP_MS);
 export const REST_STEPS = 50;
 export const REST_SPEED = 0.15;
-export const DEG_TO_RAD = Math.PI / 180;
 
 export type SimLevel = Pick<LevelDef, "pipe" | "blocks" | "goal">;
 
@@ -23,42 +22,6 @@ export type SimHandlers = {
 };
 
 export type SimResult = { outcome: SimOutcome; steps: number; end: { x: number; y: number } };
-
-function rotateVertices(vertices: Matter.Vector[], angle: number, point: Matter.Vector) {
-  if (angle === 0) return vertices;
-  const c = cos(angle);
-  const s = sin(angle);
-  const px = point.x;
-  const py = point.y;
-  for (let i = 0; i < vertices.length; i += 1) {
-    const v = vertices[i];
-    const dx = v.x - px;
-    const dy = v.y - py;
-    v.x = px + (dx * c - dy * s);
-    v.y = py + (dx * s + dy * c);
-  }
-  return vertices;
-}
-
-function rotateAxes(axes: Matter.Vector[], angle: number) {
-  if (angle === 0) return;
-  const c = cos(angle);
-  const s = sin(angle);
-  for (let i = 0; i < axes.length; i += 1) {
-    const axis = axes[i];
-    const x = axis.x * c - axis.y * s;
-    axis.y = axis.x * s + axis.y * c;
-    axis.x = x;
-  }
-}
-
-Matter.Vertices.rotate = rotateVertices;
-Matter.Axes.rotate = rotateAxes;
-Object.assign(Matter.Resolver, { _restingThresh: 2, _restingThreshTangent: Math.sqrt(6) });
-
-export function physicsIsDeterministic() {
-  return Matter.Vertices.rotate === rotateVertices && Matter.Axes.rotate === rotateAxes;
-}
 
 export function springDirection(rot: number) {
   const a = partAngle("spring", rot) * DEG_TO_RAD;

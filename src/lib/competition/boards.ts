@@ -18,7 +18,7 @@ export type BoardMeta = { explain: string; metrics: readonly Metric[]; check: Bo
 export const BOARD_META: Record<GameSlug, BoardMeta> = {
   "dead-end-street": {
     explain: "Maior pontuação. Empate: quem usou menos lançamentos.",
-    check: "checked",
+    check: "replayed",
     metrics: [
       { label: "Pontos", unit: "points", lowerIsBetter: false },
       { label: "Lançamentos", unit: "count", lowerIsBetter: true, noun: ["lançamento", "lançamentos"] },
@@ -112,16 +112,43 @@ export function boardMeta(game: GameSlug, locale: Locale): BoardMeta {
   return locale === "en" ? BOARD_EN[game] : BOARD_META[game];
 }
 
-export const CHECK_TEXT = localized<Record<BoardCheck, string>>({
+export type CheckText = { explain: string; verified?: string };
+
+const CHECKED = localized<CheckText>({
   "pt-BR": {
-    replayed: "O canal monta sua máquina de novo, no servidor, e só aceita o recorde se a bolinha chegar lá.",
-    checked: "O canal confere se os números da partida fecham e se ela durou o tempo mínimo. Isso barra erros e exageros, mas não prova que a partida foi jogada sem trapaça.",
+    explain: "O canal confere se os números da partida fecham e se ela durou o tempo mínimo. Isso barra erros e exageros, mas não prova que a partida foi jogada sem trapaça.",
   },
   en: {
-    replayed: "The channel rebuilds your machine on the server and only accepts the record if the ball gets there.",
-    checked: "The channel checks that the run's numbers add up and that it lasted the minimum time. That stops mistakes and exaggerations, but it doesn't prove the run was played without cheating.",
+    explain: "The channel checks that the run's numbers add up and that it lasted the minimum time. That stops mistakes and exaggerations, but it doesn't prove the run was played without cheating.",
   },
 });
+
+const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
+  "pt-BR": {
+    "bad-ideas-lab": {
+      explain: "O canal monta sua máquina de novo, no servidor, e só aceita o recorde se a bolinha chegar lá.",
+      verified: "Máquina testada pelo canal",
+    },
+    "dead-end-street": {
+      explain: "O canal refaz seus lançamentos no servidor, com a mesma física do jogo, e só aceita o recorde se a partida terminar com a mesma pontuação.",
+      verified: "Lançamentos refeitos pelo canal",
+    },
+  },
+  en: {
+    "bad-ideas-lab": {
+      explain: "The channel rebuilds your machine on the server and only accepts the record if the ball gets there.",
+      verified: "Machine tested by the channel",
+    },
+    "dead-end-street": {
+      explain: "The channel replays your launches on the server with the game's own physics and only accepts the record if the match ends with the same score.",
+      verified: "Launches replayed by the channel",
+    },
+  },
+});
+
+export function checkText(game: GameSlug, locale: Locale): CheckText {
+  return (BOARD_META[game].check === "replayed" ? REPLAYED[locale][game] : undefined) ?? CHECKED[locale];
+}
 
 export function isGameSlug(value: unknown): value is GameSlug {
   return typeof value === "string" && (GAME_SLUGS as readonly string[]).includes(value);
