@@ -7,7 +7,6 @@ export type NavItem = {
   short: string;
   icon: "house" | "controller" | "target" | "trophy" | "smiley" | "chest" | "tower";
   color: string;
-  prefetch?: false;
 };
 
 type NavKey = "home" | "games" | "mission" | "records" | "characters" | "extras" | "about";
@@ -15,7 +14,7 @@ type NavKey = "home" | "games" | "mission" | "records" | "characters" | "extras"
 const ITEMS: (Omit<NavItem, "label" | "short"> & { key: NavKey })[] = [
   { key: "home", href: "/", icon: "house", color: "bg-sun" },
   { key: "games", href: "/games", icon: "controller", color: "bg-mint" },
-  { key: "mission", href: "/mission", icon: "target", color: "bg-lime", prefetch: false },
+  { key: "mission", href: "/mission", icon: "target", color: "bg-lime" },
   { key: "records", href: "/records", icon: "trophy", color: "bg-tomato" },
   { key: "characters", href: "/characters", icon: "smiley", color: "bg-bubblegum" },
   { key: "extras", href: "/extras", icon: "chest", color: "bg-plum-300" },

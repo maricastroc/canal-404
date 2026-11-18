@@ -1,4 +1,4 @@
-import Link from "@/i18n/Link";
+import { IntentLink } from "@/components/ui/IntentLink";
 import { Squiggle } from "@/components/art/Badges";
 import { localized } from "@/i18n/copy";
 import { getLocale } from "@/i18n/server";
@@ -34,24 +34,24 @@ export async function SiteFooter() {
         <nav aria-label={NAV_COPY[locale].footer}>
           <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 font-display text-sm uppercase tracking-wide">
             <li>
-              <Link className="underline decoration-sun decoration-2 underline-offset-4 hover:text-sun" href="/">
+              <IntentLink className="underline decoration-sun decoration-2 underline-offset-4 hover:text-sun" href="/">
                 {copy.room}
-              </Link>
+              </IntentLink>
             </li>
             <li>
-              <Link className="underline decoration-mint decoration-2 underline-offset-4 hover:text-mint" href="/games">
+              <IntentLink className="underline decoration-mint decoration-2 underline-offset-4 hover:text-mint" href="/games">
                 {copy.games}
-              </Link>
+              </IntentLink>
             </li>
             <li>
-              <Link className="underline decoration-bubblegum decoration-2 underline-offset-4 hover:text-bubblegum" href="/extras">
+              <IntentLink className="underline decoration-bubblegum decoration-2 underline-offset-4 hover:text-bubblegum" href="/extras">
                 {copy.extras}
-              </Link>
+              </IntentLink>
             </li>
             <li>
-              <Link className="underline decoration-sky decoration-2 underline-offset-4 hover:text-sky" href="/about">
+              <IntentLink className="underline decoration-sky decoration-2 underline-offset-4 hover:text-sky" href="/about">
                 {copy.about}
-              </Link>
+              </IntentLink>
             </li>
           </ul>
         </nav>

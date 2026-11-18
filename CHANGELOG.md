@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Páginas mais leves
+- **Each page now downloads about half the JavaScript it used to.** The about page went from about 1.2 MB to 560 KB, extras and records to under 700 KB, and the broadcast room to under 1 MB. Menu, footer and room links now load the next page when you point at, focus or touch them, instead of loading every section in advance.
+- The room loads the VHS tapes when the shelf opens and the art of each game's cover only when its channel is on the TV. The phone menu and the achievement notices load their animations the first time they appear.
+- **Smoother room.** The mascot's eyes still follow the pointer, but moving the mouse no longer redraws the whole room, which cuts the work per pointer move by about 40%.
+- Same pages, animations and art.
+
 ### Rua Sem Saída refeita no servidor
 - **The server now replays every Rua Sem Saída match** before it enters the board. The result carries the launches (when, at what angle and with what power), and the channel plays them again with the game's own physics. Only a match that ends with the same score is accepted, and the board marks it "Lançamentos refeitos pelo canal". Before, the server only checked that the numbers added up.
 - The game's physics and rules moved out of Phaser into a simulation shared with the server. Shot endings, reloads, round breaks and target spawns now count simulation steps instead of clock time, so hit-stops pause them too. While you aim, the yard stops moving once everything has settled.

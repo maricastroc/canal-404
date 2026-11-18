@@ -8,6 +8,7 @@ import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { useHydrated } from "@/lib/progress/hooks";
 import { TAPES, tapeById, type Tape, type TapeId } from "./objects/tapes";
+import { loadTapePrograms } from "./tapes/programs";
 
 const COPY = localized({
   "pt-BR": {
@@ -98,6 +99,9 @@ function tapeAction(tape: Tape, copy: (typeof COPY)[keyof typeof COPY]) {
 }
 
 export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClose, onHoverSound }: Props) {
+  useEffect(() => {
+    if (open) void loadTapePrograms();
+  }, [open]);
   const hydrated = useHydrated();
   const reduced = useReducedMotion();
   const locale = useLocale();

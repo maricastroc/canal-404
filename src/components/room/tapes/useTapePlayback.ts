@@ -3,7 +3,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { getAudio } from "@/lib/audio/engine";
 import type { TapeId } from "../objects/tapes";
-import { TAPE_PROGRAMS } from ".";
+import { useTapeProgram } from "./programs";
 import type { TapeCue } from "./vhs";
 
 const subscribeAudio = (listener: () => void) => getAudio().subscribe(listener);
@@ -18,13 +18,14 @@ export function useSoundOn() {
 
 export function useTapePlayback(tape: TapeId | null, since: number, take: number, onCue: (cue: TapeCue, tape: TapeId) => void) {
   const sound = useSoundOn();
+  const program = useTapeProgram(tape);
   const cueHandler = useRef(onCue);
   useEffect(() => {
     cueHandler.current = onCue;
   }, [onCue]);
 
   useEffect(() => {
-    const song = tape ? TAPE_PROGRAMS[tape].song : undefined;
+    const song = program?.song;
     if (!song || !sound) return;
     const audio = getAudio();
     const elapsed = performance.now() - since;
@@ -41,15 +42,15 @@ export function useTapePlayback(tape: TapeId | null, since: number, take: number
       window.clearTimeout(timer);
       release();
     };
-  }, [tape, since, take, sound]);
+  }, [program, since, take, sound]);
 
   useEffect(() => {
-    if (!tape) return;
-    const cues = TAPE_PROGRAMS[tape].cues ?? [];
+    if (!tape || !program) return;
+    const cues = program.cues ?? [];
     const elapsed = performance.now() - since;
     const timers = cues
       .filter((cue) => cue.at >= elapsed - 60)
       .map((cue) => window.setTimeout(() => cueHandler.current(cue, tape), Math.max(0, cue.at - elapsed)));
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [tape, since, take]);
+  }, [tape, program, since, take]);
 }

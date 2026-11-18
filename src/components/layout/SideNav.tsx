@@ -7,6 +7,7 @@ import { useSound } from "@/lib/audio/hooks";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { isActive, NAV_COPY, navItems } from "./nav";
 import { NavIcon } from "./NavIcon";
+import { NavLink } from "./NavLink";
 import { SoundToggle } from "./SoundToggle";
 import { VisitorCounter } from "./VisitorCounter";
 
@@ -32,9 +33,8 @@ export function SideNav({ className = "" }: { className?: string }) {
             const active = isActive(pathname, item.href);
             return (
               <li key={item.href} className={tilts[i]}>
-                <Link
-                  href={item.href}
-                  prefetch={item.prefetch}
+                <NavLink
+                  item={item}
                   aria-current={active ? "page" : undefined}
                   onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
                   onClick={() => play("click")}
@@ -46,7 +46,7 @@ export function SideNav({ className = "" }: { className?: string }) {
                     <NavIcon icon={item.icon} className="size-7 short:size-6 shorter:size-5" />
                   </span>
                   {item.label}
-                </Link>
+                </NavLink>
               </li>
             );
           })}

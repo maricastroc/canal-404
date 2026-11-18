@@ -24,7 +24,7 @@ Canal 404 grows in small, verifiable deliveries. Player experience drives the or
 - [x] Guerra de Lanche: food that misses a kid can hit the lunch lady behind them, for every input; Space avoids kids standing in front of her.
 - [x] Laboratório on phones: the parts tray and level card shrink just enough to keep the whole build area visible.
 - [ ] Férias Fora do Ar: residents fade when hidden behind tall props; critters respect furniture.
-- [ ] Trim the portal's JavaScript (about 1.1 MB per page today), starting with the broadcast room re-rendering on every pointer move.
+- [x] Trim the portal's JavaScript: pages went from about 1.2 MB to between 560 KB and 980 KB, and the broadcast room no longer re-renders on every pointer move ([0010](docs/decisions/0010-page-javascript.md)).
 
 ## Stage 2: Competition and coming back
 

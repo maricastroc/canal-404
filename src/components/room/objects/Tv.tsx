@@ -8,7 +8,7 @@ import { localized } from "@/i18n/copy";
 import { missionCta, missionHint, useMissionOnAir } from "../MissionOnAir";
 import { spotStyle, SPOTS, type Spot } from "../layout";
 import { useBroadcast, useTimeline } from "../tapes/broadcast";
-import { TAPE_PROGRAMS } from "../tapes";
+import { useTapeProgram } from "../tapes/programs";
 import { isTape } from "./tapes";
 import { CHANNELS, ChannelContent, type ChannelId } from "./TvChannels";
 import { TV_BOX, TV_KNOB, TV_SCREEN, TvKnob, TvSet } from "./TvSet";
@@ -69,7 +69,7 @@ type ScreenProps = {
 
 function RewindButton({ channel, onHoverSound, raised }: { channel: ChannelId; onHoverSound?: () => void; raised: boolean }) {
   const locale = useLocale();
-  const program = isTape(channel) ? TAPE_PROGRAMS[channel] : null;
+  const program = useTapeProgram(isTape(channel) ? channel : null);
   const { replay } = useBroadcast();
   const { phase } = useTimeline([0, program?.length ?? Number.MAX_SAFE_INTEGER]);
   if (!program?.rewind || !program.length || phase === 0) return null;

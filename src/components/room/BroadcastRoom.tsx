@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
@@ -58,6 +58,7 @@ import { bestRecord, plays, unplayedGames } from "@/lib/schedule";
 import { RoomBackdrop } from "./RoomBackdrop";
 import { RoomButton, RoomLink } from "./RoomObject";
 import { useMascotDirector } from "./useMascotDirector";
+import { useLook, useLookStore, type LookStore } from "./lookStore";
 import { unlockedTracks } from "@/lib/audio/unlocks";
 
 const JOKE_FACES: ("happy" | "wink" | "excited" | "confused" | "surprised")[] = ["happy", "wink", "confused", "excited", "surprised"];
@@ -314,6 +315,10 @@ function periodFor(hour: number): SkyPeriod {
   return "night";
 }
 
+function WatchingMascot({ store, ...props }: Omit<ComponentProps<typeof Mascot404>, "look"> & { store: LookStore }) {
+  return <Mascot404 {...props} look={useLook(store)} />;
+}
+
 export function BroadcastRoom() {
   const router = useLocaleRouter();
   const locale = useLocale();
@@ -331,7 +336,7 @@ export function BroadcastRoom() {
 
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
-  const [look, setLook] = useState({ x: 0, y: 0 });
+  const look = useLookStore();
   const [wiggle, setWiggle] = useState(0);
   const pokes = useRef<number[]>([]);
 
@@ -469,8 +474,8 @@ export function BroadcastRoom() {
     const origin = spotCenter(SPOTS.mascot);
     const dx = (target.x - origin.x) / 500;
     const dy = (target.y - origin.y) / 360;
-    setLook({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
-  }, []);
+    look.set(dx, dy);
+  }, [look]);
 
   const quietFocus = useRef(false);
 
@@ -505,7 +510,7 @@ export function BroadcastRoom() {
         const cy = rect.top + (center.y / SCENE.h) * rect.height;
         const dx = (event.clientX - cx) / (rect.width * 0.32);
         const dy = (event.clientY - cy) / (rect.height * 0.4);
-        setLook({ x: Math.max(-1, Math.min(1, dx)), y: Math.max(-1, Math.min(1, dy)) });
+        look.set(dx, dy);
       });
       poke();
     };
@@ -516,7 +521,7 @@ export function BroadcastRoom() {
       stage.removeEventListener("pointerdown", onMove);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [poke]);
+  }, [look, poke]);
 
   const tuneTo = useCallback(
     (next: ChannelId, opts: { quiet?: boolean } = {}) => {
@@ -1234,7 +1239,7 @@ export function BroadcastRoom() {
           className="[&>span]:!translate-y-0 [&>span]:!drop-shadow-none"
         >
           <span className="block h-full w-full" style={{ animation: "float 5s ease-in-out infinite" }}>
-            <Mascot404 pose="peek" expression={expression} look={look} wiggle={wiggle} className="h-full w-full" />
+            <WatchingMascot store={look} pose="peek" expression={expression} wiggle={wiggle} className="h-full w-full" />
           </span>
         </RoomButton>
 
@@ -1445,7 +1450,7 @@ export function BroadcastRoom() {
         createPortal(
           <div className="pointer-events-none flex min-h-20 items-end gap-2 [&_.font-hand]:text-[16px]" aria-hidden>
             <div className="w-16 shrink-0 drop-shadow-[3px_4px_0_#1d1830]">
-              <Mascot404 expression={expression} look={look} className="w-full" />
+              <WatchingMascot store={look} expression={expression} className="w-full" />
             </div>
             <AnimatePresence mode="wait">
               {bubbleText && (
