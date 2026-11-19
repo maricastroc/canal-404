@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Guerra de Lanche conferida mais de perto
+- The channel now checks Guerra de Lanche results against the round's own timers: how many snacks fit in the time, how many classmates could pop up, which classmates exist at each point of the round, how many puddings were taken and how much a streak can pay. A result with numbers the round couldn't produce is rejected.
+- Checked against 100 rounds played by bots, wins and early losses alike: none was refused. Scores, rankings and boards are unchanged.
+
 ### Férias Fora do Ar: ninguém some atrás dos móveis
 - **Residents stay visible.** The juice bar, kiosk, shed, trees and other tall props already turned see-through when Déco walked behind them. Now they do the same when a resident walks behind them. Residents who work behind their own counter, like Capi at the juice bar, keep it solid.
 - **Critters respect furniture.** The lobby kitten no longer walks over the sofa or the suitcases while following Déco. Critters that walk or hop pick spots they can stand on and stop or turn back at anything solid. Frogs still hop into the stream.

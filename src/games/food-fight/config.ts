@@ -1,6 +1,7 @@
 export const W = 1920;
 export const H = 1080;
 export const ROUND_MS = 75000;
+export const COUNTDOWN_MS = 1300;
 export const LIVES = 3;
 export const AMMO_MAX = 6;
 export const RELOAD_MS = 260;

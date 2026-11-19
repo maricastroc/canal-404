@@ -34,6 +34,13 @@ The remaining tie goes to whoever got there first. The Laboratório first-try bo
   - Operação: Recreio: hearts against bumps and the level's snacks, 0 hearts on a loss, waves only in levels with a whistle, a ball or the boss. A monitor may count twice only in a run resumed from a bell, where the game brings some monitors back.
   - Guerra do Pijama: energy against pillows taken, knockouts against the final place, the throw rhythm with the windup, and the time the safety after each pillow takes.
   - None of this changes a score or a ranking key, so the rule versions and the boards stay the same.
+- **Stage 2.2** tightened Guerra de Lanche the same way, with limits derived from the game's own constants (`config.ts`) and checked against 100 bot rounds (57 wins, 43 losses from 23 s on), all accepted:
+  - Napkins: puddings taken are exactly the lives lost.
+  - Throws: at most the six starting snacks plus one per reload while ducked, over the countdown and the round.
+  - Knockouts: at most one per rival the round could raise, counting each phase's shortest gap, plus what the throw rhythm allows during the brawl.
+  - Points: before the Grandão's first phase there is no first hit worth 50, and each knockout is worth at most what the rivals of the phases reached pay; the brawl's double points only for knockouts the brawl could fit.
+  - Streak points: no more than the best streak allows, repeating that streak as often as the knockouts permit.
+  - The lunch lady can't be hit before her first visit.
 - **Replayed** (Laboratório, since Stage 2.2): the server runs the submitted machine in the shared simulation ([0005](0005-shared-lab-simulation.md)) and only accepts it if the ball reaches the goal. The ranking and the minimum time use the steps the server counted; a different count from the browser is flagged, not trusted.
 
 ### What this does not prevent
@@ -43,4 +50,4 @@ The remaining tie goes to whoever got there first. The Laboratório first-try bo
 ## Consequences
 
 - Adding a stat or changing a scoring constant in a game must be mirrored in its rule, and the rule tests (`rules.test.ts`) cover every game with valid, tampered and impossible results.
-- Bounds are deliberately loose where the game allows wide variation; they catch impossible numbers, not good players.
+- Bounds are deliberately loose where the game allows wide variation; they catch impossible numbers, not good players. The bot rounds stay at well under half of each Guerra de Lanche limit: at most 48 knockouts and 106 throws in 75 s.

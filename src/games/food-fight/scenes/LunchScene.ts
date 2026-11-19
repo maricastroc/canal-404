@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import {
   AMMO_MAX,
+  COUNTDOWN_MS,
   AMMO_SPOTS,
   DECO,
   EVENTS,
@@ -459,7 +460,7 @@ export class LunchScene extends Phaser.Scene {
     this.hud.flash(this.copy.countdown.title, "#ffc83d", 700, this.copy.countdown.sub);
     this.sfx("beep", 0.8);
     this.announce(this.copy.countdown.announce);
-    this.time.delayedCall(1300, () => {
+    this.time.delayedCall(COUNTDOWN_MS, () => {
       this.hud.flash(this.copy.countdown.go, "#93cf4c", 500);
       this.sfx("go", 0.9);
       this.mode = "playing";

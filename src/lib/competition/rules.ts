@@ -4,7 +4,7 @@ import { LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
 import { AMMO, PROPS, STEP_MS as STREET_STEP_MS, TARGETS, WAVES } from "@/games/dead-end-street/config";
 import { replayStreet } from "@/games/dead-end-street/sim";
-import { ROUND_MS, RIVALS, SCORE as LUNCH_SCORE } from "@/games/food-fight/config";
+import { AMMO_MAX, COUNTDOWN_MS, EVENTS, LIVES as LUNCH_LIVES, LUNCH_LADY, PHASES, RELOAD_MS, RIVALS, ROUND_MS, SCORE as LUNCH_SCORE, THROW_GAP_MS, type RivalKind } from "@/games/food-fight/config";
 import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
 import { EXTRAS_CAP, HEARTS, RUN, SCORE as RECESS_SCORE, TILE } from "@/games/operation-recess/config";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
@@ -208,7 +208,39 @@ const badIdeasLab: GameRule = {
 const MAX_KNOCKOUT_POINTS = Math.max(...Object.values(RIVALS).map((r) => r.points)) * LUNCH_SCORE.brawlMultiplier;
 const BIG_FIRST_HIT = 50;
 const MIN_KNOCKOUT_POINTS = Math.min(...Object.values(RIVALS).map((r) => r.points));
-const LIVES = 3;
+
+function lunchLimits(timeMs: number) {
+  const kinds = new Set<RivalKind>(["cap"]);
+  let appearances = 0;
+  PHASES.forEach((phase, i) => {
+    if (phase.from > timeMs) return;
+    const end = Math.min(timeMs, PHASES[i + 1]?.from ?? ROUND_MS);
+    appearances += Math.floor((end - phase.from) / phase.gap[0]) + 1;
+    if (phase.speedy > 0) kinds.add("speedy");
+    if (phase.big > 0) kinds.add("big");
+  });
+  const brawl = timeMs >= EVENTS.brawlAt;
+  const brawlHits = brawl ? Math.floor(Math.min(EVENTS.brawlMs, timeMs - EVENTS.brawlAt) / THROW_GAP_MS) + 1 : 0;
+  if (brawl) {
+    kinds.add("speedy");
+    kinds.add("big");
+  }
+  return {
+    hits: appearances + brawlHits,
+    brawlHits,
+    top: Math.max(...[...kinds].map((k) => RIVALS[k].points)),
+    hurts: kinds.has("big"),
+    throws: AMMO_MAX + Math.floor((timeMs + COUNTDOWN_MS) / RELOAD_MS) + 1,
+    lady: timeMs >= LUNCH_LADY.times[0],
+  };
+}
+
+function maxComboPoints(hits: number, bestStreak: number) {
+  if (bestStreak < 2) return 0;
+  const full = Math.floor(hits / bestStreak);
+  const rest = hits % bestStreak;
+  return (LUNCH_SCORE.comboStep * (full * bestStreak * (bestStreak - 1) + rest * (rest - 1))) / 2;
+}
 
 const foodFight: GameRule = {
   game: "food-fight",
@@ -222,8 +254,8 @@ const foodFight: GameRule = {
       interrupts: [0, 400],
       interruptPoints: [0, 400 * LUNCH_SCORE.interruptBonus],
       comboPoints: [0, LUNCH_SCORE.comboStep * 400 * 400],
-      lives: [0, LIVES],
-      hitsTaken: [0, 400],
+      lives: [0, LUNCH_LIVES],
+      hitsTaken: [0, LUNCH_LIVES],
       lunchLadyHits: [0, 400],
       bestStreak: [0, 400],
       throws: [0, 4000],
@@ -232,16 +264,21 @@ const foodFight: GameRule = {
     if (!r.ok) return reject("bad_stats", r.detail);
     const s = r.values;
     const won = s.lives > 0;
+    const limit = lunchLimits(s.timeMs);
     if (won && s.timeMs < ROUND_MS - 500) return reject("inconsistent", "o sinal tocou cedo demais");
-    if (s.hitsTaken < LIVES - s.lives) return reject("inconsistent", "guardanapos não conferem");
+    if (s.hitsTaken !== LUNCH_LIVES - s.lives) return reject("inconsistent", "guardanapos não conferem");
     if (s.throws < s.hits + s.lunchLadyHits) return reject("inconsistent", "acertos sem lanches");
+    if (s.throws > limit.throws) return reject("inconsistent", "lanches demais para o tempo da rodada");
+    if (s.hits > limit.hits) return reject("inconsistent", "colegas demais para o tempo da rodada");
+    if (!limit.lady && s.lunchLadyHits > 0) return reject("inconsistent", "a merendeira ainda não tinha passado");
     if (s.interrupts > s.hits || s.bestStreak > s.hits) return reject("inconsistent", "acertos não conferem");
     if (s.interruptPoints !== s.interrupts * LUNCH_SCORE.interruptBonus) return reject("inconsistent", "bônus na hora H não confere");
-    const softHits = s.throws - s.hits - s.lunchLadyHits;
-    if (s.hitPoints % BIG_FIRST_HIT !== 0 || s.hitPoints < s.hits * MIN_KNOCKOUT_POINTS || s.hitPoints > s.hits * MAX_KNOCKOUT_POINTS + softHits * BIG_FIRST_HIT) {
+    const softHits = limit.hurts ? s.throws - s.hits - s.lunchLadyHits : 0;
+    const brawlExtra = RIVALS.big.points * (LUNCH_SCORE.brawlMultiplier - 1) * Math.min(s.hits, limit.brawlHits);
+    if (s.hitPoints % BIG_FIRST_HIT !== 0 || s.hitPoints < s.hits * MIN_KNOCKOUT_POINTS || s.hitPoints > s.hits * limit.top + brawlExtra + softHits * BIG_FIRST_HIT) {
       return reject("inconsistent", "pontos de acertos impossíveis");
     }
-    if (s.comboPoints % LUNCH_SCORE.comboStep !== 0 || s.comboPoints > (LUNCH_SCORE.comboStep * s.hits * Math.max(0, s.hits - 1)) / 2) {
+    if (s.comboPoints % LUNCH_SCORE.comboStep !== 0 || s.comboPoints > maxComboPoints(s.hits, s.bestStreak)) {
       return reject("inconsistent", "sequências impossíveis");
     }
     if (s.comboPoints < (LUNCH_SCORE.comboStep * s.bestStreak * Math.max(0, s.bestStreak - 1)) / 2) return reject("inconsistent", "sequência maior que os pontos de sequência");

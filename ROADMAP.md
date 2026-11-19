@@ -47,7 +47,7 @@ Plan, dependencies and per-game feasibility: [`docs/stage-2-plan.md`](docs/stage
 - [x] Personal vs global comparison in the result panel ("Recorde do canal: …"), a record stamp, a mascot reaction and a link to the full board.
 - [x] Headless Laboratório simulation shared by the browser and the server: pinned `matter-js` outside Phaser, a fresh engine per run, a fixed body order, deterministic trigonometry, golden step counts recorded from the old scene and equivalence tests against it ([0005](docs/decisions/0005-shared-lab-simulation.md)).
 - [x] Server replay of Laboratório results before they enter the board; replayed records are marked "máquina testada pelo canal".
-- [ ] Per-game bounds tuned with bot runs.
+- [x] Per-game bounds tuned with bot runs: the Laboratório and Rua Sem Saída are replayed, Operação: Recreio and Guerra do Pijama were tightened in 3.4, and Guerra de Lanche now checks its throws, knockouts, points and streaks against the round's own timers, accepted on 100 bot rounds.
 - Moved to Stage 4: Rua Sem Saída launch log replay, because its timers have to move to step counters first.
 
 Daily challenges and shared achievements (planned here as 2.3 and 2.4) became Stage 3.
