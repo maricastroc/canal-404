@@ -8,17 +8,21 @@ type Portrait = { kid: KidId; root: Phaser.GameObjects.Container; face: Phaser.G
 
 type Pin = { root: Phaser.GameObjects.Container; arrow: Phaser.GameObjects.Graphics; ring: Phaser.GameObjects.Graphics; bang: Phaser.GameObjects.Text; shown: boolean };
 
-export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number };
+export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number; aim: number | null; shot: number | null };
 
 export type Offscreen = { kid: KidId; x: number; y: number; alert: boolean };
 
 export type Playfield = { left: number; top: number; right: number; bottom: number };
 
-const STICK = { base: 104, knob: 54, travel: 100 };
+const STICK = { base: 104, knob: 54, leash: 64, dead: 12, full: 46 };
 const BUTTON_R = 112;
+const FIRE = { decide: 150, start: 9, steady: 5 };
+const FLOOR = 0.86;
+
+type Fire = { id: number; x: number; y: number; at: number; mode: "pending" | "auto" | "aim" };
 
 export class PajamaHud {
-  readonly touch: Touch = { x: 0, y: 0, throwing: false, active: false, tapAt: -99999 };
+  readonly touch: Touch = { x: 0, y: 0, throwing: false, active: false, tapAt: -99999, aim: null, shot: null };
   private timer: Phaser.GameObjects.Text;
   private portraits = new Map<KidId, Portrait>();
   private banner: Phaser.GameObjects.Text;
@@ -28,13 +32,14 @@ export class PajamaHud {
   private stickKnob: Phaser.GameObjects.Arc;
   private stickLabel: Phaser.GameObjects.Text;
   private throwLabel: Phaser.GameObjects.Text;
-  private tutorial = false;
   private throwBtn: Phaser.GameObjects.Container;
   private throwPress: Phaser.GameObjects.Arc;
   private throwRing: Phaser.GameObjects.Graphics;
   private throwIcon: Phaser.GameObjects.Image;
+  private aimKnob: Phaser.GameObjects.Container;
   private stickId: number | null = null;
-  private throwIds = new Set<number>();
+  private fire: Fire | null = null;
+  private tutorialStep: "off" | "basics" | "aim" = "off";
   private stickOrigin = { x: 0, y: 0 };
   private stickRest = { x: 0, y: 0 };
   private stickScale = 1;
@@ -126,7 +131,19 @@ export class PajamaHud {
     this.throwRing = scene.add.graphics();
     this.throwIcon = scene.add.image(0, -6, "pillow").setScale(1.05 / 1.25).setAngle(-12);
     const lbl = cartoonText(scene, 0, 64, text.throw, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.2 }).setOrigin(0.5);
-    this.throwBtn = scene.add.container(0, 0, [bg, this.throwPress, this.throwRing, this.throwIcon, lbl]).setDepth(2005).setVisible(false);
+    const kg = scene.add.graphics();
+    kg.fillStyle(INK_HEX, 0.9);
+    kg.fillTriangle(30, -22, 30, 22, 62, 0);
+    kg.fillStyle(0xffc83d, 1);
+    kg.fillTriangle(34, -14, 34, 14, 54, 0);
+    kg.fillStyle(INK_HEX, 1);
+    kg.fillCircle(3, 4, 38);
+    kg.fillStyle(0xfff3b0, 1);
+    kg.fillCircle(0, 0, 38);
+    kg.lineStyle(6, INK_HEX, 1);
+    kg.strokeCircle(0, 0, 38);
+    this.aimKnob = scene.add.container(0, 0, [kg]).setVisible(false);
+    this.throwBtn = scene.add.container(0, 0, [bg, this.throwPress, this.throwRing, this.throwIcon, lbl, this.aimKnob]).setDepth(2005).setVisible(false);
 
     this.tipBg = scene.add.graphics();
     this.tipText = cartoonText(scene, 0, 0, "", { size: 32, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center", wrap: 900 }).setOrigin(0.5);
@@ -523,10 +540,11 @@ export class PajamaHud {
     this.stickLabel.setPosition(Math.max(x, this.frame.safe.left + this.stickLabel.displayWidth / 2 + 6 * u), y - r - 12 * u);
   }
 
-  setTutorial(on: boolean) {
-    if (on === this.tutorial) return;
-    this.tutorial = on;
-    this.stickLabel.setText(on ? this.text.moveHelp : this.text.move).setColor(on ? "#ffc83d" : "#fbf5e6");
+  setTutorial(step: "off" | "basics" | "aim") {
+    if (step === this.tutorialStep) return;
+    this.tutorialStep = step;
+    this.stickLabel.setText(step === "basics" ? this.text.moveHelp : this.text.move).setColor(step === "basics" ? "#ffc83d" : "#fbf5e6");
+    this.throwLabel.setText(step === "aim" ? this.text.aimHelp : this.text.throwHelp);
     if (this.stickId === null) this.restStick();
     this.placeControls();
   }
@@ -538,8 +556,8 @@ export class PajamaHud {
     this.throwBtn.setVisible(on);
     this.stickBase.setVisible(on && (compact || !resting));
     this.stickKnob.setVisible(on && (compact || !resting));
-    this.stickLabel.setVisible(on && compact && resting && (this.frame.kind === "tall" || this.tutorial));
-    this.throwLabel.setVisible(on && compact && this.tutorial);
+    this.stickLabel.setVisible(on && compact && resting && (this.frame.kind === "tall" || this.tutorialStep === "basics"));
+    this.throwLabel.setVisible(on && compact && this.tutorialStep !== "off");
     this.stickBase.setAlpha(resting ? 0.55 : 1);
     this.stickKnob.setAlpha(resting ? 0.6 : 1);
   }
@@ -566,6 +584,10 @@ export class PajamaHud {
     return p.wasTouch || (p.event as PointerEvent | undefined)?.pointerType === "touch";
   }
 
+  private get cssUnit() {
+    return this.frame.kind === "full" ? this.frame.width / Math.max(1, this.displayWidth || this.frame.width) : this.frame.unit;
+  }
+
   private down(p: Phaser.Input.Pointer) {
     if (!this.isTouch(p) || !this.controlsOn) return;
     if (!this.touchUi) {
@@ -574,9 +596,11 @@ export class PajamaHud {
     }
     const f = this.frame;
     if (p.x > f.width * 0.5) {
-      this.throwIds.add(p.id);
-      this.touch.throwing = true;
-      this.touch.tapAt = this.scene.time.now;
+      const now = this.scene.time.now;
+      if (this.fire) {
+        this.touch.tapAt = now;
+        this.touch.shot = null;
+      } else this.fire = { id: p.id, x: p.x, y: p.y, at: now, mode: "pending" };
       this.throwPress.setVisible(true);
       if (!this.reduced) {
         this.scene.tweens.killTweensOf(this.throwBtn);
@@ -587,9 +611,7 @@ export class PajamaHud {
     }
     if (this.stickId !== null) return;
     this.stickId = p.id;
-    const r = STICK.base * this.stickScale;
-    if (f.kind === "full") this.stickOrigin = { x: Phaser.Math.Clamp(p.x, 140, f.width * 0.5 - 140), y: Phaser.Math.Clamp(p.y, 260, f.height - 130) };
-    else this.stickOrigin = { x: Phaser.Math.Clamp(p.x, f.safe.left + r + 4 * f.unit, f.width * 0.5 - r), y: Phaser.Math.Clamp(p.y, f.hud + r, f.height - f.safe.bottom - r - 2 * f.unit) };
+    this.stickOrigin = this.clampOrigin(p.x, p.y);
     this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y);
     this.stickKnob.setPosition(this.stickOrigin.x, this.stickOrigin.y);
     this.touch.active = true;
@@ -597,34 +619,83 @@ export class PajamaHud {
     this.move(p);
   }
 
-  private move(p: Phaser.Input.Pointer) {
-    if (p.id !== this.stickId) return;
-    let dx = p.x - this.stickOrigin.x;
-    let dy = p.y - this.stickOrigin.y;
+  private clampOrigin(x: number, y: number) {
+    const f = this.frame;
+    const r = STICK.base * this.stickScale;
+    if (f.kind === "full") return { x: Phaser.Math.Clamp(x, 140 * this.stickScale, f.width - 140 * this.stickScale), y: Phaser.Math.Clamp(y, 260, f.height - 130 * this.stickScale) };
+    return { x: Phaser.Math.Clamp(x, f.safe.left + r + 4 * f.unit, f.width - f.safe.right - r - 4 * f.unit), y: Phaser.Math.Clamp(y, f.hud + r, f.height - f.safe.bottom - r - 2 * f.unit) };
+  }
+
+  tick(now: number) {
+    const fire = this.fire;
+    if (!fire || fire.mode !== "pending" || now - fire.at < FIRE.decide) return;
+    fire.mode = "auto";
+    this.touch.throwing = true;
+    this.touch.tapAt = now;
+    this.touch.shot = null;
+  }
+
+  private aimMove(p: Phaser.Input.Pointer, fire: Fire) {
+    const dx = p.x - fire.x;
+    const dy = p.y - fire.y;
     const d = Math.hypot(dx, dy);
-    const max = STICK.travel * this.stickScale;
-    if (d > max) {
-      dx = (dx / d) * max;
-      dy = (dy / d) * max;
+    const u = this.cssUnit;
+    if (fire.mode !== "aim") {
+      if (d < FIRE.start * u) return;
+      fire.mode = "aim";
+      this.touch.throwing = false;
+      this.aimKnob.setVisible(true);
     }
-    this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
-    if (this.frame.kind === "full") {
-      const m = Math.hypot(dx, dy);
-      this.touch.x = m < 14 ? 0 : dx / max;
-      this.touch.y = m < 14 ? 0 : dy / max;
+    if (d >= FIRE.steady * u) {
+      this.touch.aim = Math.atan2(dy / FLOOR, dx);
+      const reach = (BUTTON_R * 0.62) / Math.max(1, d);
+      this.aimKnob.setPosition(dx * reach, dy * reach).setRotation(Math.atan2(dy, dx));
+    }
+  }
+
+  private move(p: Phaser.Input.Pointer) {
+    if (this.fire && p.id === this.fire.id) {
+      this.aimMove(p, this.fire);
       return;
     }
-    const m = Math.hypot(dx, dy) / max;
-    const dead = 0.14;
-    const k = m <= dead ? 0 : Math.min(1, (m - dead) / (0.82 - dead));
-    this.touch.x = m > 0 ? (dx / (m * max)) * k : 0;
-    this.touch.y = m > 0 ? (dy / (m * max)) * k : 0;
+    if (p.id !== this.stickId) return;
+    const k = this.stickScale;
+    const leash = STICK.leash * k;
+    let dx = p.x - this.stickOrigin.x;
+    let dy = p.y - this.stickOrigin.y;
+    let d = Math.hypot(dx, dy);
+    if (d > leash) {
+      const pull = (d - leash) / d;
+      this.stickOrigin = this.clampOrigin(this.stickOrigin.x + dx * pull, this.stickOrigin.y + dy * pull);
+      this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y);
+      dx = p.x - this.stickOrigin.x;
+      dy = p.y - this.stickOrigin.y;
+      d = Math.hypot(dx, dy);
+      if (d > leash) {
+        dx = (dx / d) * leash;
+        dy = (dy / d) * leash;
+        d = leash;
+      }
+    }
+    this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
+    const m = d / k;
+    const speed = m <= STICK.dead ? 0 : Math.min(1, (m - STICK.dead) / (STICK.full - STICK.dead));
+    this.touch.x = d > 0 ? (dx / d) * speed : 0;
+    this.touch.y = d > 0 ? (dy / d) * speed : 0;
   }
 
   private up(p: Phaser.Input.Pointer) {
-    if (this.throwIds.delete(p.id)) {
-      this.touch.throwing = this.throwIds.size > 0;
-      if (!this.touch.throwing) this.throwPress.setVisible(false);
+    const fire = this.fire;
+    if (fire && fire.id === p.id) {
+      const now = this.scene.time.now;
+      if (fire.mode === "pending") {
+        this.touch.tapAt = now;
+        this.touch.shot = null;
+      } else if (fire.mode === "aim" && this.touch.aim !== null) {
+        this.touch.tapAt = now;
+        this.touch.shot = this.touch.aim;
+      }
+      this.endFire();
     }
     if (p.id !== this.stickId) return;
     this.stickId = null;
@@ -635,15 +706,40 @@ export class PajamaHud {
     this.refreshControls();
   }
 
+  private endFire() {
+    this.fire = null;
+    this.touch.throwing = false;
+    this.touch.aim = null;
+    this.throwPress.setVisible(false);
+    this.aimKnob.setVisible(false).setPosition(0, 0);
+  }
+
+  get aiming() {
+    return this.fire?.mode === "aim";
+  }
+
+  release() {
+    this.endFire();
+    this.touch.shot = null;
+    this.touch.tapAt = -99999;
+    if (this.stickId !== null) {
+      this.stickId = null;
+      this.touch.x = 0;
+      this.touch.y = 0;
+      this.touch.active = false;
+      this.restStick();
+      this.refreshControls();
+    }
+  }
+
   hideControls() {
     this.controlsOn = false;
     this.stickId = null;
-    this.throwIds.clear();
-    this.throwPress.setVisible(false);
+    this.endFire();
+    this.touch.shot = null;
     this.touch.x = 0;
     this.touch.y = 0;
     this.touch.active = false;
-    this.touch.throwing = false;
     this.refreshControls();
     this.stickLabel.setVisible(false);
     this.throwLabel.setVisible(false);

@@ -107,6 +107,7 @@ export const COPY = localized({
       move: "ANDAR",
       moveHelp: "ARRASTE PARA ANDAR",
       throwHelp: "TOQUE PARA JOGAR",
+      aimHelp: "ARRASTE PARA MIRAR",
     },
     tv: {
       onAir: "NO AR",
@@ -208,6 +209,7 @@ export const COPY = localized({
       move: "MOVE",
       moveHelp: "DRAG TO MOVE",
       throwHelp: "TAP TO THROW",
+      aimHelp: "DRAG TO AIM",
     },
     tv: {
       onAir: "ON AIR",

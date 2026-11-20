@@ -203,7 +203,8 @@ const TEXT = gameText({
         { input: "Clique ou espaço", action: "Jogar travesseiro (segure para continuar jogando)", on: "keys" },
         { input: "Esc ou P", action: "Pausar", on: "keys" },
         { input: "Controle na tela, à esquerda", action: "Arraste o polegar para andar", on: "touch" },
-        { input: "Botão JOGAR, à direita", action: "Toque para jogar, segure para continuar jogando. A mira vai sozinha no adversário mais perto, na direção em que você anda.", on: "touch" },
+        { input: "Botão JOGAR, à direita", action: "Toque para jogar no adversário mais perto, na direção em que você anda. Segure para continuar jogando.", on: "touch" },
+        { input: "Arrastar do lado direito", action: "Mira para onde você arrastar. Solte para jogar. Dá para fugir e jogar para trás.", on: "touch" },
       ],
       howTo: [
         { title: "Escolha", text: "Lia corre mais, Nico joga mais rápido e Bia recupera energia mais rápido." },
@@ -236,7 +237,7 @@ const TEXT = gameText({
       keyTips: ["Segure espaço ou o botão do mouse para jogar sem parar.", "Sem mouse, o espaço mira sozinho no adversário mais perto."],
       touchTips: [
         "Segure o botão JOGAR para jogar sem parar.",
-        "A mira é automática: o travesseiro vai no adversário mais perto, na direção em que você anda.",
+        "Fugindo de alguém? Arraste o polegar direito na direção dele e solte para jogar para trás.",
         "Alguém sumiu da tela? Uma setinha na borda mostra onde está.",
       ],
       controlsSummary: "Guerra do Pijama. WASD ou setas andam, o mouse mira, clique ou espaço joga o travesseiro, Esc pausa.",
@@ -485,7 +486,8 @@ const TEXT = gameText({
         { input: "Click or space", action: "Throw a pillow (hold to keep throwing)", on: "keys" },
         { input: "Esc or P", action: "Pause", on: "keys" },
         { input: "On-screen stick, on the left", action: "Drag your thumb to move", on: "touch" },
-        { input: "THROW button, on the right", action: "Tap to throw, hold to keep throwing. Aiming is automatic: the pillow goes to the closest opponent in the direction you're moving.", on: "touch" },
+        { input: "THROW button, on the right", action: "Tap to throw at the closest opponent in the direction you're moving. Hold to keep throwing.", on: "touch" },
+        { input: "Drag on the right side", action: "Aims wherever you drag. Let go to throw. You can run away and throw back.", on: "touch" },
       ],
       howTo: [
         { title: "Pick", text: "Lia runs faster, Nico throws faster and Bia gets her energy back faster." },
@@ -518,7 +520,7 @@ const TEXT = gameText({
       keyTips: ["Hold space or the mouse button to keep throwing.", "Without a mouse, space aims at the closest opponent on its own."],
       touchTips: [
         "Hold the THROW button to keep throwing.",
-        "Aiming is automatic: the pillow goes to the closest opponent in the direction you're moving.",
+        "Running away from someone? Drag your right thumb toward them and let go to throw back.",
         "Someone left the screen? A little arrow on the edge shows where they are.",
       ],
       controlsSummary: "Pajama War. WASD or arrows move, the mouse aims, click or space throws a pillow, Esc pauses.",
