@@ -86,6 +86,7 @@ function Cafeteria() {
   return (
     <g>
       <image href={`${ART}/cafeteria-bg.svg`} x={0} y={0} width={1920} height={1080} />
+      <image href={`${ART}/cafeteria-top.svg`} x={0} y={0} width={1920} height={110} />
       <rect x={0} y={1000} width={1920} height={120} fill={P.ink} opacity={0.06} />
     </g>
   );

@@ -96,6 +96,10 @@ export class Bubble {
     if (this.container.visible) this.container.setScale(scale);
   }
 
+  setWrap(width: number | null) {
+    this.text.setWordWrapWidth(width);
+  }
+
   say(text: string, x: number, y: number, duration = 1400) {
     this.text.setText(text);
     const w = this.text.width + 40;

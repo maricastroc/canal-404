@@ -13,7 +13,7 @@ const COPY = localized({
   en: { on: "Sound effects on. Turn off", off: "Sound effects off. Turn on", onShort: "Sound", offShort: "Muted" },
 });
 
-export function SoundToggle({ className = "", compact = false }: { className?: string; compact?: boolean }) {
+export function SoundToggle({ className = "", compact = false, square = false }: { className?: string; compact?: boolean; square?: boolean }) {
   const copy = useCopy(COPY);
   const progress = useProgress();
   const hydrated = useHydrated();
@@ -30,9 +30,9 @@ export function SoundToggle({ className = "", compact = false }: { className?: s
         audio.setSfxEnabled(next);
         if (next) audio.play(SFX.toggleOn);
       }}
-      className={`press flex items-center gap-2 rounded-xl border-[3px] border-ink bg-cream px-2.5 py-1.5 font-display text-sm text-ink shadow-[var(--shadow-ink-sm)] ${className}`}
+      className={`press flex items-center border-[3px] border-ink bg-cream font-display text-sm text-ink shadow-[var(--shadow-ink-sm)] ${square ? "size-10 justify-center rounded-lg" : "gap-2 rounded-xl px-2.5 py-1.5"} ${className}`}
     >
-      <SpeakerIcon muted={!on} className="size-7" />
+      <SpeakerIcon muted={!on} className={square ? "size-6" : "size-7"} />
       {!compact && <span className="leading-none">{on ? copy.onShort : copy.offShort}</span>}
     </button>
   );

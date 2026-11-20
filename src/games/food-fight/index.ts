@@ -1,21 +1,23 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule } from "@/games/types";
-import { H, W } from "./config";
+import { frameFor } from "./layout";
 import { BootScene } from "./scenes/BootScene";
 import { LunchScene } from "./scenes/LunchScene";
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
+  const bounds = ctx.parent.getBoundingClientRect();
+  const frame = frameFor(bounds.width, bounds.height);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,
-    width: W,
-    height: H,
+    width: frame.width,
+    height: frame.height,
     backgroundColor: "#c8eadf",
     transparent: false,
     scale: {
       mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      autoCenter: frame.kind === "portrait" ? Phaser.Scale.CENTER_HORIZONTALLY : Phaser.Scale.CENTER_BOTH,
     },
     render: { antialias: true, roundPixels: false, powerPreference: "high-performance" },
     input: {
