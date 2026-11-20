@@ -1,35 +1,15 @@
 import { P } from "@/lib/palette";
+import { BADGE_ROSETTE, BADGE_STAR, BADGE_TONES, type BadgeTone } from "./badgeShape";
 
-const COLORS = {
-  sun: [P.sun, P.sunDeep],
-  mint: [P.mint, P.mintDeep],
-  bubblegum: [P.bubblegum, P.bubblegumDeep],
-  tangerine: [P.tangerine, P.tangerineDeep],
-  sky: [P.sky, P.skyDeep],
-  plum: [P.plum300, P.plum500],
-} as const;
-
-export type BadgeColor = keyof typeof COLORS;
+export type BadgeColor = Exclude<BadgeTone, "steel">;
 
 export function StarBadge({ className, color = "sun" }: { className?: string; color?: BadgeColor }) {
-  const [fill, shade] = COLORS[color];
+  const [fill, shade] = BADGE_TONES[color];
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path
-        d="M32 3 L39 13 L51 9 L51 21 L62 27 L54 36 L58 48 L46 49 L40 60 L32 52 L24 60 L18 49 L6 48 L10 36 L2 27 L13 21 L13 9 L25 13 Z"
-        fill={shade}
-        stroke={P.ink}
-        strokeWidth="3"
-        strokeLinejoin="round"
-      />
+      <path d={BADGE_ROSETTE} fill={shade} stroke={P.ink} strokeWidth="3" strokeLinejoin="round" />
       <circle cx="32" cy="32" r="17" fill={fill} stroke={P.ink} strokeWidth="3" />
-      <path
-        d="M32 20 L35.3 27.6 L43.5 28.2 L37.2 33.5 L39.2 41.6 L32 37.2 L24.8 41.6 L26.8 33.5 L20.5 28.2 L28.7 27.6 Z"
-        fill={P.white}
-        stroke={P.ink}
-        strokeWidth="2.4"
-        strokeLinejoin="round"
-      />
+      <path d={BADGE_STAR} fill={P.white} stroke={P.ink} strokeWidth="2.4" strokeLinejoin="round" />
     </svg>
   );
 }
