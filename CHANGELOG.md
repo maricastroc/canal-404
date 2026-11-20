@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Texto centralizado nos botões em iPhone e sofá da sala alinhado
+- **Button labels are centered on iPhones too.** The display font (Luckiest Guy) was centered with `ascent-override`/`descent-override` in its `@font-face`. iPhones fell back to the font file's own metrics, which sit capitals about 0.14 em above the middle, so labels on buttons, tags and pills rode a couple of pixels high. The font file now carries the same 85%/15% metrics itself, so every browser places the text the same way. Chrome and desktop look the same as before.
+- **Guerra do Pijama: the mattress stack in the living room sits centered behind the sofa.** It was 40 px to the right. Its bounce line moved with it.
+
 ### Guerra do Pijama no celular, em pé ou deitado
 - **Portrait layout on phones.** With the phone upright, the arena fills the screen instead of a thin strip between two empty bands. Kids are drawn about twice as big (around 95–110 px tall on a phone). The camera follows you sideways and leans toward the opponent you are aiming at, or the one about to throw at you, so threats come into view before the pillow does. Rules, AI, timings and scoring are unchanged.
 - **Roomier HUD on upright phones.** Your face sits on the left with your five hearts drawn bigger (about 19 px). Each opponent shows only their face with a life ring around it that empties as they get hit, plus a small heart under it, and it turns orange at the last heart. The timer sits in the middle. The "VOCÊ" tag under your face is gone there, since your face has the gold ring. Sideways phones keep hearts for everyone, just bigger, and desktop is unchanged.
