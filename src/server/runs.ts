@@ -10,6 +10,8 @@ import type { Ticket } from "./tickets";
 
 export type SubmitOutcome = SubmitResponse;
 
+type SubmitInput = { player: Player; ticket: Ticket; claim: RunClaim; now: Date; client?: string | null };
+
 const ELAPSED_SLACK_MS = 3000;
 const ELAPSED_RATIO = 0.9;
 
@@ -73,7 +75,8 @@ async function existing(db: Db, ticket: Ticket, player: Player) {
   return outcomeOf(db, run, true);
 }
 
-async function recordRejection(db: Db, ticket: Ticket, player: Player, claim: RunClaim, reason: string, now: Date): Promise<never> {
+async function recordRejection(db: Db, input: SubmitInput, reason: string): Promise<never> {
+  const { ticket, player, claim, now } = input;
   try {
     await db.run.create({
       data: {
@@ -94,6 +97,7 @@ async function recordRejection(db: Db, ticket: Ticket, player: Player, claim: Ru
         eligible: false,
         flags: [reason],
         rulesVersion: RULES[ticket.game].version,
+        client: input.client ?? null,
         startedAt: new Date(ticket.issuedAt),
         createdAt: now,
       },
@@ -105,7 +109,7 @@ async function recordRejection(db: Db, ticket: Ticket, player: Player, claim: Ru
   throw new HttpError("rejected", REJECTION_TEXT[reason] ?? REJECTION_TEXT.inconsistent, { reason });
 }
 
-export async function submitRun(db: Db, input: { player: Player; ticket: Ticket; claim: RunClaim; now: Date }): Promise<SubmitOutcome> {
+export async function submitRun(db: Db, input: SubmitInput): Promise<SubmitOutcome> {
   const { player, ticket, claim, now } = input;
   if (ticket.playerId && ticket.playerId !== player.id) throw new HttpError("wrong_player", "Esse ingresso é de outra pessoa.");
   const repeated = await existing(db, ticket, player);
@@ -114,9 +118,9 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
     throw new HttpError("rate_limited", "O placar pausou seus envios por um tempo. Volte daqui a pouco.", { retryAfter: 3600 }, { "Retry-After": "3600" });
   }
   const verdict = judgeRun(ticket.game, ticket.level, claim);
-  if (!verdict.ok) return recordRejection(db, ticket, player, claim, verdict.reason, now);
+  if (!verdict.ok) return recordRejection(db, input, verdict.reason);
   const elapsed = now.getTime() - ticket.issuedAt;
-  if (elapsed + ELAPSED_SLACK_MS < verdict.minElapsedMs * ELAPSED_RATIO) return recordRejection(db, ticket, player, claim, "too_fast", now);
+  if (elapsed + ELAPSED_SLACK_MS < verdict.minElapsedMs * ELAPSED_RATIO) return recordRejection(db, input, "too_fast");
 
   const board = boardFor(ticket, verdict);
   const mission = await judgeMission(db, ticket, verdict, now);
@@ -145,6 +149,7 @@ export async function submitRun(db: Db, input: { player: Player; ticket: Ticket;
           eligible: verdict.eligible && board !== null,
           flags,
           rulesVersion: RULES[ticket.game].version,
+          client: input.client ?? null,
           startedAt: new Date(ticket.issuedAt),
           createdAt: now,
         },
