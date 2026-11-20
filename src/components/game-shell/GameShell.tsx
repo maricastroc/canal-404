@@ -14,7 +14,7 @@ import type { GameInstance, GameResult, LoadStage, StartOptions } from "@/games/
 import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber } from "@/i18n/format";
-import { connect, getCompetition, join, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
+import { connect, getCompetition, holdUntilJoined, join, pendingCount, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
 import { isDayKey } from "@/lib/missions/calendar";
 import { loadMission } from "@/lib/missions/client";
 import { useMissionToday } from "@/lib/missions/hooks";
@@ -204,7 +204,7 @@ export function GameShell({ slug }: { slug: string }) {
       const seq = boardSeqRef.current;
       if (competition.status === "online" && !competition.player) {
         pendingRef.current = pending;
-        setBoard({ phase: "join" });
+        setBoard({ phase: "join", waiting: pendingCount() });
         track({ name: "board_submit", game: slug, outcome: "not_joined" });
         return;
       }
@@ -214,7 +214,7 @@ export function GameShell({ slug }: { slug: string }) {
         track({ name: "board_submit", game: slug, outcome: submitLabel(outcome) });
         if (outcome.kind === "not-joined") {
           pendingRef.current = pending;
-          setBoard({ phase: "join" });
+          setBoard({ phase: "join", waiting: pendingCount() });
           return;
         }
         if (outcome.kind === "unranked" && outcome.why === "unconfigured") {
@@ -487,8 +487,23 @@ export function GameShell({ slug }: { slug: string }) {
     };
   }, [abandonRun]);
 
+  const holdPending = useCallback(() => {
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    if (pending) void holdUntilJoined(pending.ticket, pending.result);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("pagehide", holdPending);
+    return () => {
+      window.removeEventListener("pagehide", holdPending);
+      holdPending();
+    };
+  }, [holdPending]);
+
   const beginRun = (level: string, fresh: boolean) => {
     abandonRun();
+    holdPending();
     lastLevelRef.current = level;
     const n = (attemptsRef.current.get(level) ?? 0) + 1;
     attemptsRef.current.set(level, n);
@@ -497,7 +512,6 @@ export function GameShell({ slug }: { slug: string }) {
     runRef.current = { level, attempt: n, startedAt: performance.now(), ticket, mission };
     setMissionRun(mission);
     boardSeqRef.current += 1;
-    pendingRef.current = null;
     setBoard(null);
     track({ name: "game_start", game: slug, level, attempt: n, fresh });
     return mission;

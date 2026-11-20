@@ -13,6 +13,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 - **Character select** becomes a carousel on upright phones (swipe or tap the side cards, big START button), and the START button grows on sideways phones.
 - **Device-aware instructions.** "How to play" lists only touch controls on phones and only keyboard and mouse on computers, and the loading tips follow the same rule. In the first matches, phones label the stick and the button ("DRAG TO MOVE", "TAP TO THROW") until you have used both. Then "DRAG TO AIM" appears until your first aimed throw, or for 9 s. Computers show a one-line keyboard reminder.
 - Desktop keeps the same layout, camera and HUD.
+### Resultados esperam o apelido
+- **A win played before picking a nickname is no longer lost.** Moving on from the result screen without clicking "Entrar no placar" (next level, replay, choosing another level or leaving the game) used to throw that result away, even with a nickname typed or drawn with "Sortear". The result now waits on the device, and it goes up with the next one as soon as the visitor joins the board, in any game.
+- The join form says how many earlier results are waiting, and it opens with the nickname typed or drawn earlier in the visit already filled in. Nothing is sent until the visitor clicks "Entrar no placar".
+- Results wait up to 11 hours and at most ten at a time, the same limits as results that failed to send when the board was off the air. Scores, rankings and boards are unchanged.
 
 ### Guerra de Lanche em pé no celular
 - **Portrait layout on phones.** With the phone upright, the game fills the screen instead of a thin strip between two empty bands. Déco and Mila's table sits in the foreground and the rival rows stretch across the whole width behind it, so characters, tables and tap targets are drawn about twice as big as before. All five tables stay fully on screen, also while the classmates pop up, wind up and brawl. Déco turns around to throw at classmates on his left.

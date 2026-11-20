@@ -17,7 +17,7 @@ import { serverMessage } from "@/lib/competition/errors";
 import { recordsHref } from "@/lib/competition/links";
 import { boardNickname } from "@/lib/competition/nickname";
 
-export type BoardState = { phase: "sending" } | { phase: "join" } | { phase: "done"; outcome: SubmitOutcome };
+export type BoardState = { phase: "sending" } | { phase: "join"; waiting: number } | { phase: "done"; outcome: SubmitOutcome };
 
 type Line = { headline?: string; text: string; rival?: string; href?: string; live?: boolean; offline?: boolean; record?: boolean; stamp?: boolean };
 
@@ -57,6 +57,7 @@ const COPY = localized({
     live: "Ao vivo",
     noSignal: "Sem sinal",
     join: "Quer ver seu nome no placar? Escolha um apelido e este resultado entra na disputa.",
+    waiting: (count: number) => (count === 1 ? "Mais 1 resultado seu está esperando o apelido e entra junto." : `Mais ${formatNumber(count, "pt-BR")} resultados seus estão esperando o apelido e entram juntos.`),
     joinButton: "Entrar no placar",
     arcade: "Ver o fliperama de recordes",
   },
@@ -95,6 +96,7 @@ const COPY = localized({
     live: "Live",
     noSignal: "No signal",
     join: "Want to see your name on the board? Pick a nickname and this result joins the race.",
+    waiting: (count: number) => (count === 1 ? "1 more of your results is waiting for the nickname and goes up with it." : `${formatNumber(count, "en")} more of your results are waiting for the nickname and go up with it.`),
     joinButton: "Join the board",
     arcade: "Visit the record arcade",
   },
@@ -216,6 +218,7 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
       {state.phase === "join" ? (
         <>
           <p className="copy mt-1.5 font-semibold">{copy.join}</p>
+          {state.waiting > 0 ? <p className="copy-sm mt-1 text-cream-2">{copy.waiting(state.waiting)}</p> : null}
           <NicknameForm dark submitLabel={copy.joinButton} onSubmit={onJoin} />
         </>
       ) : (

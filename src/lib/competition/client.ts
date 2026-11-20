@@ -161,8 +161,18 @@ function writeOutbox(items: OutboxItem[]) {
   } catch {}
 }
 
+function queue(ticket: string, claim: Claim) {
+  writeOutbox([...readOutbox().filter((item) => item.ticket !== ticket), { ticket, claim, savedAt: Date.now() }]);
+}
+
 export function pendingCount() {
   return typeof window === "undefined" ? 0 : readOutbox().length;
+}
+
+export async function holdUntilJoined(ticket: Promise<TicketGrant | null> | null, result: GameResult) {
+  const claim = claimOf(result);
+  const token = ticket ? ((await ticket)?.token ?? null) : null;
+  if (claim && token) queue(token, claim);
 }
 
 let flushing = false;
@@ -197,7 +207,7 @@ export async function submitResult(ticket: Promise<TicketGrant | null> | null, r
   if (!state.player) return { kind: "not-joined" };
   const outcome = await send(token, claim);
   if (outcome !== "network") return outcome;
-  writeOutbox([...readOutbox(), { ticket: token, claim, savedAt: Date.now() }]);
+  queue(token, claim);
   emit({ ...state, status: "offline" });
   return { kind: "queued" };
 }
