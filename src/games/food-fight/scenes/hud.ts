@@ -3,10 +3,15 @@ import { formatNumber } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
 import { H, LIVES, SLOTS, W } from "../config";
 import { COPY, type FoodFightCopy } from "../copy";
+import type { Frame } from "../layout";
 import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
 
 const DUCK = { x: 150, y: H - 128, r: 86, press: 5, iconY: -16, iconSize: 88, labelY: 42 };
 const TAP_SIZE = 120;
+const BANNER_Y = 300;
+const PORTRAIT_DUCK_CSS = 42;
+
+export type HudView = { frame: Frame; perCss: number; reserveCss: number; slotX: number[] };
 
 export class LunchHud {
   uiScale = 1;
@@ -32,6 +37,7 @@ export class LunchHud {
   private pointerTween?: Phaser.Tweens.Tween;
   private duckState: "idle" | "danger" | "down" = "idle";
   private copy: FoodFightCopy["hud"];
+  private viewWidth = W;
 
   constructor(
     private scene: Phaser.Scene,
@@ -72,7 +78,7 @@ export class LunchHud {
     this.duckHit.setInteractive({ useHandCursor: true });
     this.drawDuck();
 
-    this.banner = cartoonText(scene, W / 2, 300, "", { size: 108, color: "#ffc83d", font: fonts.display, stroke: 0.2 })
+    this.banner = cartoonText(scene, W / 2, BANNER_Y, "", { size: 108, color: "#ffc83d", font: fonts.display, stroke: 0.2 })
       .setOrigin(0.5)
       .setDepth(26)
       .setVisible(false);
@@ -140,17 +146,44 @@ export class LunchHud {
     }
   }
 
-  layout(displayScale: number) {
-    this.uiScale = Phaser.Math.Clamp(displayScale * 0.55, 1, 1.75);
-    const s = this.uiScale;
-    this.livesBox.setScale(Math.min(s, 1.4));
-    this.timerBox.setScale(Math.min(s, 1.3));
-    this.scoreBox.setScale(Math.min(s, 1.4));
-    const ds = Math.min(s, 1.6);
-    this.duck.setData("base", ds).setScale(ds).setPosition(DUCK.x + (ds - 1) * 40, DUCK.y - (ds - 1) * 30);
-    this.streak.setScale(Math.min(s, 1.3)).setY(22 + 150 * Math.min(s, 1.4) + 20);
-    this.banner.setScale(Math.min(s, 1.2));
-    this.bannerSub.setScale(Math.min(s, 1.2)).setY(300 + 92 * Math.min(s, 1.2));
+  layout(view: HudView) {
+    const { frame, perCss } = view;
+    this.viewWidth = frame.width;
+    const cx = frame.width / 2;
+    if (frame.kind === "portrait") {
+      const fit = Math.min((cx - 44) / 466, (frame.width - cx - 44) / 436);
+      this.uiScale = Phaser.Math.Clamp(perCss * 0.55, 1, Math.min(1.5, fit));
+      const s = this.uiScale;
+      const top = -frame.top + 22;
+      this.livesBox.setScale(s).setPosition(24, top);
+      this.timerBox.setScale(s * 0.92).setPosition(cx, top);
+      this.scoreBox.setScale(s).setPosition(frame.width - 24, top);
+      this.streak.setScale(Math.min(s, 1.3)).setPosition(frame.width - 40, top + 150 * s + 20);
+      const ds = Phaser.Math.Clamp((PORTRAIT_DUCK_CSS * perCss) / DUCK.r, 1.2, 2.3);
+      const r = DUCK.r * ds;
+      const zoneBottom = H + frame.floor - view.reserveCss * perCss;
+      const free = zoneBottom - frame.sceneBottom - 2 * r;
+      this.duck.setData("base", ds).setScale(ds).setPosition(cx, frame.sceneBottom + r + Math.max(16, free * 0.4));
+    } else {
+      this.uiScale = Phaser.Math.Clamp(perCss * 0.55, 1, 1.75);
+      const s = this.uiScale;
+      this.livesBox.setScale(Math.min(s, 1.4)).setPosition(24, 22);
+      this.timerBox.setScale(Math.min(s, 1.3)).setPosition(cx, 22);
+      this.scoreBox.setScale(Math.min(s, 1.4)).setPosition(W - 24, 22);
+      const ds = Math.min(s, 1.6);
+      this.duck.setData("base", ds).setScale(ds).setPosition(DUCK.x + (ds - 1) * 40, DUCK.y - (ds - 1) * 30);
+      this.streak.setScale(Math.min(s, 1.3)).setPosition(W - 40, 22 + 150 * Math.min(s, 1.4) + 20);
+    }
+    if (this.duckPulse) this.pulseDuck(true);
+    const bs = this.bannerScale(this.banner);
+    this.banner.setX(cx).setScale(bs);
+    this.bannerSub.setX(cx).setScale(this.bannerScale(this.bannerSub)).setY(BANNER_Y + 92 * bs);
+    SLOTS.forEach((slot, i) => this.tags[i].setX(view.slotX[i] ?? slot.x));
+  }
+
+  private bannerScale(text: Phaser.GameObjects.Text) {
+    const s = Math.min(this.uiScale, 1.2);
+    return Math.min(s, (this.viewWidth - 80) / Math.max(1, text.width));
   }
 
   setLives(lives: number) {
@@ -224,6 +257,10 @@ export class LunchHud {
     this.pointerTween = this.scene.tweens.add({ targets: this.pointer, scale: 0.7, alpha: 0.6, duration: 420, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   }
 
+  movePointer(x: number, y: number) {
+    if (this.pointer.visible) this.pointer.setPosition(x, y);
+  }
+
   hidePointer() {
     this.pointerTween?.stop();
     this.pointer.setVisible(false);
@@ -232,9 +269,10 @@ export class LunchHud {
   flash(text: string, color = "#ffc83d", hold = 900, sub = "") {
     const b = this.banner;
     this.scene.tweens.killTweensOf([b, this.bannerSub]);
-    const s = Math.min(this.uiScale, 1.2);
     b.setText(text).setColor(color).setVisible(true).setAlpha(1);
-    this.bannerSub.setText(sub).setVisible(Boolean(sub)).setAlpha(1).setScale(s);
+    const s = this.bannerScale(b);
+    this.bannerSub.setText(sub).setVisible(Boolean(sub)).setAlpha(1);
+    this.bannerSub.setScale(this.bannerScale(this.bannerSub)).setY(BANNER_Y + 92 * s);
     if (this.reduced) {
       b.setScale(s);
     } else {
