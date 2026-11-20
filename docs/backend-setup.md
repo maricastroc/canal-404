@@ -18,13 +18,13 @@ Never prefix these with `NEXT_PUBLIC_`; none of them may reach the browser.
 1. Create a Neon project. Pick the region closest to the Vercel functions region of the project (or move both to São Paulo: Neon `aws-sa-east-1`, Vercel `gru1`), because every submission is a few round trips to the database.
 2. Connect it to the Vercel project through the Neon integration, or add `DATABASE_URL` by hand. For Preview deployments, use a separate Neon branch so tests never touch real players.
 3. Add `COMPETITION_SECRET` and `CRON_SECRET` in Vercel → Settings → Environment Variables.
-4. Apply the migrations against the production branch from a trusted machine:
+4. In GitHub → Settings → Environments, create a `production` environment with the secret `DATABASE_URL_UNPOOLED` (the Neon **direct** connection string of the production branch). The `Migrate production` workflow (`.github/workflows/migrate.yml`) applies new migrations whenever a merge to `main` touches `prisma/migrations`, and it can be started by hand from the Actions tab. To apply them from a trusted machine instead:
 
    ```bash
    DATABASE_URL_UNPOOLED="<direct connection string>" npm run db:deploy
    ```
 
-   Migrations are not run during the Vercel build on purpose: a Preview build must never change the production schema.
+   Migrations are not run during the Vercel build on purpose: a Preview build must never change the production schema. The workflow runs alongside the Vercel deploy, so a migration must keep working with the code that is already live: add columns as nullable or with a default, and drop them only in a later release.
 5. Redeploy, then open `/api/status`. It should answer `{"status":"online"}`. `unconfigured` means a variable is missing or the secret is too short; `offline` means the database is unreachable.
 6. The daily cleanup runs from `vercel.json` at 07:00 UTC (04:00 in São Paulo). Check Vercel → Cron Jobs after the first deploy.
 
