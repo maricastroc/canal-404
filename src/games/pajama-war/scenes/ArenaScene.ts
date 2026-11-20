@@ -93,7 +93,7 @@ export class ArenaScene extends Phaser.Scene {
   private mechanicDelay = 700;
   private offscreen: Offscreen[] = [];
   private ceilingY = 0;
-  private tutorial: { moved: boolean; threw: boolean } | null = null;
+  private tutorial: { moved: boolean; threw: boolean; step: "basics" | "aim" } | null = null;
 
   constructor() {
     super("arena");
@@ -197,9 +197,11 @@ export class ArenaScene extends Phaser.Scene {
     this.setupInput();
     for (const f of this.fighters) f.sync(0);
     watchFrame(this, (frame) => this.applyFrame(frame));
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, this.route, this);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
       this.uiCam = null;
     });
 
@@ -208,6 +210,10 @@ export class ArenaScene extends Phaser.Scene {
       this.ctx.onReady();
     }
     if (!this.attract) this.countdown();
+  }
+
+  private onResume() {
+    this.hud?.release();
   }
 
   private applyFrame(frame: Frame) {
@@ -320,14 +326,28 @@ export class ArenaScene extends Phaser.Scene {
     cam.centerOn(this.camAt.x + fd.vw / 2, this.camAt.y + fd.vh / 2);
   }
 
-  private learn(moved: boolean, threw: boolean) {
+  private learn(moved: boolean, threw: boolean, aimed = false) {
     const tut = this.tutorial;
     if (!tut) return;
+    if (tut.step === "aim") {
+      if (!aimed) return;
+      this.tutorial = null;
+      this.time.delayedCall(900, () => this.hud?.setTutorial("off"));
+      return;
+    }
     tut.moved ||= moved;
     tut.threw ||= threw;
     if (!tut.moved || !tut.threw) return;
-    this.tutorial = null;
-    this.time.delayedCall(1200, () => this.hud?.setTutorial(false));
+    tut.step = "aim";
+    this.time.delayedCall(900, () => {
+      if (this.mode !== "play" || this.tutorial !== tut) return;
+      this.hud?.setTutorial("aim");
+      this.time.delayedCall(9000, () => {
+        if (this.tutorial !== tut) return;
+        this.tutorial = null;
+        this.hud?.setTutorial("off");
+      });
+    });
   }
 
   private toScreen(x: number, y: number) {
@@ -402,8 +422,8 @@ export class ArenaScene extends Phaser.Scene {
     hud.flash(this.text.ready, "#fbf5e6", 700, this.text.readySub);
     if (loadStats().matches < 2) {
       if (hud.hasTouch && this.compact) {
-        hud.setTutorial(true);
-        this.tutorial = { moved: false, threw: false };
+        hud.setTutorial("basics");
+        this.tutorial = { moved: false, threw: false, step: "basics" };
       } else {
         hud.hint(hud.hasTouch ? this.text.controlsTouch : this.text.controlsKeys, 4200);
         this.mechanicDelay = 3400;
@@ -647,7 +667,28 @@ export class ArenaScene extends Phaser.Scene {
     return { x: o.x + o.vx * k, y: o.y + o.vy * k };
   }
 
+  private manualAim(p: Fighter, angle: number): Aim {
+    let best: Fighter | null = null;
+    let bestDiff = 0.2;
+    for (const o of this.fighters) {
+      if (o === p || !o.alive || Math.hypot(o.x - p.x, o.y - p.y) > PILLOW.range * 1.02) continue;
+      const diff = Math.abs(Phaser.Math.Angle.Wrap(this.angleTo(p, o.x, o.y) - angle));
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = o;
+      }
+    }
+    if (best) {
+      const q = this.led(p, best);
+      return { angle: this.angleTo(p, q.x, q.y), target: best, x: best.x, y: best.y, free: false };
+    }
+    const reach = PILLOW.range * 0.92;
+    return { angle, target: null, x: p.x + Math.cos(angle) * reach, y: p.y + Math.sin(angle) * reach * 0.86, free: true };
+  }
+
   private computeAim(p: Fighter): Aim {
+    const touchAim = this.hud?.touch.aim;
+    if (touchAim !== null && touchAim !== undefined) return this.manualAim(p, touchAim);
     if (this.aimMode === "mouse") {
       const gx = this.aim.x;
       const gy = this.aim.y + PILLOW.lift;
@@ -728,6 +769,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    this.hud?.tick(this.time.now);
     if (time < this.freezeUntil) return;
     let left = Math.min(delta, FRAME_MAX_MS);
     while (left > 0 && this.time.now >= this.freezeUntil) {
@@ -802,13 +844,19 @@ export class ArenaScene extends Phaser.Scene {
               my = touch.y;
             }
             if (this.tutorial && touch) this.learn(touch.active && Math.hypot(touch.x, touch.y) > 0.3, false);
-            const queued = this.time.now - this.throwQueued < 180 || this.time.now - (touch?.tapAt ?? -99999) < 180;
+            const shotWindow = touch?.shot != null ? 320 : 180;
+            const tapped = this.time.now - (touch?.tapAt ?? -99999) < shotWindow;
+            const queued = this.time.now - this.throwQueued < 180 || tapped;
             const wants = k.space.isDown || this.mouseDown || Boolean(touch?.throwing) || queued;
             if (wants && f.canThrow(t)) {
-              f.requestThrow(t, this.aimAngle(f), PILLOW.windup + (f.special ? SPECIAL.windup : 0));
-              if (this.tutorial) this.learn(false, true);
+              const manual = touch && tapped && touch.shot !== null ? this.manualAim(f, touch.shot).angle : null;
+              f.requestThrow(t, manual ?? this.aimAngle(f), PILLOW.windup + (f.special ? SPECIAL.windup : 0));
+              if (this.tutorial) this.learn(false, true, manual !== null);
               this.throwQueued = -99999;
-              if (touch) touch.tapAt = -99999;
+              if (touch) {
+                touch.tapAt = -99999;
+                touch.shot = null;
+              }
             }
           }
         } else if (this.mode !== "over") {
@@ -934,7 +982,7 @@ export class ArenaScene extends Phaser.Scene {
       g.fillTriangle(o.x - 17, hy - 3, o.x + 17, hy - 3, o.x, hy + 19);
       g.fillStyle(0xffc83d, a);
       g.fillTriangle(o.x - 11, hy, o.x + 11, hy, o.x, hy + 13);
-    } else if (this.aimMode === "mouse") {
+    } else if (this.aimMode === "mouse" || this.hud?.aiming) {
       const end = Math.min(1, (PILLOW.range * 0.98) / Math.max(1, Math.hypot(aim.x - ox, aim.y - oy)));
       const rx = ox + (aim.x - ox) * end;
       const ry = oy + (aim.y - oy) * end - PILLOW.lift;

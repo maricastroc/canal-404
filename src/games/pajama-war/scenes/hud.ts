@@ -4,21 +4,45 @@ import type { PajamaCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import { INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 
-type Portrait = { kid: KidId; root: Phaser.GameObjects.Container; face: Phaser.GameObjects.Image; hearts: { off: Phaser.GameObjects.Image; on: Phaser.GameObjects.Image }[]; out: Phaser.GameObjects.Container; badge: Phaser.GameObjects.Container; hp: number; faceUntil: number; scale: number };
+type PortraitStyle = "row" | "big" | "ring";
+
+type Portrait = {
+  kid: KidId;
+  root: Phaser.GameObjects.Container;
+  face: Phaser.GameObjects.Image;
+  hearts: { off: Phaser.GameObjects.Image; on: Phaser.GameObjects.Image }[];
+  plate: Phaser.GameObjects.Graphics;
+  you: Phaser.GameObjects.Container | null;
+  life: Phaser.GameObjects.Graphics;
+  lifeIcon: Phaser.GameObjects.Image;
+  out: Phaser.GameObjects.Container;
+  badge: Phaser.GameObjects.Container;
+  hp: number;
+  faceUntil: number;
+  scale: number;
+  style: PortraitStyle;
+  width: number;
+};
+
+const LIFE_R = 58;
 
 type Pin = { root: Phaser.GameObjects.Container; arrow: Phaser.GameObjects.Graphics; ring: Phaser.GameObjects.Graphics; bang: Phaser.GameObjects.Text; shown: boolean };
 
-export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number };
+export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number; aim: number | null; shot: number | null };
 
 export type Offscreen = { kid: KidId; x: number; y: number; alert: boolean };
 
 export type Playfield = { left: number; top: number; right: number; bottom: number };
 
-const STICK = { base: 104, knob: 54, travel: 100 };
+const STICK = { base: 104, knob: 54, leash: 64, dead: 12, full: 46 };
 const BUTTON_R = 112;
+const FIRE = { decide: 150, start: 9, steady: 5 };
+const FLOOR = 0.86;
+
+type Fire = { id: number; x: number; y: number; at: number; mode: "pending" | "auto" | "aim" };
 
 export class PajamaHud {
-  readonly touch: Touch = { x: 0, y: 0, throwing: false, active: false, tapAt: -99999 };
+  readonly touch: Touch = { x: 0, y: 0, throwing: false, active: false, tapAt: -99999, aim: null, shot: null };
   private timer: Phaser.GameObjects.Text;
   private portraits = new Map<KidId, Portrait>();
   private banner: Phaser.GameObjects.Text;
@@ -28,13 +52,14 @@ export class PajamaHud {
   private stickKnob: Phaser.GameObjects.Arc;
   private stickLabel: Phaser.GameObjects.Text;
   private throwLabel: Phaser.GameObjects.Text;
-  private tutorial = false;
   private throwBtn: Phaser.GameObjects.Container;
   private throwPress: Phaser.GameObjects.Arc;
   private throwRing: Phaser.GameObjects.Graphics;
   private throwIcon: Phaser.GameObjects.Image;
+  private aimKnob: Phaser.GameObjects.Container;
   private stickId: number | null = null;
-  private throwIds = new Set<number>();
+  private fire: Fire | null = null;
+  private tutorialStep: "off" | "basics" | "aim" = "off";
   private stickOrigin = { x: 0, y: 0 };
   private stickRest = { x: 0, y: 0 };
   private stickScale = 1;
@@ -126,7 +151,19 @@ export class PajamaHud {
     this.throwRing = scene.add.graphics();
     this.throwIcon = scene.add.image(0, -6, "pillow").setScale(1.05 / 1.25).setAngle(-12);
     const lbl = cartoonText(scene, 0, 64, text.throw, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.2 }).setOrigin(0.5);
-    this.throwBtn = scene.add.container(0, 0, [bg, this.throwPress, this.throwRing, this.throwIcon, lbl]).setDepth(2005).setVisible(false);
+    const kg = scene.add.graphics();
+    kg.fillStyle(INK_HEX, 0.9);
+    kg.fillTriangle(30, -22, 30, 22, 62, 0);
+    kg.fillStyle(0xffc83d, 1);
+    kg.fillTriangle(34, -14, 34, 14, 54, 0);
+    kg.fillStyle(INK_HEX, 1);
+    kg.fillCircle(3, 4, 38);
+    kg.fillStyle(0xfff3b0, 1);
+    kg.fillCircle(0, 0, 38);
+    kg.lineStyle(6, INK_HEX, 1);
+    kg.strokeCircle(0, 0, 38);
+    this.aimKnob = scene.add.container(0, 0, [kg]).setVisible(false);
+    this.throwBtn = scene.add.container(0, 0, [bg, this.throwPress, this.throwRing, this.throwIcon, lbl, this.aimKnob]).setDepth(2005).setVisible(false);
 
     this.tipBg = scene.add.graphics();
     this.tipText = cartoonText(scene, 0, 0, "", { size: 32, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center", wrap: 900 }).setOrigin(0.5);
@@ -231,8 +268,8 @@ export class PajamaHud {
     ring.lineStyle(4, INK_HEX, 1);
     ring.strokeCircle(0, 0, isPlayer ? 51 : 49);
     const plate = s.add.graphics();
-    plate.fillStyle(INK_HEX, 0.88);
-    plate.fillRoundedRect(36, -22, 172, 46, 14);
+    const life = s.add.graphics().setVisible(false);
+    const lifeIcon = s.add.image(0, LIFE_R + 2, "icon-heart-on").setScale(0.62).setVisible(false);
     const hearts: Portrait["hearts"] = [];
     for (let i = 0; i < HP / 2; i += 1) {
       const hx = 66 + i * 32;
@@ -240,7 +277,8 @@ export class PajamaHud {
       const on = s.add.image(hx, 1, "icon-heart-on").setScale(0.78);
       hearts.push({ off, on });
     }
-    const parts: Phaser.GameObjects.GameObject[] = [plate, ...hearts.flatMap((h) => [h.off, h.on]), g, face, ring];
+    const parts: Phaser.GameObjects.GameObject[] = [plate, ...hearts.flatMap((h) => [h.off, h.on]), life, g, face, ring, lifeIcon];
+    let youTag: Phaser.GameObjects.Container | null = null;
     if (isPlayer) {
       const tg = s.add.graphics();
       tg.fillStyle(INK_HEX, 1);
@@ -250,7 +288,8 @@ export class PajamaHud {
       tg.lineStyle(4, INK_HEX, 1);
       tg.strokeRoundedRect(-44, 38, 88, 32, 9);
       const you = cartoonText(s, 0, 54, this.text.you, { size: 24, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
-      parts.push(tg, you);
+      youTag = s.add.container(0, 0, [tg, you]);
+      parts.push(youTag);
     }
     const bg = s.add.graphics();
     bg.fillStyle(INK_HEX, 1);
@@ -268,7 +307,62 @@ export class PajamaHud {
     const out = s.add.container(0, 0, [outBg, outTxt]).setVisible(false);
     parts.push(out, badge);
     const root = s.add.container(0, 0, parts);
-    return { kid, root, face, hearts, out, badge, hp: HP, faceUntil: 0, scale: 1 };
+    const portrait: Portrait = { kid, root, face, hearts, plate, you: youTag, life, lifeIcon, out, badge, hp: HP, faceUntil: 0, scale: 1, style: "big", width: 0 };
+    this.stylePortrait(portrait, "row");
+    return portrait;
+  }
+
+  private stylePortrait(p: Portrait, style: PortraitStyle) {
+    if (p.style === style) return;
+    p.style = style;
+    const big = style === "big";
+    const step = big ? 42 : 32;
+    const heart = big ? 1.04 : 0.78;
+    const first = big ? 74 : 66;
+    const end = first + step * (p.hearts.length - 1) + (big ? 30 : 14);
+    p.plate.clear();
+    if (style !== "ring") {
+      p.plate.fillStyle(INK_HEX, 0.88);
+      p.plate.fillRoundedRect(36, big ? -28 : -22, end - 36, big ? 56 : 46, big ? 18 : 14);
+    }
+    p.hearts.forEach((h, i) => {
+      const x = first + i * step;
+      for (const img of [h.off, h.on]) img.setPosition(x, 1).setScale(heart).setVisible(style !== "ring");
+    });
+    this.paintHearts(p);
+    p.you?.setVisible(style === "row");
+    p.life.setVisible(style === "ring");
+    p.lifeIcon.setVisible(style === "ring");
+    this.paintLife(p);
+    p.width = style === "ring" ? (LIFE_R + 8) * 2 : end + 51;
+  }
+
+  private paintHearts(p: Portrait) {
+    p.hearts.forEach((h, i) => {
+      const full = p.hp >= (i + 1) * 2;
+      const half = p.hp === i * 2 + 1;
+      h.on.setVisible(p.style !== "ring" && (full || half));
+      if (half) h.on.setCrop(0, 0, h.on.width / 2, h.on.height);
+      else h.on.setCrop();
+    });
+  }
+
+  private paintLife(p: Portrait) {
+    const g = p.life;
+    g.clear();
+    if (p.style !== "ring") return;
+    const k = Math.max(0, p.hp) / HP;
+    g.lineStyle(17, INK_HEX, 1);
+    g.strokeCircle(0, 0, LIFE_R);
+    g.lineStyle(10, 0x3a3157, 1);
+    g.strokeCircle(0, 0, LIFE_R);
+    if (k > 0) {
+      g.lineStyle(10, k <= 0.2 ? 0xff8a3d : 0xef4f43, 1);
+      g.beginPath();
+      g.arc(0, 0, LIFE_R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k, false);
+      g.strokePath();
+    }
+    p.lifeIcon.setAlpha(p.hp > 0 ? 1 : 0.4);
   }
 
   private restFace(p: Portrait) {
@@ -300,13 +394,8 @@ export class PajamaHud {
     const p = this.portraits.get(kid);
     if (!p) return;
     p.hp = hp;
-    p.hearts.forEach((h, i) => {
-      const full = hp >= (i + 1) * 2;
-      const half = hp === i * 2 + 1;
-      h.on.setVisible(full || half);
-      if (half) h.on.setCrop(0, 0, h.on.width / 2, h.on.height);
-      else h.on.setCrop();
-    });
+    this.paintHearts(p);
+    this.paintLife(p);
     if (change === "hit") {
       p.face.setTexture(`face-${kid}-ouch`);
       const until = this.scene.time.now + 420;
@@ -320,7 +409,9 @@ export class PajamaHud {
     if (change === "regen" && this.scene.time.now >= p.faceUntil) this.restFace(p);
     if (change === "regen" && !this.reduced) {
       const h = p.hearts[Math.floor((hp - 1) / 2)];
-      if (h) this.scene.tweens.add({ targets: h.on, scale: { from: 1.15, to: 0.78 }, duration: 260, ease: "Back.easeOut" });
+      const rest = p.style === "big" ? 1.04 : 0.78;
+      if (h && p.style !== "ring") this.scene.tweens.add({ targets: h.on, scale: { from: rest * 1.4, to: rest }, duration: 260, ease: "Back.easeOut" });
+      if (p.style === "ring") this.scene.tweens.add({ targets: p.lifeIcon, scale: { from: 0.95, to: 0.62 }, duration: 260, ease: "Back.easeOut" });
     }
     if (hp <= 0) {
       p.face.setTexture(`face-${kid}-dizzy`);
@@ -409,6 +500,7 @@ export class PajamaHud {
     this.tag.setVisible(k === 1);
     this.timerBox.setScale(k).setPosition(k === 1 ? f.width / 2 : 30 + 118 * k, 10);
     this.order.forEach((p, i) => {
+      this.stylePortrait(p, "row");
       p.scale = k;
       p.root.setScale(k).setPosition(f.width - 30 - 208 * k - i * 262 * k, 58 * k);
     });
@@ -427,30 +519,36 @@ export class PajamaHud {
     this.k = 1;
     this.tag.setVisible(false);
     const margin = 8 * u;
-    const gap = 6 * u;
+    const gap = (tall ? 8 : 12) * u;
     const left = f.safe.left + margin;
     const right = f.width - f.safe.right - margin;
-    let kp = ((tall ? 42 : 34) * u) / 102;
-    let kf = ((tall ? 32 : 28) * u) / 102;
-    const timerMin = 62 * u;
-    const need = 259 * kp + 2 * 259 * kf + gap * 3 + timerMin;
+    const player = this.order[this.order.length - 1];
+    const foes = this.order.slice(0, -1);
+    this.stylePortrait(player, "big");
+    for (const p of foes) this.stylePortrait(p, tall ? "ring" : "big");
+    let kp = ((tall ? 48 : 40) * u) / 102;
+    let kf = ((tall ? 40 : 34) * u) / 102;
+    const timerMin = 70 * u;
+    const foesWidth = () => foes.reduce((a, p) => a + p.width * kf, 0) + gap * (foes.length - 1);
+    const need = player.width * kp + foesWidth() + gap * 2 + timerMin;
     if (need > right - left) {
       const shrink = (right - left) / need;
       kp *= shrink;
       kf *= shrink;
     }
-    const cy = f.safe.top + 6 * u + 51 * kp;
-    const player = this.order[this.order.length - 1];
-    const foes = this.order.slice(0, -1);
+    const cy = f.safe.top + (tall ? 8 : 6) * u + 51 * kp;
     player.scale = kp;
     player.root.setScale(kp).setPosition(left + 51 * kp, cy);
-    foes.forEach((p, i) => {
+    let x = right;
+    foes.forEach((p) => {
       p.scale = kf;
-      p.root.setScale(kf).setPosition(right - 208 * kf - i * (259 * kf + gap), cy);
+      const lead = p.style === "ring" ? LIFE_R + 8 : p.width - 51;
+      p.root.setScale(kf).setPosition(x - lead * kf, cy);
+      x -= p.width * kf + gap;
     });
-    const spanL = left + 259 * kp + gap;
-    const spanR = right - 208 * kf - (foes.length - 1) * (259 * kf + gap) - 51 * kf - gap;
-    const kt = Phaser.Math.Clamp((spanR - spanL) / 246, 0.45, tall ? 0.9 : 0.75);
+    const spanL = left + player.width * kp + gap;
+    const spanR = x + gap - gap;
+    const kt = Phaser.Math.Clamp((spanR - spanL) / 246, 0.45, tall ? 0.78 : 0.75);
     this.timerBox.setScale(kt).setPosition(tall ? (spanL + spanR) / 2 : f.width / 2, cy - 42 * kt);
     this.tipScale = (13.5 * u) / 32;
     this.tipText.setWordWrapWidth((f.width - 40 * u) / this.tipScale);
@@ -523,10 +621,11 @@ export class PajamaHud {
     this.stickLabel.setPosition(Math.max(x, this.frame.safe.left + this.stickLabel.displayWidth / 2 + 6 * u), y - r - 12 * u);
   }
 
-  setTutorial(on: boolean) {
-    if (on === this.tutorial) return;
-    this.tutorial = on;
-    this.stickLabel.setText(on ? this.text.moveHelp : this.text.move).setColor(on ? "#ffc83d" : "#fbf5e6");
+  setTutorial(step: "off" | "basics" | "aim") {
+    if (step === this.tutorialStep) return;
+    this.tutorialStep = step;
+    this.stickLabel.setText(step === "basics" ? this.text.moveHelp : this.text.move).setColor(step === "basics" ? "#ffc83d" : "#fbf5e6");
+    this.throwLabel.setText(step === "aim" ? this.text.aimHelp : this.text.throwHelp);
     if (this.stickId === null) this.restStick();
     this.placeControls();
   }
@@ -538,8 +637,8 @@ export class PajamaHud {
     this.throwBtn.setVisible(on);
     this.stickBase.setVisible(on && (compact || !resting));
     this.stickKnob.setVisible(on && (compact || !resting));
-    this.stickLabel.setVisible(on && compact && resting && (this.frame.kind === "tall" || this.tutorial));
-    this.throwLabel.setVisible(on && compact && this.tutorial);
+    this.stickLabel.setVisible(on && compact && resting && (this.frame.kind === "tall" || this.tutorialStep === "basics"));
+    this.throwLabel.setVisible(on && compact && this.tutorialStep !== "off");
     this.stickBase.setAlpha(resting ? 0.55 : 1);
     this.stickKnob.setAlpha(resting ? 0.6 : 1);
   }
@@ -566,6 +665,10 @@ export class PajamaHud {
     return p.wasTouch || (p.event as PointerEvent | undefined)?.pointerType === "touch";
   }
 
+  private get cssUnit() {
+    return this.frame.kind === "full" ? this.frame.width / Math.max(1, this.displayWidth || this.frame.width) : this.frame.unit;
+  }
+
   private down(p: Phaser.Input.Pointer) {
     if (!this.isTouch(p) || !this.controlsOn) return;
     if (!this.touchUi) {
@@ -574,9 +677,11 @@ export class PajamaHud {
     }
     const f = this.frame;
     if (p.x > f.width * 0.5) {
-      this.throwIds.add(p.id);
-      this.touch.throwing = true;
-      this.touch.tapAt = this.scene.time.now;
+      const now = this.scene.time.now;
+      if (this.fire) {
+        this.touch.tapAt = now;
+        this.touch.shot = null;
+      } else this.fire = { id: p.id, x: p.x, y: p.y, at: now, mode: "pending" };
       this.throwPress.setVisible(true);
       if (!this.reduced) {
         this.scene.tweens.killTweensOf(this.throwBtn);
@@ -587,9 +692,7 @@ export class PajamaHud {
     }
     if (this.stickId !== null) return;
     this.stickId = p.id;
-    const r = STICK.base * this.stickScale;
-    if (f.kind === "full") this.stickOrigin = { x: Phaser.Math.Clamp(p.x, 140, f.width * 0.5 - 140), y: Phaser.Math.Clamp(p.y, 260, f.height - 130) };
-    else this.stickOrigin = { x: Phaser.Math.Clamp(p.x, f.safe.left + r + 4 * f.unit, f.width * 0.5 - r), y: Phaser.Math.Clamp(p.y, f.hud + r, f.height - f.safe.bottom - r - 2 * f.unit) };
+    this.stickOrigin = this.clampOrigin(p.x, p.y);
     this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y);
     this.stickKnob.setPosition(this.stickOrigin.x, this.stickOrigin.y);
     this.touch.active = true;
@@ -597,34 +700,83 @@ export class PajamaHud {
     this.move(p);
   }
 
-  private move(p: Phaser.Input.Pointer) {
-    if (p.id !== this.stickId) return;
-    let dx = p.x - this.stickOrigin.x;
-    let dy = p.y - this.stickOrigin.y;
+  private clampOrigin(x: number, y: number) {
+    const f = this.frame;
+    const r = STICK.base * this.stickScale;
+    if (f.kind === "full") return { x: Phaser.Math.Clamp(x, 140 * this.stickScale, f.width - 140 * this.stickScale), y: Phaser.Math.Clamp(y, 260, f.height - 130 * this.stickScale) };
+    return { x: Phaser.Math.Clamp(x, f.safe.left + r + 4 * f.unit, f.width - f.safe.right - r - 4 * f.unit), y: Phaser.Math.Clamp(y, f.hud + r, f.height - f.safe.bottom - r - 2 * f.unit) };
+  }
+
+  tick(now: number) {
+    const fire = this.fire;
+    if (!fire || fire.mode !== "pending" || now - fire.at < FIRE.decide) return;
+    fire.mode = "auto";
+    this.touch.throwing = true;
+    this.touch.tapAt = now;
+    this.touch.shot = null;
+  }
+
+  private aimMove(p: Phaser.Input.Pointer, fire: Fire) {
+    const dx = p.x - fire.x;
+    const dy = p.y - fire.y;
     const d = Math.hypot(dx, dy);
-    const max = STICK.travel * this.stickScale;
-    if (d > max) {
-      dx = (dx / d) * max;
-      dy = (dy / d) * max;
+    const u = this.cssUnit;
+    if (fire.mode !== "aim") {
+      if (d < FIRE.start * u) return;
+      fire.mode = "aim";
+      this.touch.throwing = false;
+      this.aimKnob.setVisible(true);
     }
-    this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
-    if (this.frame.kind === "full") {
-      const m = Math.hypot(dx, dy);
-      this.touch.x = m < 14 ? 0 : dx / max;
-      this.touch.y = m < 14 ? 0 : dy / max;
+    if (d >= FIRE.steady * u) {
+      this.touch.aim = Math.atan2(dy / FLOOR, dx);
+      const reach = (BUTTON_R * 0.62) / Math.max(1, d);
+      this.aimKnob.setPosition(dx * reach, dy * reach).setRotation(Math.atan2(dy, dx));
+    }
+  }
+
+  private move(p: Phaser.Input.Pointer) {
+    if (this.fire && p.id === this.fire.id) {
+      this.aimMove(p, this.fire);
       return;
     }
-    const m = Math.hypot(dx, dy) / max;
-    const dead = 0.14;
-    const k = m <= dead ? 0 : Math.min(1, (m - dead) / (0.82 - dead));
-    this.touch.x = m > 0 ? (dx / (m * max)) * k : 0;
-    this.touch.y = m > 0 ? (dy / (m * max)) * k : 0;
+    if (p.id !== this.stickId) return;
+    const k = this.stickScale;
+    const leash = STICK.leash * k;
+    let dx = p.x - this.stickOrigin.x;
+    let dy = p.y - this.stickOrigin.y;
+    let d = Math.hypot(dx, dy);
+    if (d > leash) {
+      const pull = (d - leash) / d;
+      this.stickOrigin = this.clampOrigin(this.stickOrigin.x + dx * pull, this.stickOrigin.y + dy * pull);
+      this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y);
+      dx = p.x - this.stickOrigin.x;
+      dy = p.y - this.stickOrigin.y;
+      d = Math.hypot(dx, dy);
+      if (d > leash) {
+        dx = (dx / d) * leash;
+        dy = (dy / d) * leash;
+        d = leash;
+      }
+    }
+    this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
+    const m = d / k;
+    const speed = m <= STICK.dead ? 0 : Math.min(1, (m - STICK.dead) / (STICK.full - STICK.dead));
+    this.touch.x = d > 0 ? (dx / d) * speed : 0;
+    this.touch.y = d > 0 ? (dy / d) * speed : 0;
   }
 
   private up(p: Phaser.Input.Pointer) {
-    if (this.throwIds.delete(p.id)) {
-      this.touch.throwing = this.throwIds.size > 0;
-      if (!this.touch.throwing) this.throwPress.setVisible(false);
+    const fire = this.fire;
+    if (fire && fire.id === p.id) {
+      const now = this.scene.time.now;
+      if (fire.mode === "pending") {
+        this.touch.tapAt = now;
+        this.touch.shot = null;
+      } else if (fire.mode === "aim" && this.touch.aim !== null) {
+        this.touch.tapAt = now;
+        this.touch.shot = this.touch.aim;
+      }
+      this.endFire();
     }
     if (p.id !== this.stickId) return;
     this.stickId = null;
@@ -635,15 +787,40 @@ export class PajamaHud {
     this.refreshControls();
   }
 
+  private endFire() {
+    this.fire = null;
+    this.touch.throwing = false;
+    this.touch.aim = null;
+    this.throwPress.setVisible(false);
+    this.aimKnob.setVisible(false).setPosition(0, 0);
+  }
+
+  get aiming() {
+    return this.fire?.mode === "aim";
+  }
+
+  release() {
+    this.endFire();
+    this.touch.shot = null;
+    this.touch.tapAt = -99999;
+    if (this.stickId !== null) {
+      this.stickId = null;
+      this.touch.x = 0;
+      this.touch.y = 0;
+      this.touch.active = false;
+      this.restStick();
+      this.refreshControls();
+    }
+  }
+
   hideControls() {
     this.controlsOn = false;
     this.stickId = null;
-    this.throwIds.clear();
-    this.throwPress.setVisible(false);
+    this.endFire();
+    this.touch.shot = null;
     this.touch.x = 0;
     this.touch.y = 0;
     this.touch.active = false;
-    this.touch.throwing = false;
     this.refreshControls();
     this.stickLabel.setVisible(false);
     this.throwLabel.setVisible(false);
