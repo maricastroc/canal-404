@@ -33,6 +33,8 @@ const COPY = localized({
   },
 });
 
+let draft = "";
+
 export function NicknameForm({
   initial = "",
   submitLabel,
@@ -49,7 +51,11 @@ export function NicknameForm({
   autoFocus?: boolean;
 }) {
   const id = useId();
-  const [value, setValue] = useState(initial);
+  const [value, setValue] = useState(() => initial || draft);
+  const change = (next: string) => {
+    setValue(next);
+    if (!initial) draft = next;
+  };
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const { play } = useSound();
@@ -69,6 +75,7 @@ export function NicknameForm({
     const outcome = await onSubmit(check.nickname);
     setBusy(false);
     if (outcome.ok) {
+      if (!initial) draft = "";
       play("confirm");
       return;
     }
@@ -79,7 +86,7 @@ export function NicknameForm({
 
   const shuffle = () => {
     play("click");
-    setValue(suggestNickname(Math.random, locale));
+    change(suggestNickname(Math.random, locale));
     setError("");
   };
 
@@ -95,7 +102,7 @@ export function NicknameForm({
         id={`${id}-nickname`}
         value={value}
         onChange={(e) => {
-          setValue(e.target.value);
+          change(e.target.value);
           if (error) setError("");
         }}
         maxLength={NICKNAME_MAX}

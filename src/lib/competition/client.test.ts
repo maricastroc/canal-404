@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameResult } from "@/games/types";
-import { connect, flushOutbox, getCompetition, pendingCount, requestTicket, resetCompetitionForTests, submitResult } from "./client";
+import { connect, flushOutbox, getCompetition, holdUntilJoined, join, pendingCount, requestTicket, resetCompetitionForTests, submitResult } from "./client";
 
 type Route = (init: RequestInit | undefined) => { status: number; body?: unknown } | "network";
 
@@ -70,6 +70,30 @@ describe("competition client", () => {
     up = true;
     expect(await flushOutbox()).toBe(1);
     expect(pendingCount()).toBe(0);
+  });
+
+  it("holds a result left without a nickname and sends it once the visitor joins", async () => {
+    let joined = false;
+    const calls = serve({
+      "GET /api/status": () => ({ status: 200, body: { status: "online" } }),
+      "GET /api/players/me": () => ({ status: 200, body: { player: joined ? PLAYER : null } }),
+      "POST /api/runs/tickets": () => ({ status: 201, body: { ticket: "t.early", seed: 1, expiresAt: "x" } }),
+      "POST /api/players": () => {
+        joined = true;
+        return { status: 201, body: { player: PLAYER } };
+      },
+      "POST /api/runs": () => (joined ? { status: 201, body: ACCEPTED } : { status: 401, body: { error: { code: "not_joined", message: "?" } } }),
+    });
+    await connect();
+    await holdUntilJoined(requestTicket("pajama-war", "bedroom"), RESULT);
+    await holdUntilJoined(Promise.resolve({ token: "t.early", mission: null }), RESULT);
+    expect(pendingCount()).toBe(1);
+    expect(await flushOutbox()).toBe(0);
+    expect(pendingCount()).toBe(1);
+    expect((await join("Pato Veloz")).ok).toBe(true);
+    await vi.waitFor(() => expect(pendingCount()).toBe(0));
+    const sent = calls.filter((c) => c.method === "POST" && c.path === "/api/runs").map((c) => (c.body as { ticket: string }).ticket);
+    expect(sent).toEqual(["t.early", "t.early"]);
   });
 
   it("reports a run that started without a ticket as local only", async () => {

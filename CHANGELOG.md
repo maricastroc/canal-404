@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Resultados esperam o apelido
+- **A win played before picking a nickname is no longer lost.** Moving on from the result screen without clicking "Entrar no placar" (next level, replay, choosing another level or leaving the game) used to throw that result away, even with a nickname typed or drawn with "Sortear". The result now waits on the device, and it goes up with the next one as soon as the visitor joins the board, in any game.
+- The join form says how many earlier results are waiting, and it opens with the nickname typed or drawn earlier in the visit already filled in. Nothing is sent until the visitor clicks "Entrar no placar".
+- Results wait up to 11 hours and at most ten at a time, the same limits as results that failed to send when the board was off the air. Scores, rankings and boards are unchanged.
+
 ### Guerra de Lanche em pé no celular
 - **Portrait layout on phones.** With the phone upright, the game fills the screen instead of a thin strip between two empty bands. Déco and Mila's table sits in the foreground and the rival rows stretch across the whole width behind it, so characters, tables and tap targets are drawn about twice as big as before. All five tables stay fully on screen, also while the classmates pop up, wind up and brawl. Déco turns around to throw at classmates on his left.
 - The napkins, timer and score sit along the top. A smaller ABAIXA button sits in the bottom-right corner, next to the table and under the thumb. Mila's speech bubble appears beside her, over the tablecloth, without covering anyone.
