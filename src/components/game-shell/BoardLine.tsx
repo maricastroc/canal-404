@@ -15,6 +15,7 @@ import { formatBest, ordinal } from "@/lib/competition/format";
 import { BOARD_META, isGameSlug, type GameSlug } from "@/lib/competition/boards";
 import { serverMessage } from "@/lib/competition/errors";
 import { recordsHref } from "@/lib/competition/links";
+import { boardNickname } from "@/lib/competition/nickname";
 
 export type BoardState = { phase: "sending" } | { phase: "join" } | { phase: "done"; outcome: SubmitOutcome };
 
@@ -135,7 +136,7 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Lo
       const alone = board.position === 1 && board.total === 1;
       const href = slug ? recordsHref(slug, levelOfBoard(board.id)) : undefined;
       const leader = board.leader;
-      const rival = leader && !leader.you && slug ? copy.rival(`${leader.nickname} #${leader.tag}`, formatBest(slug, leader.metrics, locale)) : undefined;
+      const rival = leader && !leader.you && slug ? copy.rival(`${boardNickname(leader.nickname)} #${leader.tag}`, formatBest(slug, leader.metrics, locale)) : undefined;
       if (run.ineligible === "not_won") {
         return { text: board.best ? copy.notWonBest(here, best, place) : copy.notWon(here), rival, href };
       }

@@ -100,6 +100,10 @@ function deleet(value: string) {
   return value.replace(/[0-9]/g, (d) => LEET[d] ?? d);
 }
 
+export function boardNickname(nickname: string) {
+  return nickname.toUpperCase();
+}
+
 export function nicknameKey(nickname: string) {
   return strip(nickname).replace(/[\s_-]+/g, "");
 }

@@ -10,6 +10,9 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 - **The jump rope stays in their hands.** The rope used to end a little away from the hands and float on its own while the holding arm was down. Now the holding arm stays up and the other one waves. The rope's reach and timing are unchanged.
 - Same heads, faces, colors and accessories.
 
+### Placares em letras maiúsculas
+- Nicknames on every board now show in capital letters: each game's board, the mission boards and their champion line, the champion ticker and the rival line under each game. Nicknames are stored as typed, so nothing changes for sign-in, tags or ranking.
+
 ### O placar anota o tipo de navegador
 - Every result sent to the scoreboard now records the type of browser it came from: only the engine family, its major version and whether it's a phone or a computer (for example `webkit-26-mobile`), never the browser's full identification. Accepted and rejected results both get it, so replay mismatches can be checked engine by engine. The about page says so in both languages.
 - Needs the `20261120150000_run_client` migration. Older runs have no label. Scores, rankings and boards are unchanged.
