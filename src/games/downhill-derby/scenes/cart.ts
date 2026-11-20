@@ -224,6 +224,13 @@ export class CartView {
     this.tiltVel -= 3 + power * 4;
   }
 
+  setDusty(on: boolean) {
+    for (const img of this.images) {
+      if (on) img.setTint(0xe9e4da);
+      else img.clearTint();
+    }
+  }
+
   setHelmet(on: boolean) {
     if (on && !this.helmet && this.scene.textures.exists("f-melancia-capacete")) {
       this.helmet = this.scene.add.image(0, 0, "f-melancia-capacete").setOrigin(0.5, 0.8).setScale(0.8);

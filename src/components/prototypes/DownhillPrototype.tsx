@@ -35,7 +35,7 @@ const COPY = localized({
     controlKeys: "Segure ↓ ou S para agachar e carregar; Espaço pula. ← → giram no ar.",
     shortcuts: "R reinicia · Esc ou P pausa",
     course: "Pista",
-    courseOptions: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", test: "Pista de teste" } satisfies Record<CourseId, string>,
+    courseOptions: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", antena: "Morro da Antena", test: "Pista de teste" } satisfies Record<CourseId, string>,
     art: "Visual",
     artOptions: { current: "Antigo (protótipo)", sample: "Padrão aprovado (só na Rua das Pitangueiras)" } satisfies Record<ArtSetting, string>,
     artHint: "O padrão aprovado cobre por enquanto a largada e a Rua das Pitangueiras. A corrida recomeça ao trocar.",
@@ -117,7 +117,7 @@ const COPY = localized({
     controlKeys: "Hold ↓ or S to crouch and charge; Space jumps. ← → spin in the air.",
     shortcuts: "R restarts · Esc or P pauses",
     course: "Track",
-    courseOptions: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", test: "Test track" } satisfies Record<CourseId, string>,
+    courseOptions: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", antena: "Antenna Hill", test: "Test track" } satisfies Record<CourseId, string>,
     art: "Visuals",
     artOptions: { current: "Old (prototype)", sample: "Approved style (Pitanga Street only)" } satisfies Record<ArtSetting, string>,
     artHint: "For now the approved style covers the start and Pitanga Street. The race restarts when you switch.",
@@ -197,7 +197,7 @@ function loadSettings(): PrototypeSettings {
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw) as Partial<PrototypeSettings>;
     return {
-      course: parsed.course === "test" || parsed.course === "feira" ? parsed.course : "arlindo",
+      course: parsed.course === "test" || parsed.course === "feira" || parsed.course === "antena" ? parsed.course : "arlindo",
       art: parsed.art === "current" ? "current" : "sample",
       indicator: parsed.indicator !== false,
       rivals: parsed.rivals !== false,
@@ -434,7 +434,7 @@ export function DownhillPrototype() {
         <p className="mt-1 font-body text-sm leading-snug">{copy.panelHint}</p>
         <fieldset className="mt-4">
           <legend className="font-display text-lg uppercase">{copy.course}</legend>
-          {(["arlindo", "feira", "test"] as const).map((course) => (
+          {(["arlindo", "feira", "antena", "test"] as const).map((course) => (
             <label key={course} className={`mt-2 flex cursor-pointer items-center gap-2 rounded-xl border-[3px] border-ink p-2 font-body text-sm font-bold ${settings.course === course ? "bg-sun" : "bg-cream-2"}`}>
               <input type="radio" name="dd-course" className="accent-ink" checked={settings.course === course} onChange={() => changeSettings({ course })} />
               {copy.courseOptions[course]}

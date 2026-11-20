@@ -1,4 +1,4 @@
-import { atan2, clamp, DEG, wrapAngle } from "./math";
+import { atan2, clamp, DEG, TAU, wrapAngle } from "./math";
 import type { Params } from "./params";
 import { covers, heightAt, obstacleActive, obstacleX, segmentAt, type Obstacle, type ObstacleKind, type Surface, type Track } from "./track";
 
@@ -27,6 +27,10 @@ const ASSIST_MIN = 420;
 const ASSIST_MAX = 1500;
 const FLOCK_BONUS = 120;
 const STAIR_RATTLE = 1.6;
+const LOOP_BONUS = 160;
+const MANHOLE_DROP = 46;
+const JET_VX = 1250;
+const JET_APEX = 280;
 
 export type SimInput = { crouch: boolean; jump: boolean; spin: -1 | 0 | 1 };
 
@@ -36,7 +40,7 @@ export type SimMode = "ground" | "air" | "crash";
 
 export type LandQuality = "perfect" | "ok" | "touch";
 
-export type CrashReason = "upside" | "tilted" | "barrier" | "truck" | "fence";
+export type CrashReason = "upside" | "tilted" | "barrier" | "truck" | "fence" | "loop";
 
 export type SimEvent =
   | { type: "takeoff"; popped: boolean; lip: boolean; power: number }
@@ -51,6 +55,9 @@ export type SimEvent =
   | { type: "interfered"; kind: "dust" | "kick"; loss: number }
   | { type: "bounce"; rhythm: boolean; combo: number; delta: number; surface: number; late: boolean }
   | { type: "flock"; index: number; clean: boolean }
+  | { type: "loop"; index: number; done: boolean }
+  | { type: "manhole"; index: number }
+  | { type: "jet" }
   | { type: "finish"; time: number };
 
 export type SimStats = {
@@ -69,6 +76,7 @@ export type SimStats = {
   bounces: number;
   combo: number;
   flock: boolean;
+  loops: number;
 };
 
 export type Landing = { surface: number; x: number; y: number; slope: number; steps: number };
@@ -133,7 +141,13 @@ export class DownhillSim {
   private comboHold = 0;
   private lastAwning = -1;
   private readonly flockState: number[];
-  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, interfered: 0, bounces: 0, combo: 0, flock: false };
+  private readonly loopUsed: boolean[];
+  private readonly manholeUsed: boolean[];
+  loopIndex = -1;
+  loopTheta = 0;
+  private loopC = 1;
+  private loopS = 0;
+  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, interfered: 0, bounces: 0, combo: 0, flock: false, loops: 0 };
   readonly events: SimEvent[] = [];
   readonly removed = new Set<number>();
   private readonly dynamic: number[];
@@ -147,6 +161,8 @@ export class DownhillSim {
     this.syncGround();
     this.dynamic = track.obstacles.map((o, i) => (o.motion || o.window || o.roll ? i : -1)).filter((i) => i >= 0);
     this.flockState = (track.flocks ?? []).map(() => 0);
+    this.loopUsed = (track.loops ?? []).map(() => false);
+    this.manholeUsed = (track.manholes ?? []).map(() => false);
     while (this.nextObstacle < track.obstacles.length && track.obstacles[this.nextObstacle].x <= this.x) this.nextObstacle += 1;
   }
 
@@ -177,7 +193,7 @@ export class DownhillSim {
     const yPrev = this.y;
     const chargeBefore = this.charge;
     let popped = false;
-    if (this.mode === "ground" && input.jump && !this.finished) {
+    if (this.mode === "ground" && input.jump && !this.finished && this.loopIndex < 0) {
       this.pop(chargeBefore, false);
       popped = true;
     } else if (this.mode === "air" && input.jump && !this.popped && !this.tumbling && this.airSteps <= COYOTE_STEPS && !this.finished) {
@@ -190,9 +206,14 @@ export class DownhillSim {
     else if (input.crouch) this.charge = Math.min(this.charge + DT, this.params.chargeTime);
     else this.charge = 0;
     this.crouch = input.crouch;
-    if (this.mode === "ground") this.groundStep(input);
+    if (this.mode === "ground" && this.loopIndex >= 0) this.loopStep(input);
+    else if (this.mode === "ground") this.groundStep(input);
     else if (this.mode === "air") this.airStep(input);
     else this.crashStep();
+    if (this.mode === "ground" && this.loopIndex < 0 && this.surface === 0) {
+      this.checkLoops(xPrev);
+      this.checkManholes(xPrev);
+    }
     this.checkObstacles(xPrev, yPrev);
     this.checkFlocks();
     this.checkFinish(xPrev);
@@ -403,7 +424,15 @@ export class DownhillSim {
       return;
     }
     const road = this.track.surfaces[0];
-    if (covers(road, x1) && y1 > heightAt(road, x1) + 1) {
+    if (covers(road, x1) && y1 > heightAt(road, x1) + 1 && !this.underground(x1) && this.track.surfaces[this.surface].kind === "sewer") {
+      if (this.vx < JET_VX) this.vx = JET_VX;
+      const depth = y1 - heightAt(road, x1);
+      this.vy = -Math.sqrt(2 * this.params.gravity * (depth + JET_APEX));
+      this.surface = 0;
+      this.events.push({ type: "jet" });
+      return;
+    }
+    if (covers(road, x1) && y1 > heightAt(road, x1) + 1 && !this.underground(x1) && this.vy >= 0) {
       this.land(0, x1);
       return;
     }
@@ -477,6 +506,92 @@ export class DownhillSim {
       this.crash(delta > 100 ? "upside" : "tilted", vt, delta);
     }
     this.syncGround();
+  }
+
+  private underground(x: number) {
+    for (const s of this.track.surfaces) if (s.kind === "sewer" && covers(s, x)) return true;
+    return false;
+  }
+
+  private checkLoops(xPrev: number) {
+    const loops = this.track.loops;
+    if (!loops || this.finished) return;
+    for (let i = 0; i < loops.length; i += 1) {
+      if (this.loopUsed[i] || xPrev >= loops[i].x || this.x < loops[i].x) continue;
+      this.loopUsed[i] = true;
+      this.loopIndex = i;
+      this.loopTheta = 0;
+      this.loopC = 1;
+      this.loopS = 0;
+      this.events.push({ type: "loop", index: i, done: false });
+      return;
+    }
+  }
+
+  private loopStep(input: SimInput) {
+    const p = this.params;
+    const loop = this.track.loops![this.loopIndex];
+    const r = loop.r;
+    const g = p.gravity;
+    const k = p.drag * 1e-5 * (input.crouch ? 1 - p.crouchDrag : 1);
+    this.paddling = false;
+    this.v += (-g * this.loopS * p.slopeGain - k * this.v * this.v - p.rolling) * DT;
+    if (this.v <= 0 || (this.v * this.v) / r + g * this.loopC < 0) {
+      const v = this.v > 0 ? this.v : 0;
+      this.vx = v * this.loopC;
+      this.vy = -v * this.loopS;
+      this.loopIndex = -1;
+      this.enterAir(false);
+      this.tumbling = true;
+      this.crashTotal = Math.max(1, Math.round(p.crashTime * STEP_HZ));
+      this.crashLeft = this.crashTotal;
+      this.stats.crashes += 1;
+      this.events.push({ type: "crash", reason: "loop", delta: 0, speed: v });
+      return;
+    }
+    const d = (this.v * DT) / r;
+    const d2 = d * d;
+    const sd = d * (1 - (d2 / 6) * (1 - d2 / 20));
+    const cd = 1 - (d2 / 2) * (1 - (d2 / 12) * (1 - d2 / 30));
+    let c = this.loopC * cd - this.loopS * sd;
+    let s = this.loopS * cd + this.loopC * sd;
+    const n = Math.sqrt(c * c + s * s);
+    c /= n;
+    s /= n;
+    this.loopC = c;
+    this.loopS = s;
+    this.loopTheta += d;
+    if (this.loopTheta >= TAU) {
+      this.loopIndex = -1;
+      this.v += LOOP_BONUS;
+      this.stats.loops += 1;
+      this.syncGround();
+      this.events.push({ type: "loop", index: this.track.loops!.indexOf(loop), done: true });
+      return;
+    }
+    const road = this.track.surfaces[0];
+    const cy = heightAt(road, loop.x) - r;
+    this.x = loop.x + r * s;
+    this.y = cy + r * c;
+    this.angle = wrapAngle(-this.loopTheta);
+  }
+
+  private checkManholes(xPrev: number) {
+    const holes = this.track.manholes;
+    if (!holes || !this.crouch || this.finished) return;
+    for (let i = 0; i < holes.length; i += 1) {
+      const m = holes[i];
+      if (this.manholeUsed[i] || this.x < m.x - m.w / 2 || xPrev > m.x + m.w / 2) continue;
+      this.manholeUsed[i] = true;
+      const s = this.track.surfaces[0];
+      this.vx = this.v * s.tx[this.seg];
+      this.vy = this.v * s.ty[this.seg] + 120;
+      this.y = heightAt(s, this.x) + MANHOLE_DROP;
+      this.enterAir(false);
+      this.surface = m.surface;
+      this.events.push({ type: "manhole", index: i });
+      return;
+    }
   }
 
   private rhythmPress() {

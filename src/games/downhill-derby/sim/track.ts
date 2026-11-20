@@ -1,6 +1,6 @@
 import { atan2 } from "./math";
 
-export type SurfaceKind = "road" | "deck" | "yard" | "rail" | "awning";
+export type SurfaceKind = "road" | "deck" | "yard" | "rail" | "awning" | "sewer";
 
 export type Surface = {
   kind: SurfaceKind;
@@ -14,7 +14,7 @@ export type Surface = {
   x1: number;
 };
 
-export type ObstacleKind = "cone" | "crate" | "line" | "barrier" | "pothole" | "bin" | "gnome" | "fence" | "truck" | "hose" | "gold" | "melon" | "orange" | "stand";
+export type ObstacleKind = "cone" | "crate" | "line" | "barrier" | "pothole" | "bin" | "gnome" | "fence" | "truck" | "hose" | "gold" | "melon" | "orange" | "stand" | "bag";
 
 export type Motion = { amp: number; period: number; phase: number };
 
@@ -24,7 +24,7 @@ export type Roll = { length: number; period: number; phase: number };
 
 export type Obstacle = { x: number; kind: ObstacleKind; low: number; high: number; heavy: boolean; loss: number; surface: number; motion?: Motion; window?: Window; roll?: Roll };
 
-export type SignKey = "crouch" | "rollers" | "crest" | "ramp" | "land" | "cones" | "crates" | "duck" | "jump" | "shortcut" | "cobbles" | "finish" | "pothole" | "bins" | "hose" | "truck" | "yard" | "fence" | "fruit" | "awnings" | "stairs" | "rail" | "pigeons" | "trolley";
+export type SignKey = "crouch" | "rollers" | "crest" | "ramp" | "land" | "cones" | "crates" | "duck" | "jump" | "shortcut" | "cobbles" | "finish" | "pothole" | "bins" | "hose" | "truck" | "yard" | "fence" | "fruit" | "awnings" | "stairs" | "rail" | "pigeons" | "trolley" | "loop" | "bag" | "seesaw" | "works";
 
 export type Sign = { x: number; key: SignKey };
 
@@ -40,6 +40,8 @@ export type Track = {
   cobbles: { x0: number; x1: number; stairs?: boolean }[];
   flocks?: { x0: number; x1: number }[];
   awningExit?: number;
+  loops?: { x: number; r: number }[];
+  manholes?: { x: number; w: number; surface: number }[];
   signs: Sign[];
   start: number;
   finish: number;
@@ -60,6 +62,7 @@ const OBSTACLE_SHAPES: Record<ObstacleKind, { low: number; high: number; heavy: 
   melon: { low: 0, high: 62, heavy: false, loss: 0.8 },
   orange: { low: 0, high: 32, heavy: false, loss: 0.35 },
   stand: { low: 0, high: 92, heavy: false, loss: 1 },
+  bag: { low: 95, high: 270, heavy: false, loss: 0.6 },
 };
 
 export function obstacle(x: number, kind: ObstacleKind, extra: { surface?: number; motion?: Motion; window?: Window; roll?: Roll } = {}): Obstacle {

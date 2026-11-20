@@ -1,9 +1,11 @@
 import * as Phaser from "phaser";
 import type { RaceCopy } from "../copy";
-import type { ArlindoSet, Course, FeiraSet } from "../sim/course";
+import { BAG_SHIFTS, BAG_SWING, bagPhase } from "../sim/antena";
+import type { AntenaSet, ArlindoSet, Course, FeiraSet } from "../sim/course";
 import { heightAt, obstacleActive, type Obstacle } from "../sim/track";
 import { INK } from "./cart";
 import { CastPlanner, type Extra } from "./cast";
+import { MIXER_X } from "./antena";
 import { awningGaps, CIDINHA, trolleyRamp } from "./feira";
 import { NEIGHBORS, SAMPLE_RES, type SampleSpots } from "./sample";
 import { BLEACHER_ROWS, BLEACHER_SEATS, BLEACHER_W, LANES, STALL_W, STREET_SPOTS, VENDOR_SPOTS, type Builder, type Zone } from "./terrain";
@@ -37,13 +39,25 @@ export class Ambient {
   private readonly cast = new CastPlanner(3800);
   private flockState: ((clean: boolean) => void) | null = null;
 
+  private jetState: (() => void) | null = null;
+
   step = 0;
   lead = -Infinity;
+  racers: number[] = [-Infinity, -Infinity, -Infinity];
+  firstRace = true;
 
   constructor(b: Builder, layer: Phaser.GameObjects.Layer, track: Course, zones: Zone[], copy: RaceCopy) {
     this.b = b;
     this.layer = layer;
     this.copy = copy;
+    if (track.set?.kind === "antena") {
+      this.hill(track, track.set);
+      if (b.sampleSpots) this.neighbors(b.sampleSpots);
+      this.finish(track);
+      for (const x of this.b.bleachers) this.bleacher(x);
+      this.start(track);
+      return;
+    }
     if (track.set?.kind === "feira") {
       this.market(track, track.set);
       if (b.sampleSpots) this.neighbors(b.sampleSpots);
@@ -281,6 +295,247 @@ export class Ambient {
         });
       },
     });
+  }
+
+  private hill(track: Course, set: AntenaSet) {
+    set.bags.forEach((bx, i) => this.bag(track, bx, BAG_SHIFTS[i]));
+    for (const sw of set.seesaws) this.seesaw(track, sw);
+    this.mixer2(set.works.x0 + MIXER_X);
+    this.frogs(track);
+    this.mila(track, set);
+    this.jet(track, set);
+    this.crowd(set.works.x0 - 900, 2);
+    this.crowd(set.exit + 2600, 2);
+  }
+
+  private bag(track: Course, bx: number, shift: number) {
+    const s = this.b.scene;
+    const road = track.surfaces[0];
+    const pivotY = this.b.backY(bx) - 833;
+    const len = heightAt(road, bx) - 102 - 120 - pivotY;
+    const root = this.add(s.add.container(0, 0));
+    root.setDepth(8.2);
+    const rope = s.add.graphics();
+    const tex = heightOf(s, "a-saco-cimento");
+    const img = s.add.image(bx, 0, "a-saco-cimento").setOrigin(0.5, 8 * SAMPLE_RES / tex).setScale(1 / SAMPLE_RES);
+    root.add([rope, img]);
+    const place = () => {
+      const u = ((((this.step + bagPhase(shift)) % BAG_SWING.period) + BAG_SWING.period) % BAG_SWING.period) / BAG_SWING.period;
+      const off = BAG_SWING.amp * Math.sin(u * Math.PI * 2);
+      const a = Math.asin(Math.max(-0.95, Math.min(0.95, off / len)));
+      const x = bx + off;
+      const y = pivotY + len * Math.cos(a);
+      rope.clear();
+      rope.lineStyle(9, INK, 1);
+      rope.beginPath();
+      rope.moveTo(bx, pivotY);
+      rope.lineTo(x, y);
+      rope.strokePath();
+      rope.lineStyle(4, 0x9aa6b8, 1);
+      rope.beginPath();
+      rope.moveTo(bx, pivotY);
+      rope.lineTo(x, y);
+      rope.strokePath();
+      img.setPosition(x, y).setRotation(-a);
+    };
+    place();
+    this.actors.push({ x: bx, root, reset: place, update: place });
+  }
+
+  private seesaw(track: Course, sw: { x0: number; pivot: number; x1: number }) {
+    const s = this.b.scene;
+    const road = track.surfaces[0];
+    const py = heightAt(road, sw.pivot);
+    const up = Math.atan2(py - heightAt(road, sw.x0), sw.pivot - sw.x0);
+    const down = Math.atan2(heightAt(road, sw.x1) - py, sw.x1 - sw.pivot);
+    const half = Math.max(sw.pivot - sw.x0, sw.x1 - sw.pivot) + 30;
+    const lanes = [0, LANES.lina, LANES.bruno];
+    const depths = [7.55, 5.92, 4.92];
+    const planks = lanes.map((lane, i) => {
+      const g = this.add(s.add.graphics());
+      g.setDepth(depths[i]);
+      g.setPosition(sw.pivot, py + lane - 4);
+      g.fillStyle(INK, 1);
+      g.fillRoundedRect(-half - 6, -16, half * 2 + 12, 24, 6);
+      g.fillStyle(0xd99a57, 1);
+      g.fillRoundedRect(-half, -12, half * 2, 16, 4);
+      g.lineStyle(3, INK, 0.4);
+      for (let k = -2; k <= 2; k += 1) {
+        g.beginPath();
+        g.moveTo(k * half * 0.4 - 12, -12);
+        g.lineTo(k * half * 0.4 + 12, 4);
+        g.strokePath();
+      }
+      const base = this.add(s.add.graphics());
+      base.setDepth(depths[i] - 0.01);
+      base.fillStyle(INK, 1);
+      base.fillTriangle(sw.pivot - 40, heightAt(road, sw.pivot - 40) + lane + 30, sw.pivot + 40, heightAt(road, sw.pivot + 40) + lane + 30, sw.pivot, py + lane - 6);
+      base.fillStyle(0xef4f43, 1);
+      base.fillTriangle(sw.pivot - 30, heightAt(road, sw.pivot - 30) + lane + 24, sw.pivot + 30, heightAt(road, sw.pivot + 30) + lane + 24, sw.pivot, py + lane + 2);
+      return { g, angle: up, tipped: false };
+    });
+    const root = this.add(s.add.container(0, 0));
+    this.actors.push({
+      x: sw.pivot,
+      root,
+      reset: () => {
+        for (const p of planks) {
+          p.tipped = false;
+          p.angle = up;
+          p.g.setRotation(up);
+        }
+      },
+      update: (dt) => {
+        planks.forEach((p, i) => {
+          if (!p.tipped && this.racers[i] > sw.pivot) p.tipped = true;
+          const target = p.tipped ? down : up;
+          p.angle += (target - p.angle) * Math.min(1, dt * 18);
+          p.g.setRotation(p.angle);
+        });
+      },
+    });
+    for (const p of planks) p.g.setRotation(up);
+  }
+
+  private mixer2(x0: number) {
+    const s = this.b.scene;
+    const base = this.b.floorY(x0 - 120, x0 + 120);
+    const root = this.add(s.add.container(x0 - 20, base - 150));
+    root.setDepth(-8.1);
+    const drum = s.add.image(0, 0, "a-betoneira-tambor").setScale(0.8 / SAMPLE_RES);
+    root.add(drum);
+    this.actors.push({ x: x0, root, reset: () => undefined, update: (_dt, t) => drum.setRotation(Math.sin(t * 2) * 0.05).setScale((0.8 / SAMPLE_RES) * (1 + Math.sin(t * 6) * 0.01), 0.8 / SAMPLE_RES) });
+  }
+
+  private frogs(track: Course) {
+    const s = this.b.scene;
+    const sewer = track.surfaces[1];
+    if (!sewer) return;
+    const root = this.add(s.add.container(0, 0));
+    root.setDepth(0.12);
+    const frogs = [700, 1500, 2300, 3200].filter((d) => sewer.x0 + d < sewer.x1 - 300).map((d) => {
+      const x = sewer.x0 + d;
+      const img = s.add.image(x, heightAt(sewer, x) + 4, "a-sapo-a").setOrigin(0.5, 0.9).setScale(0.8 / SAMPLE_RES);
+      root.add(img);
+      return { img, x, jump: 0, done: false };
+    });
+    this.actors.push({
+      x: (sewer.x0 + sewer.x1) / 2,
+      root,
+      reset: () => {
+        for (const f of frogs) {
+          f.jump = 0;
+          f.done = false;
+          f.img.setTexture("a-sapo-a").setPosition(f.x, heightAt(sewer, f.x) + 4);
+        }
+      },
+      update: (dt, _t, px) => {
+        for (const f of frogs) {
+          if (!f.done && px > f.x - 380 && px < f.x) {
+            f.done = true;
+            f.jump = 1;
+            this.bubble(this.copy.croak, f.x, heightAt(sewer, f.x) - 120, 26);
+          }
+          if (f.jump > 0) {
+            f.jump = Math.max(0, f.jump - dt * 1.4);
+            const k = 1 - f.jump;
+            f.img.setTexture(f.jump > 0.1 ? "a-sapo-b" : "a-sapo-a");
+            f.img.setPosition(f.x - k * 160, heightAt(sewer, f.x) + 4 - Math.sin(k * Math.PI) * 200);
+          }
+        }
+      },
+    });
+  }
+
+  private mila(track: Course, set: AntenaSet) {
+    const s = this.b.scene;
+    const road = track.surfaces[0];
+    const x0 = set.hole - 900;
+    const base = this.b.backY(x0) + 8;
+    const root = this.add(s.add.container(0, 0));
+    root.setDepth(-3.5);
+    const img = s.add.image(x0, base, "kid-mila-a").setOrigin(0.5, 1);
+    const k = 146 / heightOf(s, "kid-mila-a");
+    img.setScale(k);
+    root.add(img);
+    let state: "wait" | "run" | "drop" | "gone" = "wait";
+    let t0 = 0;
+    const home = () => {
+      state = this.firstRace ? "wait" : "gone";
+      img.setVisible(this.firstRace).setPosition(x0, base).setScale(k).setTexture("kid-mila-a").setAlpha(1);
+      root.setDepth(-3.5);
+    };
+    home();
+    this.actors.push({
+      x: set.hole,
+      root,
+      reset: home,
+      update: (_dt, t, px) => {
+        if (state === "wait" && px > set.hole - 2600) {
+          state = "run";
+          t0 = t;
+          this.bubble(this.copy.mila, x0, base - 200, 30);
+        }
+        if (state === "run") {
+          const u = Math.min(1, (t - t0) / 0.9);
+          const x = x0 + (set.hole - x0) * u;
+          const y = base + (heightAt(road, set.hole) - 6 - base) * u;
+          img.setPosition(x, y - Math.abs(Math.sin(u * Math.PI * 4)) * 14).setTexture(Math.floor(t * 10) % 2 === 0 ? "kid-mila-a" : "kid-mila-b");
+          if (u >= 1) {
+            state = "drop";
+            t0 = t;
+            root.setDepth(0.69);
+          }
+        }
+        if (state === "drop") {
+          const u = Math.min(1, (t - t0) / 0.35);
+          img.setY(heightAt(road, set.hole) - 6 + u * 150).setAlpha(1 - u);
+          if (u >= 1) {
+            state = "gone";
+            img.setVisible(false);
+          }
+        }
+      },
+    });
+  }
+
+  private jet(track: Course, set: AntenaSet) {
+    const s = this.b.scene;
+    const road = track.surfaces[0];
+    const ex = set.exit;
+    const ey = heightAt(road, ex) - 30;
+    const root = this.add(s.add.container(ex, ey));
+    root.setDepth(7.3);
+    const g = s.add.graphics();
+    root.add(g);
+    let burst = 0;
+    this.jetState = () => {
+      burst = 1.4;
+    };
+    this.actors.push({
+      x: ex,
+      root,
+      reset: () => {
+        burst = 0;
+      },
+      update: (dt, t) => {
+        burst = Math.max(0, burst - dt);
+        const h = 60 + burst * 520;
+        g.clear();
+        for (let i = 0; i < 9; i += 1) {
+          const a = t * 9 + i * 0.7;
+          const y = -((t * 260 + i * 37) % h);
+          g.fillStyle(0x8fd4f7, 0.85);
+          g.fillCircle(Math.sin(a) * (12 + burst * 30) * (1 - y / -h), y, 7 + burst * 9);
+        }
+        g.fillStyle(0xbfe7f6, 0.7);
+        g.fillEllipse(0, 6, 120 + burst * 80, 22);
+      },
+    });
+  }
+
+  jetBurst() {
+    this.jetState?.();
   }
 
   flock(clean: boolean) {

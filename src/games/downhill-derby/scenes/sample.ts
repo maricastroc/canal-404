@@ -158,7 +158,7 @@ export function drawFrontWall(b: Builder, from: number, end: number) {
     g.fillStyle(0xecd9b2, 1);
     g.fillPoints(band(54, 92), true);
     g.fillStyle(0xdcc394, 1);
-    g.fillPoints(band(92, 760), true);
+    g.fillPoints(band(92, 1900), true);
     g.fillStyle(0xc9ad7a, 1);
     g.fillPoints(band(92, 104), true);
     const quad = (xa: number, xb: number, off: number) => [new Phaser.Math.Vector2(xa, top(xa) + off), new Phaser.Math.Vector2(xb, top(xb) + off), new Phaser.Math.Vector2(xb, top(xb) + off + 36), new Phaser.Math.Vector2(xa, top(xa) + off + 36)];
@@ -260,9 +260,9 @@ export function drawFrontWall(b: Builder, from: number, end: number) {
     if (c1 === end) {
       const y = top(end);
       g.fillStyle(INK, 1);
-      g.fillRect(end - 8, y + 84, 40, 680);
+      g.fillRect(end - 8, y + 84, 40, 1820);
       g.fillStyle(0xc9ad7a, 1);
-      g.fillRect(end - 2, y + 90, 28, 670);
+      g.fillRect(end - 2, y + 90, 28, 1810);
     }
   }
 }

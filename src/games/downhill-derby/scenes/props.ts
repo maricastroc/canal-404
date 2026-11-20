@@ -61,6 +61,7 @@ export function dressGaps(b: Builder, zones: Zone[], track: TestHill): { x: numb
   const kits: Record<ZoneKey, Kit[]> = {
     neighborhood: [],
     feira: [],
+    antena: [],
     street: [
       { w: 300, place: (x) => image(["p-tree-a", "p-tree-b", "p-tree-c"][Math.floor(rnd() * 3)], x, 330, -19.5, 8, rnd() < 0.5) },
       { w: 150, place: (x) => {

@@ -83,8 +83,8 @@ export function dressFeira(b: Builder, course: Course, copy: RaceCopy): SampleSp
   drawFrontWall(b, road.x0, road.x1);
   bunting(b, set);
   marketGate(b, set, copy);
-  stairsWall(b, course, set);
-  plaza(b, course, set, copy);
+  stairsWall(b, course, set.stairs.x0 - 200, set.stairs.x1 + 600);
+  plaza(b, course, set.plaza, copy);
   for (const [a, c] of gaps) b.taken.push([a + 40, c - 40]);
   return {
     neighbors: [
@@ -135,10 +135,8 @@ function marketGate(b: Builder, set: FeiraSet, copy: RaceCopy) {
   b.taken.push([x - w / 2 - 20, x + w / 2 + 20]);
 }
 
-function stairsWall(b: Builder, course: Course, set: FeiraSet) {
+export function stairsWall(b: Builder, course: Course, x0: number, x1: number) {
   const road = course.surfaces[0];
-  const x0 = set.stairs.x0 - 200;
-  const x1 = set.stairs.x1 + 600;
   const g = b.add(b.chunkFor((x0 + x1) / 2), b.scene.add.graphics());
   g.setDepth(-8);
   const top = (x: number) => heightAt(road, x) - STREET - 24;
@@ -180,10 +178,10 @@ function stairsWall(b: Builder, course: Course, set: FeiraSet) {
   b.taken.push([x0, x1]);
 }
 
-function plaza(b: Builder, course: Course, set: FeiraSet, copy: RaceCopy) {
+export function plaza(b: Builder, course: Course, area: { x0: number; x1: number }, copy: RaceCopy) {
   const road = course.surfaces[0];
-  const x0 = set.plaza.x0;
-  const x1 = set.plaza.x1;
+  const x0 = area.x0;
+  const x1 = area.x1;
   for (let c0 = x0; c0 < x1; c0 += 1800) {
     const c1 = Math.min(x1, c0 + 1800);
     const g = b.add(b.chunkFor(c0 + 10), b.scene.add.graphics());
@@ -300,10 +298,12 @@ function awning(b: Builder, s: Course["surfaces"][number], cloth: [number, numbe
   g.strokePoints(front.map((p) => v(p.x, p.y - 6)), false);
 }
 
-function stairs(b: Builder, course: Course) {
+export function stairs(b: Builder, course: Course) {
+  for (const zone of course.cobbles) if (zone.stairs) stairRun(b, course, zone);
+}
+
+function stairRun(b: Builder, course: Course, zone: { x0: number; x1: number }) {
   const road = course.surfaces[0];
-  const zone = course.cobbles.find((q) => q.stairs);
-  if (!zone) return;
   const tread = 46;
   for (let c0 = zone.x0; c0 < zone.x1; c0 += 1800) {
     const c1 = Math.min(zone.x1, c0 + 1800);

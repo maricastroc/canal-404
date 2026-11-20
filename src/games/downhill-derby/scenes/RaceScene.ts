@@ -11,6 +11,7 @@ import { RaceWorld, replayRace, type WorldEvent } from "../sim/race";
 import { RIVALS as RIVALS_TEST, type RivalDef, type RivalId } from "../sim/rivals";
 import { RIVALS as RIVALS_ARLINDO } from "../sim/rivals-arlindo";
 import { RIVALS as RIVALS_FEIRA } from "../sim/rivals-feira";
+import { RIVALS as RIVALS_ANTENA } from "../sim/rivals-antena";
 import { DownhillSim, DT, IDLE, STEP_HZ, type SimEvent } from "../sim/sim";
 import type { Course } from "../sim/course";
 import { buildCourse } from "../sim/courses";
@@ -21,6 +22,7 @@ import { WorldFx } from "./fx";
 import { H, Hud, W, formatSeconds, type EdgeTag, type HudButton, type Marker, type StandingRow, type TouchButton } from "./hud";
 import { Ambient } from "./ambient";
 import { CAST_FILES } from "./cast";
+import { ANTENA_FILES } from "./antena";
 import { FEIRA_FILES } from "./feira";
 import { PROP_FILES, dressGaps } from "./props";
 import { SAMPLE_FILES, SAMPLE_RES } from "./sample";
@@ -60,8 +62,8 @@ const TRAIL = 30;
 const ZOOM_MIN_GROUND = 0.92;
 const ZOOM_MIN_RIVAL = 1;
 const ZOOM_MIN_AIR = 0.55;
-const FIRST_RACE = { test: { lina: 46, bruno: 60 }, arlindo: { lina: 41, bruno: 48 }, feira: { lina: 43.5, bruno: 51 } } as const;
-const RIVAL_SETS = { test: RIVALS_TEST, arlindo: RIVALS_ARLINDO, feira: RIVALS_FEIRA } as const;
+const FIRST_RACE = { test: { lina: 46, bruno: 60 }, arlindo: { lina: 41, bruno: 48 }, feira: { lina: 43.5, bruno: 51 }, antena: { lina: 47.5, bruno: 55 } } as const;
+const RIVAL_SETS = { test: RIVALS_TEST, arlindo: RIVALS_ARLINDO, feira: RIVALS_FEIRA, antena: RIVALS_ANTENA } as const;
 const BRUNO_BEHIND = 0.8;
 const LINA_AHEAD = 1.2;
 
@@ -164,6 +166,7 @@ export class RaceScene extends Phaser.Scene {
   private helmetOn = false;
   private surfaceTips = new Set<string>();
   private awningTips = 0;
+  private dustyOn = false;
 
   constructor() {
     super("race");
@@ -194,8 +197,9 @@ export class RaceScene extends Phaser.Scene {
     ];
     for (const [key, file] of [...borrowed, ...CAST_FILES, ...PROP_FILES]) this.load.svg(key, `/assets/${file}.svg`, { scale: 1 });
     const pending = this.registry.get("bridge")?.settings;
-    if (pending?.art === "sample" || pending?.course === "arlindo" || pending?.course === "feira") for (const [key, file] of SAMPLE_FILES) this.load.svg(key, `${base}/sample/${file}.svg`, { scale: SAMPLE_RES });
-    if (pending?.course === "feira") for (const [key, file] of FEIRA_FILES) this.load.svg(key, `${base}/feira/${file}.svg`, { scale: SAMPLE_RES });
+    if (pending?.art === "sample" || (pending?.course && pending.course !== "test")) for (const [key, file] of SAMPLE_FILES) this.load.svg(key, `${base}/sample/${file}.svg`, { scale: SAMPLE_RES });
+    if (pending?.course === "feira" || pending?.course === "antena") for (const [key, file] of FEIRA_FILES) this.load.svg(key, `${base}/feira/${file}.svg`, { scale: SAMPLE_RES });
+    if (pending?.course === "antena") for (const [key, file] of ANTENA_FILES) this.load.svg(key, `${base}/antena/${file}.svg`, { scale: SAMPLE_RES });
   }
 
   create() {
@@ -359,9 +363,26 @@ export class RaceScene extends Phaser.Scene {
       g.fillStyle(0x7d6bb8, 1);
       for (let x = 0; x < 1600; x += 400) g.fillCircle(x + 330, 210, 70);
     });
+    const dusk = this.track.id === "antena";
+    if (dusk) {
+      const sky = this.add.graphics();
+      const top = Phaser.Display.Color.ValueToColor(0x8f7ad8);
+      const bottom = Phaser.Display.Color.ValueToColor(0xffb48a);
+      for (let k = 0; k < 16; k += 1) {
+        const c = Phaser.Display.Color.Interpolate.ColorWithColor(top, bottom, 15, k);
+        sky.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1);
+        sky.fillRect(0, (k * H) / 16, W, H / 16 + 2);
+      }
+      this.bgLayer.add(sky);
+    }
     const sun = this.add.graphics();
-    sun.fillStyle(0xfff1a8, 1);
-    if (this.track.id === "feira") sun.fillCircle(1120, 120, 96);
+    sun.fillStyle(dusk ? 0xff9a5c : 0xfff1a8, 1);
+    if (dusk) {
+      sun.fillStyle(0xffd2a0, 0.45);
+      sun.fillCircle(1380, 560, 170);
+      sun.fillStyle(0xff8a52, 1);
+      sun.fillCircle(1380, 560, 116);
+    } else if (this.track.id === "feira") sun.fillCircle(1120, 120, 96);
     else sun.fillCircle(1500, 230, 90);
     this.bgLayer.add(sun);
     this.sun = sun;
@@ -379,6 +400,7 @@ export class RaceScene extends Phaser.Scene {
       if (fade === 1 && !sample) continue;
       const sprite = this.add.tileSprite(0, y, W, h, key).setOrigin(0, 0);
       if (key.startsWith("s-")) sprite.setTileScale(1 / SAMPLE_RES);
+      if (dusk) sprite.setTint(key === "dd-clouds" ? 0xffc6c0 : 0xffc9a8);
       this.bgLayer.add(sprite);
       this.parallax.push({ sprite, factor, y, drift, fade });
       if (key === "dd-mid") this.buildLandmarks();
@@ -458,7 +480,12 @@ export class RaceScene extends Phaser.Scene {
     };
     const factor = 0.14;
     const items: [string, number, number][] =
-      this.track.set?.kind === "feira"
+      this.track.set?.kind === "antena"
+        ? [
+            ["dd-lm-crane", this.track.set.works.x0 + 2500, 0.9],
+            ["dd-lm-church", this.track.set.plaza.x0 + 600, 1.05],
+          ]
+        : this.track.set?.kind === "feira"
         ? [
             ["dd-lm-tower", this.track.start + 14000, 1.05],
             ["dd-lm-church", this.track.set.plaza.x0 + 600, 1.05],
@@ -513,6 +540,10 @@ export class RaceScene extends Phaser.Scene {
     const posts = this.add.tileSprite(0, H - 300, W, 300, "dd-fg-posts").setOrigin(0, 0).setAlpha(0.3);
     const grass = this.add.tileSprite(0, H - 96, W, 110, "dd-fg-grass").setOrigin(0, 0);
     this.fgLayer.add([posts, grass]);
+    if (this.track.id === "antena") {
+      grass.setTint(0xffd6b0);
+      this.fgLayer.add(this.add.rectangle(0, 0, W, H, 0xff7a3d, 0.08).setOrigin(0, 0));
+    }
     this.fg.push({ sprite: posts, factor: 1.9 }, { sprite: grass, factor: 1.45 });
   }
 
@@ -529,7 +560,10 @@ export class RaceScene extends Phaser.Scene {
     }
     this.cart.setHold(null);
     this.cart.setHelmet(false);
+    this.cart.setDusty(false);
     this.helmetOn = false;
+    this.dustyOn = false;
+    this.ambient.firstRace = this.runs === 0;
     this.surfaceTips.clear();
     this.rollCycle.clear();
     this.ambient.reset();
@@ -932,6 +966,7 @@ export class RaceScene extends Phaser.Scene {
         this.fx.impact(s.x, s.y, 1, 0xc9a77c);
         this.shout("crash", c.crash, { priority: 4, color: "#ff7a4a", size: 66, sub: c.crashReason[e.reason], life: 1.7 });
         if (e.reason === "barrier") this.hud.tip(c.tips.barrier);
+        else if (e.reason === "loop") this.hud.tip(this.touchActive ? c.tips.loopTouch : c.tips.loop);
         else this.alignTip();
         this.hud.flashSpeed(Math.min(-1, s.crashFrom * this.bridge.params.crashKeep - speedBefore));
         if (!this.bridge.reducedMotion) this.cam.shake = 0.22;
@@ -955,7 +990,7 @@ export class RaceScene extends Phaser.Scene {
         if (e.penalized) this.cart.react("hit");
         const heavy = kind === "barrier" || kind === "truck" || kind === "fence";
         if (e.penalized && !heavy) {
-          const text = { cone: c.hitCone, line: c.hitLine, crate: c.hitCrate, pothole: c.hitPothole, bin: c.hitBin, gnome: c.hitGnome, hose: c.hitHose, melon: c.hitMelon, orange: c.hitOrange, stand: c.hitStand }[kind as "cone"] ?? c.hitCrate;
+          const text = { cone: c.hitCone, line: c.hitLine, crate: c.hitCrate, pothole: c.hitPothole, bin: c.hitBin, gnome: c.hitGnome, hose: c.hitHose, melon: c.hitMelon, orange: c.hitOrange, stand: c.hitStand, bag: c.hitBag }[kind as "cone"] ?? c.hitCrate;
           this.hud.tag("hit", text, "#ff9f80");
           if (kind === "line") this.hud.tip(c.tips.duck);
           else if (this.hitTips < 2) {
@@ -964,6 +999,12 @@ export class RaceScene extends Phaser.Scene {
           }
           this.hud.flashSpeed(-speedBefore * this.bridge.params.hitLoss * this.track.obstacles[e.index].loss);
           this.cart.rough(0.3);
+          if (kind === "bag" && !this.dustyOn) {
+            this.dustyOn = true;
+            this.cart.setDusty(true);
+            this.fx.impact(s.x, s.y - 120, 1, 0xe9e4da);
+            this.hud.tag("dusty", c.dusty, "#ffb08a");
+          }
           if ((kind === "melon" || kind === "stand") && !this.helmetOn) {
             this.helmetOn = true;
             this.cart.setHelmet(true);
@@ -990,6 +1031,25 @@ export class RaceScene extends Phaser.Scene {
             this.hud.tip(this.touchActive ? c.tips.awningsTouch : c.tips.awnings);
           }
         }
+        break;
+      case "loop":
+        if (e.done) {
+          this.shout("loop", c.loopDone, { priority: 3, color: "#7fe0c4", size: 64 });
+          this.sfx(DOWNHILL_SFX.shortcut);
+          this.hud.flashSpeed(160);
+          this.ambient.cheer(s.x, 1.2);
+        } else this.sfx(DOWNHILL_SFX.spin, 1, 0.8);
+        break;
+      case "manhole":
+        this.sfx(DOWNHILL_SFX.splat);
+        this.hud.tag("manhole", c.manhole, "#7fe0c4");
+        break;
+      case "jet":
+        this.ambient.jetBurst();
+        this.sfx(DOWNHILL_SFX.lip);
+        this.sfx(DOWNHILL_SFX.flutter);
+        this.fx.impact(s.x, s.y, 1, 0x8fd4f7);
+        this.shout("jet", c.jet, { priority: 3, color: "#8fd4f7", size: 62 });
         break;
       case "flock":
         this.ambient.flock(e.clean);
@@ -1239,6 +1299,7 @@ export class RaceScene extends Phaser.Scene {
     this.fx.update(dt);
     this.ambient.step = this.sim.step;
     this.ambient.lead = this.bridge.settings.rivals && this.phase !== "countdown" ? Math.max(...this.world.rivals.map((t) => this.world.sample(t, "x"))) : -Infinity;
+    this.ambient.racers = [x, ...this.world.rivals.map((t) => (this.bridge.settings.rivals ? this.world.sample(t, "x") : -Infinity))];
     this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, W / (2 * this.cam.zoom));
     this.drawTrail(dt, x, y, angle, speed);
     this.drawLips(x, speed);
@@ -1337,6 +1398,16 @@ export class RaceScene extends Phaser.Scene {
         g.fillStyle(0xff7a1a, 0.9);
         g.fillTriangle(cx - 9, cy + 6, cx + 9, cy + 6, cx, cy - 10);
       }
+    }
+    if (this.track.surfaces[sim.surface]?.kind === "sewer" && y > heightAt(this.track.surfaces[0], x) + 60) {
+      const ca = Math.cos(sim.angle);
+      const sa = Math.sin(sim.angle);
+      const hx = x + ca * 70 - sa * -40;
+      const hy = y + sa * 70 + ca * -40;
+      g.fillStyle(0xfff1a8, 0.22);
+      g.fillTriangle(hx, hy, hx + ca * 520 - sa * 120, hy + sa * 520 + ca * 120, hx + ca * 520 + sa * 120, hy + sa * 520 - ca * 120);
+      g.fillStyle(0xfff1a8, 0.9);
+      g.fillCircle(hx, hy, 9);
     }
     const awning = !!land && this.track.surfaces[land.surface].kind === "awning";
     if (land && awning && this.phase === "race") {

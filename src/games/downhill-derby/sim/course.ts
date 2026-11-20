@@ -1,10 +1,10 @@
 import type { Ramp, Track } from "./track";
 
-export type CourseId = "arlindo" | "feira" | "test";
+export type CourseId = "arlindo" | "feira" | "antena" | "test";
 
-export const COURSE_IDS: readonly CourseId[] = ["arlindo", "feira", "test"];
+export const COURSE_IDS: readonly CourseId[] = ["arlindo", "feira", "antena", "test"];
 
-export type ZoneKey = "street" | "market" | "works" | "final" | "neighborhood" | "feira";
+export type ZoneKey = "street" | "market" | "works" | "final" | "neighborhood" | "feira" | "antena";
 
 export type Zone = { key: ZoneKey; x0: number; x1: number };
 
@@ -43,11 +43,24 @@ export type FeiraSet = {
   cidinha: number;
 };
 
+export type AntenaSet = {
+  kind: "antena";
+  works: { x0: number; x1: number };
+  seesaws: { x0: number; pivot: number; x1: number }[];
+  bags: number[];
+  loop: number;
+  hole: number;
+  exit: number;
+  stairs: { x0: number; x1: number }[];
+  landings: number[];
+  plaza: { x0: number; x1: number };
+};
+
 export type Course = Track & {
   id: CourseId;
   sections: Section[];
   zones: Zone[];
   grid: { lina: number; bruno: number };
   chalk: Chalk[];
-  set: ArlindoSet | FeiraSet | null;
+  set: ArlindoSet | FeiraSet | AntenaSet | null;
 };

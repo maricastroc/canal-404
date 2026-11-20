@@ -55,13 +55,22 @@ export type RaceCopy = {
   cidinha: string;
   vendorCalls: readonly string[];
   feira: { fair: string; fruit: string; greens: string; pastel: string; flowers: string; plaza: string };
+  loopDone: string;
+  loopSign: string;
+  manhole: string;
+  jet: string;
+  dusty: string;
+  hitBag: string;
+  mila: string;
+  croak: string;
+  live: string;
   secret: string;
   chalk: { hold: string; jump: string };
   beep: string;
-  courses: { arlindo: string; feira: string; test: string };
+  courses: { arlindo: string; feira: string; antena: string; test: string };
   cobbles: string;
   paddle: string;
-  tips: { align: string; alignTouch: string; barrier: string; duck: string; hit: string; awnings: string; awningsTouch: string };
+  tips: { align: string; alignTouch: string; barrier: string; duck: string; hit: string; awnings: string; awningsTouch: string; loop: string; loopTouch: string };
   signs: Record<SignKey, string>;
   start: string;
   finish: string;
@@ -135,6 +144,7 @@ export const RACE_COPY = localized<RaceCopy>({
       barrier: "Bateu na barreira",
       truck: "Bateu no caminhão de lixo",
       fence: "Pulo fraco: pegou na cerca",
+      loop: "Sem embalo: caiu do looping",
     },
     lip: "Pulo no ponto!",
     flip: (count) => (count > 1 ? `Mortal ×${count}!` : "Mortal!"),
@@ -158,10 +168,19 @@ export const RACE_COPY = localized<RaceCopy>({
     cidinha: "MEU CARRINHO!",
     vendorCalls: ["OLHA A LARANJA!", "PASTEL QUENTINHO!", "FREGUESA!", "É DA HORTA!"],
     feira: { fair: "FEIRA LIVRE", fruit: "FRUTAS", greens: "VERDURAS", pastel: "PASTEL", flowers: "FLORES", plaza: "PRAÇA DA MATRIZ" },
+    loopDone: "LOOPING!",
+    loopSign: "VELOCIDADE MÍNIMA: VOANDO BAIXO",
+    manhole: "Bueiro!",
+    jet: "CANO ESTOURADO!",
+    dusty: "Branco de cimento!",
+    hitBag: "Saco de cimento!",
+    mila: "POR AQUI!",
+    croak: "CROAC!",
+    live: "AO VIVO",
     secret: "ANÃO DOURADO!",
     chalk: { hold: "SEGURA ↓", jump: "PULA!" },
     beep: "BIP! BIP!",
-    courses: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", test: "Pista de teste" },
+    courses: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", antena: "Morro da Antena", test: "Pista de teste" },
     cobbles: "Paralelepípedo: agache para trepidar menos",
     paddle: "remando…",
     tips: {
@@ -172,6 +191,8 @@ export const RACE_COPY = localized<RaceCopy>({
       hit: "Pule por cima para não perder embalo",
       awnings: "Aperte ESPAÇO na hora em que o carrinho tocar o toldo",
       awningsTouch: "Toque PULAR na hora em que o carrinho tocar o toldo",
+      loop: "Segure ↓ na descida para chegar no looping com embalo",
+      loopTouch: "Segure AGACHAR na descida para chegar no looping com embalo",
     },
     signs: {
       crouch: "AGACHE NA DESCIDA",
@@ -198,6 +219,10 @@ export const RACE_COPY = localized<RaceCopy>({
       rail: "CORRIMÃO ↑ PULE NO TOPO",
       pigeons: "POMBOS: PASSE POR CIMA",
       trolley: "CARRINHO ↑ VOLTE AOS TOLDOS",
+      loop: "LOOPING: AGACHE NA DESCIDA",
+      bag: "SACO BALANÇANDO: AGACHE",
+      seesaw: "GANGORRA: PULE NA PONTA",
+      works: "OBRA: CUIDADO",
     },
     start: "LARGADA",
     finish: "CHEGADA",
@@ -269,6 +294,7 @@ export const RACE_COPY = localized<RaceCopy>({
       barrier: "Hit the barrier",
       truck: "Hit the garbage truck",
       fence: "Weak jump: caught the fence",
+      loop: "Not enough speed: fell off the loop",
     },
     lip: "Right on the edge!",
     flip: (count) => (count > 1 ? `Flip ×${count}!` : "Flip!"),
@@ -292,10 +318,19 @@ export const RACE_COPY = localized<RaceCopy>({
     cidinha: "MY TROLLEY!",
     vendorCalls: ["FRESH ORANGES!", "HOT PASTRIES!", "OVER HERE!", "FRESH FROM THE FARM!"],
     feira: { fair: "STREET MARKET", fruit: "FRUIT", greens: "VEGGIES", pastel: "PASTRIES", flowers: "FLOWERS", plaza: "MAIN SQUARE" },
+    loopDone: "LOOP!",
+    loopSign: "MINIMUM SPEED: FLYING LOW",
+    manhole: "Manhole!",
+    jet: "BURST PIPE!",
+    dusty: "Covered in cement!",
+    hitBag: "Cement bag!",
+    mila: "THIS WAY!",
+    croak: "RIBBIT!",
+    live: "LIVE",
     secret: "GOLDEN GNOME!",
     chalk: { hold: "HOLD ↓", jump: "JUMP!" },
     beep: "BEEP! BEEP!",
-    courses: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", test: "Test track" },
+    courses: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", antena: "Antenna Hill", test: "Test track" },
     cobbles: "Cobblestones: crouch to rattle less",
     paddle: "paddling…",
     tips: {
@@ -306,6 +341,8 @@ export const RACE_COPY = localized<RaceCopy>({
       hit: "Jump over it to keep your speed",
       awnings: "Press SPACE right as the cart touches the awning",
       awningsTouch: "Tap JUMP right as the cart touches the awning",
+      loop: "Hold ↓ on the way down to reach the loop with speed",
+      loopTouch: "Hold CROUCH on the way down to reach the loop with speed",
     },
     signs: {
       crouch: "CROUCH ON THE WAY DOWN",
@@ -332,6 +369,10 @@ export const RACE_COPY = localized<RaceCopy>({
       rail: "HANDRAIL ↑ JUMP AT THE TOP",
       pigeons: "PIGEONS: GO OVER THEM",
       trolley: "TROLLEY ↑ BACK TO THE AWNINGS",
+      loop: "LOOP: CROUCH ON THE WAY DOWN",
+      bag: "SWINGING BAG: CROUCH",
+      seesaw: "SEESAW: JUMP AT THE TIP",
+      works: "WORK ZONE: CAREFUL",
     },
     start: "START",
     finish: "FINISH",

@@ -3,6 +3,7 @@ import type { RaceCopy } from "../copy";
 import type { ArlindoSet, Course, Zone, ZoneKey } from "../sim/course";
 import { heightAt, type Obstacle, type Surface } from "../sim/track";
 import { INK } from "./cart";
+import { drawAntena, dressAntena } from "./antena";
 import { drawFeira, dressFeira, feiraObstacle } from "./feira";
 import { dressNeighborhood, SAMPLE_RES, sampleStreet, type SampleSpots } from "./sample";
 
@@ -242,6 +243,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
   if (deck && deck.kind === "deck") drawDeck(b, deck, road);
   if (track.set?.kind === "arlindo") drawArlindo(b, track);
   else if (track.set?.kind === "feira") drawFeira(b, track, copy);
+  else if (track.set?.kind === "antena") drawAntena(b, track);
   drawChalk(b, track, copy);
 
   for (const rp of track.ramps) {
@@ -357,7 +359,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
 
   const obstacles: ObstacleView[] = [];
   track.obstacles.forEach((o, index) => {
-    if (o.kind === "truck" || o.kind === "hose" || o.kind === "fence") return;
+    if (o.kind === "truck" || o.kind === "hose" || o.kind === "fence" || o.kind === "bag") return;
     const lanes = o.kind === "line" || o.surface !== 0 ? [0] : [0, 1, 2];
     for (const lane of lanes) {
       const c = chunkFor(o.x);
@@ -436,7 +438,7 @@ function drawFinish(b: Builder, track: Course, copy: RaceCopy) {
   banner.fillRoundedRect(fx - 330, fy - STREET - 400, 680, 110, 18);
   banner.fillStyle(0xffcf3f, 1);
   banner.fillRoundedRect(fx - 322, fy - STREET - 392, 664, 94, 14);
-  const t = b.add(c, b.scene.add.text(fx + 10, fy - STREET - 345, copy.finish, { fontFamily: b.fonts.display, fontSize: "70px", color: "#ef4f43", stroke: "#1d1830", strokeThickness: 12 }));
+  const t = b.add(c, b.scene.add.text(fx + 10, fy - STREET - 345, track.id === "antena" ? copy.live : copy.finish, { fontFamily: b.fonts.display, fontSize: "70px", color: "#ef4f43", stroke: "#1d1830", strokeThickness: 12 }));
   t.setOrigin(0.5).setDepth(-1.8);
   const line = b.add(c, b.scene.add.graphics());
   line.setDepth(0.6);
@@ -767,6 +769,10 @@ function decorateZone(b: Builder, zone: Zone, r: () => number, copy: RaceCopy, t
   }
   if (zone.key === "feira") {
     b.sampleSpots = dressFeira(b, track, copy);
+    return;
+  }
+  if (zone.key === "antena") {
+    b.sampleSpots = dressAntena(b, track, copy);
     return;
   }
   const plate = chunkFor(zone.x0 + 300);
