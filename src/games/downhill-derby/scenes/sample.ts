@@ -1,11 +1,11 @@
 import * as Phaser from "phaser";
 import { INK } from "./cart";
-import type { Course } from "../sim/course";
+import type { ArlindoSet, Course } from "../sim/course";
 import type { Extra } from "./cast";
 import { STREET, STREET_SPOTS, type Builder, type Zone } from "./terrain";
 
 export const SAMPLE_RES = 1.5;
-const PAD = 8;
+export const PAD = 8;
 const SIDE = PAD + 36;
 
 const FACADES = ["facade-sobrado-rosa", "facade-sobrado-agua", "facade-terrea-amarelo", "facade-terrea-lilas", "facade-mercadinho-pessego", "facade-puxadinho-ceu"];
@@ -27,7 +27,7 @@ export type SampleSpots = { neighbors: { who: keyof typeof NEIGHBORS; x: number 
 const FACADE_SCALE = 0.72;
 const SEQUENCE = ["facade-sobrado-rosa", "muro-rosa", "facade-terrea-amarelo", "facade-mercadinho-pessego", "facade-puxadinho-ceu", "muro-agua", "facade-sobrado-agua", "facade-terrea-lilas"];
 
-function placed(b: Builder, key: string, x: number, scale: number, depth: number, anchor: "left" | "center" = "left", sink = 4) {
+export function placed(b: Builder, key: string, x: number, scale: number, depth: number, anchor: "left" | "center" = "left", sink = 4) {
   const src = b.scene.textures.get(key).getSourceImage();
   const sw = src.width || 100;
   const sh = src.height || 100;
@@ -40,7 +40,7 @@ function placed(b: Builder, key: string, x: number, scale: number, depth: number
   return { img, w, y };
 }
 
-function facadeRow(b: Builder, x0: number, x1: number, blocked: [number, number][]) {
+export function facadeRow(b: Builder, x0: number, x1: number, blocked: [number, number][]) {
   let x = x0;
   let i = 0;
   let seed = 977;
@@ -64,7 +64,7 @@ function facadeRow(b: Builder, x0: number, x1: number, blocked: [number, number]
   }
 }
 
-function poleLine(b: Builder, x0: number, x1: number) {
+export function poleLine(b: Builder, x0: number, x1: number) {
   const poles: { x: number; top: number }[] = [];
   for (let px = x0; px < x1; px += 1250) {
     const { y } = placed(b, "s-poste", px, 0.62, -7.8, "center", 6);
@@ -118,7 +118,7 @@ export function sampleStreet(b: Builder, zone: Zone, startX: number): SampleSpot
 }
 
 export function dressNeighborhood(b: Builder, course: Course): SampleSpots {
-  const set = course.set!;
+  const set = course.set as ArlindoSet;
   const road = course.surfaces[0];
   const blocked: [number, number][] = [
     [course.start - 700, course.start + 900],
@@ -145,7 +145,7 @@ export function dressNeighborhood(b: Builder, course: Course): SampleSpots {
   };
 }
 
-function drawFrontWall(b: Builder, from: number, end: number) {
+export function drawFrontWall(b: Builder, from: number, end: number) {
   const top = (x: number) => b.backY(x) + STREET + 24;
   for (let c0 = from; c0 < end; c0 += 1800) {
     const c1 = Math.min(end, c0 + 1800);

@@ -10,16 +10,18 @@ import { FRAME_AIR, FRAME_CRASH, FRAME_CROUCH, FRAME_PADDLE, InputRecorder, simu
 import { RaceWorld, replayRace, type WorldEvent } from "../sim/race";
 import { RIVALS as RIVALS_TEST, type RivalDef, type RivalId } from "../sim/rivals";
 import { RIVALS as RIVALS_ARLINDO } from "../sim/rivals-arlindo";
+import { RIVALS as RIVALS_FEIRA } from "../sim/rivals-feira";
 import { DownhillSim, DT, IDLE, STEP_HZ, type SimEvent } from "../sim/sim";
 import type { Course } from "../sim/course";
 import { buildCourse } from "../sim/courses";
 import { covers, heightAt } from "../sim/track";
-import { DOWNHILL_SFX, PADDLE, rollGrain, windGrain } from "../sounds";
+import { boing, DOWNHILL_SFX, PADDLE, rollGrain, windGrain } from "../sounds";
 import { CartView, INK, artFiles } from "./cart";
 import { WorldFx } from "./fx";
 import { H, Hud, W, formatSeconds, type EdgeTag, type HudButton, type Marker, type StandingRow, type TouchButton } from "./hud";
 import { Ambient } from "./ambient";
 import { CAST_FILES } from "./cast";
+import { FEIRA_FILES } from "./feira";
 import { PROP_FILES, dressGaps } from "./props";
 import { SAMPLE_FILES, SAMPLE_RES } from "./sample";
 import { LANE_OFFSETS, LANES, buildTerrain, zonesOf, type Chunk, type LipView, type ObstacleView } from "./terrain";
@@ -58,7 +60,8 @@ const TRAIL = 30;
 const ZOOM_MIN_GROUND = 0.92;
 const ZOOM_MIN_RIVAL = 1;
 const ZOOM_MIN_AIR = 0.55;
-const FIRST_RACE = { test: { lina: 46, bruno: 60 }, arlindo: { lina: 41, bruno: 48 } } as const;
+const FIRST_RACE = { test: { lina: 46, bruno: 60 }, arlindo: { lina: 41, bruno: 48 }, feira: { lina: 43.5, bruno: 51 } } as const;
+const RIVAL_SETS = { test: RIVALS_TEST, arlindo: RIVALS_ARLINDO, feira: RIVALS_FEIRA } as const;
 const BRUNO_BEHIND = 0.8;
 const LINA_AHEAD = 1.2;
 
@@ -137,7 +140,6 @@ export class RaceScene extends Phaser.Scene {
   private bestTime = Infinity;
   private lastTime = Infinity;
   private paramsAtStart = 0;
-  private cobbleHintShown = false;
   private touchActive = false;
   private pointerButtons = new Map<number, HudButton>();
   private pressed = new Set<TouchButton>();
@@ -158,6 +160,10 @@ export class RaceScene extends Phaser.Scene {
   private world!: RaceWorld;
   private ambient!: Ambient;
   private kickViews = new Map<number, Phaser.GameObjects.Container>();
+  private rollCycle = new Map<ObstacleView, number>();
+  private helmetOn = false;
+  private surfaceTips = new Set<string>();
+  private awningTips = 0;
 
   constructor() {
     super("race");
@@ -188,7 +194,8 @@ export class RaceScene extends Phaser.Scene {
     ];
     for (const [key, file] of [...borrowed, ...CAST_FILES, ...PROP_FILES]) this.load.svg(key, `/assets/${file}.svg`, { scale: 1 });
     const pending = this.registry.get("bridge")?.settings;
-    if (pending?.art === "sample" || pending?.course === "arlindo") for (const [key, file] of SAMPLE_FILES) this.load.svg(key, `${base}/sample/${file}.svg`, { scale: SAMPLE_RES });
+    if (pending?.art === "sample" || pending?.course === "arlindo" || pending?.course === "feira") for (const [key, file] of SAMPLE_FILES) this.load.svg(key, `${base}/sample/${file}.svg`, { scale: SAMPLE_RES });
+    if (pending?.course === "feira") for (const [key, file] of FEIRA_FILES) this.load.svg(key, `${base}/feira/${file}.svg`, { scale: SAMPLE_RES });
   }
 
   create() {
@@ -208,16 +215,18 @@ export class RaceScene extends Phaser.Scene {
     uiCam.ignore([this.bgLayer, this.worldLayer]);
     this.buildBackground();
     this.buildForeground();
-    const terrain = buildTerrain(this, this.worldLayer, this.track, this.copy, this.bridge.fonts, this.bridge.settings.art === "sample" || this.track.id === "arlindo");
+    const terrain = buildTerrain(this, this.worldLayer, this.track, this.copy, this.bridge.fonts, this.bridge.settings.art === "sample" || this.track.id !== "test");
     this.chunks = terrain.chunks;
     this.obstacles = terrain.obstacles;
+    const rolling = new Set<Phaser.GameObjects.GameObject>(this.obstacles.filter((o) => o.obstacle.roll).map((o) => o.view));
+    for (const c of this.chunks) c.objects = c.objects.filter((obj) => !rolling.has(obj));
     this.lipViews = terrain.lips;
     this.ambient = new Ambient(terrain.builder, this.worldLayer, this.track, terrain.zones, this.copy);
     this.ambient.waiting(dressGaps(terrain.builder, terrain.zones, this.track));
     this.trailG = this.add.graphics();
     this.trailG.setDepth(8.5);
     this.worldLayer.add(this.trailG);
-    for (const def of this.track.id === "arlindo" ? RIVALS_ARLINDO : RIVALS_TEST) {
+    for (const def of RIVAL_SETS[this.track.id]) {
       const frames = this.framesFor(def, 0);
       const view = new CartView(this, this.worldLayer, def.id, { alpha: 1 });
       view.setDepth(def.id === "lina" ? 6 : 5);
@@ -352,11 +361,12 @@ export class RaceScene extends Phaser.Scene {
     });
     const sun = this.add.graphics();
     sun.fillStyle(0xfff1a8, 1);
-    sun.fillCircle(1500, 230, 90);
+    if (this.track.id === "feira") sun.fillCircle(1120, 120, 96);
+    else sun.fillCircle(1500, 230, 90);
     this.bgLayer.add(sun);
     this.sun = sun;
-    const sample = this.bridge.settings.art === "sample" || this.track.id === "arlindo";
-    if (sample) this.sampleFadeX = this.track.id === "arlindo" ? Infinity : zonesOf(this.track)[0].x1;
+    const sample = this.bridge.settings.art === "sample" || this.track.id !== "test";
+    if (sample) this.sampleFadeX = this.track.id !== "test" ? Infinity : zonesOf(this.track)[0].x1;
     const layers: [string, number, number, number, number, number][] = [
       ["dd-clouds", 0.015, 40, 260, 0.15, 0],
       ["dd-far", 0.05, 250, 420, 0.4, sample ? -1 : 0],
@@ -448,7 +458,12 @@ export class RaceScene extends Phaser.Scene {
     };
     const factor = 0.14;
     const items: [string, number, number][] =
-      this.track.id === "arlindo"
+      this.track.set?.kind === "feira"
+        ? [
+            ["dd-lm-tower", this.track.start + 14000, 1.05],
+            ["dd-lm-church", this.track.set.plaza.x0 + 600, 1.05],
+          ]
+        : this.track.id === "arlindo"
         ? [
             ["dd-lm-church", this.track.start + 9000, 0.95],
             ["dd-lm-tower", this.track.finish - 4000, 1.05],
@@ -513,6 +528,10 @@ export class RaceScene extends Phaser.Scene {
       r.view.setHold(null);
     }
     this.cart.setHold(null);
+    this.cart.setHelmet(false);
+    this.helmetOn = false;
+    this.surfaceTips.clear();
+    this.rollCycle.clear();
     this.ambient.reset();
     const lineup = [{ who: "deco", name: this.copy.racerNames.deco, cart: this.copy.carts.deco, color: PLAYER_COLOR }];
     if (this.bridge.settings.rivals) for (const r of this.rivals) lineup.push({ who: r.id, name: this.copy.racerNames[r.id], cart: this.copy.carts[r.id], color: r.color });
@@ -532,7 +551,6 @@ export class RaceScene extends Phaser.Scene {
     this.trend = 0;
     this.lastSpeed = 0;
     this.lastTier = 0;
-    this.cobbleHintShown = false;
     this.jumpedThisRun = false;
     this.spunThisFlight = false;
     this.hitTips = 0;
@@ -937,7 +955,7 @@ export class RaceScene extends Phaser.Scene {
         if (e.penalized) this.cart.react("hit");
         const heavy = kind === "barrier" || kind === "truck" || kind === "fence";
         if (e.penalized && !heavy) {
-          const text = { cone: c.hitCone, line: c.hitLine, crate: c.hitCrate, pothole: c.hitPothole, bin: c.hitBin, gnome: c.hitGnome, hose: c.hitHose }[kind as "cone"] ?? c.hitCrate;
+          const text = { cone: c.hitCone, line: c.hitLine, crate: c.hitCrate, pothole: c.hitPothole, bin: c.hitBin, gnome: c.hitGnome, hose: c.hitHose, melon: c.hitMelon, orange: c.hitOrange, stand: c.hitStand }[kind as "cone"] ?? c.hitCrate;
           this.hud.tag("hit", text, "#ff9f80");
           if (kind === "line") this.hud.tip(c.tips.duck);
           else if (this.hitTips < 2) {
@@ -946,13 +964,50 @@ export class RaceScene extends Phaser.Scene {
           }
           this.hud.flashSpeed(-speedBefore * this.bridge.params.hitLoss * this.track.obstacles[e.index].loss);
           this.cart.rough(0.3);
+          if ((kind === "melon" || kind === "stand") && !this.helmetOn) {
+            this.helmetOn = true;
+            this.cart.setHelmet(true);
+            this.sfx(DOWNHILL_SFX.splat);
+            this.hud.tag("helmet", c.helmet, "#7fe0c4");
+          }
         }
         break;
       }
+      case "bounce":
+        if (e.rhythm) {
+          this.sfx(boing(e.combo));
+          this.cart.land(0.55);
+          this.fx.impact(s.x, s.y, 0.3, 0xfff1a8);
+          if (e.combo >= 2) this.shout("bounce", c.bounce(e.combo), { priority: 2, color: "#7fe0c4", size: 48 + Math.min(e.combo, 8) * 3 });
+          else this.hud.tag("bounce", c.bounce(1), "#7fe0c4");
+          this.ambient.cheer(s.x, 0.2 + Math.min(e.combo, 8) * 0.1);
+        } else {
+          this.sfx(DOWNHILL_SFX.bounce);
+          this.cart.land(0.35);
+          this.hud.tag("bounce", e.delta > this.bridge.params.okTol ? c.bounceFlop : c.bounceMiss, "#ffb08a");
+          if (this.awningTips < 2) {
+            this.awningTips += 1;
+            this.hud.tip(this.touchActive ? c.tips.awningsTouch : c.tips.awnings);
+          }
+        }
+        break;
+      case "flock":
+        this.ambient.flock(e.clean);
+        this.sfx(DOWNHILL_SFX.flutter);
+        if (e.clean) {
+          this.shout("flock", c.flock.clean, { priority: 3, color: "#7fe0c4", size: 54 });
+          this.sfx(DOWNHILL_SFX.shortcut);
+          this.hud.flashSpeed(120);
+        } else this.hud.tag("flock", c.flock.scared, "#ffb08a");
+        break;
       case "surface":
-        if (e.cobbles && !this.cobbleHintShown) {
-          this.cobbleHintShown = true;
-          this.hud.tip(c.cobbles, 2.4);
+        if (e.cobbles) {
+          const stairs = this.track.cobbles.some((q) => q.stairs && s.x >= q.x0 - 40 && s.x <= q.x1);
+          const key = stairs ? "stairs" : "cobbles";
+          if (!this.surfaceTips.has(key)) {
+            this.surfaceTips.add(key);
+            this.hud.tip(stairs ? c.stairs : c.cobbles, 2.4);
+          }
         }
         break;
       case "secret": {
@@ -1039,7 +1094,8 @@ export class RaceScene extends Phaser.Scene {
       shortcut: st.shortcut,
       topSpeed: st.maxSpeed,
       air: st.airTime,
-      secret: this.track.obstacles.some((o) => o.kind === "gold") ? st.secret : null,
+      secret: this.track.id === "feira" ? st.flock : this.track.obstacles.some((o) => o.kind === "gold") ? st.secret : null,
+      secretKind: this.track.id === "feira" ? "pigeons" : "gnome",
       firstRace: this.pendingBest.firstRace,
       starsBefore: this.pendingBest.starsBefore,
       calm: this.bridge.reducedMotion,
@@ -1158,7 +1214,8 @@ export class RaceScene extends Phaser.Scene {
       this.ghostLabel.setPosition(f.x, f.y - 210);
       this.ghostView.update({ x: f.x, y: f.y, angle: f.angle, speed: f.speed, crouch: (f.flags & FRAME_CROUCH) !== 0, charge: 0, air: (f.flags & FRAME_AIR) !== 0, spin: 0, accel: 0, bigAir: false, brace: false, paddling: false, distance: f.x, crash: f.flags & FRAME_CRASH ? 0.5 : 0, time: this.elapsed }, dt);
     }
-    if (dt > 0 && sim.mode === "ground" && sim.surface === 2 && speed > 200) for (let i = 0; i < 3; i += 1) this.fx.sparks(x - 30 + i * 30, y, speed);
+    if (dt > 0 && sim.mode === "ground" && this.track.surfaces[sim.surface]?.kind === "rail" && speed > 200) for (let i = 0; i < 3; i += 1) this.fx.sparks(x - 30 + i * 30, y, speed);
+    this.updateRolling(a);
     if (dt > 0 && sim.mode !== "air" && speed > 200 && this.phase !== "countdown") {
       const rate = (speed / 700) * (this.bridge.reducedMotion ? 0.4 : 1) * (sim.onCobbles ? 1.6 : 1);
       const count = Math.floor(rate * dt * 30 + Math.random());
@@ -1181,6 +1238,7 @@ export class RaceScene extends Phaser.Scene {
     }
     this.fx.update(dt);
     this.ambient.step = this.sim.step;
+    this.ambient.lead = this.bridge.settings.rivals && this.phase !== "countdown" ? Math.max(...this.world.rivals.map((t) => this.world.sample(t, "x"))) : -Infinity;
     this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, W / (2 * this.cam.zoom));
     this.drawTrail(dt, x, y, angle, speed);
     this.drawLips(x, speed);
@@ -1189,6 +1247,30 @@ export class RaceScene extends Phaser.Scene {
     this.updateCamera(dt, x, y, land);
     this.updateHud(dt, x, y);
     this.updateSound(dt);
+  }
+
+  private updateRolling(alpha: number) {
+    const road = this.track.surfaces[0];
+    const fs = this.phase === "countdown" ? 0 : this.sim.step - 1 + alpha;
+    const halfW = W / (2 * this.cam.zoom) + 400;
+    for (const o of this.obstacles) {
+      const roll = o.obstacle.roll;
+      if (!roll) continue;
+      const cycle = Math.floor((Math.floor(fs) + roll.phase) / roll.period);
+      if (this.rollCycle.get(o) !== cycle) {
+        this.rollCycle.set(o, cycle);
+        o.hit = false;
+        o.view.setAlpha(1).setRotation(0);
+      }
+      if (o.hit) continue;
+      const u = ((((fs + roll.phase) % roll.period) + roll.period) % roll.period) / roll.period;
+      const x = o.obstacle.x + roll.length * u;
+      o.view.setPosition(x, heightAt(road, x) + LANE_OFFSETS[o.lane]);
+      o.view.setVisible(Math.abs(x - this.cam.x) < halfW);
+      o.view.setAlpha(Math.max(0, Math.min(1, u * 14, (1 - u) * 14)));
+      const child = o.view.list[0] as Phaser.GameObjects.Image | undefined;
+      child?.setRotation((roll.length * u) / (o.obstacle.kind === "melon" ? 31 : 17));
+    }
   }
 
   private drawTrail(dt: number, x: number, y: number, angle: number, speed: number) {
@@ -1256,7 +1338,19 @@ export class RaceScene extends Phaser.Scene {
         g.fillTriangle(cx - 9, cy + 6, cx + 9, cy + 6, cx, cy - 10);
       }
     }
+    const awning = !!land && this.track.surfaces[land.surface].kind === "awning";
+    if (land && awning && this.phase === "race") {
+      const ready = land.steps <= 14;
+      const r = 24 + Math.min(1, land.steps / 45) * 80;
+      g.lineStyle(10, INK, 0.45);
+      g.strokeCircle(land.x, land.y - 8, r);
+      g.lineStyle(6, ready ? 0x7fe0c4 : 0xfffaf0, 0.95);
+      g.strokeCircle(land.x, land.y - 8, r);
+      g.fillStyle(ready ? 0x7fe0c4 : 0xfffaf0, 0.95);
+      g.fillCircle(land.x, land.y - 8, 9);
+    }
     if (!land || !this.bridge.settings.indicator || this.predictedAir < 0.6) return;
+    if (awning && Math.abs(wrap(sim.angle - land.slope)) * (180 / Math.PI) <= p.perfectTol) return;
     if (!this.flightTip && this.alignLessons < 3) {
       this.flightTip = true;
       this.alignTip();
@@ -1410,7 +1504,11 @@ export class RaceScene extends Phaser.Scene {
       const cartRoom = Math.max(0, fy - (y - 0.28 * view));
       fy -= Math.min(highest - behindY, slack, cartRoom);
     }
-    if (land && this.predictedAir > 0.55) {
+    const awningLand = !!land && this.track.surfaces[land.surface].kind === "awning";
+    if (awningLand && land) {
+      const view2 = H / zoom;
+      fy = land.y + 60 - (roadLine - 0.5) * view2;
+    } else if (land && this.predictedAir > 0.55) {
       const g = this.bridge.params.gravity;
       const apex = sim.vy < 0 ? y - (sim.vy * sim.vy) / (2 * g) : y;
       const minX = Math.min(x, land.x) - 220;

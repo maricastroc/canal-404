@@ -1,6 +1,6 @@
 import { atan2 } from "./math";
 
-export type SurfaceKind = "road" | "deck" | "yard" | "rail";
+export type SurfaceKind = "road" | "deck" | "yard" | "rail" | "awning";
 
 export type Surface = {
   kind: SurfaceKind;
@@ -14,15 +14,17 @@ export type Surface = {
   x1: number;
 };
 
-export type ObstacleKind = "cone" | "crate" | "line" | "barrier" | "pothole" | "bin" | "gnome" | "fence" | "truck" | "hose" | "gold";
+export type ObstacleKind = "cone" | "crate" | "line" | "barrier" | "pothole" | "bin" | "gnome" | "fence" | "truck" | "hose" | "gold" | "melon" | "orange" | "stand";
 
 export type Motion = { amp: number; period: number; phase: number };
 
 export type Window = { period: number; on: number; phase: number };
 
-export type Obstacle = { x: number; kind: ObstacleKind; low: number; high: number; heavy: boolean; loss: number; surface: number; motion?: Motion; window?: Window };
+export type Roll = { length: number; period: number; phase: number };
 
-export type SignKey = "crouch" | "rollers" | "crest" | "ramp" | "land" | "cones" | "crates" | "duck" | "jump" | "shortcut" | "cobbles" | "finish" | "pothole" | "bins" | "hose" | "truck" | "yard" | "fence";
+export type Obstacle = { x: number; kind: ObstacleKind; low: number; high: number; heavy: boolean; loss: number; surface: number; motion?: Motion; window?: Window; roll?: Roll };
+
+export type SignKey = "crouch" | "rollers" | "crest" | "ramp" | "land" | "cones" | "crates" | "duck" | "jump" | "shortcut" | "cobbles" | "finish" | "pothole" | "bins" | "hose" | "truck" | "yard" | "fence" | "fruit" | "awnings" | "stairs" | "rail" | "pigeons" | "trolley";
 
 export type Sign = { x: number; key: SignKey };
 
@@ -35,7 +37,9 @@ export type Track = {
   lips: Lip[];
   obstacles: Obstacle[];
   ramps: Ramp[];
-  cobbles: { x0: number; x1: number }[];
+  cobbles: { x0: number; x1: number; stairs?: boolean }[];
+  flocks?: { x0: number; x1: number }[];
+  awningExit?: number;
   signs: Sign[];
   start: number;
   finish: number;
@@ -53,13 +57,23 @@ const OBSTACLE_SHAPES: Record<ObstacleKind, { low: number; high: number; heavy: 
   truck: { low: 0, high: 190, heavy: true, loss: 1 },
   hose: { low: 0, high: 70, heavy: false, loss: 0.7 },
   gold: { low: -60, high: 90, heavy: false, loss: 0 },
+  melon: { low: 0, high: 62, heavy: false, loss: 0.8 },
+  orange: { low: 0, high: 32, heavy: false, loss: 0.35 },
+  stand: { low: 0, high: 92, heavy: false, loss: 1 },
 };
 
-export function obstacle(x: number, kind: ObstacleKind, extra: { surface?: number; motion?: Motion; window?: Window } = {}): Obstacle {
-  return { x, kind, ...OBSTACLE_SHAPES[kind], surface: extra.surface ?? 0, motion: extra.motion, window: extra.window };
+export function obstacle(x: number, kind: ObstacleKind, extra: { surface?: number; motion?: Motion; window?: Window; roll?: Roll } = {}): Obstacle {
+  return { x, kind, ...OBSTACLE_SHAPES[kind], surface: extra.surface ?? 0, motion: extra.motion, window: extra.window, roll: extra.roll };
+}
+
+export function rollPhase(o: Obstacle, step: number) {
+  if (!o.roll) return 0;
+  const { period, phase } = o.roll;
+  return ((((step + phase) % period) + period) % period) / period;
 }
 
 export function obstacleX(o: Obstacle, step: number) {
+  if (o.roll) return o.x + o.roll.length * rollPhase(o, step);
   if (!o.motion) return o.x;
   const { amp, period, phase } = o.motion;
   const u = ((((step + phase) % period) + period) % period) / period;

@@ -1,8 +1,9 @@
 import * as Phaser from "phaser";
 import type { RaceCopy } from "../copy";
-import type { Course, Zone, ZoneKey } from "../sim/course";
+import type { ArlindoSet, Course, Zone, ZoneKey } from "../sim/course";
 import { heightAt, type Obstacle, type Surface } from "../sim/track";
 import { INK } from "./cart";
+import { drawFeira, dressFeira, feiraObstacle } from "./feira";
 import { dressNeighborhood, SAMPLE_RES, sampleStreet, type SampleSpots } from "./sample";
 
 export type Chunk = { x0: number; x1: number; objects: Phaser.GameObjects.GameObject[] };
@@ -220,6 +221,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
   }
 
   for (const cob of track.cobbles) {
+    if (cob.stairs) continue;
     for (let x = cob.x0; x < cob.x1; x += 40) {
       const c = chunkFor(x);
       const g = add(c, scene.add.graphics());
@@ -238,10 +240,12 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
 
   const deck = track.surfaces[1];
   if (deck && deck.kind === "deck") drawDeck(b, deck, road);
-  if (track.set) drawArlindo(b, track);
+  if (track.set?.kind === "arlindo") drawArlindo(b, track);
+  else if (track.set?.kind === "feira") drawFeira(b, track, copy);
   drawChalk(b, track, copy);
 
   for (const rp of track.ramps) {
+    if (track.set?.kind === "feira" && rp === track.set.trolley) continue;
     const surfaceAt = (lane: number) => {
       const pts: Phaser.Math.Vector2[] = [];
       for (let i = 0; i < road.xs.length && road.xs[i] <= rp.x1 + 0.5; i += 1) if (road.xs[i] >= rp.x0) pts.push(v(road.xs[i], road.ys[i] + lane));
@@ -360,9 +364,9 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
       const y = heightAt(track.surfaces[o.surface], o.x) + LANE_OFFSETS[lane];
       const view = add(c, scene.add.container(o.x, y));
       view.setDepth(o.kind === "line" ? 9.5 : o.surface !== 0 ? 7.6 : LANE_DEPTHS[lane]);
-      view.add(drawObstacle(scene, o));
+      view.add(feiraObstacle(scene, o) ?? drawObstacle(scene, o));
       if (lane > 0) view.setScale(0.96);
-      if (lane === 0 && o.kind !== "line" && o.kind !== "pothole" && o.surface === 0) {
+      if (lane === 0 && o.kind !== "line" && o.kind !== "pothole" && o.surface === 0 && !o.roll) {
         const pad = add(c, scene.add.graphics());
         pad.setDepth(7.58);
         for (let i = 0; i < 8; i += 1) {
@@ -761,6 +765,10 @@ function decorateZone(b: Builder, zone: Zone, r: () => number, copy: RaceCopy, t
     b.sampleSpots = dressNeighborhood(b, track);
     return;
   }
+  if (zone.key === "feira") {
+    b.sampleSpots = dressFeira(b, track, copy);
+    return;
+  }
   const plate = chunkFor(zone.x0 + 300);
   const py = backY(zone.x0 + 300);
   signBoard(b, plate, zone.x0 + 300, py - 230, copy.zones[zone.key], 0x2f86c9, "#fbf5e6", 28, -5);
@@ -1032,7 +1040,7 @@ function drawObstacle(scene: Phaser.Scene, o: Obstacle): Phaser.GameObjects.Game
 
 function drawArlindo(b: Builder, track: Course) {
   const { scene, chunkFor, add, backY } = b;
-  const set = track.set!;
+  const set = track.set as ArlindoSet;
   const yard = track.surfaces[1];
   const roof = track.surfaces[2];
   const road = track.surfaces[0];

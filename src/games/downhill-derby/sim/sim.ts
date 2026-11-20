@@ -18,6 +18,15 @@ const FINISH_BRAKE = 900;
 const JUMP_RISE = 40;
 const FULL_BONUS_AIR = 0.8;
 const AIR_DRAG = 0.5;
+const RHYTHM_PRE = 14;
+const RHYTHM_GRACE = 9;
+const BOUNCE_KEEP = 0.5;
+const BOUNCE_MIN = 260;
+const RHYTHM_BOOST = 45;
+const ASSIST_MIN = 420;
+const ASSIST_MAX = 1500;
+const FLOCK_BONUS = 120;
+const STAIR_RATTLE = 1.6;
 
 export type SimInput = { crouch: boolean; jump: boolean; spin: -1 | 0 | 1 };
 
@@ -40,6 +49,8 @@ export type SimEvent =
   | { type: "shortcut" }
   | { type: "secret" }
   | { type: "interfered"; kind: "dust" | "kick"; loss: number }
+  | { type: "bounce"; rhythm: boolean; combo: number; delta: number; surface: number; late: boolean }
+  | { type: "flock"; index: number; clean: boolean }
   | { type: "finish"; time: number };
 
 export type SimStats = {
@@ -55,6 +66,9 @@ export type SimStats = {
   shortcut: boolean;
   secret: boolean;
   interfered: number;
+  bounces: number;
+  combo: number;
+  flock: boolean;
 };
 
 export type Landing = { surface: number; x: number; y: number; slope: number; steps: number };
@@ -113,7 +127,13 @@ export class DownhillSim {
   finished = false;
   finishTime = 0;
   nextObstacle = 0;
-  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, interfered: 0 };
+  combo = 0;
+  bounceBuffer = 0;
+  bounceGrace = 0;
+  private comboHold = 0;
+  private lastAwning = -1;
+  private readonly flockState: number[];
+  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, interfered: 0, bounces: 0, combo: 0, flock: false };
   readonly events: SimEvent[] = [];
   readonly removed = new Set<number>();
   private readonly dynamic: number[];
@@ -125,7 +145,8 @@ export class DownhillSim {
     this.seg = segmentAt(road, startX);
     this.segPos = (startX - road.xs[this.seg]) / road.tx[this.seg];
     this.syncGround();
-    this.dynamic = track.obstacles.map((o, i) => (o.motion || o.window ? i : -1)).filter((i) => i >= 0);
+    this.dynamic = track.obstacles.map((o, i) => (o.motion || o.window || o.roll ? i : -1)).filter((i) => i >= 0);
+    this.flockState = (track.flocks ?? []).map(() => 0);
     while (this.nextObstacle < track.obstacles.length && track.obstacles[this.nextObstacle].x <= this.x) this.nextObstacle += 1;
   }
 
@@ -162,6 +183,8 @@ export class DownhillSim {
     } else if (this.mode === "air" && input.jump && !this.popped && !this.tumbling && this.airSteps <= COYOTE_STEPS && !this.finished) {
       this.pop(chargeBefore, true);
       popped = true;
+    } else if (this.mode === "air" && input.jump && !this.tumbling && !this.finished) {
+      this.rhythmPress();
     }
     if (popped) this.charge = 0;
     else if (input.crouch) this.charge = Math.min(this.charge + DT, this.params.chargeTime);
@@ -171,6 +194,7 @@ export class DownhillSim {
     else if (this.mode === "air") this.airStep(input);
     else this.crashStep();
     this.checkObstacles(xPrev, yPrev);
+    this.checkFlocks();
     this.checkFinish(xPrev);
     const sp = this.speed;
     if (sp > this.stats.maxSpeed && !this.finished) this.stats.maxSpeed = sp;
@@ -265,9 +289,9 @@ export class DownhillSim {
   }
 
   private inCobbles() {
-    if (this.surface !== 0) return false;
-    for (const c of this.track.cobbles) if (this.x >= c.x0 && this.x <= c.x1) return true;
-    return false;
+    if (this.surface !== 0) return 0;
+    for (const c of this.track.cobbles) if (this.x >= c.x0 && this.x <= c.x1) return c.stairs ? STAIR_RATTLE : 1;
+    return 0;
   }
 
   private groundStep(input: SimInput) {
@@ -278,12 +302,13 @@ export class DownhillSim {
     let a = p.gravity * ty * p.slopeGain * (crouch && ty > 0 ? 1 + p.crouchBoost : 1);
     const k = p.drag * 1e-5 * (crouch ? 1 - p.crouchDrag : 1);
     a -= k * this.v * this.v + p.rolling;
-    const cobbles = this.inCobbles();
+    const rattle = this.inCobbles();
+    const cobbles = rattle > 0;
     if (cobbles !== this.onCobbles) {
       this.onCobbles = cobbles;
       this.events.push({ type: "surface", cobbles });
     }
-    if (cobbles) a -= crouch ? p.cobbleCrouch : p.cobbleStand;
+    if (cobbles) a -= (crouch ? p.cobbleCrouch : p.cobbleStand) * rattle;
     if (this.finished) a -= FINISH_BRAKE;
     this.v += a * DT;
     this.paddling = false;
@@ -342,6 +367,8 @@ export class DownhillSim {
   private airStep(input: SimInput) {
     const p = this.params;
     this.airSteps += 1;
+    if (this.bounceBuffer > 0) this.bounceBuffer -= 1;
+    if (this.bounceGrace > 0) this.bounceGrace -= 1;
     if (this.tumbling) {
       this.angle = wrapAngle(this.angle + 11 * DT);
     } else {
@@ -415,6 +442,12 @@ export class DownhillSim {
       this.syncGround();
       return;
     }
+    if (s.kind === "awning") {
+      this.bounce(surfaceIndex, x, delta);
+      return;
+    }
+    this.combo = 0;
+    this.bounceGrace = 0;
     if (this.finished) {
       this.mode = "ground";
       this.v = vt;
@@ -444,6 +477,120 @@ export class DownhillSim {
       this.crash(delta > 100 ? "upside" : "tilted", vt, delta);
     }
     this.syncGround();
+  }
+
+  private rhythmPress() {
+    if (this.bounceGrace > 0 && this.lastAwning >= 0) {
+      this.bounceGrace = 0;
+      this.combo = this.comboHold;
+      this.assist(this.lastAwning, 0, true);
+      return;
+    }
+    this.bounceBuffer = RHYTHM_PRE;
+  }
+
+  private bounce(surfaceIndex: number, x: number, delta: number) {
+    const s = this.track.surfaces[surfaceIndex];
+    const seg = segmentAt(s, x);
+    const tx = s.tx[seg];
+    const ty = s.ty[seg];
+    this.x = x;
+    this.y = heightAt(s, x, seg);
+    this.surface = surfaceIndex;
+    this.seg = seg;
+    this.segPos = (x - s.xs[seg]) / tx;
+    const vn = this.vx * ty - this.vy * tx;
+    const vt = this.vx * tx + this.vy * ty;
+    const aligned = delta <= this.params.okTol;
+    if (!aligned) this.angle = s.ang[seg];
+    this.airSteps = 0;
+    this.spun = 0;
+    this.popped = true;
+    this.takeoffLip = true;
+    this.cleared = false;
+    this.rise = 0;
+    this.paddling = false;
+    this.lastAwning = surfaceIndex;
+    const out = Math.max(BOUNCE_MIN, -vn * BOUNCE_KEEP);
+    this.vx = vt * tx + out * ty;
+    this.vy = vt * ty - out * tx;
+    if (aligned && this.bounceBuffer > 0) {
+      this.bounceBuffer = 0;
+      this.bounceGrace = 0;
+      this.assist(surfaceIndex, delta, false);
+      return;
+    }
+    this.comboHold = aligned ? this.combo : 0;
+    this.combo = 0;
+    this.bounceBuffer = 0;
+    this.bounceGrace = aligned ? RHYTHM_GRACE : 0;
+    this.events.push({ type: "bounce", rhythm: false, combo: 0, delta, surface: surfaceIndex, late: false });
+  }
+
+  private assist(from: number, delta: number, late: boolean) {
+    const surfaces = this.track.surfaces;
+    const edge = surfaces[from].x1;
+    let target = -1;
+    for (let i = 0; i < surfaces.length; i += 1) {
+      const s = surfaces[i];
+      if (s.kind !== "awning" || s.x0 <= edge) continue;
+      if (target < 0 || s.x0 < surfaces[target].x0) target = i;
+    }
+    let aimX: number;
+    let aimY: number;
+    if (target >= 0) {
+      const s = surfaces[target];
+      aimX = s.x0 + (s.x1 - s.x0) * 0.5;
+      aimY = heightAt(s, aimX);
+    } else if (this.track.awningExit !== undefined) {
+      aimX = this.track.awningExit;
+      aimY = heightAt(surfaces[0], aimX);
+    } else return;
+    const g = this.params.gravity;
+    const hv = (this.vx > 700 ? this.vx : 700) + RHYTHM_BOOST;
+    const d = aimX - this.x;
+    const a = this.params.drag * 1e-5 * AIR_DRAG * hv * hv;
+    const disc = hv * hv - 2 * a * d;
+    let t = disc > 0 && a > 0 ? (hv - Math.sqrt(disc)) / a : d / hv;
+    if (t < 0.25) t = 0.25;
+    let vy = (aimY - this.y - 0.5 * g * t * t) / t;
+    if (vy > -ASSIST_MIN) vy = -ASSIST_MIN;
+    if (vy < -ASSIST_MAX) vy = -ASSIST_MAX;
+    this.vx = hv;
+    this.vy = vy;
+    this.combo += 1;
+    this.stats.bounces += 1;
+    if (this.combo > this.stats.combo) this.stats.combo = this.combo;
+    this.events.push({ type: "bounce", rhythm: true, combo: this.combo, delta, surface: from, late });
+  }
+
+  private checkFlocks() {
+    const flocks = this.track.flocks;
+    if (!flocks) return;
+    for (let i = 0; i < flocks.length; i += 1) {
+      const f = flocks[i];
+      const state = this.flockState[i];
+      if (state === 3 || state === 2 || this.x < f.x0) continue;
+      if (state === 0) {
+        if (this.mode === "air" && !this.tumbling) this.flockState[i] = 1;
+        else {
+          this.flockState[i] = 2;
+          this.events.push({ type: "flock", index: i, clean: false });
+          continue;
+        }
+      }
+      if (this.mode !== "air" || this.tumbling) {
+        this.flockState[i] = 2;
+        this.events.push({ type: "flock", index: i, clean: false });
+        continue;
+      }
+      if (this.x >= f.x1) {
+        this.flockState[i] = 3;
+        this.vx += FLOCK_BONUS;
+        this.stats.flock = true;
+        this.events.push({ type: "flock", index: i, clean: true });
+      }
+    }
   }
 
   private crash(reason: CrashReason, speed: number, delta = 0) {
@@ -478,7 +625,7 @@ export class DownhillSim {
       const index = this.nextObstacle;
       const o = obstacles[index];
       this.nextObstacle += 1;
-      if (o.motion || o.window) continue;
+      if (o.motion || o.window || o.roll) continue;
       if (o.x <= xPrev || this.removed.has(index)) continue;
       this.testObstacle(o, index, o.x, xPrev, yPrev);
     }
@@ -487,6 +634,7 @@ export class DownhillSim {
       if (this.removed.has(index) || !obstacleActive(o, this.step)) continue;
       const ox = obstacleX(o, this.step);
       const before = obstacleX(o, this.step - 1);
+      if (o.roll && ox < before) continue;
       if (xPrev - before < 0 && this.x - ox >= 0) this.testObstacle(o, index, ox, xPrev, yPrev);
     }
   }

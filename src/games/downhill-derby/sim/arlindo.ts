@@ -135,6 +135,7 @@ export function buildArlindo(): Course {
     zones: [{ key: "neighborhood", x0: road.x0, x1: road.x1 }],
     chalk,
     set: {
+      kind: "arlindo",
       house: a + 250,
       hose,
       plank,

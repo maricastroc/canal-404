@@ -43,13 +43,25 @@ export type RaceCopy = {
   hitBin: string;
   hitGnome: string;
   hitHose: string;
+  hitMelon: string;
+  hitOrange: string;
+  hitStand: string;
+  helmet: string;
+  bounce: (combo: number) => string;
+  bounceMiss: string;
+  bounceFlop: string;
+  flock: { clean: string; scared: string };
+  stairs: string;
+  cidinha: string;
+  vendorCalls: readonly string[];
+  feira: { fair: string; fruit: string; greens: string; pastel: string; flowers: string; plaza: string };
   secret: string;
   chalk: { hold: string; jump: string };
   beep: string;
-  courses: { arlindo: string; test: string };
+  courses: { arlindo: string; feira: string; test: string };
   cobbles: string;
   paddle: string;
-  tips: { align: string; alignTouch: string; barrier: string; duck: string; hit: string };
+  tips: { align: string; alignTouch: string; barrier: string; duck: string; hit: string; awnings: string; awningsTouch: string };
   signs: Record<SignKey, string>;
   start: string;
   finish: string;
@@ -75,6 +87,8 @@ export type RaceCopy = {
     againTouch: string;
     wonBy: Record<"lina" | "bruno", (seconds: string) => string>;
     secret: string;
+    pigeons: string;
+    pigeonsFound: string;
     behind: Record<"lina" | "bruno", (seconds: string) => string>;
   };
   touch: { crouch: string; jump: string; restart: string; pause: string };
@@ -132,10 +146,22 @@ export const RACE_COPY = localized<RaceCopy>({
     hitBin: "Lixeira!",
     hitGnome: "O ANÃO NÃO!",
     hitHose: "Molhou!",
+    hitMelon: "Ploft! Melancia",
+    hitOrange: "Laranjada!",
+    hitStand: "Derrubou a banca!",
+    helmet: "Capacete de melancia!",
+    bounce: (combo) => (combo > 1 ? `Quique ×${combo}!` : "Quique!"),
+    bounceMiss: "Perdeu o ritmo",
+    bounceFlop: "Caiu torto no toldo",
+    flock: { clean: "PASSOU LISO PELOS POMBOS!", scared: "Revoada!" },
+    stairs: "Escadaria: agache para trepidar menos",
+    cidinha: "MEU CARRINHO!",
+    vendorCalls: ["OLHA A LARANJA!", "PASTEL QUENTINHO!", "FREGUESA!", "É DA HORTA!"],
+    feira: { fair: "FEIRA LIVRE", fruit: "FRUTAS", greens: "VERDURAS", pastel: "PASTEL", flowers: "FLORES", plaza: "PRAÇA DA MATRIZ" },
     secret: "ANÃO DOURADO!",
     chalk: { hold: "SEGURA ↓", jump: "PULA!" },
     beep: "BIP! BIP!",
-    courses: { arlindo: "Ladeira do Seu Arlindo", test: "Pista de teste" },
+    courses: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", test: "Pista de teste" },
     cobbles: "Paralelepípedo: agache para trepidar menos",
     paddle: "remando…",
     tips: {
@@ -144,6 +170,8 @@ export const RACE_COPY = localized<RaceCopy>({
       barrier: "Barreira: agache antes e pule alto",
       duck: "Varal: agache para passar por baixo",
       hit: "Pule por cima para não perder embalo",
+      awnings: "Aperte ESPAÇO na hora em que o carrinho tocar o toldo",
+      awningsTouch: "Toque PULAR na hora em que o carrinho tocar o toldo",
     },
     signs: {
       crouch: "AGACHE NA DESCIDA",
@@ -164,6 +192,12 @@ export const RACE_COPY = localized<RaceCopy>({
       truck: "CAMINHÃO DE RÉ: PULE NA RAMPA",
       yard: "ATALHO ↑ PELO QUINTAL",
       fence: "CERCA: PULE NO PONTO",
+      fruit: "FRUTA ROLANDO: PULE",
+      awnings: "TOLDOS ↑ PULE NA RAMPA",
+      stairs: "ESCADARIA: AGACHE",
+      rail: "CORRIMÃO ↑ PULE NO TOPO",
+      pigeons: "POMBOS: PASSE POR CIMA",
+      trolley: "CARRINHO ↑ VOLTE AOS TOLDOS",
     },
     start: "LARGADA",
     finish: "CHEGADA",
@@ -189,6 +223,8 @@ export const RACE_COPY = localized<RaceCopy>({
       againTouch: "Correr de novo",
       wonBy: { lina: (s) => `Venceu a Lina por ${s} s!`, bruno: (s) => `Venceu o Bruno por ${s} s!` },
       secret: "Anão dourado",
+      pigeons: "Pombos",
+      pigeonsFound: "Passou liso pelos pombos!",
       behind: { lina: (s) => `Faltaram ${s} s para passar a Lina`, bruno: (s) => `Faltaram ${s} s para passar o Bruno` },
     },
     touch: { crouch: "AGACHAR", jump: "PULAR", restart: "Reiniciar", pause: "Pausar" },
@@ -244,10 +280,22 @@ export const RACE_COPY = localized<RaceCopy>({
     hitBin: "Trash bin!",
     hitGnome: "NOT THE GNOME!",
     hitHose: "Splash!",
+    hitMelon: "Splat! Watermelon",
+    hitOrange: "Orange crush!",
+    hitStand: "Knocked over a stand!",
+    helmet: "Watermelon helmet!",
+    bounce: (combo) => (combo > 1 ? `Bounce ×${combo}!` : "Bounce!"),
+    bounceMiss: "Lost the rhythm",
+    bounceFlop: "Landed crooked on the awning",
+    flock: { clean: "SLIPPED PAST THE PIGEONS!", scared: "Pigeon panic!" },
+    stairs: "Stairs: crouch to rattle less",
+    cidinha: "MY TROLLEY!",
+    vendorCalls: ["FRESH ORANGES!", "HOT PASTRIES!", "OVER HERE!", "FRESH FROM THE FARM!"],
+    feira: { fair: "STREET MARKET", fruit: "FRUIT", greens: "VEGGIES", pastel: "PASTRIES", flowers: "FLOWERS", plaza: "MAIN SQUARE" },
     secret: "GOLDEN GNOME!",
     chalk: { hold: "HOLD ↓", jump: "JUMP!" },
     beep: "BEEP! BEEP!",
-    courses: { arlindo: "Mr. Arlindo's Hill", test: "Test track" },
+    courses: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", test: "Test track" },
     cobbles: "Cobblestones: crouch to rattle less",
     paddle: "paddling…",
     tips: {
@@ -256,6 +304,8 @@ export const RACE_COPY = localized<RaceCopy>({
       barrier: "Barrier: crouch first, then jump high",
       duck: "Clothesline: crouch to pass under it",
       hit: "Jump over it to keep your speed",
+      awnings: "Press SPACE right as the cart touches the awning",
+      awningsTouch: "Tap JUMP right as the cart touches the awning",
     },
     signs: {
       crouch: "CROUCH ON THE WAY DOWN",
@@ -276,6 +326,12 @@ export const RACE_COPY = localized<RaceCopy>({
       truck: "TRUCK BACKING UP: JUMP THE RAMP",
       yard: "SHORTCUT ↑ THROUGH THE YARD",
       fence: "FENCE: JUMP AT THE EDGE",
+      fruit: "ROLLING FRUIT: JUMP",
+      awnings: "AWNINGS ↑ JUMP THE RAMP",
+      stairs: "STAIRS: CROUCH",
+      rail: "HANDRAIL ↑ JUMP AT THE TOP",
+      pigeons: "PIGEONS: GO OVER THEM",
+      trolley: "TROLLEY ↑ BACK TO THE AWNINGS",
     },
     start: "START",
     finish: "FINISH",
@@ -301,6 +357,8 @@ export const RACE_COPY = localized<RaceCopy>({
       againTouch: "Race again",
       wonBy: { lina: (s) => `Beat Lina by ${s} s!`, bruno: (s) => `Beat Bruno by ${s} s!` },
       secret: "Golden gnome",
+      pigeons: "Pigeons",
+      pigeonsFound: "Slipped past the pigeons!",
       behind: { lina: (s) => `${s} s short of passing Lina`, bruno: (s) => `${s} s short of passing Bruno` },
     },
     touch: { crouch: "CROUCH", jump: "JUMP", restart: "Restart", pause: "Pause" },

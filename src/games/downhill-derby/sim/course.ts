@@ -1,10 +1,10 @@
 import type { Ramp, Track } from "./track";
 
-export type CourseId = "arlindo" | "test";
+export type CourseId = "arlindo" | "feira" | "test";
 
-export const COURSE_IDS: readonly CourseId[] = ["arlindo", "test"];
+export const COURSE_IDS: readonly CourseId[] = ["arlindo", "feira", "test"];
 
-export type ZoneKey = "street" | "market" | "works" | "final" | "neighborhood";
+export type ZoneKey = "street" | "market" | "works" | "final" | "neighborhood" | "feira";
 
 export type Zone = { key: ZoneKey; x0: number; x1: number };
 
@@ -13,6 +13,7 @@ export type Section = { key: string; x: number };
 export type Chalk = { x: number; kind: "hold" | "jump"; surface: number };
 
 export type ArlindoSet = {
+  kind: "arlindo";
   house: number;
   hose: number;
   plank: Ramp;
@@ -27,11 +28,26 @@ export type ArlindoSet = {
   boxes: number;
 };
 
+export type FeiraSet = {
+  kind: "feira";
+  fruit: { x0: number; x1: number; crate: number }[];
+  market: { x0: number; x1: number };
+  crateRamp: Ramp;
+  awnings: number[];
+  trolley: Ramp;
+  stands: number[];
+  stairs: { x0: number; x1: number };
+  rail: number;
+  plaza: { x0: number; x1: number };
+  flock: { x0: number; x1: number };
+  cidinha: number;
+};
+
 export type Course = Track & {
   id: CourseId;
   sections: Section[];
   zones: Zone[];
   grid: { lina: number; bruno: number };
   chalk: Chalk[];
-  set: ArlindoSet | null;
+  set: ArlindoSet | FeiraSet | null;
 };

@@ -1,11 +1,12 @@
 import * as Phaser from "phaser";
 import type { RaceCopy } from "../copy";
-import type { ArlindoSet, Course } from "../sim/course";
+import type { ArlindoSet, Course, FeiraSet } from "../sim/course";
 import { heightAt, obstacleActive, type Obstacle } from "../sim/track";
 import { INK } from "./cart";
 import { CastPlanner, type Extra } from "./cast";
+import { awningGaps, CIDINHA, trolleyRamp } from "./feira";
 import { NEIGHBORS, SAMPLE_RES, type SampleSpots } from "./sample";
-import { BLEACHER_ROWS, BLEACHER_SEATS, BLEACHER_W, STALL_W, STREET_SPOTS, VENDOR_SPOTS, type Builder, type Zone } from "./terrain";
+import { BLEACHER_ROWS, BLEACHER_SEATS, BLEACHER_W, LANES, STALL_W, STREET_SPOTS, VENDOR_SPOTS, type Builder, type Zone } from "./terrain";
 
 type Actor = {
   x: number;
@@ -15,8 +16,8 @@ type Actor = {
 };
 
 const VENDORS = [
-  { id: "lady", idle: "lunch-lady", angry: "lunch-lady-angry", height: 228 },
-  { id: "cook", idle: "x-cook", angry: "x-cook-huff", height: 240 },
+  { id: "lady", idle: "lunch-lady", angry: "lunch-lady-angry", height: 228, market: 200 },
+  { id: "cook", idle: "x-cook", angry: "x-cook-huff", height: 240, market: 206 },
 ];
 
 function heightOf(scene: Phaser.Scene, key: string) {
@@ -34,14 +35,24 @@ export class Ambient {
   private finishMascot: Phaser.GameObjects.Image | null = null;
   private finishJump = 0;
   private readonly cast = new CastPlanner(3800);
+  private flockState: ((clean: boolean) => void) | null = null;
 
   step = 0;
+  lead = -Infinity;
 
   constructor(b: Builder, layer: Phaser.GameObjects.Layer, track: Course, zones: Zone[], copy: RaceCopy) {
     this.b = b;
     this.layer = layer;
     this.copy = copy;
-    if (track.set) {
+    if (track.set?.kind === "feira") {
+      this.market(track, track.set);
+      if (b.sampleSpots) this.neighbors(b.sampleSpots);
+      this.finish(track);
+      for (const x of this.b.bleachers) this.bleacher(x);
+      this.start(track);
+      return;
+    }
+    if (track.set?.kind === "arlindo") {
       const set = track.set;
       this.dog(set.dog);
       this.b.taken.push([set.dog - 90, set.dog + 130]);
@@ -88,6 +99,192 @@ export class Ambient {
     for (const x of this.b.bleachers) this.bleacher(x);
     for (const x of this.b.crowds) this.crowd(x, 3);
     this.start(track);
+  }
+
+  private market(track: Course, set: FeiraSet) {
+    const gaps = awningGaps(set);
+    this.feirante(gaps[0][0] + 170, VENDORS[0], this.copy.vendorCalls[0]);
+    this.feirante(gaps[3][0] + 470, VENDORS[1], this.copy.vendorCalls[1]);
+    this.feirante(set.fruit[0].crate + 250, VENDORS[1], this.copy.vendorCalls[3]);
+    this.feirante(set.fruit[1].crate + 250, VENDORS[0], this.copy.vendorCalls[0]);
+    this.cidinha(track, set);
+    for (const i of [2, 4, 6, 7]) {
+      const x = (gaps[i][0] + gaps[i][1]) / 2;
+      const e = this.cast.take("full", x);
+      if (e) this.fan(x, this.b.backY(x) + 8, e, -11.5);
+      this.b.taken.push([x - 80, x + 80]);
+    }
+    this.pigeons(track, set);
+  }
+
+  private feirante(x0: number, who: (typeof VENDORS)[number], call: string) {
+    const s = this.b.scene;
+    this.cast.claim(who.id, x0);
+    const base = this.b.backY(x0) + 6;
+    const root = this.add(s.add.container(x0, base));
+    root.setDepth(-11.6);
+    const img = s.add.image(0, 0, who.idle).setOrigin(0.5, 1);
+    img.setScale(who.market / heightOf(s, who.idle));
+    root.add(img);
+    let done = false;
+    let hop = 0;
+    this.actors.push({
+      x: x0,
+      root,
+      reset: () => {
+        done = false;
+        hop = 0;
+        img.setY(0);
+      },
+      update: (dt, _t, px) => {
+        if (!done && px > x0 - 900 && px < x0) {
+          done = true;
+          hop = 1;
+          this.bubble(call, x0, base - img.displayHeight - 30, 30);
+        }
+        if (hop > 0) {
+          hop = Math.max(0, hop - dt * 1.8);
+          img.setY(-Math.sin(hop * Math.PI) * 12);
+        }
+      },
+    });
+    this.b.taken.push([x0 - 90, x0 + 90]);
+  }
+
+  private cidinha(track: Course, set: FeiraSet) {
+    const s = this.b.scene;
+    const road = track.surfaces[0];
+    const x0 = set.cidinha;
+    const rp = set.trolley;
+    const base = this.b.backY(x0) + 8;
+    const root = this.add(s.add.container(0, 0));
+    root.setDepth(-11.5);
+    const lady = s.add.image(x0, base, CIDINHA.idle).setOrigin(0.5, 1);
+    lady.setScale(CIDINHA.height / heightOf(s, CIDINHA.idle));
+    root.add(lady);
+    const tex = heightOf(s, "f-carrinho-feira");
+    const trolley = this.add(s.add.image(x0 + 100, base, "f-carrinho-feira").setOrigin(0.5, 1 - (10 * SAMPLE_RES) / tex));
+    trolley.setScale(118 / (tex - 20 * SAMPLE_RES));
+    const ramp = this.add(trolleyRamp(s, track));
+    ramp.setDepth(2.6);
+    this.b.taken.push([x0 - 90, x0 + 170]);
+    let state: "wait" | "roll" | "tipped" = "wait";
+    let tx = x0 + 100;
+    let tv = 0;
+    let shout = 0;
+    const home = () => {
+      state = "wait";
+      tx = x0 + 100;
+      tv = 0;
+      shout = 0;
+      trolley.setVisible(true).setPosition(tx, base).setRotation(0).setDepth(-11.4);
+      ramp.setVisible(false);
+      lady.setTexture(CIDINHA.idle);
+    };
+    home();
+    this.actors.push({
+      x: (x0 + rp.x1) / 2,
+      root,
+      reset: home,
+      update: (dt, t, px, speed) => {
+        const front = Math.max(px, this.lead);
+        if (state === "wait" && front > x0 - 320) {
+          state = "roll";
+          tv = 260;
+          shout = 2.2;
+          this.bubble(this.copy.cidinha, x0, base - CIDINHA.height - 40, 32);
+        }
+        if (state === "roll") {
+          tv = Math.min(2600, Math.max(tv + 750 * dt, front > tx - 700 ? speed * 1.25 : 0));
+          tx += tv * dt;
+          const y = heightAt(road, tx) + LANES.bruno + 2;
+          const tilt = Math.atan2(heightAt(road, tx + 40) - heightAt(road, tx - 40), 80);
+          trolley.setPosition(tx, y).setRotation(tilt + Math.sin(t * 30) * 0.04).setDepth(4.7);
+          if (tx >= rp.x0 + 30 || front > rp.x0 - 260) {
+            state = "tipped";
+            trolley.setVisible(false);
+            ramp.setVisible(true);
+          }
+        }
+        if (shout > 0) {
+          shout = Math.max(0, shout - dt);
+          lady.setTexture(shout > 0 && Math.floor(t * 6) % 2 === 0 ? CIDINHA.cheer : CIDINHA.idle);
+        }
+      },
+    });
+  }
+
+  private pigeons(track: Course, set: FeiraSet) {
+    const s = this.b.scene;
+    const road = track.surfaces[0];
+    const f = set.flock;
+    const root = this.add(s.add.container(0, 0));
+    const lanes = [0, -30, -58, -86, -114];
+    const depths = [7.5, 6.6, 5.9, 5.4, 4.9];
+    const birds: { img: Phaser.GameObjects.Image; x: number; y: number; lane: number; vx: number; vy: number; phase: number; home: number }[] = [];
+    for (let k = 0; k < 12; k += 1) {
+      const lane = k % lanes.length;
+      const x = f.x0 + 50 + ((k * 211) % (f.x1 - f.x0 - 100));
+      const img = this.add(s.add.image(x, 0, "f-pombo-a").setOrigin(0.5, 0.85).setScale(0.62 / SAMPLE_RES));
+      img.setDepth(depths[lane]).setFlipX(k % 3 === 0);
+      birds.push({ img, x, y: 0, lane: lanes[lane], vx: 0, vy: 0, phase: k * 1.7, home: x });
+    }
+    let mode: "rest" | "calm" | "scatter" = "rest";
+    let wait = 0;
+    const place = () => {
+      for (const bird of birds) {
+        bird.x = bird.home;
+        bird.y = heightAt(road, bird.x) + bird.lane;
+        bird.vx = 0;
+        bird.vy = 0;
+        bird.img.setPosition(bird.x, bird.y).setTexture("f-pombo-a").setVisible(true).setRotation(0);
+      }
+    };
+    place();
+    const takeOff = (panic: boolean) => {
+      mode = panic ? "scatter" : "calm";
+      birds.forEach((bird, k) => {
+        bird.vx = panic ? (k % 2 ? 1 : -1) * (200 + ((k * 97) % 260)) + 300 : 260 + ((k * 53) % 180);
+        bird.vy = panic ? -(620 + ((k * 71) % 300)) : -(320 + ((k * 37) % 160));
+      });
+    };
+    this.flockState = (clean) => {
+      if (clean) {
+        mode = "calm";
+        wait = 0.35;
+      } else takeOff(true);
+    };
+    this.actors.push({
+      x: (f.x0 + f.x1) / 2,
+      root,
+      reset: () => {
+        mode = "rest";
+        wait = 0;
+        place();
+      },
+      update: (dt, t) => {
+        if (mode === "rest") {
+          birds.forEach((bird) => bird.img.setTexture(Math.floor(t * 3 + bird.phase) % 3 === 0 ? "f-pombo-b" : "f-pombo-a"));
+          return;
+        }
+        if (mode === "calm" && wait > 0) {
+          wait -= dt;
+          if (wait <= 0) takeOff(false);
+          return;
+        }
+        birds.forEach((bird, k) => {
+          bird.vy += (mode === "scatter" ? 260 : 120) * dt;
+          bird.x += bird.vx * dt;
+          bird.y += bird.vy * dt;
+          bird.img.setPosition(bird.x, bird.y).setTexture(Math.floor(t * 14 + k) % 2 === 0 ? "f-pombo-voa-a" : "f-pombo-voa-b").setFlipX(bird.vx < 0);
+          if (bird.y < heightAt(road, bird.home) - 1400) bird.img.setVisible(false);
+        });
+      },
+    });
+  }
+
+  flock(clean: boolean) {
+    this.flockState?.(clean);
   }
 
   waiting(spots: { x: number; depth: number }[]) {

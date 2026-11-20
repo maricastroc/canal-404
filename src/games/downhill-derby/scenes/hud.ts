@@ -44,6 +44,7 @@ export type ResultsData = {
   topSpeed: number;
   air: number;
   secret: boolean | null;
+  secretKind: "gnome" | "pigeons";
   firstRace: boolean;
   starsBefore: number;
   calm: boolean;
@@ -770,7 +771,7 @@ export class Hud {
       [res.air, `${formatSeconds(r.air, this.locale)} s`],
       [res.shortcut, r.shortcut ? res.yes : res.no],
     ];
-    if (r.secret === false) minor.push([res.secret, res.no]);
+    if (r.secret === false) minor.push([r.secretKind === "pigeons" ? res.pigeons : res.secret, res.no]);
     const mg = add(s.add.graphics());
     mg.lineStyle(3, INK, 0.12);
     mg.lineBetween(...L(566, 580), ...L(1036, 580));
@@ -782,9 +783,9 @@ export class Hud {
       statParts.push(l, text(x + l.width + 6, y, value, body(19, "#1d1830")));
     });
     if (r.secret === true) {
-      const gnome = s.add.image(0, 0, "p-gnome-gold").setOrigin(0.5, 0.5);
+      const gnome = s.add.image(0, 0, r.secretKind === "pigeons" ? "f-pombo-a" : "p-gnome-gold").setOrigin(0.5, 0.5);
       gnome.setScale(44 / (gnome.height || 44));
-      const label = s.add.text(28, 0, res.secretFound.toUpperCase(), display(22, "#c98a12")).setOrigin(0, 0.5);
+      const label = s.add.text(28, 0, (r.secretKind === "pigeons" ? res.pigeonsFound : res.secretFound).toUpperCase(), display(22, "#c98a12")).setOrigin(0, 0.5);
       const w = label.width + 60;
       const cg = s.add.graphics();
       cg.fillStyle(INK, 1);

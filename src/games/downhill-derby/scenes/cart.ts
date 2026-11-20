@@ -143,6 +143,7 @@ export class CartView {
   private shownExpr: Expression | null = null;
   private shownArm: ArmPose | null = null;
   private flyers: Flyer[] = [];
+  private helmet: Phaser.GameObjects.Image | null = null;
   private crashing = false;
   private readonly baseScale: number;
   private elapsed = 0;
@@ -221,6 +222,14 @@ export class CartView {
   takeoff(power: number) {
     this.stretchT = 0;
     this.tiltVel -= 3 + power * 4;
+  }
+
+  setHelmet(on: boolean) {
+    if (on && !this.helmet && this.scene.textures.exists("f-melancia-capacete")) {
+      this.helmet = this.scene.add.image(0, 0, "f-melancia-capacete").setOrigin(0.5, 0.8).setScale(0.8);
+      this.rider.add(this.helmet);
+    }
+    this.helmet?.setVisible(on);
   }
 
   setHold(expr: Expression | null, pose: ArmPose = "steer") {
@@ -420,6 +429,10 @@ export class CartView {
     this.rider.setRotation(rr);
     this.rider.setScale(sx, sy * (1 - this.crouchBlend * 0.22));
     this.head.setRotation(-speedK * 0.12 + this.crouchBlend * 0.12 + Math.sin(pose.time * (12 + speedK * 26)) * speedK * 0.05 + (crashing ? Math.sin(pose.time * 20) * 0.3 : 0));
+    if (this.helmet?.visible) {
+      const hr = this.head.rotation;
+      this.helmet.setPosition(this.head.x + Math.sin(hr) * 56, this.head.y - Math.cos(hr) * 56).setRotation(hr);
+    }
     if (this.faceOverride) {
       this.faceOverride.left -= dt;
       if (this.faceOverride.left <= 0) this.faceOverride = null;

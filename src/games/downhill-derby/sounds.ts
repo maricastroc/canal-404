@@ -89,7 +89,30 @@ export const DOWNHILL_SFX = {
   spin: { layers: [{ kind: "noise", duration: 0.16, gain: 0.05, attack: 0.04, filter: { type: "bandpass", from: 500, to: 1400, q: 2.5 } }] },
   touch: { layers: [{ kind: "noise", duration: 0.04, gain: 0.04, filter: { type: "lowpass", from: 700 } }] },
   charged: { layers: [{ kind: "tone", wave: "triangle", from: 900, to: 1200, duration: 0.06, gain: 0.03 }] },
+  bounce: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 140, to: 90, duration: 0.12, gain: 0.12 },
+      { kind: "noise", duration: 0.06, gain: 0.05, filter: { type: "lowpass", from: 900 } },
+    ],
+  },
+  flutter: { layers: [{ kind: "noise", duration: 0.5, gain: 0.05, attack: 0.03, filter: { type: "bandpass", from: 1400, to: 2600, q: 1.6 } }] },
+  splat: {
+    layers: [
+      { kind: "noise", duration: 0.12, gain: 0.1, filter: { type: "lowpass", from: 1400, to: 400 } },
+      { kind: "tone", wave: "sine", from: 220, to: 110, duration: 0.1, gain: 0.08 },
+    ],
+  },
 } satisfies Record<string, SoundRecipe>;
+
+export function boing(combo: number): SoundRecipe {
+  const lift = Math.min(combo, 8) * 60;
+  return {
+    layers: [
+      { kind: "tone", wave: "sine", from: 180 + lift, to: 520 + lift * 1.5, duration: 0.18, gain: 0.1 },
+      { kind: "tone", wave: "triangle", from: 360 + lift, to: 900 + lift, duration: 0.14, delay: 0.02, gain: 0.04 },
+    ],
+  };
+}
 
 export function rollGrain(speed: number, cobbles: boolean, crouch: boolean): SoundRecipe {
   const s = speed < 0 ? 0 : speed > 2600 ? 2600 : speed;
