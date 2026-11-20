@@ -9,9 +9,9 @@ import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from
 const DUCK = { x: 150, y: H - 128, r: 86, press: 5, iconY: -16, iconSize: 88, labelY: 42 };
 const TAP_SIZE = 120;
 const BANNER_Y = 300;
-const PORTRAIT_DUCK_CSS = 42;
+const PORTRAIT_DUCK_CSS = 35;
 
-export type HudView = { frame: Frame; perCss: number; reserveCss: number; slotX: number[] };
+export type HudView = { frame: Frame; perCss: number; slotX: number[] };
 
 export class LunchHud {
   uiScale = 1;
@@ -38,6 +38,7 @@ export class LunchHud {
   private duckState: "idle" | "danger" | "down" = "idle";
   private copy: FoodFightCopy["hud"];
   private viewWidth = W;
+  private bannerY = BANNER_Y;
 
   constructor(
     private scene: Phaser.Scene,
@@ -151,19 +152,19 @@ export class LunchHud {
     this.viewWidth = frame.width;
     const cx = frame.width / 2;
     if (frame.kind === "portrait") {
-      const fit = Math.min((cx - 44) / 466, (frame.width - cx - 44) / 436);
-      this.uiScale = Phaser.Math.Clamp(perCss * 0.55, 1, Math.min(1.5, fit));
+      const fit = Math.min((cx - 40) / 466, (frame.width - cx - 40) / 436);
+      this.uiScale = Phaser.Math.Clamp(perCss * 0.55, Math.min(0.8, fit), fit);
       const s = this.uiScale;
-      const top = -frame.top + 22;
-      this.livesBox.setScale(s).setPosition(24, top);
+      const top = frame.top + 22;
+      this.livesBox.setScale(s).setPosition(20, top);
       this.timerBox.setScale(s * 0.92).setPosition(cx, top);
-      this.scoreBox.setScale(s).setPosition(frame.width - 24, top);
-      this.streak.setScale(Math.min(s, 1.3)).setPosition(frame.width - 40, top + 150 * s + 20);
-      const ds = Phaser.Math.Clamp((PORTRAIT_DUCK_CSS * perCss) / DUCK.r, 1.2, 2.3);
+      this.scoreBox.setScale(s).setPosition(frame.width - 20, top);
+      this.streak.setScale(Math.min(s, 1.3)).setPosition(frame.width - 34, top + 150 * s + 18);
+      this.bannerY = Math.max(BANNER_Y, top + 141 * s + 90);
+      const ds = Phaser.Math.Clamp((PORTRAIT_DUCK_CSS * perCss) / DUCK.r, 0.9, 1.6);
       const r = DUCK.r * ds;
-      const zoneBottom = H + frame.floor - view.reserveCss * perCss;
-      const free = zoneBottom - frame.sceneBottom - 2 * r;
-      this.duck.setData("base", ds).setScale(ds).setPosition(cx, frame.sceneBottom + r + Math.max(16, free * 0.4));
+      const margin = 18;
+      this.duck.setData("base", ds).setScale(ds).setPosition(frame.width - margin - r - 5, frame.top + frame.height - margin - r - 7);
     } else {
       this.uiScale = Phaser.Math.Clamp(perCss * 0.55, 1, 1.75);
       const s = this.uiScale;
@@ -173,11 +174,12 @@ export class LunchHud {
       const ds = Math.min(s, 1.6);
       this.duck.setData("base", ds).setScale(ds).setPosition(DUCK.x + (ds - 1) * 40, DUCK.y - (ds - 1) * 30);
       this.streak.setScale(Math.min(s, 1.3)).setPosition(W - 40, 22 + 150 * Math.min(s, 1.4) + 20);
+      this.bannerY = BANNER_Y;
     }
     if (this.duckPulse) this.pulseDuck(true);
     const bs = this.bannerScale(this.banner);
-    this.banner.setX(cx).setScale(bs);
-    this.bannerSub.setX(cx).setScale(this.bannerScale(this.bannerSub)).setY(BANNER_Y + 92 * bs);
+    this.banner.setPosition(cx, this.bannerY).setScale(bs);
+    this.bannerSub.setX(cx).setScale(this.bannerScale(this.bannerSub)).setY(this.bannerY + 92 * bs);
     SLOTS.forEach((slot, i) => this.tags[i].setX(view.slotX[i] ?? slot.x));
   }
 
@@ -272,7 +274,7 @@ export class LunchHud {
     b.setText(text).setColor(color).setVisible(true).setAlpha(1);
     const s = this.bannerScale(b);
     this.bannerSub.setText(sub).setVisible(Boolean(sub)).setAlpha(1);
-    this.bannerSub.setScale(this.bannerScale(this.bannerSub)).setY(BANNER_Y + 92 * s);
+    this.bannerSub.setScale(this.bannerScale(this.bannerSub)).setY(this.bannerY + 92 * s);
     if (this.reduced) {
       b.setScale(s);
     } else {

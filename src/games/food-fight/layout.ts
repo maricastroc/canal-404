@@ -1,19 +1,21 @@
-import { H, OUR_TABLE, SLOTS, W, type SlotDef } from "./config";
+import { H, OUR_TABLE, SLOTS, W, WALL_SPLAT, type SlotDef } from "./config";
 
 export type LayoutKind = "landscape" | "portrait";
 
-export type Frame = { kind: LayoutKind; width: number; height: number; top: number; floor: number; drop: number; sceneBottom: number };
+export type Frame = { kind: LayoutKind; width: number; height: number; top: number; drop: number; sceneBottom: number };
+
+type Spot = { x: number; y: number };
 
 const TABLE_W = 380;
-const OUR_TABLE_H = 216;
+const OUR_TABLE_BOTTOM = OUR_TABLE.y + 216;
 
-export const PORTRAIT = { width: 1380, drop: 240, dropMax: 380, topMin: 125, topMax: 240, buttonZone: 500, maxAspect: 1.72, gain: 1.06 };
+export const PORTRAIT = { width: 940, drop: 350, top: 160, topMin: -28, bottomPad: 34, maxAspect: 1.8, gain: 1.06 };
 
-export const LANDSCAPE_FRAME: Frame = { kind: "landscape", width: W, height: H, top: 0, floor: 0, drop: 0, sceneBottom: OUR_TABLE.y + OUR_TABLE_H };
+export const LANDSCAPE_FRAME: Frame = { kind: "landscape", width: W, height: H, top: 0, drop: 0, sceneBottom: OUR_TABLE_BOTTOM };
 
-export const SCENERY: Record<LayoutKind, { clock: { x: number; y: number }; bell: { x: number; y: number } }> = {
-  landscape: { clock: { x: 1490, y: 196 }, bell: { x: 1690, y: 150 } },
-  portrait: { clock: { x: 900, y: 200 }, bell: { x: 900, y: 296 } },
+export const SCENERY: Record<LayoutKind, { clock: Spot; bell: Spot; splat: Spot }> = {
+  landscape: { clock: { x: 1490, y: 196 }, bell: { x: 1690, y: 150 }, splat: WALL_SPLAT },
+  portrait: { clock: { x: 876, y: 214 }, bell: { x: 876, y: 300 }, splat: { x: 64, y: 752 } },
 };
 
 function tableSpan(pick: (slot: SlotDef) => number) {
@@ -43,14 +45,13 @@ export function walkScale(frame: Frame) {
 
 export function frameFor(parentWidth: number, parentHeight: number): Frame {
   if (parentWidth <= 0 || parentHeight <= 0) return LANDSCAPE_FRAME;
-  const minHeight = PORTRAIT.topMin + LANDSCAPE_FRAME.sceneBottom + PORTRAIT.drop + PORTRAIT.buttonZone;
+  const sceneBottom = OUR_TABLE_BOTTOM + PORTRAIT.drop;
+  const minHeight = sceneBottom + PORTRAIT.bottomPad - PORTRAIT.top;
   const landscapeFit = Math.min(parentWidth / W, parentHeight / H);
   const portraitFit = Math.min(parentWidth / PORTRAIT.width, parentHeight / minHeight);
   if (portraitFit < landscapeFit * PORTRAIT.gain) return LANDSCAPE_FRAME;
   const wanted = Math.round((PORTRAIT.width * parentHeight) / parentWidth);
   const height = Math.min(Math.max(wanted, minHeight), Math.round(PORTRAIT.width * PORTRAIT.maxAspect));
-  const extra = height - minHeight;
-  const drop = PORTRAIT.drop + Math.round(Math.min(extra * 0.4, PORTRAIT.dropMax - PORTRAIT.drop));
-  const top = PORTRAIT.topMin + Math.round(Math.min(extra * 0.15, PORTRAIT.topMax - PORTRAIT.topMin));
-  return { kind: "portrait", width: PORTRAIT.width, height, top, floor: height - top - H, drop, sceneBottom: LANDSCAPE_FRAME.sceneBottom + drop };
+  const top = PORTRAIT.top - Math.min(height - minHeight, PORTRAIT.top - PORTRAIT.topMin);
+  return { kind: "portrait", width: PORTRAIT.width, height, top, drop: PORTRAIT.drop, sceneBottom };
 }

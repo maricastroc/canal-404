@@ -23,7 +23,6 @@ import {
   SLOTS,
   THROW_GAP_MS,
   W,
-  WALL_SPLAT,
   type Phase,
   type RivalKind,
 } from "../config";
@@ -61,6 +60,7 @@ function bezier(a: Pt, c: Pt, b: Pt, k: number): Pt {
 }
 
 const SAVE_KEY = "canal404:food-fight:v1";
+const SIDE_BUBBLE = { x: MILA.x + 112, y: MILA.y - 150 };
 
 function tutorialSeen() {
   try {
@@ -120,6 +120,7 @@ export class LunchScene extends Phaser.Scene {
   private milaUntil = 0;
   private overlay!: Phaser.GameObjects.Image;
   private bubble!: Bubble;
+  private sideBubble!: Bubble;
   private hud!: LunchHud;
   private clockHands!: Phaser.GameObjects.Graphics;
   private bell!: Phaser.GameObjects.Image;
@@ -259,6 +260,7 @@ export class LunchScene extends Phaser.Scene {
 
     this.overlay = this.add.image(380, 560, "splat-screen").setDepth(25).setScale(1.7).setVisible(false);
     this.bubble = new Bubble(this, fonts, "right", 32, 16);
+    this.sideBubble = new Bubble(this, fonts, "left", 32, 16);
 
     this.hud = new LunchHud(this, fonts, reduced, this.ctx.locale);
     this.hud.setRecord(this.highScore);
@@ -313,11 +315,11 @@ export class LunchScene extends Phaser.Scene {
 
   private applyLayout(frame: Frame) {
     const previous = this.frame;
-    if (previous.kind !== frame.kind) this.bubble.hide();
+    if (previous.kind !== frame.kind) this.hideBubbles();
     this.frame = frame;
     const portrait = frame.kind === "portrait";
     const dy = frame.drop;
-    this.cameras.main.setScroll(0, -frame.top);
+    this.cameras.main.setScroll(0, frame.top);
     this.ourMaskShape.setY(dy);
     this.ourTable.setY(OUR_TABLE.y + dy);
     this.ammoImgs.forEach((img, i) => img.setY(AMMO_SPOTS[i].y + dy));
@@ -332,7 +334,7 @@ export class LunchScene extends Phaser.Scene {
       this.mila.setY(this.mila.y + dy - previous.drop);
     }
     this.lunchLady.retarget(frameX(frame, landscapeX(previous, this.lunchLady.img.x)), frameX(frame, LUNCH_LADY.exitX), walkScale(frame));
-    this.topStrip.setY(-frame.top);
+    this.topStrip.setY(frame.top > 0 ? frame.top - 40 : frame.top);
     this.drawExtension(frame);
     const scenery = SCENERY[frame.kind];
     this.clock.setPosition(scenery.clock.x, scenery.clock.y);
@@ -347,25 +349,29 @@ export class LunchScene extends Phaser.Scene {
       const face = this.tutorialRival.face();
       this.hud.movePointer(face.x, face.y);
     }
-    const leftoverCss = this.scale.parentSize.height - this.scale.displaySize.height;
-    const reserveCss = portrait && window.innerWidth < 640 ? Math.max(16, 52 - leftoverCss) : 16;
-    this.hud.layout({ frame, perCss: this.scale.displayScale.x, reserveCss, slotX: this.rivals.map((r) => r.x) });
+    this.hud.layout({ frame, perCss: this.scale.displayScale.x, slotX: this.rivals.map((r) => r.x) });
     const bubbleScale = Math.min(this.hud.uiScale, 1.5);
     this.bubble.setBaseScale(bubbleScale);
-    this.bubble.setWrap(portrait ? (MILA.x - 22) / bubbleScale - 16 : null);
+    this.sideBubble.setBaseScale(bubbleScale);
+    this.sideBubble.setWrap((frame.width - 12 - SIDE_BUBBLE.x) / bubbleScale - 24);
   }
 
   private drawExtension(frame: Frame) {
     const g = this.extension;
     g.clear();
     if (frame.kind !== "portrait") return;
-    g.fillStyle(0xc8eadf, 1).fillRect(0, -frame.top, frame.width, frame.top);
-    g.fillStyle(0xb9e0d3, 1);
-    for (let x = 60; x < frame.width; x += 180) g.fillRect(x, -frame.top, 70, frame.top);
-    g.fillStyle(0xe8d3a3, 1).fillRect(0, H, frame.width, frame.floor);
-    g.fillStyle(0xd6bb88, 1);
-    for (let row = 0; H + row * 45 < H + frame.floor; row += 1) {
-      for (let x = row % 2 ? 60 : 0; x < frame.width; x += 120) g.fillRect(x, H + row * 45, 60, 45);
+    const bottom = frame.top + frame.height;
+    if (frame.top < 0) {
+      g.fillStyle(0xc8eadf, 1).fillRect(0, frame.top, frame.width, -frame.top);
+      g.fillStyle(0xb9e0d3, 1);
+      for (let x = 60; x < frame.width; x += 180) g.fillRect(x, frame.top, 70, -frame.top);
+    }
+    if (bottom > H) {
+      g.fillStyle(0xe8d3a3, 1).fillRect(0, H, frame.width, bottom - H);
+      g.fillStyle(0xd6bb88, 1);
+      for (let row = 0; H + row * 45 < bottom; row += 1) {
+        for (let x = row % 2 ? 60 : 0; x < frame.width; x += 120) g.fillRect(x, H + row * 45, 60, 45);
+      }
     }
   }
 
@@ -388,10 +394,15 @@ export class LunchScene extends Phaser.Scene {
     this.mila.setTexture(`mila-${face}`);
     this.milaUntil = this.t + ms;
     if (this.frame.kind === "portrait") {
-      this.bubble.say(text, MILA.x - 10, DECO.standY - 310 + this.frame.drop, ms);
+      this.sideBubble.say(text, SIDE_BUBBLE.x, SIDE_BUBBLE.y + this.frame.drop, ms);
     } else {
       this.bubble.say(text, MILA.x + 10, (this.ducking ? MILA.y - 70 : MILA.y - 236) - 4, ms);
     }
+  }
+
+  private hideBubbles() {
+    this.bubble.hide();
+    this.sideBubble.hide();
   }
 
   private word(text: string, x: number, y: number, color: string, size = 50) {
@@ -448,7 +459,7 @@ export class LunchScene extends Phaser.Scene {
   }
 
   private setPose(pose: Pose, ms = 0) {
-    this.deco.setTexture(`deco-${pose}`);
+    this.deco.setTexture(`deco-${pose}`).setFlipX(false);
     this.poseUntil = ms ? this.t + ms : 0;
   }
 
@@ -790,7 +801,9 @@ export class LunchScene extends Phaser.Scene {
         this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.phew) as string, 1100, "peek");
       }
     }
-    const to = { x: WALL_SPLAT.x + Phaser.Math.Between(-60, 60), y: WALL_SPLAT.y + this.frame.drop + Phaser.Math.Between(-80, 40) };
+    const splat = SCENERY[this.frame.kind].splat;
+    const spread = this.frame.kind === "portrait" ? 0.4 : 1;
+    const to = { x: splat.x + Phaser.Math.Between(-60, 60) * spread, y: splat.y + Phaser.Math.Between(-80, 40) * spread };
     this.launch(img, { x: img.x, y: img.y }, to, 220, 20, img.scaleX * 0.9, () => {
       img.destroy();
       this.decal("splat-pudding", to.x, to.y, 1.5, 0.75, 0.8);
@@ -917,7 +930,6 @@ export class LunchScene extends Phaser.Scene {
     this.throwReadyAt = this.t + THROW_GAP_MS;
     this.setPose("throw", 220);
     this.sfx("throw", 0.8);
-    const from = { x: DECO.hand.x, y: DECO.hand.y + this.frame.drop };
     let to: Pt;
     let scaleTo = 0.8;
     if (target.kind === "rival") {
@@ -930,6 +942,9 @@ export class LunchScene extends Phaser.Scene {
       to = { x: target.x, y: target.y };
       scaleTo = target.y < 700 ? 0.55 : 0.75;
     }
+    const flip = this.frame.kind === "portrait" && to.x < DECO.x;
+    this.deco.setFlipX(flip);
+    const from = { x: flip ? 2 * DECO.x - DECO.hand.x : DECO.hand.x, y: DECO.hand.y + this.frame.drop };
     const dist = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
     const fairX = target.kind === "rival" ? target.rival.slot.x : landscapeX(this.frame, to.x);
     const fair = Phaser.Math.Distance.Between(DECO.hand.x, DECO.hand.y, fairX, to.y);
@@ -1149,7 +1164,7 @@ export class LunchScene extends Phaser.Scene {
       this.tweens.add({ targets: this.mila, y: MILA.y + dy + (want ? MILA.duckDrop : 0), duration: ms + 30, ease: "Quad.easeOut" });
       if (want) {
         this.sfx("duck", 0.6);
-        this.bubble.hide();
+        this.hideBubbles();
         if (this.poseUntil && this.deco.texture.key === "deco-throw") this.setPose("idle");
       }
     }
@@ -1234,7 +1249,7 @@ export class LunchScene extends Phaser.Scene {
     this.cook.hide();
     this.hud.hideControls();
     this.hud.setStreak(0);
-    this.bubble.hide();
+    this.hideBubbles();
     this.ducking = false;
     this.duckPointer = null;
     this.tweens.killTweensOf([this.deco, this.mila]);
@@ -1310,7 +1325,7 @@ export class LunchScene extends Phaser.Scene {
     this.ladyWasActive = this.lunchLady.active;
     if (this.poseUntil && this.t >= this.poseUntil && this.mode !== "ending") {
       this.poseUntil = 0;
-      this.deco.setTexture("deco-idle");
+      this.deco.setTexture("deco-idle").setFlipX(false);
     }
     if (this.milaUntil && this.t >= this.milaUntil && this.mode !== "ending") {
       this.milaUntil = 0;
