@@ -75,6 +75,14 @@ ORDER BY r.created_at DESC
 LIMIT 50;
 ```
 
+Results by browser, to see whether rejections cluster on one engine. `client` is a coarse label such as `webkit-26-mobile` (engine family, major version, phone or computer); runs from before it existed have none:
+
+```sql
+SELECT client, game, count(*) AS runs, count(*) FILTER (WHERE verification = 'rejected') AS rejected
+FROM runs WHERE client IS NOT NULL
+GROUP BY client, game ORDER BY rejected DESC, runs DESC LIMIT 50;
+```
+
 ## Daily missions
 
 The mission of a day is stored in `daily_challenges` the first time someone asks for it. To see the last days and how many people completed them:
@@ -109,4 +117,4 @@ WHERE e.completed_at IS NOT NULL GROUP BY p.id ORDER BY count(DISTINCT c.game) D
 
 ## Data kept
 
-See [decision 0003](decisions/0003-competition-backend.md#decision): nickname, tag, a hash of the device key, runs and records. No email, name, address or raw address. Rejected runs are deleted after 30 days, old runs that are not records after 90 days, inactive players after two years, and everything about a player immediately when they choose "Sair do placar".
+See [decision 0003](decisions/0003-competition-backend.md#decision): nickname, tag, a hash of the device key, runs and records, and on each run a coarse browser label (engine family, major version, phone or computer). No raw user agent, email, name, address or raw address. Rejected runs are deleted after 30 days, old runs that are not records after 90 days, inactive players after two years, and everything about a player immediately when they choose "Sair do placar".

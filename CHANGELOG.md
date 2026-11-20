@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### O placar anota o tipo de navegador
+- Every result sent to the scoreboard now records the type of browser it came from: only the engine family, its major version and whether it's a phone or a computer (for example `webkit-26-mobile`), never the browser's full identification. Accepted and rejected results both get it, so replay mismatches can be checked engine by engine. The about page says so in both languages.
+- Needs the `20261120150000_run_client` migration. Older runs have no label. Scores, rankings and boards are unchanged.
+
 ### Guerra de Lanche conferida mais de perto
 - The channel now checks Guerra de Lanche results against the round's own timers: how many snacks fit in the time, how many classmates could pop up, which classmates exist at each point of the round, how many puddings were taken and how much a streak can pay. A result with numbers the round couldn't produce is rejected.
 - Checked against 100 rounds played by bots, wins and early losses alike: none was refused. Scores, rankings and boards are unchanged.

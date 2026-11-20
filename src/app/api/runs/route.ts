@@ -1,3 +1,4 @@
+import { browserLabel } from "@/server/browser";
 import { addressKey, assertWritable, HttpError, json, readJson } from "@/server/http";
 import { currentPlayer } from "@/server/identity";
 import { LIMITS, enforce } from "@/server/rate-limit";
@@ -21,6 +22,6 @@ export const POST = competitionRoute(async ({ request, db, secret, now }) => {
   if (!player) throw new HttpError("not_joined", "Escolha um apelido para entrar no placar.");
   await enforce(db, LIMITS.submitPlayer, player.id, now);
   await enforce(db, LIMITS.submitAddress, addressKey(request, secret), now);
-  const outcome = await submitRun(db, { player, ticket: check.ticket, claim: parsed.data.result, now });
+  const outcome = await submitRun(db, { player, ticket: check.ticket, claim: parsed.data.result, now, client: browserLabel(request.headers.get("user-agent")) });
   return json(outcome, { status: outcome.repeated ? 200 : 201 });
 });
