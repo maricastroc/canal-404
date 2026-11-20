@@ -9,7 +9,7 @@ type Spot = { x: number; y: number };
 const TABLE_W = 380;
 const OUR_TABLE_BOTTOM = OUR_TABLE.y + 216;
 
-export const PORTRAIT = { width: 940, drop: 330, dropMax: 400, top: 140, bottom: 1350, wallMax: 160, maxAspect: 1.8, gain: 1.06 };
+export const PORTRAIT = { width: 940, drop: 350, top: 160, topMin: -28, bottomPad: 34, maxAspect: 1.8, gain: 1.06 };
 
 export const LANDSCAPE_FRAME: Frame = { kind: "landscape", width: W, height: H, top: 0, drop: 0, sceneBottom: OUR_TABLE_BOTTOM };
 
@@ -45,16 +45,13 @@ export function walkScale(frame: Frame) {
 
 export function frameFor(parentWidth: number, parentHeight: number): Frame {
   if (parentWidth <= 0 || parentHeight <= 0) return LANDSCAPE_FRAME;
-  const minHeight = PORTRAIT.bottom - PORTRAIT.top;
+  const sceneBottom = OUR_TABLE_BOTTOM + PORTRAIT.drop;
+  const minHeight = sceneBottom + PORTRAIT.bottomPad - PORTRAIT.top;
   const landscapeFit = Math.min(parentWidth / W, parentHeight / H);
   const portraitFit = Math.min(parentWidth / PORTRAIT.width, parentHeight / minHeight);
   if (portraitFit < landscapeFit * PORTRAIT.gain) return LANDSCAPE_FRAME;
   const wanted = Math.round((PORTRAIT.width * parentHeight) / parentWidth);
   const height = Math.min(Math.max(wanted, minHeight), Math.round(PORTRAIT.width * PORTRAIT.maxAspect));
-  const extra = height - minHeight;
-  const reveal = Math.min(extra, PORTRAIT.top);
-  const spare = extra - reveal;
-  const drop = PORTRAIT.drop + Math.round(Math.min(spare * 0.25, PORTRAIT.dropMax - PORTRAIT.drop));
-  const top = PORTRAIT.top - reveal - Math.round(Math.min(spare * 0.3, PORTRAIT.wallMax));
-  return { kind: "portrait", width: PORTRAIT.width, height, top, drop, sceneBottom: OUR_TABLE_BOTTOM + drop };
+  const top = PORTRAIT.top - Math.min(height - minHeight, PORTRAIT.top - PORTRAIT.topMin);
+  return { kind: "portrait", width: PORTRAIT.width, height, top, drop: PORTRAIT.drop, sceneBottom };
 }
