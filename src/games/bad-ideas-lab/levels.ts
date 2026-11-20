@@ -121,3 +121,9 @@ export const LEVELS: LevelDef[] = [
 export function starsFor(used: number, par: number) {
   return used <= par ? 3 : used === par + 1 ? 2 : 1;
 }
+
+const ATTEMPT_BONUS = [300, 200, 100];
+
+export function attemptBonus(runs: number) {
+  return ATTEMPT_BONUS[runs - 1] ?? 0;
+}

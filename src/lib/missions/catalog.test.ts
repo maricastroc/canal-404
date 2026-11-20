@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { LEVELS } from "@/games/bad-ideas-lab/levels";
+import { attemptBonus, LEVELS } from "@/games/bad-ideas-lab/levels";
 import { SOLUTIONS } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
@@ -33,7 +33,7 @@ function labClaim(level: string, parts: PlacedPart[]): RunClaim {
   const total = Object.values(def.inventory).reduce((a, b) => a + (b ?? 0), 0);
   return {
     won: true,
-    score: 1000 + (total - parts.length) * 150,
+    score: 1000 + (total - parts.length) * 150 + attemptBonus(2),
     stars: parts.length <= def.par ? 3 : parts.length === def.par + 1 ? 2 : 1,
     stats: { parts: parts.length, inventory: total, par: def.par, runs: 2, steps: simulateLab(def, parts).steps },
     replay: { kind: "lab-placements", version: 1, parts },

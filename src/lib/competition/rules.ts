@@ -1,6 +1,6 @@
 import { GRID, PARTS, STEP_MS, type PartType } from "@/games/bad-ideas-lab/config";
 import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
+import { attemptBonus, LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
 import { AMMO, PROPS, STEP_MS as STREET_STEP_MS, TARGETS, WAVES } from "@/games/dead-end-street/config";
 import { replayStreet } from "@/games/dead-end-street/sim";
@@ -193,7 +193,7 @@ const badIdeasLab: GameRule = {
     if (machine.parts.length !== s.parts) return reject("inconsistent", "número de peças não confere");
     const replay = traceLab(def, machine.parts);
     if (replay.outcome !== "success") return reject("replay_failed", `a máquina terminou em ${replay.outcome}`);
-    const score = 1000 + (total - s.parts) * 150 + (s.runs === 1 ? 300 : 0);
+    const score = 1000 + (total - s.parts) * 150 + attemptBonus(s.runs);
     const stars = s.parts <= def.par ? 3 : s.parts === def.par + 1 ? 2 : 1;
     return settle(
       claim,

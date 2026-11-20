@@ -199,7 +199,7 @@ export const COPY = localized({
     result: {
       worked: "Máquina funcionou",
       saved: (n: number) => (n === 1 ? "Sobrou 1 peça na caixa" : `Sobraram ${n} peças na caixa`),
-      firstTry: "Ligou e funcionou de primeira",
+      tries: (runs: number) => (runs === 1 ? "Ligou e funcionou de primeira" : `Funcionou na ${runs}ª tentativa`),
       title: "Teste aprovado!",
       summary: (n: number) => `Você usou ${n} ${n === 1 ? "peça" : "peças"}.`,
       starHint: (par: number) => `Com ${par === 1 ? "1 peça só" : `até ${par} peças`}, a fase vale 3 estrelas.`,
@@ -491,7 +491,7 @@ export const COPY = localized({
     result: {
       worked: "Machine worked",
       saved: (n: number) => (n === 1 ? "1 part left in the box" : `${n} parts left in the box`),
-      firstTry: "Worked on the first try",
+      tries: (runs: number) => (runs === 1 ? "Worked on the first try" : `Worked on try ${runs}`),
       title: "Test passed!",
       summary: (n: number) => `You used ${n} ${n === 1 ? "part" : "parts"}.`,
       starHint: (par: number) => `With ${par === 1 ? "just 1 part" : `up to ${par} parts`}, the level is worth 3 stars.`,

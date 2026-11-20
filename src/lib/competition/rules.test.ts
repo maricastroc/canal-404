@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
+import { attemptBonus } from "@/games/bad-ideas-lab/levels";
 import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
@@ -30,7 +31,7 @@ function street(launches: Launch[] = THREE_STAR_WIN, claim: Partial<RunClaim> = 
 function lab(level: string, parts: { type: string; x: number; y: number; rot: number }[], steps: number, runs = 2): RunClaim {
   const inventory: Record<string, number> = { test: 1, pixel: 2, toast: 2, juice: 2, remote: 3, finale: 5 };
   const par: Record<string, number> = { test: 1, pixel: 1, toast: 1, juice: 1, remote: 2, finale: 3 };
-  const score = 1000 + (inventory[level] - parts.length) * 150 + (runs === 1 ? 300 : 0);
+  const score = 1000 + (inventory[level] - parts.length) * 150 + attemptBonus(runs);
   return {
     won: true,
     score,
@@ -158,10 +159,10 @@ describe("Laboratório", () => {
     expect(judgeRun("bad-ideas-lab", "pixel", lab("pixel", [{ type: "ramp", x: 620, y: 420, rot: 0 }], 300))).toMatchObject({ ok: false, reason: "replay_failed" });
   });
 
-  it("leaves the first-try bonus out of the ranking", () => {
+  it("leaves the attempt bonus out of the ranking", () => {
     const first = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 400, 1)));
     const later = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 400, 7)));
-    expect(first.score).toBe(later.score + 300);
+    expect(first.score).toBe(later.score + attemptBonus(1));
     expect(first.rank).toEqual(later.rank);
   });
 

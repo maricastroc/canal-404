@@ -11,7 +11,7 @@ import {
   partAngle,
   type PartType,
 } from "../config";
-import { LEVELS, starsFor, type LevelDef } from "../levels";
+import { attemptBonus, LEVELS, starsFor, type LevelDef } from "../levels";
 import { goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Vec } from "../geometry";
 import { COPY, levelText, type LabCopy, type LevelText } from "../copy";
 import { Narrator, partLandmark, pathRelation, sceneOrder, type Direction, type Landmark, type Noun, type RunOutcome, type SceneInfo } from "../narration";
@@ -48,6 +48,7 @@ type RunTrack = { touches: string[]; launches: string[]; winds: string[] };
 
 const CONFETTI = [0xffc83d, 0xf06ba8, 0x63d6c1, 0x7b62c4, 0xff8a3d, 0x8fd4f7];
 const RESET_MS = 900;
+const RUNS_KEY = "labRuns";
 
 function wrapLines(text: string, max = 30) {
   const lines: string[] = [];
@@ -120,7 +121,6 @@ export class LabScene extends Phaser.Scene {
   private ball!: Noun;
   private referenceId: string | null = null;
   private browseIndex = -1;
-  private attempts = 0;
   private track: RunTrack = { touches: [], launches: [], winds: [] };
   private lastReport = "";
   private lastPath: Vec[] = [];
@@ -161,7 +161,6 @@ export class LabScene extends Phaser.Scene {
     this.demoTween = null;
     this.referenceId = null;
     this.browseIndex = -1;
-    this.attempts = 0;
     this.track = { touches: [], launches: [], winds: [] };
     this.lastReport = "";
     this.lastPath = [];
@@ -177,6 +176,8 @@ export class LabScene extends Phaser.Scene {
     this.narrator = new Narrator(this.ctx.locale);
     this.levelIndex = Phaser.Math.Clamp((this.registry.get("level") as number | undefined) ?? 0, 0, LEVELS.length - 1);
     this.level = LEVELS[this.levelIndex];
+    const carried = this.registry.get(RUNS_KEY) as { level: string; runs: number } | undefined;
+    this.runs = carried?.level === this.level.id ? carried.runs : 0;
     this.text = levelText(this.copy, this.level.id);
     const level = this.level;
     this.landmarks = this.narrator.levelLandmarks(level);
@@ -1237,6 +1238,7 @@ export class LabScene extends Phaser.Scene {
     this.ranOnce = true;
     this.mode = "running";
     this.runs += 1;
+    this.registry.set(RUNS_KEY, { level: this.level.id, runs: this.runs });
     this.guideGfx?.setVisible(false);
     this.guideArrow?.setVisible(false);
     this.hud.setRunning(true);
@@ -1245,7 +1247,6 @@ export class LabScene extends Phaser.Scene {
     this.trailGfx.clear();
 
     const level = this.level;
-    this.attempts += 1;
     this.track = { touches: [], launches: [], winds: [] };
     this.blockSounds = sceneBlocks(level).map((b) => (b.kind === "metal" || b.kind === "pole" ? "clink" : "tap"));
     this.simParts = [...this.parts];
@@ -1293,7 +1294,7 @@ export class LabScene extends Phaser.Scene {
     const sim = this.sim;
     const end = sim ? { x: sim.x, y: sim.y } : { x: this.ballImg.x, y: this.ballImg.y };
     const path = this.trail.map(([x, y]) => ({ x, y }));
-    const report = this.narrator.describeRun({ attempt: this.attempts, ...this.track, path, end, outcome }, this.sceneInfo(false));
+    const report = this.narrator.describeRun({ attempt: this.runs, ...this.track, path, end, outcome }, this.sceneInfo(false));
     this.lastPath = [...path, end];
     this.lastStop = outcome === "stopped" || outcome === "timeout" || outcome === "cancelled" ? end : null;
     this.lastReport = report;
@@ -1440,6 +1441,7 @@ export class LabScene extends Phaser.Scene {
   private success() {
     if (this.mode !== "running") return;
     const steps = this.sim?.steps ?? 0;
+    this.registry.remove(RUNS_KEY);
     const replay = this.parts.map((p) => ({ type: p.view.type, x: p.view.x, y: p.view.y, rot: p.view.rot }));
     this.announce(this.copy.scene.worked(this.runReport("success")));
     this.mode = "done";
@@ -1465,12 +1467,11 @@ export class LabScene extends Phaser.Scene {
     const total = Object.values(level.inventory).reduce((a, b) => a + (b ?? 0), 0);
     const saved = total - used;
     const stars = starsFor(used, level.par);
-    const firstTry = this.runs === 1;
     const r = this.copy.result;
     const breakdown = [
       { label: r.worked, value: 1000 },
       { label: r.saved(saved), value: saved * 150 },
-      { label: r.firstTry, value: firstTry ? 300 : 0 },
+      { label: r.tries(this.runs), value: attemptBonus(this.runs) },
     ].filter((row, i) => i === 0 || row.value > 0);
     this.time.delayedCall(this.ctx.reducedMotion ? 0 : 320, () =>
       this.hud.celebrate(stars, (i, lit, x, y) => {
