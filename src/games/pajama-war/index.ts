@@ -1,9 +1,10 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { ARENAS } from "./arenas";
-import { H, KIDS, W, type KidId } from "./config";
+import { KIDS, type KidId } from "./config";
 import { ArenaScene } from "./scenes/ArenaScene";
 import { BootScene } from "./scenes/BootScene";
+import { measureFrame } from "./scenes/frame";
 import { SelectScene } from "./scenes/SelectScene";
 import { loadStats } from "./storage";
 
@@ -15,11 +16,12 @@ function kidOf(character: string | undefined): KidId | null {
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
+  const frame = measureFrame(ctx.parent);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,
-    width: W,
-    height: H,
+    width: frame.width,
+    height: frame.height,
     backgroundColor: "#1d1830",
     transparent: false,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
@@ -32,6 +34,7 @@ function mount(ctx: GameHostContext): GameInstance {
     callbacks: {
       preBoot: (g) => {
         g.registry.set("ctx", ctx);
+        g.registry.set("frame", frame);
         g.registry.set("level", 0);
         g.registry.set("kid", null);
         g.registry.set("forcedKid", false);

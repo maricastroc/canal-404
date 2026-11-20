@@ -19,6 +19,7 @@ import { useCopy, useLocale, useLocalePath } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { formatNumber } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
+import { useTouchScreen } from "@/lib/device";
 import type { JoinOutcome } from "@/lib/competition/client";
 import { missionOverridesStars } from "@/lib/missions/goals";
 import type { MissionState, MissionView } from "@/lib/missions/types";
@@ -182,6 +183,8 @@ export function OverlayFrame({
 }
 
 export function ControlsList({ game }: { game: GameMeta }) {
+  const device = useTouchScreen() ? "touch" : "keys";
+  const controls = game.controls?.filter((c) => !c.on || c.on === device);
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <ol className="space-y-2">
@@ -198,7 +201,7 @@ export function ControlsList({ game }: { game: GameMeta }) {
         ))}
       </ol>
       <dl className="space-y-1.5 rounded-xl border-2 border-ink bg-cream-2 p-3">
-        {game.controls?.map((c) => (
+        {controls?.map((c) => (
           <div key={c.input} className="flex flex-col">
             <dt className="font-display text-xs uppercase tracking-wider text-ink">{c.input}</dt>
             <dd className="text-sm leading-snug text-ink-soft">{c.action}</dd>

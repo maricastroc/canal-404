@@ -4,7 +4,7 @@ export type GameCategory = "action" | "puzzle" | "adventure" | "strategy";
 
 export type GameStatus = "available" | "coming-soon";
 
-export type ControlHint = { input: string; action: string };
+export type ControlHint = { input: string; action: string; on?: "keys" | "touch" };
 
 export type HowToStep = { title: string; text: string };
 
@@ -28,15 +28,17 @@ export type GameMeta = {
   levelWord?: "fase" | "arena";
   guests?: { id: string; name: string; role: string }[];
   tips?: string[];
+  keyTips?: string[];
+  touchTips?: string[];
   controlsSummary?: string;
   resumable?: string;
-  portrait?: boolean;
+  orientation?: "upright" | "any";
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
-type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "portrait"> & { levelIds?: string[]; guestIds?: string[] };
+type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "orientation"> & { levelIds?: string[]; guestIds?: string[] };
 
-type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "production" | "objective" | "controls" | "howTo" | "tips" | "controlsSummary" | "copy"> & {
+type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "production" | "objective" | "controls" | "howTo" | "tips" | "keyTips" | "touchTips" | "controlsSummary" | "copy"> & {
   levels?: { title: string; goal: string }[];
   guests?: { name: string; role: string }[];
 };
@@ -44,8 +46,8 @@ type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "p
 const BASE = {
   "dead-end-street": { category: "action", status: "available", accent: "sun", cast: ["deco", "lina", "bruno"] },
   "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"] },
-  "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], portrait: true },
-  "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"] },
+  "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], orientation: "upright" },
+  "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
   "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"] },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1" },
 } satisfies Record<string, GameBase>;
@@ -196,11 +198,12 @@ const TEXT = gameText({
       tags: ["Ação", "Arcade", "Travesseiros"],
       objective: "Escolha um personagem e acerte os outros dois com travesseiros. Último de pé vence!",
       controls: [
-        { input: "WASD ou setas", action: "Andar" },
-        { input: "Mouse", action: "Mirar" },
-        { input: "Clique ou espaço", action: "Jogar travesseiro (segure para continuar jogando)" },
-        { input: "Controle e botão na tela", action: "Andar e jogar no celular. A mira é automática." },
-        { input: "Esc ou P", action: "Pausar" },
+        { input: "WASD ou setas", action: "Andar", on: "keys" },
+        { input: "Mouse", action: "Mirar", on: "keys" },
+        { input: "Clique ou espaço", action: "Jogar travesseiro (segure para continuar jogando)", on: "keys" },
+        { input: "Esc ou P", action: "Pausar", on: "keys" },
+        { input: "Controle na tela, à esquerda", action: "Arraste o polegar para andar", on: "touch" },
+        { input: "Botão JOGAR, à direita", action: "Toque para jogar, segure para continuar jogando. A mira vai sozinha no adversário mais perto, na direção em que você anda.", on: "touch" },
       ],
       howTo: [
         { title: "Escolha", text: "Lia corre mais, Nico joga mais rápido e Bia recupera energia mais rápido." },
@@ -218,7 +221,6 @@ const TEXT = gameText({
         { name: "Bia", role: "A resistente" },
       ],
       tips: [
-        "Segure espaço ou o botão do mouse para jogar sem parar.",
         "A Lia é rápida. Fuja, respire e volte.",
         "O Nico joga travesseiros quase sem parar.",
         "A Bia recupera energia mais rápido.",
@@ -226,11 +228,16 @@ const TEXT = gameText({
         "Os outros dois também brigam entre si. Aproveite!",
         "Viu um ! em cima de alguém? Ele vai jogar em você. Saia da frente!",
         "Quem acabou de jogar fica sem travesseiro por um instante. É a sua chance.",
-        "Sem mouse, o espaço mira sozinho no adversário mais perto.",
         "Depois de um tempo, a guerra esquenta.",
         "Na sala, o sofá e as poltronas rebatem os travesseiros. A mira mostra o caminho.",
         "No quintal, a barraca e a árvore servem de escudo.",
         "O travesseirão do quintal passa por cima de tudo e empurra quem estiver perto.",
+      ],
+      keyTips: ["Segure espaço ou o botão do mouse para jogar sem parar.", "Sem mouse, o espaço mira sozinho no adversário mais perto."],
+      touchTips: [
+        "Segure o botão JOGAR para jogar sem parar.",
+        "A mira é automática: o travesseiro vai no adversário mais perto, na direção em que você anda.",
+        "Alguém sumiu da tela? Uma setinha na borda mostra onde está.",
       ],
       controlsSummary: "Guerra do Pijama. WASD ou setas andam, o mouse mira, clique ou espaço joga o travesseiro, Esc pausa.",
       copy: {
@@ -473,11 +480,12 @@ const TEXT = gameText({
       tags: ["Action", "Arcade", "Pillows"],
       objective: "Pick a character and hit the other two with pillows. Last one standing wins!",
       controls: [
-        { input: "WASD or arrows", action: "Move" },
-        { input: "Mouse", action: "Aim" },
-        { input: "Click or space", action: "Throw a pillow (hold to keep throwing)" },
-        { input: "Joystick and on-screen button", action: "Move and throw on a phone. Aiming is automatic." },
-        { input: "Esc or P", action: "Pause" },
+        { input: "WASD or arrows", action: "Move", on: "keys" },
+        { input: "Mouse", action: "Aim", on: "keys" },
+        { input: "Click or space", action: "Throw a pillow (hold to keep throwing)", on: "keys" },
+        { input: "Esc or P", action: "Pause", on: "keys" },
+        { input: "On-screen stick, on the left", action: "Drag your thumb to move", on: "touch" },
+        { input: "THROW button, on the right", action: "Tap to throw, hold to keep throwing. Aiming is automatic: the pillow goes to the closest opponent in the direction you're moving.", on: "touch" },
       ],
       howTo: [
         { title: "Pick", text: "Lia runs faster, Nico throws faster and Bia gets her energy back faster." },
@@ -495,7 +503,6 @@ const TEXT = gameText({
         { name: "Bia", role: "The tough one" },
       ],
       tips: [
-        "Hold space or the mouse button to keep throwing.",
         "Lia is fast. Run, catch your breath and come back.",
         "Nico throws pillows almost nonstop.",
         "Bia gets her energy back faster.",
@@ -503,11 +510,16 @@ const TEXT = gameText({
         "The other two fight each other too. Take advantage!",
         "See a ! over someone? They're about to throw at you. Get out of the way!",
         "Whoever just threw is out of pillows for a moment. That's your chance.",
-        "Without a mouse, space aims at the closest opponent on its own.",
         "After a while, the fight heats up.",
         "In the living room, the sofa and armchairs bounce pillows back. The aim guide shows the path.",
         "In the backyard, the tent and the tree work as shields.",
         "The giant pillow in the backyard flies over everything and shoves anyone nearby.",
+      ],
+      keyTips: ["Hold space or the mouse button to keep throwing.", "Without a mouse, space aims at the closest opponent on its own."],
+      touchTips: [
+        "Hold the THROW button to keep throwing.",
+        "Aiming is automatic: the pillow goes to the closest opponent in the direction you're moving.",
+        "Someone left the screen? A little arrow on the edge shows where they are.",
       ],
       controlsSummary: "Pajama War. WASD or arrows move, the mouse aims, click or space throws a pillow, Esc pauses.",
       copy: {

@@ -4,10 +4,12 @@ import type { Locale } from "@/i18n/locales";
 import { ARENAS } from "../arenas";
 import { COPY, type PajamaCopy } from "../copy";
 import { H, KID_INFO, KIDS, PILLOW_ANCHORS, SPRITE_ORIGIN_Y, STATS, W, type KidId } from "../config";
+import type { Frame } from "../layout";
 import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
 import { loadStats } from "../storage";
 import { INK, INK_HEX, cartoonText } from "../../kit/ui";
 import { KID_RES } from "./BootScene";
+import { currentFrame, watchFrame } from "./frame";
 import { makeTextures } from "./room";
 
 const CARD = { w: 450, h: 640 };
@@ -30,6 +32,8 @@ type Card = {
   hover: boolean;
 };
 
+type Spot = { cx: number; cardY: number; scale: number; spacing: number; carousel: boolean };
+
 type Act = { pose: string; x: number; facing: number; angle: number; sy: number; flyer: { x: number; y: number; angle: number } | null; lines: number; target: number; pop: number; showHeld: boolean };
 
 const FLOOR_Y = 104;
@@ -45,6 +49,20 @@ export class SelectScene extends Phaser.Scene {
   private loopStart = 0;
   private starting = false;
   private act: Act = { pose: "idle-f", x: 0, facing: 1, angle: 0, sy: 1, flyer: null, lines: 0, target: 0, pop: 0, showHeld: true };
+  private frame!: Frame;
+  private spot: Spot = { cx: W / 2, cardY: 590, scale: 1, spacing: 500, carousel: false };
+  private backdrop: Phaser.GameObjects.GameObject[] = [];
+  private wall!: Phaser.GameObjects.TileSprite;
+  private floor!: Phaser.GameObjects.TileSprite;
+  private shade!: Phaser.GameObjects.Rectangle;
+  private vignette!: Phaser.GameObjects.Image;
+  private feathers: Phaser.GameObjects.Image[] = [];
+  private titleBox!: Phaser.GameObjects.Container;
+  private arenaLabel!: Phaser.GameObjects.Text;
+  private hintText!: Phaser.GameObjects.Text;
+  private startBtn!: Phaser.GameObjects.Container;
+  private dots!: Phaser.GameObjects.Graphics;
+  private swipe: { id: number; x: number; y: number; at: number } | null = null;
 
   constructor() {
     super("select");
@@ -52,6 +70,9 @@ export class SelectScene extends Phaser.Scene {
 
   init() {
     this.cards = [];
+    this.feathers = [];
+    this.backdrop = [];
+    this.swipe = null;
     this.starting = false;
     this.loopStart = 0;
   }
@@ -63,13 +84,16 @@ export class SelectScene extends Phaser.Scene {
     makeTextures(this);
     const fonts = this.ctx.fonts;
     const reduced = this.ctx.reducedMotion;
+    this.frame = currentFrame(this);
     this.cameras.main.setBackgroundColor("#1d1830");
-    this.add.tileSprite(0, 0, W, 420, "wall-bedroom").setOrigin(0, 0);
-    this.add.tileSprite(0, 420, W, H - 420, "floor-bedroom").setOrigin(0, 0);
-    this.add.rectangle(0, 0, W, H, 0x140f26, 0.62).setOrigin(0, 0);
-    this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setAlpha(0.6);
+    this.wall = this.add.tileSprite(0, 0, W, 420, "wall-bedroom").setOrigin(0, 0);
+    this.floor = this.add.tileSprite(0, 420, W, H - 420, "floor-bedroom").setOrigin(0, 0);
+    this.shade = this.add.rectangle(0, 0, W, H, 0x140f26, 0.62).setOrigin(0, 0);
+    this.vignette = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setAlpha(0.6);
     for (let i = 0; i < 14; i += 1) {
       const f = this.add.image(Phaser.Math.Between(40, W - 40), Phaser.Math.Between(40, H - 40), "feather").setAlpha(0.35).setScale(Phaser.Math.FloatBetween(0.6, 1.1)).setAngle(Phaser.Math.Between(0, 360));
+      f.setData("u", Phaser.Math.FloatBetween(0.02, 0.98)).setData("v", Phaser.Math.FloatBetween(0.04, 0.96));
+      this.feathers.push(f);
       if (!reduced) this.tweens.add({ targets: f, y: f.y + Phaser.Math.Between(30, 70), angle: f.angle + Phaser.Math.Between(-60, 60), duration: Phaser.Math.Between(2600, 4200), yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     }
 
@@ -82,19 +106,18 @@ export class SelectScene extends Phaser.Scene {
     tg.fillRoundedRect(-tw / 2, -50, tw, 100, 12);
     tg.lineStyle(6, INK_HEX, 1);
     tg.strokeRoundedRect(-tw / 2, -50, tw, 100, 12);
-    this.add.container(W / 2, 92, [tg, title]).setAngle(-1.5);
+    this.titleBox = this.add.container(W / 2, 92, [tg, title]).setAngle(-1.5).setSize(tw, 100);
 
     const level = Phaser.Math.Clamp((this.registry.get("level") as number | undefined) ?? 0, 0, ARENAS.length - 1);
-    const at = cartoonText(this, 34, 200, this.text.arena(level + 1, ARENAS[level].title[this.locale]), { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18 });
-    void at;
+    this.arenaLabel = cartoonText(this, 34, 200, this.text.arena(level + 1, ARENAS[level].title[this.locale]), { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18 });
 
     const stats = loadStats();
     const last = (this.registry.get("kid") as KidId | null) ?? stats.lastKid ?? "lia";
     this.index = Math.max(0, KIDS.indexOf(last));
     KIDS.forEach((kid, i) => this.cards.push(this.makeCard(kid, W / 2 + (i - 1) * 500, 590, stats.wins[kid])));
 
-    const hint = TOUCH_UI ? this.text.touchHint : this.text.keysHint;
-    cartoonText(this, W / 2, H - 46, hint, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.16 }).setOrigin(0.5);
+    this.hintText = cartoonText(this, W / 2, H - 46, "", { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.16 }).setOrigin(0.5);
+    this.dots = this.add.graphics();
 
     const btnBg = this.add.graphics();
     btnBg.fillStyle(INK_HEX, 1);
@@ -107,7 +130,9 @@ export class SelectScene extends Phaser.Scene {
     const label = cartoonText(this, 26, 0, this.text.start, { size: 44, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setOrigin(0.5);
     const btn = this.add.container(W - 230, H - 70, [btnBg, play, label]).setSize(320, 92).setInteractive({ useHandCursor: true });
     btn.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => this.go());
-    if (!reduced) this.tweens.add({ targets: btn, scale: 1.05, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.startBtn = btn;
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, this.swipeStart, this);
+    this.input.on(Phaser.Input.Events.POINTER_UP, this.swipeEnd, this);
 
     const kb = this.input.keyboard!;
     const handled = new WeakSet<KeyboardEvent>();
@@ -128,8 +153,123 @@ export class SelectScene extends Phaser.Scene {
         this.go();
       }
     });
+    watchFrame(this, (frame) => this.applyFrame(frame));
     this.choose(this.index, true);
     this.ctx.onEvent({ type: "announce", message: this.text.intro });
+  }
+
+  private pulseButton() {
+    const base = this.startBtn.scale;
+    this.tweens.killTweensOf(this.startBtn);
+    this.startBtn.setScale(base);
+    this.tweens.add({ targets: this.startBtn, scale: base * 1.05, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  private applyFrame(frame: Frame) {
+    this.frame = frame;
+    const gw = frame.width;
+    const gh = frame.height;
+    this.cameras.main.setSize(gw, gh);
+    const wallH = frame.kind === "tall" ? Math.round(gh * 0.3) : 420;
+    this.wall.setSize(gw, wallH);
+    this.floor.setPosition(0, wallH).setSize(gw, gh - wallH);
+    this.shade.setSize(gw, gh);
+    this.vignette.setDisplaySize(gw, gh);
+    for (const f of this.feathers) f.setPosition(40 + (gw - 80) * (f.getData("u") as number), 40 + (gh - 80) * (f.getData("v") as number));
+    const u = frame.unit;
+    const safe = frame.safe;
+    this.hintText.setText(TOUCH_UI ? (frame.kind === "tall" ? this.text.swipeHint : this.text.touchHint) : this.text.keysHint);
+    if (frame.kind === "full") {
+      this.spot = { cx: W / 2, cardY: 590, scale: 1, spacing: 500, carousel: false };
+      this.titleBox.setPosition(W / 2, 92).setScale(1);
+      this.arenaLabel.setOrigin(0, 0).setPosition(34, 200).setScale(1);
+      this.hintText.setPosition(W / 2, H - 46).setScale(1);
+      this.startBtn.setPosition(W - 230, H - 70).setScale(1);
+      this.dots.clear();
+    } else if (frame.kind === "band") {
+      const btnScale = (48 * u) / 92;
+      const btnW = 320 * btnScale;
+      const right = gw - safe.right - 24 * u;
+      const room = right - btnW - 28 * u - (safe.left + 24 * u);
+      const k = Math.min(1.1, room / 1460);
+      const cx = safe.left + 24 * u + room / 2;
+      this.spot = { cx, cardY: 572, scale: k, spacing: 500 * k, carousel: false };
+      this.titleBox.setPosition(cx, 86).setScale(1);
+      this.arenaLabel.setOrigin(0.5, 0.5).setPosition(right - btnW / 2, 86).setScale(1.15);
+      this.hintText.setPosition(cx, gh - 40).setScale(1.2);
+      this.startBtn.setPosition(right - btnW / 2, 572).setScale(btnScale);
+      this.dots.clear();
+    } else {
+      const top = 14 * u;
+      const titleScale = Math.min(1, (gw - 24 * u) / (this.titleBox.width + 20));
+      this.titleBox.setPosition(gw / 2, top + 52 * titleScale).setScale(titleScale);
+      const arenaY = top + 104 * titleScale + 26 * u;
+      this.arenaLabel.setOrigin(0.5, 0.5).setPosition(gw / 2, arenaY).setScale((15 * u) / 30);
+      const btnScale = (54 * u) / 92;
+      const btnY = gh - safe.bottom - 22 * u - 46 * btnScale;
+      this.startBtn.setPosition(gw / 2, btnY).setScale(btnScale);
+      const hintY = btnY - 46 * btnScale - 20 * u;
+      this.hintText.setPosition(gw / 2, hintY).setScale((14 * u) / 30);
+      const dotsY = hintY - 24 * u;
+      const cardTop = arenaY + 22 * u;
+      const cardBottom = dotsY - 18 * u;
+      const scale = Math.min((gw * 0.68) / CARD.w, (cardBottom - cardTop) / (CARD.h + 20));
+      this.spot = { cx: gw / 2, cardY: (cardTop + cardBottom) / 2, scale, spacing: (CARD.w * scale * 0.5 + 18 * u + CARD.w * scale * 0.82 * 0.5), carousel: true };
+      this.dots.setData("y", dotsY);
+    }
+    if (!this.ctx.reducedMotion) this.pulseButton();
+    for (const c of this.cards) c.root.setInteractive({ useHandCursor: !this.spot.carousel });
+    this.paint(true);
+  }
+
+  private relative(j: number) {
+    return ((j - this.index + 4) % 3) - 1;
+  }
+
+  private swipeStart(p: Phaser.Input.Pointer) {
+    if (!this.spot.carousel || this.starting) return;
+    this.swipe = { id: p.id, x: p.x, y: p.y, at: this.time.now };
+  }
+
+  private swipeEnd(p: Phaser.Input.Pointer) {
+    const sw = this.swipe;
+    if (!sw || sw.id !== p.id || !this.spot.carousel || this.starting) return;
+    this.swipe = null;
+    const dx = p.x - sw.x;
+    const dy = p.y - sw.y;
+    const u = this.frame.unit;
+    if (Math.abs(dx) > 34 * u && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      this.choose((this.index + (dx < 0 ? 1 : 2)) % 3);
+      return;
+    }
+    if (Math.hypot(dx, dy) > 14 * u) return;
+    const hit = this.cards.find((c) => {
+      const w = (CARD.w * c.root.scaleX) / 2;
+      const h = (CARD.h * c.root.scaleY) / 2;
+      return Math.abs(p.x - c.root.x) < w && Math.abs(p.y - c.root.y) < h;
+    });
+    if (!hit) return;
+    const i = KIDS.indexOf(hit.kid);
+    if (i === this.index) this.go();
+    else this.choose(i);
+  }
+
+  private paintDots() {
+    const g = this.dots;
+    g.clear();
+    if (!this.spot.carousel) return;
+    const u = this.frame.unit;
+    const y = this.dots.getData("y") as number;
+    const gap = 22 * u;
+    KIDS.forEach((kid, i) => {
+      const x = this.spot.cx + (i - 1) * gap;
+      const on = i === this.index;
+      const r = (on ? 6 : 4.5) * u;
+      g.fillStyle(INK_HEX, 1);
+      g.fillCircle(x + 1.2 * u, y + 1.6 * u, r + 1.5 * u);
+      g.fillStyle(on ? KID_INFO[kid].color : 0xfbf5e6, on ? 1 : 0.55);
+      g.fillCircle(x, y, r);
+    });
   }
 
   private sfx(name: PajamaSfx, volume = 1) {
@@ -192,13 +332,14 @@ export class SelectScene extends Phaser.Scene {
     }
     const root = this.add.container(x, y, parts).setSize(CARD.w, CARD.h).setInteractive({ useHandCursor: true });
     root.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
+      if (this.spot.carousel) return;
       const i = KIDS.indexOf(kid);
       if (i === this.index) this.go();
       else this.choose(i);
     });
     const card: Card = { kid, root, sprite, held, heldBack, frame, fx, flyer, pop, x, hover: false };
     root.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
-      if (TOUCH_UI) return;
+      if (TOUCH_UI || this.spot.carousel) return;
       card.hover = true;
       this.paint();
     });
@@ -209,11 +350,13 @@ export class SelectScene extends Phaser.Scene {
     return card;
   }
 
-  private paint() {
-    const reduced = this.ctx.reducedMotion;
+  private paint(snap = false) {
+    const reduced = this.ctx.reducedMotion || snap;
+    const spot = this.spot;
+    this.paintDots();
     this.cards.forEach((c, j) => {
       const on = j === this.index;
-      const hover = c.hover && !on;
+      const hover = c.hover && !on && !spot.carousel;
       c.frame.clear();
       if (on) {
         c.frame.lineStyle(10, 0xffc83d, 1);
@@ -230,9 +373,15 @@ export class SelectScene extends Phaser.Scene {
         c.frame.strokeRoundedRect(-CARD.w / 2, -CARD.h / 2, CARD.w, CARD.h, 26);
       }
       this.tweens.killTweensOf(c.root);
-      const target = { y: on ? 570 : hover ? 588 : 600, scale: on ? 1.02 : hover ? 0.97 : 0.94, alpha: on || hover ? 1 : 0.82 };
-      if (reduced) c.root.setPosition(c.x, target.y).setScale(target.scale).setAlpha(target.alpha);
-      else this.tweens.add({ targets: c.root, y: target.y, scale: target.scale, alpha: target.alpha, duration: 220, ease: "Back.easeOut" });
+      const rel = this.relative(j);
+      const k = spot.scale;
+      const target = spot.carousel
+        ? { x: spot.cx + rel * spot.spacing, y: spot.cardY + (on ? 0 : 14 * this.frame.unit), scale: k * (on ? 1 : 0.82), alpha: on ? 1 : 0.62 }
+        : { x: spot.cx + (j - 1) * spot.spacing, y: spot.cardY + (on ? -20 : hover ? -2 : 10) * k, scale: k * (on ? 1.02 : hover ? 0.97 : 0.94), alpha: on || hover ? 1 : 0.82 };
+      c.x = target.x;
+      const jump = spot.carousel && Math.abs(c.root.x - target.x) > spot.spacing * 1.5;
+      if (reduced || jump) c.root.setPosition(target.x, target.y).setScale(target.scale).setAlpha(target.alpha);
+      else this.tweens.add({ targets: c.root, x: target.x, y: target.y, scale: target.scale, alpha: target.alpha, duration: spot.carousel ? 260 : 220, ease: spot.carousel ? "Cubic.easeOut" : "Back.easeOut" });
       c.root.setDepth(on ? 2 : 1);
     });
   }

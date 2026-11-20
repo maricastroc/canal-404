@@ -7,6 +7,7 @@ import { ArrowLeftIcon, MissionIcon, PauseIcon, PhoneIcon, QuestionIcon, Restart
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
+import { useTouchScreen } from "@/lib/device";
 import { GAME_LOADERS } from "@/games/loaders";
 import { getGame, type GameMeta } from "@/games/registry";
 import type { GameInstance, GameResult, LoadStage, StartOptions } from "@/games/types";
@@ -156,7 +157,8 @@ export function GameShell({ slug }: { slug: string }) {
   const [attempt, setAttempt] = useState(0);
   const runRef = useRef<{ level: string; attempt: number; startedAt: number; ticket: Promise<TicketGrant | null> | null; mission: MissionView | null } | null>(null);
   const requestedMission = useSyncExternalStore(noopSubscribe, missionParam, () => "");
-  const sideways = useSyncExternalStore(game.portrait ? subscribeSideways : noopSubscribe, game.portrait ? phoneSideways : never, never);
+  const upright = game.orientation === "upright";
+  const sideways = useSyncExternalStore(upright ? subscribeSideways : noopSubscribe, upright ? phoneSideways : never, never);
   const [skippedMission, setSkippedMission] = useState(false);
   const missionWanted = Boolean(requestedMission) && !skippedMission;
   const missionFeed = useMissionToday(missionWanted);
@@ -186,7 +188,9 @@ export function GameShell({ slug }: { slug: string }) {
   const loadErrorRef = useRef<unknown>(null);
   const hydrated = useHydrated();
   const [tipSeed] = useState(() => Math.floor(Math.random() * 1000));
-  const tip = pickTip(hydrated ? tipSeed : 0, game.tips, locale);
+  const touchScreen = useTouchScreen();
+  const deviceTips = touchScreen ? game.touchTips : game.keyTips;
+  const tip = pickTip(hydrated ? tipSeed : 0, game.tips && deviceTips ? [...game.tips, ...deviceTips] : game.tips, locale);
   const levelRecords = progressState.games[slug]?.levels;
   const levelProgress = computeLevelProgress(game.levels, hydrated ? levelRecords : undefined);
 
@@ -431,7 +435,7 @@ export function GameShell({ slug }: { slug: string }) {
   }, [setStage]);
 
   useEffect(() => {
-    if (!game.portrait) return;
+    if (!upright) return;
     const media = window.matchMedia(PHONE_SIDEWAYS);
     const onChange = () => {
       if (media.matches && stageStateRef.current === "playing") {
@@ -441,7 +445,7 @@ export function GameShell({ slug }: { slug: string }) {
     };
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
-  }, [game.portrait, setStage]);
+  }, [upright, setStage]);
 
   useEffect(() => {
     if (stage !== "paused") return;
@@ -725,7 +729,7 @@ export function GameShell({ slug }: { slug: string }) {
         )}
 
         <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center px-3 landscape:hidden sm:hidden">
-          {stage === "playing" && !game.portrait && (
+          {stage === "playing" && !game.orientation && (
             <p className="rounded-full border-[3px] border-ink bg-sun px-3 py-1 font-display text-xs uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]">
               {copy.rotate}
             </p>

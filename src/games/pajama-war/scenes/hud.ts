@@ -1,11 +1,21 @@
 import * as Phaser from "phaser";
-import { H, HP, KID_INFO, W, type KidId } from "../config";
+import { HP, KID_INFO, W, type KidId } from "../config";
 import type { PajamaCopy } from "../copy";
+import { FULL_FRAME, type Frame } from "../layout";
 import { INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 
-type Portrait = { kid: KidId; root: Phaser.GameObjects.Container; face: Phaser.GameObjects.Image; hearts: { off: Phaser.GameObjects.Image; on: Phaser.GameObjects.Image }[]; out: Phaser.GameObjects.Container; badge: Phaser.GameObjects.Container; hp: number; faceUntil: number };
+type Portrait = { kid: KidId; root: Phaser.GameObjects.Container; face: Phaser.GameObjects.Image; hearts: { off: Phaser.GameObjects.Image; on: Phaser.GameObjects.Image }[]; out: Phaser.GameObjects.Container; badge: Phaser.GameObjects.Container; hp: number; faceUntil: number; scale: number };
+
+type Pin = { root: Phaser.GameObjects.Container; arrow: Phaser.GameObjects.Graphics; ring: Phaser.GameObjects.Graphics; bang: Phaser.GameObjects.Text; shown: boolean };
 
 export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number };
+
+export type Offscreen = { kid: KidId; x: number; y: number; alert: boolean };
+
+export type Playfield = { left: number; top: number; right: number; bottom: number };
+
+const STICK = { base: 104, knob: 54, travel: 100 };
+const BUTTON_R = 112;
 
 export class PajamaHud {
   readonly touch: Touch = { x: 0, y: 0, throwing: false, active: false, tapAt: -99999 };
@@ -13,22 +23,41 @@ export class PajamaHud {
   private portraits = new Map<KidId, Portrait>();
   private banner: Phaser.GameObjects.Text;
   private sub: Phaser.GameObjects.Text;
+  private bannerTop = false;
   private stickBase: Phaser.GameObjects.Arc;
   private stickKnob: Phaser.GameObjects.Arc;
+  private stickLabel: Phaser.GameObjects.Text;
+  private throwLabel: Phaser.GameObjects.Text;
+  private tutorial = false;
   private throwBtn: Phaser.GameObjects.Container;
+  private throwPress: Phaser.GameObjects.Arc;
+  private throwRing: Phaser.GameObjects.Graphics;
+  private throwIcon: Phaser.GameObjects.Image;
   private stickId: number | null = null;
   private throwIds = new Set<number>();
   private stickOrigin = { x: 0, y: 0 };
+  private stickRest = { x: 0, y: 0 };
+  private stickScale = 1;
+  private buttonScale = 1;
   private touchUi = false;
+  private controlsOn = true;
   private bannerTimer?: Phaser.Time.TimerEvent;
   private tag: Phaser.GameObjects.Container;
   private timerBox: Phaser.GameObjects.Container;
   private order: Portrait[] = [];
   private k = 1;
+  private frame: Frame = FULL_FRAME;
+  private displayWidth = 0;
   private tip: Phaser.GameObjects.Container;
   private tipText: Phaser.GameObjects.Text;
   private tipBg: Phaser.GameObjects.Graphics;
   private tipTimer?: Phaser.Time.TimerEvent;
+  private tipScale = 1;
+  private deck: Phaser.GameObjects.Graphics;
+  private deckDots: Phaser.GameObjects.TileSprite;
+  private deckColor = 0x7c4527;
+  private pins = new Map<KidId, Pin>();
+  private cooldown = { k: 1, special: false };
   readonly top: Phaser.GameObjects.Container;
 
   constructor(
@@ -39,6 +68,7 @@ export class PajamaHud {
     private reduced: boolean,
     private text: PajamaCopy["hud"],
   ) {
+    this.makeTextures();
     const tag = scene.add.container(150, 58).setAngle(-3);
     const tg = scene.add.graphics();
     const label = cartoonText(scene, 0, 0, arenaTitle.toUpperCase(), { size: 34, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
@@ -62,41 +92,88 @@ export class PajamaHud {
     tb.strokeRoundedRect(-118, 4, 236, 76, 18);
     const icon = scene.add.image(-74, 42, "icon-timer");
     this.timer = cartoonText(scene, 18, 42, "00:00", { size: 48, color: "#fbf5e6", font: fonts.display, stroke: 0.14 }).setOrigin(0.5);
-    const timerBox = scene.add.container(W / 2, 10, [tb, icon, this.timer]);
+    const timerBox = scene.add.container(0, 10, [tb, icon, this.timer]);
     this.tag = tag;
     this.timerBox = timerBox;
 
     const items: Phaser.GameObjects.GameObject[] = [tag, timerBox];
-    let x = W - 30 - 208;
     for (const { kid, isPlayer } of [...kids].reverse()) {
       const p = this.makePortrait(kid, isPlayer);
-      p.root.setPosition(x, 58);
-      x -= 262;
       items.push(p.root);
       this.portraits.set(kid, p);
       this.order.push(p);
     }
     this.top = scene.add.container(0, 0, items).setDepth(2000);
 
-    this.banner = cartoonText(scene, W / 2, H / 2 - 70, "", { size: 120, color: "#ffc83d", font: fonts.display, stroke: 0.2, align: "center" }).setOrigin(0.5).setDepth(2010).setVisible(false);
-    this.sub = cartoonText(scene, W / 2, H / 2 + 40, "", { size: 44, color: "#fbf5e6", font: fonts.display, stroke: 0.2, align: "center" }).setOrigin(0.5).setDepth(2010).setVisible(false);
+    this.banner = cartoonText(scene, 0, 0, "", { size: 120, color: "#ffc83d", font: fonts.display, stroke: 0.2, align: "center" }).setOrigin(0.5).setDepth(2010).setVisible(false);
+    this.sub = cartoonText(scene, 0, 0, "", { size: 44, color: "#fbf5e6", font: fonts.display, stroke: 0.2, align: "center" }).setOrigin(0.5).setDepth(2010).setVisible(false);
 
-    this.stickBase = scene.add.circle(0, 0, 104, 0xfbf5e6, 0.18).setStrokeStyle(6, INK_HEX, 0.6).setDepth(2005).setVisible(false);
-    this.stickKnob = scene.add.circle(0, 0, 54, 0xfbf5e6, 0.85).setStrokeStyle(6, INK_HEX, 1).setDepth(2006).setVisible(false);
+    this.deck = scene.add.graphics().setDepth(1990).setVisible(false);
+    this.deckDots = scene.add.tileSprite(0, 0, 8, 8, "deck-dots").setOrigin(0, 0).setDepth(1991).setVisible(false);
+
+    this.stickBase = scene.add.circle(0, 0, STICK.base, 0xfbf5e6, 0.18).setStrokeStyle(6, INK_HEX, 0.6).setDepth(2005).setVisible(false);
+    this.stickKnob = scene.add.circle(0, 0, STICK.knob, 0xfbf5e6, 0.85).setStrokeStyle(6, INK_HEX, 1).setDepth(2006).setVisible(false);
+    this.stickLabel = cartoonText(scene, 0, 0, text.move, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(2006).setVisible(false);
+    this.throwLabel = cartoonText(scene, 0, 0, text.throwHelp, { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(2006).setVisible(false);
     const bg = scene.add.graphics();
     bg.fillStyle(INK_HEX, 1);
-    bg.fillCircle(6, 8, 112);
+    bg.fillCircle(6, 8, BUTTON_R);
     bg.fillStyle(0xf06ba8, 1);
-    bg.fillCircle(0, 0, 112);
+    bg.fillCircle(0, 0, BUTTON_R);
     bg.lineStyle(7, INK_HEX, 1);
-    bg.strokeCircle(0, 0, 112);
-    const pil = scene.add.image(0, -6, "pillow").setScale(1.05 / 1.25).setAngle(-12);
+    bg.strokeCircle(0, 0, BUTTON_R);
+    this.throwPress = scene.add.circle(0, 0, BUTTON_R - 4, 0xffffff, 0.3).setVisible(false);
+    this.throwRing = scene.add.graphics();
+    this.throwIcon = scene.add.image(0, -6, "pillow").setScale(1.05 / 1.25).setAngle(-12);
     const lbl = cartoonText(scene, 0, 64, text.throw, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.2 }).setOrigin(0.5);
-    this.throwBtn = scene.add.container(W - 210, H - 200, [bg, pil, lbl]).setDepth(2005).setVisible(false);
+    this.throwBtn = scene.add.container(0, 0, [bg, this.throwPress, this.throwRing, this.throwIcon, lbl]).setDepth(2005).setVisible(false);
 
     this.tipBg = scene.add.graphics();
     this.tipText = cartoonText(scene, 0, 0, "", { size: 32, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center", wrap: 900 }).setOrigin(0.5);
     this.tip = scene.add.container(W / 2, 156, [this.tipBg, this.tipText]).setDepth(2004).setVisible(false).setAngle(-1);
+
+    for (const { kid, isPlayer } of kids) if (!isPlayer) this.pins.set(kid, this.makePin(kid));
+  }
+
+  private makeTextures() {
+    const tex = this.scene.textures;
+    if (tex.exists("deck-dots")) return;
+    const g = this.scene.make.graphics({}, false);
+    g.fillStyle(0xfbf5e6, 0.09);
+    g.fillCircle(9, 9, 2.6);
+    g.generateTexture("deck-dots", 36, 36);
+    g.destroy();
+  }
+
+  private makePin(kid: KidId): Pin {
+    const s = this.scene;
+    const info = KID_INFO[kid];
+    const arrow = s.add.graphics();
+    arrow.fillStyle(INK_HEX, 1);
+    arrow.fillTriangle(42, -16, 42, 16, 64, 0);
+    arrow.fillStyle(info.color, 1);
+    arrow.fillTriangle(44, -10, 44, 10, 57, 0);
+    const disc = s.add.graphics();
+    disc.fillStyle(INK_HEX, 1);
+    disc.fillCircle(4, 6, 44);
+    disc.fillStyle(info.pale, 1);
+    disc.fillCircle(0, 0, 44);
+    const face = s.add.image(0, 6, `face-${kid}-normal`).setScale(0.42);
+    const ring = s.add.graphics();
+    const bang = cartoonText(s, 0, -64, "!", { size: 64, color: "#ff8a3d", font: this.fonts.display, stroke: 0.24 }).setOrigin(0.5).setVisible(false);
+    const root = s.add.container(0, 0, [arrow, disc, face, ring, bang]).setDepth(2003).setVisible(false);
+    const pin: Pin = { root, arrow, ring, bang, shown: false };
+    this.paintPin(pin, kid, false);
+    return pin;
+  }
+
+  private paintPin(pin: Pin, kid: KidId, alert: boolean) {
+    const g = pin.ring;
+    g.clear();
+    g.lineStyle(alert ? 10 : 7, alert ? 0xff8a3d : KID_INFO[kid].color, 1);
+    g.strokeCircle(0, 0, 44);
+    g.lineStyle(4, INK_HEX, 1);
+    g.strokeCircle(0, 0, alert ? 50 : 48);
   }
 
   hint(text: string, ms = 4800) {
@@ -113,15 +190,25 @@ export class PajamaHud {
     g.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
     g.lineStyle(5, INK_HEX, 1);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
-    this.tip.setVisible(true).setAlpha(1).setScale(this.k);
-    this.tip.setY((this.k === 1 ? 156 : 120 * this.k) + h / 2 - 30);
+    this.tip.setVisible(true).setAlpha(1).setScale(this.tipScale);
+    this.placeTip();
     if (!this.reduced) {
-      this.tip.setScale(this.k * 0.6);
-      this.scene.tweens.add({ targets: this.tip, scale: this.k, duration: 280, ease: "Back.easeOut" });
+      this.tip.setScale(this.tipScale * 0.6);
+      this.scene.tweens.add({ targets: this.tip, scale: this.tipScale, duration: 280, ease: "Back.easeOut" });
     }
     this.tipTimer = this.scene.time.delayedCall(ms, () => {
       this.scene.tweens.add({ targets: this.tip, alpha: 0, duration: 260, onComplete: () => this.tip.setVisible(false) });
     });
+  }
+
+  private placeTip() {
+    const h = (this.tipText.height + 26) * this.tipScale;
+    const f = this.frame;
+    if (f.kind === "full") {
+      this.tip.setPosition(f.width / 2, (this.k === 1 ? 156 : 120 * this.k) + h / 2 - 30);
+      return;
+    }
+    this.tip.setPosition(f.width / 2, f.hud + h / 2 + 6 * f.unit);
   }
 
   hideHint() {
@@ -181,7 +268,7 @@ export class PajamaHud {
     const out = s.add.container(0, 0, [outBg, outTxt]).setVisible(false);
     parts.push(out, badge);
     const root = s.add.container(0, 0, parts);
-    return { kid, root, face, hearts, out, badge, hp: HP, faceUntil: 0 };
+    return { kid, root, face, hearts, out, badge, hp: HP, faceUntil: 0, scale: 1 };
   }
 
   private restFace(p: Portrait) {
@@ -225,7 +312,10 @@ export class PajamaHud {
       const until = this.scene.time.now + 420;
       p.faceUntil = until;
       this.scene.time.delayedCall(420, () => p.face.active && p.faceUntil === until && this.restFace(p));
-      if (!this.reduced) this.scene.tweens.add({ targets: p.root, x: p.root.x + 8, duration: 50, yoyo: true, repeat: 2 });
+      if (!this.reduced) {
+        const x = p.root.x;
+        this.scene.tweens.add({ targets: p.root, x: x + 8 * p.scale, duration: 50, yoyo: true, repeat: 2, onComplete: () => p.root.setX(x) });
+      }
     }
     if (change === "regen" && this.scene.time.now >= p.faceUntil) this.restFace(p);
     if (change === "regen" && !this.reduced) {
@@ -259,28 +349,199 @@ export class PajamaHud {
   flash(text: string, color: string, ms: number, sub = "", top = false) {
     this.bannerTimer?.remove();
     this.scene.tweens.killTweensOf([this.banner, this.sub]);
-    this.banner.setText(text).setColor(color).setVisible(true).setAlpha(1).setScale(1).setY(top ? 175 : H / 2 - 70);
-    this.sub.setText(sub).setVisible(Boolean(sub)).setAlpha(1).setY(top ? 275 : H / 2 + 40);
+    this.bannerTop = top;
+    this.banner.setText(text).setColor(color).setVisible(true).setAlpha(1);
+    this.sub.setText(sub).setVisible(Boolean(sub)).setAlpha(1);
+    const scale = this.placeBanner();
     if (!this.reduced) {
-      this.banner.setScale(0.4);
-      this.scene.tweens.add({ targets: this.banner, scale: 1, duration: 260, ease: "Back.easeOut" });
+      this.banner.setScale(scale * 0.4);
+      this.scene.tweens.add({ targets: this.banner, scale, duration: 260, ease: "Back.easeOut" });
     }
     this.bannerTimer = this.scene.time.delayedCall(ms, () => {
       this.scene.tweens.add({ targets: [this.banner, this.sub], alpha: 0, duration: 220, onComplete: () => this.banner.setVisible(false) });
     });
   }
 
-  layout(displayWidth: number) {
+  private placeBanner() {
+    const f = this.frame;
+    if (f.kind === "full") {
+      this.banner.setScale(1).setPosition(f.width / 2, this.bannerTop ? 175 : f.height / 2 - 70);
+      this.sub.setScale(1).setPosition(f.width / 2, this.bannerTop ? 275 : f.height / 2 + 40);
+      return 1;
+    }
+    const u = f.unit;
+    const room = f.width - 32 * u - f.safe.left - f.safe.right;
+    const big = Math.min((f.kind === "tall" ? 46 : 52) * u / 120, room / Math.max(1, this.banner.width));
+    const small = Math.min((f.kind === "tall" ? 17 : 18) * u / 44, room / Math.max(1, this.sub.width));
+    const fieldTop = f.hud;
+    const fieldBottom = f.height - f.deck;
+    const cy = this.bannerTop ? fieldTop + 70 * u : (fieldTop + fieldBottom) / 2 - 24 * u;
+    this.banner.setScale(big).setPosition(f.width / 2, cy);
+    this.sub.setScale(small).setPosition(f.width / 2, cy + 46 * u);
+    return big;
+  }
+
+  get playfield(): Playfield {
+    const f = this.frame;
+    if (f.kind === "full") return { left: 0, top: 0, right: f.width, bottom: f.height };
+    return { left: f.safe.left, top: f.hud, right: f.width - f.safe.right, bottom: f.height - f.deck };
+  }
+
+  layout(frame: Frame, displayWidth: number) {
+    const changed = frame !== this.frame || (frame.kind === "full" && displayWidth !== this.displayWidth);
+    if (!changed) return;
+    this.frame = frame;
+    this.displayWidth = displayWidth;
+    if (frame.kind === "full") this.layoutFull(displayWidth);
+    else this.layoutCompact(frame);
+    this.placeControls();
+    if (this.tip.visible) {
+      this.tip.setScale(this.tipScale);
+      this.placeTip();
+    }
+    if (this.banner.visible) this.placeBanner();
+  }
+
+  private layoutFull(displayWidth: number) {
+    const f = this.frame;
     const k = displayWidth < 1100 ? Phaser.Math.Clamp(1100 / displayWidth, 1, 1.45) : 1;
-    if (k === this.k) return;
     this.k = k;
     this.tag.setVisible(k === 1);
-    this.timerBox.setScale(k).setPosition(k === 1 ? W / 2 : 30 + 118 * k, 10);
-    this.order.forEach((p, i) => p.root.setScale(k).setPosition(W - 30 - 208 * k - i * 262 * k, 58 * k));
-    this.throwBtn.setScale(k).setPosition(W - 210 * k, H - 200 * k);
-    if (this.tip.visible) this.tip.setScale(k);
-    this.stickBase.setScale(k);
-    this.stickKnob.setScale(k);
+    this.timerBox.setScale(k).setPosition(k === 1 ? f.width / 2 : 30 + 118 * k, 10);
+    this.order.forEach((p, i) => {
+      p.scale = k;
+      p.root.setScale(k).setPosition(f.width - 30 - 208 * k - i * 262 * k, 58 * k);
+    });
+    this.tipScale = k;
+    this.tipText.setWordWrapWidth(900);
+    this.stickScale = k;
+    this.buttonScale = k;
+    this.stickRest = { x: 250 * k, y: f.height - 210 * k };
+    this.deck.setVisible(false);
+    this.deckDots.setVisible(false);
+  }
+
+  private layoutCompact(f: Frame) {
+    const u = f.unit;
+    const tall = f.kind === "tall";
+    this.k = 1;
+    this.tag.setVisible(false);
+    const margin = 8 * u;
+    const gap = 6 * u;
+    const left = f.safe.left + margin;
+    const right = f.width - f.safe.right - margin;
+    let kp = ((tall ? 42 : 34) * u) / 102;
+    let kf = ((tall ? 32 : 28) * u) / 102;
+    const timerMin = 62 * u;
+    const need = 259 * kp + 2 * 259 * kf + gap * 3 + timerMin;
+    if (need > right - left) {
+      const shrink = (right - left) / need;
+      kp *= shrink;
+      kf *= shrink;
+    }
+    const cy = f.safe.top + 6 * u + 51 * kp;
+    const player = this.order[this.order.length - 1];
+    const foes = this.order.slice(0, -1);
+    player.scale = kp;
+    player.root.setScale(kp).setPosition(left + 51 * kp, cy);
+    foes.forEach((p, i) => {
+      p.scale = kf;
+      p.root.setScale(kf).setPosition(right - 208 * kf - i * (259 * kf + gap), cy);
+    });
+    const spanL = left + 259 * kp + gap;
+    const spanR = right - 208 * kf - (foes.length - 1) * (259 * kf + gap) - 51 * kf - gap;
+    const kt = Phaser.Math.Clamp((spanR - spanL) / 246, 0.45, tall ? 0.9 : 0.75);
+    this.timerBox.setScale(kt).setPosition(tall ? (spanL + spanR) / 2 : f.width / 2, cy - 42 * kt);
+    this.tipScale = (13.5 * u) / 32;
+    this.tipText.setWordWrapWidth((f.width - 40 * u) / this.tipScale);
+    this.stickScale = (52 * u) / STICK.base;
+    this.buttonScale = (46 * u) / BUTTON_R;
+    if (tall) {
+      const deckTop = f.height - f.deck;
+      const cyDeck = Math.max(deckTop + (f.deck - f.safe.bottom) / 2 + 4 * u, deckTop + 60 * u);
+      const y = Math.min(cyDeck, f.height - f.safe.bottom - 58 * u);
+      this.stickRest = { x: f.safe.left + 82 * u, y };
+      this.drawDeck();
+    } else {
+      this.stickRest = { x: f.safe.left + 92 * u, y: f.height - f.safe.bottom - 82 * u };
+      this.deck.setVisible(false);
+      this.deckDots.setVisible(false);
+    }
+  }
+
+  setDeckColor(color: number) {
+    this.deckColor = color;
+    if (this.frame.kind === "tall") this.drawDeck();
+  }
+
+  private drawDeck() {
+    const f = this.frame;
+    const u = f.unit;
+    const top = f.height - f.deck;
+    const lip = 9 * u;
+    const g = this.deck;
+    g.clear();
+    g.fillStyle(0x1d1830, 1);
+    g.fillRect(0, top, f.width, f.deck + 4);
+    g.fillStyle(this.deckColor, 1);
+    g.fillRect(0, top, f.width, lip);
+    g.fillStyle(0xffffff, 0.16);
+    g.fillRect(0, top + 2 * u, f.width, 2 * u);
+    g.fillStyle(0x140f26, 0.5);
+    g.fillRect(0, top + lip, f.width, 6 * u);
+    g.lineStyle(Math.max(3, 1.6 * u), INK_HEX, 1);
+    g.lineBetween(0, top, f.width, top);
+    g.lineBetween(0, top + lip, f.width, top + lip);
+    g.setVisible(true);
+    this.deckDots.setPosition(0, top + lip).setSize(f.width, f.deck - lip + 4).setTileScale(u / 2.6).setVisible(true);
+  }
+
+  private placeControls() {
+    const f = this.frame;
+    const s = this.stickScale;
+    this.stickBase.setScale(s);
+    this.stickKnob.setScale(s);
+    const labelScale = f.kind === "full" ? s : (12 * f.unit) / 30;
+    this.stickLabel.setScale(labelScale);
+    this.throwLabel.setScale(labelScale);
+    if (this.stickId === null) this.restStick();
+    const b = this.buttonScale;
+    if (f.kind === "full") this.throwBtn.setPosition(f.width - 210 * b, f.height - 200 * b);
+    else this.throwBtn.setPosition(f.width - f.safe.right - (f.kind === "tall" ? 74 : 86) * f.unit, this.stickRest.y);
+    this.throwBtn.setScale(b);
+    const lift = (BUTTON_R + 30) * b + 10 * (f.kind === "full" ? s : f.unit);
+    this.throwLabel.setPosition(Math.min(this.throwBtn.x, f.width - f.safe.right - this.throwLabel.displayWidth / 2 - 6 * (f.kind === "full" ? s : f.unit)), this.throwBtn.y - lift);
+    this.refreshControls();
+  }
+
+  private restStick() {
+    const { x, y } = this.stickRest;
+    this.stickBase.setPosition(x, y);
+    this.stickKnob.setPosition(x, y);
+    const r = STICK.base * this.stickScale;
+    const u = this.frame.kind === "full" ? this.stickScale : this.frame.unit;
+    this.stickLabel.setPosition(Math.max(x, this.frame.safe.left + this.stickLabel.displayWidth / 2 + 6 * u), y - r - 12 * u);
+  }
+
+  setTutorial(on: boolean) {
+    if (on === this.tutorial) return;
+    this.tutorial = on;
+    this.stickLabel.setText(on ? this.text.moveHelp : this.text.move).setColor(on ? "#ffc83d" : "#fbf5e6");
+    if (this.stickId === null) this.restStick();
+    this.placeControls();
+  }
+
+  private refreshControls() {
+    const on = this.touchUi && this.controlsOn;
+    const compact = this.frame.kind !== "full";
+    const resting = this.stickId === null;
+    this.throwBtn.setVisible(on);
+    this.stickBase.setVisible(on && (compact || !resting));
+    this.stickKnob.setVisible(on && (compact || !resting));
+    this.stickLabel.setVisible(on && compact && resting && (this.frame.kind === "tall" || this.tutorial));
+    this.throwLabel.setVisible(on && compact && this.tutorial);
+    this.stickBase.setAlpha(resting ? 0.55 : 1);
+    this.stickKnob.setAlpha(resting ? 0.6 : 1);
   }
 
   hideTop() {
@@ -288,39 +549,51 @@ export class PajamaHud {
   }
 
   enableTouch(on: boolean) {
-    this.touchUi = on;
-    this.throwBtn.setVisible(on);
-    if (!on) return;
     const input = this.scene.input;
     input.on(Phaser.Input.Events.POINTER_DOWN, this.down, this);
     input.on(Phaser.Input.Events.POINTER_MOVE, this.move, this);
     input.on(Phaser.Input.Events.POINTER_UP, this.up, this);
     input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.up, this);
+    this.touchUi = on;
+    this.refreshControls();
   }
 
   get hasTouch() {
     return this.touchUi;
   }
 
+  private isTouch(p: Phaser.Input.Pointer) {
+    return p.wasTouch || (p.event as PointerEvent | undefined)?.pointerType === "touch";
+  }
+
   private down(p: Phaser.Input.Pointer) {
-    if (!p.wasTouch && (p.event as PointerEvent | undefined)?.pointerType !== "touch") return;
-    if (p.x > W * 0.5) {
+    if (!this.isTouch(p) || !this.controlsOn) return;
+    if (!this.touchUi) {
+      this.touchUi = true;
+      this.refreshControls();
+    }
+    const f = this.frame;
+    if (p.x > f.width * 0.5) {
       this.throwIds.add(p.id);
       this.touch.throwing = true;
       this.touch.tapAt = this.scene.time.now;
+      this.throwPress.setVisible(true);
       if (!this.reduced) {
         this.scene.tweens.killTweensOf(this.throwBtn);
-        this.throwBtn.setScale(0.9 * this.k);
-        this.scene.tweens.add({ targets: this.throwBtn, scale: this.k, duration: 160, ease: "Back.easeOut" });
+        this.throwBtn.setScale(0.88 * this.buttonScale);
+        this.scene.tweens.add({ targets: this.throwBtn, scale: this.buttonScale, duration: 160, ease: "Back.easeOut" });
       }
       return;
     }
     if (this.stickId !== null) return;
     this.stickId = p.id;
-    this.stickOrigin = { x: Phaser.Math.Clamp(p.x, 140, W * 0.5 - 140), y: Phaser.Math.Clamp(p.y, 260, H - 130) };
-    this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y).setVisible(true);
-    this.stickKnob.setPosition(this.stickOrigin.x, this.stickOrigin.y).setVisible(true);
+    const r = STICK.base * this.stickScale;
+    if (f.kind === "full") this.stickOrigin = { x: Phaser.Math.Clamp(p.x, 140, f.width * 0.5 - 140), y: Phaser.Math.Clamp(p.y, 260, f.height - 130) };
+    else this.stickOrigin = { x: Phaser.Math.Clamp(p.x, f.safe.left + r + 4 * f.unit, f.width * 0.5 - r), y: Phaser.Math.Clamp(p.y, f.hud + r, f.height - f.safe.bottom - r - 2 * f.unit) };
+    this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y);
+    this.stickKnob.setPosition(this.stickOrigin.x, this.stickOrigin.y);
     this.touch.active = true;
+    this.refreshControls();
     this.move(p);
   }
 
@@ -329,41 +602,127 @@ export class PajamaHud {
     let dx = p.x - this.stickOrigin.x;
     let dy = p.y - this.stickOrigin.y;
     const d = Math.hypot(dx, dy);
-    const max = 100 * this.k;
+    const max = STICK.travel * this.stickScale;
     if (d > max) {
       dx = (dx / d) * max;
       dy = (dy / d) * max;
     }
     this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
-    const dead = 14;
-    const m = Math.hypot(dx, dy);
-    this.touch.x = m < dead ? 0 : dx / max;
-    this.touch.y = m < dead ? 0 : dy / max;
+    if (this.frame.kind === "full") {
+      const m = Math.hypot(dx, dy);
+      this.touch.x = m < 14 ? 0 : dx / max;
+      this.touch.y = m < 14 ? 0 : dy / max;
+      return;
+    }
+    const m = Math.hypot(dx, dy) / max;
+    const dead = 0.14;
+    const k = m <= dead ? 0 : Math.min(1, (m - dead) / (0.82 - dead));
+    this.touch.x = m > 0 ? (dx / (m * max)) * k : 0;
+    this.touch.y = m > 0 ? (dy / (m * max)) * k : 0;
   }
 
   private up(p: Phaser.Input.Pointer) {
-    if (this.throwIds.delete(p.id)) this.touch.throwing = this.throwIds.size > 0;
+    if (this.throwIds.delete(p.id)) {
+      this.touch.throwing = this.throwIds.size > 0;
+      if (!this.touch.throwing) this.throwPress.setVisible(false);
+    }
     if (p.id !== this.stickId) return;
     this.stickId = null;
     this.touch.x = 0;
     this.touch.y = 0;
     this.touch.active = false;
-    this.stickBase.setVisible(false);
-    this.stickKnob.setVisible(false);
+    this.restStick();
+    this.refreshControls();
   }
 
   hideControls() {
-    this.throwBtn.setVisible(false);
-    this.stickBase.setVisible(false);
-    this.stickKnob.setVisible(false);
+    this.controlsOn = false;
+    this.stickId = null;
+    this.throwIds.clear();
+    this.throwPress.setVisible(false);
     this.touch.x = 0;
     this.touch.y = 0;
+    this.touch.active = false;
     this.touch.throwing = false;
+    this.refreshControls();
+    this.stickLabel.setVisible(false);
+    this.throwLabel.setVisible(false);
+    for (const pin of this.pins.values()) pin.root.setVisible(false);
+  }
+
+  setCooldown(k: number, special: boolean) {
+    if (!this.throwBtn.visible) return;
+    const ready = k >= 1;
+    if (Math.abs(k - this.cooldown.k) < 0.01 && special === this.cooldown.special) return;
+    const wasReady = this.cooldown.k >= 1;
+    this.cooldown = { k, special };
+    const g = this.throwRing;
+    g.clear();
+    const r = BUTTON_R + 16;
+    g.lineStyle(14, INK_HEX, 0.55);
+    g.strokeCircle(0, 0, r);
+    g.lineStyle(9, special ? 0xffc83d : ready ? 0xfff3b0 : 0xffc83d, ready ? 1 : 0.95);
+    if (ready) g.strokeCircle(0, 0, r);
+    else {
+      g.beginPath();
+      g.arc(0, 0, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, k), false);
+      g.strokePath();
+    }
+    this.throwIcon.setTint(special ? 0xffc83d : 0xffffff).setScale((1.05 / 1.25) * (special ? 1.18 : 1)).setAlpha(ready ? 1 : 0.6);
+    if (ready && !wasReady && !this.reduced) {
+      this.scene.tweens.killTweensOf(this.throwIcon);
+      this.scene.tweens.add({ targets: this.throwIcon, angle: { from: -24, to: -12 }, duration: 220, ease: "Back.easeOut" });
+    }
   }
 
   avoid(sx: number, sy: number) {
-    if (!this.touchUi) return;
-    const near = Math.hypot(sx - this.throwBtn.x, sy - this.throwBtn.y) < 200 * this.k;
+    if (!this.touchUi || this.frame.kind === "tall") {
+      this.throwBtn.setAlpha(1);
+      return;
+    }
+    const near = Math.hypot(sx - this.throwBtn.x, sy - this.throwBtn.y) < BUTTON_R * 1.9 * this.buttonScale;
     this.throwBtn.setAlpha(Phaser.Math.Linear(this.throwBtn.alpha, near ? 0.45 : 1, 0.15));
+    const nearStick = this.stickId === null && Math.hypot(sx - this.stickBase.x, sy - this.stickBase.y) < STICK.base * 1.9 * this.stickScale;
+    const want = nearStick ? 0.22 : 0.55;
+    if (this.stickId === null) {
+      this.stickBase.setAlpha(Phaser.Math.Linear(this.stickBase.alpha, want, 0.15));
+      this.stickKnob.setAlpha(Phaser.Math.Linear(this.stickKnob.alpha, want + 0.05, 0.15));
+    }
+  }
+
+  offscreen(list: Offscreen[], t: number) {
+    const f = this.frame;
+    const field = this.playfield;
+    const u = f.kind === "full" ? this.k : f.unit;
+    const scale = f.kind === "full" ? 0.62 * this.k : (19 * u) / 44;
+    const pad = 64 * scale + 3 * u;
+    for (const [kid, pin] of this.pins) {
+      const item = list.find((o) => o.kid === kid);
+      if (!item) {
+        if (pin.shown) {
+          pin.shown = false;
+          pin.root.setVisible(false);
+        }
+        continue;
+      }
+      const cx = (field.left + field.right) / 2;
+      const cy = (field.top + field.bottom) / 2;
+      const x = Phaser.Math.Clamp(item.x, field.left + pad, field.right - pad);
+      const y = Phaser.Math.Clamp(item.y, field.top + pad, field.bottom - pad);
+      const angle = Math.atan2(item.y - y || (item.y - cy) * 0.001, item.x - x || (item.x - cx) * 0.001);
+      pin.arrow.setRotation(angle);
+      if (!pin.shown) {
+        pin.shown = true;
+        pin.root.setVisible(true).setScale(this.reduced ? scale : scale * 0.5).setAlpha(1);
+        if (!this.reduced) this.scene.tweens.add({ targets: pin.root, scale, duration: 180, ease: "Back.easeOut" });
+      }
+      pin.root.setPosition(x, y).setAlpha(item.alert ? 1 : 0.86);
+      if (!this.scene.tweens.isTweening(pin.root)) pin.root.setScale(item.alert && !this.reduced ? scale * (1.08 + Math.sin(t / 60) * 0.08) : scale);
+      if (pin.bang.visible !== item.alert) {
+        pin.bang.setVisible(item.alert);
+        this.paintPin(pin, kid, item.alert);
+      }
+    }
   }
 }
+
