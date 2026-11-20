@@ -6,11 +6,6 @@ const luckiest = localFont({
   variable: "--font-luckiest",
   weight: "400",
   display: "swap",
-  declarations: [
-    { prop: "ascent-override", value: "85%" },
-    { prop: "descent-override", value: "15%" },
-    { prop: "line-gap-override", value: "0%" },
-  ],
 });
 
 const baloo = Baloo_2({
