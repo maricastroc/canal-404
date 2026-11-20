@@ -191,7 +191,7 @@ export class Ambient {
   private sways: Sway[] = [];
   private flies: Fly[] = [];
   private notes: Note[] = [];
-  private fan: { g: Phaser.GameObjects.Graphics; x: number; y: number; angle: number; speed: number } | null = null;
+  private fan: { g: Phaser.GameObjects.Graphics; x: number; y: number; top: number; angle: number; speed: number } | null = null;
   private clock: { g: Phaser.GameObjects.Graphics; x: number; y: number; ringAt: number; ringUntil: number } | null = null;
   private tv: TvShow | null = null;
   private noteAt = 4000;
@@ -218,7 +218,7 @@ export class Ambient {
       if (key === "boombox") this.boombox = p;
     }
     if (theme === "bedroom") {
-      this.fan = { g: scene.add.graphics().setDepth(6.5), x: 470, y: 0, angle: 0.3, speed: 0 };
+      this.fan = { g: scene.add.graphics().setDepth(6.5), x: 470, y: 0, top: 0, angle: 0.3, speed: 0 };
       this.clock = { g: scene.add.graphics().setDepth(452.6), x: 1377, y: 336, ringAt: 9000, ringUntil: 0 };
       const pool = scene.add.image(1360, 470, "glow").setDisplaySize(340, 96).setTint(0xffc46b).setAlpha(0.2).setBlendMode(Phaser.BlendModes.ADD).setDepth(24);
       if (!reduced) scene.tweens.add({ targets: pool, alpha: 0.14, duration: 2200, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
@@ -289,6 +289,10 @@ export class Ambient {
     }
   }
 
+  setCeiling(y: number) {
+    if (this.fan) this.fan.top = y;
+  }
+
   private updateFan(dt: number) {
     const fan = this.fan;
     if (!fan) return;
@@ -300,7 +304,7 @@ export class Ambient {
     }
     const hubY = fan.y + 88;
     g.lineStyle(8, INK_HEX, 1);
-    g.lineBetween(fan.x, fan.y, fan.x, hubY - 20);
+    g.lineBetween(fan.x, Math.min(fan.top, fan.y), fan.x, hubY - 20);
     const drawBlade = (i: number, front: boolean) => {
       const a = fan.angle + (i * Math.PI) / 2;
       const c = Math.cos(a);

@@ -44,6 +44,8 @@ export const COPY = localized({
         ricochet: "Use os móveis para fazer seus travesseiros ricochetearem!",
         special: "Um travesseiro especial pode aparecer! Pegue antes dos outros!",
       },
+      controlsTouch: "Arraste o polegar na esquerda para andar. Toque na direita para jogar.",
+      controlsKeys: "WASD ou setas: andar. Mouse: mirar. Clique ou espaço: jogar.",
       hearts: (hp: number) => {
         const whole = Math.floor(hp / 2);
         const half = hp % 2 === 1;
@@ -92,6 +94,7 @@ export const COPY = localized({
       arena: (n: number, title: string) => `ARENA ${n}: ${title.toUpperCase()}`,
       bars: ["VELOCIDADE", "ATAQUE", "RECUPERAÇÃO"],
       touchHint: "Toque num personagem",
+      swipeHint: "Deslize ou toque para trocar",
       keysHint: "Setas para escolher. Enter para começar.",
       start: "COMEÇAR",
       intro: "Escolha seu personagem: Lia, a veloz. Nico, o atirador. Bia, a resistente. Use as setas e aperte Enter.",
@@ -101,6 +104,9 @@ export const COPY = localized({
       you: "VOCÊ",
       out: "FORA",
       throw: "JOGAR",
+      move: "ANDAR",
+      moveHelp: "ARRASTE PARA ANDAR",
+      throwHelp: "TOQUE PARA JOGAR",
     },
     tv: {
       onAir: "NO AR",
@@ -139,6 +145,8 @@ export const COPY = localized({
         ricochet: "Bounce your pillows off the furniture!",
         special: "A special pillow may show up! Grab it before the others do!",
       },
+      controlsTouch: "Drag your left thumb to move. Tap on the right to throw.",
+      controlsKeys: "WASD or arrows: move. Mouse: aim. Click or space: throw.",
       hearts: (hp: number) => {
         const whole = Math.floor(hp / 2);
         const half = hp % 2 === 1;
@@ -187,6 +195,7 @@ export const COPY = localized({
       arena: (n: number, title: string) => `ARENA ${n}: ${title.toUpperCase()}`,
       bars: ["SPEED", "ATTACK", "RECOVERY"],
       touchHint: "Tap a character",
+      swipeHint: "Swipe or tap to switch",
       keysHint: "Arrows to pick. Enter to start.",
       start: "START",
       intro: "Pick your character: Lia, the fast one. Nico, the thrower. Bia, the tough one. Use the arrows and press Enter.",
@@ -196,6 +205,9 @@ export const COPY = localized({
       you: "YOU",
       out: "OUT",
       throw: "THROW",
+      move: "MOVE",
+      moveHelp: "DRAG TO MOVE",
+      throwHelp: "TAP TO THROW",
     },
     tv: {
       onAir: "ON AIR",

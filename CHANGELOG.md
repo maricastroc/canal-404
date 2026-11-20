@@ -4,6 +4,15 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Guerra do Pijama no celular, em pé ou deitado
+- **Portrait layout on phones.** With the phone upright, the arena fills the screen instead of a thin strip between two empty bands. Kids are drawn about twice as big (around 95–110 px tall on a phone). The camera follows you sideways and leans toward the opponent you are aiming at, or the one about to throw at you, so threats come into view before the pillow does. Rules, AI, timings and scoring are unchanged.
+- **Edge markers.** An opponent out of view shows as a small face with an arrow on the screen edge. It turns orange with a ! when they are winding up a throw at you.
+- **Touch controls.** In portrait, a stick on the left and the THROW button on the right sit on a deck under the room, so thumbs never cover the arena. The stick is analog and floats to wherever the thumb lands on the left half. The button shows the pillow reloading and turns gold with the giant pillow. Moving and throwing work at the same time with two thumbs. Aiming is still the automatic aim the game already used for touch and the space bar.
+- **Sideways phones** get a full-width arena with the same controls in the bottom corners. The game switches layouts live when the phone turns, with no pause or rotate prompt, and the "turn your phone" tip is gone for this game.
+- **Character select** becomes a carousel on upright phones (swipe or tap the side cards, big START button), and the START button grows on sideways phones.
+- **Device-aware instructions.** "How to play" lists only touch controls on phones and only keyboard and mouse on computers, and the loading tips follow the same rule. In the first matches, phones label the stick and the button ("DRAG TO MOVE", "TAP TO THROW") until you have used both, and computers show a one-line keyboard reminder.
+- Desktop keeps the same layout, camera and HUD.
+
 ### Guerra de Lanche em pé no celular
 - **Portrait layout on phones.** With the phone upright, the game fills the screen instead of a thin strip between two empty bands. Déco and Mila's table sits in the foreground and the rival rows stretch across the whole width behind it, so characters, tables and tap targets are drawn about twice as big as before. All five tables stay fully on screen, also while the classmates pop up, wind up and brawl. Déco turns around to throw at classmates on his left.
 - The napkins, timer and score sit along the top. A smaller ABAIXA button sits in the bottom-right corner, next to the table and under the thumb. Mila's speech bubble appears beside her, over the tablecloth, without covering anyone.
