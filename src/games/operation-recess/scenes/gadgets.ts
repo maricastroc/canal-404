@@ -336,7 +336,7 @@ export class Watcher {
   }
 }
 
-const ROPE_HAND = { x: 59, y: 134 };
+const ROPE_HAND = { x: 45, y: 132 };
 
 export class Rope {
   readonly x0: number;

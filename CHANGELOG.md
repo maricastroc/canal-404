@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Operação: Recreio: colegas desenhados de corpo inteiro
+- **Lina, Mila and Déco are now drawn as one figure each.** Their sprites used to be a portrait head, with its own wide round shoulders, placed over a separate skirt and arms, so the shirt looked like a cape and the arms came out from under it. Each kid now has a single torso from neck to hem: Lina's orange shirt under a pink pinafore with teal straps, Mila's striped navy dress and Déco's yellow shirt over trousers that run into the legs.
+- Arms start at the shoulders and have the same length in both frames, and hands match each kid's skin. Mila's long hair ends behind her shoulders.
+- **The jump rope stays in their hands.** The rope used to end a little away from the hands and float on its own while the holding arm was down. Now the holding arm stays up and the other one waves. The rope's reach and timing are unchanged.
+- Same heads, faces, colors and accessories.
+
 ### O placar anota o tipo de navegador
 - Every result sent to the scoreboard now records the type of browser it came from: only the engine family, its major version and whether it's a phone or a computer (for example `webkit-26-mobile`), never the browser's full identification. Accepted and rejected results both get it, so replay mismatches can be checked engine by engine. The about page says so in both languages.
 - Needs the `20261120150000_run_client` migration. Older runs have no label. Scores, rankings and boards are unchanged.
