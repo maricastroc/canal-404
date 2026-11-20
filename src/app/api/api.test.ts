@@ -1,4 +1,5 @@
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
+import { attemptBonus } from "@/games/bad-ideas-lab/levels";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ApiErrorBody, LeaderboardResponse, PublicPlayer } from "@/lib/competition/types";
 import { closeDb, type Db } from "@/server/db";
@@ -177,7 +178,7 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     const first = await submit(apiRequest("/api/runs", { method: "POST", body: payload, cookie }));
     expect(first.status).toBe(201);
     const data = await body(first);
-    expect(data.run).toMatchObject({ verification: "replayed", eligible: true, score: 1150, stars: 3 });
+    expect(data.run).toMatchObject({ verification: "replayed", eligible: true, score: 1150 + attemptBonus(2), stars: 3 });
     expect(data.board).toMatchObject({ id: "bad-ideas-lab/juice/v1", improved: true, position: 1, total: 1, best: { metrics: [1, 112] } });
     const retry = await submit(apiRequest("/api/runs", { method: "POST", body: payload, cookie }));
     expect(retry.status).toBe(200);
