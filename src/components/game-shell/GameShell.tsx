@@ -3,7 +3,7 @@
 import { AnimatePresence } from "motion/react";
 import Link from "@/i18n/Link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeftIcon, MissionIcon, PauseIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
+import { ArrowLeftIcon, MissionIcon, PauseIcon, PhoneIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
@@ -61,6 +61,8 @@ const COPY = localized({
     pause: "Pausar",
     game: "jogo",
     rotate: "Dica: gire o celular para ver maior",
+    upright: "Segure o celular em pé",
+    uprightText: (title: string) => `${title} se joga com o celular na vertical.`,
   },
   en: {
     missionGone: "That mission is already off the air. Today's mission is on the Mission 404 page.",
@@ -86,12 +88,28 @@ const COPY = localized({
     pause: "Pause",
     game: "game",
     rotate: "Tip: turn your phone sideways for a bigger view",
+    upright: "Hold your phone upright",
+    uprightText: (title: string) => `${title} is played with your phone held upright.`,
   },
 });
 
 type PendingRun = { ticket: Promise<TicketGrant | null> | null; result: GameResult };
 
 const noopSubscribe = () => () => {};
+
+const PHONE_SIDEWAYS = "(orientation: landscape) and (pointer: coarse) and (max-height: 500px)";
+
+function subscribeSideways(onChange: () => void) {
+  const media = window.matchMedia(PHONE_SIDEWAYS);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function phoneSideways() {
+  return window.matchMedia(PHONE_SIDEWAYS).matches;
+}
+
+const never = () => false;
 
 function missionParam() {
   const day = new URLSearchParams(window.location.search).get("mission");
@@ -138,6 +156,7 @@ export function GameShell({ slug }: { slug: string }) {
   const [attempt, setAttempt] = useState(0);
   const runRef = useRef<{ level: string; attempt: number; startedAt: number; ticket: Promise<TicketGrant | null> | null; mission: MissionView | null } | null>(null);
   const requestedMission = useSyncExternalStore(noopSubscribe, missionParam, () => "");
+  const sideways = useSyncExternalStore(game.portrait ? subscribeSideways : noopSubscribe, game.portrait ? phoneSideways : never, never);
   const [skippedMission, setSkippedMission] = useState(false);
   const missionWanted = Boolean(requestedMission) && !skippedMission;
   const missionFeed = useMissionToday(missionWanted);
@@ -412,6 +431,19 @@ export function GameShell({ slug }: { slug: string }) {
   }, [setStage]);
 
   useEffect(() => {
+    if (!game.portrait) return;
+    const media = window.matchMedia(PHONE_SIDEWAYS);
+    const onChange = () => {
+      if (media.matches && stageStateRef.current === "playing") {
+        instanceRef.current?.pause();
+        setStage("paused");
+      }
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [game.portrait, setStage]);
+
+  useEffect(() => {
     if (stage !== "paused") return;
     const since = performance.now();
     const onKey = (event: KeyboardEvent) => {
@@ -664,8 +696,22 @@ export function GameShell({ slug }: { slug: string }) {
 
         {showLoader && <LoadingScreen progress={progress} tip={tip} leaving={leaving} />}
 
+        {sideways && (
+          <div role="status" className="absolute inset-0 z-50 grid place-items-center bg-plum-900 p-4" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
+            <div className="paper flex max-w-sm items-center gap-4 border-[3px] border-ink p-5 shadow-[var(--shadow-ink-lg)] wobbly">
+              <span className="grid size-16 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-sun text-ink">
+                <PhoneIcon className="size-9" />
+              </span>
+              <div>
+                <p className="font-display text-2xl uppercase leading-tight tracking-wide text-ink">{copy.upright}</p>
+                <p className="mt-1 text-base text-ink-soft">{copy.uprightText(game.title)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center px-3 landscape:hidden sm:hidden">
-          {stage === "playing" && (
+          {stage === "playing" && !game.portrait && (
             <p className="rounded-full border-[3px] border-ink bg-sun px-3 py-1 font-display text-xs uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]">
               {copy.rotate}
             </p>

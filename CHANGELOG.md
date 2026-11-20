@@ -5,10 +5,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 ## Unreleased
 
 ### Guerra de Lanche em pé no celular
-- **Portrait layout on phones.** With the phone upright, the game fills the screen instead of a thin strip between two empty bands. Déco and Mila's table moves to the front and the rival rows sit behind it, so everyone is drawn about 45% bigger and all five tables stay fully on screen, also while the classmates pop up, wind up and brawl. The napkins, timer and score sit on the wall above the scene, and a slightly smaller ABAIXAR button sits on the floor below it, clear of the tables and the puddings. On very tall phones the game stays at the top and the rotate tip gets its own band below.
-- **Same round either way.** Snack flight times and the lunch lady's walk are timed as in the wide layout, so portrait and landscape play the same and scores are unchanged. Turning the phone mid-round rearranges the scene without restarting it.
-- Landscape and desktop look and play as before.
-- **Game header on phones.** Long game titles wrap onto two lines instead of being cut short, and the sound button now matches the other header buttons.
+- **Portrait layout on phones.** With the phone upright, the game fills the screen instead of a thin strip between two empty bands. Déco and Mila's table sits in the foreground and the rival rows stretch across the whole width behind it, so characters, tables and tap targets are drawn about twice as big as before. All five tables stay fully on screen, also while the classmates pop up, wind up and brawl. Déco turns around to throw at classmates on his left.
+- The napkins, timer and score sit along the top. A smaller ABAIXA button sits in the bottom-right corner, next to the table and under the thumb. Mila's speech bubble appears beside her, over the tablecloth, without covering anyone.
+- **Phones play upright.** On a phone held sideways, the game asks you to hold it upright and pauses the round. The "turn your phone" tip is gone. Desktop and tablets keep the wide layout.
+- **Same round either way.** Snack flight times and the lunch lady's walk are timed as in the wide layout, so scores are unchanged.
+- **Game header on phones.** Long game titles wrap onto two lines instead of being cut short, and the sound button matches the other header buttons.
 
 ### Operação: Recreio: colegas desenhados de corpo inteiro
 - **Lina, Mila and Déco are now drawn as one figure each.** Their sprites used to be a portrait head, with its own wide round shoulders, placed over a separate skirt and arms, so the shirt looked like a cape and the arms came out from under it. Each kid now has a single torso from neck to hem: Lina's orange shirt under a pink pinafore with teal straps, Mila's striped navy dress and Déco's yellow shirt over trousers that run into the legs.

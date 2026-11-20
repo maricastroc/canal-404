@@ -30,10 +30,11 @@ export type GameMeta = {
   tips?: string[];
   controlsSummary?: string;
   resumable?: string;
+  portrait?: boolean;
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
-type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable"> & { levelIds?: string[]; guestIds?: string[] };
+type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "portrait"> & { levelIds?: string[]; guestIds?: string[] };
 
 type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "production" | "objective" | "controls" | "howTo" | "tips" | "controlsSummary" | "copy"> & {
   levels?: { title: string; goal: string }[];
@@ -43,7 +44,7 @@ type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "p
 const BASE = {
   "dead-end-street": { category: "action", status: "available", accent: "sun", cast: ["deco", "lina", "bruno"] },
   "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"] },
-  "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"] },
+  "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], portrait: true },
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"] },
   "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"] },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1" },
