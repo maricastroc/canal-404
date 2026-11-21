@@ -6,7 +6,7 @@ import { heightAt, type Obstacle } from "../sim/track";
 import { INK } from "./cart";
 import type { Extra } from "./cast";
 import { drawFrontWall, facadeRow, PAD, placed, poleLine, SAMPLE_RES, type SampleSpots } from "./sample";
-import { LANES, STREET, type Builder } from "./terrain";
+import { BACK_LANE as STREET_BACK, LANE_OFFSETS, STREET, type Builder } from "./terrain";
 
 const NAMES = [
   "banca-frutas",
@@ -36,7 +36,7 @@ export const FEIRA_FILES: [string, string][] = NAMES.map((n) => [`f-${n}`, n]);
 
 export const CIDINHA: Extra = { id: "cidinha", kind: "full", idle: "f-dona-cidinha-idle", cheer: "f-dona-cidinha-cheer", height: (176 * 270) / 232 };
 
-const BACK_LANE = LANES.bruno - 14;
+const BACK_LANE = STREET_BACK;
 const STALL_SCALE = 0.84;
 const STALLS = ["banca-frutas", "banca-verduras", "banca-pastel", "banca-flores"] as const;
 const CLOTH: [number, number][] = [
@@ -257,7 +257,7 @@ export function drawFeira(b: Builder, course: Course, copy: RaceCopy) {
   const crateRamp = set.crateRamp;
   for (const [dx, dy, s] of [[-170, 0, 0.9], [-90, 0, 0.9], [-130, -72, 0.9]] as const) {
     const cx = crateRamp.x0 + dx;
-    const img = b.add(b.chunkFor(cx), b.scene.add.image(cx, heightAt(road, cx) + LANES.bruno - 18 + dy, "f-caixote"));
+    const img = b.add(b.chunkFor(cx), b.scene.add.image(cx, heightAt(road, cx) + BACK_LANE - 10 + dy, "f-caixote"));
     const src = img.texture.getSourceImage();
     img.setOrigin(0.5, 1 - (PAD * SAMPLE_RES) / (src.height || 100)).setScale(s / SAMPLE_RES).setDepth(2.4);
   }
@@ -340,8 +340,8 @@ function stairRun(b: Builder, course: Course, zone: { x0: number; x1: number }) 
 function rails(b: Builder, course: Course, set: FeiraSet) {
   const rail = course.surfaces[set.rail];
   const road = course.surfaces[0];
-  const depths = [7.45, 5.9, 4.9];
-  [0, LANES.lina, LANES.bruno].forEach((lane, i) => {
+  const depths = [7.45, 5.9, 4.9, 4.0];
+  LANE_OFFSETS.forEach((lane, i) => {
     const c = b.chunkFor((rail.x0 + rail.x1) / 2);
     const g = b.add(c, b.scene.add.graphics());
     g.setDepth(depths[i]);

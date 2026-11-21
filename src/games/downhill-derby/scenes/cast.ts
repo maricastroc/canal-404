@@ -6,11 +6,9 @@ const RIVALS = ["big-1", "big-2", "big-3", "big-4", "cap-1", "cap-2", "cap-3", "
 
 export const EXTRAS: readonly Extra[] = [
   ...RIVALS.map((r): Extra => ({ id: `kid-${r}`, kind: "bust", idle: `x-rival-${r}-windup`, cheer: `x-rival-${r}-up`, height: 98 })),
-  { id: "mila", kind: "bust", idle: "x-mila-peek", cheer: "x-mila-cheer", height: 94 },
   { id: "lia", kind: "full", idle: "x-kid-lia-idle-f", cheer: "x-kid-lia-cheer", height: 172 },
   { id: "nico", kind: "full", idle: "x-kid-nico-idle-f", cheer: "x-kid-nico-cheer", height: 172 },
   { id: "bia", kind: "full", idle: "x-kid-bia-idle-f", cheer: "x-kid-bia-cheer", height: 172 },
-  { id: "mila", kind: "full", idle: "kid-mila-a", cheer: "kid-mila-b", height: 146 },
 ];
 
 export const CAST_FILES: [string, string][] = [
@@ -18,8 +16,6 @@ export const CAST_FILES: [string, string][] = [
     [`x-rival-${r}-windup`, `food-fight/rival-${r}-windup`],
     [`x-rival-${r}-up`, `food-fight/rival-${r}-up`],
   ]),
-  ["x-mila-peek", "food-fight/mila-peek"],
-  ["x-mila-cheer", "food-fight/mila-cheer"],
   ...["lia", "nico", "bia"].flatMap((k): [string, string][] => [
     [`x-kid-${k}-idle-f`, `pajama-war/kid-${k}-idle-f`],
     [`x-kid-${k}-cheer`, `pajama-war/kid-${k}-cheer`],

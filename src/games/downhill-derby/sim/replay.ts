@@ -1,3 +1,4 @@
+import type { CartId, CartRules } from "./carts";
 import type { Params } from "./params";
 import { DownhillSim, STEP_HZ, type SimEvent, type SimInput, type SimStats } from "./sim";
 import type { Track } from "./track";
@@ -5,11 +6,11 @@ import type { Track } from "./track";
 export type InputLog = number[];
 
 export function inputBits(input: SimInput) {
-  return (input.crouch ? 1 : 0) | (input.jump ? 2 : 0) | (input.spin < 0 ? 4 : 0) | (input.spin > 0 ? 8 : 0);
+  return (input.crouch ? 1 : 0) | (input.jump ? 2 : 0) | (input.spin < 0 ? 4 : 0) | (input.spin > 0 ? 8 : 0) | (input.hold ? 16 : 0);
 }
 
 export function bitsInput(bits: number): SimInput {
-  return { crouch: (bits & 1) !== 0, jump: (bits & 2) !== 0, spin: bits & 4 ? -1 : bits & 8 ? 1 : 0 };
+  return { crouch: (bits & 1) !== 0, jump: (bits & 2) !== 0, spin: bits & 4 ? -1 : bits & 8 ? 1 : 0, hold: (bits & 16) !== 0 };
 }
 
 export class InputRecorder {
@@ -60,8 +61,8 @@ export type RunFrames = {
   marks: { step: number; event: SimEvent }[];
 };
 
-export function simulateLog(track: Track, params: Params, log: InputLog, tailSteps = STEP_HZ * 2, maxSteps = STEP_HZ * 240, startX = track.start): RunFrames {
-  const sim = new DownhillSim(track, params, startX);
+export function simulateLog(track: Track, params: Params, log: InputLog, tailSteps = STEP_HZ * 2, maxSteps = STEP_HZ * 240, startX = track.start, cart: CartId = "deco", rules?: Readonly<CartRules>): RunFrames {
+  const sim = new DownhillSim(track, params, startX, cart, rules);
   const player = new InputPlayer(log);
   const cap = maxSteps + tailSteps + 1;
   const x = new Float32Array(cap);
@@ -81,7 +82,7 @@ export function simulateLog(track: Track, params: Params, log: InputLog, tailSte
   let finishStep = -1;
   let i = 0;
   while (i < cap - 1) {
-    sim.advance(sim.finished ? { crouch: false, jump: false, spin: 0 } : player.at(sim.step + 1));
+    sim.advance(sim.finished ? { crouch: false, jump: false, spin: 0, hold: false } : player.at(sim.step + 1));
     i += 1;
     store(i);
     for (const e of sim.drain()) marks.push({ step: sim.step, event: e });

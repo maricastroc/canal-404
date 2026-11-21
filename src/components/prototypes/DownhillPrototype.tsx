@@ -6,13 +6,17 @@ import { useLocale } from "@/i18n/client";
 import { formatNumber } from "@/i18n/format";
 import { getGameRecord, recordGameStart, recordLevelResult } from "@/lib/progress/store";
 import type { CourseId } from "@/games/downhill-derby/sim/course";
-import { CAMERA_SPECS, DEFAULT_CAMERA, DEFAULT_SETTINGS, InputState, type CameraSpec, type ArtSetting, type CameraTuning, type InteractionSetting, type PrototypeSettings, type RivalPace, type RunSummary, type TouchSetting } from "@/games/downhill-derby/input";
+import { RACE_COPY } from "@/games/downhill-derby/copy";
+import { CART_IDS, UNLOCKS, type CartId } from "@/games/downhill-derby/sim/carts";
+import { CAMERA_SPECS, DEFAULT_CAMERA, DEFAULT_SETTINGS, InputState, type CameraSpec, type ArtSetting, type CameraTuning, type RaceRecord, type InteractionSetting, type PrototypeSettings, type RivalPace, type RunSummary, type TouchSetting } from "@/games/downhill-derby/input";
 import type { PrototypeHandle } from "@/games/downhill-derby/prototype";
 import type { SceneBridge } from "@/games/downhill-derby/scenes/RaceScene";
 import { DEFAULT_PARAMS, PARAM_SPECS, cloneParams, type ParamGroup, type ParamSpec, type Params } from "@/games/downhill-derby/sim/params";
 
 const SETTINGS_KEY = "canal404:downhill-prototype:settings:v3";
 const PANEL_KEY = "canal404:downhill-prototype:panel";
+const UNLOCK_KEY = "canal404:downhill-prototype:unlocks:v1";
+const RECORDS_KEY = "canal404:downhill-prototype:records:v1";
 const GAME_SLUG = "downhill-derby";
 
 type ParamText = { label: string; help: string };
@@ -32,22 +36,31 @@ const COPY = localized({
     } satisfies Record<keyof CameraTuning, ParamText>,
     panelHint: "Mudanças valem na hora. Os rivais continuam com os valores padrão.",
     controls: "Controles",
-    controlKeys: "Segure ↓ ou S para agachar e carregar; Espaço pula. ← → giram no ar.",
+    controlKeys: "Segure ↓ ou S para agachar e carregar; Espaço pula. No ar: ← → giram; um toque em Espaço é o pulo atrasado ou o quique no toldo; segurar Espaço por mais de 0,2 s vira pose, que cresce até o nível 3 e precisa ser solta antes do pouso. No chão: ← → empinam o carrinho; equilibre com toques curtos.",
     shortcuts: "R reinicia · Esc ou P pausa",
     course: "Pista",
     courseOptions: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", antena: "Morro da Antena", test: "Pista de teste" } satisfies Record<CourseId, string>,
+    cart: "Carrinho",
+    cartOptions: {
+      deco: { name: "Relâmpago de Madeira", rider: "Déco", rules: "Equilibrado. Levanta da capotada uns 40% mais rápido." },
+      bruno: { name: "Plano B", rider: "Bruno", rules: "Segure ↓ no chão e a linha pontilhada mostra o pulo. Pouso perfeito até 18°, se endireita sozinho no ar. Mais lento e pula mais baixo." },
+      lina: { name: "Turbina da Vovó", rider: "Lina", rules: "O ventilador empurra no plano e na subida; depois de embalar, nunca cai abaixo do Embalado. Pesado, gira devagar no ar." },
+      mila: { name: "Banheira", rider: "Mila", rules: "Leve, gira muito rápido. Poças aceleram em vez de frear. Pouso perfeito só até 8°. Quica em buracos e paralelepípedos." },
+    } satisfies Record<CartId, { name: string; rider: string; rules: string }>,
+    unlock: { start: "Liberado desde o início", lina: "Desbloqueia vencendo a Lina no Dia de Feira", mila: "Desbloqueia vencendo a Mila no Morro da Antena", done: "Desbloqueado" },
+    cartHint: "No protótipo todos ficam liberados para testar. Quem corre com o carrinho de um amigo deixa a vaga dele para o Déco, que corre com as próprias fitas.",
     art: "Visual",
     artOptions: { current: "Antigo (protótipo)", sample: "Padrão aprovado (só na Rua das Pitangueiras)" } satisfies Record<ArtSetting, string>,
     artHint: "O padrão aprovado cobre por enquanto a largada e a Rua das Pitangueiras. A corrida recomeça ao trocar.",
     view: "Ajudas e corrida",
     indicator: "Indicador de pouso",
-    rivals: "Rivais (Lina e Bruno)",
+    rivals: "Rivais",
     ghost: "Fantasma do seu melhor tempo",
     touch: "Botões de toque",
     touchOptions: { auto: "Automático", on: "Sempre", off: "Nunca" } satisfies Record<TouchSetting, string>,
     pace: "Ritmo dos rivais",
     paceOptions: { adaptive: "Acompanha seu melhor tempo", fast: "Fixo e rápido" } satisfies Record<RivalPace, string>,
-    paceHint: "No ritmo acompanhado, o Bruno corre um pouco mais devagar que o seu melhor tempo e a Lina um pouco mais rápido. Vale a partir da próxima largada.",
+    paceHint: "No ritmo acompanhado, o Bruno corre um pouco mais devagar que o seu melhor tempo, a Mila quase junto e a Lina um pouco mais rápido. Quem toma a vaga de um amigo herda o ritmo dele. Vale a partir da próxima largada.",
     experiment: "Experimentos arquivados",
     experimentHint: "Encerrados e fora da corrida padrão. Ficam aqui só para comparação. Sempre começam desligados.",
     interactionOptions: {
@@ -67,6 +80,9 @@ const COPY = localized({
     landings: "Pousos",
     crashes: "Cap.",
     shortcut: "Atalho",
+    show: "Show",
+    splits: "Parciais da última corrida",
+    splitsHint: "Comparadas com o seu recorde nesta pista.",
     bestOf: (time: string, count: number) => `Melhor: ${time} (${count} ${count === 1 ? "corrida" : "corridas"})`,
     replay: (ok: number, total: number) => `Reprodução da corrida pelo registro de comandos: ${ok} de ${total} idênticas`,
     yes: "sim",
@@ -114,22 +130,31 @@ const COPY = localized({
     } satisfies Record<keyof CameraTuning, ParamText>,
     panelHint: "Changes apply right away. The rivals keep the default values.",
     controls: "Controls",
-    controlKeys: "Hold ↓ or S to crouch and charge; Space jumps. ← → spin in the air.",
+    controlKeys: "Hold ↓ or S to crouch and charge; Space jumps. In the air: ← → spin; a Space tap is the late pop or the awning bounce; holding Space for more than 0.2 s becomes a pose that grows to level 3 and must be released before landing. On the ground: ← → pop a wheelie; balance it with short taps.",
     shortcuts: "R restarts · Esc or P pauses",
     course: "Track",
     courseOptions: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", antena: "Antenna Hill", test: "Test track" } satisfies Record<CourseId, string>,
+    cart: "Cart",
+    cartOptions: {
+      deco: { name: "Wooden Lightning", rider: "Déco", rules: "Balanced. Gets up from a wipeout about 40% faster." },
+      bruno: { name: "Plan B", rider: "Bruno", rules: "Hold ↓ on the ground and a dotted line shows the jump. Perfect landing up to 18°, rights itself in the air. Slower and jumps lower." },
+      lina: { name: "Grandma's Turbo", rider: "Lina", rules: "The fan pushes on flats and uphill; once up to speed, never drops below Rolling Fast. Heavy, spins slowly in the air." },
+      mila: { name: "The Tub", rider: "Mila", rules: "Light, spins very fast. Puddles speed it up instead of slowing it. Perfect landing only up to 8°. Bounces on potholes and cobblestones." },
+    } satisfies Record<CartId, { name: string; rider: string; rules: string }>,
+    unlock: { start: "Available from the start", lina: "Unlocks by beating Lina on Market Day", mila: "Unlocks by beating Mila on Antenna Hill", done: "Unlocked" },
+    cartHint: "In the prototype every cart is open for testing. Racing in a friend's cart leaves their spot to Déco, who races on his own tapes.",
     art: "Visuals",
     artOptions: { current: "Old (prototype)", sample: "Approved style (Pitanga Street only)" } satisfies Record<ArtSetting, string>,
     artHint: "For now the approved style covers the start and Pitanga Street. The race restarts when you switch.",
     view: "Aids and race",
     indicator: "Landing indicator",
-    rivals: "Rivals (Lina and Bruno)",
+    rivals: "Rivals",
     ghost: "Ghost of your best time",
     touch: "Touch buttons",
     touchOptions: { auto: "Automatic", on: "Always", off: "Never" } satisfies Record<TouchSetting, string>,
     pace: "Rival pace",
     paceOptions: { adaptive: "Follows your best time", fast: "Fixed and fast" } satisfies Record<RivalPace, string>,
-    paceHint: "When it follows you, Bruno runs a little slower than your best time and Lina a little faster. It applies from the next start.",
+    paceHint: "When it follows you, Bruno runs a little slower than your best time, Mila right about level and Lina a little faster. Whoever takes a friend's spot takes their pace too. It applies from the next start.",
     experiment: "Archived experiments",
     experimentHint: "Closed and out of the standard race. Kept only for comparison. They always start off.",
     interactionOptions: {
@@ -149,6 +174,9 @@ const COPY = localized({
     landings: "Landings",
     crashes: "Wipe.",
     shortcut: "Shortcut",
+    show: "Show",
+    splits: "Splits of the last run",
+    splitsHint: "Compared with your record on this track.",
     bestOf: (time: string, count: number) => `Best: ${time} (${count} ${count === 1 ? "run" : "runs"})`,
     replay: (ok: number, total: number) => `Race rebuilt from the input log: ${ok} of ${total} identical`,
     yes: "yes",
@@ -198,6 +226,7 @@ function loadSettings(): PrototypeSettings {
     const parsed = JSON.parse(raw) as Partial<PrototypeSettings>;
     return {
       course: parsed.course === "test" || parsed.course === "feira" || parsed.course === "antena" ? parsed.course : "arlindo",
+      cart: CART_IDS.includes(parsed.cart as CartId) ? (parsed.cart as CartId) : "deco",
       art: parsed.art === "current" ? "current" : "sample",
       indicator: parsed.indicator !== false,
       rivals: parsed.rivals !== false,
@@ -215,6 +244,30 @@ function saveSettings(settings: PrototypeSettings) {
   try {
     window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch {}
+}
+
+function loadUnlocks(): Partial<Record<CartId, boolean>> {
+  try {
+    const raw = window.localStorage.getItem(UNLOCK_KEY);
+    return raw ? (JSON.parse(raw) as Partial<Record<CartId, boolean>>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveUnlocks(unlocks: Partial<Record<CartId, boolean>>) {
+  try {
+    window.localStorage.setItem(UNLOCK_KEY, JSON.stringify(unlocks));
+  } catch {}
+}
+
+function loadRecords(): Partial<Record<CourseId, RaceRecord>> {
+  try {
+    const raw = window.localStorage.getItem(RECORDS_KEY);
+    return raw ? (JSON.parse(raw) as Partial<Record<CourseId, RaceRecord>>) : {};
+  } catch {
+    return {};
+  }
 }
 
 function isFormField(target: EventTarget | null) {
@@ -252,6 +305,7 @@ export function DownhillPrototype() {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [replays, setReplays] = useState({ ok: 0, total: 0 });
   const [copied, setCopied] = useState(false);
+  const [unlocks, setUnlocks] = useState<Partial<Record<CartId, boolean>>>({});
 
   useEffect(() => {
     const host = hostRef.current;
@@ -259,6 +313,7 @@ export function DownhillPrototype() {
     let cancelled = false;
     const initial = loadSettings();
     setSettings(initial);
+    setUnlocks(loadUnlocks());
     const bridge: SceneBridge = {
       locale,
       fonts: { display: "Arial Black, sans-serif", body: "Trebuchet MS, sans-serif" },
@@ -276,6 +331,27 @@ export function DownhillPrototype() {
         recordLevelResult(GAME_SLUG, course, { score: 0, stars, won: true });
         return { before };
       },
+      rivalDefs: [],
+      records: {
+        load: (course) => {
+          const r = loadRecords()[course];
+          return r && Number.isFinite(r.time) && Array.isArray(r.splits) ? r : null;
+        },
+        save: (course, record) => {
+          try {
+            window.localStorage.setItem(RECORDS_KEY, JSON.stringify({ ...loadRecords(), [course]: record }));
+          } catch {}
+        },
+      },
+      onBeat: (course, rival) => {
+        const cart = CART_IDS.find((c) => UNLOCKS[c]?.course === course && UNLOCKS[c]?.beat === rival);
+        if (!cart) return;
+        const current = loadUnlocks();
+        if (current[cart]) return;
+        const next = { ...current, [cart]: true };
+        saveUnlocks(next);
+        setUnlocks(next);
+      },
     };
     bridgeRef.current = bridge;
     (async () => {
@@ -286,7 +362,8 @@ export function DownhillPrototype() {
       const fonts = { display: cssFont("--font-luckiest", "Arial Black, sans-serif"), body: cssFont("--font-baloo", "Trebuchet MS, sans-serif") };
       await Promise.all([document.fonts.load(`48px ${fonts.display}`), document.fonts.load(`700 24px ${fonts.body}`)]).catch(() => undefined);
       bridge.fonts = fonts;
-      const { mountPrototype } = await import("@/games/downhill-derby/prototype");
+      const [{ mountPrototype }, { loadRivals }] = await Promise.all([import("@/games/downhill-derby/prototype"), import("@/games/downhill-derby/sim/tapes")]);
+      bridge.rivalDefs = await loadRivals(initial.course);
       if (cancelled) return;
       handleRef.current = mountPrototype(host, bridge);
       setReady(true);
@@ -370,7 +447,7 @@ export function DownhillPrototype() {
   const changeSettings = useCallback((patch: Partial<PrototypeSettings>) => {
     const bridge = bridgeRef.current;
     if (!bridge) return;
-    const artChanged = (patch.art !== undefined && patch.art !== bridge.settings.art) || (patch.course !== undefined && patch.course !== bridge.settings.course);
+    const artChanged = (patch.art !== undefined && patch.art !== bridge.settings.art) || (patch.course !== undefined && patch.course !== bridge.settings.course) || (patch.cart !== undefined && patch.cart !== bridge.settings.cart);
     Object.assign(bridge.settings, patch);
     const next = { ...bridge.settings };
     setSettings(next);
@@ -441,6 +518,25 @@ export function DownhillPrototype() {
             </label>
           ))}
         </fieldset>
+        <fieldset className="mt-4">
+          <legend className="font-display text-lg uppercase">{copy.cart}</legend>
+          {CART_IDS.map((cart) => {
+            const option = copy.cartOptions[cart];
+            const unlock = UNLOCKS[cart];
+            const status = cart === "deco" ? null : !unlock ? copy.unlock.start : unlocks[cart] ? copy.unlock.done : copy.unlock[cart === "mila" ? "mila" : "lina"];
+            return (
+              <label key={cart} className={`mt-2 flex cursor-pointer gap-2 rounded-xl border-[3px] border-ink p-2 font-body text-sm ${settings.cart === cart ? "bg-sun" : "bg-cream-2"}`}>
+                <input type="radio" name="dd-cart" className="mt-1 accent-ink" checked={settings.cart === cart} onChange={() => changeSettings({ cart })} />
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-bold">{`${option.name} · ${option.rider}`}</span>
+                  <span className="text-xs leading-snug">{option.rules}</span>
+                  {status && <span className={`text-xs font-bold ${unlock && unlocks[cart] ? "text-mint-deep" : "text-ink-soft"}`}>{status}</span>}
+                </span>
+              </label>
+            );
+          })}
+          <p className="mt-1 font-body text-xs leading-snug">{copy.cartHint}</p>
+        </fieldset>
         {settings.course === "test" && <fieldset className="mt-4">
           <legend className="font-display text-lg uppercase">{copy.art}</legend>
           {(["current", "sample"] as const).map((art) => (
@@ -486,25 +582,46 @@ export function DownhillPrototype() {
                 <thead>
                   <tr className="border-b-2 border-ink text-left">
                     <th className="py-1">{copy.time}</th>
+                    <th>{copy.cart}</th>
                     <th>{copy.place}</th>
                     <th>{copy.landings}</th>
                     <th>{copy.crashes}</th>
                     <th>{copy.shortcut}</th>
+                    <th>{copy.show}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {runs.map((r, i) => (
                     <tr key={runs.length - i} className="border-b border-ink/20">
                       <td className="py-1 font-bold">{formatTime(r.time, locale)}</td>
+                      <td>{copy.cartOptions[r.cart].rider}</td>
                       <td>{`${r.place}/${r.total}`}</td>
                       <td>{`${r.perfect} + ${r.ok}`}</td>
                       <td>{r.crashes}</td>
                       <td>{r.shortcut ? copy.yes : copy.no}</td>
+                      <td>{formatNumber(r.show, locale)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </>
+          )}
+          {runs.length > 0 && runs[0].splits.length > 0 && (
+            <div className="mt-3">
+              <h4 className="font-display text-sm uppercase">{copy.splits}</h4>
+              <p className="font-body text-xs text-ink-soft">{copy.splitsHint}</p>
+              <ul className="mt-1 font-body text-xs">
+                {runs[0].splits.map((sp) => (
+                  <li key={sp.key} className="flex justify-between border-b border-ink/15 py-0.5">
+                    <span>{RACE_COPY[locale].sections[runs[0].course][sp.key] ?? sp.key}</span>
+                    <span className="tabular-nums">
+                      {`${formatNumber(sp.time, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s`}
+                      {sp.delta !== null && <span className={`ml-2 font-bold ${sp.delta < -0.005 ? "text-mint-deep" : sp.delta > 0.005 ? "text-tomato" : ""}`}>{`${sp.delta < 0 ? "−" : "+"}${formatNumber(Math.abs(sp.delta), locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {replays.total > 0 && <p className="mt-2 font-body text-xs">{copy.replay(replays.ok, replays.total)}</p>}
         </section>

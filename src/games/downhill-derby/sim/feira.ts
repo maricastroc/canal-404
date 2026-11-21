@@ -150,6 +150,11 @@ export function buildFeira(): Course {
   return {
     id: "feira",
     surfaces: [road, ...awnings, railSurface],
+    puddles: [
+      { x0: slot(2) + 80, x1: slot(2) + 480, surface: 0 },
+      { x0: m1 + 1500, x1: m1 + 1950, surface: 0 },
+      { x0: p0 + 900, x1: p0 + 1300, surface: 0 },
+    ],
     lips,
     obstacles,
     ramps,
@@ -176,6 +181,6 @@ export function buildFeira(): Course {
     },
     start: 200,
     finish,
-    grid: { lina: 540, bruno: -140 },
+    grid: { lina: 540, bruno: -140, mila: -480 },
   };
 }

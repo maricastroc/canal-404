@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import type { Locale } from "@/i18n/locales";
 import { formatNumber, ordinal } from "@/i18n/format";
 import type { RaceCopy } from "../copy";
+import type { CartId } from "../sim/carts";
 import { INK } from "./cart";
 import { star } from "./fx";
 
@@ -20,6 +21,8 @@ type Circle = { id: TouchButton; x: number; y: number; r: number; label: string;
 type Callout = { key: string; text: Phaser.GameObjects.Text; sub: Phaser.GameObjects.Text | null; life: number; max: number; priority: number; fade: number; rise: number };
 
 const HEADLINE_Y = 296;
+const ROWS = 4;
+const PANEL_H = 226;
 const LEAVE = 0.08;
 
 export type Marker = { x: number; color: number; letter: string; you?: boolean; ghost?: boolean };
@@ -29,6 +32,13 @@ export type StandingRow = { name: string; color: number; you: boolean; gap: stri
 export type EdgeTag = { side: "left" | "right"; y: number; color: number; text: string };
 
 export type Standing = { name: string; time: number; you: boolean; who: string };
+
+export type ShowMeter = { total: number; seq: number; mult: number; timer: number; active: boolean };
+
+const SHOW_X = 1468;
+const SHOW_Y = 16;
+const SHOW_W = 320;
+const SHOW_H = 58;
 
 export type ResultsData = {
   time: number;
@@ -45,6 +55,10 @@ export type ResultsData = {
   air: number;
   secret: boolean | null;
   secretKind: "gnome" | "pigeons";
+  show: number;
+  showRecord: number;
+  newShowRecord: boolean;
+  bestSeq: number;
   firstRace: boolean;
   starsBefore: number;
   calm: boolean;
@@ -56,6 +70,7 @@ const PLACE_TONES = [
   { medal: "dd-medal-1", fill: 0xffc83d, deep: "#c98a12", band: 0xffe39a },
   { medal: "dd-medal-2", fill: 0x9aa6b8, deep: "#5d6884", band: 0xdfe5ef },
   { medal: "dd-medal-3", fill: 0xff8a3d, deep: "#c4561b", band: 0xffd7b8 },
+  { medal: "", fill: 0xd8d2ea, deep: "#6a6385", band: 0xe9e4f5 },
 ];
 
 type AgainButton = { g: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Container; x: number; y: number; w: number; h: number; hover: boolean; down: boolean; focus: boolean; keycap: boolean };
@@ -120,6 +135,19 @@ export class Hud {
   private speedFlash = 0;
   private speedFlashColor = 0x7fe0c4;
   private deltaLife = 0;
+  private readonly showG: Phaser.GameObjects.Graphics;
+  private readonly showTotal: Phaser.GameObjects.Text;
+  private readonly showSeq: Phaser.GameObjects.Text;
+  private readonly showTrick: Phaser.GameObjects.Text;
+  private readonly splitName: Phaser.GameObjects.Text;
+  private readonly splitDelta: Phaser.GameObjects.Text;
+  private splitLife = 0;
+  private shownTotal = -1;
+  private shownSeq = "";
+  private seqAlpha = 0;
+  private trickLife = 0;
+  private totalPop = 0;
+  private seqDrop = 0;
 
   constructor(scene: Phaser.Scene, layer: Phaser.GameObjects.Layer, copy: RaceCopy, locale: Locale, fonts: { display: string; body: string }) {
     this.scene = scene;
@@ -135,7 +163,11 @@ export class Hud {
     const body = (size: number, color = "#fbf5e6") => ({ fontFamily: fonts.body, fontSize: `${size}px`, color, fontStyle: "700" });
     this.add(scene.add.text(40, 26, copy.time.toUpperCase(), display(19, "#ffcf3f")));
     this.timeText = this.add(scene.add.text(40, 46, "0:00,00", display(46)));
-    for (let i = 0; i < 3; i += 1) {
+    this.splitName = this.add(scene.add.text(382, 30, "", body(17, "#cfc8e8")));
+    this.splitName.setOrigin(1, 0).setAlpha(0);
+    this.splitDelta = this.add(scene.add.text(382, 50, "", display(30)));
+    this.splitDelta.setOrigin(1, 0).setAlpha(0);
+    for (let i = 0; i < ROWS; i += 1) {
       const head = this.add(scene.add.image(56, 126 + i * 30, "deco-head-normal"));
       head.setScale(0.19).setOrigin(0.5, 0.62);
       this.rowHeads.push(head);
@@ -149,7 +181,7 @@ export class Hud {
       t.setOrigin(0.5, 0.5);
       this.markerTexts.push(t);
     }
-    for (let i = 0; i < 2; i += 1) {
+    for (let i = 0; i < 3; i += 1) {
       const t = this.add(scene.add.text(0, 0, "", display(19, "#1d1830")));
       t.setOrigin(0.5, 0.5).setVisible(false);
       this.edgeTexts.push(t);
@@ -169,6 +201,13 @@ export class Hud {
     this.tipText.setOrigin(0.5, 0.5).setAlpha(0);
     this.countText = this.add(scene.add.text(W / 2, 420, "", { fontFamily: fonts.display, fontSize: "170px", color: "#ffcf3f", stroke: "#1d1830", strokeThickness: 20 }));
     this.countText.setOrigin(0.5);
+    this.showG = this.add(scene.add.graphics());
+    this.add(scene.add.text(SHOW_X - SHOW_W / 2 + 22, SHOW_Y + 8, copy.show.label.toUpperCase(), display(17, "#ffcf3f")));
+    this.showTotal = this.add(scene.add.text(SHOW_X - SHOW_W / 2 + 22, SHOW_Y + 24, "0", display(30)));
+    this.showSeq = this.add(scene.add.text(SHOW_X + SHOW_W / 2 - 20, SHOW_Y + 25, "", display(28, "#7fe0c4")));
+    this.showSeq.setOrigin(1, 0.5).setAlpha(0);
+    this.showTrick = this.add(scene.add.text(SHOW_X, SHOW_Y + SHOW_H + 24, "", { fontFamily: fonts.display, fontSize: "26px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 7 }));
+    this.showTrick.setOrigin(0.5, 0.5).setAlpha(0);
     this.touchG = this.add(scene.add.graphics());
     const pg = scene.add.graphics();
     pg.fillStyle(INK, 0.55);
@@ -188,9 +227,9 @@ export class Hud {
     const g = this.panel;
     g.clear();
     g.fillStyle(INK, 0.9);
-    g.fillRoundedRect(20, 16, 376, 196, 18);
+    g.fillRoundedRect(20, 16, 376, PANEL_H, 18);
     g.lineStyle(4, 0xfbf5e6, 0.2);
-    g.strokeRoundedRect(20, 16, 376, 196, 18);
+    g.strokeRoundedRect(20, 16, 376, PANEL_H, 18);
     g.lineStyle(3, 0xfbf5e6, 0.16);
     g.beginPath();
     g.moveTo(38, 102);
@@ -297,9 +336,13 @@ export class Hud {
     data: { time: number; rows: StandingRow[]; speed: number; tier: number; trend: number; markers: Marker[]; edges: EdgeTag[]; finishX: number; startX: number; reduced: boolean; showHint: boolean; anchor: { x: number; y: number } },
   ) {
     this.timeText.setText(formatTime(data.time, this.locale));
+    this.splitLife = Math.max(0, this.splitLife - dt);
+    const sa = Math.min(1, this.splitLife * 2.5);
+    this.splitName.setAlpha(sa);
+    this.splitDelta.setAlpha(sa).setScale(this.splitLife > 2.85 ? 1.15 : 1);
     const g = this.dynamic;
     g.clear();
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < ROWS; i += 1) {
       const row = data.rows[i];
       const name = this.rowNames[i];
       const gap = this.rowGaps[i];
@@ -434,6 +477,65 @@ export class Hud {
     this.drawStreaks(dt, data.speed, data.reduced);
     this.drawTouch();
     this.updateCallouts(dt);
+  }
+
+  showMeter(dt: number, m: ShowMeter) {
+    const total = Math.round(m.total);
+    if (total !== this.shownTotal) {
+      if (this.shownTotal >= 0 && total > this.shownTotal) this.totalPop = 1;
+      this.shownTotal = total;
+      this.showTotal.setText(formatNumber(total, this.locale));
+    }
+    this.totalPop = Math.max(0, this.totalPop - dt * 2.4);
+    this.showTotal.setScale(1 + this.totalPop * 0.3).setColor(this.totalPop > 0.05 ? "#ffcf3f" : "#fbf5e6");
+    const seqText = m.active ? `${formatNumber(Math.round(m.seq), this.locale)} ×${m.mult}` : this.shownSeq;
+    if (m.active && seqText !== this.shownSeq) {
+      this.shownSeq = seqText;
+      this.showSeq.setText(seqText).setColor("#7fe0c4");
+      this.seqDrop = 0;
+    }
+    const target = m.active ? 1 : 0;
+    this.seqAlpha += (target - this.seqAlpha) * Math.min(1, dt * (m.active ? 14 : 4));
+    this.seqDrop = Math.max(0, this.seqDrop - dt);
+    this.showSeq.setAlpha(this.seqAlpha);
+    this.showSeq.x = SHOW_X + SHOW_W / 2 - 20 + (this.seqDrop > 0 ? Math.sin(this.seqDrop * 60) * 6 : 0);
+    const g = this.showG;
+    g.clear();
+    g.fillStyle(INK, 0.86);
+    g.fillRoundedRect(SHOW_X - SHOW_W / 2, SHOW_Y, SHOW_W, SHOW_H, 18);
+    g.lineStyle(3, 0xfbf5e6, 0.18);
+    g.strokeRoundedRect(SHOW_X - SHOW_W / 2, SHOW_Y, SHOW_W, SHOW_H, 18);
+    if (this.seqAlpha > 0.02 && m.active) {
+      const w = 150;
+      const x0 = SHOW_X + SHOW_W / 2 - 20 - w;
+      g.fillStyle(0x3a3358, this.seqAlpha);
+      g.fillRoundedRect(x0, SHOW_Y + SHOW_H - 12, w, 6, 3);
+      g.fillStyle(m.timer > 0.3 ? 0x7fe0c4 : 0xffcf3f, this.seqAlpha);
+      g.fillRoundedRect(x0, SHOW_Y + SHOW_H - 12, Math.max(6, w * Math.min(1, m.timer)), 6, 3);
+    }
+    this.trickLife = Math.max(0, this.trickLife - dt);
+    this.showTrick.setAlpha(Math.min(1, this.trickLife * 3));
+  }
+
+  split(name: string, value: string, color: string) {
+    this.splitName.setText(name);
+    this.splitDelta.setText(value).setColor(color);
+    this.splitLife = 3;
+  }
+
+  showTrickText(text: string, color = "#fbf5e6") {
+    this.showTrick.setText(text).setColor(color);
+    this.trickLife = 1.1;
+  }
+
+  showBank(points: number, label: string) {
+    this.showTrickText(`${label} +${formatNumber(points, this.locale)}`, "#ffcf3f");
+  }
+
+  showDrop(text: string) {
+    this.showSeq.setColor("#ff7a4a");
+    this.seqDrop = 0.5;
+    this.showTrickText(text, "#ff9a72");
   }
 
   private updateCallouts(dt: number) {
@@ -626,7 +728,7 @@ export class Hud {
     const display = (size: number, color = "#1d1830") => ({ fontFamily: this.fonts.display, fontSize: `${size}px`, color });
     const body = (size: number, color = "#1d1830") => ({ fontFamily: this.fonts.body, fontSize: `${size}px`, color, fontStyle: "700" });
     const raced = r.standings.length > 1;
-    const tone = PLACE_TONES[Math.min(2, r.place - 1)];
+    const tone = PLACE_TONES[Math.min(3, r.place - 1)];
     const dim = s.add.graphics();
     dim.fillStyle(INK, 0.5);
     dim.fillRect(0, 0, W, H);
@@ -671,7 +773,7 @@ export class Hud {
     const next = r.place === 1 ? r.standings[1] : null;
     const gapTo = ahead ?? next;
     const gap = gapTo && me ? Math.abs(me.time - gapTo.time) : Infinity;
-    const headlineText = !raced ? this.copy.finishTitle : r.place === 1 ? res.headline.win : r.place === 2 ? (gap < 1 ? res.headline.close : res.headline.second) : res.headline.third;
+    const headlineText = !raced ? this.copy.finishTitle : r.place === 1 ? res.headline.win : r.place === 2 ? (gap < 1 ? res.headline.close : res.headline.second) : r.place === 3 ? res.headline.third : res.headline.fourth;
     const headline = text(tx, 128 + hy, headlineText.toUpperCase(), display(r.place === 1 ? 70 : 60, r.place === 1 ? "#e8433a" : "#1d1830"));
     const time = text(tx, 212 + hy, formatTime(r.time, this.locale), display(84));
     let sticker: Phaser.GameObjects.Container | null = null;
@@ -683,14 +785,29 @@ export class Hud {
       sg.fillRoundedRect(-w / 2 - 4, -26, w + 8, 52, 14);
       sg.fillStyle(0x63d6c1, 1);
       sg.fillRoundedRect(-w / 2, -22, w, 44, 11);
-      sticker = add(s.add.container(...L(tx + time.width + 40 + w / 2, 208 + hy), [sg, label]));
+      sticker = add(s.add.container(...L(tx + time.width + 40 + w / 2, 196 + hy), [sg, label]));
       sticker.setAngle(-6);
     } else if (!r.firstRace) {
-      text(tx + time.width + 32, 214, res.record(formatTime(r.best, this.locale)), body(26, "#6a6385"));
+      text(tx + time.width + 32, 198 + hy, res.record(formatTime(r.best, this.locale)), body(26, "#6a6385"));
+    }
+    const showLine = text(tx + time.width + 32, 240 + hy, `${this.copy.show.label}: ${formatNumber(r.show, this.locale)}`, body(26, "#1d1830"));
+    let showChip: Phaser.GameObjects.Container | null = null;
+    if (r.newShowRecord) {
+      const label = s.add.text(0, 0, res.newShowRecord.toUpperCase(), display(20)).setOrigin(0.5);
+      const w = label.width + 26;
+      const sg = s.add.graphics();
+      sg.fillStyle(INK, 1);
+      sg.fillRoundedRect(-w / 2 - 3, -19, w + 6, 38, 11);
+      sg.fillStyle(0xf27aa8, 1);
+      sg.fillRoundedRect(-w / 2, -16, w, 32, 9);
+      showChip = add(s.add.container(...L(tx + time.width + 32 + showLine.width + 18 + w / 2, 238 + hy), [sg, label]));
+      showChip.setAngle(-4);
+    } else if (r.showRecord > 0) {
+      text(tx + time.width + 32 + showLine.width + 12, 241 + hy, `· ${res.showRecord(formatNumber(r.showRecord, this.locale))}`, body(22, "#6a6385"));
     }
     let verdict = "";
-    if (ahead && me && (ahead.who === "lina" || ahead.who === "bruno")) verdict = res.behind[ahead.who](formatSeconds(gap, this.locale, gap < 1 ? 2 : 1));
-    else if (next && me && (next.who === "lina" || next.who === "bruno")) verdict = res.wonBy[next.who](formatSeconds(gap, this.locale, gap < 1 ? 2 : 1));
+    if (ahead && me && !ahead.you) verdict = res.behind[ahead.who as CartId](formatSeconds(gap, this.locale, gap < 1 ? 2 : 1));
+    else if (next && me && !next.you) verdict = res.wonBy[next.who as CartId](formatSeconds(gap, this.locale, gap < 1 ? 2 : 1));
     const verdictText = verdict ? text(tx, 280, verdict, body(28, r.place === 1 ? "#2f9e6e" : "#c4352c")) : null;
 
     let medal: Phaser.GameObjects.Container | null = null;
@@ -708,7 +825,7 @@ export class Hud {
         }
         rays.setAlpha(0);
       }
-      const badge = s.add.image(0, 0, tone.medal).setDisplaySize(226, 226);
+      const badge = tone.medal ? s.add.image(0, 0, tone.medal).setDisplaySize(226, 226) : s.add.graphics().fillStyle(INK, 1).fillCircle(0, 0, 92).fillStyle(tone.fill, 1).fillCircle(0, 0, 84);
       const num = s.add.text(0, 2, ordinal(r.place, this.locale), display(r.place === 1 ? 66 : 60)).setOrigin(0.5);
       if (num.width > 96) num.setScale(96 / num.width);
       medal = add(s.add.container(mx, my, [badge, num]));
@@ -733,7 +850,7 @@ export class Hud {
         hl.fillRoundedRect(...L(36, y - 28), 474, 56, 18);
         parts.push(hl);
       }
-      const t = PLACE_TONES[Math.min(2, i)];
+      const t = PLACE_TONES[Math.min(3, i)];
       const disc = add(s.add.graphics());
       const [dx, dy] = L(76, y);
       disc.fillStyle(INK, 1);
@@ -752,8 +869,8 @@ export class Hud {
     const kmh = Math.round(r.topSpeed * 0.036);
     const highlights: [string, string, string | null][] = [
       [formatNumber(r.perfect, this.locale), res.perfect, null],
-      [formatNumber(r.hits, this.locale), res.hits, null],
       [formatNumber(r.crashes, this.locale), res.crashes, null],
+      [formatNumber(r.show, this.locale), res.show, null],
       [formatNumber(kmh, this.locale), res.top, this.copy.kmh],
     ];
     const statParts: Phaser.GameObjects.GameObject[] = [];
@@ -768,9 +885,11 @@ export class Hud {
     let secretChip: Phaser.GameObjects.Container | null = null;
     const minor: [string, string][] = [
       [res.ok, formatNumber(r.ok, this.locale)],
+      [res.hits, formatNumber(r.hits, this.locale)],
       [res.air, `${formatSeconds(r.air, this.locale)} s`],
       [res.shortcut, r.shortcut ? res.yes : res.no],
     ];
+    if (r.bestSeq > 0) minor.push([res.bestSeq, formatNumber(r.bestSeq, this.locale)]);
     if (r.secret === false) minor.push([r.secretKind === "pigeons" ? res.pigeons : res.secret, res.no]);
     const mg = add(s.add.graphics());
     mg.lineStyle(3, INK, 0.12);
@@ -872,6 +991,11 @@ export class Hud {
         },
       });
     });
+    if (showChip) {
+      const sc = showChip;
+      sc.setScale(0);
+      tw(sc, { scale: 1, delay: 760, duration: 320, ease: "Back.Out" });
+    }
     if (sticker) {
       const st = sticker;
       st.setScale(0);
@@ -983,5 +1107,13 @@ export class Hud {
     this.tipLife = 0;
     this.deltaLife = 0;
     this.deltaText.setAlpha(0);
+    this.splitLife = 0;
+    this.splitName.setAlpha(0);
+    this.splitDelta.setAlpha(0);
+    this.trickLife = 0;
+    this.showTrick.setAlpha(0);
+    this.shownSeq = "";
+    this.seqAlpha = 0;
+    this.showSeq.setAlpha(0);
   }
 }

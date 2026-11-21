@@ -118,5 +118,5 @@ export function buildTestHill(): TestHill {
     { key: "works", x0: at("bigRamp"), x1: at("shortcut") },
     { key: "final", x0: at("shortcut"), x1: road.x1 },
   ];
-  return { id: "test", surfaces: [road, deckSurface], lips, obstacles, ramps, cobbles, signs, sections, zones, chalk: [], set: null, start: 200, finish, grid: { lina: 540, bruno: -140 } };
+  return { id: "test", surfaces: [road, deckSurface], puddles: [{ x0: o + 2750, x1: o + 3150, surface: 0 }], lips, obstacles, ramps, cobbles, signs, sections, zones, chalk: [], set: null, start: 200, finish, grid: { lina: 540, bruno: -140, mila: -480 } };
 }

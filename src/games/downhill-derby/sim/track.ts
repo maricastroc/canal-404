@@ -42,6 +42,7 @@ export type Track = {
   awningExit?: number;
   loops?: { x: number; r: number }[];
   manholes?: { x: number; w: number; surface: number }[];
+  puddles?: { x0: number; x1: number; surface: number }[];
   signs: Sign[];
   start: number;
   finish: number;

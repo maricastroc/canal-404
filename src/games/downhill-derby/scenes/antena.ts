@@ -5,13 +5,13 @@ import { heightAt } from "../sim/track";
 import { INK } from "./cart";
 import { plaza, stairs, stairsWall } from "./feira";
 import { drawFrontWall, facadeRow, PAD, placed, poleLine, SAMPLE_RES, type SampleSpots } from "./sample";
-import { LANES, type Builder } from "./terrain";
+import { BACK_LANE as STREET_BACK, LANE_OFFSETS, LANES, type Builder } from "./terrain";
 
 const NAMES = ["antena-404", "guindaste", "saco-cimento", "betoneira-base", "betoneira-tambor", "andaime", "tijolos", "sacos-cimento", "carrinho-de-mao", "tampa-bueiro", "cano-estourado", "sapo-a", "sapo-b"];
 
 export const ANTENA_FILES: [string, string][] = NAMES.map((n) => [`a-${n}`, n]);
 
-export const BACK_LANE = LANES.bruno - 14;
+export const BACK_LANE = STREET_BACK;
 export const TUNNEL = 330;
 export const MIXER_X = 1500;
 
@@ -191,20 +191,20 @@ function holes(b: Builder, course: Course, set: AntenaSet) {
   const c = b.chunkFor(hx);
   const g = b.add(c, b.scene.add.graphics());
   g.setDepth(0.7);
-  for (const lane of [0, LANES.lina, LANES.bruno]) {
+  for (const lane of LANE_OFFSETS) {
     const y = heightAt(road, hx) + lane;
     g.fillStyle(INK, 1);
     g.fillEllipse(hx, y - 4, 128, 30);
     g.fillStyle(0x140f26, 1);
     g.fillEllipse(hx, y - 3, 112, 20);
   }
-  const lid = b.add(c, b.scene.add.image(hx + 120, heightAt(road, hx + 120) + LANES.bruno + 10, "a-tampa-bueiro"));
+  const lid = b.add(c, b.scene.add.image(hx + 120, heightAt(road, hx + 120) + LANES.mila + 10, "a-tampa-bueiro"));
   lid.setOrigin(0.5, 0.5).setScale(0.9 / SAMPLE_RES).setDepth(0.71).setRotation(-0.2);
   const ex = set.exit;
   const ec = b.chunkFor(ex);
   const eg = b.add(ec, b.scene.add.graphics());
   eg.setDepth(0.7);
-  for (const lane of [0, LANES.lina, LANES.bruno]) {
+  for (const lane of LANE_OFFSETS) {
     const y = heightAt(road, ex) + lane;
     eg.fillStyle(INK, 1);
     eg.fillEllipse(ex, y - 4, 150, 34);

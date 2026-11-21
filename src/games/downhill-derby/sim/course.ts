@@ -60,7 +60,7 @@ export type Course = Track & {
   id: CourseId;
   sections: Section[];
   zones: Zone[];
-  grid: { lina: number; bruno: number };
+  grid: { lina: number; bruno: number; mila: number };
   chalk: Chalk[];
   set: ArlindoSet | FeiraSet | AntenaSet | null;
 };

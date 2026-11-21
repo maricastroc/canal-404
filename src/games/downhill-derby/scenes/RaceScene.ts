@@ -4,21 +4,20 @@ import type { SoundRecipe } from "@/lib/audio/types";
 import type { Locale } from "@/i18n/locales";
 import { badgeSvg, type BadgeTone } from "@/components/art/badgeShape";
 import { RACE_COPY, type RaceCopy } from "../copy";
-import type { CameraTuning, InputState, PrototypeSettings, RunSummary } from "../input";
+import type { CameraTuning, InputState, PrototypeSettings, RaceRecord, RunSummary } from "../input";
 import { DEFAULT_PARAMS, cloneParams, type Params } from "../sim/params";
 import { FRAME_AIR, FRAME_CRASH, FRAME_CROUCH, FRAME_PADDLE, InputRecorder, simulateLog, timeAtX, type RunFrames } from "../sim/replay";
 import { RaceWorld, replayRace, type WorldEvent } from "../sim/race";
-import { RIVALS as RIVALS_TEST, type RivalDef, type RivalId } from "../sim/rivals";
-import { RIVALS as RIVALS_ARLINDO } from "../sim/rivals-arlindo";
-import { RIVALS as RIVALS_FEIRA } from "../sim/rivals-feira";
-import { RIVALS as RIVALS_ANTENA } from "../sim/rivals-antena";
+import { CART_RULES, type CartId } from "../sim/carts";
+import { decodeTape, type RivalDef, type RivalSlot } from "../sim/tapes";
 import { DownhillSim, DT, IDLE, STEP_HZ, type SimEvent } from "../sim/sim";
-import type { Course } from "../sim/course";
+import type { Course, CourseId } from "../sim/course";
 import { buildCourse } from "../sim/courses";
 import { covers, heightAt } from "../sim/track";
 import { boing, DOWNHILL_SFX, PADDLE, rollGrain, windGrain } from "../sounds";
 import { CartView, INK, artFiles } from "./cart";
 import { WorldFx } from "./fx";
+import { formatNumber } from "@/i18n/format";
 import { H, Hud, W, formatSeconds, type EdgeTag, type HudButton, type Marker, type StandingRow, type TouchButton } from "./hud";
 import { Ambient } from "./ambient";
 import { CAST_FILES } from "./cast";
@@ -41,6 +40,9 @@ export type SceneBridge = {
   onReplayCheck?: (ok: boolean, live: number, replay: number) => void;
   onRaceStart?: (course: Course["id"]) => void;
   saveResult?: (course: Course["id"], stars: number) => { before: number };
+  rivalDefs: readonly RivalDef[];
+  records?: { load: (course: Course["id"]) => RaceRecord | null; save: (course: Course["id"], record: RaceRecord) => void };
+  onBeat?: (course: Course["id"], rival: CartId) => void;
 };
 
 const MEDALS: [string, BadgeTone, boolean][] = [
@@ -51,21 +53,23 @@ const MEDALS: [string, BadgeTone, boolean][] = [
   ["dd-star-off", "steel", true],
 ];
 
-type Rival = { id: RivalId; def: RivalDef; fita: number; name: string; frames: RunFrames; view: CartView; label: Phaser.GameObjects.Text; color: number; letter: string; alpha: number; ahead: boolean; pending: number; flash: number; prev: { x: number; y: number; angle: number }; crashStart: number; lane: number };
+type Slot = RivalSlot;
+
+type Rival = { id: CartId; slot: Slot; laneIndex: number; def: RivalDef; fita: number; name: string; frames: RunFrames; view: CartView; label: Phaser.GameObjects.Text; color: number; letter: string; alpha: number; ahead: boolean; pending: number; flash: number; prev: { x: number; y: number; angle: number }; crashStart: number; lane: number };
 
 type Ghost = { frames: RunFrames; time: number };
 
-const RIVAL_COLORS: Record<RivalId, number> = { lina: 0xf27aa8, bruno: 0x56c7a0 };
+const RIVAL_COLORS: Record<CartId, number> = { deco: 0xffc83d, lina: 0xf27aa8, bruno: 0x56c7a0, mila: 0xa98bef };
+const SLOTS: readonly Slot[] = ["lina", "bruno", "mila"];
+const SLOT_DEPTHS: Record<Slot, number> = { lina: 6, bruno: 5, mila: 4.15 };
 const PLAYER_COLOR = 0xff7a1a;
 const TIER_LIMITS = [800, 1400, 2000];
 const TRAIL = 30;
 const ZOOM_MIN_GROUND = 0.92;
 const ZOOM_MIN_RIVAL = 1;
 const ZOOM_MIN_AIR = 0.55;
-const FIRST_RACE = { test: { lina: 46, bruno: 60 }, arlindo: { lina: 41, bruno: 48 }, feira: { lina: 43.5, bruno: 51 }, antena: { lina: 47.5, bruno: 55 } } as const;
-const RIVAL_SETS = { test: RIVALS_TEST, arlindo: RIVALS_ARLINDO, feira: RIVALS_FEIRA, antena: RIVALS_ANTENA } as const;
-const BRUNO_BEHIND = 0.8;
-const LINA_AHEAD = 1.2;
+const FIRST_RACE: Record<CourseId, Record<Slot, number>> = { test: { lina: 46, bruno: 60, mila: 52 }, arlindo: { lina: 41, bruno: 48, mila: 44.5 }, feira: { lina: 43.5, bruno: 51, mila: 47 }, antena: { lina: 47.5, bruno: 55, mila: 51 } };
+const PACE: Record<Slot, number> = { lina: -1.2, bruno: 0.8, mila: -0.3 };
 
 function tierOf(speed: number) {
   let t = 0;
@@ -110,6 +114,9 @@ export class RaceScene extends Phaser.Scene {
   private obstacles: ObstacleView[] = [];
   private lipViews: LipView[] = [];
   private cart!: CartView;
+  private player: CartId = "deco";
+  private gridSpan = { min: 0, max: 0 };
+  private jumpLineTip = false;
   private ghostView!: CartView;
   private rivals: Rival[] = [];
   private ghost: Ghost | null = null;
@@ -153,7 +160,10 @@ export class RaceScene extends Phaser.Scene {
   private flightTip = false;
   private chargedFor = 0;
   private hitTips = 0;
-  private pendingBest = { newBest: false, best: Infinity, firstRace: true, starsBefore: 0 };
+  private pendingBest = { newBest: false, best: Infinity, firstRace: true, starsBefore: 0, show: 0, showRecord: 0, newShowRecord: false };
+  private record: RaceRecord | null = null;
+  private sectionMarks: number[] = [];
+  private nextSection = 0;
   private takeoffSpeed = 0;
   private playerFlash = 0;
   private predictedAir = 0;
@@ -180,10 +190,6 @@ export class RaceScene extends Phaser.Scene {
     this.load.svg("mascot-cheer", `${base}/mascot-cheer.svg`, { scale: 1 });
     for (const [key, tone, withStar] of MEDALS) this.load.svg(key, `data:image/svg+xml;base64,${btoa(badgeSvg(tone, withStar, 64))}`, { scale: key.startsWith("dd-medal") ? 4 : 1.5 });
     const borrowed: [string, string][] = [
-      ["kid-mila-a", "operation-recess/kid-mila-a"],
-      ["kid-mila-b", "operation-recess/kid-mila-b"],
-      ["kid-deco-a", "operation-recess/kid-deco-a"],
-      ["kid-lina-a", "operation-recess/kid-lina-a"],
       ["lunch-lady", "food-fight/lunch-lady"],
       ["lunch-lady-angry", "food-fight/lunch-lady-angry"],
       ["arlindo", "dead-end-street/arlindo"],
@@ -230,24 +236,31 @@ export class RaceScene extends Phaser.Scene {
     this.trailG = this.add.graphics();
     this.trailG.setDepth(8.5);
     this.worldLayer.add(this.trailG);
-    for (const def of RIVAL_SETS[this.track.id]) {
+    this.player = this.bridge.settings.cart;
+    this.gridSpan = { min: this.track.start, max: this.track.start };
+    SLOTS.forEach((slot, i) => {
+      const id: CartId = slot === this.player ? "deco" : slot;
+      const def = this.bridge.rivalDefs.find((d) => d.id === id && (id !== "deco" || d.slot === slot));
+      if (!def || def.fitas.length === 0) return;
       const frames = this.framesFor(def, 0);
-      const view = new CartView(this, this.worldLayer, def.id, { alpha: 1 });
-      view.setDepth(def.id === "lina" ? 6 : 5);
-      const name = this.copy.rivalNames[def.id];
+      const view = new CartView(this, this.worldLayer, id, { alpha: 1 });
+      view.setDepth(SLOT_DEPTHS[slot]);
+      const name = this.copy.rivalNames[id];
       const label = this.add.text(0, 0, name.toUpperCase(), { fontFamily: this.bridge.fonts.display, fontSize: "30px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 8 });
       label.setOrigin(0.5, 1).setDepth(8);
       this.worldLayer.add(label);
       view.label = label;
-      this.rivals.push({ id: def.id, def, fita: 0, name, frames, view, label, color: RIVAL_COLORS[def.id], letter: name.charAt(0).toUpperCase(), alpha: 1, ahead: false, pending: 0, flash: 0, prev: { x: 0, y: 0, angle: 0 }, crashStart: -1, lane: LANES[def.id] });
-    }
-    this.ghostView = new CartView(this, this.worldLayer, "deco", { ghost: true, alpha: 0.28 });
-    this.ghostView.setDepth(4);
+      this.gridSpan.min = Math.min(this.gridSpan.min, def.start);
+      this.gridSpan.max = Math.max(this.gridSpan.max, def.start);
+      this.rivals.push({ id, slot, laneIndex: i + 1, def, fita: 0, name, frames, view, label, color: RIVAL_COLORS[id], letter: name.charAt(0).toUpperCase(), alpha: 1, ahead: false, pending: 0, flash: 0, prev: { x: 0, y: 0, angle: 0 }, crashStart: -1, lane: LANES[slot] });
+    });
+    this.ghostView = new CartView(this, this.worldLayer, this.player, { ghost: true, alpha: 0.28 });
+    this.ghostView.setDepth(3.6);
     this.ghostView.setVisible(false);
     this.ghostLabel = this.add.text(0, 0, this.copy.ghost.toUpperCase(), { fontFamily: this.bridge.fonts.display, fontSize: "24px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 6 });
     this.ghostLabel.setOrigin(0.5, 1).setDepth(8).setAlpha(0.75).setVisible(false);
     this.worldLayer.add(this.ghostLabel);
-    this.cart = new CartView(this, this.worldLayer, "deco");
+    this.cart = new CartView(this, this.worldLayer, this.player);
     this.cart.setDepth(10);
     this.overlay = this.add.graphics();
     this.overlay.setDepth(9);
@@ -268,10 +281,10 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private framesFor(def: RivalDef, index: number) {
-    const key = `${def.id}:${index}`;
+    const key = `${def.id}:${def.slot ?? ""}:${index}`;
     let frames = this.rivalCache.get(key);
     if (!frames) {
-      frames = simulateLog(this.track, cloneParams(DEFAULT_PARAMS), def.fitas[index].log, STEP_HZ * 2, STEP_HZ * 240, def.start);
+      frames = simulateLog(this.track, cloneParams(DEFAULT_PARAMS), decodeTape(def.fitas[index].tape), STEP_HZ * 2, STEP_HZ * 240, def.start, def.id);
       this.rivalCache.set(key, frames);
     }
     return frames;
@@ -283,7 +296,7 @@ export class RaceScene extends Phaser.Scene {
     for (const r of this.rivals) {
       let index = 0;
       if (adaptive) {
-        const target = form === null ? FIRST_RACE[this.track.id][r.id] : r.id === "bruno" ? form + BRUNO_BEHIND : form - LINA_AHEAD;
+        const target = form === null ? FIRST_RACE[this.track.id][r.slot] : form + PACE[r.slot];
         let gap = Infinity;
         r.def.fitas.forEach((f, i) => {
           const d = Math.abs(f.time - target);
@@ -549,7 +562,7 @@ export class RaceScene extends Phaser.Scene {
 
   restartRace() {
     this.pickRivals();
-    this.world = new RaceWorld(this.track, this.bridge.params, this.rivals.map((r) => r.frames), this.bridge.settings.interaction);
+    this.world = new RaceWorld(this.track, this.bridge.params, this.rivals.map((r) => r.frames), this.bridge.settings.interaction, this.player);
     this.sim = this.world.player;
     for (const v of this.kickViews.values()) v.destroy();
     this.kickViews.clear();
@@ -559,18 +572,25 @@ export class RaceScene extends Phaser.Scene {
       r.view.setHold(null);
     }
     this.cart.setHold(null);
+    this.cart.setPose(0);
     this.cart.setHelmet(false);
     this.cart.setDusty(false);
     this.helmetOn = false;
     this.dustyOn = false;
-    this.ambient.firstRace = this.runs === 0;
     this.surfaceTips.clear();
     this.rollCycle.clear();
     this.ambient.reset();
-    const lineup = [{ who: "deco", name: this.copy.racerNames.deco, cart: this.copy.carts.deco, color: PLAYER_COLOR }];
-    if (this.bridge.settings.rivals) for (const r of this.rivals) lineup.push({ who: r.id, name: this.copy.racerNames[r.id], cart: this.copy.carts[r.id], color: r.color });
+    const lineup = [{ who: this.player as string, name: this.copy.youAre(this.copy.rivalNames[this.player]), cart: this.copy.carts[this.player], color: PLAYER_COLOR }];
+    if (this.bridge.settings.rivals) for (const r of this.rivals) lineup.push({ who: r.id, name: this.copy.rivalNames[r.id], cart: this.copy.carts[r.id], color: r.color });
     this.hud.showLineup(lineup);
     this.recorder = new InputRecorder();
+    this.record = this.bridge.records?.load(this.track.id) ?? null;
+    this.sectionMarks = [];
+    this.nextSection = 0;
+    while (this.nextSection < this.track.sections.length && this.track.sections[this.nextSection].x <= this.track.start) {
+      this.sectionMarks.push(0);
+      this.nextSection += 1;
+    }
     this.liveFrames = { x: [], y: [], angle: [], speed: [], flags: [] };
     this.pushLiveFrame();
     this.prev = { x: this.sim.x, y: this.sim.y, angle: this.sim.angle };
@@ -702,8 +722,8 @@ export class RaceScene extends Phaser.Scene {
 
   private snapCamera() {
     this.camSpeed = 0;
-    this.cam.zoom = Math.min(this.bridge.camera.zoomSlow, W / (this.track.grid.lina - this.track.grid.bruno + 680));
-    this.cam.x = (this.track.grid.lina + 260 + this.track.grid.bruno - 220) / 2;
+    this.cam.zoom = Math.min(this.bridge.camera.zoomSlow, W / (this.gridSpan.max - this.gridSpan.min + 680));
+    this.cam.x = (this.gridSpan.max + 260 + this.gridSpan.min - 220) / 2;
     this.cam.y = this.sim.y - (this.bridge.camera.roadLine - 0.5) * (H / this.cam.zoom) - 30;
     this.cam.dip = 0;
     this.cam.dipVel = 0;
@@ -790,6 +810,7 @@ export class RaceScene extends Phaser.Scene {
       r.prev.angle = this.world.sample(t, "angle");
     });
     this.world.step(input);
+    this.checkSections();
     if (!wasFinished) this.pushLiveFrame();
     this.dist += sim.speed * DT;
     for (const e of sim.drain()) this.handleEvent(e, speedBefore);
@@ -808,9 +829,13 @@ export class RaceScene extends Phaser.Scene {
       if (ev.type === "land" && ev.quality !== "touch") r.view.react(ev.quality === "perfect" ? "perfect" : "ok");
       if (ev.type === "land" && ev.quality !== "touch") r.view.land(Math.min(1, ev.air / 1.2 + 0.2));
       if (ev.type === "takeoff") r.view.takeoff(ev.popped ? 0.8 : 0.2);
+      if (ev.type === "manhole" && r.id === "mila") {
+        const rx = this.world.sample(this.world.rivals[e.racer - 1], "x");
+        if (Math.abs(rx - s.x) < 1800) this.ambient.bubble(this.copy.mila, rx, heightAt(this.track.surfaces[0], rx) + r.lane - 300, 30);
+      }
       if (ev.type === "hit" && ev.penalized) {
         r.view.react("hit");
-        const o = this.obstacles.find((q) => q.index === ev.index && q.lane === e.racer);
+        const o = this.obstacles.find((q) => q.index === ev.index && q.lane === r.laneIndex);
         if (o && !o.hit) {
           o.hit = true;
           o.vx = Math.max(400, this.world.sample(this.world.rivals[e.racer - 1], "speed") * 0.7);
@@ -837,7 +862,8 @@ export class RaceScene extends Phaser.Scene {
     }
     if (e.type === "kick") {
       const k = this.world.kicked.find((q) => q.id === e.id);
-      const o = k ? this.obstacles.find((q) => q.lane === e.owner && Math.abs(q.obstacle.x - k.x) < 60) : undefined;
+      const lane = e.owner === 0 ? 0 : this.rivalAt(e.owner).laneIndex;
+      const o = k ? this.obstacles.find((q) => q.lane === lane && Math.abs(q.obstacle.x - k.x) < 60) : undefined;
       if (k) {
         const view = this.add.container(k.x, k.y);
         const g = this.add.graphics();
@@ -976,6 +1002,14 @@ export class RaceScene extends Phaser.Scene {
         this.cart.react("recover");
         this.fx.impact(s.x, s.y, 0.4);
         break;
+      case "puddle":
+        if (e.on) {
+          this.fx.impact(s.x, s.y, 0.7, 0x8fd4f7);
+          this.sfx(DOWNHILL_SFX.splat, 0.6);
+          if (e.boost) this.hud.tag("puddle", c.puddle.boost, "#7fe0c4");
+          else this.hud.tag("puddle", c.puddle.slow, "#ffb08a");
+        }
+        break;
       case "hit": {
         const o = this.obstacles.find((q) => q.index === e.index && q.lane === 0);
         if (o && !o.hit && o.obstacle.kind !== "pothole") {
@@ -989,7 +1023,10 @@ export class RaceScene extends Phaser.Scene {
         if (kind === "hose") this.fx.impact(s.x, s.y - 40, 0.8, 0x8fd4f7);
         if (e.penalized) this.cart.react("hit");
         const heavy = kind === "barrier" || kind === "truck" || kind === "fence";
-        if (e.penalized && !heavy) {
+        if (e.bounced) {
+          this.hud.tag("hit", c.potholeBounce, "#7fe0c4");
+          this.hud.flashSpeed(-speedBefore * e.loss);
+        } else if (e.penalized && !heavy) {
           const text = { cone: c.hitCone, line: c.hitLine, crate: c.hitCrate, pothole: c.hitPothole, bin: c.hitBin, gnome: c.hitGnome, hose: c.hitHose, melon: c.hitMelon, orange: c.hitOrange, stand: c.hitStand, bag: c.hitBag }[kind as "cone"] ?? c.hitCrate;
           this.hud.tag("hit", text, "#ff9f80");
           if (kind === "line") this.hud.tip(c.tips.duck);
@@ -997,7 +1034,7 @@ export class RaceScene extends Phaser.Scene {
             this.hitTips += 1;
             this.hud.tip(c.tips.hit);
           }
-          this.hud.flashSpeed(-speedBefore * this.bridge.params.hitLoss * this.track.obstacles[e.index].loss);
+          this.hud.flashSpeed(-speedBefore * e.loss);
           this.cart.rough(0.3);
           if (kind === "bag" && !this.dustyOn) {
             this.dustyOn = true;
@@ -1086,14 +1123,70 @@ export class RaceScene extends Phaser.Scene {
         this.sfx(DOWNHILL_SFX.shortcut);
         this.shout("shortcut", c.shortcut, { priority: 3, color: "#7fe0c4", size: 60 });
         break;
+      case "trick": {
+        const flips = e.points === 300 ? 1 : e.points === 800 ? 2 : 3 + Math.round((e.points - 1500) / 800);
+        const label = e.kind === "flip" ? c.flip(flips) : e.kind === "pose" ? c.show.poses[2] : c.show.tricks[e.kind];
+        if (e.kind !== "rail" || e.points > 0) this.hud.showTrickText(`${e.kind === "pose" ? c.show.label : label} +${formatNumber(e.points, this.bridge.locale)}${e.mult > 1 ? `  ×${e.mult}` : ""}`, e.mult >= 4 ? "#ffcf3f" : "#fbf5e6");
+        if (e.kind === "nearMiss") this.hud.tag("near", c.show.tricks.nearMiss, "#7fe0c4");
+        break;
+      }
+      case "bank":
+        this.hud.showBank(e.points, c.show.bank(String(e.mult)));
+        if (e.mult >= 3) this.sfx(DOWNHILL_SFX.shortcut, 0.6);
+        break;
+      case "drop":
+        this.hud.showDrop(c.show.drop);
+        break;
+      case "pose":
+        if (e.level > 0) {
+          this.hud.tag("pose", c.show.poses[e.level - 1], e.level >= 3 ? "#ffcf3f" : "#7fe0c4");
+          if (e.level >= 2) this.sfx(DOWNHILL_SFX.tier, 0.5 + e.level * 0.15);
+        }
+        this.cart.setPose(e.level);
+        break;
+      case "wheelie":
+        break;
       case "finish":
         this.finishRace();
         break;
     }
   }
 
+  private checkSections() {
+    const sim = this.sim;
+    const secs = this.track.sections;
+    while (this.nextSection < secs.length && sim.x >= secs[this.nextSection].x && !sim.finished) {
+      const bx = secs[this.nextSection].x;
+      const u = sim.x > this.prev.x ? Math.max(0, Math.min(1, (bx - this.prev.x) / (sim.x - this.prev.x))) : 1;
+      this.sectionMarks.push((sim.step - 1 + u) * DT);
+      this.nextSection += 1;
+      this.announceSplit(this.nextSection - 2);
+    }
+  }
+
+  private announceSplit(index: number) {
+    if (index < 0 || index >= this.sectionMarks.length - 1) return;
+    const dur = this.sectionMarks[index + 1] - this.sectionMarks[index];
+    const key = this.track.sections[index].key;
+    if (key === "start") return;
+    const name = this.copy.sections[this.track.id][key] ?? key;
+    const best = this.record?.splits[index];
+    const locale = this.bridge.locale;
+    if (best === undefined || !Number.isFinite(best)) {
+      this.hud.split(name, `${formatSeconds(dur, locale)} s`, "#fbf5e6");
+      return;
+    }
+    const d = dur - best;
+    const text = `${d < 0 ? "−" : "+"}${formatSeconds(Math.abs(d), locale)} s`;
+    this.hud.split(name, text, d < 0 ? "#7fe0c4" : d > 0.05 ? "#ff9a72" : "#ffcf3f");
+  }
+
+  private sectionDurations() {
+    return this.track.sections.map((_, i) => this.sectionMarks[i + 1] - this.sectionMarks[i]);
+  }
+
   private standings() {
-    const you = { name: this.copy.you, time: this.sim.finishTime, you: true, who: "deco" };
+    const you = { name: this.copy.you, time: this.sim.finishTime, you: true, who: this.player as string };
     const list = [you, ...(this.bridge.settings.rivals ? this.world.rivals.map((t, i) => ({ name: this.rivals[i].name, time: t.finished ? t.finishTime : t.frames.finishTime + t.delay, you: false, who: this.rivals[i].id as string })) : [])];
     list.sort((a, b) => a.time - b.time);
     return list;
@@ -1101,6 +1194,9 @@ export class RaceScene extends Phaser.Scene {
 
   private finishRace() {
     this.phase = "done";
+    while (this.sectionMarks.length < this.track.sections.length) this.sectionMarks.push(this.sim.finishTime);
+    this.sectionMarks.push(this.sim.finishTime);
+    this.announceSplit(this.track.sections.length - 1);
     this.ambient.finishLine();
     this.sfx(DOWNHILL_SFX.finish);
     this.runs += 1;
@@ -1118,7 +1214,7 @@ export class RaceScene extends Phaser.Scene {
       };
     }
     if (this.paramsAtStart === this.bridge.paramsVersion) {
-      const replay = replayRace(this.track, cloneParams(this.bridge.params), this.recorder.log, this.rivals.map((r) => r.frames), this.world.interaction);
+      const replay = replayRace(this.track, cloneParams(this.bridge.params), this.recorder.log, this.rivals.map((r) => r.frames), this.world.interaction, this.player);
       this.bridge.onReplayCheck?.(replay === time, time, replay);
     }
     this.resultsT = 1.1;
@@ -1130,12 +1226,22 @@ export class RaceScene extends Phaser.Scene {
       if (entry.you) return;
       const r = this.rivals.find((q) => q.name === entry.name);
       r?.view.react(i === 0 ? "win" : "lose");
+      if (r && i > place - 1) this.bridge.onBeat?.(this.track.id, r.id);
     });
     const st = this.sim.stats;
-    this.bridge.onRun?.({ time, best: this.bestTime, place, total: list.length, perfect: st.perfect, ok: st.ok, crashes: st.crashes, hits: st.hits, shortcut: st.shortcut, topSpeed: st.maxSpeed, air: st.airTime });
+    const splits = this.sectionDurations();
+    this.bridge.onRun?.({ course: this.track.id, cart: this.player, time, best: this.bestTime, place, total: list.length, perfect: st.perfect, ok: st.ok, crashes: st.crashes, hits: st.hits, shortcut: st.shortcut, topSpeed: st.maxSpeed, air: st.airTime, show: st.show, splits: splits.map((t, i) => ({ key: this.track.sections[i].key, time: t, delta: this.record && Number.isFinite(this.record.splits[i]) ? t - this.record.splits[i] : null })) });
     const raced = list.length > 1;
     const saved = raced ? this.bridge.saveResult?.(this.track.id, 4 - place) : undefined;
-    this.pendingBest = { newBest: newBest && Number.isFinite(prevBest), best: this.bestTime, firstRace: !Number.isFinite(prevBest), starsBefore: saved?.before ?? 0 };
+    const show = st.show;
+    const stored = this.bridge.records?.load(this.track.id) ?? null;
+    if (this.bridge.records) {
+      const better = !stored || time < stored.time;
+      this.bridge.records.save(this.track.id, { time: better ? time : stored.time, show: Math.max(show, stored?.show ?? 0), splits: better ? splits : stored.splits });
+      this.pendingBest = { newBest: better && !!stored, best: better ? time : stored.time, firstRace: !stored, starsBefore: saved?.before ?? 0, show, showRecord: stored?.show ?? 0, newShowRecord: !!stored && show > stored.show };
+    } else {
+      this.pendingBest = { newBest: newBest && Number.isFinite(prevBest), best: this.bestTime, firstRace: !Number.isFinite(prevBest), starsBefore: saved?.before ?? 0, show, showRecord: 0, newShowRecord: false };
+    }
   }
 
   private showResults() {
@@ -1158,6 +1264,10 @@ export class RaceScene extends Phaser.Scene {
       secretKind: this.track.id === "feira" ? "pigeons" : "gnome",
       firstRace: this.pendingBest.firstRace,
       starsBefore: this.pendingBest.starsBefore,
+      show: this.pendingBest.show,
+      showRecord: this.pendingBest.showRecord,
+      newShowRecord: this.pendingBest.newShowRecord,
+      bestSeq: st.bestSeq,
       calm: this.bridge.reducedMotion,
       touch: this.touchActive,
       keyboard: !this.touchActive,
@@ -1216,6 +1326,7 @@ export class RaceScene extends Phaser.Scene {
         crash,
         time: this.elapsed,
         countdown: this.phase === "countdown",
+        pitch: sim.mode === "ground" ? sim.wheelie : 0,
       },
       dt,
     );
@@ -1241,7 +1352,7 @@ export class RaceScene extends Phaser.Scene {
         r.crashStart = -1;
         r.view.react("recover");
       }
-      const crashU = crashing ? Math.min(0.99, Math.max(0.01, (t.head - r.crashStart) / (DEFAULT_PARAMS.crashTime * STEP_HZ))) : 0;
+      const crashU = crashing ? Math.min(0.99, Math.max(0.01, (t.head - r.crashStart) / (DEFAULT_PARAMS.crashTime * CART_RULES[r.id].crashTime * STEP_HZ))) : 0;
       const near = Math.abs(fx - x) < 1500;
       r.alpha += ((near ? 1 : 0.55) - r.alpha) * damp(4, dt);
       r.view.setAlpha(r.alpha);
@@ -1397,6 +1508,28 @@ export class RaceScene extends Phaser.Scene {
       if (r >= 1) {
         g.fillStyle(0xff7a1a, 0.9);
         g.fillTriangle(cx - 9, cy + 6, cx + 9, cy + 6, cx, cy - 10);
+      }
+    }
+    if (sim.rules.jumpLine && sim.mode === "ground" && sim.crouch && !sim.finished && this.phase === "race") {
+      if (!this.jumpLineTip) {
+        this.jumpLineTip = true;
+        this.hud.tip(this.touchActive ? this.copy.tips.jumpLineTouch : this.copy.tips.jumpLine, 3.4);
+      }
+      const path: number[] = [];
+      const hit = sim.predictPop(300, path, 6);
+      const n = path.length / 2;
+      for (let i = 0; i < n; i += 1) {
+        const k = i / Math.max(1, n - 1);
+        g.fillStyle(INK, 0.35 + k * 0.3);
+        g.fillCircle(path[i * 2], path[i * 2 + 1] - 30, 10);
+        g.fillStyle(sim.chargeRatio >= 1 ? 0xffcf3f : 0xfffaf0, 0.55 + k * 0.4);
+        g.fillCircle(path[i * 2], path[i * 2 + 1] - 30, 6.5);
+      }
+      if (hit) {
+        g.lineStyle(6, INK, 0.7);
+        g.strokeCircle(hit.x, hit.y - 6, 16);
+        g.lineStyle(4, 0xfffaf0, 0.95);
+        g.strokeCircle(hit.x, hit.y - 6, 16);
       }
     }
     if (this.track.surfaces[sim.surface]?.kind === "sewer" && y > heightAt(this.track.surfaces[0], x) + 60) {
@@ -1592,10 +1725,10 @@ export class RaceScene extends Phaser.Scene {
       fy = (top + bottom) / 2;
     }
     if (this.phase === "countdown") {
-      const tr = this.track;
-      const span = Math.max(tr.grid.lina + 260, x + 300) - Math.min(tr.grid.bruno - 220, x - 300);
+      const g = this.gridSpan;
+      const span = Math.max(g.max + 260, x + 300) - Math.min(g.min - 220, x - 300);
       zoom = Math.min(tune.zoomSlow, W / (span + 200));
-      fx = (Math.max(tr.grid.lina + 260, x + 300) + Math.min(tr.grid.bruno - 220, x - 300)) / 2;
+      fx = (Math.max(g.max + 260, x + 300) + Math.min(g.min - 220, x - 300)) / 2;
       fy = y - (tune.roadLine - 0.5) * (H / zoom) - 30;
     }
     const bigAir = air && this.predictedAir > 0.9;
@@ -1681,7 +1814,7 @@ export class RaceScene extends Phaser.Scene {
     const edges: EdgeTag[] = [];
     const entries: { name: string; color: number; you: boolean; x: number; gap: number; finish: number; flash: number; who: string }[] = [];
     this.playerFlash = Math.max(0, this.playerFlash - dt * 1.5);
-    entries.push({ name: this.copy.you, color: PLAYER_COLOR, you: true, x, gap: 0, finish: sim.finished ? sim.finishTime : Infinity, flash: this.playerFlash, who: "deco" });
+    entries.push({ name: this.copy.you, color: PLAYER_COLOR, you: true, x, gap: 0, finish: sim.finished ? sim.finishTime : Infinity, flash: this.playerFlash, who: this.player });
     if (this.bridge.settings.rivals) {
       for (let ri = 0; ri < this.rivals.length; ri += 1) {
         const r = this.rivals[ri];
@@ -1739,6 +1872,8 @@ export class RaceScene extends Phaser.Scene {
     });
     const showHint = this.phase !== "done" && time < (this.runs < 2 ? 14 : 6) && !(this.jumpedThisRun && time > 5);
     this.hud.update(dt, { time, rows, speed, tier, trend: this.trend, markers, edges, finishX: this.track.finish, startX: this.track.start, reduced: this.bridge.reducedMotion, showHint, anchor });
+    const sh = sim.show;
+    this.hud.showMeter(dt, { total: sh.total, seq: sh.seq + (sim.posing ? sim.posePending : 0), mult: sh.mult, timer: sh.timer / 300, active: sh.tricks > 0 || sim.posing });
   }
 
   private updateSound(dt: number) {

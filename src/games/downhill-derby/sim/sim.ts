@@ -1,3 +1,4 @@
+import { CART_RULES, type CartId, type CartRules } from "./carts";
 import { atan2, clamp, DEG, TAU, wrapAngle } from "./math";
 import type { Params } from "./params";
 import { covers, heightAt, obstacleActive, obstacleX, segmentAt, type Obstacle, type ObstacleKind, type Surface, type Track } from "./track";
@@ -31,16 +32,49 @@ const LOOP_BONUS = 160;
 const MANHOLE_DROP = 46;
 const JET_VX = 1250;
 const JET_APEX = 280;
+const FAN_ACCEL = 400;
+const FAN_SLOPE = 0.035;
+const BUMP_EVERY = 230;
+const BUMP_MIN_SPEED = 380;
+const BUMP_POP = 150;
+const POTHOLE_POP = 330;
+const POTHOLE_KEEP = 0.3;
+const SEQ_WINDOW = 300;
+const MULT_MAX = 5;
+const POSE_HOLD = 24;
+const POSE_LEVEL = 60;
+const POSE_RATE = 250 / STEP_HZ;
+const NEAR_MISS = 36;
+const RAIL_EVERY = 100;
+const RAIL_POINTS = 20;
+const WHEELIE_EVERY = 60;
+const WHEELIE_POINTS = 30;
+const WHEELIE_PUSH = 8;
+const WHEELIE_FALL = 6;
+const WHEELIE_DAMP = 5;
+const WHEELIE_BAL = 32 * DEG;
+const WHEELIE_MAX = 66 * DEG;
+const WHEELIE_LO = 10 * DEG;
+const WHEELIE_HI = 44 * DEG;
+const POINTS = { lip: 50, perfect: 100, nearMiss: 75, crate: 25 } as const;
 
-export type SimInput = { crouch: boolean; jump: boolean; spin: -1 | 0 | 1 };
+export function flipPoints(flips: number) {
+  return flips <= 0 ? 0 : flips === 1 ? 300 : flips === 2 ? 800 : 1500 + (flips - 3) * 800;
+}
 
-export const IDLE: SimInput = { crouch: false, jump: false, spin: 0 };
+export type SimInput = { crouch: boolean; jump: boolean; spin: -1 | 0 | 1; hold?: boolean };
+
+export const IDLE: SimInput = { crouch: false, jump: false, spin: 0, hold: false };
 
 export type SimMode = "ground" | "air" | "crash";
 
 export type LandQuality = "perfect" | "ok" | "touch";
 
-export type CrashReason = "upside" | "tilted" | "barrier" | "truck" | "fence" | "loop";
+export type CrashReason = "upside" | "tilted" | "barrier" | "truck" | "fence" | "loop" | "pose" | "wheelie";
+
+export type TrickKind = "lip" | "flip" | "pose" | "perfect" | "rail" | "wheelie" | "nearMiss" | "crate";
+
+export type ShowState = { total: number; seq: number; mult: number; tricks: number; timer: number };
 
 export type SimEvent =
   | { type: "takeoff"; popped: boolean; lip: boolean; power: number }
@@ -48,7 +82,8 @@ export type SimEvent =
   | { type: "land"; quality: LandQuality; delta: number; flips: number; before: number; after: number; air: number; rise: number; surface: number }
   | { type: "crash"; reason: CrashReason; delta: number; speed: number }
   | { type: "recover" }
-  | { type: "hit"; index: number; kind: ObstacleKind; penalized: boolean }
+  | { type: "hit"; index: number; kind: ObstacleKind; penalized: boolean; loss: number; bounced: boolean }
+  | { type: "puddle"; on: boolean; boost: boolean }
   | { type: "surface"; cobbles: boolean }
   | { type: "shortcut" }
   | { type: "secret" }
@@ -58,6 +93,11 @@ export type SimEvent =
   | { type: "loop"; index: number; done: boolean }
   | { type: "manhole"; index: number }
   | { type: "jet" }
+  | { type: "trick"; kind: TrickKind; points: number; seq: number; mult: number }
+  | { type: "bank"; points: number; mult: number; total: number }
+  | { type: "drop"; points: number }
+  | { type: "pose"; level: number }
+  | { type: "wheelie"; on: boolean }
   | { type: "finish"; time: number };
 
 export type SimStats = {
@@ -77,6 +117,9 @@ export type SimStats = {
   combo: number;
   flock: boolean;
   loops: number;
+  show: number;
+  bestSeq: number;
+  tricks: number;
 };
 
 export type Landing = { surface: number; x: number; y: number; slope: number; steps: number };
@@ -106,6 +149,28 @@ function findLanding(surfaces: Surface[], x0: number, y0: number, x1: number, y1
 export class DownhillSim {
   readonly track: Track;
   params: Params;
+  readonly cart: CartId;
+  rules: Readonly<CartRules>;
+  fanning = false;
+  fanArmed = false;
+  inPuddle = false;
+  private bumpDist = 0;
+  readonly show: ShowState = { total: 0, seq: 0, mult: 1, tricks: 0, timer: 0 };
+  posing = false;
+  poseLevel = 0;
+  poseSteps = 0;
+  posePending = 0;
+  private holdSteps = 0;
+  private holdFresh = false;
+  private prevHold = false;
+  wheelie = 0;
+  wheelieVel = 0;
+  private wheelieBand = 0;
+  private wheelieScored = false;
+  private railDist = 0;
+  private railScored = false;
+  private readonly nearMissed = new Set<number>();
+  private landedAt = -SEQ_WINDOW - 1;
   step = 0;
   mode: SimMode = "ground";
   surface = 0;
@@ -147,14 +212,16 @@ export class DownhillSim {
   loopTheta = 0;
   private loopC = 1;
   private loopS = 0;
-  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, interfered: 0, bounces: 0, combo: 0, flock: false, loops: 0 };
+  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, interfered: 0, bounces: 0, combo: 0, flock: false, loops: 0, show: 0, bestSeq: 0, tricks: 0 };
   readonly events: SimEvent[] = [];
   readonly removed = new Set<number>();
   private readonly dynamic: number[];
 
-  constructor(track: Track, params: Params, startX = track.start) {
+  constructor(track: Track, params: Params, startX = track.start, cart: CartId = "deco", rules: Readonly<CartRules> = CART_RULES[cart]) {
     this.track = track;
     this.params = params;
+    this.cart = cart;
+    this.rules = rules;
     const road = track.surfaces[0];
     this.seg = segmentAt(road, startX);
     this.segPos = (startX - road.xs[this.seg]) / road.tx[this.seg];
@@ -206,6 +273,7 @@ export class DownhillSim {
     else if (input.crouch) this.charge = Math.min(this.charge + DT, this.params.chargeTime);
     else this.charge = 0;
     this.crouch = input.crouch;
+    this.holdInput(input.hold === true);
     if (this.mode === "ground" && this.loopIndex >= 0) this.loopStep(input);
     else if (this.mode === "ground") this.groundStep(input);
     else if (this.mode === "air") this.airStep(input);
@@ -217,19 +285,31 @@ export class DownhillSim {
     this.checkObstacles(xPrev, yPrev);
     this.checkFlocks();
     this.checkFinish(xPrev);
+    this.tickShow();
     const sp = this.speed;
     if (sp > this.stats.maxSpeed && !this.finished) this.stats.maxSpeed = sp;
   }
 
   predictLanding(maxSteps = 480, path?: number[], every = 6): Landing | null {
     if (this.mode !== "air") return null;
+    return this.flight(this.x, this.y, this.vx, this.vy, maxSteps, path, every);
+  }
+
+  predictPop(maxSteps = 480, path?: number[], every = 6): Landing | null {
+    if (this.mode !== "ground" || this.loopIndex >= 0) return null;
+    const s = this.track.surfaces[this.surface];
+    const power = this.popPower(this.charge, this.nearLip(LIP_WINDOW, true));
+    return this.flight(this.x, this.y, this.v * s.tx[this.seg], this.v * s.ty[this.seg] - power, maxSteps, path, every);
+  }
+
+  private flight(x0: number, y0: number, vx0: number, vy0: number, maxSteps: number, path: number[] | undefined, every: number): Landing | null {
     const surfaces = this.track.surfaces;
-    const k = this.params.drag * 1e-5 * AIR_DRAG;
+    const k = this.params.drag * this.rules.drag * 1e-5 * AIR_DRAG;
     const g = this.params.gravity;
-    let x = this.x;
-    let y = this.y;
-    let vx = this.vx;
-    let vy = this.vy;
+    let x = x0;
+    let y = y0;
+    let vx = vx0;
+    let vy = vy0;
     for (let i = 1; i <= maxSteps; i += 1) {
       const sp = Math.sqrt(vx * vx + vy * vy);
       vx -= k * sp * vx * DT;
@@ -258,13 +338,20 @@ export class DownhillSim {
     return false;
   }
 
+  private popPower(charge: number, lip: boolean) {
+    const p = this.params;
+    const ratio = p.chargeTime > 0 ? clamp(charge / p.chargeTime, 0, 1) : 1;
+    return (p.popBase + p.popCharge * ratio) * this.rules.pop + (lip ? p.lipBonus * this.speed : 0);
+  }
+
   private pop(charge: number, late: boolean) {
     const p = this.params;
     const ratio = p.chargeTime > 0 ? clamp(charge / p.chargeTime, 0, 1) : 1;
     const lip = late ? this.takeoffLip : this.nearLip(LIP_WINDOW, true);
-    const power = p.popBase + p.popCharge * ratio + (lip ? p.lipBonus * this.speed : 0);
+    const power = this.popPower(charge, lip);
     this.stats.pops += 1;
     if (lip) this.stats.lipPops += 1;
+    if (lip && !this.finished) this.trick("lip", POINTS.lip);
     if (late) {
       this.vy -= power;
       this.popped = true;
@@ -280,6 +367,12 @@ export class DownhillSim {
   }
 
   private enterAir(lip: boolean) {
+    if (this.wheelie !== 0) {
+      this.angle = wrapAngle(this.angle + this.wheelie);
+      this.endWheelie();
+    }
+    this.railDist = 0;
+    this.railScored = false;
     this.tumbling = this.mode === "crash";
     this.mode = "air";
     this.spin = 0;
@@ -317,30 +410,74 @@ export class DownhillSim {
 
   private groundStep(input: SimInput) {
     const p = this.params;
+    const r = this.rules;
     const s = this.track.surfaces[this.surface];
     const ty = s.ty[this.seg];
-    const crouch = input.crouch;
+    const tipped = this.wheelieStep(input);
+    if (this.mode !== "ground") return;
+    const crouch = input.crouch && !tipped;
     let a = p.gravity * ty * p.slopeGain * (crouch && ty > 0 ? 1 + p.crouchBoost : 1);
-    const k = p.drag * 1e-5 * (crouch ? 1 - p.crouchDrag : 1);
-    a -= k * this.v * this.v + p.rolling;
+    const k = p.drag * r.drag * 1e-5 * (crouch ? 1 - p.crouchDrag : 1);
+    a -= k * this.v * this.v + p.rolling * r.rolling;
     const rattle = this.inCobbles();
     const cobbles = rattle > 0;
     if (cobbles !== this.onCobbles) {
       this.onCobbles = cobbles;
+      this.bumpDist = 0;
       this.events.push({ type: "surface", cobbles });
     }
     if (cobbles) a -= (crouch ? p.cobbleCrouch : p.cobbleStand) * rattle;
+    const puddle = this.inPuddleAt();
+    if (puddle !== this.inPuddle) {
+      this.inPuddle = puddle;
+      this.events.push({ type: "puddle", on: puddle, boost: r.puddle > 0 });
+    }
+    if (puddle && !this.finished) a += r.puddle;
+    this.fanning = false;
+    if (r.fanPush > 0 && ty < FAN_SLOPE && !this.finished) {
+      a += r.fanPush;
+      this.fanning = true;
+    }
     if (this.finished) a -= FINISH_BRAKE;
     this.v += a * DT;
     this.paddling = false;
     if (this.finished) {
       if (this.v < 0) this.v = 0;
+    } else if (r.floor > 0 && this.fanArmed && this.v < r.floor) {
+      this.fanning = true;
+      this.v = Math.min(r.floor, this.v + FAN_ACCEL * DT);
+      if (this.v < p.minSpeed * 0.5) this.v = p.minSpeed * 0.5;
     } else if (this.v < p.minSpeed) {
       this.paddling = true;
       this.v = Math.min(p.minSpeed, this.v + PADDLE_ACCEL * DT);
       if (this.v < p.minSpeed * 0.5) this.v = p.minSpeed * 0.5;
     }
+    if (r.floor > 0 && this.v >= r.floor) this.fanArmed = true;
+    const railBefore = s.kind === "rail";
     this.moveAlong(this.v * DT, crouch ? 1 + p.crouchStick : 1, true);
+    if (railBefore && this.mode === "ground" && !this.finished && this.track.surfaces[this.surface].kind === "rail") this.grind(this.v * DT);
+    if (r.bumpy && cobbles && this.mode === "ground" && !this.finished && this.surface === 0) {
+      this.bumpDist += this.v * DT * rattle;
+      if (this.bumpDist >= BUMP_EVERY && this.v > BUMP_MIN_SPEED) {
+        this.bumpDist = 0;
+        this.hop(BUMP_POP + this.v * 0.05);
+      }
+    }
+  }
+
+  private inPuddleAt() {
+    const puddles = this.track.puddles;
+    if (!puddles) return false;
+    for (const q of puddles) if (q.surface === this.surface && this.x >= q.x0 && this.x <= q.x1) return true;
+    return false;
+  }
+
+  private hop(power: number) {
+    const s = this.track.surfaces[this.surface];
+    this.vx = this.v * s.tx[this.seg];
+    this.vy = this.v * s.ty[this.seg] - power;
+    this.enterAir(false);
+    this.events.push({ type: "takeoff", popped: false, lip: false, power: 0 });
   }
 
   private moveAlong(distance: number, stick: number, canFly: boolean) {
@@ -393,17 +530,24 @@ export class DownhillSim {
     if (this.tumbling) {
       this.angle = wrapAngle(this.angle + 11 * DT);
     } else {
-      const accel = p.spinAccel * DEG * DT;
-      const max = p.spinMax * DEG;
-      if (input.spin !== 0) {
-        this.spin = clamp(this.spin + input.spin * accel, -max, max);
+      if (this.posing) this.poseStep();
+      const spinInput = this.posing ? 0 : input.spin;
+      const accel = p.spinAccel * this.rules.spin * DEG * DT;
+      const max = p.spinMax * this.rules.spin * DEG;
+      if (spinInput !== 0) {
+        this.spin = clamp(this.spin + spinInput * accel, -max, max);
       } else if (this.spin > accel) {
         this.spin -= accel;
       } else if (this.spin < -accel) {
         this.spin += accel;
       } else {
         this.spin = 0;
-        if (p.autoAlign > 0) {
+        if (this.rules.rightSelf > 0) {
+          const road = this.track.surfaces[0];
+          const diff = wrapAngle((covers(road, this.x) ? road.ang[segmentAt(road, this.x)] : 0) - this.angle);
+          const lim = this.rules.rightSelf * DEG * DT;
+          this.angle += clamp(diff, -lim, lim);
+        } else if (p.autoAlign > 0 && !this.posing) {
           const diff = wrapAngle(atan2(this.vy, this.vx) - this.angle);
           const lim = p.autoAlign * DEG * DT;
           this.angle += clamp(diff, -lim, lim);
@@ -412,7 +556,7 @@ export class DownhillSim {
       this.angle = wrapAngle(this.angle + this.spin * DT);
       this.spun += this.spin * DT;
     }
-    const k = p.drag * 1e-5 * AIR_DRAG;
+    const k = p.drag * this.rules.drag * 1e-5 * AIR_DRAG;
     const sp = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
     this.vx -= k * sp * this.vx * DT;
     this.vy += p.gravity * DT - k * sp * this.vy * DT;
@@ -478,8 +622,15 @@ export class DownhillSim {
     this.combo = 0;
     this.bounceGrace = 0;
     if (this.finished) {
+      if (this.posing) this.endPose(false);
       this.mode = "ground";
       this.v = vt;
+      this.syncGround();
+      return;
+    }
+    if (this.posing) {
+      this.endPose(false);
+      this.crash("pose", vt, delta);
       this.syncGround();
       return;
     }
@@ -487,7 +638,7 @@ export class DownhillSim {
       this.v = vt;
       this.mode = "ground";
       this.events.push({ type: "land", quality: "touch", delta, flips: 0, before, after: this.v, air: airTime, rise: this.rise, surface: surfaceIndex });
-    } else if (delta <= p.perfectTol) {
+    } else if (delta <= p.perfectTol + this.rules.perfectTol) {
       const flips = Math.floor((Math.abs(this.spun) / DEG + 40) / 360);
       const share = airTime < FULL_BONUS_AIR ? airTime / FULL_BONUS_AIR : 1;
       this.v = vt + (before - vt) * p.perfectKeep + (p.perfectBonus + flips * p.flipBonus) * share;
@@ -495,6 +646,9 @@ export class DownhillSim {
       this.stats.perfect += 1;
       this.stats.flips += flips;
       this.events.push({ type: "land", quality: "perfect", delta, flips, before, after: this.v, air: airTime, rise: this.rise, surface: surfaceIndex });
+      this.landedAt = this.step;
+      if (flips > 0) this.trick("flip", flipPoints(flips));
+      this.trick("perfect", POINTS.perfect);
     } else if (delta <= p.okTol) {
       const flips = Math.floor((Math.abs(this.spun) / DEG + 40) / 360);
       this.v = vt * (1 - p.okLoss);
@@ -502,6 +656,8 @@ export class DownhillSim {
       this.stats.ok += 1;
       this.stats.flips += flips;
       this.events.push({ type: "land", quality: "ok", delta, flips, before, after: this.v, air: airTime, rise: this.rise, surface: surfaceIndex });
+      if (flips > 0) this.trick("flip", flipPoints(flips), false);
+      this.bank();
     } else {
       this.crash(delta > 100 ? "upside" : "tilted", vt, delta);
     }
@@ -533,9 +689,10 @@ export class DownhillSim {
     const loop = this.track.loops![this.loopIndex];
     const r = loop.r;
     const g = p.gravity;
-    const k = p.drag * 1e-5 * (input.crouch ? 1 - p.crouchDrag : 1);
+    const k = p.drag * this.rules.drag * 1e-5 * (input.crouch ? 1 - p.crouchDrag : 1);
     this.paddling = false;
-    this.v += (-g * this.loopS * p.slopeGain - k * this.v * this.v - p.rolling) * DT;
+    this.fanning = false;
+    this.v += (-g * this.loopS * p.slopeGain - k * this.v * this.v - p.rolling * this.rules.rolling) * DT;
     if (this.v <= 0 || (this.v * this.v) / r + g * this.loopC < 0) {
       const v = this.v > 0 ? this.v : 0;
       this.vx = v * this.loopC;
@@ -543,10 +700,11 @@ export class DownhillSim {
       this.loopIndex = -1;
       this.enterAir(false);
       this.tumbling = true;
-      this.crashTotal = Math.max(1, Math.round(p.crashTime * STEP_HZ));
+      this.crashTotal = Math.max(1, Math.round(p.crashTime * this.rules.crashTime * STEP_HZ));
       this.crashLeft = this.crashTotal;
       this.stats.crashes += 1;
       this.events.push({ type: "crash", reason: "loop", delta: 0, speed: v });
+      this.dropSeq();
       return;
     }
     const d = (this.v * DT) / r;
@@ -626,6 +784,10 @@ export class DownhillSim {
     this.rise = 0;
     this.paddling = false;
     this.lastAwning = surfaceIndex;
+    if (this.posing) {
+      this.posePending = 0;
+      this.endPose(false);
+    }
     const out = Math.max(BOUNCE_MIN, -vn * BOUNCE_KEEP);
     this.vx = vt * tx + out * ty;
     this.vy = vt * ty - out * tx;
@@ -710,12 +872,14 @@ export class DownhillSim {
 
   private crash(reason: CrashReason, speed: number, delta = 0) {
     this.mode = "crash";
-    this.crashTotal = Math.max(1, Math.round(this.params.crashTime * STEP_HZ));
+    this.crashTotal = Math.max(1, Math.round(this.params.crashTime * this.rules.crashTime * STEP_HZ));
     this.crashLeft = this.crashTotal;
     this.crashFrom = speed;
     this.stats.crashes += 1;
     this.paddling = false;
     this.events.push({ type: "crash", reason, delta, speed });
+    if (this.wheelie !== 0) this.endWheelie();
+    this.dropSeq();
   }
 
   private crashStep() {
@@ -762,6 +926,13 @@ export class DownhillSim {
     const body = this.crouch ? BODY_CROUCH : BODY_STAND;
     if (!(h < o.high && h + body > o.low)) {
       if (this.mode === "air" && o.low === 0 && h < o.high + CLEAR_MARGIN) this.cleared = true;
+      if (o.kind !== "pothole" && o.kind !== "gold" && !this.finished && !this.tumbling && this.mode !== "crash" && !this.nearMissed.has(index)) {
+        const gap = o.low > 0 ? o.low - (h + body) : h - o.high;
+        if (gap >= 0 && gap < NEAR_MISS && (o.low > 0 || this.mode === "air")) {
+          this.nearMissed.add(index);
+          this.trick("nearMiss", POINTS.nearMiss);
+        }
+      }
       return;
     }
     if (o.kind === "gold") {
@@ -772,25 +943,35 @@ export class DownhillSim {
       return;
     }
     const penalized = this.mode !== "crash" && !this.tumbling && !this.finished;
-    this.events.push({ type: "hit", index, kind: o.kind, penalized });
+    const bounced = penalized && o.kind === "pothole" && this.rules.bumpy && this.mode === "ground";
+    const loss = o.heavy ? 0 : this.params.hitLoss * this.rules.hitLoss * o.loss * (bounced ? POTHOLE_KEEP : 1);
+    this.events.push({ type: "hit", index, kind: o.kind, penalized, loss: penalized ? loss : 0, bounced });
     if (!penalized) return;
     this.stats.hits += 1;
+    if (o.kind === "crate") this.trick("crate", POINTS.crate, false);
+    if (bounced) {
+      this.v *= 1 - loss;
+      this.hop(POTHOLE_POP);
+      return;
+    }
     if (o.heavy) {
       const reason = o.kind === "truck" ? "truck" : o.kind === "fence" ? "fence" : "barrier";
       if (this.mode === "air") {
         this.vx *= 0.35;
         this.tumbling = true;
-        this.crashTotal = Math.max(1, Math.round(this.params.crashTime * STEP_HZ));
+        this.crashTotal = Math.max(1, Math.round(this.params.crashTime * this.rules.crashTime * STEP_HZ));
         this.crashLeft = this.crashTotal;
         this.stats.crashes += 1;
         this.events.push({ type: "crash", reason, delta: 0, speed: this.speed });
+        if (this.posing) this.endPose(false);
+        this.dropSeq();
       } else {
         this.crash(reason, this.v * 0.6);
       }
     } else if (this.mode === "air") {
-      this.vx *= 1 - this.params.hitLoss * o.loss;
+      this.vx *= 1 - this.params.hitLoss * this.rules.hitLoss * o.loss;
     } else {
-      this.v *= 1 - this.params.hitLoss * o.loss;
+      this.v *= 1 - this.params.hitLoss * this.rules.hitLoss * o.loss;
     }
   }
 
@@ -802,5 +983,163 @@ export class DownhillSim {
     this.finished = true;
     this.finishTime = (this.step - 1 + t) * DT;
     this.events.push({ type: "finish", time: this.finishTime });
+    if (this.posing) this.endPose(false);
+    this.bank();
+  }
+
+  private trick(kind: TrickKind, points: number, raise = true) {
+    const sh = this.show;
+    if (sh.tricks === 0) sh.mult = 1;
+    else if (raise && sh.mult < MULT_MAX && (this.mode === "air" || this.step - this.landedAt <= SEQ_WINDOW)) sh.mult += 1;
+    sh.tricks += 1;
+    sh.seq += points;
+    sh.timer = SEQ_WINDOW;
+    this.stats.tricks += 1;
+    this.events.push({ type: "trick", kind, points, seq: sh.seq, mult: sh.mult });
+  }
+
+  private accrue(points: number) {
+    this.show.seq += points;
+    this.show.timer = SEQ_WINDOW;
+  }
+
+  private bank() {
+    const sh = this.show;
+    if (sh.seq > 0) {
+      const points = sh.seq * sh.mult;
+      sh.total += points;
+      this.stats.show = sh.total;
+      if (points > this.stats.bestSeq) this.stats.bestSeq = points;
+      this.events.push({ type: "bank", points, mult: sh.mult, total: sh.total });
+    }
+    sh.seq = 0;
+    sh.mult = 1;
+    sh.tricks = 0;
+    sh.timer = 0;
+  }
+
+  private dropSeq() {
+    const sh = this.show;
+    if (sh.seq > 0) this.events.push({ type: "drop", points: sh.seq * sh.mult });
+    sh.seq = 0;
+    sh.mult = 1;
+    sh.tricks = 0;
+    sh.timer = 0;
+    this.railScored = false;
+    this.railDist = 0;
+    this.wheelieScored = false;
+    this.wheelieBand = 0;
+  }
+
+  private tickShow() {
+    const sh = this.show;
+    if (this.finished || sh.tricks === 0 || this.mode !== "ground") return;
+    if (this.track.surfaces[this.surface].kind === "rail") return;
+    const m = this.wheelie < 0 ? -this.wheelie : this.wheelie;
+    if (m >= WHEELIE_LO && m <= WHEELIE_HI) return;
+    sh.timer -= 1;
+    if (sh.timer <= 0) this.bank();
+  }
+
+  private grind(distance: number) {
+    this.railDist += distance;
+    while (this.railDist >= RAIL_EVERY) {
+      this.railDist -= RAIL_EVERY;
+      if (this.railScored) this.accrue(RAIL_POINTS);
+      else {
+        this.railScored = true;
+        this.trick("rail", RAIL_POINTS);
+      }
+    }
+  }
+
+  private holdInput(hold: boolean) {
+    if (hold && !this.prevHold) {
+      this.holdFresh = this.mode === "air" && !this.tumbling && !this.finished;
+      this.holdSteps = 0;
+    }
+    this.prevHold = hold;
+    if (!hold) {
+      this.holdFresh = false;
+      if (this.posing) this.endPose(true);
+      return;
+    }
+    this.holdSteps += 1;
+    if (this.holdFresh && !this.posing && this.mode === "air" && !this.tumbling && !this.finished && this.holdSteps >= POSE_HOLD) {
+      this.posing = true;
+      this.poseLevel = 1;
+      this.poseSteps = 0;
+      this.posePending = 0;
+      this.events.push({ type: "pose", level: 1 });
+    }
+  }
+
+  private poseStep() {
+    this.poseSteps += 1;
+    const level = this.poseSteps >= POSE_LEVEL * 2 ? 3 : this.poseSteps >= POSE_LEVEL ? 2 : 1;
+    if (level !== this.poseLevel) {
+      this.poseLevel = level;
+      this.events.push({ type: "pose", level });
+    }
+    this.posePending += level >= 3 ? POSE_RATE * 2 : POSE_RATE;
+  }
+
+  private endPose(scored: boolean) {
+    const points = Math.round(this.posePending);
+    this.posing = false;
+    this.poseLevel = 0;
+    this.poseSteps = 0;
+    this.posePending = 0;
+    this.holdFresh = false;
+    this.events.push({ type: "pose", level: 0 });
+    if (scored && points > 0) this.trick("pose", points);
+  }
+
+  private wheelieStep(input: SimInput) {
+    if (this.loopIndex >= 0 || this.finished || this.surface < 0) {
+      if (this.wheelie !== 0) this.endWheelie();
+      return false;
+    }
+    const s = input.spin;
+    const p = this.wheelie;
+    if (p === 0 && this.wheelieVel === 0 && s === 0) return false;
+    const k = 0.5 + 0.5 * this.rules.spin;
+    const m = p < 0 ? -p : p;
+    const side = p < 0 ? -1 : p > 0 ? 1 : s;
+    const restore = (WHEELIE_FALL * (WHEELIE_BAL - m)) / WHEELIE_BAL;
+    this.wheelieVel += (s * WHEELIE_PUSH * k - side * restore - WHEELIE_DAMP * this.wheelieVel) * DT;
+    const next = p + this.wheelieVel * DT;
+    if ((p < 0 && next >= 0) || (p > 0 && next <= 0)) {
+      this.endWheelie();
+      return false;
+    }
+    if (p === 0) this.events.push({ type: "wheelie", on: true });
+    this.wheelie = next;
+    const nm = next < 0 ? -next : next;
+    if (nm > WHEELIE_MAX) {
+      this.crash("wheelie", this.v, nm / DEG);
+      return true;
+    }
+    if (nm >= WHEELIE_LO && nm <= WHEELIE_HI) {
+      this.wheelieBand += 1;
+      if (this.wheelieBand >= WHEELIE_EVERY) {
+        this.wheelieBand -= WHEELIE_EVERY;
+        if (this.wheelieScored) this.accrue(WHEELIE_POINTS);
+        else {
+          this.wheelieScored = true;
+          this.trick("wheelie", WHEELIE_POINTS);
+        }
+      }
+    }
+    return true;
+  }
+
+  private endWheelie() {
+    const was = this.wheelie !== 0;
+    this.wheelie = 0;
+    this.wheelieVel = 0;
+    this.wheelieBand = 0;
+    this.wheelieScored = false;
+    if (was) this.events.push({ type: "wheelie", on: false });
   }
 }

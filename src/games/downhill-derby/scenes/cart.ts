@@ -1,10 +1,11 @@
 import * as Phaser from "phaser";
+import type { CartId } from "../sim/carts";
 
 export const INK = 0x1d1830;
 export const ART_RES = 1.5;
 export const HEAD_SCALE = 0.42;
 
-export type RiderId = "deco" | "lina" | "bruno";
+export type RiderId = CartId;
 
 export const EXPRESSIONS = ["normal", "strain", "wow", "happy", "panic", "dizzy", "smug", "sad"] as const;
 
@@ -61,6 +62,18 @@ export const RIGS: Record<RiderId, Rig> = {
     ],
     colors: [0x5cb9f0, 0xffe39a, 0xff8a3d],
   },
+  mila: {
+    seat: [-30, -82],
+    back: { key: "cart-mila-back", x: -180, y: -270, w: 320, h: 250 },
+    front: { key: "cart-mila-front", x: -130, y: -270, w: 270, h: 250 },
+    wheels: [
+      { key: "wheel-skate", x: -74, r: 13 },
+      { key: "wheel-skate", x: 42, r: 13 },
+      { key: "wheel-skate", x: -42, r: 13 },
+      { key: "wheel-skate", x: 74, r: 13 },
+    ],
+    colors: [0xfffaf0, 0x7b62c4, 0xf06ba8],
+  },
 };
 
 export function artFiles(): { key: string; file: string; scale: number }[] {
@@ -72,7 +85,7 @@ export function artFiles(): { key: string; file: string; scale: number }[] {
     out.push({ key: `cart-${who}-back`, file: `cart-${who}-back`, scale: ART_RES });
     out.push({ key: `cart-${who}-front`, file: `cart-${who}-front`, scale: ART_RES });
   }
-  for (const w of ["wheel-mower", "wheel-bearing", "wheel-caster", "wheel-neat", "fan-blades"]) out.push({ key: w, file: w, scale: ART_RES });
+  for (const w of ["wheel-mower", "wheel-bearing", "wheel-caster", "wheel-neat", "wheel-skate", "fan-blades"]) out.push({ key: w, file: w, scale: ART_RES });
   return out;
 }
 
@@ -93,7 +106,11 @@ export type CartPose = {
   crash: number;
   time: number;
   countdown?: boolean;
+  pitch?: number;
 };
+
+const POSE_LIFT = [0, 0, 38, 78];
+const POSE_FACE: Expression[] = ["normal", "happy", "wow", "smug"];
 
 const HEAD_TEX_SCALE = ART_RES * HEAD_SCALE * 1.6;
 
@@ -140,6 +157,8 @@ export class CartView {
   private faceOverride: { expr: Expression; left: number } | null = null;
   private armOverride: { pose: ArmPose; left: number } | null = null;
   private hold: { expr: Expression; pose: ArmPose } | null = null;
+  private poseLevel = 0;
+  private poseBlend = 0;
   private shownExpr: Expression | null = null;
   private shownArm: ArmPose | null = null;
   private flyers: Flyer[] = [];
@@ -237,6 +256,10 @@ export class CartView {
       this.rider.add(this.helmet);
     }
     this.helmet?.setVisible(on);
+  }
+
+  setPose(level: number) {
+    this.poseLevel = level;
   }
 
   setHold(expr: Expression | null, pose: ArmPose = "steer") {
@@ -362,15 +385,27 @@ export class CartView {
     this.wheels[1].setVisible(true);
   }
 
-  update(pose: CartPose, dt: number) {
+  update(input: CartPose, dt: number) {
     this.elapsed += dt;
+    let pose = input;
+    if (input.pitch) {
+      const pivot = input.pitch < 0 ? this.rig.wheels[0].x : Math.max(...this.rig.wheels.map((w) => w.x));
+      const ca = Math.cos(input.angle);
+      const sa = Math.sin(input.angle);
+      const px = input.x + pivot * ca;
+      const py = input.y + pivot * sa;
+      const na = input.angle + input.pitch;
+      pose = { ...input, x: px - pivot * Math.cos(na), y: py - pivot * Math.sin(na), angle: na };
+    }
     const crashing = pose.crash > 0;
+    if (crashing && this.poseLevel > 0) this.poseLevel = 0;
+    this.poseBlend += (POSE_LIFT[this.poseLevel] - this.poseBlend) * Math.min(1, dt * 12);
     if (crashing && !this.crashing) this.startCrash(pose.x, pose.y, pose.angle, pose.speed);
     if (!crashing && this.crashing) this.endCrash();
     if (this.crashing) this.updateFlyers(dt, pose.crash);
     this.squashT = Math.min(1, this.squashT + dt / 0.22);
     this.stretchT = Math.min(1, this.stretchT + dt / 0.16);
-    const crouchTarget = pose.crouch || (pose.air && Math.abs(pose.spin) > 2.5) || pose.brace ? 1 : 0;
+    const crouchTarget = this.poseLevel > 0 ? 0 : pose.crouch || (pose.air && Math.abs(pose.spin) > 2.5) || pose.brace ? 1 : 0;
     this.crouchBlend += (crouchTarget - this.crouchBlend) * Math.min(1, dt * 16);
     this.spinBlend += ((Math.abs(pose.spin) > 2.5 ? 1 : 0) - this.spinBlend) * Math.min(1, dt * 10);
     const squash = Math.sin((1 - this.squashT) * Math.PI) * (1 - this.squashT) * this.squashAmount;
@@ -423,6 +458,11 @@ export class CartView {
     let rr = angle + this.tilt + this.lag;
     if (pose.countdown) ry += Math.abs(Math.sin(pose.time * 7)) * -4;
     if (pose.charge >= 1 && pose.crouch && !pose.air) rx += Math.sin(pose.time * 70) * 1.6;
+    if (this.poseBlend > 0.5 && !crashing) {
+      rx += this.poseBlend * Math.sin(angle);
+      ry -= this.poseBlend * Math.cos(angle);
+      rr -= (this.poseBlend / POSE_LIFT[3]) * 0.32 - Math.sin(pose.time * 9) * 0.04 * (this.poseBlend / POSE_LIFT[3]);
+    }
     if (crashing) {
       const u = pose.crash;
       const arc = Math.sin(Math.min(1, u * 1.25) * Math.PI);
@@ -456,6 +496,9 @@ export class CartView {
     } else if (this.hold) {
       expr = this.hold.expr;
       arm = this.hold.pose;
+    } else if (this.poseLevel > 0) {
+      expr = POSE_FACE[this.poseLevel];
+      arm = "up";
     } else if (pose.air) {
       expr = pose.brace ? "strain" : this.spinBlend > 0.5 ? "wow" : pose.bigAir ? "happy" : "wow";
       arm = pose.bigAir && this.spinBlend < 0.5 && !pose.brace ? "up" : "steer";
@@ -465,8 +508,8 @@ export class CartView {
     } else if (pose.speed > 2000) {
       expr = "happy";
     }
-    if (!crashing && !this.hold && this.faceOverride) expr = this.faceOverride.expr;
-    if (!crashing && !this.hold && this.armOverride) arm = this.armOverride.pose;
+    if (!crashing && !this.hold && this.poseLevel === 0 && this.faceOverride) expr = this.faceOverride.expr;
+    if (!crashing && !this.hold && this.poseLevel === 0 && this.armOverride) arm = this.armOverride.pose;
     this.setFace(expr);
     this.setArm(arm);
     this.leg.clear();

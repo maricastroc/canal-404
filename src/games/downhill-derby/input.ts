@@ -1,3 +1,4 @@
+import type { CartId } from "./sim/carts";
 import type { CourseId } from "./sim/course";
 import type { SimInput } from "./sim/sim";
 
@@ -11,6 +12,7 @@ export type ArtSetting = "current" | "sample";
 
 export type PrototypeSettings = {
   course: CourseId;
+  cart: CartId;
   art: ArtSetting;
   indicator: boolean;
   rivals: boolean;
@@ -20,7 +22,7 @@ export type PrototypeSettings = {
   interaction: InteractionSetting;
 };
 
-export const DEFAULT_SETTINGS: Readonly<PrototypeSettings> = Object.freeze({ course: "arlindo", art: "sample", indicator: true, rivals: true, ghost: false, touch: "auto", rivalPace: "adaptive", interaction: "off" });
+export const DEFAULT_SETTINGS: Readonly<PrototypeSettings> = Object.freeze({ course: "arlindo", cart: "deco", art: "sample", indicator: true, rivals: true, ghost: false, touch: "auto", rivalPace: "adaptive", interaction: "off" });
 
 export type CameraTuning = { zoomSlow: number; zoomFast: number; lead: number; roadLine: number };
 
@@ -86,7 +88,7 @@ export class InputState {
 
   sample(): SimInput {
     const spin = this.leftHeld === this.rightHeld ? 0 : this.leftHeld ? -1 : 1;
-    const input: SimInput = { crouch: this.downHeld, jump: this.spacePressed > 0, spin };
+    const input: SimInput = { crouch: this.downHeld, jump: this.spacePressed > 0, spin, hold: this.space.size > 0 };
     this.spacePressed = 0;
     return input;
   }
@@ -112,7 +114,11 @@ export class InputState {
   }
 }
 
+export type RaceRecord = { time: number; show: number; splits: number[] };
+
 export type RunSummary = {
+  course: CourseId;
+  cart: CartId;
   time: number;
   best: number;
   place: number;
@@ -124,4 +130,6 @@ export type RunSummary = {
   shortcut: boolean;
   topSpeed: number;
   air: number;
+  show: number;
+  splits: { key: string; time: number; delta: number | null }[];
 };

@@ -16,10 +16,16 @@ export type LipView = { x: number; surface: number; glow: Phaser.GameObjects.Gra
 export type { Zone, ZoneKey } from "../sim/course";
 
 export const STREET = 132;
-export const LANES = { lina: -54, bruno: -108 } as const;
-export const LANE_OFFSETS = [0, LANES.lina, LANES.bruno] as const;
-const LANE_DEPTHS = [7.6, 5.95, 4.95] as const;
+export const LANES = { lina: -42, bruno: -84, mila: -126 } as const;
+export const LANE_OFFSETS = [0, LANES.lina, LANES.bruno, LANES.mila] as const;
+export const BACK_LANE = LANES.mila - 8;
+const LANE_DEPTHS = [7.6, 5.95, 4.95, 4.05] as const;
 const BG_INK = 0x3a3157;
+const COBBLE_KEY = "dd-cobble-column";
+const COBBLE_OX = 20;
+const COBBLE_OY = 116;
+const COBBLE_W = 60;
+const COBBLE_H = 132;
 const HOUSE_SCALE = 0.72;
 const STALL_SCALE = 0.82;
 export const STALL_W = 320 * STALL_SCALE;
@@ -221,21 +227,24 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
     start = end;
   }
 
+  if (track.cobbles.some((cob) => !cob.stairs) && !scene.textures.exists(COBBLE_KEY)) {
+    const g = scene.add.graphics();
+    g.lineStyle(3, INK, 0.75);
+    for (let row = 0; row < 5; row += 1) {
+      const ry = COBBLE_OY - 8 - row * 26;
+      const ox = row % 2 === 0 ? 0 : 20;
+      g.fillStyle(row === 0 ? 0x9a94b5 : 0x8f89ab, 1);
+      g.fillRoundedRect(COBBLE_OX - 17 + ox, ry, 34, 20, 7);
+      g.strokeRoundedRect(COBBLE_OX - 17 + ox, ry, 34, 20, 7);
+    }
+    g.generateTexture(COBBLE_KEY, COBBLE_W, COBBLE_H);
+    g.destroy();
+  }
   for (const cob of track.cobbles) {
     if (cob.stairs) continue;
     for (let x = cob.x0; x < cob.x1; x += 40) {
-      const c = chunkFor(x);
-      const g = add(c, scene.add.graphics());
-      g.setDepth(0.5);
-      const y = heightAt(road, x);
-      g.lineStyle(3, INK, 0.75);
-      for (let row = 0; row < 5; row += 1) {
-        const ry = y - 8 - row * 26;
-        const ox = row % 2 === 0 ? 0 : 20;
-        g.fillStyle(row === 0 ? 0x9a94b5 : 0x8f89ab, 1);
-        g.fillRoundedRect(x - 17 + ox, ry, 34, 20, 7);
-        g.strokeRoundedRect(x - 17 + ox, ry, 34, 20, 7);
-      }
+      const img = add(chunkFor(x), scene.add.image(x, heightAt(road, x), COBBLE_KEY));
+      img.setOrigin(COBBLE_OX / COBBLE_W, COBBLE_OY / COBBLE_H).setDepth(0.5);
     }
   }
 
@@ -245,6 +254,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
   else if (track.set?.kind === "feira") drawFeira(b, track, copy);
   else if (track.set?.kind === "antena") drawAntena(b, track);
   drawChalk(b, track, copy);
+  drawPuddles(b, track);
 
   for (const rp of track.ramps) {
     if (track.set?.kind === "feira" && rp === track.set.trolley) continue;
@@ -253,7 +263,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
       for (let i = 0; i < road.xs.length && road.xs[i] <= rp.x1 + 0.5; i += 1) if (road.xs[i] >= rp.x0) pts.push(v(road.xs[i], road.ys[i] + lane));
       return pts;
     };
-    const backLane = LANES.bruno - 14;
+    const backLane = BACK_LANE;
     const wide = add(chunkFor(rp.x0 + 10), scene.add.graphics());
     wide.setDepth(2.6);
     const backTop = surfaceAt(backLane);
@@ -360,7 +370,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
   const obstacles: ObstacleView[] = [];
   track.obstacles.forEach((o, index) => {
     if (o.kind === "truck" || o.kind === "hose" || o.kind === "fence" || o.kind === "bag") return;
-    const lanes = o.kind === "line" || o.surface !== 0 ? [0] : [0, 1, 2];
+    const lanes = o.kind === "line" || o.surface !== 0 ? [0] : [0, 1, 2, 3];
     for (const lane of lanes) {
       const c = chunkFor(o.x);
       const y = heightAt(track.surfaces[o.surface], o.x) + LANE_OFFSETS[lane];
@@ -1170,6 +1180,44 @@ function drawArlindo(b: Builder, track: Course) {
   }
   const boxes = add(chunkFor(set.boxes), scene.add.image(set.boxes, b.floorY(set.boxes - 200, set.boxes + 200) + 6, "s-caixas").setOrigin(0.5, 1));
   boxes.setScale(0.85 / SAMPLE_RES).setDepth(-6.5);
+}
+
+function drawPuddles(b: Builder, track: Course) {
+  for (const q of track.puddles ?? []) {
+    const s = track.surfaces[q.surface];
+    const back = q.surface === 0 ? BACK_LANE + 10 : -14;
+    const front = q.surface === 0 ? -6 : 0;
+    const c = b.chunkFor((q.x0 + q.x1) / 2);
+    const g = b.add(c, b.scene.add.graphics());
+    g.setDepth(q.surface === 0 ? 0.69 : 1.69);
+    const top: Phaser.Math.Vector2[] = [];
+    const bottom: Phaser.Math.Vector2[] = [];
+    const n = 12;
+    for (let i = 0; i <= n; i += 1) {
+      const u = i / n;
+      const x = q.x0 + (q.x1 - q.x0) * u;
+      const bulge = Math.sin(u * Math.PI);
+      const y = heightAt(s, x);
+      top.push(v(x, y + back * (0.35 + 0.65 * bulge) + Math.sin(i * 2.3) * 4));
+      bottom.push(v(x, y + front * bulge));
+    }
+    const shape = [...top, ...bottom.reverse()];
+    g.fillStyle(INK, 0.9);
+    g.fillPoints(shape.map((p) => v(p.x, p.y + 3)), true);
+    g.fillStyle(0x6fc3ee, 1);
+    g.fillPoints(shape, true);
+    g.lineStyle(4, INK, 1);
+    g.strokePoints(shape, true);
+    g.lineStyle(5, 0xd8f3ff, 0.9);
+    for (const [u0, u1, k] of [[0.18, 0.34, 0.45], [0.46, 0.7, 0.3], [0.62, 0.8, 0.62]] as const) {
+      const xa = q.x0 + (q.x1 - q.x0) * u0;
+      const xb = q.x0 + (q.x1 - q.x0) * u1;
+      g.beginPath();
+      g.moveTo(xa, heightAt(s, xa) + back * k);
+      g.lineTo(xb, heightAt(s, xb) + back * k);
+      g.strokePath();
+    }
+  }
 }
 
 function drawChalk(b: Builder, track: Course, copy: RaceCopy) {

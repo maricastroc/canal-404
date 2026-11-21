@@ -145,6 +145,12 @@ export function buildAntena(): Course {
   return {
     id: "antena",
     surfaces: [road, sewerSurface],
+    puddles: [
+      { x0: bagX + 280, x1: bagX + 700, surface: 0 },
+      { x0: bag2 - 650, x1: bag2 - 250, surface: 0 },
+      { x0: sx0 + 1400, x1: sx0 + 2000, surface: 1 },
+      { x0: holeX + 1350, x1: holeX + 1750, surface: 0 },
+    ],
     lips,
     obstacles,
     ramps,
@@ -169,6 +175,6 @@ export function buildAntena(): Course {
     },
     start: 200,
     finish,
-    grid: { lina: 540, bruno: -140 },
+    grid: { lina: 540, bruno: -140, mila: -480 },
   };
 }

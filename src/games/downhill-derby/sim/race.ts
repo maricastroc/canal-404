@@ -1,3 +1,4 @@
+import type { CartId } from "./carts";
 import type { Params } from "./params";
 import { FRAME_AIR, FRAME_CRASH, InputPlayer, type InputLog, type RunFrames } from "./replay";
 import { DownhillSim, DT, IDLE, type SimInput } from "./sim";
@@ -37,10 +38,10 @@ export class RaceWorld {
   readonly events: WorldEvent[] = [];
   private nextKick = 0;
 
-  constructor(track: Track, playerParams: Params, rivalFrames: readonly RunFrames[], interaction: Interaction) {
+  constructor(track: Track, playerParams: Params, rivalFrames: readonly RunFrames[], interaction: Interaction, cart: CartId = "deco") {
     this.track = track;
     this.interaction = interaction;
-    this.player = new DownhillSim(track, playerParams);
+    this.player = new DownhillSim(track, playerParams, track.start, cart);
     this.rivals = rivalFrames.map((frames) => ({ frames, head: 0, rate: 1, slowLeft: 0, delay: 0, mark: 0, finished: false, finishTime: Infinity }));
   }
 
@@ -182,8 +183,8 @@ export class RaceWorld {
   }
 }
 
-export function replayRace(track: Track, params: Params, log: InputLog, rivalFrames: readonly RunFrames[], interaction: Interaction, maxSteps = 120 * 240) {
-  const world = new RaceWorld(track, params, rivalFrames, interaction);
+export function replayRace(track: Track, params: Params, log: InputLog, rivalFrames: readonly RunFrames[], interaction: Interaction, cart: CartId = "deco", maxSteps = 120 * 240) {
+  const world = new RaceWorld(track, params, rivalFrames, interaction, cart);
   const input = new InputPlayer(log);
   const p = world.player;
   while (!p.finished && p.step < maxSteps) {

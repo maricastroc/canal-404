@@ -8,7 +8,7 @@ import { CastPlanner, type Extra } from "./cast";
 import { MIXER_X } from "./antena";
 import { awningGaps, CIDINHA, trolleyRamp } from "./feira";
 import { NEIGHBORS, SAMPLE_RES, type SampleSpots } from "./sample";
-import { BLEACHER_ROWS, BLEACHER_SEATS, BLEACHER_W, LANES, STALL_W, STREET_SPOTS, VENDOR_SPOTS, type Builder, type Zone } from "./terrain";
+import { BLEACHER_ROWS, BLEACHER_SEATS, BLEACHER_W, LANE_OFFSETS, LANES, STALL_W, STREET_SPOTS, VENDOR_SPOTS, type Builder, type Zone } from "./terrain";
 
 type Actor = {
   x: number;
@@ -43,8 +43,7 @@ export class Ambient {
 
   step = 0;
   lead = -Infinity;
-  racers: number[] = [-Infinity, -Infinity, -Infinity];
-  firstRace = true;
+  racers: number[] = [-Infinity, -Infinity, -Infinity, -Infinity];
 
   constructor(b: Builder, layer: Phaser.GameObjects.Layer, track: Course, zones: Zone[], copy: RaceCopy) {
     this.b = b;
@@ -302,7 +301,6 @@ export class Ambient {
     for (const sw of set.seesaws) this.seesaw(track, sw);
     this.mixer2(set.works.x0 + MIXER_X);
     this.frogs(track);
-    this.mila(track, set);
     this.jet(track, set);
     this.crowd(set.works.x0 - 900, 2);
     this.crowd(set.exit + 2600, 2);
@@ -349,8 +347,8 @@ export class Ambient {
     const up = Math.atan2(py - heightAt(road, sw.x0), sw.pivot - sw.x0);
     const down = Math.atan2(heightAt(road, sw.x1) - py, sw.x1 - sw.pivot);
     const half = Math.max(sw.pivot - sw.x0, sw.x1 - sw.pivot) + 30;
-    const lanes = [0, LANES.lina, LANES.bruno];
-    const depths = [7.55, 5.92, 4.92];
+    const lanes = LANE_OFFSETS;
+    const depths = [7.55, 5.92, 4.92, 4.02];
     const planks = lanes.map((lane, i) => {
       const g = this.add(s.add.graphics());
       g.setDepth(depths[i]);
@@ -447,58 +445,6 @@ export class Ambient {
     });
   }
 
-  private mila(track: Course, set: AntenaSet) {
-    const s = this.b.scene;
-    const road = track.surfaces[0];
-    const x0 = set.hole - 900;
-    const base = this.b.backY(x0) + 8;
-    const root = this.add(s.add.container(0, 0));
-    root.setDepth(-3.5);
-    const img = s.add.image(x0, base, "kid-mila-a").setOrigin(0.5, 1);
-    const k = 146 / heightOf(s, "kid-mila-a");
-    img.setScale(k);
-    root.add(img);
-    let state: "wait" | "run" | "drop" | "gone" = "wait";
-    let t0 = 0;
-    const home = () => {
-      state = this.firstRace ? "wait" : "gone";
-      img.setVisible(this.firstRace).setPosition(x0, base).setScale(k).setTexture("kid-mila-a").setAlpha(1);
-      root.setDepth(-3.5);
-    };
-    home();
-    this.actors.push({
-      x: set.hole,
-      root,
-      reset: home,
-      update: (_dt, t, px) => {
-        if (state === "wait" && px > set.hole - 2600) {
-          state = "run";
-          t0 = t;
-          this.bubble(this.copy.mila, x0, base - 200, 30);
-        }
-        if (state === "run") {
-          const u = Math.min(1, (t - t0) / 0.9);
-          const x = x0 + (set.hole - x0) * u;
-          const y = base + (heightAt(road, set.hole) - 6 - base) * u;
-          img.setPosition(x, y - Math.abs(Math.sin(u * Math.PI * 4)) * 14).setTexture(Math.floor(t * 10) % 2 === 0 ? "kid-mila-a" : "kid-mila-b");
-          if (u >= 1) {
-            state = "drop";
-            t0 = t;
-            root.setDepth(0.69);
-          }
-        }
-        if (state === "drop") {
-          const u = Math.min(1, (t - t0) / 0.35);
-          img.setY(heightAt(road, set.hole) - 6 + u * 150).setAlpha(1 - u);
-          if (u >= 1) {
-            state = "gone";
-            img.setVisible(false);
-          }
-        }
-      },
-    });
-  }
-
   private jet(track: Course, set: AntenaSet) {
     const s = this.b.scene;
     const road = track.surfaces[0];
@@ -551,7 +497,7 @@ export class Ambient {
     return obj;
   }
 
-  private bubble(text: string, x: number, y: number, size = 34) {
+  bubble(text: string, x: number, y: number, size = 34) {
     const t = this.add(this.b.scene.add.text(x, y, text, { fontFamily: this.b.fonts.display, fontSize: `${size}px`, color: "#1d1830", backgroundColor: "#fbf5e6", padding: { x: 10, y: 4 } }));
     t.setOrigin(0.5, 1).setDepth(-1);
     this.b.scene.tweens.add({ targets: t, y: y - 40, alpha: 0, duration: 800, delay: 300, onComplete: () => t.destroy() });

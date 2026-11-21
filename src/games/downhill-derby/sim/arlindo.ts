@@ -126,6 +126,10 @@ export function buildArlindo(): Course {
   return {
     id: "arlindo",
     surfaces: [road, yardSurface, roofSurface],
+    puddles: [
+      { x0: hose - 140, x1: hose + 320, surface: 0 },
+      { x0: c + 1450, x1: c + 1850, surface: 0 },
+    ],
     lips,
     obstacles,
     ramps,
@@ -151,6 +155,6 @@ export function buildArlindo(): Course {
     },
     start: 200,
     finish,
-    grid: { lina: 540, bruno: -140 },
+    grid: { lina: 540, bruno: -140, mila: -480 },
   };
 }
