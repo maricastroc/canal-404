@@ -13,6 +13,7 @@ export type MissionDef = {
   goal: Condition[];
   ranked: boolean;
   setup?: MatchSetup;
+  retired?: boolean;
 };
 
 export { MISSION_GAMES, type MissionGame };
@@ -178,6 +179,7 @@ export const CATALOG: readonly MissionDef[] = [
       { stat: "launches", op: "max", value: 5 },
     ],
     ranked: true,
+    retired: true,
   },
   {
     key: "street-two-at-once",
@@ -188,6 +190,7 @@ export const CATALOG: readonly MissionDef[] = [
     objective: "Derrube os dois alvos de uma rodada com um lançamento só.",
     goal: [{ stat: "combos", op: "min", value: 1 }],
     ranked: true,
+    retired: true,
   },
   {
     key: "street-three-stars",
@@ -201,6 +204,7 @@ export const CATALOG: readonly MissionDef[] = [
       { stat: "score", op: "min", value: 2050 },
     ],
     ranked: true,
+    retired: true,
   },
   {
     key: "street-yard-chaos",
@@ -210,6 +214,59 @@ export const CATALOG: readonly MissionDef[] = [
     title: "Quintal de pernas pro ar",
     objective: "Tire do lugar pelo menos 7 das 10 coisas do quintal do Seu Arlindo: pneus, latas, tábua e caixas.",
     goal: [{ stat: "mess", op: "min", value: 7 }],
+    ranked: true,
+    retired: true,
+  },
+  {
+    key: "street-domino-one-launch",
+    version: 1,
+    game: "dead-end-street",
+    level: "domino",
+    title: "Uma tijolada só",
+    objective: "Em “Efeito dominó”, derrube o flamingo e o gnomo da garagem com um lançamento só.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "launches", op: "max", value: 1 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "street-bath-plumber",
+    version: 1,
+    game: "dead-end-street",
+    level: "surprise-bath",
+    title: "Encanador de plantão",
+    objective: "Em “Banho de surpresa”, molhe os três gnomos usando a corda, o balde e a torneira.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "gadgets", op: "min", value: 3 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "street-path-three",
+    version: 1,
+    game: "dead-end-street",
+    level: "blocked-path",
+    title: "Caminho livre",
+    objective: "Em “Caminho bloqueado”, leve a bola de boliche ao gnomo dourado com no máximo 3 lançamentos.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "launches", op: "max", value: 3 },
+    ],
+    ranked: true,
+  },
+  {
+    key: "street-giant-two",
+    version: 1,
+    game: "dead-end-street",
+    level: "grand-mess",
+    title: "Gnomão no chão",
+    objective: "Em “Bagunça completa”, derrube o Gnomão e os outros dois gnomos com no máximo 2 lançamentos.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "launches", op: "max", value: 2 },
+    ],
     ranked: true,
   },
   {

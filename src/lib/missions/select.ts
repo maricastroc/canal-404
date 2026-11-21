@@ -49,7 +49,7 @@ export function missionSeed(day: string) {
 }
 
 function entriesOf(catalog: readonly MissionDef[], game: string) {
-  return catalog.filter((m) => m.game === game).sort((a, b) => a.key.localeCompare(b.key));
+  return catalog.filter((m) => m.game === game && !m.retired).sort((a, b) => a.key.localeCompare(b.key));
 }
 
 function bagAt(entries: readonly MissionDef[], namespace: string, turn: number): MissionDef[] {
@@ -60,7 +60,7 @@ function bagAt(entries: readonly MissionDef[], namespace: string, turn: number):
 }
 
 function liveGames(rotation: Rotation, catalog: readonly MissionDef[]) {
-  return rotation.games.filter((g) => catalog.some((m) => m.game === g));
+  return rotation.games.filter((g) => catalog.some((m) => m.game === g && !m.retired));
 }
 
 function rotationIndex(day: string, rotations: readonly Rotation[]) {

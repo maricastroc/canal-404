@@ -17,8 +17,11 @@ export const MIN_POWER = 0.12;
 
 export const WAGON = { x: 110, y: 650 };
 export const ARLINDO_WINDOW = { x: 1230, y: 400, w: 140, h: 110 };
+export const CAT_SPOT = { x: 606, y: 716 };
 
 export type ProjectileId = "shoe" | "balloon" | "tire" | "duck";
+
+export const PROJECTILE_ORDER: readonly ProjectileId[] = ["shoe", "balloon", "tire", "duck"];
 
 export type ProjectileDef = {
   id: ProjectileId;
@@ -28,6 +31,7 @@ export type ProjectileDef = {
   restitution: number;
   friction: number;
   frictionAir: number;
+  spin: number;
   material: "rubber" | "soft" | "water" | "squeaky";
 };
 
@@ -40,6 +44,7 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     restitution: 0.22,
     friction: 0.7,
     frictionAir: 0.004,
+    spin: 0.12,
     material: "soft",
   },
   balloon: {
@@ -50,6 +55,7 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     restitution: 0.3,
     friction: 0.4,
     frictionAir: 0.008,
+    spin: 0.03,
     material: "water",
   },
   tire: {
@@ -60,6 +66,7 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     restitution: 0.5,
     friction: 0.9,
     frictionAir: 0.002,
+    spin: 0.03,
     material: "rubber",
   },
   duck: {
@@ -70,139 +77,19 @@ export const PROJECTILES: Record<ProjectileId, ProjectileDef> = {
     restitution: 0.88,
     friction: 0.3,
     frictionAir: 0.004,
+    spin: -0.06,
     material: "squeaky",
   },
 };
 
-export const AMMO: ProjectileId[] = ["shoe", "balloon", "tire", "duck", "shoe", "balloon", "tire"];
-
-export type BodyDef = {
-  id: string;
-  tex: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  density: number;
-  friction?: number;
-  restitution?: number;
-  chamfer?: number;
-  material: "ceramic" | "wood" | "metal" | "rubber" | "plastic";
-};
-
-export type TargetId = "gnome" | "flamingo" | "golden-gnome" | "mailbox" | "birdhouse";
-
-export type TargetDef = BodyDef & { id: TargetId; points: number; fem?: boolean; wave: number };
-
-export const TARGETS: TargetDef[] = [
-  {
-    id: "gnome",
-    wave: 1,
-    tex: "gnome",
-    x: 760,
-    y: 787,
-    w: 54,
-    h: 98,
-    density: 0.0016,
-    chamfer: 8,
-    material: "ceramic",
-    points: 100,
-  },
-  {
-    id: "flamingo",
-    wave: 1,
-    tex: "flamingo",
-    x: 1050,
-    y: 749,
-    w: 44,
-    h: 148,
-    density: 0.0012,
-    chamfer: 6,
-    material: "plastic",
-    points: 150,
-  },
-  {
-    id: "golden-gnome",
-    wave: 2,
-    tex: "gnome-gold",
-    x: 1462,
-    y: 591,
-    w: 54,
-    h: 98,
-    density: 0.0016,
-    chamfer: 8,
-    material: "ceramic",
-    points: 300,
-  },
-  {
-    id: "mailbox",
-    wave: 2,
-    tex: "mailbox",
-    x: 1603,
-    y: 769,
-    w: 80,
-    h: 60,
-    density: 0.0014,
-    chamfer: 6,
-    material: "metal",
-    points: 150,
-    fem: true,
-  },
-  {
-    id: "birdhouse",
-    wave: 3,
-    tex: "birdhouse",
-    x: 1736,
-    y: 380,
-    w: 66,
-    h: 80,
-    density: 0.0012,
-    chamfer: 4,
-    material: "wood",
-    points: 200,
-    fem: true,
-  },
-];
-
-export const PROPS: BodyDef[] = [
-  { id: "tire-1", tex: "tire-flat", x: 760, y: 930, w: 134, h: 38, density: 0.0025, friction: 0.95, chamfer: 14, material: "rubber" },
-  { id: "tire-2", tex: "tire-flat", x: 764, y: 892, w: 134, h: 38, density: 0.0025, friction: 0.95, chamfer: 14, material: "rubber" },
-  { id: "tire-3", tex: "tire-flat", x: 758, y: 854, w: 134, h: 38, density: 0.0025, friction: 0.95, chamfer: 14, material: "rubber" },
-  { id: "trash-can-1", tex: "trash-can", x: 980, y: 896, w: 66, h: 106, density: 0.002, chamfer: 4, material: "metal" },
-  { id: "trash-can-2", tex: "trash-can", x: 1140, y: 896, w: 66, h: 106, density: 0.002, chamfer: 4, material: "metal" },
-  { id: "plank", tex: "plank", x: 1060, y: 833, w: 266, h: 20, density: 0.002, chamfer: 3, material: "wood" },
-  { id: "crate-3", tex: "crate", x: 1150, y: 786, w: 74, h: 74, density: 0.0022, chamfer: 3, material: "wood" },
-  { id: "crate-1", tex: "crate", x: 1300, y: 603, w: 74, h: 74, density: 0.0022, chamfer: 3, material: "wood" },
-  { id: "crate-2", tex: "crate", x: 1376, y: 603, w: 74, h: 74, density: 0.0022, chamfer: 3, material: "wood" },
-  { id: "crate-4", tex: "crate", x: 1338, y: 529, w: 74, h: 74, density: 0.0022, chamfer: 3, material: "wood" },
-];
-
-export const STATICS = [
-  { x: W / 2, y: GROUND_Y + 80, w: W + 800, h: 160, label: "ground" },
-  { x: -70, y: H / 2 - 600, w: 140, h: H + 1600, label: "wall" },
-  { x: W + 70, y: H / 2 - 600, w: 140, h: H + 1600, label: "wall" },
-  { x: 1380, y: 653, w: 260, h: 26, label: "platform" },
-  { x: 1280, y: 808, w: 24, h: 290, label: "post" },
-  { x: 1480, y: 808, w: 24, h: 290, label: "post" },
-  { x: 1605, y: 876, w: 22, h: 152, label: "post" },
-  { x: 1750, y: 430, w: 104, h: 20, label: "branch" },
-  { x: 1818, y: 700, w: 62, h: 500, label: "trunk" },
-];
-
 export const SCORE = {
   messBonus: 25,
   comboBonus: 100,
+  gadgetBonus: 50,
+  clearBonus: 300,
   ammoBonus: 250,
-  waveBonus: 100,
-  twoStars: 1500,
-  threeStars: 2050,
   record: 2500,
 };
 
-export type WaveId = "warm-up" | "sharp-aim" | "up-high";
-
-export type WaveDef = { id: WaveId };
-
-export const WAVES: WaveDef[] = [{ id: "warm-up" }, { id: "sharp-aim" }, { id: "up-high" }];
-
-export const CAT_SPOT = { x: 606, y: 716 };
+export const SOAK_RADIUS = 150;
+export const BURST_RADIUS = 250;

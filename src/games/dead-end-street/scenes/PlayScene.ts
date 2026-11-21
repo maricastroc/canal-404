@@ -1,8 +1,7 @@
 import * as Phaser from "phaser";
-import type { GameHostContext, GameResult } from "@/games/types";
+import type { GameHostContext, GameResult, LevelRecord } from "@/games/types";
 import type { Matter } from "@/lib/physics/matter";
 import {
-  AMMO,
   ANCHOR,
   ANGLE_MAX,
   ANGLE_MIN,
@@ -14,27 +13,48 @@ import {
   MAX_SPEED,
   MIN_POWER,
   MIN_SPEED,
+  PROJECTILE_ORDER,
   SCORE,
   STEP_MS,
-  TARGETS,
   W,
   WAGON,
-  WAVES,
   type ProjectileDef,
+  type ProjectileId,
 } from "../config";
 import { COPY, type StreetCopy } from "../copy";
-import { ANGLE_STEPS, POWER_STEPS, StreetSim, type SimImpact, type SimTargetState, type StreetTally } from "../sim";
+import { PHASES, type Material, type PhaseDef, type PieceDef, type Point } from "../phases";
+import { ANGLE_STEPS, POWER_STEPS, StreetSim, type GadgetEvent, type SimImpact, type SimTarget, type StreetTally } from "../sim";
 import { GAME_SFX, type GameSfx } from "../sounds";
 import { Fx } from "./fx";
+import { GadgetView } from "./gadgets";
 import { Arlindo, birdFlyOut, Cat, popLid } from "./neighborhood";
 import { Bubble, Hud } from "./ui";
+import { decorate, drawStatics, plankTexture } from "./yard";
 
-type Material = "ceramic" | "wood" | "metal" | "rubber" | "plastic" | "soft" | "water" | "squeaky";
+type SoundMaterial = Material | "soft" | "water" | "squeaky" | "rubber";
 
 const SHADOW = { x: 5, y: 6, alpha: 0.26 };
 const KNOCKED_TINT = 0xd4cddc;
+const SOAKED_TINT = 0xa9dcf7;
+const ANCHORS: Record<string, Point> = { parasol: { x: 145, y: 111 } };
+const SFX_BY_MATERIAL: Record<SoundMaterial, GameSfx> = {
+  ceramic: "ceramic",
+  wood: "wood",
+  metal: "metal",
+  rubber: "rubber",
+  plastic: "wood",
+  cloth: "soft",
+  concrete: "thud",
+  glass: "ceramic",
+  soft: "thud",
+  water: "splash",
+  squeaky: "squeak",
+};
 
 export class PlayScene extends Phaser.Scene {
+  phaseIndex = 0;
+  private phaseDef!: PhaseDef;
+  private records: LevelRecord[] = [];
   private ctx!: GameHostContext;
   private copy!: StreetCopy;
   private sim!: StreetSim;
@@ -42,13 +62,12 @@ export class PlayScene extends Phaser.Scene {
   private acc = 0;
   private sprites = new Map<number, Phaser.GameObjects.Image>();
   private shadows = new Map<number, Phaser.GameObjects.Image>();
-  private materials = new Map<number, Material>();
+  private materials = new Map<number, SoundMaterial>();
   private knocked = new Set<number>();
   private popped = new Set<number>();
   private readyImage: Phaser.GameObjects.Image | null = null;
   private readyPop = { value: 1 };
   private flyStart = 0;
-  private highScore = 0;
   private aimAngle = 35;
   private aimPower = 0.5;
   private savedAim = { angle: 35, power: 0.5 };
@@ -60,6 +79,7 @@ export class PlayScene extends Phaser.Scene {
   private lina!: Phaser.GameObjects.Image;
   private hud!: Hud;
   private fx!: Fx;
+  private gadgets!: GadgetView;
   private arlindo!: Arlindo;
   private cat!: Cat;
   private decoBubble!: Bubble;
@@ -73,6 +93,7 @@ export class PlayScene extends Phaser.Scene {
   private aimAnnounce?: Phaser.Time.TimerEvent;
   private bandSnap = 0;
   private playMs = 0;
+  private doorLine = 0;
 
   constructor() {
     super("play");
@@ -97,40 +118,51 @@ export class PlayScene extends Phaser.Scene {
     this.charged = false;
     this.bandSnap = 0;
     this.playMs = 0;
+    this.doorLine = 0;
+    this.phaseIndex = Phaser.Math.Clamp((this.registry.get("phase") as number | undefined) ?? 0, 0, PHASES.length - 1);
+    this.phaseDef = PHASES[this.phaseIndex];
+    this.records = ((this.registry.get("records") as LevelRecord[] | undefined) ?? []).map((r) => ({ ...r }));
+  }
+
+  get isAttract() {
+    return this.sim?.phase === "attract";
   }
 
   create() {
     this.ctx = this.registry.get("ctx") as GameHostContext;
     this.copy = COPY[this.ctx.locale];
-    this.highScore = (this.registry.get("highScore") as number | undefined) ?? this.ctx.highScore;
     const reduced = this.ctx.reducedMotion;
 
     this.buildBackground();
+    decorate(this, this.phaseIndex, this.copy, this.ctx.fonts);
+    drawStatics(this, this.phaseDef);
     this.fx = new Fx(this, this.ctx.fonts, reduced);
-    this.sim = new StreetSim({
-      load: (def, shot) => this.onLoad(def, shot),
+    this.sim = new StreetSim(this.phaseDef, {
+      load: (def) => this.onLoad(def),
+      select: (def) => this.onSelect(def),
       impact: (imp) => this.onImpact(imp),
       hit: (t, shotHits, combo) => this.onHit(t, shotHits, combo),
       mess: (points, x, y) => this.onMess(points, x, y),
       score: (score) => this.onScore(score),
       burst: (x, y, balloon) => this.onBurst(x, y, balloon),
-      waveCleared: (wave, last) => this.onWaveCleared(wave, last),
-      interlude: (wave, spent) => this.onInterlude(wave, spent),
-      spawn: (t) => this.spawnTarget(t, true),
+      gadget: (event) => this.onGadget(event),
       shotEnd: (shot) => this.onShotEnd(shot.hits, shot.mess, shot.nearest),
+      vanish: (body) => this.onVanish(body),
       outOfAmmo: () => this.hud.setAim(null, null),
       finish: (tally) => this.finish(tally),
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.sim.destroy());
     this.buildLevel();
+    this.gadgets = new GadgetView(this, this.sim, this.fx, reduced);
     this.buildLauncher();
-    this.arlindo = new Arlindo(this, this.ctx.fonts, reduced);
+    this.arlindo = new Arlindo(this, this.ctx.fonts, reduced, this.phaseDef.act === 1 ? "calm" : this.phaseDef.act === 2 ? "angry" : "furious", this.fx);
     this.cat = new Cat(this, this.ctx.fonts, this.fx, reduced, () => this.sfx("hiss", 0.9), this.copy.words.hiss);
     this.decoBubble = new Bubble(this, this.ctx.fonts, "left", 36, 16);
     this.linaBubble = new Bubble(this, this.ctx.fonts, "left", 36, 16);
-    this.hud = new Hud(this, this.ctx.fonts, TARGETS, reduced, this.ctx.locale);
-    this.hud.setRecord(this.highScore);
-    this.sim.targets.forEach((t) => (t.def.wave > 1 ? this.hud.lockTarget(t.index) : this.hud.revealTarget(t.index)));
+    const touch = Boolean(this.sys.game.device.input.touch);
+    this.hud = new Hud(this, this.ctx.fonts, this.phaseDef, this.phaseIndex, PHASES.length, reduced, this.ctx.locale, touch, (id) => this.pick(id));
+    this.hud.setBest(this.records[this.phaseIndex]?.score ?? 0);
+    this.hud.setLaunches(0);
     this.setupInput();
 
     this.applyScale();
@@ -161,22 +193,20 @@ export class PlayScene extends Phaser.Scene {
     this.linaBubble.setBaseScale(Math.min(s, 1.5));
   }
 
-  begin() {
-    if (this.sim.phase !== "attract") return;
-    this.hud.setRound(0);
-    const first = this.copy.waves[WAVES[0].id];
-    this.hud.showBanner(this.copy.roundOf(1, WAVES.length), first.title, first.subtitle, 2400);
-    this.ctx.onEvent({
-      type: "announce",
-      message: this.copy.announce.start(WAVES.length, first.subtitle),
-    });
-    this.sim.start();
-    this.sim.targets.filter((t) => t.def.wave === 1).forEach((t, i) => this.time.delayedCall(500 + i * 220, () => this.cueTarget(t)));
+  setRecords(records: LevelRecord[]) {
+    this.records = records.map((r) => ({ ...r }));
+    this.hud?.setBest(this.records[this.phaseIndex]?.score ?? 0);
   }
 
-  setHighScore(value: number) {
-    this.highScore = value;
-    this.hud?.setRecord(value);
+  begin() {
+    if (this.sim.phase !== "attract") return;
+    const text = this.copy.phases[this.phaseDef.id];
+    const kicker = `${this.copy.phaseOf(this.phaseIndex + 1, PHASES.length)} · ${this.copy.hud.act(this.phaseDef.act)}`;
+    this.hud.showBanner(kicker, text.title, text.goal, 2600);
+    this.ctx.onEvent({ type: "announce", message: this.copy.announce.start(this.phaseIndex + 1, PHASES.length, text.title, text.goal) });
+    this.time.delayedCall(700, () => this.arlindo.shout(text.arlindo, 1900));
+    this.sim.start();
+    this.sim.targets.forEach((t, i) => this.time.delayedCall(500 + i * 220, () => this.cueTarget(t)));
   }
 
   private sfx(name: GameSfx, volume = 1, throttleMs = 0) {
@@ -213,41 +243,43 @@ export class PlayScene extends Phaser.Scene {
     this.add.image(0, 0, "yard").setOrigin(0).setDepth(3);
   }
 
-  private addSprite(body: Matter.Body, tex: string, material: Material, depth = 5) {
+  private textureFor(def: PieceDef) {
+    if (this.textures.exists(def.tex)) return def.tex;
+    const w = def.shape.type === "box" ? def.shape.w : 40;
+    const h = def.shape.type === "box" ? def.shape.h : 40;
+    return plankTexture(this, `${def.tex}-${w}x${h}`, w, h, def.tex === "door" ? "door" : "plank");
+  }
+
+  private addSprite(body: Matter.Body, tex: string, material: SoundMaterial, offset: Point = { x: 0, y: 0 }, depth = 5) {
     const sprite = this.add.image(body.position.x, body.position.y, tex).setRotation(body.angle).setDepth(depth);
+    const anchor = ANCHORS[tex];
+    if (anchor || offset.x || offset.y) {
+      const ax = anchor?.x ?? sprite.width / 2;
+      const ay = anchor?.y ?? sprite.height / 2;
+      sprite.setOrigin((ax + offset.x) / sprite.width, (ay + offset.y) / sprite.height);
+    }
     this.sprites.set(body.id, sprite);
     this.materials.set(body.id, material);
     return sprite;
   }
 
   private buildLevel() {
-    for (const p of this.sim.props) this.addSprite(p.body, p.def.tex, p.def.material);
-    for (const t of this.sim.targets) if (t.body) this.spawnTarget(t, false);
-  }
-
-  private spawnTarget(t: SimTargetState, animate: boolean) {
-    const body = t.body!;
-    const sprite = this.addSprite(body, t.def.tex, t.def.material);
-    this.shadows.set(body.id, this.add.image(sprite.x + SHADOW.x, sprite.y + SHADOW.y, t.def.tex).setTintFill(0x1d1830).setAlpha(SHADOW.alpha).setDepth(4.9));
-    if (animate) {
-      sprite.setAlpha(0);
-      this.tweens.add({ targets: sprite, alpha: 1, duration: 220 });
-      this.fx.burst(this.fx.puff, 6, t.def.x, t.def.y);
-      this.fx.burst(this.fx.sparks, 5, t.def.x, t.def.y - 20);
-      this.sfx("spawn", 0.9);
-      this.hud.revealTarget(t.index);
-      this.time.delayedCall(260, () => this.cueTarget(t));
+    for (const p of this.sim.pieces) this.addSprite(p.body, this.textureFor(p.def), p.def.material, p.offset, p.def.fixed ? 4.8 : 5);
+    for (const t of this.sim.targets) {
+      const sprite = this.addSprite(t.body, this.textureFor(t.def), t.def.material, t.offset);
+      this.shadows.set(t.body.id, this.add.image(sprite.x + SHADOW.x, sprite.y + SHADOW.y, sprite.texture.key).setOrigin(sprite.originX, sprite.originY).setTintFill(0x1d1830).setAlpha(SHADOW.alpha).setDepth(4.9));
     }
   }
 
-  private cueTarget(t: SimTargetState) {
-    if (!t.body || t.hit || this.sim.finishing) return;
-    const x = t.def.x;
-    const y = t.def.y - t.def.h / 2 - 46;
+  private cueTarget(t: SimTarget) {
+    if (t.hit || this.sim.finishing) return;
+    const sprite = this.sprites.get(t.body.id);
+    const x = t.body.position.x;
+    const y = t.body.position.y - (sprite ? sprite.displayHeight * sprite.originY : 50) - 40;
     const g = this.add.graphics().setDepth(13);
     g.fillStyle(0x1d1830, 1);
     g.fillTriangle(-17, -12, 21, -12, 2, 15);
-    g.fillStyle(0xffc83d, 1);
+    g.fillStyle(t.def.kind === "soak" ? 0x5cb9f0 : 0xffc83d, 1);
     g.fillTriangle(-19, -16, 19, -16, 0, 11);
     g.lineStyle(4, 0x1d1830, 1);
     g.strokeTriangle(-19, -16, 19, -16, 0, 11);
@@ -272,7 +304,7 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private flyToHud(t: SimTargetState, x: number, y: number) {
+  private flyToHud(t: SimTarget, x: number, y: number) {
     if (this.ctx.reducedMotion) {
       this.hud.checkTarget(t.index);
       return;
@@ -327,6 +359,22 @@ export class PlayScene extends Phaser.Scene {
     return this.sim.phase === "ready" && !this.aiming;
   }
 
+  private availableKinds() {
+    return PROJECTILE_ORDER.filter((id) => (this.phaseDef.ammo[id] ?? 0) > 0);
+  }
+
+  private pick(id: ProjectileId) {
+    if (this.aiming || this.sim.stock[id] <= 0) return;
+    this.sim.select(id);
+  }
+
+  private cycleAmmo() {
+    const kinds = this.availableKinds().filter((id) => this.sim.stock[id] > 0);
+    if (kinds.length < 2 || !this.sim.current) return;
+    const i = kinds.indexOf(this.sim.current.id);
+    this.pick(kinds[(i + 1) % kinds.length]);
+  }
+
   private setupInput() {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys({
@@ -352,6 +400,17 @@ export class PlayScene extends Phaser.Scene {
         this.tryFire();
         return;
       }
+      const slot = ["1", "2", "3", "4"].indexOf(key);
+      if (slot >= 0) {
+        const id = this.availableKinds()[slot];
+        if (id) this.pick(id);
+        return;
+      }
+      if (key === "q" || key === "tab") {
+        event.preventDefault();
+        this.cycleAmmo();
+        return;
+      }
       const map: Record<string, [number, number]> = {
         arrowleft: [1.5, 0],
         a: [1.5, 0],
@@ -369,8 +428,8 @@ export class PlayScene extends Phaser.Scene {
       }
     });
 
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (!this.aimable) return;
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (!this.aimable || over.length) return;
       this.savedAim = { angle: this.aimAngle, power: this.aimPower };
       this.dragStart = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY);
       this.aiming = true;
@@ -469,9 +528,9 @@ export class PlayScene extends Phaser.Scene {
     const material = this.materials.get(fast.id) ?? "soft";
     const volume = Phaser.Math.Clamp(rel / 14, 0.15, 1);
     this.cat.notifyImpact(x, y, rel);
-    for (const prop of this.sim.props) {
-      const cb = prop.body;
-      if (this.popped.has(cb.id) || prop.def.tex !== "trash-can") continue;
+    for (const piece of this.sim.pieces) {
+      const cb = piece.body;
+      if (this.popped.has(cb.id) || piece.def.tex !== "trash-can") continue;
       const direct = (a.id === cb.id || b.id === cb.id) && rel > 3.5;
       const topX = cb.position.x + Math.sin(cb.angle) * 54;
       const topY = cb.position.y - Math.cos(cb.angle) * 54;
@@ -484,12 +543,8 @@ export class PlayScene extends Phaser.Scene {
         if (!this.arlindo.busy) this.arlindo.shout(this.copy.arlindo.trashCan, 1300);
       }
     }
-    if (material === "squeaky") {
-      this.sfx("squeak", volume, 120);
-    } else if (material !== "water") {
-      const map: Record<string, GameSfx> = { ceramic: "ceramic", wood: "wood", metal: "metal", rubber: "rubber", plastic: "wood", soft: "thud" };
-      this.sfx(map[material] ?? "thud", volume, 70);
-    }
+    if (material === "squeaky") this.sfx("squeak", volume, 120);
+    else if (material !== "water") this.sfx(SFX_BY_MATERIAL[material] ?? "thud", volume, 70);
     const flyingDef = this.sim.flyingDef;
     if (imp.flying && flyingDef) {
       const id = flyingDef.id;
@@ -535,17 +590,34 @@ export class PlayScene extends Phaser.Scene {
     this.freezeUntil = Math.max(this.freezeUntil, this.time.now + ms);
   }
 
-  private onLoad(def: ProjectileDef, shot: number) {
+  private showAmmo(def: ProjectileDef, hint?: string) {
+    this.hud.setAmmo(def.id, this.sim.stock, hint);
+    const text = this.copy.projectiles[def.id];
+    this.ctx.onEvent({ type: "announce", message: this.copy.announce.ammo(text.name, text.tip, this.sim.stock[def.id]) });
+  }
+
+  private onLoad(def: ProjectileDef) {
     this.charged = this.aimPower >= 0.98;
     this.linaBubble.hide();
     const pos = this.pulledPosition();
     this.readyImage = this.add.image(pos.x, pos.y, def.tex).setDepth(8);
     this.readyPop.value = 0.2;
     this.tweens.add({ targets: this.readyPop, value: 1, duration: 300, ease: "Back.easeOut" });
-    this.hud.showTag(def.id, AMMO.slice(shot), this.sim.launches.length === 0 ? this.copy.firstHint : undefined);
+    const first = this.sim.launches.length === 0;
+    const kinds = this.availableKinds().length;
+    this.showAmmo(def, first ? (kinds > 1 ? this.hud.swapHint : this.copy.firstHint) : undefined);
+    this.hud.popTag();
     this.sfx("load", 0.8);
-    const text = this.copy.projectiles[def.id];
-    this.ctx.onEvent({ type: "announce", message: this.copy.announce.next(text.name, text.tip) });
+  }
+
+  private onSelect(def: ProjectileDef) {
+    if (this.readyImage) {
+      this.readyImage.setTexture(def.tex);
+      this.readyPop.value = 0.4;
+      this.tweens.add({ targets: this.readyPop, value: 1, duration: 260, ease: "Back.easeOut" });
+    }
+    this.showAmmo(def);
+    this.sfx("load", 0.6);
   }
 
   private tryFire() {
@@ -553,21 +625,23 @@ export class PlayScene extends Phaser.Scene {
     const def = this.sim.current!;
     const angle = Phaser.Math.Clamp(Math.round(this.aimAngle * 100), ANGLE_STEPS.min, ANGLE_STEPS.max);
     const power = Phaser.Math.Clamp(Math.round(this.aimPower * 1000), POWER_STEPS.min, POWER_STEPS.max);
-    const body = this.sim.launch(angle, power);
+    const body = this.sim.launch(angle, power, def.id);
     if (!body) return;
     this.aimAngle = angle / 100;
     this.aimPower = power / 1000;
     this.readyImage.destroy();
     this.readyImage = null;
-    const sprite = this.addSprite(body, def.tex, def.material, 8);
+    const sprite = this.addSprite(body, def.tex, def.material, { x: 0, y: 0 }, 8);
     this.flyStart = this.time.now;
     this.bandSnap = this.time.now;
     const launches = this.sim.launches.length;
+    this.hud.setLaunches(launches);
+    this.hud.setAmmo(def.id, this.sim.stock);
     this.fx.startTrail(def.id, sprite);
     this.fx.burst(this.fx.puff, 3, (BAND_BACK.x + BAND_FRONT.x) / 2, ANCHOR.y);
     this.sfx("launch", 0.6 + this.aimPower * 0.5);
     this.sfx("twang", 0.8);
-    if (this.sim.wave === 0 && launches === 1) this.hud.hideBanner();
+    if (launches === 1) this.hud.hideBanner();
     this.decoBubble.hide();
     this.aimGfx.clear();
     this.hop(this.deco, 32);
@@ -589,6 +663,66 @@ export class PlayScene extends Phaser.Scene {
     if (!this.ctx.reducedMotion) this.cameras.main.shake(170, 0.004);
   }
 
+  private onVanish(body: Matter.Body) {
+    const sprite = this.sprites.get(body.id);
+    this.sprites.delete(body.id);
+    if (!sprite?.active) return;
+    this.fx.burst(this.fx.puff, 5, sprite.x, sprite.y);
+    this.tweens.add({ targets: sprite, alpha: 0, scale: 0.5, duration: this.ctx.reducedMotion ? 80 : 240, onComplete: () => sprite.destroy() });
+  }
+
+  private onGadget(event: GadgetEvent) {
+    const words = this.copy.words;
+    const arl = this.copy.arlindo;
+    const popup = () => this.time.delayedCall(240, () => this.fx.popup(`+${SCORE.gadgetBonus}`, event.x, event.y - 120, "#9df0dc", 44, words.gadget));
+    switch (event.type) {
+      case "rope-cut":
+        this.gadgets.snapRope(event.rope);
+        this.fx.word(words.ropeCut, event.x, event.y - 70, "#ffc83d", 70, true);
+        this.fx.burst(this.fx.splinters, 6, event.x, event.y);
+        this.sfx("twang", 1);
+        popup();
+        if (!this.arlindo.busy) this.arlindo.shout(arl.ropeCut, 1300);
+        break;
+      case "bucket-spill":
+        this.fx.burst(this.fx.drops, 34, event.x, event.y);
+        this.fx.ring(event.x, event.y, 0x5cb9f0, 150);
+        this.fx.word(words.bucket, event.x, event.y - 90, "#5cb9f0", 74, true);
+        this.sfx("splash", 1);
+        popup();
+        if (!this.arlindo.busy) this.arlindo.shout(arl.bucket, 1300);
+        break;
+      case "faucet-on":
+        this.fx.word(words.faucet, event.x, event.y - 80, "#5cb9f0", 66, true);
+        this.fx.burst(this.fx.sparks, 6, event.x, event.y);
+        this.sfx("splash", 0.7);
+        this.sfx("rustle", 0.6);
+        popup();
+        if (!this.arlindo.busy) this.arlindo.shout(arl.faucet, 1400);
+        break;
+      case "blower-off":
+        this.fx.word(words.blowerOff, event.x, event.y - 90, "#ff8a3d", 66, true);
+        this.fx.burst(this.fx.sparks, 10, event.x, event.y);
+        this.fx.burst(this.fx.puff, 6, event.x, event.y);
+        this.sfx("metal", 1);
+        popup();
+        if (!this.arlindo.busy) this.arlindo.shout(arl.blowerOff, 1400);
+        break;
+      case "turnstile-turn":
+        this.sfx("wood", 0.8);
+        this.time.delayedCall(250, () => this.fx.word(words.door, event.x, event.y - 120, "#f7ecd4", 50, true));
+        this.arlindo.press();
+        if (!this.arlindo.busy && !this.sim.finishing) {
+          this.arlindo.shout(arl.door[this.doorLine % arl.door.length], 900);
+          this.doorLine += 1;
+        }
+        this.ctx.onEvent({ type: "announce", message: this.copy.announce.door, transient: true });
+        return;
+    }
+    const what = this.copy.gadgetNames[event.type];
+    this.ctx.onEvent({ type: "announce", message: this.copy.announce.gadget(what, SCORE.gadgetBonus) });
+  }
+
   private onShotEnd(hits: number, mess: number, nearest: number) {
     this.fx.stopTrail();
     if (hits > 0 || this.sim.finishing) return;
@@ -607,37 +741,56 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private onHit(t: SimTargetState, shotHits: number, combo: boolean) {
-    const body = t.body!;
+  private onHit(t: SimTarget, shotHits: number, combo: boolean) {
+    const body = t.body;
     const sprite = this.sprites.get(body.id);
     const { x, y } = body.position;
+    const chain = this.sim.phase !== "flying";
     this.lastHit = { at: this.time.now, x, y };
-    const gold = t.def.id === "golden-gnome";
-    this.fx.popup(`+${t.def.points}`, x, y - 80, gold ? "#ffe39a" : "#ffc83d", gold ? 70 : 60, gold ? this.copy.words.gold : undefined);
-    this.fx.burst(this.fx.stars, gold ? 16 : 10, x, y);
-    this.fx.ring(x, y, gold ? 0xffc83d : 0xfffaf0, 100);
-    this.flashBody(body);
-    if (t.def.id === "flamingo") this.fx.burst(this.fx.feathers, 12, x, y);
+    const gold = t.def.name === "golden-gnome";
+    const giant = t.def.name === "giant-gnome";
+    this.fx.popup(`+${t.def.points}`, x, y - 80, gold || giant ? "#ffe39a" : "#ffc83d", gold || giant ? 70 : 60, gold ? this.copy.words.gold : undefined);
+    this.fx.burst(this.fx.stars, gold || giant ? 18 : 10, x, y);
+    this.fx.ring(x, y, gold ? 0xffc83d : 0xfffaf0, giant ? 180 : 100);
+    if (t.def.kind === "soak") {
+      this.fx.burst(this.fx.drops, 18, x, y - 20);
+      this.fx.word(this.copy.words.soaked, x, y - 120, "#5cb9f0", 56, true);
+      sprite?.setTint(SOAKED_TINT);
+      if (sprite && !this.ctx.reducedMotion) this.tweens.add({ targets: sprite, x: sprite.x + 4, duration: 50, yoyo: true, repeat: 7 });
+      this.sfx("splash", 0.6);
+    } else {
+      this.flashBody(body);
+    }
+    if (t.def.name === "flamingo") this.fx.burst(this.fx.feathers, 12, x, y);
     if (t.def.material === "wood") this.fx.burst(this.fx.splinters, 8, x, y);
-    if (t.def.material === "ceramic") this.fx.burst(this.fx.sparks, 6, x, y);
-    if (t.def.id === "mailbox") {
+    if (t.def.material === "ceramic" && t.def.kind === "knock") this.fx.burst(this.fx.sparks, 6, x, y);
+    if (t.def.name === "mailbox") {
       this.fx.burst(this.fx.letters, 9, x, y - 10);
       this.sfx("rustle", 0.9);
     }
-    if (t.def.id === "birdhouse") {
+    if (t.def.name === "birdhouse") {
       sprite?.setTexture("birdhouse-empty");
       this.shadows.get(body.id)?.setTexture("birdhouse-empty");
       birdFlyOut(this, x + 4, y + 2, this.fx, this.ctx.reducedMotion, this.copy.words.tweet);
       this.sfx("tweet", 1);
     }
+    if (giant) {
+      this.fx.word(this.copy.words.timber, x, y - 200, "#ef4f43", 96, true);
+      this.fx.flash(0.35);
+      this.freeze(120);
+      if (!this.ctx.reducedMotion) this.cameras.main.shake(420, 0.008);
+    }
     this.sfx("target", 1);
     this.freeze(shotHits === 1 ? 50 : 30);
-    this.arlindo.shout(this.copy.targets[t.def.id].shout);
+    this.arlindo.shout(this.copy.targets[t.def.name].shout);
     this.flyToHud(t, x, y);
-    this.knocked.add(body.id);
-    this.time.delayedCall(650, () => sprite?.active && sprite.setTint(KNOCKED_TINT));
+    if (t.def.kind === "knock") {
+      this.knocked.add(body.id);
+      this.time.delayedCall(650, () => sprite?.active && sprite.setTint(KNOCKED_TINT));
+    }
     this.hop(this.lina, 24);
-    let message = this.copy.announce.knocked(this.copy.targets[t.def.id].name, Boolean(t.def.fem), t.def.points);
+    const name = this.copy.targets[t.def.name].name;
+    let message = t.def.kind === "soak" ? this.copy.announce.soaked(name, t.def.points) : this.copy.announce.knocked(name, t.def.points);
     if (combo) {
       this.fx.word(this.copy.words.combo(shotHits), W / 2, 340, "#f06ba8", 96, true);
       this.fx.flash(0.3);
@@ -648,6 +801,8 @@ export class PlayScene extends Phaser.Scene {
       this.hop(this.lina, 36, 1);
       this.ctx.onEvent({ type: "achievement", id: "domino-effect" });
       message += this.copy.announce.combo(shotHits, SCORE.comboBonus);
+    } else if (chain) {
+      this.linaSay(this.copy.chainShout);
     } else if (shotHits === 1) {
       this.linaSay(Phaser.Utils.Array.GetRandom(this.copy.hitLines));
     }
@@ -659,90 +814,77 @@ export class PlayScene extends Phaser.Scene {
     this.sfx("mess", 0.6, 80);
   }
 
-  private onWaveCleared(wave: number, last: boolean) {
-    this.time.delayedCall(380, () => this.fx.popup(`+${SCORE.waveBonus}`, W / 2, 470, "#9df0dc", 54, this.copy.words.roundClear));
-    this.sfx("waveClear", 0.9);
-    if (!last) this.ctx.onEvent({ type: "announce", message: this.copy.announce.roundClear(wave + 1, SCORE.waveBonus) });
-  }
-
-  private onInterlude(w: number, spent: Matter.Body[]) {
-    if (this.aiming) {
-      this.aiming = false;
-      this.dragStart = null;
-      this.aimAngle = this.savedAim.angle;
-      this.aimPower = this.savedAim.power;
-    }
-    const def = this.copy.waves[WAVES[w].id];
-    this.hud.setRound(w);
-    this.hud.showBanner(this.copy.roundOf(w + 1, WAVES.length), def.title, def.subtitle, 1500);
-    if (def.arlindo) this.time.delayedCall(250, () => this.arlindo.shout(def.arlindo!, 1500));
-    this.cat.comeBack();
-    for (const body of spent) {
-      const sprite = this.sprites.get(body.id);
-      this.sprites.delete(body.id);
-      if (!sprite?.active) continue;
-      this.fx.burst(this.fx.puff, 6, sprite.x, sprite.y);
-      this.tweens.add({ targets: sprite, alpha: 0, scale: 0.6, duration: this.ctx.reducedMotion ? 80 : 260, onComplete: () => sprite.destroy() });
-    }
-    this.ctx.onEvent({ type: "announce", message: this.copy.announce.round(w + 1, WAVES.length, def.title, def.subtitle) });
+  private campaignStars(stars: number) {
+    return PHASES.reduce((sum, _, i) => sum + Math.max(this.records[i]?.stars ?? 0, i === this.phaseIndex ? stars : 0), 0);
   }
 
   private finish(tally: StreetTally) {
-    const { won, score, stars, ammoBonus } = tally;
+    const { won, score, stars } = tally;
+    const finale = won && this.phaseIndex === PHASES.length - 1;
     this.fx.stopTrail();
-    if (this.readyImage) {
-      this.tweens.add({ targets: this.readyPop, value: 0, duration: 200 });
-    }
+    if (this.readyImage) this.tweens.add({ targets: this.readyPop, value: 0, duration: 200 });
     this.aimGfx.clear();
     this.hud.hideTag();
     this.hud.hideBanner();
     this.decoBubble.hide();
     this.linaBubble.hide();
+    const totalStars = this.campaignStars(stars);
     const achievements: string[] = [];
-    if (won) achievements.push("street-win");
-    if (stars === 3) achievements.push("three-stars");
-    if (score >= SCORE.record) achievements.push("high-scorer");
+    if (won && stars === 3) achievements.push("three-stars");
+    if (finale) achievements.push("street-win");
+    if (totalStars === PHASES.length * 3) achievements.push("high-scorer");
+    const phaseText = this.copy.phases[this.phaseDef.id];
     if (won) {
       this.sfx("victory", 1);
       this.fx.burst(this.fx.stars, 40, W / 2, 200);
       this.fx.flash(0.25);
       if (!this.ctx.reducedMotion) {
-        this.hop(this.deco, 34, 3);
-        this.hop(this.lina, 34, 3);
+        this.hop(this.deco, 34, finale ? 6 : 3);
+        this.hop(this.lina, 34, finale ? 6 : 3);
       }
-      this.arlindo.shout(this.copy.arlindo.win, 2200);
+      if (finale) {
+        this.sfx("splash", 1);
+        this.arlindo.surrender(this.copy.arlindo.finale);
+        this.time.delayedCall(900, () => this.fx.burst(this.fx.stars, 50, W / 2, 260));
+      } else {
+        this.arlindo.shout(this.copy.arlindo.win[this.phaseIndex] ?? this.copy.arlindo.win[0], 2000);
+      }
     } else {
       this.sfx("defeat", 1);
       this.arlindo.shout(this.copy.arlindo.lose, 2000);
       this.tweens.add({ targets: [this.deco, this.lina], scaleY: 0.92, angle: -4, duration: 400, ease: "Sine.easeOut" });
     }
-    const nextStar = stars === 1 ? SCORE.twoStars : stars === 2 ? SCORE.threeStars : 0;
+    const previous = this.records[this.phaseIndex] ?? { stars: 0, score: 0 };
+    if (won) this.records[this.phaseIndex] = { stars: Math.max(previous.stars, stars), score: Math.max(previous.score, score) };
+    this.registry.set("records", this.records.map((r) => ({ ...r })));
     const text = this.copy.summary;
-    const summary = [
-      text.launches(tally.shots, AMMO.length),
-      text.targets(tally.stats.targets, TARGETS.length),
-      text.mess(tally.stats.mess, this.sim.props.length),
-      nextStar ? text.nextStar(nextStar - score) : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const summary = [text.launches(tally.stats.launches), text.targets(tally.stats.targets, this.phaseDef.targets.length), text.campaign(totalStars, PHASES.length * 3)].join(" ");
+    const par = this.phaseDef.par;
     const result: GameResult = {
       won,
       score,
       stars,
+      level: { index: this.phaseIndex, id: this.phaseDef.id, title: phaseText.title, total: PHASES.length },
+      copy: finale
+        ? { title: this.copy.result.finaleTitle, text: this.copy.result.finaleText }
+        : won
+          ? { title: this.copy.result.winTitle, text: this.copy.result.winText(phaseText.title) }
+          : { title: this.copy.result.loseTitle, text: this.copy.result.loseText },
       breakdown: [
         { label: this.copy.breakdown.targets, value: tally.targetScore },
-        { label: this.copy.breakdown.waves, value: tally.waveScore },
         { label: this.copy.breakdown.mess, value: tally.messScore },
         { label: this.copy.breakdown.combos, value: tally.comboScore },
-        { label: this.copy.breakdown.ammo, value: ammoBonus },
+        { label: this.copy.breakdown.gadgets, value: tally.gadgetScore },
+        { label: this.copy.breakdown.clear, value: tally.clearBonus },
+        { label: this.copy.breakdown.ammo, value: tally.ammoBonus },
       ].filter((row, i) => i === 0 || row.value !== 0),
       stats: { ...tally.stats, timeMs: Math.round(this.playMs) },
-      replay: { kind: "street-launches", version: 1, launches: this.sim.launches.map((l) => ({ ...l })) },
+      replay: { kind: "street-launches", version: 2, launches: this.sim.launches.map((l) => ({ ...l })) },
       achievements,
       summary,
+      ...(won && stars < 3 ? { starHint: stars === 1 ? this.copy.starHintTwo(par[0], par[1]) : this.copy.starHint(par[0]) } : {}),
     };
-    this.time.delayedCall(won ? 900 : 300, () => this.ctx.onEvent({ type: "finished", result }));
+    this.time.delayedCall(finale ? 3600 : won ? 1100 : 400, () => this.ctx.onEvent({ type: "finished", result }));
   }
 
   private drawBands() {
@@ -752,7 +894,7 @@ export class PlayScene extends Phaser.Scene {
     front.clear();
     let target = { x: ANCHOR.x, y: ANCHOR.y + 4 };
     const phase = this.sim.phase;
-    const holding = this.readyImage && (phase === "ready" || phase === "interlude");
+    const holding = this.readyImage && phase === "ready";
     if (holding && this.readyImage) {
       target = { x: this.readyImage.x, y: this.readyImage.y };
     } else if (this.time.now - this.bandSnap < 260) {
@@ -809,7 +951,7 @@ export class PlayScene extends Phaser.Scene {
     const g = this.aimGfx;
     g.clear();
     const phase = this.sim.phase;
-    const showing = (phase === "ready" || phase === "interlude") && this.readyImage;
+    const showing = phase === "ready" && this.readyImage;
     if (!showing || !this.readyImage) {
       this.drawSpeedLines(g);
       if (phase !== "attract") this.hud.setAim(null, null);
@@ -822,7 +964,7 @@ export class PlayScene extends Phaser.Scene {
     this.readyImage.setAngle(-this.aimAngle);
     this.readyImage.setScale((1 + p * 0.22) * pop, (1 - p * 0.14) * pop);
     this.hud.setAim(this.aimAngle, p);
-    if (p < MIN_POWER || phase === "interlude") return;
+    if (p < MIN_POWER) return;
     const vel = this.launchVelocity();
     const air = 1 - (this.sim.current?.frictionAir ?? 0.004);
     let x = pos.x;
@@ -847,7 +989,7 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  update(_time: number, delta: number) {
+  update(time: number, delta: number) {
     const phase = this.sim.phase;
     if (phase !== "attract" && phase !== "over") {
       this.playMs += delta;
@@ -871,6 +1013,7 @@ export class PlayScene extends Phaser.Scene {
       }
     }
     this.syncSprites();
+    this.gadgets.update(time, delta);
     if (this.sim.phase === "flying" && this.sim.flying) this.cat.notifyFlyby(this.sim.flying.position.x, this.sim.flying.position.y);
     this.drawBands();
     this.drawAim();

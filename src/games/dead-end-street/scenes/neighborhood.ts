@@ -1,21 +1,28 @@
 import * as Phaser from "phaser";
 import { ARLINDO_WINDOW, CAT_SPOT, GROUND_Y, W } from "../config";
 import type { Fx } from "./fx";
-import { Bubble, cartoonText, type Fonts } from "./ui";
+import { Bubble, INK_HEX, cartoonText, type Fonts } from "./ui";
+
+export type ArlindoMood = "calm" | "angry" | "furious";
 
 export class Arlindo {
   private sprite: Phaser.GameObjects.Image;
   private bubble: Bubble;
   private hideTimer?: Phaser.Time.TimerEvent;
+  private flag?: Phaser.GameObjects.Container;
+  private mood: ArlindoMood;
   lastShout = 0;
 
   constructor(
     private scene: Phaser.Scene,
     fonts: Fonts,
     private reduced: boolean,
+    mood: ArlindoMood,
+    private fx: Fx,
   ) {
     const win = ARLINDO_WINDOW;
-    this.sprite = scene.add.image(win.x + win.w / 2, win.y + win.h + 150, "arlindo").setOrigin(0.5, 1).setDepth(4);
+    this.mood = mood;
+    this.sprite = scene.add.image(win.x + win.w / 2, win.y + win.h + 150, mood === "calm" ? "arlindo" : "arlindo-angry").setOrigin(0.5, 1).setDepth(4);
     const shape = scene.make.graphics({}, false);
     shape.fillStyle(0xffffff);
     shape.fillRect(win.x, win.y, win.w, win.h);
@@ -31,6 +38,16 @@ export class Arlindo {
     return this.scene.time.now - this.lastShout < 1600;
   }
 
+  private steam() {
+    if (this.mood !== "furious" || this.reduced) return;
+    const win = ARLINDO_WINDOW;
+    for (let i = 0; i < 3; i += 1) {
+      this.scene.time.delayedCall(i * 180, () => {
+        this.fx.burst(this.fx.puff, 2, win.x + 34 + i * 34, win.y + 8);
+      });
+    }
+  }
+
   shout(text: string, duration = 1700) {
     const win = ARLINDO_WINDOW;
     this.lastShout = this.scene.time.now;
@@ -38,12 +55,48 @@ export class Arlindo {
     this.scene.tweens.killTweensOf(this.sprite);
     this.scene.tweens.add({ targets: this.sprite, y: win.y + win.h + 32, duration: 200, ease: "Back.easeOut" });
     if (!this.reduced) {
-      this.scene.tweens.add({ targets: this.sprite, angle: { from: -7, to: 7 }, duration: 85, yoyo: true, repeat: 5 });
+      this.scene.tweens.add({ targets: this.sprite, angle: { from: -7, to: 7 }, duration: 85, yoyo: true, repeat: this.mood === "calm" ? 3 : 6 });
     }
+    this.steam();
     this.hideTimer?.remove();
     this.hideTimer = this.scene.time.delayedCall(duration + 150, () => {
+      if (this.flag) return;
       this.scene.tweens.add({ targets: this.sprite, y: win.y + win.h + 150, angle: 0, duration: 280, ease: "Sine.easeIn" });
     });
+  }
+
+  press() {
+    const win = ARLINDO_WINDOW;
+    this.scene.tweens.killTweensOf(this.sprite);
+    this.sprite.setAngle(0);
+    this.scene.tweens.add({ targets: this.sprite, y: win.y + win.h + 70, duration: 160, yoyo: true, hold: 320, ease: "Quad.easeOut" });
+  }
+
+  surrender(text: string) {
+    const win = ARLINDO_WINDOW;
+    this.sprite.setTexture("arlindo-soaked");
+    this.fx.burst(this.fx.drops, 26, win.x + win.w / 2, win.y + 20);
+    this.fx.ring(win.x + win.w / 2, win.y + win.h / 2, 0x5cb9f0, 160);
+    const g = this.scene.add.graphics();
+    g.lineStyle(9, INK_HEX, 1);
+    g.lineBetween(0, 0, 0, -150);
+    g.lineStyle(5, 0xb06c3f, 1);
+    g.lineBetween(0, 0, 0, -150);
+    g.fillStyle(0xfffaf0, 1);
+    g.lineStyle(5, INK_HEX, 1);
+    const cloth = [
+      new Phaser.Math.Vector2(0, -150),
+      new Phaser.Math.Vector2(70, -144),
+      new Phaser.Math.Vector2(58, -122),
+      new Phaser.Math.Vector2(74, -98),
+      new Phaser.Math.Vector2(0, -102),
+    ];
+    g.fillPoints(cloth, true);
+    g.strokePoints(cloth, true);
+    this.flag = this.scene.add.container(win.x + win.w - 18, win.y + win.h + 40, [g]).setDepth(4.6).setAngle(-10);
+    this.scene.tweens.add({ targets: this.flag, y: win.y + win.h - 6, duration: 420, delay: 500, ease: "Back.easeOut" });
+    if (!this.reduced) this.scene.tweens.add({ targets: this.flag, angle: 14, duration: 260, delay: 900, yoyo: true, repeat: 7, ease: "Sine.easeInOut" });
+    this.scene.time.delayedCall(700, () => this.shout(text, 2800));
   }
 }
 

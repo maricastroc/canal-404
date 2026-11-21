@@ -2,7 +2,8 @@ import { GRID, PARTS, STEP_MS, type PartType } from "@/games/bad-ideas-lab/confi
 import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { attemptBonus, LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
-import { AMMO, PROPS, STEP_MS as STREET_STEP_MS, TARGETS, WAVES } from "@/games/dead-end-street/config";
+import { STEP_MS as STREET_STEP_MS } from "@/games/dead-end-street/config";
+import { ammoTotal, PHASE_IDS, phaseById } from "@/games/dead-end-street/phases";
 import { replayStreet } from "@/games/dead-end-street/sim";
 import { AMMO_MAX, COUNTDOWN_MS, EVENTS, LIVES as LUNCH_LIVES, LUNCH_LADY, PHASES, RELOAD_MS, RIVALS, ROUND_MS, SCORE as LUNCH_SCORE, THROW_GAP_MS, type RivalKind } from "@/games/food-fight/config";
 import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
@@ -108,29 +109,32 @@ function subsetSums(values: number[], size: number) {
   return out;
 }
 
-const STREET_STATS = ["targets", "targetPoints", "waves", "mess", "combos", "launches", "ammoLeft"] as const;
-const STREET_POINTS = TARGETS.reduce((sum, t) => sum + t.points, 0);
+const STREET_STATS = ["targets", "targetPoints", "mess", "combos", "gadgets", "launches", "ammoLeft"] as const;
+const STREET_GADGETS = 16;
 
 const deadEndStreet: GameRule = {
   game: "dead-end-street",
-  version: 2,
-  levels: null,
+  version: 3,
+  levels: PHASE_IDS,
   stats: [...STREET_STATS, "timeMs"],
-  judge(_level, claim) {
+  judge(level, claim) {
+    const phase = level ? phaseById(level) : null;
+    if (!phase) return reject("unknown_level", "fase desconhecida");
+    const ammo = ammoTotal(phase);
     const r = read(claim.stats, {
-      targets: [0, TARGETS.length],
-      targetPoints: [0, STREET_POINTS],
-      waves: [0, WAVES.length],
-      mess: [0, PROPS.length],
-      combos: [0, TARGETS.length],
-      launches: [0, AMMO.length],
-      ammoLeft: [0, AMMO.length],
+      targets: [0, phase.targets.length],
+      targetPoints: [0, phase.targets.reduce((sum, t) => sum + t.points, 0)],
+      mess: [0, phase.pieces.length],
+      combos: [0, phase.targets.length],
+      gadgets: [0, STREET_GADGETS],
+      launches: [0, ammo],
+      ammoLeft: [0, ammo],
       timeMs: [0, 60 * 60 * 1000],
     });
     if (!r.ok) return reject("bad_stats", r.detail);
     const log = claim.replay;
-    if (!log || log.kind !== "street-launches" || log.version !== 1 || !Array.isArray(log.launches)) return reject("bad_launches", "lançamentos ausentes");
-    const replay = replayStreet(log.launches);
+    if (!log || log.kind !== "street-launches" || log.version !== 2 || !Array.isArray(log.launches)) return reject("bad_launches", "lançamentos ausentes");
+    const replay = replayStreet(phase.id, log.launches as Parameters<typeof replayStreet>[1]);
     if (!replay.ok) {
       if (replay.problem === "bad_log") return reject("bad_launches", "lançamentos fora das regras");
       return reject("launches_failed", replay.problem === "illegal_launch" ? "lançamento fora de hora" : "a partida refeita não terminou");
@@ -140,9 +144,9 @@ const deadEndStreet: GameRule = {
     return settle(
       claim,
       { won: t.won, score: t.score, stars: t.stars, rank: [t.score, -t.stats.launches, 0], minElapsedMs: replay.steps * STREET_STEP_MS },
-      t.score > 0 ? undefined : "no_points",
+      t.won ? undefined : "not_won",
       { verification: "replayed", flags },
-      { launches: t.stats.launches, combos: t.stats.combos, mess: t.stats.mess },
+      { launches: t.stats.launches, combos: t.stats.combos, mess: t.stats.mess, gadgets: t.stats.gadgets },
     );
   },
 };
