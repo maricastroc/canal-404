@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { Angle, Check, ChevronDown, ChevronUp, Droplet, Maximize2, Minimize2, Minus, Plus, Send, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero, Star } from "lucide";
+import { Angle, ArrowLeftRight, Check, ChevronDown, ChevronUp, Droplet, Maximize2, Minimize2, Minus, Plus, Send, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero, Star } from "lucide";
 import { loadIcons, type IconSpec } from "@/games/kit/icons";
 import type { GameHostContext } from "@/games/types";
 
@@ -86,6 +86,7 @@ export const ICONS: IconSpec[] = [
   { key: "icon-see-all", icon: Maximize2, size: ICON_SIZE, color: INK, strokeWidth: 3 },
   { key: "icon-see-back", icon: Minimize2, size: ICON_SIZE, color: INK, strokeWidth: 3 },
   { key: "icon-launch", icon: Send, size: ICON_SIZE, color: INK, strokeWidth: 2.8 },
+  { key: "icon-swap", icon: ArrowLeftRight, size: ICON_SIZE, color: "#f7ecd4", strokeWidth: 3 },
 ];
 
 export class BootScene extends Phaser.Scene {

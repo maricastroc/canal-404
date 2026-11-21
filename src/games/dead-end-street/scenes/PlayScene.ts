@@ -44,7 +44,9 @@ const KNOCKED_TINT = 0xd4cddc;
 const SOAKED_TINT = 0xa9dcf7;
 const ANCHORS: Record<string, Point> = { parasol: { x: 145, y: 111 } };
 const TOUCH = { pull: 150, slop: 7, tapMs: 260, doubleTapMs: 340, doubleTapDist: 34 };
-const CHASE = { flight: 150, aim: 220, action: 320, home: 460, dwell: 700 };
+const CHASE = { flight: 200, aim: 340, action: 300, settle: 560, dwell: 900, zoom: 800, stick: 0.72 };
+const LAUNCHER: Vec = { x: 120, y: 640 };
+const SLING = { x: 215, y: 800, span: 430, size: 96 };
 const HIGH_CLOUDS: [string, number, number][] = [
   ["cloud-b", 380, -230],
   ["cloud-a", 1350, -470],
@@ -104,6 +106,9 @@ export class PlayScene extends Phaser.Scene {
   private dock: DockHud | null = null;
   private frame: Frame = FULL_FRAME;
   private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private slingCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private slingMask: Phaser.GameObjects.Graphics | null = null;
+  private slingRect = { x: 0, y: 0, w: 0, h: 0 };
   private camera!: StreetCamera;
   private touches = new Map<number, Vec>();
   private gesture: Gesture | null = null;
@@ -114,6 +119,7 @@ export class PlayScene extends Phaser.Scene {
   private intro = false;
   private introTimer?: Phaser.Time.TimerEvent;
   private spots: { x: number; y: number; at: number }[] = [];
+  private aimTarget = -1;
   private lastAction = -1000;
   private fx!: Fx;
   private gadgets!: GadgetView;
@@ -159,6 +165,8 @@ export class PlayScene extends Phaser.Scene {
     this.dock = null;
     this.frame = FULL_FRAME;
     this.uiCam = null;
+    this.slingCam = null;
+    this.slingMask = null;
     this.touches = new Map();
     this.gesture = null;
     this.lastTap = { at: -1000, x: 0, y: 0 };
@@ -166,6 +174,7 @@ export class PlayScene extends Phaser.Scene {
     this.aimTouched = false;
     this.intro = false;
     this.spots = [];
+    this.aimTarget = -1;
     this.lastAction = -1000;
     this.phaseIndex = Phaser.Math.Clamp((this.registry.get("phase") as number | undefined) ?? 0, 0, PHASES.length - 1);
     this.phaseDef = PHASES[this.phaseIndex];
@@ -206,6 +215,7 @@ export class PlayScene extends Phaser.Scene {
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.sim.destroy());
     this.buildLevel();
+    this.camera.setBounds(this.levelBounds());
     this.gadgets = new GadgetView(this, this.sim, this.fx, reduced);
     this.buildLauncher();
     this.arlindo = new Arlindo(this, this.ctx.fonts, reduced, this.phaseDef.act === 1 ? "calm" : this.phaseDef.act === 2 ? "angry" : "furious", this.fx);
@@ -255,7 +265,7 @@ export class PlayScene extends Phaser.Scene {
           onView: () => this.toggleView(),
         },
         mount: (obj) => {
-          if (this.uiCam) obj.cameraFilter = this.cameras.main.id;
+          if (this.uiCam) obj.cameraFilter = this.cameras.main.id | (this.slingCam?.id ?? 0);
         },
       });
       this.dock = dock;
@@ -274,10 +284,12 @@ export class PlayScene extends Phaser.Scene {
     const main = this.cameras.main;
     if (frame.kind === "tall") {
       if (!this.uiCam) {
+        this.slingCam = this.cameras.add(0, 0, 10, 10).setName("sling").setVisible(false).setBackgroundColor("#a9e0fa");
         this.uiCam = this.cameras.add(0, 0, frame.width, frame.height).setName("ui");
         for (const obj of this.children.list) this.uiCam.ignore(obj);
       }
       this.uiCam.setSize(frame.width, frame.height);
+      this.placeSling(frame);
       main.setBackgroundColor("#7ccaf3");
       return;
     }
@@ -285,6 +297,8 @@ export class PlayScene extends Phaser.Scene {
     if (!this.uiCam) return;
     this.cameras.remove(this.uiCam);
     this.uiCam = null;
+    if (this.slingCam) this.cameras.remove(this.slingCam);
+    this.slingCam = null;
     const clear = (list: Phaser.GameObjects.GameObject[]) => {
       for (const obj of list) {
         obj.cameraFilter = 0;
@@ -292,6 +306,26 @@ export class PlayScene extends Phaser.Scene {
       }
     };
     clear(this.children.list);
+  }
+
+  private placeSling(frame: Frame) {
+    const cam = this.slingCam;
+    if (!cam) return;
+    const k = frame.unit;
+    const st = frame.stage;
+    const d = Math.min(SLING.size, (st.w / k) * 0.26) * k;
+    const x = st.x + 8 * k + frame.safe.left;
+    const y = st.y + 8 * k;
+    cam.setViewport(x, y, d, d);
+    cam.setZoom(d / SLING.span);
+    cam.centerOn(SLING.x, SLING.y);
+    if (!this.slingMask) this.slingMask = this.make.graphics({}, false);
+    const g = this.slingMask;
+    g.clear();
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(x + d / 2, y + d / 2, d / 2);
+    cam.setMask(g.createGeometryMask(), true);
+    this.slingRect = { x, y, w: d, h: d };
   }
 
   private applyFrame(frame: Frame) {
@@ -655,7 +689,7 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     if (this.gesture) return;
-    if (this.sim.phase === "ready" && this.readyImage && !this.sim.finishing) {
+    if (this.sim.phase === "ready" && this.readyImage && !this.sim.finishing && !this.camera.navigating) {
       const rad = Phaser.Math.DegToRad(this.aimAngle);
       const len = this.aimPower * MAX_PULL;
       this.gesture = { kind: "aim", id: pointer.id, start: at, base: { x: -Math.cos(rad) * len, y: Math.sin(rad) * len }, at: this.time.now, moved: false, saved: { angle: this.aimAngle, power: this.aimPower } };
@@ -693,10 +727,14 @@ export class PlayScene extends Phaser.Scene {
     if (pointer.id !== g.id) return;
     if (!g.moved && Math.hypot(at.x - g.start.x, at.y - g.start.y) < TOUCH.slop * this.frame.unit) return;
     if (g.kind === "pan") {
+      if (this.camera.mode === "overview") {
+        g.moved = true;
+        return;
+      }
       if (!g.moved) {
         g.moved = true;
         this.camera.stop();
-        this.setCameraMode("free");
+        if (this.camera.mode === "auto") this.setCameraMode("free");
       }
       this.camera.panBy(at.x - g.last.x, at.y - g.last.y);
       g.last = at;
@@ -755,6 +793,17 @@ export class PlayScene extends Phaser.Scene {
 
   private tapped(p: Vec) {
     const now = this.time.now;
+    if (this.camera.mode === "overview" || this.camera.mode === "inspect") {
+      const near = Phaser.Math.Distance.Between(p.x, p.y, this.lastTap.x, this.lastTap.y) < TOUCH.doubleTapDist * this.frame.unit;
+      if (this.camera.mode === "inspect" && now - this.lastTap.at < TOUCH.doubleTapMs && near) {
+        this.lastTap.at = -1000;
+        this.toggleView();
+        return;
+      }
+      this.lastTap = { at: now, x: p.x, y: p.y };
+      if (this.camera.mode === "overview") this.inspect(this.camera.toWorld(p.x, p.y));
+      return;
+    }
     const near = Phaser.Math.Distance.Between(p.x, p.y, this.lastTap.x, this.lastTap.y) < TOUCH.doubleTapDist * this.frame.unit;
     if (now - this.lastTap.at < TOUCH.doubleTapMs && near) {
       this.lastTap.at = -1000;
@@ -789,6 +838,35 @@ export class PlayScene extends Phaser.Scene {
   private setCameraMode(mode: CameraMode) {
     this.camera.mode = mode;
     this.dock?.setView(mode);
+    this.dock?.setNavHint(mode === "overview" ? this.copy.touch.nav.overview : mode === "inspect" ? this.copy.touch.nav.inspect : null);
+    if (mode !== "overview") this.dock?.setMarks([]);
+  }
+
+  private inspect(at: Vec) {
+    this.setCameraMode("inspect");
+    this.camera.animateTo(this.camera.inspectPose(at), 480);
+  }
+
+  private levelBounds() {
+    let minX = 0;
+    let maxX = 560;
+    const add = (x: number, half: number) => {
+      minX = Math.min(minX, x - half);
+      maxX = Math.max(maxX, x + half);
+    };
+    for (const p of [...this.sim.pieces, ...this.sim.targets]) {
+      const b = p.body.bounds;
+      add((b.min.x + b.max.x) / 2, (b.max.x - b.min.x) / 2);
+    }
+    for (const st of this.phaseDef.statics) add(st.x, st.w / 2);
+    for (const g of this.phaseDef.gadgets) {
+      if (g.type === "rope") add(g.anchor.x, 20);
+      if (g.type === "faucet") add(g.nozzle.x, 30);
+    }
+    if (this.phaseDef.targets.some((t) => t.name === "birdhouse")) add(1818, 60);
+    const left = Math.max(0, minX - 60);
+    const right = Math.min(W, maxX + 80);
+    return { x: left, y: 0, w: right - left, h: H };
   }
 
   private toggleView() {
@@ -812,7 +890,7 @@ export class PlayScene extends Phaser.Scene {
     this.intro = false;
     this.introTimer?.remove();
     this.setCameraMode("auto");
-    this.camera.animateTo(this.camera.home(), 900, () => this.nextCoach());
+    this.camera.animateTo(this.aimFrame(), 900, () => this.nextCoach());
   }
 
   private skipIntro() {
@@ -895,60 +973,99 @@ export class PlayScene extends Phaser.Scene {
   private aimFrame(): Pose {
     const path = this.aimPath;
     const end = { x: this.aimEnd.x, y: this.aimEnd.y };
-    let best: Vec | null = null;
-    let near: Vec = end;
-    let bestD = Infinity;
-    for (const t of this.sim.targets) {
-      if (t.hit) continue;
+    let apex: Vec = end;
+    for (let i = 1; i < path.length; i += 2) if (path[i] < apex.y) apex = { x: path[i - 1], y: path[i] };
+    const closest = (t: SimTarget) => {
+      let d = Infinity;
+      let at: Vec = end;
       const tx = t.body.position.x;
       const ty = t.body.position.y;
       for (let i = 0; i < path.length; i += 2) {
-        const d = (path[i] - tx) ** 2 + (path[i + 1] - ty) ** 2;
-        if (d < bestD) {
-          bestD = d;
-          best = { x: tx, y: ty - 40 };
-          near = { x: path[i], y: path[i + 1] };
+        const dd = (path[i] - tx) ** 2 + (path[i + 1] - ty) ** 2;
+        if (dd < d) {
+          d = dd;
+          at = { x: path[i], y: path[i + 1] };
         }
       }
+      return { d, at };
+    };
+    let pick: SimTarget | null = null;
+    let pickD = Infinity;
+    for (const t of this.sim.targets) {
+      if (t.hit) continue;
+      const { d } = closest(t);
+      if (d < pickD) {
+        pickD = d;
+        pick = t;
+      }
     }
-    const launcher = { x: 40, y: ANCHOR.y };
-    if (!best) return this.camera.frameAim([end], [launcher]);
-    return this.camera.frameAim([near, best], [end, launcher]);
+    const held = this.sim.targets[this.aimTarget];
+    if (held && !held.hit && pick && pick !== held && pickD > closest(held).d * CHASE.stick) pick = held;
+    this.aimTarget = pick ? pick.index : -1;
+    if (!pick) return this.camera.frameAim([end, LAUNCHER, apex]);
+    const near = closest(pick).at;
+    const target = { x: pick.body.position.x, y: pick.body.position.y - 50 };
+    return this.camera.frameAim([near, target, LAUNCHER, apex]);
   }
 
-  private autoChase(): { pose: Pose; ms: number } {
+  private activeBox(): Vec[] {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    for (const body of this.sim.engine.world.bodies) {
+      if (body.isStatic || body.speed < 1.4) continue;
+      minX = Math.min(minX, body.position.x);
+      maxX = Math.max(maxX, body.position.x);
+      minY = Math.min(minY, body.position.y);
+    }
+    if (minX === Infinity) return [];
+    return [
+      { x: minX, y: minY - 40 },
+      { x: maxX, y: minY - 40 },
+    ];
+  }
+
+  private autoChase(): { pose: Pose; ms: number; zoomMs: number } {
     const cam = this.camera;
     const sim = this.sim;
     const now = this.time.now;
     const flying = sim.phase === "flying" ? sim.flying : null;
     if (flying) {
       this.lastAction = now;
-      return { pose: cam.frameFlight(flying.position, flying.velocity), ms: CHASE.flight };
+      return { pose: cam.frameFlight(flying.position, flying.velocity), ms: CHASE.flight, zoomMs: CHASE.zoom };
     }
     const ready = sim.phase === "ready" && this.readyImage !== null;
-    if (ready && this.aimTouched) return { pose: this.aimFrame(), ms: CHASE.aim };
+    if (ready && this.aimTouched) return { pose: this.aimFrame(), ms: CHASE.aim, zoomMs: CHASE.zoom };
     const focus = this.actionFocus(now);
     if (focus) {
       this.lastAction = now;
-      return { pose: cam.frameAction(focus), ms: CHASE.action };
+      return { pose: cam.frameAction([focus, ...this.activeBox()]), ms: CHASE.action, zoomMs: CHASE.zoom };
     }
-    if (ready && now - this.lastAction > CHASE.dwell) return { pose: cam.home(), ms: CHASE.home };
-    return { pose: cam.pose, ms: CHASE.home };
+    if (ready && now - this.lastAction > CHASE.dwell) return { pose: this.aimFrame(), ms: CHASE.settle, zoomMs: CHASE.zoom };
+    return { pose: cam.pose, ms: CHASE.settle, zoomMs: CHASE.zoom };
   }
 
   private updateTall(delta: number) {
     const cam = this.camera;
     if (!cam.update(delta) && !this.intro && cam.mode === "auto" && this.gesture?.kind !== "look") {
-      const { pose, ms } = this.autoChase();
-      cam.chase(pose, delta, ms);
+      const { pose, ms, zoomMs } = this.autoChase();
+      cam.chase(pose, delta, ms, zoomMs);
     }
     const dock = this.dock;
     if (!dock) return;
     const b = this.sim.phase === "flying" ? this.sim.flying : null;
     if (b && !cam.inView(b.position.x, b.position.y, 10)) dock.pin("shot", cam.toScreen(b.position.x, b.position.y), "shot", this.sim.flyingDef?.tex, true);
     else dock.unpin("shot");
+    const sling = this.sim.phase === "ready" && this.readyImage !== null && cam.mode === "auto" && !this.intro && !cam.inView(ANCHOR.x - 70, ANCHOR.y, 0);
+    this.slingCam?.setVisible(sling);
+    dock.setInset(sling ? this.slingRect : null);
+    if (cam.mode === "overview") {
+      const marks: Vec[] = [];
+      for (const t of this.sim.targets) if (!t.hit) marks.push(cam.toScreen(t.body.position.x, t.body.position.y - (this.sprites.get(t.body.id)?.displayHeight ?? 80) / 2));
+      dock.setMarks(marks);
+    }
     dock.update(this.time.now);
-    const ready = this.sim.canLaunch && this.readyImage !== null && this.aimPower >= MIN_POWER && !this.intro;
+    const ready = this.sim.canLaunch && this.readyImage !== null && this.aimPower >= MIN_POWER && !this.intro && !cam.navigating;
     dock.setFire(ready ? "ready" : this.sim.phase === "over" ? "off" : "wait");
   }
 
@@ -1056,7 +1173,7 @@ export class PlayScene extends Phaser.Scene {
         } else if (id === "tire") {
           this.fx.burst(this.fx.puff, 8, x, y);
           this.sfx("bonk", volume + 0.2);
-          if (!this.ctx.reducedMotion) this.cameras.main.shake(170, 0.005);
+          this.shake(170, 0.005);
         } else if (id === "duck") {
           this.fx.burst(this.fx.sparks, 7, x, y);
         }
@@ -1072,10 +1189,15 @@ export class PlayScene extends Phaser.Scene {
           if (rel > 7 && !nearHit) this.fx.word(this.copy.words.quack, x, y - 60, "#ffc83d", 54);
         }
       }
-      if (rel > 13 && id !== "tire" && !this.ctx.reducedMotion) this.cameras.main.shake(130, 0.0035);
+      if (rel > 13 && id !== "tire") this.shake(130, 0.0035);
     } else if (rel > 8) {
       this.fx.burst(this.fx.puff, 3, x, y);
     }
+  }
+
+  private shake(ms: number, amount: number) {
+    if (this.ctx.reducedMotion) return;
+    this.cameras.main.shake(ms, this.tall ? amount * 0.4 : amount);
   }
 
   private onScore(score: number) {
@@ -1121,6 +1243,7 @@ export class PlayScene extends Phaser.Scene {
 
   private tryFire() {
     if (!this.sim.canLaunch || !this.readyImage || this.aimPower < MIN_POWER) return;
+    if (this.tall && (this.intro || this.camera.navigating)) return;
     const def = this.sim.current!;
     const angle = Phaser.Math.Clamp(Math.round(this.aimAngle * 100), ANGLE_STEPS.min, ANGLE_STEPS.max);
     const power = Phaser.Math.Clamp(Math.round(this.aimPower * 1000), POWER_STEPS.min, POWER_STEPS.max);
@@ -1169,7 +1292,7 @@ export class PlayScene extends Phaser.Scene {
     this.sfx("splash", 1);
     this.fx.word(this.copy.words.splash, x, y - 80, "#5cb9f0", 84, true);
     this.freeze(60);
-    if (!this.ctx.reducedMotion) this.cameras.main.shake(170, 0.004);
+    this.shake(170, 0.004);
   }
 
   private onVanish(body: Matter.Body) {
@@ -1291,7 +1414,7 @@ export class PlayScene extends Phaser.Scene {
       this.fx.word(this.copy.words.timber, x, y - 200, "#ef4f43", 96, true);
       this.fx.flash(0.35);
       this.freeze(120);
-      if (!this.ctx.reducedMotion) this.cameras.main.shake(420, 0.008);
+      this.shake(420, 0.008);
     }
     this.sfx("target", 1);
     this.freeze(shotHits === 1 ? 50 : 30);
