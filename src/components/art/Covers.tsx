@@ -55,7 +55,7 @@ const COVER_ALT = localized({
     "operation-recess": "Capa de Operação: Recreio: no corredor da escola, Bruno ergue a espada de papelão contra um monitor que apita bloqueando o caminho para a diretoria",
     "pajama-war": "Capa de Guerra do Pijama: Lia, Nico e Bia numa guerra de travesseiros no quarto, com penas voando",
     "off-air-vacation": "Capa de Férias Fora do Ar: Déco chega ao Resort 404 com mala e mapa e encara o Sr. Bigodes, sério demais atrás do balcão da recepção, enquanto o relógio da fachada está parado às 4:04 e a TV ao lado só mostra chuvisco",
-    "downhill-derby": "Capa de Ladeira Abaixo: Déco sai voando de uma rampa no carrinho de madeira, na frente da Lina e seu ventilador, da Mila na banheira de guarda-chuva e do Bruno, preocupado, enquanto o Juninho torce na calçada de uma ladeira do bairro com a antena do Canal 404 no morro",
+    "downhill-derby": "Capa de Ladeira Abaixo: Déco pula uma lombada no carrinho de madeira, na frente da Lina e seu ventilador, da Mila na banheira de guarda-chuva e do Bruno, preocupado, numa ladeira do bairro com a antena do Canal 404 no morro",
   },
   en: {
     "dead-end-street": "Dead End Street cover: Déco and Lina in a cart with a giant spoon, launching a sneaker at a stack of flowerpots with a gnome",
@@ -65,7 +65,7 @@ const COVER_ALT = localized({
     "operation-recess": "Operation: Recess cover: in the school hallway, Bruno raises his cardboard sword at a whistle-blowing hall monitor who blocks the way to the principal's office",
     "pajama-war": "Pajama War cover: Lia, Nico and Bia in a pillow war in the bedroom, with feathers flying",
     "off-air-vacation": "Off-Air Vacation cover: Déco arrives at Resort 404 with a suitcase and a map and faces Mr. Bigodes, far too serious behind the front desk, while the clock on the building is stuck at 4:04 and the TV next to it only shows static",
-    "downhill-derby": "Downhill Derby cover: Déco flies off a ramp in his wooden cart ahead of Lina and her fan, Mila in her bathtub with an umbrella and a worried Bruno, while Juninho cheers on the sidewalk of a neighborhood hill with the Canal 404 antenna on the hilltop",
+    "downhill-derby": "Downhill Derby cover: Déco jumps a speed bump in his wooden cart ahead of Lina and her fan, Mila in her bathtub with an umbrella and a worried Bruno, down a neighborhood hill with the Canal 404 antenna on the hilltop",
   },
 });
 
