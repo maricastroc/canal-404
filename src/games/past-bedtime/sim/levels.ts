@@ -62,13 +62,13 @@ export const HALLWAY: LevelDef = {
   ],
   loud: 5,
   clock: { period: 3, x: 2, y: 3 },
-  agents: [{ kind: "sleeper", id: "dad", x: 6, y: 2, wake: 3, range: 4, cone: "wide", hear: 0, toss: { period: 7, offset: 0, facing: 2 } }],
+  agents: [{ kind: "sleeper", id: "dad", x: 6, y: 2, wake: 3, range: 4, cone: "wide", hear: 0, toss: { period: 12, offset: 11, facing: 2 } }],
   props: [
     { kind: "bed", x: 6, y: 1, h: 2 },
     { kind: "stairs", x: 12, y: 5 },
     { kind: "door", x: 0, y: 5 },
   ],
-  par: 18,
+  par: 16,
 };
 
 export const KITCHEN: LevelDef = {

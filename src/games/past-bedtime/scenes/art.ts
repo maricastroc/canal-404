@@ -1,10 +1,10 @@
 import type * as Phaser from "phaser";
 import { ART_FILES } from "./artManifest";
+import type { PropDef } from "../sim/types";
 import type { Layout } from "./layout";
 
 export type ArtMode = "final" | "draft";
 
-export const ART_LEVELS: ReadonlySet<string> = new Set(["doorway", "hallway"]);
 
 const BASE = "/assets/past-bedtime";
 
@@ -63,7 +63,39 @@ export function decorArtName(kind: string, w: number | undefined, h: number | un
     case "jamb":
       return `jamb-${Math.round((h ?? 1) * 100)}`;
     case "kidDrawing":
+    case "doily":
+    case "tableRug":
+    case "braidRug":
+    case "passadeira":
+    case "calendar":
+    case "pans":
+    case "spices":
+    case "smallDoor":
+    case "hood":
       return `${kind}-${dims}`;
+    case "plates":
+    case "herbs":
+    case "garlic":
+    case "apron":
+    case "broom":
+    case "hoop":
+    case "portrait":
+    case "figurines":
+    case "penduloClock":
+    case "basketYarn":
+    case "slippersPair":
+    case "onions":
+    case "teaTray":
+    case "umbrellaStand":
+    case "fernStand":
+    case "toaster":
+    case "radio":
+    case "thermos":
+    case "breadbox":
+    case "jars":
+    case "blender":
+    case "fruit":
+      return kind;
     case "lamp":
     case "switch":
     case "sock":
@@ -79,4 +111,16 @@ export function decorArtName(kind: string, w: number | undefined, h: number | un
     default:
       return "";
   }
+}
+
+export function propArtName(p: PropDef) {
+  const w = p.w ?? 1;
+  const h = p.h ?? 1;
+  if (p.kind === "stairs") return p.f === 0 ? `prop-stairs-up-${w}` : "stairs";
+  if (p.kind === "bed") return "bed";
+  return `prop-${p.kind}-${w}x${h}`;
+}
+
+export function wallArtTheme(pattern: "stripes" | "azulejo" | "damask") {
+  return pattern === "azulejo" ? "kitchen" : pattern === "damask" ? "living" : "hall";
 }

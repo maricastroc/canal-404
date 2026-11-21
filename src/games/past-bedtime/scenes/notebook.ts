@@ -25,7 +25,7 @@ type Area = { x: number; y: number; w: number; h: number };
 type Spots = {
   title: { x: number; y: number };
   mission: { x: number; y: number };
-  tabs: Col & { y: number };
+  tabs: Col & { y: number; rows: number };
   act: Col & { line: number };
   heading: Col & { line: number };
   goal: Col & { line: number };
@@ -43,20 +43,20 @@ const lineY = (k: number) => LINE0 + STEP * k;
 
 function spotsFor(layout: Layout): Spots {
   const { w, h } = layout.notebook;
-  const buttons = layout.orientation === "landscape" ? { x: 22, w: w - 44, y: h - 94, h: 74 } : { x: 30, w: w - 60, y: h - 100, h: 80 };
+  const buttons = layout.orientation === "landscape" ? { x: 72, w: w - 98, y: h - 168, h: 146 } : { x: 72, w: w - 102, y: h - 100, h: 80 };
   if (layout.orientation === "landscape") {
     const col = { x: 74, w: w - 100 };
     return {
       title: { x: 74, y: 22 },
       mission: { x: 76, y: 84 },
-      tabs: { ...col, y: 140 },
-      act: { ...col, line: 2 },
-      heading: { ...col, line: 3 },
-      goal: { ...col, line: 4 },
-      stats: { ...col, line: 7 },
-      card: { x: 64, y: lineY(8) + 26, w: w - 90, h: lineY(12) - lineY(8) - 14 },
-      links: { ...col, y: lineY(14) + 6 },
-      win: { ...col, line: 9 },
+      tabs: { x: 72, w: w - 98, y: 140, rows: 2 },
+      act: { ...col, line: 4 },
+      heading: { ...col, line: 5 },
+      goal: { ...col, line: 6 },
+      stats: { ...col, line: 9 },
+      card: { x: 64, y: lineY(10) + 22, w: w - 90, h: lineY(14) - lineY(10) - 14 },
+      links: { ...col, y: lineY(15) + 14 },
+      win: { ...col, line: 11 },
       page: { x: 16, y: 118, w: w - 32, h: buttons.y - 132 },
       buttons,
       lastLine: 21,
@@ -68,7 +68,7 @@ function spotsFor(layout: Layout): Spots {
   return {
     title: { x: 74, y: 22 },
     mission: { x: 76, y: 84 },
-    tabs: { ...right, y: 28 },
+    tabs: { ...right, y: 28, rows: 1 },
     act: { ...left, line: 1 },
     heading: { ...left, line: 2 },
     goal: { ...left, line: 3 },
@@ -159,14 +159,14 @@ export class Notebook {
     this.container = scene.add.container(x, y, [this.paper, this.ink]).setDepth(80);
     this.drawPaper();
     const sp = this.spots;
-    this.texts.title = this.raw(sp.title.x, sp.title.y, copy.notebookTitle, 50, PENCIL);
-    this.texts.mission = this.raw(sp.mission.x, sp.mission.y, copy.mission, 24, PENCIL_SOFT);
-    this.texts.act = this.onLine(sp.act.x, sp.act.line, "", 23, PENCIL_SOFT);
+    this.texts.title = this.raw(sp.title.x, sp.title.y + 6, copy.notebookTitle, 34, PENCIL, undefined, "display");
+    this.texts.mission = this.raw(sp.mission.x, sp.mission.y - 2, copy.mission, 24, PENCIL_SOFT);
+    this.texts.act = this.onLine(sp.act.x, sp.act.line, "", 27, PENCIL_SOFT);
     this.texts.heading = this.onLine(sp.heading.x, sp.heading.line, "", 42, PENCIL);
     this.texts.goal = this.onLine(sp.goal.x, sp.goal.line, "", 30, PENCIL, sp.goal.w);
     this.texts.moves = this.onLine(sp.stats.x, sp.stats.line, "", 40, PENCIL);
     this.texts.par = this.onLine(sp.stats.x + sp.stats.w, sp.stats.line, "", 30, PENCIL_SOFT).setOrigin(1, 0);
-    this.texts.starsAt = this.onLine(sp.stats.x + 124, sp.stats.line + 1, "", 23, PENCIL_SOFT);
+    this.texts.starsAt = this.onLine(sp.stats.x + 120, sp.stats.line + 1, "", 22, PENCIL_SOFT);
     const c = sp.card;
     const cardBg = scene.add.graphics();
     cardBg.fillStyle(INK, 0.85);
@@ -187,10 +187,15 @@ export class Notebook {
     this.container.add(this.card);
   }
 
-  private raw(x: number, y: number, value: string, size: number, color: string, wrap?: number) {
+  private get round() {
+    return this.fonts.round ?? this.fonts.body;
+  }
+
+  private raw(x: number, y: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" | "hand" = "round") {
     const t = this.scene.add.text(x, y, value, {
-      fontFamily: this.fonts.hand,
-      fontSize: `${size}px`,
+      fontFamily: family === "display" ? this.fonts.display : family === "hand" ? this.fonts.hand : this.round,
+      fontStyle: family === "round" ? "600" : "normal",
+      fontSize: `${family === "round" ? Math.round(size * 0.88) : size}px`,
       color,
       padding: { x: 2, y: 3 },
       wordWrap: wrap ? { width: wrap } : undefined,
@@ -199,8 +204,8 @@ export class Notebook {
     return t;
   }
 
-  private onLine(x: number, line: number, value: string, size: number, color: string, wrap?: number) {
-    const t = this.raw(x, 0, value || "Ág", size, color, wrap);
+  private onLine(x: number, line: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" | "hand" = "round") {
+    const t = this.raw(x, 0, value || "Ág", size, color, wrap, family);
     const metrics = t.style.getTextMetrics();
     t.setLineSpacing(STEP - (metrics.ascent + metrics.descent));
     t.setY(lineY(line) - 3 - metrics.ascent + Math.round(size * 0.1));
@@ -297,8 +302,8 @@ export class Notebook {
       g.fillRoundedRect(0, 0, w, 50, 10);
       g.lineStyle(this.pageKind === it.kind ? 4 : 2.5, INK, 1);
       g.strokeRoundedRect(0, 0, w, 50, 10);
-      const t = this.scene.add.text(w / 2, 25, it.label, { fontFamily: this.fonts.hand, fontSize: "25px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
-      if (t.width > w - 14) t.setFontSize(Math.floor((25 * (w - 14)) / t.width));
+      const t = this.scene.add.text(w / 2, 25, it.label, { fontFamily: this.round, fontStyle: "700", fontSize: "23px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+      if (t.width > w - 24) t.setFontSize(Math.floor((23 * (w - 24)) / t.width));
       const c = this.scene.add.container(sp.x + i * (w + gap), sp.y, [g, t]).setAngle((wobble(i * 5 + 2) - 0.5) * 2);
       this.makeClickable(c, w, 50, () => (this.pageKind === it.kind ? this.closePage() : this.openPage(it.kind)));
       this.container.add(c);
@@ -335,7 +340,7 @@ export class Notebook {
     g.lineStyle(2.5, 0xef8a8a, 0.8);
     g.lineBetween(44, 6, 44, a.h - 6);
     const parts: Phaser.GameObjects.GameObject[] = [g];
-    const title = this.scene.add.text(58, 14, kind === "rules" ? this.copy.pages.rulesTitle : this.copy.pages.movesTitle, { fontFamily: this.fonts.hand, fontSize: "38px", color: PENCIL, padding: { x: 2, y: 3 } });
+    const title = this.scene.add.text(58, 14, kind === "rules" ? this.copy.pages.rulesTitle : this.copy.pages.movesTitle, { fontFamily: this.fonts.display, fontSize: "30px", color: PENCIL, padding: { x: 2, y: 3 } });
     parts.push(title);
     const closeW = 120;
     const closeBg = this.scene.add.graphics();
@@ -345,7 +350,7 @@ export class Notebook {
     closeBg.fillRoundedRect(0, 0, closeW, 46, 10);
     closeBg.lineStyle(2.5, INK, 1);
     closeBg.strokeRoundedRect(0, 0, closeW, 46, 10);
-    const closeT = this.scene.add.text(closeW / 2, 23, `✕ ${this.copy.pages.back}`, { fontFamily: this.fonts.hand, fontSize: "24px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+    const closeT = this.scene.add.text(closeW / 2, 23, `✕ ${this.copy.pages.back}`, { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
     const close = this.scene.add.container(a.w - closeW - 14, 14, [closeBg, closeT]);
     this.makeClickable(close, closeW, 46, () => this.closePage());
     parts.push(close);
@@ -353,24 +358,24 @@ export class Notebook {
     const textW = a.w - 80;
     if (kind === "rules") {
       for (const line of this.rules) {
-        const t = this.scene.add.text(58, y, `– ${line}`, { fontFamily: this.fonts.hand, fontSize: "26px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: textW }, lineSpacing: 4 });
+        const t = this.scene.add.text(58, y, `– ${line}`, { fontFamily: this.round, fontStyle: "600", fontSize: "21px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: textW }, lineSpacing: 6 });
         parts.push(t);
         y += t.height + 10;
       }
       y += 12;
-      const sub = this.scene.add.text(58, y, this.copy.legendTitle, { fontFamily: this.fonts.hand, fontSize: "28px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } });
+      const sub = this.scene.add.text(58, y, this.copy.legendTitle, { fontFamily: this.fonts.display, fontSize: "22px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } });
       parts.push(sub);
       y += 46;
       for (const item of this.legend) {
         const ig = this.scene.add.graphics();
         this.drawLegendIcon(ig, item, 76, y + 16);
-        const t = this.scene.add.text(104, y, this.copy.legend[item], { fontFamily: this.fonts.hand, fontSize: "25px", color: PENCIL, padding: { x: 2, y: 3 } });
+        const t = this.scene.add.text(104, y, this.copy.legend[item], { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 3 } });
         parts.push(ig, t);
         y += 40;
       }
     } else {
       const runs = runsOf(this.planActions);
-      if (!runs.length) parts.push(this.scene.add.text(58, y, this.copy.pages.empty, { fontFamily: this.fonts.hand, fontSize: "26px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));
+      if (!runs.length) parts.push(this.scene.add.text(58, y, this.copy.pages.empty, { fontFamily: this.round, fontStyle: "600", fontSize: "21px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));
       let x = 58;
       for (const r of runs) {
         const arrow = this.scene.add.text(0, 0, r.action === "wait" ? "·" : ARROWS[r.action], { fontFamily: this.fonts.hand, fontSize: "36px", color: PENCIL, padding: { x: 2, y: 3 } });
@@ -388,7 +393,7 @@ export class Notebook {
         parts.push(this.scene.add.container(x, y, cell));
         x += w + 12;
       }
-      if (this.hints > 0) parts.push(this.scene.add.text(58, y + 60, this.copy.hintsUsed(this.hints), { fontFamily: this.fonts.hand, fontSize: "24px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));
+      if (this.hints > 0) parts.push(this.scene.add.text(58, y + 60, this.copy.hintsUsed(this.hints), { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));
     }
     this.page = this.scene.add.container(a.x, a.y, parts);
     this.container.add(this.page);
@@ -462,13 +467,22 @@ export class Notebook {
     this.renderCard(false, this.copy.notes.undoTip);
     const c = this.spots.card;
     const stamp = this.scene.add.text(0, 0, this.copy.notes.failed, { fontFamily: this.fonts.display, fontSize: "34px", color: "#c4352c", padding: { x: 10, y: 6 } }).setOrigin(0.5);
+    stamp.setFontSize(30);
+    const sw = stamp.width + 16;
+    const sh = stamp.height + 2;
     const frame = this.scene.add.graphics();
-    frame.lineStyle(5, 0xc4352c, 1);
-    frame.strokeRoundedRect(-stamp.width / 2 - 6, -stamp.height / 2, stamp.width + 12, stamp.height, 10);
-    const box = this.scene.add.container(c.x + c.w * 0.6, c.y + c.h + 4, [frame, stamp]).setAngle(-7).setAlpha(0).setScale(1.8);
+    frame.fillStyle(INK, 0.55);
+    frame.fillRoundedRect(-sw / 2 + 3, -sh / 2 + 4, sw, sh, 10);
+    frame.fillStyle(0xffe4dc, 1);
+    frame.fillRoundedRect(-sw / 2, -sh / 2, sw, sh, 10);
+    frame.lineStyle(4, 0xc4352c, 1);
+    frame.strokeRoundedRect(-sw / 2, -sh / 2, sw, sh, 10);
+    frame.lineStyle(2, 0xc4352c, 0.6);
+    frame.strokeRoundedRect(-sw / 2 + 5, -sh / 2 + 5, sw - 10, sh - 10, 7);
+    const box = this.scene.add.container(c.x + c.w - sw / 2 - 6, c.y + c.h - 8, [frame, stamp]).setAngle(-5).setAlpha(0).setScale(1.8);
     this.container.add(box);
     this.stampObjects.push(box);
-    this.scene.tweens.add({ targets: box, alpha: 0.92, scale: 1, duration: 220, ease: "Back.easeOut" });
+    this.scene.tweens.add({ targets: box, alpha: 1, scale: 1, duration: 220, ease: "Back.easeOut" });
     this.buildButtons(["undoCaught", "restart"]);
   }
 
@@ -488,7 +502,7 @@ export class Notebook {
     this.renderCard(false);
     this.buildLinks();
     const sp = this.spots.win;
-    const title = this.onLine(sp.x, sp.line, this.copy.wonTitle, 46, "#23794b");
+    const title = this.onLine(sp.x, sp.line, this.copy.wonTitle, 36, "#23794b", undefined, "display");
     const g = this.scene.add.graphics();
     this.container.add(g);
     const starY = lineY(sp.line + 2) - 20;
@@ -503,7 +517,7 @@ export class Notebook {
     const extra = turns - par;
     const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? this.copy.wonPerfect : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
     const verdictLines = Math.max(1, verdict.getWrappedText().length);
-    const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w);
+    const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w, "hand");
     this.stampObjects.push(title, g, moves, verdict, quote);
     if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 5 + verdictLines, this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
     this.buildButtons(isLast ? ["again"] : ["next", "again"]);
@@ -527,13 +541,20 @@ export class Notebook {
     this.tabs = [];
     const sp = this.spots.tabs;
     const actColors = [0xffe39a, 0xf9b6d4, 0xa9dcf7, 0xc8f0b4];
-    const groups = new Set(acts).size;
-    const gap = 10;
-    const cell = Math.min(56, (sp.w - gap * Math.max(0, groups - 1)) / total);
-    const r = Math.min(20, cell * 0.42);
+    const perRow = Math.ceil(total / sp.rows);
+    const rowGroups = (from: number, to: number) => new Set(acts.slice(from, to)).size;
+    let maxGroups = 1;
+    for (let r0 = 0; r0 < total; r0 += perRow) maxGroups = Math.max(maxGroups, rowGroups(r0, Math.min(total, r0 + perRow)));
+    const gap = sp.rows > 1 ? 18 : 5;
+    const cell = Math.min(sp.rows > 1 ? 54 : 60, (sp.w - gap * Math.max(0, maxGroups - 1)) / perRow);
+    const r = Math.min(sp.rows > 1 ? 21 : 24, cell * 0.43);
+    const rowH = r * 2 + 12;
     let x = sp.x + cell / 2;
     for (let i = 0; i < total; i += 1) {
-      if (i > 0 && acts[i] !== acts[i - 1]) x += gap;
+      const row = Math.floor(i / perRow);
+      if (i % perRow === 0) x = sp.x + cell / 2;
+      else if (acts[i] !== acts[i - 1]) x += gap;
+      const rowY = sp.y + 28 + row * rowH;
       const on = i === active;
       const got = progress[i] ?? 0;
       const g = this.scene.add.graphics();
@@ -548,8 +569,8 @@ export class Notebook {
         g.fillStyle(0xc4352c, 1);
         g.fillCircle((k - (got - 1) / 2) * rr * 0.42, rr * 0.82, rr * 0.13);
       }
-      const label = this.scene.add.text(0, -1, String(i + 1), { fontFamily: this.fonts.hand, fontSize: `${Math.round(rr * 1.25)}px`, color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
-      const c = this.scene.add.container(x, sp.y + 28 + (on ? -2 : 0), [g, label]).setAngle((wobble(i * 3) - 0.5) * 6);
+      const label = this.scene.add.text(0, -1, String(i + 1), { fontFamily: this.round, fontStyle: "700", fontSize: `${Math.round(rr * 1.05)}px`, color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+      const c = this.scene.add.container(x, rowY + (on ? -2 : 0), [g, label]).setAngle((wobble(i * 3) - 0.5) * 6);
       const zone = this.scene.add.zone(0, 0, cell, cell).setInteractive({ useHandCursor: true });
       zone.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
@@ -594,11 +615,16 @@ export class Notebook {
         break;
       case "marks":
         g.fillStyle(0x9df0dc, 1);
-        g.fillRoundedRect(x - 15, y - 12, 14, 24, 4);
-        g.strokeRoundedRect(x - 15, y - 12, 14, 24, 4);
-        g.fillStyle(0xff9d8a, 1);
-        g.fillRoundedRect(x + 1, y - 12, 14, 24, 4);
-        g.strokeRoundedRect(x + 1, y - 12, 14, 24, 4);
+        g.fillCircle(x - 8, y, 10);
+        g.strokeCircle(x - 8, y, 10);
+        g.fillStyle(0xff6b5a, 1);
+        g.fillCircle(x + 9, y, 10);
+        g.strokeCircle(x + 9, y, 10);
+        g.fillStyle(INK, 1);
+        g.fillRoundedRect(x + 7.5, y - 6, 3, 8, 1);
+        g.fillCircle(x + 9, y + 5, 1.8);
+        g.fillCircle(x - 10, y + 3, 2.6);
+        g.fillRect(x - 8, y - 6, 1.8, 9);
         break;
       case "light":
         g.fillStyle(0xffd66b, 0.95);
@@ -611,7 +637,9 @@ export class Notebook {
         g.fillCircle(x - 4, y - 4, 2);
         break;
       case "next":
-        g.lineStyle(2, 0x3b3550, 1);
+        g.fillStyle(0xffe39a, 0.5);
+        g.fillRect(x - 14, y - 13, 28, 26);
+        g.lineStyle(2, 0xd99a1e, 1);
         for (let k = -2; k <= 2; k += 1) g.lineBetween(x - 14 + Math.max(0, k * 7), y + 13 - Math.max(0, -k * 7), x + 14 + Math.min(0, k * 7), y - 13 - Math.min(0, -k * 7));
         g.strokeRect(x - 14, y - 13, 28, 26);
         break;
@@ -679,8 +707,13 @@ export class Notebook {
     for (const b of this.buttons) b.destroy();
     this.buttons = [];
     const sp = this.spots.buttons;
-    const gap = 6;
-    const bw = (sp.w - gap * (ids.length - 1)) / ids.length;
+    const gap = 12;
+    const grid = sp.h > 120 && ids.length >= 4;
+    const cols = grid ? 2 : ids.length;
+    const rows = grid ? Math.ceil(ids.length / 2) : 1;
+    const bw = (sp.w - gap * (cols - 1)) / cols;
+    const bh = grid ? (sp.h - gap * (rows - 1)) / rows : Math.min(sp.h, 76);
+    const top = sp.y + sp.h - (bh * rows + gap * (rows - 1));
     const labels: Record<ButtonId, string> = {
       wait: this.copy.buttons.wait,
       undo: this.copy.buttons.undo,
@@ -691,26 +724,40 @@ export class Notebook {
       undoCaught: this.copy.buttons.undoCaught,
     };
     const fills: Partial<Record<ButtonId, number>> = { undoCaught: 0xffe39a, next: 0x9df0dc, undo: 0xf9e0b0 };
-    const base = ids.length >= 4 ? 28 : 33;
-    let size = base;
-    for (const id of ids) {
-      const probe = this.scene.add.text(0, 0, labels[id], { fontFamily: this.fonts.hand, fontSize: `${base}px`, padding: { x: 2, y: 2 } });
-      if (!labels[id].includes(" ") && probe.width > bw - 6) size = Math.min(size, Math.max(25, Math.floor((base * (bw - 6)) / probe.width)));
+    const padX = 22;
+    const avail = bw - padX * 2;
+    const fit = (label: string) => {
+      const probe = this.scene.add.text(0, 0, "", { fontFamily: this.round, fontStyle: "700", fontSize: "26px", padding: { x: 2, y: 2 }, align: "center" });
+      let chosen = 19;
+      for (let size = 26; size > 19; size -= 1) {
+        probe.setFontSize(size).setWordWrapWidth(0).setText("");
+        const wordsFit = label.split(" ").every((word) => probe.setText(word).width <= avail + 4);
+        probe.setWordWrapWidth(avail).setText(label);
+        if (wordsFit && probe.height <= bh - 14) {
+          chosen = size;
+          break;
+        }
+      }
       probe.destroy();
-    }
+      return chosen;
+    };
     ids.forEach((id, i) => {
       const g = this.scene.add.graphics();
       g.fillStyle(INK, 1);
-      g.fillRoundedRect(3, 5, bw, sp.h, 14);
+      g.fillRoundedRect(3, 5, bw, bh, 16);
       g.fillStyle(fills[id] ?? 0xffffff, 1);
-      g.fillRoundedRect(0, 0, bw, sp.h, 14);
+      g.fillRoundedRect(0, 0, bw, bh, 16);
       g.lineStyle(3.5, INK, 1);
-      g.strokeRoundedRect(0, 0, bw, sp.h, 14);
+      g.strokeRoundedRect(0, 0, bw, bh, 16);
+      g.lineStyle(3, 0xffffff, 0.7);
+      g.lineBetween(14, 8, Math.min(bw * 0.4, 70), 8);
       const t = this.scene.add
-        .text(bw / 2, sp.h / 2, labels[id], { fontFamily: this.fonts.hand, fontSize: `${size}px`, color: PENCIL, align: "center", padding: { x: 2, y: 2 }, wordWrap: { width: bw - 6 } })
+        .text(bw / 2, bh / 2 + 1, labels[id], { fontFamily: this.round, fontStyle: "700", fontSize: `${fit(labels[id])}px`, color: PENCIL, align: "center", padding: { x: 2, y: 2 }, wordWrap: { width: avail }, lineSpacing: -2 })
         .setOrigin(0.5);
-      const c = this.scene.add.container(sp.x + i * (bw + gap), sp.y, [g, t]).setAngle((wobble(i * 9 + ids.length) - 0.5) * 2.4);
-      this.makeClickable(c, bw, sp.h, () => this.onButton(id));
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const c = this.scene.add.container(sp.x + col * (bw + gap), top + row * (bh + gap), [g, t]).setAngle((wobble(i * 9 + ids.length) - 0.5) * 1.6);
+      this.makeClickable(c, bw, bh, () => this.onButton(id));
       this.container.add(c);
       this.buttons.push(c);
     });

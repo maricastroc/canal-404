@@ -158,35 +158,62 @@ function sweat(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number) 
   g.strokePath();
 }
 
+function fitArt(img: Phaser.GameObjects.Image, name: string, unit: number) {
+  if (!hasArt(name)) return;
+  const [vx, vy, vw, vh] = ART_FILES[name];
+  img.setTexture(artKey(name)).setOrigin(-vx / vw, -vy / vh).setDisplaySize(vw * unit, vh * unit);
+}
+
 export class StatusIcon {
+  readonly root: Phaser.GameObjects.Container;
   readonly text: Phaser.GameObjects.Text;
+  private bg: Phaser.GameObjects.Graphics;
   private current = "";
 
   constructor(
     private scene: Phaser.Scene,
     parent: Phaser.GameObjects.Container,
     font: string,
-    size: number,
+    private size: number,
     y: number,
+    x = 0,
   ) {
-    this.text = scene.add
-      .text(0, y, "", { fontFamily: font, fontSize: `${Math.round(size)}px`, color: "#1d1830", padding: { x: Math.round(size * 0.32), y: 2 } })
-      .setOrigin(0.5)
-      .setVisible(false);
-    parent.add(this.text);
-    scene.tweens.add({ targets: this.text, y: y - size * 0.18, duration: 520, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.bg = scene.add.graphics();
+    this.text = scene.add.text(0, 0, "", { fontFamily: font, fontStyle: "700", fontSize: `${Math.round(size * 0.62)}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
+    this.root = scene.add.container(x, y, [this.bg, this.text]).setVisible(false);
+    parent.add(this.root);
+    scene.tweens.add({ targets: this.root, y: y - size * 0.14, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   }
 
   show(label: string | null, bg = "#ffe39a") {
     if (!label) {
       this.current = "";
-      this.text.setVisible(false);
+      this.root.setVisible(false);
       return;
     }
-    if (label === this.current && this.text.visible) return;
-    this.current = label;
-    this.text.setText(label).setBackgroundColor(bg).setVisible(true).setScale(0.3);
-    this.scene.tweens.add({ targets: this.text, scale: 1, duration: 220, ease: "Back.easeOut" });
+    const key = `${label}|${bg}`;
+    if (key === this.current && this.root.visible) return;
+    const fresh = !this.root.visible;
+    this.current = key;
+    this.text.setText(label);
+    const w = this.text.width + this.size * 0.5;
+    const h = this.text.height + 4;
+    const fill = Phaser.Display.Color.HexStringToColor(bg).color;
+    const g = this.bg;
+    g.clear();
+    g.fillStyle(0x1d1830, 0.55);
+    g.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, h / 2);
+    g.fillStyle(fill, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    g.lineStyle(3, 0x1d1830, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    g.lineStyle(2.5, 0xffffff, 0.6);
+    g.lineBetween(-w / 2 + h * 0.5, -h / 2 + 5, -w / 2 + Math.min(w * 0.4, h * 1.6), -h / 2 + 5);
+    this.root.setVisible(true);
+    if (fresh) {
+      this.root.setScale(0.3);
+      this.scene.tweens.add({ targets: this.root, scale: 1, duration: 220, ease: "Back.easeOut" });
+    }
   }
 }
 
@@ -450,19 +477,29 @@ export class DadView {
     this.headGfx = scene.add.graphics();
     this.head = scene.add.container(0, 0, [this.headGfx]);
     this.container = scene.add.container(0, 0, [this.gfx, this.head]).setDepth(32);
-    if (art && hasArt("dad-bed-sleep")) {
-      this.sprite = scene.add.image(0, 0, artKey("dad-bed-sleep")).setOrigin(0, 0);
+    if (art && hasArt(`${this.prefix}sleep`)) {
+      this.sprite = scene.add.image(0, 0, artKey(`${this.prefix}sleep`)).setOrigin(0, 0);
       this.container.add(this.sprite);
-      this.applyTexture("dad-bed-sleep");
+      this.applyTexture(`${this.prefix}sleep`);
     }
     this.draw();
     this.startBreath();
   }
 
+  private get prefix() {
+    return this.seat === "bed" ? "dad-bed-" : "dad-seat-";
+  }
+
   private applyTexture(name: string) {
     if (!this.sprite || !hasArt(name)) return;
-    const [vx, vy, vw, vh] = ART_FILES[name];
     const s = this.s;
+    if (this.seat !== "bed") {
+      fitArt(this.sprite, name, (s * 0.8) / 100);
+      this.sprite.setPosition(0, s * 0.38);
+      this.baseY = this.sprite.y;
+      return;
+    }
+    const [vx, vy, vw, vh] = ART_FILES[name];
     this.sprite.setTexture(artKey(name)).setPosition(-s * 0.5 + (vx / 100) * s, -s * 1.5 + (vy / 100) * s).setDisplaySize((vw / 100) * s, (vh / 100) * s);
     this.baseY = this.sprite.y;
   }
@@ -483,6 +520,7 @@ export class DadView {
 
   headPoint() {
     const k = this.container.scaleX;
+    if (this.sprite && this.seat !== "bed") return { x: this.container.x, y: this.container.y - this.s * 0.5 * k };
     if (this.sprite) {
       const up = this.mood === "sleep" || this.mood === "stir" ? 0.34 : 0.2;
       return { x: this.container.x, y: this.container.y + (-this.s * 1.5 + up * this.s - this.s * 0.2) * k };
@@ -493,11 +531,11 @@ export class DadView {
   stir() {
     if (this.mood !== "sleep") return;
     if (this.sprite) {
-      this.applyTexture("dad-bed-stir");
+      this.applyTexture(`${this.prefix}stir`);
       const x0 = this.sprite.x;
       this.scene.tweens.add({ targets: this.sprite, x: x0 + 3, duration: 70, yoyo: true, repeat: 2, onComplete: () => this.sprite?.setX(x0) });
       this.scene.time.delayedCall(1100, () => {
-        if (this.mood === "sleep") this.applyTexture("dad-bed-sleep");
+        if (this.mood === "sleep") this.applyTexture(`${this.prefix}sleep`);
       });
       return;
     }
@@ -526,15 +564,16 @@ export class DadView {
   private draw() {
     if (this.sprite) {
       const look = ["up", "right", "down", "left"][this.facing];
+      const p = this.prefix;
       const byMood: Record<SleeperMood, string> = {
-        sleep: "dad-bed-sleep",
-        stir: "dad-bed-stir",
-        startled: `dad-bed-startled-${look}`,
-        suspicious: `dad-bed-suspicious-${look}`,
-        awake: `dad-bed-startled-${look}`,
-        sleepy: "dad-bed-sleepy",
-        drowsy: "dad-bed-sleepy",
-        angry: "dad-bed-angry",
+        sleep: `${p}sleep`,
+        stir: `${p}stir`,
+        startled: `${p}startled-${look}`,
+        suspicious: `${p}suspicious-${look}`,
+        awake: `${p}startled-${look}`,
+        sleepy: `${p}sleepy`,
+        drowsy: `${p}sleepy`,
+        angry: `${p}angry`,
       };
       this.applyTexture(byMood[this.mood]);
       this.gfx.clear();
@@ -614,10 +653,13 @@ export class GrandmaView {
   private beamSway: Phaser.GameObjects.Container;
   private sway?: Phaser.Tweens.Tween;
 
+  private sprite: Phaser.GameObjects.Image | null = null;
+
   constructor(
     private scene: Phaser.Scene,
     private s: number,
     beamLength: number,
+    art = false,
   ) {
     const shadow = scene.add.graphics();
     shadow.fillStyle(0x000000, 0.35);
@@ -634,6 +676,13 @@ export class GrandmaView {
     this.beamPivot = scene.add.container(0, 0, [this.beamSway]);
     this.gfx = scene.add.graphics();
     this.body = scene.add.container(0, 0, [this.gfx]);
+    if (art && hasArt("gran-front-walk")) {
+      this.sprite = scene.add.image(0, s * 0.36, artKey("gran-front-walk"));
+      this.body.add(this.sprite);
+      shadow.clear();
+      shadow.fillStyle(0x000000, 0.38);
+      shadow.fillEllipse(0, s * 0.33, s * 0.66, s * 0.2);
+    }
     this.container = scene.add.container(0, 0, [shadow, this.beamPivot, this.body]).setDepth(33);
     this.draw();
     this.startSway();
@@ -662,7 +711,7 @@ export class GrandmaView {
   }
 
   headPoint() {
-    return { x: this.container.x, y: this.container.y - this.s * 0.4 * this.container.scaleY };
+    return { x: this.container.x, y: this.container.y - this.s * (this.sprite ? 0.52 : 0.4) * this.container.scaleY };
   }
 
   private draw() {
@@ -670,6 +719,16 @@ export class GrandmaView {
     const s = this.s;
     const look = lookOf(this.facing);
     const back = this.facing === 0;
+    if (this.sprite) {
+      const pivots: Record<Dir, [number, number]> = { 0: [s * 0.2, -s * 0.02], 1: [s * 0.4, -s * 0.08], 2: [0, s * 0.14], 3: [-s * 0.4, -s * 0.08] };
+      const [px, py] = pivots[this.facing];
+      this.beamPivot.setPosition(px, py).setAngle(this.facing * 90);
+      const name = back ? "gran-back" : this.facing === 2 ? `gran-front-${this.mood}` : `gran-side-${this.mood}`;
+      fitArt(this.sprite, name, (s * 0.78) / 100);
+      this.sprite.setFlipX(this.facing === 3);
+      g.clear();
+      return;
+    }
     this.beamPivot.setPosition(look.x * s * 0.34, s * 0.1 + look.y * s * 0.26).setAngle(this.facing * 90);
     g.clear();
     g.fillStyle(0xf06ba8, 1);
@@ -731,14 +790,24 @@ export class DogView {
   private facing: Dir = 2;
   private wag?: Phaser.Tweens.Tween;
   private breathe?: Phaser.Tweens.Tween;
+  private sprite: Phaser.GameObjects.Image | null = null;
+  private lastSide: 1 | 3 = 3;
 
   constructor(
     private scene: Phaser.Scene,
     private s: number,
+    art = false,
   ) {
     this.gfx = scene.add.graphics();
     this.tail = scene.add.graphics();
     this.body = scene.add.container(0, 0, [this.tail, this.gfx]);
+    if (art && hasArt("dog-sleep")) {
+      const shadow = scene.add.graphics();
+      shadow.fillStyle(0x000000, 0.34);
+      shadow.fillEllipse(0, s * 0.31, s * 0.84, s * 0.18);
+      this.sprite = scene.add.image(0, s * 0.33, artKey("dog-sleep"));
+      this.body.add([shadow, this.sprite]);
+    }
     this.container = scene.add.container(0, 0, [this.body]).setDepth(31);
     this.draw();
     this.animate();
@@ -784,6 +853,13 @@ export class DogView {
     this.breathe?.remove();
     this.tail.setAngle(0);
     this.body.setScale(1);
+    if (this.sprite) {
+      this.sprite.setAngle(0);
+      if (this.mood === "sleep") this.breathe = this.scene.tweens.add({ targets: this.sprite, scaleY: this.sprite.scaleY * 1.04, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      else if (this.mood === "walk" || this.mood === "happy") this.breathe = this.scene.tweens.add({ targets: this.sprite, angle: { from: -3, to: 3 }, duration: this.mood === "happy" ? 90 : 160, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      else if (this.mood === "sniff") this.breathe = this.scene.tweens.add({ targets: this.sprite, y: this.s * 0.35, duration: 120, yoyo: true, repeat: -1 });
+      return;
+    }
     if (this.mood === "sleep") {
       this.breathe = this.scene.tweens.add({ targets: this.body, scaleX: 1.04, scaleY: 0.97, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       return;
@@ -802,6 +878,14 @@ export class DogView {
     const muzzle = 0xf6d7a7;
     g.clear();
     t.clear();
+    if (this.sprite) {
+      if (this.facing === 1 || this.facing === 3) this.lastSide = this.facing;
+      this.body.setAngle(0);
+      this.sprite.setY(s * 0.33);
+      fitArt(this.sprite, this.mood === "sleep" ? "dog-sleep" : `dog-${this.mood}`, (s * (this.mood === "sleep" ? 0.9 : 0.85)) / 100);
+      this.sprite.setFlipX(this.mood !== "sleep" && this.lastSide === 3);
+      return;
+    }
     if (this.mood === "sleep") {
       this.body.setAngle(0);
       g.fillStyle(fur, 1);
@@ -1004,14 +1088,20 @@ export class CatView {
   private gfx: Phaser.GameObjects.Graphics;
   private tail: Phaser.GameObjects.Graphics;
   private mood: CatMood = "idle";
+  private sprite: Phaser.GameObjects.Image | null = null;
 
   constructor(
     private scene: Phaser.Scene,
     private s: number,
+    art = false,
   ) {
     this.tail = scene.add.graphics();
     this.gfx = scene.add.graphics();
     this.body = scene.add.container(0, 0, [this.tail, this.gfx]);
+    if (art && hasArt("cat-idle")) {
+      this.sprite = scene.add.image(0, s * 0.27, artKey("cat-idle"));
+      this.body.add(this.sprite);
+    }
     this.container = scene.add.container(0, 0, [this.body]).setDepth(33);
     this.draw();
     scene.tweens.add({ targets: this.tail, angle: { from: -14, to: 14 }, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
@@ -1040,6 +1130,10 @@ export class CatView {
     const ink = 0x1d1830;
     g.clear();
     t.clear();
+    if (this.sprite) {
+      fitArt(this.sprite, `cat-${this.mood}`, (s * 0.7) / 100);
+      return;
+    }
     t.setPosition(s * 0.16, s * 0.12);
     t.lineStyle(s * 0.07, ink, 1);
     t.beginPath();

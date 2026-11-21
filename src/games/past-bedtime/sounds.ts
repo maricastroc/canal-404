@@ -20,10 +20,27 @@ export const NIGHT_SFX = {
     ],
   },
   tick: {
-    layers: [{ kind: "noise", duration: 0.025, gain: 0.03, filter: { type: "highpass", from: 3500 } }],
+    layers: [
+      { kind: "tone", wave: "triangle", from: 1320, to: 1100, duration: 0.045, gain: 0.07 },
+      { kind: "noise", duration: 0.03, gain: 0.05, filter: { type: "bandpass", from: 3200, q: 4 } },
+      { kind: "tone", wave: "triangle", from: 990, to: 820, duration: 0.05, delay: 0.17, gain: 0.065 },
+      { kind: "noise", duration: 0.03, delay: 0.17, gain: 0.045, filter: { type: "bandpass", from: 2400, q: 4 } },
+    ],
   },
   wake: {
-    layers: [{ kind: "tone", wave: "triangle", from: 300, to: 520, duration: 0.18, gain: 0.07, glide: "exp" }],
+    layers: [
+      { kind: "noise", duration: 0.12, gain: 0.09, filter: { type: "lowpass", from: 600, to: 200 } },
+      { kind: "tone", wave: "sawtooth", from: 220, to: 330, duration: 0.3, gain: 0.05, glide: "exp", vibrato: { rate: 22, depth: 30 } },
+      { kind: "tone", wave: "triangle", from: 380, to: 760, duration: 0.22, delay: 0.08, gain: 0.1, glide: "exp" },
+      { kind: "tone", wave: "triangle", from: 760, to: 700, duration: 0.12, delay: 0.3, gain: 0.07 },
+    ],
+  },
+  stir: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 170, to: 150, duration: 0.22, gain: 0.08, vibrato: { rate: 9, depth: 10 } },
+      { kind: "tone", wave: "sine", from: 150, to: 190, duration: 0.24, delay: 0.24, gain: 0.07, glide: "exp" },
+      { kind: "noise", duration: 0.35, gain: 0.03, attack: 0.1, filter: { type: "lowpass", from: 420, to: 260 } },
+    ],
   },
   sleep: {
     layers: [{ kind: "tone", wave: "sine", from: 420, to: 210, duration: 0.4, gain: 0.04, glide: "exp" }],
@@ -60,10 +77,18 @@ export const NIGHT_SFX = {
     ],
   },
   erase: {
-    layers: [{ kind: "noise", duration: 0.18, gain: 0.05, attack: 0.03, filter: { type: "highpass", from: 2400, to: 3800 } }],
+    layers: [
+      { kind: "noise", duration: 0.09, gain: 0.09, attack: 0.02, filter: { type: "bandpass", from: 2200, to: 3400, q: 1.2 } },
+      { kind: "noise", duration: 0.09, delay: 0.1, gain: 0.09, attack: 0.02, filter: { type: "bandpass", from: 3400, to: 2200, q: 1.2 } },
+      { kind: "noise", duration: 0.08, delay: 0.2, gain: 0.07, attack: 0.02, filter: { type: "bandpass", from: 2200, to: 3000, q: 1.2 } },
+      { kind: "tone", wave: "sine", from: 660, to: 440, duration: 0.12, delay: 0.26, gain: 0.04, glide: "exp" },
+    ],
   },
   pencil: {
-    layers: [{ kind: "noise", duration: 0.08, gain: 0.025, filter: { type: "highpass", from: 3000 } }],
+    layers: [
+      { kind: "noise", duration: 0.12, gain: 0.06, filter: { type: "highpass", from: 2600 } },
+      { kind: "tone", wave: "sine", from: 880, to: 1320, duration: 0.1, delay: 0.1, gain: 0.04, glide: "exp" },
+    ],
   },
   bump: {
     layers: [{ kind: "tone", wave: "sine", from: 160, to: 90, duration: 0.09, gain: 0.06 }],

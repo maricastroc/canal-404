@@ -168,7 +168,7 @@ function side(face: Face, source: string) {
 
 type Look = "down" | "left" | "right" | "up";
 
-function dadHead(mood: string, look: Look) {
+export function dadHead(mood: string, look: Look) {
   const lx = look === "left" ? -7 : look === "right" ? 7 : 0;
   const ly = look === "down" ? 4 : look === "up" ? -4 : 0;
   let eyesSvg: string;

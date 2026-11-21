@@ -4,15 +4,16 @@ import { fileURLToPath } from "node:url";
 import { LEVELS } from "../../src/games/past-bedtime/sim/levels";
 import { characters } from "./characters";
 import { house } from "./house";
+import { residents } from "./residents";
+import { rooms } from "./rooms";
 import type { Sheet } from "./kit";
 
-const ART_LEVELS = ["doorway", "hallway"];
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
 const out = join(root, "public", "assets", "past-bedtime");
 const manifest = join(root, "src", "games", "past-bedtime", "scenes", "artManifest.ts");
 
-const sheet: Sheet = { ...characters(join(here, "source")), ...house(LEVELS.filter((l) => ART_LEVELS.includes(l.id))) };
+const sheet: Sheet = { ...characters(join(here, "source")), ...residents(), ...house(LEVELS), ...rooms(LEVELS) };
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

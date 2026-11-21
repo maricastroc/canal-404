@@ -15,6 +15,7 @@ export type NightCopy = {
   speaker: string;
   names: { dad: string; grandma: string; dog: string; cat: string; bruno: string };
   view: { house: string; back: string };
+  status: { toss: (n: number) => string; sleepsIn: (n: number) => string; looking: (n: number) => string; sniffing: (n: number) => string; going: string; returning: string; knock: (n: number) => string };
   pages: { rules: string; moves: string; back: string; rulesTitle: string; movesTitle: string; empty: string };
   legendTitle: string;
   legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string; hide: string; cat: string; route: string; toss: string; near: string };
@@ -113,15 +114,16 @@ export const NIGHT_COPY = localized<NightCopy>({
       },
       hallway: {
         title: "O corredor",
-        goal: "Chegar na escada sem o pai te pegar.",
+        goal: "Chegar na escada sem acordar o pai.",
         target: "escada",
         intro: [
           "O corredor inteiro é de tábua.",
-          "Tábua longe do pai pode ranger: ele não ouve.",
-          "O ↻ em cima do pai conta as jogadas até ele virar na cama e espiar a porta.",
-          "Tábua só no CUCO!, e fora da porta quando ele virar.",
+          "O cuco canta a cada 3 jogadas. Pise nas tábuas só quando ele estiver em 1.",
+          "Tábua com ~ está longe do pai: pode ranger que ele não ouve. Tábua com ! acorda.",
+          "A plaquinha “vira em…” no pai conta as jogadas até ele virar e espiar o corredor. Não fique na frente da porta nessa hora.",
+          "Use Esperar para acertar o ritmo, mas sem enrolar.",
         ],
-        story: "Esse corredor range que nem navio velho. E o pai vira na cama de tempos em tempos…",
+        story: "Esse corredor range que nem navio velho. E de vez em quando o pai vira na cama…",
       },
       stairs: {
         title: "A escada",
@@ -163,21 +165,21 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "A sala de jantar",
         goal: "Atravessar até a sala de estar.",
         target: "sala",
-        intro: ["Nenhuma tábua solta aqui.", "Mas o Pixel derruba alguma coisa de tempos em tempos: o número em cima dele avisa.", "O segredo é estar no lugar certo quando ele derrubar."],
+        intro: ["Nenhuma tábua solta aqui.", "Mas o Pixel derruba alguma coisa de tempos em tempos: a plaquinha “derruba em…” avisa.", "O segredo é estar no lugar certo quando ele derrubar."],
         story: "Nenhuma tábua pra me ajudar. Mas o Pixel… o Pixel é o caos em forma de gato.",
       },
       sofa: {
         title: "O pai no sofá",
         goal: "Atravessar a sala sem o pai te ver.",
         target: "TV",
-        intro: ["Toda vez que o Pixel derruba algo, o pai acorda e olha pra lá.", "Atrás das plantas ele não te vê.", "Ele dorme de novo depois de umas jogadas: conta no número dele."],
+        intro: ["Toda vez que o Pixel derruba algo, o pai acorda e olha pra lá.", "Atrás das plantas ele não te vê.", "Ele dorme de novo depois de umas jogadas: a plaquinha “dorme em…” avisa."],
         story: "O pai cochilou no sofá vendo o jogo. E o Pixel está em cima do rack.",
       },
       living: {
         title: "A sala da TV",
         goal: "Chegar no videocassete.",
         target: "vídeo",
-        intro: ["Pipoca de novo, e o pai cochilando na poltrona.", "A tábua perto dele acorda o pai também.", "Ele vira de tempos em tempos: fica de olho no ↻."],
+        intro: ["Pipoca de novo, e o pai cochilando na poltrona.", "A tábua perto dele acorda o pai também.", "Ele vira de tempos em tempos: fica de olho no “vira em…”."],
         story: "O videocassete está logo ali, piscando 12:00. Só falta a Pipoca sair do caminho.",
       },
       return: {
@@ -200,6 +202,15 @@ export const NIGHT_COPY = localized<NightCopy>({
     speaker: "Bruno",
     names: { dad: "Pai", grandma: "Vó", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
     view: { house: "👁 Ver a casa toda (V)", back: "↩ Voltar pro Bruno (V)" },
+    status: {
+      toss: (n) => (n === 1 ? "vai virar!" : `vira em ${n}`),
+      sleepsIn: (n) => `dorme em ${n}`,
+      looking: (n) => `olhando · ${n}`,
+      sniffing: (n) => `farejando · ${n}`,
+      going: "indo ver!",
+      returning: "voltando",
+      knock: (n) => (n === 1 ? "vai derrubar!" : `derruba em ${n}`),
+    },
     pages: { rules: "Regras e legenda", moves: "Jogadas", back: "Voltar", rulesTitle: "Como funciona", movesTitle: "Plano até agora", empty: "Nenhuma jogada ainda." },
     legendTitle: "Legenda",
     actLabel: (n, name) => (n === 4 ? "Final" : `Ato ${n} · ${name}`),
@@ -215,7 +226,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       cat: "Pixel faz barulho",
       goal: "objetivo",
       route: "pegadas: próximos passos da Vó",
-      toss: "↻ o pai vira e espia",
+      toss: "“vira em N”: o pai espia",
       near: "parado colado: acorda",
     },
     buttons: { wait: "Esperar", undo: "Desfazer", restart: "Recomeçar", hint: "Dica", next: "Próxima parte", again: "Jogar de novo", undoCaught: "Desfazer a última jogada" },
@@ -324,15 +335,16 @@ export const NIGHT_COPY = localized<NightCopy>({
       },
       hallway: {
         title: "The hallway",
-        goal: "Reach the stairs without Dad catching you.",
+        goal: "Reach the stairs without waking Dad.",
         target: "stairs",
         intro: [
           "The whole hallway is creaky boards.",
-          "A board far from Dad can creak: he won't hear it.",
-          "The ↻ above Dad counts the moves until he rolls over and peeks at the door.",
-          "Boards only on the CUCKOO!, and away from the door when he rolls over.",
+          "The cuckoo sings every 3 moves. Step on boards only when it shows 1.",
+          "A board marked ~ is far from Dad: it can creak and he won't hear. A board marked ! wakes him.",
+          "The “rolls in…” tag on Dad counts the moves until he rolls over and peeks down the hallway. Don't stand in front of the door then.",
+          "Use Wait to get the rhythm right, but don't dawdle.",
         ],
-        story: "This hallway creaks like an old ship. And Dad rolls over every so often…",
+        story: "This hallway creaks like an old ship. And every so often Dad rolls over…",
       },
       stairs: {
         title: "The stairs",
@@ -374,21 +386,21 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "The dining room",
         goal: "Cross over to the living room.",
         target: "living room",
-        intro: ["No loose boards here.", "But Pixel knocks something over every so often: the number above him warns you.", "The trick is being in the right spot when he does."],
+        intro: ["No loose boards here.", "But Pixel knocks something over every so often: the “knocks in…” tag warns you.", "The trick is being in the right spot when he does."],
         story: "No boards to help me here. But Pixel… Pixel is chaos shaped like a cat.",
       },
       sofa: {
         title: "Dad on the sofa",
         goal: "Cross the room without Dad seeing you.",
         target: "TV",
-        intro: ["Every time Pixel knocks something over, Dad wakes up and looks over there.", "Behind the plants he can't see you.", "He falls back asleep after a few moves: count them on his number."],
+        intro: ["Every time Pixel knocks something over, Dad wakes up and looks over there.", "Behind the plants he can't see you.", "He falls back asleep after a few moves: the “asleep in…” tag tells you."],
         story: "Dad dozed off on the sofa watching the game. And Pixel is up on the TV stand.",
       },
       living: {
         title: "The TV room",
         goal: "Get to the VCR.",
         target: "VCR",
-        intro: ["Pipoca again, and Dad dozing in the armchair.", "The board near him wakes Dad too.", "He rolls over every so often: watch the ↻."],
+        intro: ["Pipoca again, and Dad dozing in the armchair.", "The board near him wakes Dad too.", "He rolls over every so often: watch the “rolls in…” tag."],
         story: "The VCR is right there, blinking 12:00. Pipoca just needs to get out of the way.",
       },
       return: {
@@ -411,6 +423,15 @@ export const NIGHT_COPY = localized<NightCopy>({
     speaker: "Bruno",
     names: { dad: "Dad", grandma: "Grandma", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
     view: { house: "👁 See the whole house (V)", back: "↩ Back to Bruno (V)" },
+    status: {
+      toss: (n) => (n === 1 ? "rolling over!" : `rolls in ${n}`),
+      sleepsIn: (n) => `asleep in ${n}`,
+      looking: (n) => `looking · ${n}`,
+      sniffing: (n) => `sniffing · ${n}`,
+      going: "checking!",
+      returning: "heading back",
+      knock: (n) => (n === 1 ? "about to knock!" : `knocks in ${n}`),
+    },
     pages: { rules: "Rules and key", moves: "Moves", back: "Back", rulesTitle: "How it works", movesTitle: "Plan so far", empty: "No moves yet." },
     legendTitle: "Key",
     actLabel: (n, name) => (n === 4 ? "Finale" : `Act ${n} · ${name}`),
@@ -426,7 +447,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       cat: "Pixel makes noise",
       goal: "goal",
       route: "footprints: Grandma's next steps",
-      toss: "↻ Dad rolls over and peeks",
+      toss: "“rolls in N”: Dad peeks",
       near: "standing next to them: wakes",
     },
     buttons: { wait: "Wait", undo: "Undo", restart: "Restart", hint: "Hint", next: "Next part", again: "Play again", undoCaught: "Undo the last move" },

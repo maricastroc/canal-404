@@ -651,7 +651,7 @@ function drawProp(g: Phaser.GameObjects.Graphics, prop: PropDef, layout: Layout)
   }
 }
 
-export function drawProps(g: Phaser.GameObjects.Graphics, grid: Grid, layout: Layout) {
+export function drawProps(g: Phaser.GameObjects.Graphics, grid: Grid, layout: Layout, skip: (p: PropDef) => boolean = () => false) {
   const covered = new Set<number>();
   for (const prop of grid.level.props) {
     for (let dy = 0; dy < (prop.h ?? 1); dy += 1) for (let dx = 0; dx < (prop.w ?? 1); dx += 1) covered.add((prop.y + dy) * grid.w + prop.x + dx);
@@ -663,7 +663,7 @@ export function drawProps(g: Phaser.GameObjects.Graphics, grid: Grid, layout: La
       box(g, layout.ox + x * s + s * 0.08, layout.oy + y * s + s * 0.08, s * 0.84, s * 0.84, 0x8a5a3c, 0x6a3f2a, s * 0.2, 8);
     }
   }
-  const sorted = [...grid.level.props].sort((a, b) => a.y - b.y);
+  const sorted = grid.level.props.filter((p) => !skip(p)).sort((a, b) => a.y - b.y);
   for (const prop of sorted) drawProp(g, prop, layout);
 }
 

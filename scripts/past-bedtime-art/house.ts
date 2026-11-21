@@ -1,4 +1,7 @@
+import { decorArtName } from "../../src/games/past-bedtime/scenes/art";
+import { decorFor } from "../../src/games/past-bedtime/scenes/decor";
 import type { LevelDef } from "../../src/games/past-bedtime/sim/types";
+import { grandmaDecor, grandmaHides } from "./grandma";
 import { ink, P, rnd, svg, type Sheet } from "./kit";
 
 const INK = P.ink;
@@ -407,5 +410,29 @@ export function house(levels: readonly LevelDef[]): Sheet {
   put("alarmClock", alarmClock());
   put("basket", basket());
   put("kidDrawing-56x48", kidDrawing(56, 48));
+  for (const [name, art] of Object.entries(grandmaHides())) put(name, art);
+  for (const level of levels) {
+    const d = decorFor(level.id);
+    for (const item of [...d.wall, ...d.floor, ...d.top]) {
+      const name = decorArtName(item.kind, item.w, item.h, item.v);
+      if (!name || out[name]) continue;
+      const w = Math.round((item.w ?? 1) * 100);
+      const h = Math.round((item.h ?? 1) * 100);
+      const v = item.v;
+      let art = "";
+      if (item.kind === "frame") art = frameArt(w, h, Number(v ?? 0));
+      else if (item.kind === "window") art = windowArt(w, h, typeof v === "string" ? v : undefined);
+      else if (item.kind === "runner" || item.kind === "rug") art = v === 0x9a6a72 ? rug(w, h, "#9a6a72", "#f9b6d4") : rug(w, h, "#3f7a8c", "#a9dcf7");
+      else if (item.kind === "door") art = doorFace(w, h, v === "bruno" ? "bruno" : "plain");
+      else if (item.kind === "doorLeaf") art = doorLeaf(w, h);
+      else if (item.kind === "jamb") art = jamb(h);
+      else if (item.kind === "hooks") art = hooks(w, h);
+      else if (item.kind === "console") art = consoleTable(w, h);
+      else if (item.kind === "railing") art = railing(w, h);
+      else if (item.kind === "kidDrawing") art = kidDrawing(w, h);
+      else art = grandmaDecor(item.kind, w, h) ?? "";
+      if (art) put(name, art);
+    }
+  }
   return out;
 }

@@ -12,7 +12,7 @@ import { DX, DY, type Action, type Dir, type SimEvent, type State } from "../sim
 import { NIGHT_SFX } from "../sounds";
 import { BrunoView, CatView, ClockView, DadView, DogView, GrandmaView, StatusIcon, type BrunoMood } from "./actors";
 import { decorFor, drawFloorDecor, drawTopDecor, drawWallDecor, type Decor } from "./decor";
-import { ART_LEVELS, decorArtName, hasArt, loadArt, placeArt, type ArtMode } from "./art";
+import { decorArtName, hasArt, loadArt, placeArt, propArtName, wallArtTheme, type ArtMode } from "./art";
 import { NightLighting, type DynamicLight } from "./lighting";
 import { floatZ, noiseRing, pop, say, sightLine, soundLine, squiggle, type BubbleTone, type Box, type Speaker } from "./fx";
 import { drawExit } from "./exit";
@@ -70,7 +70,7 @@ export class NightScene extends Phaser.Scene {
   private watchSpots: { x: number; y: number }[] = [];
   private hover!: Phaser.GameObjects.Graphics;
   private hintLayer!: Phaser.GameObjects.Graphics;
-  private badges: Phaser.GameObjects.Text[] = [];
+  private badges: Phaser.GameObjects.GameObject[] = [];
   private lightsOn!: Phaser.GameObjects.Rectangle;
   private lighting!: NightLighting;
   private ambient?: Phaser.Time.TimerEvent;
@@ -81,6 +81,7 @@ export class NightScene extends Phaser.Scene {
   private wasBreathing = false;
   private flinch = false;
   private useArt = false;
+  private artHides = false;
   private story: StoryBox | null = null;
   private bubbles: Phaser.GameObjects.Container[] = [];
   private ui!: NightUiScene;
@@ -145,10 +146,12 @@ export class NightScene extends Phaser.Scene {
     const s = L.tile;
     const theme = themeFor(level.id);
     const decor = decorFor(level.id);
-    this.useArt = this.bridge.art === "final" && ART_LEVELS.has(level.id);
+    this.useArt = this.bridge.art === "final" && hasArt(`floor-${level.id}`);
+    this.artHides = false;
+    const charArt = this.bridge.art === "final";
     const props = this.useArt ? this.buildArtHouse(decor, theme) : this.buildDraftHouse(decor, theme);
     const hideFront = this.add.graphics().setDepth(35);
-    drawHides(props, hideFront, grid, L, hideStyleFor(level.id));
+    if (!this.artHides) drawHides(props, hideFront, grid, L, hideStyleFor(level.id));
     this.lighting = new NightLighting(this, L, decor.lights, decor.darkness, decor.lamps);
     const marks = this.add.graphics().setDepth(7);
     drawCreakMarks(marks, grid, L);
@@ -168,29 +171,29 @@ export class NightScene extends Phaser.Scene {
       const c = tileCenter(L, ...this.xy(agentPos(grid, i, this.state.agents[i])));
       if (def.kind === "sleeper") {
         const onBed = level.props.some((p) => p.kind === "bed" && p.x === def.x && def.y >= p.y && def.y < p.y + (p.h ?? 1));
-        const view = new DadView(this, s, onBed ? "bed" : "armchair", this.useArt && onBed);
+        const view = new DadView(this, s, onBed ? "bed" : "armchair", charArt);
         view.container.setPosition(c.x, c.y).setScale(CHAR_SCALE * 0.94);
-        this.agents.push({ kind: "dad", view, status: new StatusIcon(this, view.container, this.bridge.fonts.display, iconSize, onBed ? (this.useArt ? -s * 1.72 : -s * 1.1) : -s * 0.62) });
+        this.agents.push({ kind: "dad", view, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize, onBed ? (charArt ? -s * 1.05 : -s * 1.1) : charArt ? -s * 0.42 : -s * 0.62, charArt ? (def.x - L.view.x0 < 1.6 ? s : -s) * 1.0 : 0) });
       } else if (def.kind === "patrol") {
-        const view = new GrandmaView(this, s, def.range * s);
+        const view = new GrandmaView(this, s, def.range * s, charArt);
         view.container.setPosition(c.x, c.y).setScale(CHAR_SCALE);
-        this.agents.push({ kind: "grandma", view, status: new StatusIcon(this, view.container, this.bridge.fonts.display, iconSize, -s * 0.66) });
+        this.agents.push({ kind: "grandma", view, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize, charArt ? -s * 1.0 : -s * 0.66) });
       } else if (def.kind === "cat") {
-        const view = new CatView(this, s);
+        const view = new CatView(this, s, charArt);
         view.container.setPosition(c.x, c.y - s * 0.32).setScale(CHAR_SCALE);
-        this.agents.push({ kind: "cat", view, status: new StatusIcon(this, view.container, this.bridge.fonts.display, iconSize * 0.9, -s * 0.62) });
+        this.agents.push({ kind: "cat", view, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize * 0.9, -s * 0.62) });
       } else {
-        const view = new DogView(this, s);
+        const view = new DogView(this, s, charArt);
         view.container.setPosition(c.x, c.y).setScale(CHAR_SCALE);
-        this.agents.push({ kind: "dog", view, status: new StatusIcon(this, view.container, this.bridge.fonts.display, iconSize, -s * 0.5) });
+        this.agents.push({ kind: "dog", view, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize, -s * 0.5) });
       }
     });
     if (level.clock) {
-      this.clock = new ClockView(this, s, this.bridge.fonts.display, this.copy.lines.now, this.useArt);
+      this.clock = new ClockView(this, s, this.bridge.fonts.display, this.copy.lines.now, charArt);
       const c = tileCenter(L, level.clock.x, level.clock.y);
       this.clock.container.setPosition(c.x, c.y - s * 0.02);
     }
-    this.bruno = new BrunoView(this, s, this.useArt);
+    this.bruno = new BrunoView(this, s, charArt);
     this.bruno.container.setScale(CHAR_SCALE);
     const b = tileCenter(L, this.state.x, this.state.y);
     this.bruno.place(b.x, b.y);
@@ -209,7 +212,7 @@ export class NightScene extends Phaser.Scene {
     this.notebook.setLevel(index, LEVELS.length, text.title, text.goal, level.par, LEVELS.map((l) => progress[l.id] ?? 0), this.legendFor(), actOf, this.copy.actLabel(actOf[index] + 1, this.copy.acts[act.id] ?? ""));
     this.notebook.setStats(0, 0);
     this.notebook.intro(text.intro);
-    this.story = new StoryBox(this.ui, L, this.bridge.fonts, this.useArt, this.copy.speaker, () => this.focusBruno());
+    this.story = new StoryBox(this.ui, L, this.bridge.fonts, charArt, this.copy.speaker, () => this.focusBruno());
     this.setupCamera();
     this.time.delayedCall(350, () => this.history.length === 0 && this.state.status === "playing" && this.story?.show(text.story, [...this.avoidBoxes().map((b) => this.toScreen(b)), ...(this.viewChip ? [this.viewChip.box] : [])]));
     this.syncViews(false);
@@ -278,18 +281,30 @@ export class NightScene extends Phaser.Scene {
         if (kind !== "face" && kind !== "tall") continue;
         const top = y === 0 || faces[(y - 1) * grid.w + x] === "cap";
         const variant = kind === "face" ? (top ? "single" : "bottom") : top ? "top" : "mid";
-        placeArt(this, `wall-hall-${variant}`, L, x, y, 1.1);
+        placeArt(this, `wall-${wallArtTheme(theme.pattern)}-${variant}`, L, x, y, 1.1);
       }
     }
     const wallItems = split(decor.wall);
     for (const { item, name } of wallItems.art) placeArt(this, name, L, item.x, item.y, 1.2);
     const wallRest = this.add.graphics().setDepth(1.3);
     drawWallDecor(wallRest, { ...decor, wall: wallItems.rest }, L);
-    const artProps = level.props.filter((p) => (p.kind === "bed" && hasArt("bed")) || (p.kind === "stairs" && hasArt("stairs")));
-    for (const p of artProps) placeArt(this, p.kind, L, p.x, p.y, 3);
+    const artProps = level.props.filter((p) => p.kind !== "door" && hasArt(propArtName(p)));
+    for (const p of [...artProps].sort((a, b) => a.y - b.y)) placeArt(this, propArtName(p), L, p.x, p.y, 3);
     const props = this.add.graphics().setDepth(3.1);
-    drawProps(props, { ...grid, level: { ...level, props: level.props.filter((p) => !artProps.includes(p)) } }, L);
-    drawTopDecor(props, decor, L);
+    drawProps(props, grid, L, (p) => artProps.includes(p));
+    const topItems = split(decor.top);
+    for (const { item, name } of topItems.art) placeArt(this, name, L, item.x, item.y, 3.2);
+    drawTopDecor(props, { ...decor, top: topItems.rest }, L);
+    if (hideStyleFor(level.id) === "curtain" && hasArt("hide-curtain-front")) {
+      for (let y = 0; y < grid.h; y += 1) {
+        for (let x = 0; x < grid.w; x += 1) {
+          if (grid.tiles[y * grid.w + x] !== "h") continue;
+          placeArt(this, "hide-curtain-back", L, x, y, 3);
+          placeArt(this, "hide-curtain-front", L, x, y, 35);
+        }
+      }
+      this.artHides = true;
+    }
     return props;
   }
 
@@ -453,7 +468,7 @@ export class NightScene extends Phaser.Scene {
           break;
         }
         case "wait":
-          this.sfx(NIGHT_SFX.tick, 0.8);
+          this.sfx(NIGHT_SFX.tick);
           break;
         case "cuckoo":
           this.clock?.sing();
@@ -513,7 +528,7 @@ export class NightScene extends Phaser.Scene {
           if (a.kind === "dad") {
             a.view.stir();
             this.time.delayedCall(MOVE_MS, () => this.state.status === "playing" && this.talk(p.x, p.y - s * 0.3, this.pick(this.copy.lines.dadStir), "whisper", 1500, "dad"));
-            this.sfx(NIGHT_SFX.snore, 0.9);
+            this.sfx(NIGHT_SFX.stir);
           } else if (a.kind === "dog") {
             a.view.twitch();
             this.time.delayedCall(MOVE_MS, () => this.state.status === "playing" && squiggle(this, fonts, p.x, p.y - s * 0.25, this.copy.lines.dogStir, Math.round(s * 0.24), "#f6d7a7"));
@@ -525,7 +540,7 @@ export class NightScene extends Phaser.Scene {
           if (a.kind !== "dad") break;
           const p = a.view.headPoint();
           if (this.state.status !== "caught") this.time.delayedCall(MOVE_MS, () => this.talk(p.x, p.y - s * 0.3, this.pick(this.copy.lines.dadToss), "whisper", 1400, "dad"));
-          this.sfx(NIGHT_SFX.snore, 0.9);
+          this.sfx(NIGHT_SFX.stir);
           break;
         }
         case "sleep": {
@@ -622,7 +637,12 @@ export class NightScene extends Phaser.Scene {
     for (const a of this.agents) {
       const c = a.view.container;
       const tall = a.kind === "dad" ? s * 1.6 : s * 1.1;
-      out.push({ x: c.x - s * 0.5, y: c.y - tall, w: s, h: tall + s * 0.4 });
+      const wide = a.kind === "dad" ? s * 0.6 : 0;
+      out.push({ x: c.x - s * 0.5 - wide, y: c.y - tall, w: s + wide, h: tall + s * 0.4 });
+      const k = c.scaleX;
+      const sx = c.x + a.status.root.x * k;
+      const sy = c.y + a.status.root.y * k;
+      out.push({ x: sx - s * 0.85, y: sy - s * 0.26, w: s * 1.7, h: s * 0.52 });
     }
     for (const bubble of this.bubbles) if (bubble.active) out.push(bubble.getData("box") as Box);
     const st = this.state;
@@ -776,25 +796,26 @@ export class NightScene extends Phaser.Scene {
         const mood = a.awake === 0 ? "sleep" : a.awake >= full ? "startled" : a.awake === 1 ? "sleepy" : "suspicious";
         view.view.set(mood, a.facing);
         const toss = def.kind === "sleeper" && def.toss && a.awake === 0 ? turnsToToss(def, st.turn) : -1;
-        if (toss > 0) view.status.show(`↻${toss}`, toss === 1 ? "#ff9d8a" : "#d9ccff");
-        else view.status.show(mood === "startled" ? "!" : mood === "suspicious" ? "?" : mood === "sleepy" ? "z" : null, mood === "startled" ? "#ff9d8a" : mood === "suspicious" ? "#ffe39a" : "#d9ccff");
+        if (toss > 0) view.status.show(this.copy.status.toss(toss), toss === 1 ? "#ff9d8a" : "#d9ccff");
+        else if (a.awake > 0) view.status.show(this.copy.status.sleepsIn(a.awake), mood === "startled" ? "#ff9d8a" : mood === "suspicious" ? "#ffe39a" : "#d9ccff");
+        else view.status.show(null);
       } else if (a.kind === "patrol" && view.kind === "grandma") {
         view.view.set(a.alert > 0 ? "alert" : "walk", a.facing);
-        view.status.show(a.alert > 0 ? "?" : null, "#ffe39a");
+        view.status.show(a.alert > 0 ? this.copy.status.looking(a.alert) : null, "#ffe39a");
         if (!animate) {
           this.tweens.killTweensOf(view.view.container);
           view.view.container.setPosition(c.x, c.y);
         }
       } else if (a.kind === "dog" && view.kind === "dog") {
         view.view.set(a.mode === "sleep" ? "sleep" : a.mode === "sniff" ? "sniff" : "walk", a.facing);
-        view.status.show(a.mode === "sleep" ? null : a.mode === "sniff" ? "?" : "!", "#ffc89a");
+        view.status.show(a.mode === "sleep" ? null : a.mode === "sniff" ? this.copy.status.sniffing(a.timer) : a.mode === "go" ? this.copy.status.going : this.copy.status.returning, a.mode === "back" ? "#ff9d8a" : "#ffc89a");
         if (!animate) view.view.place(c.x, c.y);
       } else if (a.kind === "cat" && view.kind === "cat") {
         const def = grid.level.agents[i];
         if (def.kind === "cat") {
           const left = turnsToKnock(def, st.turn);
           view.view.set(left === 1 ? "ready" : "idle");
-          view.status.show(String(left), left === 1 ? "#ff9d8a" : "#e9e2ff");
+          view.status.show(this.copy.status.knock(left), left === 1 ? "#ff9d8a" : "#e9e2ff");
         }
       }
     });
@@ -907,7 +928,9 @@ export class NightScene extends Phaser.Scene {
       for (const idx of next) {
         if (now.has(idx)) continue;
         const r = this.tileRect(g, idx, 6);
-        g.lineStyle(2.5, 0xe9e2ff, 0.55);
+        g.fillStyle(0xffe39a, 0.07);
+        g.fillRoundedRect(r.x, r.y, r.s, r.s, 8);
+        g.lineStyle(2.5, 0xffe39a, 0.42);
         for (let k = -3; k <= 3; k += 1) {
           const off = (k * r.s) / 4;
           const x0 = Math.max(r.x, r.x + off);
@@ -916,7 +939,7 @@ export class NightScene extends Phaser.Scene {
           const y1 = Math.max(r.y, r.y + off);
           if (x1 > x0) g.lineBetween(x0, y0, x1, y1);
         }
-        g.lineStyle(2.5, 0xe9e2ff, 0.7);
+        g.lineStyle(3, 0xffd66b, 0.62);
         g.strokeRoundedRect(r.x, r.y, r.s, r.s, 8);
       }
       st.agents.forEach((a, i) => {
@@ -951,7 +974,6 @@ export class NightScene extends Phaser.Scene {
           g.strokeCircle(end.x, end.y, s * 0.18);
         }
       }
-      if (a.kind === "dog" && a.mode === "sniff") this.badge(agentPos(grid, i, a), String(a.timer));
       const cdef = grid.level.agents[i];
       if (a.kind === "cat" && cdef.kind === "cat" && turnsToKnock(cdef, st.turn) === 1) {
         let maxHear = 0;
@@ -967,8 +989,6 @@ export class NightScene extends Phaser.Scene {
           g.strokeCircle(c.x, c.y - L.tile * 0.1, L.tile * 0.5);
         });
       }
-      if (a.kind === "sleeper" && a.awake > 0) this.badge(agentPos(grid, i, a), String(a.awake));
-      if (a.kind === "patrol" && a.alert > 0) this.badge({ x: a.x, y: a.y }, String(a.alert));
     });
   }
 
@@ -1057,15 +1077,55 @@ export class NightScene extends Phaser.Scene {
         });
       }
       const c = tileCenter(L, x, y);
-      const label = masked ? "♪" : heard ? "!" : "~";
-      const bg = masked ? "#9df0dc" : heard ? "#ff9d8a" : "#d7cdfa";
-      const t = this.add
-        .text(c.x, c.y, label, { fontFamily: this.bridge.fonts.display, fontSize: `${Math.round(L.tile * 0.28)}px`, color: "#1d1830", backgroundColor: bg, padding: { x: 8, y: 2 } })
-        .setOrigin(0.5)
-        .setDepth(39)
-        .setAlpha(0.95);
-      this.badges.push(t);
+      this.badges.push(this.markBadge(c.x, c.y - L.tile * 0.04, masked ? "safe" : heard ? "wake" : "creak"));
     }
+  }
+
+  private markBadge(x: number, y: number, kind: "safe" | "wake" | "creak") {
+    const s = this.layout.tile;
+    const r = s * 0.17;
+    const ink = NIGHT.ink;
+    const fill = kind === "wake" ? 0xff6b5a : kind === "safe" ? 0x9df0dc : 0xd7cdfa;
+    const g = this.add.graphics();
+    if (kind === "wake") {
+      g.lineStyle(Math.max(3, s * 0.025), ink, 1);
+      for (const deg of [-165, -135, -45, -15]) {
+        const ang = (deg * Math.PI) / 180;
+        g.lineBetween(Math.cos(ang) * r * 1.45, Math.sin(ang) * r * 1.45, Math.cos(ang) * r * 1.9, Math.sin(ang) * r * 1.9);
+      }
+    }
+    g.fillStyle(ink, 0.6);
+    g.fillCircle(3, 5, r + 3);
+    g.fillStyle(ink, 1);
+    g.fillCircle(0, 0, r + 3);
+    g.fillStyle(fill, 1);
+    g.fillCircle(0, 0, r);
+    g.fillStyle(0xffffff, 0.55);
+    g.fillEllipse(-r * 0.32, -r * 0.5, r * 0.75, r * 0.32);
+    g.fillStyle(ink, 1);
+    if (kind === "wake") {
+      g.fillRoundedRect(-r * 0.17, -r * 0.66, r * 0.34, r * 0.86, r * 0.14);
+      g.fillCircle(0, r * 0.5, r * 0.19);
+    } else if (kind === "safe") {
+      g.fillEllipse(-r * 0.2, r * 0.42, r * 0.56, r * 0.4);
+      g.fillRect(r * 0.03, -r * 0.62, r * 0.14, r * 1.04);
+      g.fillTriangle(r * 0.17, -r * 0.62, r * 0.6, -r * 0.3, r * 0.17, -r * 0.18);
+    } else {
+      g.lineStyle(Math.max(3, r * 0.2), ink, 1);
+      g.beginPath();
+      g.moveTo(-r * 0.62, r * 0.12);
+      g.lineTo(-r * 0.32, -r * 0.3);
+      g.lineTo(0, r * 0.12);
+      g.lineTo(r * 0.32, -r * 0.3);
+      g.lineTo(r * 0.62, r * 0.12);
+      g.strokePath();
+    }
+    const c = this.add.container(x, y, [g]).setDepth(39);
+    if (!this.bridge.reducedMotion) {
+      if (kind === "wake") this.tweens.add({ targets: c, scale: { from: 1, to: 1.12 }, duration: 380, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      else this.tweens.add({ targets: c, y: y - s * 0.04, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
+    return c;
   }
 
   private badge(p: { x: number; y: number }, text: string) {

@@ -51,13 +51,13 @@ function burst(w: number, h: number) {
 export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number, y: number, text: string, opts: SayOptions = {}) {
   const { tone = "normal", duration = 1600, depth = 60, avoid = [], area, speaker } = opts;
   const s = layout.tile;
-  const size = Math.round(Math.max(22, s * (tone === "shout" ? 0.3 : tone === "whisper" ? 0.24 : 0.27)));
-  const family = tone === "shout" ? fonts.display : tone === "thought" || tone === "whisper" ? fonts.hand : (fonts.round ?? fonts.body);
+  const size = Math.round(Math.max(22, s * (tone === "shout" ? 0.3 : tone === "whisper" ? 0.23 : 0.25)));
+  const family = tone === "shout" ? fonts.display : (fonts.round ?? fonts.body);
   const label = scene.add
     .text(0, 0, text, {
       fontFamily: family,
       fontSize: `${size}px`,
-      fontStyle: tone === "normal" || tone === "scare" || tone === "cheer" ? "600" : "normal",
+      fontStyle: tone === "shout" ? "normal" : tone === "whisper" ? "500" : "600",
       color: tone === "whisper" ? "#4a4268" : INK,
       align: "center",
       padding: { x: 4, y: 4 },
