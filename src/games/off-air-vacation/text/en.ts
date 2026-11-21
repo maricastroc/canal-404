@@ -198,6 +198,11 @@ export const TEXT: VacationText = {
     missionDone: "Mission complete",
     missionAnnounce: (text: string) => `Mission: ${text}`,
   },
+  touch: {
+    action: "Action",
+    journal: "Journal",
+    map: "Map",
+  },
   journal: {
     tabs: { missions: "Missions", found: "Discoveries", collection: "Collection", people: "Characters", map: "Map" },
     mainHead: "Main mission",

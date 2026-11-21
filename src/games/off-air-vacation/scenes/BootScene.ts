@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { BookOpen, CircleDot, Hand, Lightbulb, Map as MapIcon, MapPin, Star, Target, X } from "lucide";
+import { BookOpen, CircleDot, Hand, Lightbulb, Map as MapIcon, MapPin, Star, Target, Users, X } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { CHAR_RES } from "../config";
@@ -88,6 +88,16 @@ export class BootScene extends Phaser.Scene {
       { key: "ui-pin", icon: MapPin, size: 56, color: "#1d1830", fill: "#ef4f43", strokeWidth: 2.2 },
       { key: "ui-target", icon: Target, size: 52, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
       { key: "ui-bulb", icon: Lightbulb, size: 44, color: "#1d1830", fill: "#9df0dc", strokeWidth: 2.4 },
+      { key: "ui-journal-l", icon: BookOpen, size: 96, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.2 },
+      { key: "ui-map-l", icon: MapIcon, size: 96, color: "#1d1830", fill: "#93cf4c", strokeWidth: 2.2 },
+      { key: "ui-hand-l", icon: Hand, size: 128, color: "#1d1830", fill: "#fbf5e6", strokeWidth: 2.2 },
+      { key: "ui-close-l", icon: X, size: 80, color: "#1d1830", strokeWidth: 3 },
+      { key: "ui-star-l", icon: Star, size: 80, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.2 },
+      { key: "ui-dot-l", icon: CircleDot, size: 64, color: "#1d1830", fill: "#fbf5e6", strokeWidth: 2.4 },
+      { key: "ui-pin-l", icon: MapPin, size: 96, color: "#1d1830", fill: "#ef4f43", strokeWidth: 2.2 },
+      { key: "ui-target-l", icon: Target, size: 80, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
+      { key: "ui-bulb-l", icon: Lightbulb, size: 80, color: "#1d1830", fill: "#9df0dc", strokeWidth: 2.4 },
+      { key: "ui-people-l", icon: Users, size: 80, color: "#1d1830", fill: "#f06ba8", strokeWidth: 2.4 },
     ]);
   }
 

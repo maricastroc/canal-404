@@ -1,6 +1,8 @@
 import * as Phaser from "phaser";
 import type { Fonts } from "../../kit/ui";
 import { INK_HEX } from "../../kit/ui";
+import { FULL_FRAME, type Frame } from "../layout";
+import { pinUi } from "./journal";
 
 export type DialogLine = { name: string; face: string | null; text: string; color: number; blip: () => void; label?: string };
 
@@ -40,6 +42,8 @@ export class DialogBox {
   private blip: (() => void) | null = null;
   private narrator = false;
   private box: Box = { x: 260, y: 860, w: 1400, h: 184 };
+  private line: DialogLine | null = null;
+  private choiceH = 66;
   open = false;
 
   constructor(
@@ -47,6 +51,7 @@ export class DialogBox {
     private fonts: Fonts,
     private reduced: boolean,
     private onSelectSound: () => void,
+    private frame: Frame = FULL_FRAME,
   ) {
     const round = fonts.round ?? fonts.body;
     this.panel = scene.add.graphics();
@@ -68,6 +73,44 @@ export class DialogBox {
       .setDepth(DEPTH)
       .setScrollFactor(0, 0, true)
       .setVisible(false);
+    if (frame.kind === "tall") this.applySizes();
+  }
+
+  private get tall() {
+    return this.frame.kind === "tall";
+  }
+
+  private applySizes() {
+    const u = this.frame.unit;
+    const size = (this.frame.compact ? 15.5 : 16.5) * u;
+    const gap = 5 * u;
+    for (const t of [this.text, this.measure]) t.setFontSize(size).setLineSpacing(gap);
+    this.nameText.setFontSize(13.5 * u);
+    this.more.setFontSize(14 * u);
+    this.choiceH = 46 * u;
+    pinUi(this.root);
+  }
+
+  layoutFrame(frame: Frame) {
+    this.frame = frame;
+    if (!this.tall) return;
+    this.applySizes();
+    if (!this.open || !this.line) return;
+    const wrapped = this.layout(this.line);
+    this.full = wrapped;
+    this.typing = false;
+    this.shown = wrapped.length;
+    this.text.setText(wrapped);
+    this.more.setVisible(!this.resolveChoice);
+    if (this.resolveChoice) {
+      const raw = this.choices.map((c) => c.raw);
+      const sel = this.selected;
+      for (const c of this.choices) c.root.destroy();
+      this.choices = [];
+      this.buildChoices(raw);
+      this.selected = sel;
+      this.paintChoices();
+    }
   }
 
   private wrap(text: string, width: number) {
@@ -81,7 +124,84 @@ export class DialogBox {
     return { lines, widest };
   }
 
+  private layoutTall(line: DialogLine) {
+    const f = this.frame;
+    const u = f.unit;
+    const narrator = !line.face;
+    this.narrator = narrator;
+    const tag = narrator ? line.label ?? "" : line.name;
+    const margin = 10 * u;
+    const w = f.width - margin * 2;
+    const r = (f.compact ? 28 : 31) * u;
+    const left = narrator ? 18 * u : 16 * u + r * 2 + 12 * u;
+    const right = 22 * u;
+    const { lines } = this.wrap(line.text, w - left - right);
+    this.nameText.setText(tag.toUpperCase());
+    const tagW = tag ? this.nameText.width + 22 * u : 0;
+    const m = this.text.getTextMetrics();
+    const lineH = m.fontSize + 5 * u;
+    const textH = lines.length * lineH - 5 * u + TEXT_PAD_Y * 2;
+    const padTop = (tag ? 22 : 16) * u;
+    const padBottom = 20 * u;
+    const bottom = f.height - f.safe.bottom - 8 * u;
+    const minH = Math.max(bottom - (f.deck.y + 6 * u), narrator ? 0 : r * 2 + 30 * u);
+    const h = Math.max(minH, padTop + textH + padBottom);
+    const textY = padTop + Math.max(0, (h - padTop - padBottom - textH) / 2);
+    const box = { x: margin, y: bottom - h, w, h };
+    this.box = box;
+    const g = this.panel;
+    g.clear();
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(box.x + 3 * u, box.y + 4 * u, w, h, 18 * u);
+    g.fillStyle(narrator ? NIGHT : CREAM, 1);
+    g.fillRoundedRect(box.x, box.y, w, h, 18 * u);
+    g.lineStyle(3 * u, INK_HEX, 1);
+    g.strokeRoundedRect(box.x, box.y, w, h, 18 * u);
+    if (narrator) {
+      g.lineStyle(1.5 * u, 0x5a4790, 1);
+      g.strokeRoundedRect(box.x + 6 * u, box.y + 6 * u, w - 12 * u, h - 12 * u, 13 * u);
+    }
+    this.portraitBg.clear();
+    this.portrait.setVisible(!narrator);
+    if (!narrator) {
+      const cx = box.x + 16 * u + r;
+      const cy = box.y + h / 2 + (padTop - padBottom) / 2;
+      const p = this.portraitBg;
+      p.fillStyle(INK_HEX, 1);
+      p.fillCircle(cx + 2 * u, cy + 3 * u, r + 1.5 * u);
+      p.fillStyle(line.color, 1);
+      p.fillCircle(cx, cy, r);
+      p.lineStyle(3 * u, INK_HEX, 1);
+      p.strokeCircle(cx, cy, r);
+      this.maskShape.clear();
+      this.maskShape.fillStyle(0xffffff, 1);
+      this.maskShape.fillCircle(cx, cy, r - 1.5 * u);
+      this.portrait.setTexture(line.face!);
+      const tex = this.scene.textures.get(line.face!).getSourceImage() as HTMLImageElement;
+      this.portrait.setScale((r * 2 - 3 * u) / Math.max(tex.width, 1)).setPosition(cx, cy + (tex.height > tex.width ? 5 * u : 0));
+    }
+    this.nameTag.setVisible(Boolean(tag));
+    if (tag) {
+      const nb = this.nameBg;
+      const fill = narrator ? 0xffc83d : line.color;
+      const th = 24 * u;
+      nb.clear();
+      nb.fillStyle(INK_HEX, 1);
+      nb.fillRoundedRect(2 * u, -th / 2 + 3 * u, tagW, th, 7 * u);
+      nb.fillStyle(fill, 1);
+      nb.fillRoundedRect(0, -th / 2, tagW, th, 7 * u);
+      nb.lineStyle(2.5 * u, INK_HEX, 1);
+      nb.strokeRoundedRect(0, -th / 2, tagW, th, 7 * u);
+      this.nameText.setPosition(11 * u, -1 * u);
+      this.nameTag.setPosition(box.x + left - 6 * u, box.y);
+    }
+    this.text.setPosition(box.x + left, box.y + textY).setColor(narrator ? "#fbf5e6" : "#1d1830");
+    this.more.setColor(narrator ? "#ffc83d" : "#c94785").setPosition(box.x + w - 18 * u, box.y + h - 16 * u);
+    return lines.join("\n");
+  }
+
   private layout(line: DialogLine) {
+    if (this.tall) return this.layoutTall(line);
     const narrator = !line.face;
     this.narrator = narrator;
     const tag = narrator ? line.label ?? "" : line.name;
@@ -159,6 +279,7 @@ export class DialogBox {
 
   show(line: DialogLine): Promise<void> {
     this.open = true;
+    this.line = line;
     this.clearChoices();
     const wrapped = this.layout(line);
     this.full = wrapped;
@@ -186,6 +307,13 @@ export class DialogBox {
     this.clearChoices();
     this.more.setVisible(false);
     this.selected = 0;
+    if (this.tall) {
+      this.buildChoices(options);
+      this.paintChoices();
+      return new Promise((resolve) => {
+        this.resolveChoice = resolve;
+      });
+    }
     const round = this.fonts.round ?? this.fonts.body;
     const right = this.box.x + this.box.w;
     const baseY = this.box.y - 56;
@@ -206,12 +334,32 @@ export class DialogBox {
     });
   }
 
+  private buildChoices(options: string[]) {
+    const u = this.frame.unit;
+    const h = this.choiceH;
+    const gap = 7 * u;
+    const round = this.fonts.round ?? this.fonts.body;
+    options.forEach((opt, i) => {
+      const label = this.scene.add.text(0, 0, opt, { fontFamily: round, fontSize: `${15.5 * u}px`, fontStyle: "700", color: "#fbf5e6", padding: { x: 1, y: 3 }, wordWrap: { width: this.box.w - 48 * u } }).setOrigin(0, 0.5);
+      const bg = this.scene.add.graphics();
+      const y = this.box.y - 12 * u - h / 2 - (options.length - 1 - i) * (h + gap);
+      const root = this.scene.add.container(this.box.x, y, [bg, label]);
+      label.setPosition(20 * u, 0);
+      this.root.add(root);
+      this.choices.push({ root, bg, label, w: this.box.w, raw: opt });
+    });
+    pinUi(this.root);
+  }
+
   pointer(px: number, py: number, down: boolean) {
     if (!this.resolveChoice) {
-      if (down && this.open && py > this.box.y - 40) this.advance();
+      if (down && this.open && py > (this.tall ? this.frame.top.h : this.box.y - 40)) this.advance();
       return down && this.open;
     }
-    const hit = this.choices.findIndex((c) => px >= c.root.x && px <= c.root.x + c.w && py >= c.root.y - 38 && py <= c.root.y + 32);
+    const half = this.choiceH / 2;
+    const hit = this.tall
+      ? this.choices.findIndex((c) => px >= c.root.x && px <= c.root.x + c.w && py >= c.root.y - half - 4 && py <= c.root.y + half + 4)
+      : this.choices.findIndex((c) => px >= c.root.x && px <= c.root.x + c.w && py >= c.root.y - 38 && py <= c.root.y + 32);
     if (hit >= 0 && hit !== this.selected) {
       this.selected = hit;
       this.paintChoices();
@@ -221,6 +369,23 @@ export class DialogBox {
   }
 
   private paintChoices() {
+    if (this.tall) {
+      const u = this.frame.unit;
+      const h = this.choiceH;
+      this.choices.forEach((c, i) => {
+        const on = i === this.selected;
+        c.bg.clear();
+        c.bg.fillStyle(INK_HEX, 1);
+        c.bg.fillRoundedRect(3 * u, -h / 2 + 4 * u, c.w, h, 14 * u);
+        c.bg.fillStyle(on ? 0xffc83d : NIGHT, 1);
+        c.bg.fillRoundedRect(0, -h / 2, c.w, h, 14 * u);
+        c.bg.lineStyle(2.5 * u, on ? INK_HEX : 0x7b62c4, 1);
+        c.bg.strokeRoundedRect(0, -h / 2, c.w, h, 14 * u);
+        c.label.setColor(on ? "#1d1830" : "#fbf5e6");
+        c.label.setText((on ? "▸ " : "") + c.raw);
+      });
+      return;
+    }
     this.choices.forEach((c, i) => {
       const on = i === this.selected;
       c.bg.clear();
@@ -292,7 +457,10 @@ export class DialogBox {
   }
 
   update(time: number, dt: number) {
-    if (this.more.visible && !this.reduced) this.more.setY(this.box.y + this.box.h - 38 + Math.sin(time / 180) * 5);
+    if (this.more.visible && !this.reduced) {
+      const u = this.frame.unit;
+      this.more.setY(this.tall ? this.box.y + this.box.h - 16 * u + Math.sin(time / 180) * 2 * u : this.box.y + this.box.h - 38 + Math.sin(time / 180) * 5);
+    }
     if (!this.typing) return;
     this.acc += dt * 48;
     const next = Math.min(this.full.length, Math.floor(this.acc));
@@ -313,6 +481,8 @@ export class DialogBox {
   }
 
   get top() {
-    return this.open ? this.box.y : 1080;
+    if (!this.open) return this.frame.height;
+    if (this.tall && this.choices.length) return this.box.y - 12 * this.frame.unit - this.choices.length * (this.choiceH + 7 * this.frame.unit);
+    return this.box.y;
   }
 }
