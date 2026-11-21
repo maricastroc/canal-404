@@ -1663,7 +1663,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const top = Math.min(ry, p.top - 40);
       const bottom = Math.max(ry + rh, p.y + 50);
       const cam = this.cameras.main;
-      zoom = Phaser.Math.Clamp(Math.min((cam.height - coverPx) / (bottom - top), cam.width / (rw + 60)), base * 0.6, base);
+      zoom = Phaser.Math.Clamp((cam.height - coverPx) / (bottom - top), base * 0.82, base);
       fy = (top + bottom) / 2;
       const half = cam.width / zoom / 2;
       fx = Phaser.Math.Clamp(rx + rw / 2, p.x - half + 120, p.x + half - 120);
