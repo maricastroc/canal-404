@@ -12,6 +12,7 @@ export class Arlindo {
   private flag?: Phaser.GameObjects.Container;
   private mood: ArlindoMood;
   lastShout = 0;
+  voice: ((text: string, duration: number, face: string) => void) | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -51,7 +52,8 @@ export class Arlindo {
   shout(text: string, duration = 1700) {
     const win = ARLINDO_WINDOW;
     this.lastShout = this.scene.time.now;
-    this.bubble.say(text, win.x + 18, win.y - 6, duration);
+    if (this.voice) this.voice(text, duration, this.sprite.texture.key);
+    else this.bubble.say(text, win.x + 18, win.y - 6, duration);
     this.scene.tweens.killTweensOf(this.sprite);
     this.scene.tweens.add({ targets: this.sprite, y: win.y + win.h + 32, duration: 200, ease: "Back.easeOut" });
     if (!this.reduced) {

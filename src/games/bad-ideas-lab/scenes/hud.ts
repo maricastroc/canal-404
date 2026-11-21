@@ -4,7 +4,7 @@ import type { LabCopy, LevelText } from "../copy";
 import type { Vec } from "../geometry";
 import type { Frame, FrameKind } from "../layout";
 import type { LevelDef } from "../levels";
-import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
+import { INK, INK_HEX, cartoonText, centerGlyphs, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
 import { addIcon, setIcon, type IconName } from "../icons";
 
 export type HudHandlers = {
@@ -118,13 +118,7 @@ export function drawButtonBg(g: Phaser.GameObjects.Graphics, w: number, h: numbe
   g.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
 }
 
-export function centerGlyphs(text: Phaser.GameObjects.Text) {
-  if (!text.text) return text.setY(0);
-  const { ascent, descent } = text.getTextMetrics();
-  text.style.syncFont(text.canvas, text.context);
-  const m = text.context.measureText(text.text);
-  return text.setY((m.actualBoundingBoxAscent - m.actualBoundingBoxDescent - ascent + descent) / 2);
-}
+export { centerGlyphs };
 
 export class DeskHud implements LabHudView {
   readonly kind = "full";

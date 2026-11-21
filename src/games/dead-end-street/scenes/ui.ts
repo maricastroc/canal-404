@@ -3,6 +3,7 @@ import type { Locale } from "@/i18n/locales";
 import { formatNumber } from "@/i18n/format";
 import { GROUND_Y, H, PROJECTILE_ORDER, PROJECTILES, W, type ProjectileId } from "../config";
 import { COPY, type StreetCopy } from "../copy";
+import type { Frame, FrameKind } from "../layout";
 import type { PhaseDef } from "../phases";
 
 export { Bubble, CREAM_HEX, INK, INK_HEX, cartoonText, fitText, type Fonts } from "../../kit/ui";
@@ -21,13 +22,33 @@ const FORCE_ICONS = ["icon-force-0", "icon-force-1", "icon-force-2", "icon-force
 const TAG = { x: 520, bottom: 8, h: 104, pillsX: 436, ammoX: 852, slot: 60 };
 const BOX = { h: 178, cell: 70, top: 50, row: 76 };
 
+export interface StreetHud {
+  readonly kind: FrameKind;
+  uiScale: number;
+  swapHint: string;
+  layout(frame: Frame, displayScale: number): void;
+  setScore(score: number, pulse: boolean): void;
+  setBest(value: number): void;
+  setLaunches(n: number): void;
+  iconPoint(index: number): { x: number; y: number };
+  checkTarget(index: number): void;
+  setAmmo(current: ProjectileId | null, stock: Record<ProjectileId, number>, hint?: string): void;
+  popTag(): void;
+  setAim(angle: number | null, power: number | null): void;
+  hideTag(): void;
+  showBanner(kicker: string, title: string, sub: string, hold?: number): void;
+  hideBanner(): void;
+  destroy(): void;
+}
+
 function outlinedIcon(scene: Phaser.Scene, x: number, y: number, key: string, size: number) {
   const outline = scene.add.image(0, 0, `${key}-outline`).setDisplaySize(size, size);
   const fill = scene.add.image(0, 0, key).setDisplaySize(size, size);
   return scene.add.container(x, y, [outline, fill]);
 }
 
-export class Hud {
+export class Hud implements StreetHud {
+  readonly kind = "full";
   private scoreBox: Phaser.GameObjects.Container;
   private scoreText: Phaser.GameObjects.Text;
   private bestText: Phaser.GameObjects.Text;
@@ -193,7 +214,7 @@ export class Hud {
     g.strokeRoundedRect(168, 0, 186, PILL_H, 15);
   }
 
-  layout(displayScale: number) {
+  layout(frame: Frame, displayScale: number) {
     this.uiScale = Phaser.Math.Clamp(displayScale * 0.55, 1, 1.75);
     const s = this.uiScale;
     this.scoreBox.setScale(Math.min(s, 1.55));
@@ -296,6 +317,11 @@ export class Hud {
 
   hideTag() {
     this.tag.setVisible(false);
+  }
+
+  destroy() {
+    this.bannerTimer?.remove();
+    for (const obj of [this.scoreBox, this.phaseBox, this.tag, this.banner]) obj.destroy();
   }
 
   showBanner(kicker: string, title: string, sub: string, hold = 1500) {

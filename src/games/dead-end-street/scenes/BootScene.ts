@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { Angle, Check, Droplet, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero, Star } from "lucide";
+import { Angle, Check, ChevronDown, ChevronUp, Droplet, Maximize2, Minimize2, Minus, Plus, Send, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero, Star } from "lucide";
 import { loadIcons, type IconSpec } from "@/games/kit/icons";
 import type { GameHostContext } from "@/games/types";
 
@@ -79,6 +79,13 @@ export const ICONS: IconSpec[] = [
   { key: "icon-drop-outline", icon: Droplet, size: ICON_SIZE, color: INK, strokeWidth: 6.4 },
   { key: "icon-drop", icon: Droplet, size: ICON_SIZE, color: "#5cb9f0", strokeWidth: 3.2, fill: "#a9dcf7" },
   { key: "icon-star", icon: Star, size: ICON_SIZE, color: INK, strokeWidth: 2.4, fill: "#ffc83d" },
+  { key: "icon-up", icon: ChevronUp, size: ICON_SIZE, color: INK, strokeWidth: 3.4 },
+  { key: "icon-down", icon: ChevronDown, size: ICON_SIZE, color: INK, strokeWidth: 3.4 },
+  { key: "icon-plus", icon: Plus, size: ICON_SIZE, color: INK, strokeWidth: 3.4 },
+  { key: "icon-minus", icon: Minus, size: ICON_SIZE, color: INK, strokeWidth: 3.4 },
+  { key: "icon-see-all", icon: Maximize2, size: ICON_SIZE, color: INK, strokeWidth: 3 },
+  { key: "icon-see-back", icon: Minimize2, size: ICON_SIZE, color: INK, strokeWidth: 3 },
+  { key: "icon-launch", icon: Send, size: ICON_SIZE, color: INK, strokeWidth: 2.8 },
 ];
 
 export class BootScene extends Phaser.Scene {
