@@ -19,6 +19,7 @@ export type GoalStat =
   | "launches"
   | "combos"
   | "mess"
+  | "gadgets"
   | "bumps"
   | "resumed"
   | "stickersLeft"
@@ -47,6 +48,7 @@ export const GOAL_STATS: readonly GoalStat[] = [
   "launches",
   "combos",
   "mess",
+  "gadgets",
   "bumps",
   "resumed",
   "stickersLeft",
@@ -101,7 +103,7 @@ function kidName(index: number, locale: Locale) {
 const LOST = localized<{ games: Partial<Record<GameSlug, string>>; other: string }>({
   "pt-BR": {
     games: {
-      "dead-end-street": "a munição acabou antes da última rodada",
+      "dead-end-street": "a munição acabou antes de completar a fase",
       "food-fight": "os guardanapos acabaram antes do sinal",
       "operation-recess": "os corações do Bruno acabaram antes do fim da fase",
       "pajama-war": "sua energia acabou antes do fim da guerra",
@@ -110,7 +112,7 @@ const LOST = localized<{ games: Partial<Record<GameSlug, string>>; other: string
   },
   en: {
     games: {
-      "dead-end-street": "you ran out of ammo before the last round",
+      "dead-end-street": "you ran out of ammo before clearing the level",
       "food-fight": "you ran out of napkins before the bell",
       "operation-recess": "Bruno ran out of hearts before the end of the level",
       "pajama-war": "you ran out of energy before the end of the war",
@@ -159,6 +161,8 @@ const ACTUAL = localized<(stat: GoalStat, actual: number, game: GameSlug) => str
         return actual === 0 ? "nenhum lançamento derrubou dois alvos de uma vez" : `você derrubou dois alvos de uma vez ${pt(actual, "vez", "vezes")}`;
       case "mess":
         return actual === 1 ? "só 1 coisa do quintal saiu do lugar" : `só ${actual} coisas do quintal saíram do lugar`;
+      case "gadgets":
+        return actual === 0 ? "nenhuma engenhoca disparou" : `você disparou ${pt(actual, "engenhoca", "engenhocas")}`;
       case "bumps":
         return `o Bruno levou ${pt(actual, "batida", "batidas")}`;
       case "resumed":
@@ -203,6 +207,8 @@ const ACTUAL = localized<(stat: GoalStat, actual: number, game: GameSlug) => str
         return actual === 0 ? "no launch knocked down two targets at once" : `you knocked down two targets at once ${en(actual, "time", "times")}`;
       case "mess":
         return actual === 1 ? "only 1 thing in the yard got moved" : `only ${actual} things in the yard got moved`;
+      case "gadgets":
+        return actual === 0 ? "no gadget went off" : `you set off ${en(actual, "gadget", "gadgets")}`;
       case "bumps":
         return `Bruno took ${en(actual, "hit", "hits")}`;
       case "resumed":
@@ -248,6 +254,8 @@ const TARGET = localized<(condition: Condition) => string | null>({
         return op === "min" && value > 1 ? `a missão pede ${pt(value, "vez", "vezes")}` : null;
       case "mess":
         return op === "min" ? `a missão pede ${value}` : null;
+      case "gadgets":
+        return op === "min" ? `a missão pede ${pt(value, "engenhoca", "engenhocas")}` : null;
       case "bumps":
         return `a missão aceita ${bound(op, value, "batida", "batidas", "nenhuma")}`;
       case "damageTaken":
@@ -286,6 +294,8 @@ const TARGET = localized<(condition: Condition) => string | null>({
         return op === "min" && value > 1 ? `the mission asks for ${en(value, "time", "times")}` : null;
       case "mess":
         return op === "min" ? `the mission asks for ${value}` : null;
+      case "gadgets":
+        return op === "min" ? `the mission asks for ${en(value, "gadget", "gadgets")}` : null;
       case "bumps":
         return `the mission allows ${boundEn(op, value, "hit", "hits")}`;
       case "damageTaken":

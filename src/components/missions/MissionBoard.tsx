@@ -13,6 +13,7 @@ import { dayName, dayStamp, formatMissionBest, formatPlace } from "@/lib/mission
 import { missionText } from "@/lib/missions/text";
 import type { MissionBoardEntry, MissionBoardResponse } from "@/lib/missions/types";
 import { missionHref } from "./parts";
+import { boardNickname } from "@/lib/competition/nickname";
 
 type Loaded = { key: string; data: MissionBoardResponse | null };
 
@@ -102,7 +103,7 @@ function Row({ entry, game }: { entry: Pick<MissionBoardEntry, "position" | "nic
       </td>
       <td className="px-1 py-1.5">
         <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span className="font-semibold text-cream">{entry.nickname}</span>
+          <span className="font-semibold text-cream">{boardNickname(entry.nickname)}</span>
           <span className="copy-sm text-plum-300">#{entry.tag}</span>
           {entry.you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">{copy.you}</span> : null}
         </span>
@@ -248,7 +249,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
               {view.closed && view.page === 1 && view.total >= 2 ? (
                 <p className="copy-sm mb-2 rounded-lg border-2 border-ink bg-bubblegum px-2 py-1 text-ink">
                   <span className="tag-label">{copy.champion}</span>
-                  {view.entries[0].nickname} #{view.entries[0].tag}
+                  {boardNickname(view.entries[0].nickname)} #{view.entries[0].tag}
                 </p>
               ) : null}
               <table className="w-full border-separate border-spacing-y-1 text-left">

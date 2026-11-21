@@ -4,6 +4,57 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Aviso de jogo atualizado no placar
+- **A page left open during a deploy now says to reload.** A Rua Sem Saída page opened before the nine-level campaign went live still sent the old three-round result, and the board answered "Resultado em formato inválido". Now the board answers that the game was updated and the page needs a reload, both when the old page asks for a ticket without a level and when it sends a launch log in an older format.
+- The result screen and the mission line show "O jogo foi atualizado" with the same advice. Old pages show it under "O placar não aceitou", since their code predates the new message. Scores, rankings and boards are unchanged.
+
+### Rua Sem Saída vira campanha de nove fases
+- **Nine levels in three acts.** Aquecimento, Mira fina and Lá no alto teach aiming, trajectories and heights. Efeito dominó, Banho de surpresa and Caminho bloqueado are about chain reactions: a row of bricks pushes a watermelon down into the garage, a duck cuts the rope of a bucket and opens the faucet in the same flight, and a bowling ball only reaches the golden gnome after a crate fills the hole and the drawbridge comes down, in that order. Arlindo contra-ataca, Confusão geral and Bagunça completa bring Seu Arlindo's gadgets: a leaf blower that sends light things back, a gate that turns after every launch and the Giant Gnome under a hanging sandbag.
+- **You pick the ammo.** Each level has its own stock. Tap the ammo, press 1 to 4 or Q. The sneaker stays where it lands, the balloon soaks and shoves, the tire is heavy and rolls, the duck is light and bounces.
+- **Stars for efficiency.** One star for clearing a level, two and three for clearing it with fewer launches; the level box shows the limit and the launches so far. Levels unlock one by one and can be replayed for more stars. The result shows the campaign stars, and clearing the last level ends with Seu Arlindo soaked, waving a white flag.
+- **Seu Arlindo grows angrier.** Calm at the window in the first act, red-faced in the second, steaming in the third, with a line for each level and reactions to every gadget. The yard keeps the marks of earlier levels: a sneaker in the tree, a crooked fence, puddles, signs and a security camera.
+- **One board per level, rules version 3.** The server replays each run with the projectile of every launch and ranks cleared levels by score, then fewer launches. The old whole-game board (version 2) no longer shows; its results came from the three-round game and are not compared with the levels. The four old street missions are retired and four new ones point at levels.
+- Achievements: "Bagunça Concluída" now asks for the last level, "Engenheiro de Quintal" for 3 stars in any level and "Recordista do Bairro" for all 27 stars.
+
+### Texto centralizado nos botões em iPhone e sofá da sala alinhado
+- **Button labels are centered on iPhones too.** The display font (Luckiest Guy) was centered with `ascent-override`/`descent-override` in its `@font-face`. iPhones fell back to the font file's own metrics, which sit capitals about 0.14 em above the middle, so labels on buttons, tags and pills rode a couple of pixels high. The font file now carries the same 85%/15% metrics itself, so every browser places the text the same way. Chrome and desktop look the same as before.
+- **Guerra do Pijama: the mattress stack in the living room sits centered behind the sofa.** It was 40 px to the right. Its bounce line moved with it.
+
+### Guerra do Pijama no celular, em pé ou deitado
+- **Portrait layout on phones.** With the phone upright, the arena fills the screen instead of a thin strip between two empty bands. Kids are drawn about twice as big (around 95–110 px tall on a phone). The camera follows you sideways and leans toward the opponent you are aiming at, or the one about to throw at you, so threats come into view before the pillow does. Rules, AI, timings and scoring are unchanged.
+- **Roomier HUD on upright phones.** Your face sits on the left with your five hearts drawn bigger (about 19 px). Each opponent shows only their face with a life ring around it that empties as they get hit, plus a small heart under it, and it turns orange at the last heart. The timer sits in the middle. The "VOCÊ" tag under your face is gone there, since your face has the gold ring. Sideways phones keep hearts for everyone, just bigger, and desktop is unchanged.
+- **Edge markers.** An opponent out of view shows as a small face with an arrow on the screen edge. It turns orange with a ! when they are winding up a throw at you.
+- **Touch controls.** In portrait, a stick on the left and the THROW button on the right sit on a deck under the room, so thumbs never cover the arena. The stick floats to wherever the thumb lands on the left half. It reaches full speed with a short drag (about 23 px), and its base follows the thumb past the rim, so turning around for a dodge takes a short flick. The button shows the pillow reloading and turns gold with the giant pillow. Moving and throwing work at the same time with two thumbs.
+- **Aim by dragging.** Tapping the right side throws with the same automatic aim as before (the throw fires on release, or after 0.15 s when held), and holding keeps throwing. Dragging from where the thumb landed aims in that direction instead, with the aim guide and reticle, and letting go throws. The aim snaps to a kid within the same 0.2 rad the mouse aim uses. You can now run from someone and throw back at them, as with the mouse.
+- **Sideways phones** get a full-width arena with the same controls in the bottom corners. The game switches layouts live when the phone turns, with no pause or rotate prompt, and the "turn your phone" tip is gone for this game.
+- **Character select** becomes a carousel on upright phones (swipe or tap the side cards, big START button), and the START button grows on sideways phones.
+- **Device-aware instructions.** "How to play" lists only touch controls on phones and only keyboard and mouse on computers, and the loading tips follow the same rule. In the first matches, phones label the stick and the button ("DRAG TO MOVE", "TAP TO THROW") until you have used both. Then "DRAG TO AIM" appears until your first aimed throw, or for 9 s. Computers show a one-line keyboard reminder.
+- Desktop keeps the same layout, camera and HUD.
+### Resultados esperam o apelido
+- **A win played before picking a nickname is no longer lost.** Moving on from the result screen without clicking "Entrar no placar" (next level, replay, choosing another level or leaving the game) used to throw that result away, even with a nickname typed or drawn with "Sortear". The result now waits on the device, and it goes up with the next one as soon as the visitor joins the board, in any game.
+- The join form says how many earlier results are waiting, and it opens with the nickname typed or drawn earlier in the visit already filled in. Nothing is sent until the visitor clicks "Entrar no placar".
+- Results wait up to 11 hours and at most ten at a time, the same limits as results that failed to send when the board was off the air. Scores, rankings and boards are unchanged.
+
+### Guerra de Lanche em pé no celular
+- **Portrait layout on phones.** With the phone upright, the game fills the screen instead of a thin strip between two empty bands. Déco and Mila's table sits in the foreground and the rival rows stretch across the whole width behind it, so characters, tables and tap targets are drawn about twice as big as before. All five tables stay fully on screen, also while the classmates pop up, wind up and brawl. Déco turns around to throw at classmates on his left.
+- The napkins, timer and score sit along the top. A smaller ABAIXA button sits in the bottom-right corner, next to the table and under the thumb. Mila's speech bubble appears beside her, over the tablecloth, without covering anyone.
+- **Phones play upright.** On a phone held sideways, the game asks you to hold it upright and pauses the round. The "turn your phone" tip is gone. Desktop and tablets keep the wide layout.
+- **Same round either way.** Snack flight times and the lunch lady's walk are timed as in the wide layout, so scores are unchanged.
+- **Game header on phones.** Long game titles wrap onto two lines instead of being cut short, and the sound button matches the other header buttons.
+
+### Operação: Recreio: colegas desenhados de corpo inteiro
+- **Lina, Mila and Déco are now drawn as one figure each.** Their sprites used to be a portrait head, with its own wide round shoulders, placed over a separate skirt and arms, so the shirt looked like a cape and the arms came out from under it. Each kid now has a single torso from neck to hem: Lina's orange shirt under a pink pinafore with teal straps, Mila's striped navy dress and Déco's yellow shirt over trousers that run into the legs.
+- Arms start at the shoulders and have the same length in both frames, and hands match each kid's skin. Mila's long hair ends behind her shoulders.
+- **The jump rope stays in their hands.** The rope used to end a little away from the hands and float on its own while the holding arm was down. Now the holding arm stays up and the other one waves. The rope's reach and timing are unchanged.
+- Same heads, faces, colors and accessories.
+
+### Placares em letras maiúsculas
+- Nicknames on every board now show in capital letters: each game's board, the mission boards and their champion line, the champion ticker and the rival line under each game. Nicknames are stored as typed, so nothing changes for sign-in, tags or ranking.
+
+### O placar anota o tipo de navegador
+- Every result sent to the scoreboard now records the type of browser it came from: only the engine family, its major version and whether it's a phone or a computer (for example `webkit-26-mobile`), never the browser's full identification. Accepted and rejected results both get it, so replay mismatches can be checked engine by engine. The about page says so in both languages.
+- Needs the `20261120150000_run_client` migration. Older runs have no label. Scores, rankings and boards are unchanged.
+
 ### Guerra de Lanche conferida mais de perto
 - The channel now checks Guerra de Lanche results against the round's own timers: how many snacks fit in the time, how many classmates could pop up, which classmates exist at each point of the round, how many puddings were taken and how much a streak can pay. A result with numbers the round couldn't produce is rejected.
 - Checked against 100 rounds played by bots, wins and early losses alike: none was refused. Scores, rankings and boards are unchanged.

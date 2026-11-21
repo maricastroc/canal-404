@@ -3,17 +3,18 @@
 import { AnimatePresence } from "motion/react";
 import Link from "@/i18n/Link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeftIcon, MissionIcon, PauseIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
+import { ArrowLeftIcon, MissionIcon, PauseIcon, PhoneIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
 import { useSound } from "@/lib/audio/hooks";
+import { useTouchScreen } from "@/lib/device";
 import { GAME_LOADERS } from "@/games/loaders";
 import { getGame, type GameMeta } from "@/games/registry";
 import type { GameInstance, GameResult, LoadStage, StartOptions } from "@/games/types";
 import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber } from "@/i18n/format";
-import { connect, getCompetition, join, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
+import { connect, getCompetition, holdUntilJoined, join, pendingCount, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
 import { isDayKey } from "@/lib/missions/calendar";
 import { loadMission } from "@/lib/missions/client";
 import { useMissionToday } from "@/lib/missions/hooks";
@@ -61,6 +62,8 @@ const COPY = localized({
     pause: "Pausar",
     game: "jogo",
     rotate: "Dica: gire o celular para ver maior",
+    upright: "Segure o celular em pé",
+    uprightText: (title: string) => `${title} se joga com o celular na vertical.`,
   },
   en: {
     missionGone: "That mission is already off the air. Today's mission is on the Mission 404 page.",
@@ -86,12 +89,28 @@ const COPY = localized({
     pause: "Pause",
     game: "game",
     rotate: "Tip: turn your phone sideways for a bigger view",
+    upright: "Hold your phone upright",
+    uprightText: (title: string) => `${title} is played with your phone held upright.`,
   },
 });
 
 type PendingRun = { ticket: Promise<TicketGrant | null> | null; result: GameResult };
 
 const noopSubscribe = () => () => {};
+
+const PHONE_SIDEWAYS = "(orientation: landscape) and (pointer: coarse) and (max-height: 500px)";
+
+function subscribeSideways(onChange: () => void) {
+  const media = window.matchMedia(PHONE_SIDEWAYS);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function phoneSideways() {
+  return window.matchMedia(PHONE_SIDEWAYS).matches;
+}
+
+const never = () => false;
 
 function missionParam() {
   const day = new URLSearchParams(window.location.search).get("mission");
@@ -138,6 +157,8 @@ export function GameShell({ slug }: { slug: string }) {
   const [attempt, setAttempt] = useState(0);
   const runRef = useRef<{ level: string; attempt: number; startedAt: number; ticket: Promise<TicketGrant | null> | null; mission: MissionView | null } | null>(null);
   const requestedMission = useSyncExternalStore(noopSubscribe, missionParam, () => "");
+  const upright = game.orientation === "upright";
+  const sideways = useSyncExternalStore(upright ? subscribeSideways : noopSubscribe, upright ? phoneSideways : never, never);
   const [skippedMission, setSkippedMission] = useState(false);
   const missionWanted = Boolean(requestedMission) && !skippedMission;
   const missionFeed = useMissionToday(missionWanted);
@@ -167,7 +188,9 @@ export function GameShell({ slug }: { slug: string }) {
   const loadErrorRef = useRef<unknown>(null);
   const hydrated = useHydrated();
   const [tipSeed] = useState(() => Math.floor(Math.random() * 1000));
-  const tip = pickTip(hydrated ? tipSeed : 0, game.tips, locale);
+  const touchScreen = useTouchScreen();
+  const deviceTips = touchScreen ? game.touchTips : game.keyTips;
+  const tip = pickTip(hydrated ? tipSeed : 0, game.tips && deviceTips ? [...game.tips, ...deviceTips] : game.tips, locale);
   const levelRecords = progressState.games[slug]?.levels;
   const levelProgress = computeLevelProgress(game.levels, hydrated ? levelRecords : undefined);
 
@@ -181,7 +204,7 @@ export function GameShell({ slug }: { slug: string }) {
       const seq = boardSeqRef.current;
       if (competition.status === "online" && !competition.player) {
         pendingRef.current = pending;
-        setBoard({ phase: "join" });
+        setBoard({ phase: "join", waiting: pendingCount() });
         track({ name: "board_submit", game: slug, outcome: "not_joined" });
         return;
       }
@@ -191,7 +214,7 @@ export function GameShell({ slug }: { slug: string }) {
         track({ name: "board_submit", game: slug, outcome: submitLabel(outcome) });
         if (outcome.kind === "not-joined") {
           pendingRef.current = pending;
-          setBoard({ phase: "join" });
+          setBoard({ phase: "join", waiting: pendingCount() });
           return;
         }
         if (outcome.kind === "unranked" && outcome.why === "unconfigured") {
@@ -412,6 +435,19 @@ export function GameShell({ slug }: { slug: string }) {
   }, [setStage]);
 
   useEffect(() => {
+    if (!upright) return;
+    const media = window.matchMedia(PHONE_SIDEWAYS);
+    const onChange = () => {
+      if (media.matches && stageStateRef.current === "playing") {
+        instanceRef.current?.pause();
+        setStage("paused");
+      }
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [upright, setStage]);
+
+  useEffect(() => {
     if (stage !== "paused") return;
     const since = performance.now();
     const onKey = (event: KeyboardEvent) => {
@@ -451,8 +487,23 @@ export function GameShell({ slug }: { slug: string }) {
     };
   }, [abandonRun]);
 
+  const holdPending = useCallback(() => {
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    if (pending) void holdUntilJoined(pending.ticket, pending.result);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("pagehide", holdPending);
+    return () => {
+      window.removeEventListener("pagehide", holdPending);
+      holdPending();
+    };
+  }, [holdPending]);
+
   const beginRun = (level: string, fresh: boolean) => {
     abandonRun();
+    holdPending();
     lastLevelRef.current = level;
     const n = (attemptsRef.current.get(level) ?? 0) + 1;
     attemptsRef.current.set(level, n);
@@ -461,7 +512,6 @@ export function GameShell({ slug }: { slug: string }) {
     runRef.current = { level, attempt: n, startedAt: performance.now(), ticket, mission };
     setMissionRun(mission);
     boardSeqRef.current += 1;
-    pendingRef.current = null;
     setBoard(null);
     track({ name: "game_start", game: slug, level, attempt: n, fresh });
     return mission;
@@ -479,6 +529,7 @@ export function GameShell({ slug }: { slug: string }) {
           ...(level === undefined ? {} : { level, ...(next ? { next } : {}) }),
           ...(mission?.setup ? { setup: mission.setup } : {}),
           ...(mission ? { checkpoints: false } : {}),
+          ...(game.levels ? { records: game.levels.map((l) => ({ stars: levelRecords?.[l.id]?.stars ?? 0, score: levelRecords?.[l.id]?.score ?? 0 })) } : {}),
         };
     instanceRef.current?.start(Object.keys(options).length ? options : undefined);
     setStage("playing");
@@ -530,7 +581,7 @@ export function GameShell({ slug }: { slug: string }) {
 
   return (
     <div onFocus={afterFocus} className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b-[3px] border-ink bg-plum-800 px-2 sm:gap-3 sm:px-4">
+      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b-[3px] border-ink bg-plum-800 px-2 max-[359px]:gap-1 max-[359px]:px-1.5 sm:gap-3 sm:px-4">
         <Link
           href={`/games/${slug}`}
           onClick={() => play("back")}
@@ -539,7 +590,7 @@ export function GameShell({ slug }: { slug: string }) {
           <ArrowLeftIcon className="size-4" />
           <span className="hidden sm:inline">{copy.back}</span>
         </Link>
-        <p className="truncate font-display text-lg uppercase tracking-wide text-sun sm:text-2xl">{game.title}</p>
+        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[15px] uppercase leading-[1.05] text-sun max-[359px]:text-[13px] sm:line-clamp-1 sm:flex-none sm:text-2xl sm:leading-normal sm:tracking-wide">{game.title}</p>
         {missionRun && canControl ? (
           <p className="hidden min-w-0 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-lime px-2 py-0.5 font-display text-xs uppercase tracking-wide text-ink md:flex">
             <MissionIcon className="size-4" />
@@ -581,7 +632,7 @@ export function GameShell({ slug }: { slug: string }) {
         >
           <PauseIcon className="size-6" />
         </button>
-        <SoundToggle compact />
+        <SoundToggle compact square />
       </header>
 
       <div className="relative min-h-0 flex-1">
@@ -664,8 +715,22 @@ export function GameShell({ slug }: { slug: string }) {
 
         {showLoader && <LoadingScreen progress={progress} tip={tip} leaving={leaving} />}
 
+        {sideways && (
+          <div role="status" className="absolute inset-0 z-50 grid place-items-center bg-plum-900 p-4" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
+            <div className="paper flex max-w-sm items-center gap-4 border-[3px] border-ink p-5 shadow-[var(--shadow-ink-lg)] wobbly">
+              <span className="grid size-16 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-sun text-ink">
+                <PhoneIcon className="size-9" />
+              </span>
+              <div>
+                <p className="font-display text-2xl uppercase leading-tight tracking-wide text-ink">{copy.upright}</p>
+                <p className="mt-1 text-base text-ink-soft">{copy.uprightText(game.title)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center px-3 landscape:hidden sm:hidden">
-          {stage === "playing" && (
+          {stage === "playing" && !game.orientation && (
             <p className="rounded-full border-[3px] border-ink bg-sun px-3 py-1 font-display text-xs uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]">
               {copy.rotate}
             </p>

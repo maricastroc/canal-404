@@ -16,14 +16,14 @@ export const WALL_SPLAT = { x: 150, y: 590 };
 
 export type Row = "back" | "front";
 
-export type SlotDef = { key: number; row: Row; x: number; tableY: number; upY: number; scale: number; maskBottom: number };
+export type SlotDef = { key: number; row: Row; x: number; portraitX: number; tableY: number; upY: number; scale: number; maskBottom: number };
 
 export const SLOTS: SlotDef[] = [
-  { key: 1, row: "back", x: 1020, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
-  { key: 2, row: "front", x: 1180, tableY: 790, upY: 806, scale: 0.95, maskBottom: 944 },
-  { key: 3, row: "back", x: 1370, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
-  { key: 4, row: "front", x: 1600, tableY: 790, upY: 806, scale: 0.95, maskBottom: 944 },
-  { key: 5, row: "back", x: 1720, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
+  { key: 1, row: "back", x: 1020, portraitX: 170, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
+  { key: 2, row: "front", x: 1180, portraitX: 285, tableY: 790, upY: 806, scale: 0.95, maskBottom: 944 },
+  { key: 3, row: "back", x: 1370, portraitX: 470, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
+  { key: 4, row: "front", x: 1600, portraitX: 655, tableY: 790, upY: 806, scale: 0.95, maskBottom: 944 },
+  { key: 5, row: "back", x: 1720, portraitX: 770, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
 ];
 
 export type RivalKind = "cap" | "speedy" | "big";

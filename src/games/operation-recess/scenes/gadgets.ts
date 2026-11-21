@@ -276,6 +276,14 @@ export class Watcher {
     return this.phase === "look";
   }
 
+  get awake() {
+    return this.phase !== "asleep";
+  }
+
+  get alert() {
+    return this.phase === "peek" || this.phase === "look";
+  }
+
   update(t: number, h: HeroState) {
     const near = Math.abs(h.x - this.x) < 1150;
     if (this.phase === "asleep") {
@@ -336,7 +344,7 @@ export class Watcher {
   }
 }
 
-const ROPE_HAND = { x: 59, y: 134 };
+const ROPE_HAND = { x: 45, y: 132 };
 
 export class Rope {
   readonly x0: number;

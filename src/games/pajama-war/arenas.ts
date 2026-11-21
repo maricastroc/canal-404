@@ -105,7 +105,7 @@ export const ARENAS: ArenaDef[] = [
       { key: "bookshelf", x: 1650, y: 470, layer: "sort", scale: 0.9, block: { w: 230, h: 36 } },
       { key: "tv", x: 330, y: 525, layer: "sort", scale: 0.92, block: { w: 300, h: 70, dx: -25, tall: true }, react: "bounce" },
       { key: "floor-lamp", x: 1420, y: 470, layer: "sort", scale: 0.9, react: "wobble", glow: { dx: 0, dy: -270, r: 320, color: WARM, alpha: 0.34 } },
-      { key: "mattresses", x: 1000, y: 414, layer: "sort", scale: 0.96, surface: { x0: 752, x1: 1248, y: 410 }, react: "bounce", spring: [[-210, -96, -16], [220, -94, 14]] },
+      { key: "mattresses", x: 960, y: 414, layer: "sort", scale: 0.96, surface: { x0: 712, x1: 1208, y: 410 }, react: "bounce", spring: [[-210, -96, -16], [220, -94, 14]] },
       { key: "sofa", x: 960, y: 664, layer: "sort", scale: 0.95, block: { w: 440, h: 120, dy: -8, tall: true }, bounce: true, spring: [[-196, -194, -10]] },
       { key: "coffee-table", x: 960, y: 920, layer: "sort", scale: 0.82, block: { w: 260, h: 50 }, react: "bounce" },
       { key: "armchair", x: 380, y: 880, layer: "sort", scale: 0.84, block: { w: 180, h: 60, tall: true }, bounce: true, spring: [[30, -94, 10]] },

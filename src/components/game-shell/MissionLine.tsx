@@ -49,6 +49,8 @@ const COPY = localized({
     limitedTitle: "Calma!",
     limited: "Muitos envios seguidos. Espere um pouco.",
     noTicket: "O canal estava fora do ar quando a partida começou. Esta tentativa não conta para a missão.",
+    outdatedTitle: "Jogo atualizado",
+    outdated: "Esta página ficou com a versão anterior do jogo. Recarregue a página e tente a missão de novo.",
     label: "Missão 404 do dia",
     short: "Missão 404",
     newAchievements: "Novas conquistas",
@@ -87,6 +89,8 @@ const COPY = localized({
     limitedTitle: "Easy there!",
     limited: "Too many submissions in a row. Wait a little.",
     noTicket: "The channel was off the air when the run started. This attempt doesn't count for the mission.",
+    outdatedTitle: "Game updated",
+    outdated: "This page still has the previous version of the game. Reload it and try the mission again.",
     label: "Mission 404 of the Day",
     short: "Mission 404",
     newAchievements: "New achievements",
@@ -126,6 +130,7 @@ export function describeMission(view: MissionView, board: BoardState | null, loc
     case "unranked":
       if (outcome.why === "expired") return { tone: "off", headline: copy.expiredTitle, text: copy.expired };
       if (outcome.why === "limited") return { tone: "off", headline: copy.limitedTitle, text: serverMessage(outcome.error, copy.limited, locale) };
+      if (outcome.why === "outdated") return { tone: "off", headline: copy.outdatedTitle, text: copy.outdated };
       return { tone: "off", headline: copy.noSignalTitle, text: copy.noTicket };
   }
 }

@@ -8,6 +8,7 @@ const BASE = "/assets/food-fight/";
 
 const ASSETS: [key: string, file: string, width: number, height: number][] = [
   ["cafeteria-bg", "cafeteria-bg.svg", 1920, 1080],
+  ["cafeteria-top", "cafeteria-top.svg", 1920, 110],
   ["our-table", "our-table.svg", 680, 210],
   ["rival-table", "rival-table.svg", 380, 170],
   ["deco-idle", "deco-idle.svg", 260, 330],

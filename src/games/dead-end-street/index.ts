@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
-import type { GameHostContext, GameInstance, GameModule } from "@/games/types";
+import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { H, W } from "./config";
+import { PHASES } from "./phases";
 import { BootScene } from "./scenes/BootScene";
 import { PlayScene } from "./scenes/PlayScene";
 
@@ -30,7 +31,8 @@ function mount(ctx: GameHostContext): GameInstance {
     callbacks: {
       preBoot: (g) => {
         g.registry.set("ctx", ctx);
-        g.registry.set("highScore", ctx.highScore);
+        g.registry.set("phase", 0);
+        g.registry.set("records", []);
       },
       postBoot: () => {
         ctx.onProgress(0.05, "art");
@@ -40,9 +42,25 @@ function mount(ctx: GameHostContext): GameInstance {
 
   const play = () => game.scene.getScene("play") as PlayScene | null;
 
+  const restartScene = () => {
+    game.registry.set("autostart", true);
+    const scene = play();
+    if (game.scene.isPaused("play")) game.scene.resume("play");
+    scene?.scene.restart();
+  };
+
   return {
-    start() {
-      play()?.begin();
+    start(options?: StartOptions) {
+      const level = Phaser.Math.Clamp(options?.level ?? 0, 0, PHASES.length - 1);
+      if (options?.records) game.registry.set("records", options.records.map((r) => ({ ...r })));
+      const scene = play();
+      if (scene && scene.isAttract && scene.phaseIndex === level) {
+        if (options?.records) scene.setRecords(options.records);
+        scene.begin();
+        return;
+      }
+      game.registry.set("phase", level);
+      restartScene();
     },
     pause() {
       if (game.scene.isActive("play")) game.scene.pause("play");
@@ -51,15 +69,9 @@ function mount(ctx: GameHostContext): GameInstance {
       if (game.scene.isPaused("play")) game.scene.resume("play");
     },
     restart() {
-      game.registry.set("autostart", true);
-      const scene = play();
-      if (game.scene.isPaused("play")) game.scene.resume("play");
-      scene?.scene.restart();
+      restartScene();
     },
-    setHighScore(value: number) {
-      game.registry.set("highScore", value);
-      play()?.setHighScore(value);
-    },
+    setHighScore() {},
     destroy() {
       game.destroy(true);
     },

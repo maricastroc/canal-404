@@ -9,7 +9,7 @@ export type SubmitOutcome =
   | { kind: "rejected"; error: ApiError | null }
   | { kind: "not-joined" }
   | { kind: "queued" }
-  | { kind: "unranked"; why: "no-ticket" | "unconfigured" | "expired" | "limited"; error?: ApiError | null };
+  | { kind: "unranked"; why: "no-ticket" | "unconfigured" | "expired" | "limited" | "outdated"; error?: ApiError | null };
 
 export type ApiError = ApiErrorBody["error"];
 
@@ -23,6 +23,7 @@ const OUTBOX_TTL_MS = 11 * 60 * 60 * 1000;
 
 let state: CompetitionState = { status: "checking", player: null };
 let checkedAt = 0;
+let outdatedBuild = false;
 let inflight: Promise<CompetitionState> | null = null;
 const listeners = new Set<() => void>();
 const SERVER_STATE: CompetitionState = { status: "checking", player: null };
@@ -103,6 +104,7 @@ export async function requestTicket(game: string, level: string | null, mission:
   if (current.status !== "online") return null;
   const response = await apiCall<TicketResponse>("/api/runs/tickets", { method: "POST", body: mission ? { game, level, mission } : { game, level } });
   if (!response.ok) {
+    if (response.error?.code === "outdated") outdatedBuild = true;
     if (response.status === 0 || response.status >= 500) emit({ ...state, status: "offline" });
     return null;
   }
@@ -127,6 +129,10 @@ async function send(ticket: string, claim: Claim): Promise<SubmitOutcome | "netw
   if (code === "not_joined") return { kind: "not-joined" };
   if (code === "expired_ticket") return { kind: "unranked", why: "expired" };
   if (code === "rate_limited") return { kind: "unranked", why: "limited", error: response.error };
+  if (code === "outdated") {
+    outdatedBuild = true;
+    return { kind: "unranked", why: "outdated" };
+  }
   return { kind: "rejected", error: response.error };
 }
 
@@ -161,8 +167,18 @@ function writeOutbox(items: OutboxItem[]) {
   } catch {}
 }
 
+function queue(ticket: string, claim: Claim) {
+  writeOutbox([...readOutbox().filter((item) => item.ticket !== ticket), { ticket, claim, savedAt: Date.now() }]);
+}
+
 export function pendingCount() {
   return typeof window === "undefined" ? 0 : readOutbox().length;
+}
+
+export async function holdUntilJoined(ticket: Promise<TicketGrant | null> | null, result: GameResult) {
+  const claim = claimOf(result);
+  const token = ticket ? ((await ticket)?.token ?? null) : null;
+  if (claim && token) queue(token, claim);
 }
 
 let flushing = false;
@@ -193,11 +209,11 @@ export async function flushOutbox() {
 export async function submitResult(ticket: Promise<TicketGrant | null> | null, result: GameResult): Promise<SubmitOutcome> {
   const claim = claimOf(result);
   const token = ticket ? ((await ticket)?.token ?? null) : null;
-  if (!claim || !token) return { kind: "unranked", why: state.status === "unconfigured" ? "unconfigured" : "no-ticket" };
+  if (!claim || !token) return { kind: "unranked", why: state.status === "unconfigured" ? "unconfigured" : outdatedBuild ? "outdated" : "no-ticket" };
   if (!state.player) return { kind: "not-joined" };
   const outcome = await send(token, claim);
   if (outcome !== "network") return outcome;
-  writeOutbox([...readOutbox(), { ticket: token, claim, savedAt: Date.now() }]);
+  queue(token, claim);
   emit({ ...state, status: "offline" });
   return { kind: "queued" };
 }

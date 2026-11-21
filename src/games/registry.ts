@@ -4,7 +4,7 @@ export type GameCategory = "action" | "puzzle" | "adventure" | "strategy";
 
 export type GameStatus = "available" | "coming-soon";
 
-export type ControlHint = { input: string; action: string };
+export type ControlHint = { input: string; action: string; on?: "keys" | "touch" };
 
 export type HowToStep = { title: string; text: string };
 
@@ -28,24 +28,33 @@ export type GameMeta = {
   levelWord?: "fase" | "arena";
   guests?: { id: string; name: string; role: string }[];
   tips?: string[];
+  keyTips?: string[];
+  touchTips?: string[];
   controlsSummary?: string;
   resumable?: string;
+  orientation?: "upright" | "any";
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
-type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable"> & { levelIds?: string[]; guestIds?: string[] };
+type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "orientation"> & { levelIds?: string[]; guestIds?: string[] };
 
-type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "production" | "objective" | "controls" | "howTo" | "tips" | "controlsSummary" | "copy"> & {
+type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "production" | "objective" | "controls" | "howTo" | "tips" | "keyTips" | "touchTips" | "controlsSummary" | "copy"> & {
   levels?: { title: string; goal: string }[];
   guests?: { name: string; role: string }[];
 };
 
 const BASE = {
-  "dead-end-street": { category: "action", status: "available", accent: "sun", cast: ["deco", "lina", "bruno"] },
+  "dead-end-street": {
+    category: "action",
+    status: "available",
+    accent: "sun",
+    cast: ["deco", "lina", "bruno"],
+    levelIds: ["warm-up", "sharp-aim", "up-high", "domino", "surprise-bath", "blocked-path", "counterattack", "free-for-all", "grand-mess"],
+  },
   "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"] },
-  "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"] },
-  "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"] },
-  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"] },
+  "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], orientation: "upright" },
+  "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
+  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"], orientation: "any" },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1" },
 } satisfies Record<string, GameBase>;
 
@@ -67,32 +76,44 @@ const TEXT = gameText({
       tagline: "Engenhocas, física e muita confusão no quintal do vizinho.",
       description: "Déco e Lina transformaram um carrinho de rolimã numa máquina de lançar objetos. O alvo? Os enfeites do quintal do Seu Arlindo! Acerte os lançamentos, faça a maior bagunça possível e tente bater o recorde antes que a munição acabe.",
       tags: ["Ação", "Física", "Engenhocas"],
-      objective: "Três rodadas no quintal do Seu Arlindo: derrube os enfeites antes de acabar a munição. Bagunça extra vale pontos.",
+      objective: "Nove fases no quintal do Seu Arlindo, em três atos. Escolha a munição, observe o quintal e use caixas, baldes, cordas e as engenhocas do vizinho a seu favor.",
+      levels: [
+        { title: "Aquecimento", goal: "Derrube o gnomo e o flamingo." },
+        { title: "Mira fina", goal: "Ache um caminho até o gnomo dourado e a caixa de correio." },
+        { title: "Lá no alto", goal: "Torre de caixas, poste e a casinha no galho." },
+        { title: "Efeito dominó", goal: "O gnomo está na garagem. Comece pelos tijolos." },
+        { title: "Banho de surpresa", goal: "Molhe os três gnomos que tomam sol." },
+        { title: "Caminho bloqueado", goal: "Leve a bola de boliche até o gnomo dourado." },
+        { title: "Arlindo contra-ataca", goal: "Soprador e portão novos. Observe antes de lançar." },
+        { title: "Confusão geral", goal: "Tudo está ligado. Planeje a ordem." },
+        { title: "Bagunça completa", goal: "Derrube o Gnomão do Seu Arlindo." },
+      ],
       controls: [
         { input: "Mouse ou dedo", action: "Arraste e solte" },
         { input: "← → ou A D", action: "Ângulo" },
         { input: "↑ ↓ ou W S", action: "Força" },
+        { input: "1 a 4, Q ou toque na munição", action: "Trocar a munição" },
         { input: "Espaço ou Enter", action: "Lançar" },
         { input: "Esc ou P", action: "Pausar" },
       ],
       howTo: [
-        { title: "Puxe", text: "Arraste para trás para preparar o lançamento. Quanto mais puxar, maior será a força!" },
-        { title: "Mire", text: "A linha pontilhada mostra por onde o objeto deve passar. Ajuste a mira antes de soltar!" },
-        { title: "Bagunce", text: "Cada objeto causa uma bagunça diferente: o pato quica, o pneu derruba e o balão estoura!" },
+        { title: "Escolha", text: "Cada munição faz uma coisa: o tênis para onde cai, o balão molha e empurra, o pneu é pesado e o pato quica." },
+        { title: "Observe", text: "Nem sempre o tiro direto resolve. Cordas, baldes, tijolos e torneiras podem fazer o trabalho por você." },
+        { title: "Economize", text: "Menos lançamentos valem mais estrelas. Dá para repetir cada fase e tentar um jeito melhor." },
       ],
       tips: [
+        "Corda esticada? Qualquer coisa que passe por ela corta.",
+        "O soprador do Seu Arlindo devolve o que é leve. O tênis e o pneu passam.",
+        "O portão do Seu Arlindo vira a cada lançamento. Espere a hora certa.",
+        "Gnomo tomando sol só se molha com água: balão, balde ou mangueira.",
         "Derrubar dois alvos com um lançamento vale bônus.",
-        "O pato de borracha quica muito. Use isso a seu favor.",
-        "Bagunça também vale ponto. Derrube tudo!",
         "Munição que sobra vira bônus no final.",
         "A linha pontilhada é o plano do Bruno. Confie... um pouco.",
-        "O balão d'água empurra tudo que estiver perto quando estoura.",
-        "O pneu é pesado: mire na base das pilhas.",
       ],
-      controlsSummary: "Rua Sem Saída. Setas ajustam ângulo e força, espaço lança, Esc pausa.",
+      controlsSummary: "Rua Sem Saída. Setas ajustam ângulo e força, 1 a 4 trocam a munição, espaço lança, Esc pausa.",
       copy: {
-        winTitle: "Bagunça completa!",
-        winText: "O quintal do Seu Arlindo nunca mais será o mesmo.",
+        winTitle: "Fase completa!",
+        winText: "O quintal do Seu Arlindo está cada vez mais bagunçado.",
         loseTitle: "Acabou a munição!",
         loseText: "Os enfeites do Seu Arlindo sobreviveram. Por enquanto.",
       },
@@ -195,11 +216,13 @@ const TEXT = gameText({
       tags: ["Ação", "Arcade", "Travesseiros"],
       objective: "Escolha um personagem e acerte os outros dois com travesseiros. Último de pé vence!",
       controls: [
-        { input: "WASD ou setas", action: "Andar" },
-        { input: "Mouse", action: "Mirar" },
-        { input: "Clique ou espaço", action: "Jogar travesseiro (segure para continuar jogando)" },
-        { input: "Controle e botão na tela", action: "Andar e jogar no celular. A mira é automática." },
-        { input: "Esc ou P", action: "Pausar" },
+        { input: "WASD ou setas", action: "Andar", on: "keys" },
+        { input: "Mouse", action: "Mirar", on: "keys" },
+        { input: "Clique ou espaço", action: "Jogar travesseiro (segure para continuar jogando)", on: "keys" },
+        { input: "Esc ou P", action: "Pausar", on: "keys" },
+        { input: "Controle na tela, à esquerda", action: "Arraste o polegar para andar", on: "touch" },
+        { input: "Botão JOGAR, à direita", action: "Toque para jogar no adversário mais perto, na direção em que você anda. Segure para continuar jogando.", on: "touch" },
+        { input: "Arrastar do lado direito", action: "Mira para onde você arrastar. Solte para jogar. Dá para fugir e jogar para trás.", on: "touch" },
       ],
       howTo: [
         { title: "Escolha", text: "Lia corre mais, Nico joga mais rápido e Bia recupera energia mais rápido." },
@@ -217,7 +240,6 @@ const TEXT = gameText({
         { name: "Bia", role: "A resistente" },
       ],
       tips: [
-        "Segure espaço ou o botão do mouse para jogar sem parar.",
         "A Lia é rápida. Fuja, respire e volte.",
         "O Nico joga travesseiros quase sem parar.",
         "A Bia recupera energia mais rápido.",
@@ -225,11 +247,16 @@ const TEXT = gameText({
         "Os outros dois também brigam entre si. Aproveite!",
         "Viu um ! em cima de alguém? Ele vai jogar em você. Saia da frente!",
         "Quem acabou de jogar fica sem travesseiro por um instante. É a sua chance.",
-        "Sem mouse, o espaço mira sozinho no adversário mais perto.",
         "Depois de um tempo, a guerra esquenta.",
         "Na sala, o sofá e as poltronas rebatem os travesseiros. A mira mostra o caminho.",
         "No quintal, a barraca e a árvore servem de escudo.",
         "O travesseirão do quintal passa por cima de tudo e empurra quem estiver perto.",
+      ],
+      keyTips: ["Segure espaço ou o botão do mouse para jogar sem parar.", "Sem mouse, o espaço mira sozinho no adversário mais perto."],
+      touchTips: [
+        "Segure o botão JOGAR para jogar sem parar.",
+        "Fugindo de alguém? Arraste o polegar direito na direção dele e solte para jogar para trás.",
+        "Alguém sumiu da tela? Uma setinha na borda mostra onde está.",
       ],
       controlsSummary: "Guerra do Pijama. WASD ou setas andam, o mouse mira, clique ou espaço joga o travesseiro, Esc pausa.",
       copy: {
@@ -246,15 +273,17 @@ const TEXT = gameText({
       tags: ["Ação", "Plataforma", "Aventura"],
       objective: "Atravesse a escola com a espada de papelão, escape dos monitores e derrote o Inspetor do Silêncio. O recreio depende de você!",
       controls: [
-        { input: "← → ou A D", action: "Andar" },
-        { input: "Espaço, ↑ ou W", action: "Pular (segure para ir mais alto)" },
-        { input: "J", action: "Atacar com a espada de papelão" },
-        { input: "Botões na tela", action: "Andar, pular e atacar no celular" },
-        { input: "Esc ou P", action: "Pausar" },
+        { input: "← → ou A D", action: "Andar", on: "keys" },
+        { input: "Espaço, ↑ ou W", action: "Pular (segure para ir mais alto)", on: "keys" },
+        { input: "J", action: "Atacar com a espada de papelão", on: "keys" },
+        { input: "Esc ou P", action: "Pausar", on: "keys" },
+        { input: "Setas, embaixo à esquerda", action: "Andar. Deslize o dedo de uma seta para a outra para virar.", on: "touch" },
+        { input: "Botão amarelo", action: "Pular. Segure para ir mais alto.", on: "touch" },
+        { input: "Botão rosa", action: "Atacar com a espada de papelão", on: "touch" },
       ],
       howTo: [
         { title: "Corra", text: "Poça escorrega e buraco derruba. Na corda, pule quando ela descer. Armário tremeu? Pare ou feche com uma espadada." },
-        { title: "Ataque", text: "Aperte J para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
+        { title: "Ataque", text: "Use a espada para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
         { title: "Avance", text: "Se a luz do Inspetor parar em você, saia dela. Toque os sinos para salvar o caminho até a diretoria." },
       ],
       levels: [
@@ -277,6 +306,7 @@ const TEXT = gameText({
         "Lanche devolve um coração. Sino salva o caminho.",
         "Acerte o Inspetor quando ele ficar tonto, cansado ou com a prancheta presa.",
       ],
+      touchTips: ["Segure a seta e toque no pulo ao mesmo tempo para pular correndo.", "Deslize o polegar entre as setas para virar sem soltar."],
       controlsSummary: "Operação: Recreio. Setas andam, espaço pula, J ataca, Esc pausa.",
       copy: {
         winTitle: "Recreio liberado!",
@@ -344,32 +374,44 @@ const TEXT = gameText({
       tagline: "Gadgets, physics and plenty of chaos in the neighbor's yard.",
       description: "Déco and Lina turned a soapbox cart into a machine that launches things. The target? Mr. Arlindo's yard ornaments! Nail your launches, make the biggest mess you can and try to beat the record before you run out of ammo.",
       tags: ["Action", "Physics", "Gadgets"],
-      objective: "Three rounds in Mr. Arlindo's yard: knock down the ornaments before the ammo runs out. Extra mess is worth points.",
+      objective: "Nine levels in Mr. Arlindo's yard, in three acts. Pick your ammo, read the yard and turn crates, buckets, ropes and the neighbor's own gadgets against him.",
+      levels: [
+        { title: "Warm-up", goal: "Knock down the gnome and the flamingo." },
+        { title: "Sharp aim", goal: "Find a way to the golden gnome and the mailbox." },
+        { title: "Way up high", goal: "A crate tower, a pole and the birdhouse on the branch." },
+        { title: "Domino effect", goal: "The gnome is in the garage. Start with the bricks." },
+        { title: "Surprise shower", goal: "Soak the three sunbathing gnomes." },
+        { title: "Blocked path", goal: "Get the bowling ball to the golden gnome." },
+        { title: "Arlindo strikes back", goal: "A new blower and a new gate. Look before you launch." },
+        { title: "Total chaos", goal: "Everything is connected. Plan the order." },
+        { title: "The big mess", goal: "Knock down Mr. Arlindo's Giant Gnome." },
+      ],
       controls: [
         { input: "Mouse or finger", action: "Drag and release" },
         { input: "← → or A D", action: "Angle" },
         { input: "↑ ↓ or W S", action: "Power" },
+        { input: "1 to 4, Q or tap the ammo", action: "Swap ammo" },
         { input: "Space or Enter", action: "Launch" },
         { input: "Esc or P", action: "Pause" },
       ],
       howTo: [
-        { title: "Pull", text: "Drag back to set up the launch. The farther you pull, the harder it flies!" },
-        { title: "Aim", text: "The dotted line shows where the object will go. Fix your aim before you let go!" },
-        { title: "Wreck", text: "Each object makes a different mess: the duck bounces, the tire knocks things over and the balloon pops!" },
+        { title: "Pick", text: "Each ammo does one thing: the sneaker stays where it lands, the balloon soaks and shoves, the tire is heavy and the duck bounces." },
+        { title: "Look", text: "The direct shot isn't always the answer. Ropes, buckets, bricks and faucets can do the work for you." },
+        { title: "Save", text: "Fewer launches earn more stars. Replay any level and try a better way." },
       ],
       tips: [
+        "A tight rope? Anything that flies through it cuts it.",
+        "Mr. Arlindo's leaf blower pushes light things back. The sneaker and the tire get through.",
+        "Mr. Arlindo's gate turns after every launch. Wait for the right moment.",
+        "A sunbathing gnome only counts when it gets wet: balloon, bucket or hose.",
         "Knocking down two targets with one launch is worth a bonus.",
-        "The rubber duck bounces a lot. Use that to your advantage.",
-        "Mess is worth points too. Knock everything down!",
         "Leftover ammo turns into a bonus at the end.",
         "The dotted line is Bruno's plan. Trust it... a little.",
-        "The water balloon shoves everything nearby when it pops.",
-        "The tire is heavy: aim at the bottom of the stacks.",
       ],
-      controlsSummary: "Dead End Street. Arrows set angle and power, space launches, Esc pauses.",
+      controlsSummary: "Dead End Street. Arrows set angle and power, 1 to 4 swap the ammo, space launches, Esc pauses.",
       copy: {
-        winTitle: "Total chaos!",
-        winText: "Mr. Arlindo's yard will never be the same.",
+        winTitle: "Level cleared!",
+        winText: "Mr. Arlindo's yard gets messier every time.",
         loseTitle: "Out of ammo!",
         loseText: "Mr. Arlindo's ornaments survived. For now.",
       },
@@ -472,11 +514,13 @@ const TEXT = gameText({
       tags: ["Action", "Arcade", "Pillows"],
       objective: "Pick a character and hit the other two with pillows. Last one standing wins!",
       controls: [
-        { input: "WASD or arrows", action: "Move" },
-        { input: "Mouse", action: "Aim" },
-        { input: "Click or space", action: "Throw a pillow (hold to keep throwing)" },
-        { input: "Joystick and on-screen button", action: "Move and throw on a phone. Aiming is automatic." },
-        { input: "Esc or P", action: "Pause" },
+        { input: "WASD or arrows", action: "Move", on: "keys" },
+        { input: "Mouse", action: "Aim", on: "keys" },
+        { input: "Click or space", action: "Throw a pillow (hold to keep throwing)", on: "keys" },
+        { input: "Esc or P", action: "Pause", on: "keys" },
+        { input: "On-screen stick, on the left", action: "Drag your thumb to move", on: "touch" },
+        { input: "THROW button, on the right", action: "Tap to throw at the closest opponent in the direction you're moving. Hold to keep throwing.", on: "touch" },
+        { input: "Drag on the right side", action: "Aims wherever you drag. Let go to throw. You can run away and throw back.", on: "touch" },
       ],
       howTo: [
         { title: "Pick", text: "Lia runs faster, Nico throws faster and Bia gets her energy back faster." },
@@ -494,7 +538,6 @@ const TEXT = gameText({
         { name: "Bia", role: "The tough one" },
       ],
       tips: [
-        "Hold space or the mouse button to keep throwing.",
         "Lia is fast. Run, catch your breath and come back.",
         "Nico throws pillows almost nonstop.",
         "Bia gets her energy back faster.",
@@ -502,11 +545,16 @@ const TEXT = gameText({
         "The other two fight each other too. Take advantage!",
         "See a ! over someone? They're about to throw at you. Get out of the way!",
         "Whoever just threw is out of pillows for a moment. That's your chance.",
-        "Without a mouse, space aims at the closest opponent on its own.",
         "After a while, the fight heats up.",
         "In the living room, the sofa and armchairs bounce pillows back. The aim guide shows the path.",
         "In the backyard, the tent and the tree work as shields.",
         "The giant pillow in the backyard flies over everything and shoves anyone nearby.",
+      ],
+      keyTips: ["Hold space or the mouse button to keep throwing.", "Without a mouse, space aims at the closest opponent on its own."],
+      touchTips: [
+        "Hold the THROW button to keep throwing.",
+        "Running away from someone? Drag your right thumb toward them and let go to throw back.",
+        "Someone left the screen? A little arrow on the edge shows where they are.",
       ],
       controlsSummary: "Pajama War. WASD or arrows move, the mouse aims, click or space throws a pillow, Esc pauses.",
       copy: {
@@ -523,15 +571,17 @@ const TEXT = gameText({
       tags: ["Action", "Platformer", "Adventure"],
       objective: "Cross the school with your cardboard sword, get past the monitors and defeat the Silence Inspector. Recess is counting on you!",
       controls: [
-        { input: "← → or A D", action: "Move" },
-        { input: "Space, ↑ or W", action: "Jump (hold to go higher)" },
-        { input: "J", action: "Attack with the cardboard sword" },
-        { input: "On-screen buttons", action: "Move, jump and attack on a phone" },
-        { input: "Esc or P", action: "Pause" },
+        { input: "← → or A D", action: "Move", on: "keys" },
+        { input: "Space, ↑ or W", action: "Jump (hold to go higher)", on: "keys" },
+        { input: "J", action: "Attack with the cardboard sword", on: "keys" },
+        { input: "Esc or P", action: "Pause", on: "keys" },
+        { input: "Arrows, bottom left", action: "Move. Slide your finger from one arrow to the other to turn.", on: "touch" },
+        { input: "Yellow button", action: "Jump. Hold it to go higher.", on: "touch" },
+        { input: "Pink button", action: "Attack with the cardboard sword", on: "touch" },
       ],
       howTo: [
         { title: "Run", text: "Puddles are slippery and holes make you fall. On the jump rope, jump when it comes down. Locker shaking? Stop, or slam it shut with your sword." },
-        { title: "Attack", text: "Press J to hit the monitors. Take down every monitor in a level to earn the 3rd star. The stop sign (PARE) blocks from the front: attack from behind or when he lowers it." },
+        { title: "Attack", text: "Use your sword to hit the monitors. Take down every monitor in a level to earn the 3rd star. The stop sign (PARE) blocks from the front: attack from behind or when he lowers it." },
         { title: "Advance", text: "If the Inspector's spotlight lands on you, get out of it. Ring the bells to save your progress on the way to the principal's office." },
       ],
       levels: [
@@ -554,6 +604,7 @@ const TEXT = gameText({
         "Snacks give back a heart. Bells save your progress.",
         "Hit the Inspector when he's dizzy, tired or has his clipboard stuck.",
       ],
+      touchTips: ["Hold an arrow and tap jump at the same time to jump while running.", "Slide your thumb between the arrows to turn without letting go."],
       controlsSummary: "Operation: Recess. Arrows move, space jumps, J attacks, Esc pauses.",
       copy: {
         winTitle: "Recess is back!",

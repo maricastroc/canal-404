@@ -152,6 +152,12 @@ export class BootScene extends Phaser.Scene {
       { key: "chip-pad-right", icon: ChevronRight, size: 34, color: "#1d1830", strokeWidth: 3.4 },
       { key: "chip-jump", icon: ArrowBigUp, size: 34, color: "#1d1830", strokeWidth: 3 },
       { key: "chip-attack", icon: Sword, size: 34, color: "#1d1830", strokeWidth: 3 },
+      { key: "deck-left", icon: ChevronLeft, size: 128, strokeWidth: 3.4 },
+      { key: "deck-right", icon: ChevronRight, size: 128, strokeWidth: 3.4 },
+      { key: "deck-jump", icon: ArrowBigUp, size: 128, strokeWidth: 2.4 },
+      { key: "deck-attack", icon: Sword, size: 128, strokeWidth: 2.6 },
+      { key: "hud-heart-on", icon: Heart, size: 64, color: "#1d1830", fill: "#ef4f43", strokeWidth: 2.4 },
+      { key: "hud-heart-off", icon: Heart, size: 64, color: "#9a8fbf", strokeWidth: 2.4 },
     ]);
   }
 

@@ -34,12 +34,22 @@ function rotateAxes(axes: Matter.Vector[], angle: number) {
   }
 }
 
+function rotateVector(vector: Matter.Vector, angle: number, output: Matter.Vector = { x: 0, y: 0 }) {
+  const c = cos(angle);
+  const s = sin(angle);
+  const x = vector.x * c - vector.y * s;
+  output.y = vector.x * s + vector.y * c;
+  output.x = x;
+  return output;
+}
+
 Matter.Vertices.rotate = rotateVertices;
 Matter.Axes.rotate = rotateAxes;
+Matter.Vector.rotate = rotateVector;
 Object.assign(Matter.Resolver, { _restingThresh: 2, _restingThreshTangent: Math.sqrt(6) });
 
 export function physicsIsDeterministic() {
-  return Matter.Vertices.rotate === rotateVertices && Matter.Axes.rotate === rotateAxes;
+  return Matter.Vertices.rotate === rotateVertices && Matter.Axes.rotate === rotateAxes && Matter.Vector.rotate === rotateVector;
 }
 
 function normalise(x: number, y: number) {

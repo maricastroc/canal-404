@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
+import { attemptBonus } from "@/games/bad-ideas-lab/levels";
 import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
-import { STEP_MS } from "@/games/dead-end-street/config";
-import { THREE_STAR_WIN } from "@/games/dead-end-street/solutions";
-import { replayStreet, type Launch } from "@/games/dead-end-street/sim";
+import { STEP_MS, type ProjectileId } from "@/games/dead-end-street/config";
+import { SOLUTIONS as STREET } from "@/games/dead-end-street/solutions";
+import { replayStreet, StreetSim, type Launch } from "@/games/dead-end-street/sim";
 import { boardId, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
 
 const RECESS_MONITORS = Object.fromEntries(RECESS_LEVELS.map((l) => [l.id, l.enemies.length]));
@@ -20,17 +21,29 @@ function ok(verdict: ReturnType<typeof judgeRun>) {
   return verdict;
 }
 
-function street(launches: Launch[] = THREE_STAR_WIN, claim: Partial<RunClaim> = {}): RunClaim {
-  const replay = replayStreet(launches);
+function street(level: keyof typeof STREET, launches: Launch[] = STREET[level], claim: Partial<RunClaim> = {}): RunClaim {
+  const replay = replayStreet(level, launches);
   if (!replay.ok) throw new Error(replay.problem);
   const { won, score, stars, stats } = replay.tally;
-  return { won, score, stars, stats: { ...stats, timeMs: 30_000 }, replay: { kind: "street-launches", version: 1, launches }, ...claim };
+  return { won, score, stars, stats: { ...stats, timeMs: 30_000 }, replay: { kind: "street-launches", version: 2, launches }, ...claim };
+}
+
+function streetLog(level: string, shots: [ProjectileId, number, number][]) {
+  const sim = new StreetSim(level);
+  sim.start();
+  for (const [ammo, angle, power] of shots) {
+    while (sim.step());
+    sim.launch(angle, power, ammo);
+  }
+  const launches = sim.launches.map((l) => ({ ...l }));
+  sim.destroy();
+  return launches;
 }
 
 function lab(level: string, parts: { type: string; x: number; y: number; rot: number }[], steps: number, runs = 2): RunClaim {
   const inventory: Record<string, number> = { test: 1, pixel: 2, toast: 2, juice: 2, remote: 3, finale: 5 };
   const par: Record<string, number> = { test: 1, pixel: 1, toast: 1, juice: 1, remote: 2, finale: 3 };
-  const score = 1000 + (inventory[level] - parts.length) * 150 + (runs === 1 ? 300 : 0);
+  const score = 1000 + (inventory[level] - parts.length) * 150 + attemptBonus(runs);
   return {
     won: true,
     score,
@@ -82,40 +95,67 @@ function resort(overrides: Partial<Record<string, number>> = {}): RunClaim {
 
 describe("boards", () => {
   it("names one board per game or per level, with the rules version", () => {
-    expect(boardId("dead-end-street", null)).toBe("dead-end-street/all/v2");
+    expect(boardId("dead-end-street", "domino")).toBe("dead-end-street/domino/v3");
     expect(boardId("bad-ideas-lab", "pixel")).toBe("bad-ideas-lab/pixel/v1");
   });
 });
 
 describe("Rua Sem Saída", () => {
-  it("replays the launches and ranks by the replayed score, then fewer launches", () => {
-    const v = ok(judgeRun("dead-end-street", null, street()));
-    expect(v).toMatchObject({ won: true, score: 2250, stars: 3, verification: "replayed", flags: [] });
-    expect(v.rank).toEqual([2250, -4, 0]);
-    expect(metricValues("dead-end-street", v.rank)).toEqual([2250, 4]);
-    expect(v.evidence).toEqual({ launches: 4, combos: 1, mess: 8, won: 1, score: 2250 });
+  it("replays the launches of a level and ranks by the replayed score, then fewer launches", () => {
+    const v = ok(judgeRun("dead-end-street", "surprise-bath", street("surprise-bath")));
+    expect(v).toMatchObject({ won: true, score: 1775, stars: 3, eligible: true, verification: "replayed", flags: [] });
+    expect(v.rank).toEqual([1775, -2, 0]);
+    expect(metricValues("dead-end-street", v.rank)).toEqual([1775, 2]);
+    expect(v.evidence).toEqual({ launches: 2, combos: 1, mess: 1, gadgets: 3, won: 1, score: 1775 });
+  });
+
+  it("accepts every level's known solution", () => {
+    for (const level of Object.keys(STREET) as (keyof typeof STREET)[]) {
+      expect(ok(judgeRun("dead-end-street", level, street(level))), level).toMatchObject({ won: true, stars: 3, flags: [] });
+    }
+  });
+
+  it("needs a level and the launch log format of the campaign", () => {
+    expect(judgeRun("dead-end-street", null, street("warm-up"))).toMatchObject({ ok: false, reason: "unknown_level" });
+    expect(judgeRun("dead-end-street", "all", street("warm-up"))).toMatchObject({ ok: false, reason: "unknown_level" });
+    const old = { ...street("warm-up"), replay: { kind: "street-launches", version: 1, launches: STREET["warm-up"].map(({ at, angle, power }) => ({ at, angle, power })) } } as unknown as RunClaim;
+    expect(judgeRun("dead-end-street", "warm-up", old)).toMatchObject({ ok: false, reason: "bad_launches" });
   });
 
   it("rejects a score the launches did not make and flags stats that do not match", () => {
-    expect(judgeRun("dead-end-street", null, street(THREE_STAR_WIN, { score: 9999 }))).toMatchObject({ ok: false, reason: "score_mismatch" });
-    const tampered = street();
-    expect(ok(judgeRun("dead-end-street", null, { ...tampered, stats: { ...tampered.stats, mess: 10 } })).flags).toEqual(["stats_mismatch"]);
+    expect(judgeRun("dead-end-street", "domino", street("domino", STREET.domino, { score: 9999 }))).toMatchObject({ ok: false, reason: "score_mismatch" });
+    expect(judgeRun("dead-end-street", "warm-up", { ...street("domino"), replay: street("warm-up").replay })).toMatchObject({ ok: false, reason: "score_mismatch" });
+    const tampered = street("domino");
+    expect(ok(judgeRun("dead-end-street", "domino", { ...tampered, stats: { ...tampered.stats, mess: 1 } })).flags).toEqual(["stats_mismatch"]);
   });
 
   it("rejects missing, malformed and impossible launch logs", () => {
-    const claim = street();
-    const withLaunches = (launches: Launch[]) => ({ ...claim, replay: { kind: "street-launches" as const, version: 1 as const, launches } });
-    expect(judgeRun("dead-end-street", null, { ...claim, replay: undefined })).toMatchObject({ ok: false, reason: "bad_launches" });
-    expect(judgeRun("dead-end-street", null, withLaunches([{ at: 0, angle: 9000, power: 1000 }]))).toMatchObject({ ok: false, reason: "bad_launches" });
-    expect(judgeRun("dead-end-street", null, withLaunches([...THREE_STAR_WIN, ...THREE_STAR_WIN]))).toMatchObject({ ok: false, reason: "bad_launches" });
-    expect(judgeRun("dead-end-street", null, withLaunches([THREE_STAR_WIN[0], { ...THREE_STAR_WIN[1], at: 20 }]))).toMatchObject({ ok: false, reason: "launches_failed" });
-    expect(judgeRun("dead-end-street", null, withLaunches(THREE_STAR_WIN.slice(0, 2)))).toMatchObject({ ok: false, reason: "launches_failed" });
+    const claim = street("blocked-path");
+    const withLaunches = (launches: unknown[]) => ({ ...claim, replay: { kind: "street-launches" as const, version: 2 as const, launches: launches as Launch[] } });
+    const log = STREET["blocked-path"];
+    expect(judgeRun("dead-end-street", "blocked-path", { ...claim, replay: undefined })).toMatchObject({ ok: false, reason: "bad_launches" });
+    expect(judgeRun("dead-end-street", "blocked-path", withLaunches([{ ...log[0], angle: 9000 }]))).toMatchObject({ ok: false, reason: "bad_launches" });
+    expect(judgeRun("dead-end-street", "blocked-path", withLaunches([{ ...log[0], ammo: "tire" }]))).toMatchObject({ ok: false, reason: "bad_launches" });
+    expect(judgeRun("dead-end-street", "blocked-path", withLaunches([{ ...log[0], ammo: "rock" }]))).toMatchObject({ ok: false, reason: "bad_launches" });
+    expect(judgeRun("dead-end-street", "blocked-path", withLaunches([...log, ...log.map((l) => ({ ...l, at: l.at + 2000 }))]))).toMatchObject({ ok: false, reason: "bad_launches" });
+    expect(judgeRun("dead-end-street", "blocked-path", withLaunches([log[0], { ...log[1], at: 40 }]))).toMatchObject({ ok: false, reason: "launches_failed" });
+    expect(judgeRun("dead-end-street", "blocked-path", withLaunches(log.slice(0, 2)))).toMatchObject({ ok: false, reason: "launches_failed" });
+  });
+
+  it("keeps lost levels off the board", () => {
+    const launches = streetLog("warm-up", [
+      ["shoe", 8000, 200],
+      ["shoe", 8000, 200],
+      ["shoe", 8000, 200],
+      ["shoe", 8000, 200],
+    ]);
+    expect(ok(judgeRun("dead-end-street", "warm-up", street("warm-up", launches)))).toMatchObject({ won: false, stars: 0, eligible: false, ineligible: "not_won" });
   });
 
   it("needs the replayed match time as the minimum time since the ticket", () => {
-    const replay = replayStreet(THREE_STAR_WIN);
+    const replay = replayStreet("free-for-all", STREET["free-for-all"]);
     if (!replay.ok) throw new Error(replay.problem);
-    expect(ok(judgeRun("dead-end-street", null, street())).minElapsedMs).toBe(Math.round(replay.steps * STEP_MS));
+    expect(ok(judgeRun("dead-end-street", "free-for-all", street("free-for-all"))).minElapsedMs).toBe(Math.round(replay.steps * STEP_MS));
   });
 });
 
@@ -158,10 +198,10 @@ describe("Laboratório", () => {
     expect(judgeRun("bad-ideas-lab", "pixel", lab("pixel", [{ type: "ramp", x: 620, y: 420, rot: 0 }], 300))).toMatchObject({ ok: false, reason: "replay_failed" });
   });
 
-  it("leaves the first-try bonus out of the ranking", () => {
+  it("leaves the attempt bonus out of the ranking", () => {
     const first = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 400, 1)));
     const later = ok(judgeRun("bad-ideas-lab", "pixel", lab("pixel", SOLUTIONS.pixel, 400, 7)));
-    expect(first.score).toBe(later.score + 300);
+    expect(first.score).toBe(later.score + attemptBonus(1));
     expect(first.rank).toEqual(later.rank);
   });
 

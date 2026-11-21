@@ -18,6 +18,7 @@ import { formatMetric, ordinal } from "@/lib/competition/format";
 import { useCompetition } from "@/lib/competition/hooks";
 import { recordsHref } from "@/lib/competition/links";
 import type { BoardEntry, LeaderboardResponse } from "@/lib/competition/types";
+import { boardNickname } from "@/lib/competition/nickname";
 
 const LIMIT = 10;
 
@@ -195,7 +196,7 @@ function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" 
       </td>
       <td className="px-1 py-1.5">
         <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span className="font-semibold text-cream">{entry.nickname}</span>
+          <span className="font-semibold text-cream">{boardNickname(entry.nickname)}</span>
           <span className="text-sm text-plum-300">#{entry.tag}</span>
           {entry.you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">{copy.you}</span> : null}
           {verified && entry.verified ? (

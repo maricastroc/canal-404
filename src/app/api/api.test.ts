@@ -1,4 +1,5 @@
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
+import { attemptBonus } from "@/games/bad-ideas-lab/levels";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ApiErrorBody, LeaderboardResponse, PublicPlayer } from "@/lib/competition/types";
 import { closeDb, type Db } from "@/server/db";
@@ -57,7 +58,7 @@ describe("when the database is down", () => {
     await closeDb();
     process.env.DATABASE_URL = "postgresql://nobody:nothing@127.0.0.1:1/none";
     expect(await body(await status())).toEqual({ status: "offline" });
-    const response = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "dead-end-street" } }));
+    const response = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "dead-end-street", level: "warm-up" } }));
     expect(response.status).toBe(503);
     expect(await body(response)).toEqual({ error: { code: "unavailable", message: expect.any(String) } });
   });
@@ -76,7 +77,7 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     return { response, cookie: cookieFrom(response), data: await body(response) };
   }
 
-  async function ticketAs(cookie: string | undefined, game = "dead-end-street", level: string | null = null) {
+  async function ticketAs(cookie: string | undefined, game = "dead-end-street", level: string | null = "warm-up") {
     const response = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game, level }, cookie }));
     return body(response);
   }
@@ -136,7 +137,9 @@ describe.skipIf(!hasTestDb)("competition API", () => {
 
   it("issues tickets only for real games and levels", async () => {
     expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "strange-house" } }))).status).toBe(400);
-    expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab" } }))).status).toBe(400);
+    const levelless = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab" } }));
+    expect(levelless.status).toBe(409);
+    expect(await body(levelless)).toMatchObject({ error: { code: "outdated" } });
     expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab", level: "attic" } }))).status).toBe(400);
     const issued = await ticketAs(undefined, "bad-ideas-lab", "pixel");
     expect(issued).toEqual({ ticket: expect.any(String), seed: expect.any(Number), expiresAt: expect.any(String), mission: null });
@@ -177,7 +180,7 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     const first = await submit(apiRequest("/api/runs", { method: "POST", body: payload, cookie }));
     expect(first.status).toBe(201);
     const data = await body(first);
-    expect(data.run).toMatchObject({ verification: "replayed", eligible: true, score: 1150, stars: 3 });
+    expect(data.run).toMatchObject({ verification: "replayed", eligible: true, score: 1150 + attemptBonus(2), stars: 3 });
     expect(data.board).toMatchObject({ id: "bad-ideas-lab/juice/v1", improved: true, position: 1, total: 1, best: { metrics: [1, 112] } });
     const retry = await submit(apiRequest("/api/runs", { method: "POST", body: payload, cookie }));
     expect(retry.status).toBe(200);

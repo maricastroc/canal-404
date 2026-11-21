@@ -66,6 +66,7 @@ model Run {
   eligible     Boolean
   flags        String[]        @default([])
   rulesVersion Int             @map("rules_version") @db.SmallInt
+  client       String?         @db.VarChar(24)
   startedAt    DateTime        @map("started_at") @db.Timestamptz(3)
   createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   bests        PersonalBest[]

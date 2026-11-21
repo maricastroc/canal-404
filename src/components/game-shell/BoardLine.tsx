@@ -15,8 +15,9 @@ import { formatBest, ordinal } from "@/lib/competition/format";
 import { BOARD_META, isGameSlug, type GameSlug } from "@/lib/competition/boards";
 import { serverMessage } from "@/lib/competition/errors";
 import { recordsHref } from "@/lib/competition/links";
+import { boardNickname } from "@/lib/competition/nickname";
 
-export type BoardState = { phase: "sending" } | { phase: "join" } | { phase: "done"; outcome: SubmitOutcome };
+export type BoardState = { phase: "sending" } | { phase: "join"; waiting: number } | { phase: "done"; outcome: SubmitOutcome };
 
 type Line = { headline?: string; text: string; rival?: string; href?: string; live?: boolean; offline?: boolean; record?: boolean; stamp?: boolean };
 
@@ -30,6 +31,8 @@ const COPY = localized({
     expired: "Esse resultado demorou demais para chegar ao placar.",
     limited: "Muitos envios seguidos. Espere um pouco.",
     noTicket: "O placar estava fora do ar quando a partida começou. Este resultado ficou só no seu progresso.",
+    outdatedTitle: "O jogo foi atualizado",
+    outdated: "Esta página ficou com a versão anterior. Recarregue a página para jogar a nova e voltar ao placar.",
     practice: "Este foi só o aquecimento! A fase de treino não vale pontos no placar global.",
     resumed: "Partidas retomadas do sino não entram no placar. Jogue a fase inteira para competir.",
     noPoints: "Sem pontos, sem placar. Fica para a próxima!",
@@ -56,6 +59,7 @@ const COPY = localized({
     live: "Ao vivo",
     noSignal: "Sem sinal",
     join: "Quer ver seu nome no placar? Escolha um apelido e este resultado entra na disputa.",
+    waiting: (count: number) => (count === 1 ? "Mais 1 resultado seu está esperando o apelido e entra junto." : `Mais ${formatNumber(count, "pt-BR")} resultados seus estão esperando o apelido e entram juntos.`),
     joinButton: "Entrar no placar",
     arcade: "Ver o fliperama de recordes",
   },
@@ -68,6 +72,8 @@ const COPY = localized({
     expired: "This result took too long to reach the board.",
     limited: "Too many submissions in a row. Wait a little.",
     noTicket: "The board was off the air when the run started. This result only went into your progress.",
+    outdatedTitle: "The game was updated",
+    outdated: "This page still has the previous version. Reload it to play the new one and get back on the board.",
     practice: "That was just the warm-up! The practice level doesn't count on the global board.",
     resumed: "Runs resumed from a bell don't go on the board. Play the whole level to compete.",
     noPoints: "No points, no board. Better luck next time!",
@@ -94,6 +100,7 @@ const COPY = localized({
     live: "Live",
     noSignal: "No signal",
     join: "Want to see your name on the board? Pick a nickname and this result joins the race.",
+    waiting: (count: number) => (count === 1 ? "1 more of your results is waiting for the nickname and goes up with it." : `${formatNumber(count, "en")} more of your results are waiting for the nickname and go up with it.`),
     joinButton: "Join the board",
     arcade: "Visit the record arcade",
   },
@@ -123,6 +130,7 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Lo
       if (outcome.why === "unconfigured") return null;
       if (outcome.why === "expired") return { text: copy.expired };
       if (outcome.why === "limited") return { text: serverMessage(outcome.error, copy.limited, locale) };
+      if (outcome.why === "outdated") return { headline: copy.outdatedTitle, text: copy.outdated };
       return { text: copy.noTicket, offline: true };
     case "accepted": {
       const { run, board } = outcome.response;
@@ -135,7 +143,7 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Lo
       const alone = board.position === 1 && board.total === 1;
       const href = slug ? recordsHref(slug, levelOfBoard(board.id)) : undefined;
       const leader = board.leader;
-      const rival = leader && !leader.you && slug ? copy.rival(`${leader.nickname} #${leader.tag}`, formatBest(slug, leader.metrics, locale)) : undefined;
+      const rival = leader && !leader.you && slug ? copy.rival(`${boardNickname(leader.nickname)} #${leader.tag}`, formatBest(slug, leader.metrics, locale)) : undefined;
       if (run.ineligible === "not_won") {
         return { text: board.best ? copy.notWonBest(here, best, place) : copy.notWon(here), rival, href };
       }
@@ -215,6 +223,7 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
       {state.phase === "join" ? (
         <>
           <p className="copy mt-1.5 font-semibold">{copy.join}</p>
+          {state.waiting > 0 ? <p className="copy-sm mt-1 text-cream-2">{copy.waiting(state.waiting)}</p> : null}
           <NicknameForm dark submitLabel={copy.joinButton} onSubmit={onJoin} />
         </>
       ) : (

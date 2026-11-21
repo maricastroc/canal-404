@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { LEVELS } from "@/games/bad-ideas-lab/levels";
+import { attemptBonus, LEVELS } from "@/games/bad-ideas-lab/levels";
 import { SOLUTIONS } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
 import { KIDS } from "@/games/pajama-war/config";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { replayStreet, type Launch } from "@/games/dead-end-street/sim";
-import { THREE_STAR_WIN } from "@/games/dead-end-street/solutions";
+import { SOLUTIONS as STREET } from "@/games/dead-end-street/solutions";
 import { hasLevel, judgeRun, type RunClaim } from "@/lib/competition/rules";
 import { CATALOG, MISSION_GAMES, type MissionDef } from "./catalog";
 import { checkGoal, isCondition } from "./goals";
@@ -33,7 +33,7 @@ function labClaim(level: string, parts: PlacedPart[]): RunClaim {
   const total = Object.values(def.inventory).reduce((a, b) => a + (b ?? 0), 0);
   return {
     won: true,
-    score: 1000 + (total - parts.length) * 150,
+    score: 1000 + (total - parts.length) * 150 + attemptBonus(2),
     stars: parts.length <= def.par ? 3 : parts.length === def.par + 1 ? 2 : 1,
     stats: { parts: parts.length, inventory: total, par: def.par, runs: 2, steps: simulateLab(def, parts).steps },
     replay: { kind: "lab-placements", version: 1, parts },
@@ -55,19 +55,21 @@ const LUNCH_PROOFS: Record<string, RunClaim> = {
   "food-right-on-time": lunch({ interrupts: 5, interruptPoints: 500 }),
 };
 
-function streetClaim(launches: Launch[]): RunClaim {
-  const replay = replayStreet(launches);
+function streetClaim(level: string, launches: Launch[]): RunClaim {
+  const replay = replayStreet(level, launches);
   if (!replay.ok) throw new Error(replay.problem);
   const { won, score, stars, stats } = replay.tally;
-  return { won, score, stars, stats: { ...stats, timeMs: 30_000 }, replay: { kind: "street-launches", version: 1, launches } };
+  return { won, score, stars, stats: { ...stats, timeMs: 30_000 }, replay: { kind: "street-launches", version: 2, launches } };
 }
 
 const STREET_PROOFS: Record<string, Launch[]> = {
-  "street-five-launches": THREE_STAR_WIN,
-  "street-two-at-once": THREE_STAR_WIN,
-  "street-three-stars": THREE_STAR_WIN,
-  "street-yard-chaos": THREE_STAR_WIN,
+  "street-domino-one-launch": STREET.domino,
+  "street-bath-plumber": STREET["surprise-bath"],
+  "street-path-three": STREET["blocked-path"],
+  "street-giant-two": STREET["grand-mess"],
 };
+
+const LIVE = CATALOG.filter((m) => !m.retired);
 
 function recess(level: string, stats: Record<string, number>, won = true): RunClaim {
   const s = { kills: 0, killPoints: 0, stickers: 0, extras: 0, hits: 0, hearts: 5, resumed: 0, boss: 0, timeMs: 120_000, ...stats };
@@ -101,7 +103,7 @@ function evidenceOf(mission: MissionDef, claim: RunClaim) {
 
 function proofOf(mission: MissionDef) {
   if (mission.game === "bad-ideas-lab") return labClaim(mission.level!, LAB_PROOFS[mission.key]);
-  if (mission.game === "dead-end-street") return streetClaim(STREET_PROOFS[mission.key]);
+  if (mission.game === "dead-end-street") return streetClaim(mission.level!, STREET_PROOFS[mission.key]);
   if (mission.game === "operation-recess") return RECESS_PROOFS[mission.key];
   if (mission.game === "pajama-war") return PAJAMA_PROOFS[mission.key];
   return LUNCH_PROOFS[mission.key];
@@ -110,7 +112,7 @@ function proofOf(mission: MissionDef) {
 describe("mission catalog", () => {
   it("uses unique keys, real levels and well-formed goals", () => {
     expect(new Set(CATALOG.map((m) => m.key)).size).toBe(CATALOG.length);
-    for (const mission of CATALOG) {
+    for (const mission of LIVE) {
       expect(mission.key).toMatch(/^[a-z0-9-]{3,48}$/);
       expect(MISSION_GAMES).toContain(mission.game);
       expect(hasLevel(mission.game, mission.level), mission.key).toBe(true);
@@ -123,7 +125,7 @@ describe("mission catalog", () => {
   });
 
   it("can be completed: every mission has a run that the server accepts and that meets the goal", () => {
-    for (const mission of CATALOG) {
+    for (const mission of LIVE) {
       const claim = proofOf(mission);
       expect(claim, `proof for ${mission.key}`).toBeDefined();
       expect(checkGoal(mission.goal, evidenceOf(mission, claim)), mission.key).toEqual({ passed: true });
@@ -131,7 +133,7 @@ describe("mission catalog", () => {
   });
 
   it("only uses stats the game's evidence provides", () => {
-    for (const mission of CATALOG) {
+    for (const mission of LIVE) {
       const evidence = evidenceOf(mission, proofOf(mission));
       for (const condition of mission.goal) expect(evidence[condition.stat], `${mission.key}.${condition.stat}`).toEqual(expect.any(Number));
     }

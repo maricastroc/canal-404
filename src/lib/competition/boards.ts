@@ -17,7 +17,7 @@ export type BoardMeta = { explain: string; metrics: readonly Metric[]; check: Bo
 
 export const BOARD_META: Record<GameSlug, BoardMeta> = {
   "dead-end-street": {
-    explain: "Maior pontuação. Empate: quem usou menos lançamentos.",
+    explain: "Cada fase tem seu placar. Maior pontuação; empate: quem usou menos lançamentos.",
     check: "replayed",
     metrics: [
       { label: "Pontos", unit: "points", lowerIsBetter: false },
@@ -75,7 +75,7 @@ type BoardText = { explain: string; metrics: { label: string; noun?: readonly [s
 
 const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
   "dead-end-street": {
-    explain: "Highest score. Tiebreak: fewest launches.",
+    explain: "Each level has its own board. Highest score; tiebreak: fewest launches.",
     metrics: [{ label: "Points" }, { label: "Launches", noun: ["launch", "launches"] }],
   },
   "bad-ideas-lab": {

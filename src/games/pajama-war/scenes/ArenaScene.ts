@@ -6,6 +6,7 @@ import { ARENAS } from "../arenas";
 import { BODY, ESCALATE, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, type KidId } from "../config";
 import { COPY, resultCopy, winShout, type PajamaCopy } from "../copy";
 import { matchScore } from "../score";
+import { HEAD_MIN, LIP, WALL_EXT, type Frame } from "../layout";
 import { firstTallHit, FLOOR_Y, pointOnTrace, resolveBody, separateBodies, traceShot, type Point } from "../nav";
 import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
 import { SPECIAL, SpecialSpawner } from "../special";
@@ -13,7 +14,8 @@ import { loadStats, markHint, saveStats } from "../storage";
 import { cartoonText } from "../../kit/ui";
 import { Brain, type BrainView } from "./brain";
 import { Fighter } from "./fighter";
-import { PajamaHud } from "./hud";
+import { currentFrame, watchFrame } from "./frame";
+import { PajamaHud, type Offscreen } from "./hud";
 import { Pillow } from "./pillows";
 import { Room } from "./room";
 import { SpecialDrop } from "./special-drop";
@@ -83,6 +85,15 @@ export class ArenaScene extends Phaser.Scene {
   private pending: GameResult | null = null;
   private resultTimer: Phaser.Time.TimerEvent | null = null;
   private lastTaunt = -9999;
+  private frame!: Frame;
+  private vignette: Phaser.GameObjects.Image | null = null;
+  private camAt = { x: 0, y: 0 };
+  private focus: Fighter | null = null;
+  private focusUntil = 0;
+  private mechanicDelay = 700;
+  private offscreen: Offscreen[] = [];
+  private ceilingY = 0;
+  private tutorial: { moved: boolean; threw: boolean; step: "basics" | "aim" } | null = null;
 
   constructor() {
     super("arena");
@@ -123,6 +134,11 @@ export class ArenaScene extends Phaser.Scene {
     this.pending = null;
     this.resultTimer = null;
     this.lastTaunt = -9999;
+    this.focus = null;
+    this.focusUntil = 0;
+    this.mechanicDelay = 700;
+    this.vignette = null;
+    this.tutorial = null;
   }
 
   get attract() {
@@ -139,7 +155,8 @@ export class ArenaScene extends Phaser.Scene {
     this.aiWindup = Math.round(130 + (1 - arena.ai) * 240);
     this.aiSpeed = 0.86 + arena.ai * 0.1;
     this.aiGap = Math.round(760 - arena.ai * 400);
-    this.uiCam = this.cameras.add(0, 0, W, H).setName("ui");
+    this.frame = currentFrame(this);
+    this.uiCam = this.cameras.add(0, 0, this.frame.width, this.frame.height).setName("ui");
     this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, this.route, this);
     this.cameras.main.setBackgroundColor("#1d1830");
     this.room = new Room(this, arena, reduced, this.ctx.fonts);
@@ -168,22 +185,23 @@ export class ArenaScene extends Phaser.Scene {
     this.guide = this.add.graphics().setDepth(1200);
 
     this.buildingHud = true;
-    this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setAlpha(arena.theme === "yard" ? 0.7 : 0.55).setDepth(1900);
+    this.vignette = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setAlpha(arena.theme === "yard" ? 0.7 : 0.55).setDepth(1900);
     this.hurtFlash = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setTint(0xef4f43).setAlpha(0).setDepth(1901);
     if (!this.attract) {
       this.hud = new PajamaHud(this, this.ctx.fonts, arena.title[this.locale], order.map((kid, i) => ({ kid, isPlayer: i === 0 })), reduced, COPY[this.locale].hud);
       this.hud.enableTouch(TOUCH_UI);
+      this.hud.setDeckColor(this.room.deckColor);
     }
     this.buildingHud = false;
 
     this.setupInput();
     for (const f of this.fighters) f.sync(0);
-    this.hud?.layout(this.scale.displaySize.width);
-    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+    watchFrame(this, (frame) => this.applyFrame(frame));
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
       this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, this.route, this);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
       this.uiCam = null;
     });
 
@@ -194,11 +212,177 @@ export class ArenaScene extends Phaser.Scene {
     if (!this.attract) this.countdown();
   }
 
-  private onResize() {
-    this.hud?.layout(this.scale.displaySize.width);
+  private onResume() {
+    this.hud?.release();
+  }
+
+  private applyFrame(frame: Frame) {
+    this.frame = frame;
+    const main = this.cameras.main;
+    main.setSize(frame.width, frame.height);
+    this.uiCam?.setSize(frame.width, frame.height);
+    this.vignette?.setDisplaySize(frame.width, frame.height);
+    this.hurtFlash?.setDisplaySize(frame.width, frame.height);
+    this.ceilingY = frame.kind === "tall" ? (this.fixedHeight(frame) ? frame.top : Math.min(frame.top, HEAD_MIN - frame.hud / frame.zoom)) : 0;
+    this.room.setCeiling(this.ceilingY);
+    this.hud?.layout(frame, this.scale.displaySize.width);
+    if (this.mode === "over") return;
+    if (frame.kind === "full") {
+      if (this.mode === "attract") {
+        main.setZoom(1);
+        main.centerOn(W / 2, H / 2);
+      }
+      return;
+    }
+    main.setZoom(frame.zoom);
+    this.followCamera(0, true);
+  }
+
+  private fixedHeight(f: Frame) {
+    return f.kind === "tall" && (f.height - f.deck - f.hud) / f.zoom >= LIP - HEAD_MIN - 0.5;
+  }
+
+  private get compact() {
+    return this.frame.kind !== "full";
+  }
+
+  private worldField() {
+    const f = this.frame;
+    const z = f.zoom;
+    const field = this.hud?.playfield ?? { left: f.safe.left, top: f.hud, right: f.width - f.safe.right, bottom: f.height - f.deck };
+    return { left: field.left / z, top: field.top / z, right: field.right / z, bottom: field.bottom / z, vw: f.width / z, vh: f.height / z };
+  }
+
+  private pickFocus(p: Fighter, t: number) {
+    const alert = this.alerts.find((a) => a.f.alive && t < a.until);
+    if (alert) {
+      this.focus = alert.f;
+      this.focusUntil = t + 900;
+      return alert.f;
+    }
+    if (this.focus && this.focus.alive && t < this.focusUntil) return this.focus;
+    let best: Fighter | null = this.lock && this.lock.alive ? this.lock : null;
+    if (!best) {
+      let bestD = Infinity;
+      for (const o of this.fighters) {
+        if (o === p || !o.alive) continue;
+        const d = Math.hypot(o.x - p.x, (o.y - p.y) * 1.4);
+        if (d < bestD) {
+          bestD = d;
+          best = o;
+        }
+      }
+    }
+    if (best && Math.hypot(best.x - p.x, best.y - p.y) > PILLOW.range * 1.35) best = null;
+    if (best !== this.focus) {
+      this.focus = best;
+      this.focusUntil = t + 700;
+    }
+    return best;
+  }
+
+  private followCamera(dt: number, snap = false) {
+    const f = this.frame;
+    const cam = this.cameras.main;
+    const z = f.zoom;
+    const fd = this.worldField();
+    const alive = this.fighters.filter((o) => o.alive);
+    const p = this.player && this.player.alive ? this.player : null;
+    const anchor = p ?? (alive.length ? { x: alive.reduce((a, o) => a + o.x, 0) / alive.length, y: alive.reduce((a, o) => a + o.y, 0) / alive.length, vx: 0, top: 0 } : { x: W / 2, y: 760, vx: 0, top: 0 });
+    const anchorTop = p ? p.top : anchor.y - 216;
+    const focus = p && this.mode === "play" ? this.pickFocus(p, this.t) : null;
+    const fw = fd.right - fd.left;
+    const margin = Math.min(fw * 0.2, 240);
+    const lead = Phaser.Math.Clamp(anchor.vx * 0.22, -fw * 0.1, fw * 0.1);
+    const wantX = focus ? (anchor.x + focus.x) / 2 : anchor.x + lead;
+    let sx = wantX - (fd.left + fw / 2);
+    sx = Phaser.Math.Clamp(sx, anchor.x - (fd.right - margin), anchor.x - (fd.left + margin));
+    sx = fd.vw >= W ? (W - fd.vw) / 2 : Phaser.Math.Clamp(sx, 0, W - fd.vw);
+    const minTop = f.kind === "tall" ? Math.max(-WALL_EXT, this.ceilingY) : 0;
+    const maxBottom = f.kind === "tall" ? LIP + f.deck / z : H;
+    const fh = fd.bottom - fd.top;
+    const fixed = this.fixedHeight(f);
+    let sy: number;
+    if (fixed) sy = f.top;
+    else {
+      const head = anchorTop - 50;
+      const feet = anchor.y + 36;
+      const wantY = focus ? (head + feet) / 2 + ((focus.y - anchor.y) * 0.5) : (head + feet) / 2;
+      sy = wantY - (fd.top + fh / 2);
+      sy = Phaser.Math.Clamp(sy, feet - fd.bottom, Math.max(feet - fd.bottom, head - fd.top));
+      sy = Phaser.Math.Clamp(sy, minTop, Math.max(minTop, maxBottom - fd.vh));
+    }
+    const k = snap || this.ctx.reducedMotion ? 1 : 1 - Math.exp(-dt * 4.5);
+    this.camAt.x += (sx - this.camAt.x) * k;
+    this.camAt.y += (sy - this.camAt.y) * k;
+    if (p) {
+      const hard = Math.min(fw * 0.08, 90);
+      this.camAt.x = Phaser.Math.Clamp(this.camAt.x, anchor.x - (fd.right - hard), anchor.x - (fd.left + hard));
+      if (!fixed) this.camAt.y = Phaser.Math.Clamp(this.camAt.y, anchor.y + 30 - fd.bottom, Math.max(anchor.y + 30 - fd.bottom, anchorTop - 30 - fd.top));
+    }
+    this.camAt.x = fd.vw >= W ? (W - fd.vw) / 2 : Phaser.Math.Clamp(this.camAt.x, 0, W - fd.vw);
+    this.camAt.y = Phaser.Math.Clamp(this.camAt.y, minTop, Math.max(minTop, maxBottom - fd.vh));
+    if (cam.zoom !== z) cam.setZoom(z);
+    cam.centerOn(this.camAt.x + fd.vw / 2, this.camAt.y + fd.vh / 2);
+  }
+
+  private learn(moved: boolean, threw: boolean, aimed = false) {
+    const tut = this.tutorial;
+    if (!tut) return;
+    if (tut.step === "aim") {
+      if (!aimed) return;
+      this.tutorial = null;
+      this.time.delayedCall(900, () => this.hud?.setTutorial("off"));
+      return;
+    }
+    tut.moved ||= moved;
+    tut.threw ||= threw;
+    if (!tut.moved || !tut.threw) return;
+    tut.step = "aim";
+    this.time.delayedCall(900, () => {
+      if (this.mode !== "play" || this.tutorial !== tut) return;
+      this.hud?.setTutorial("aim");
+      this.time.delayedCall(9000, () => {
+        if (this.tutorial !== tut) return;
+        this.tutorial = null;
+        this.hud?.setTutorial("off");
+      });
+    });
+  }
+
+  private toScreen(x: number, y: number) {
+    const cam = this.cameras.main;
+    const view = cam.worldView;
+    return { x: cam.x + (x - view.x) * cam.zoom, y: cam.y + (y - view.y) * cam.zoom };
+  }
+
+  private trackOffscreen(t: number) {
+    const hud = this.hud;
+    if (!hud) return;
+    if (!this.compact || this.mode !== "play") {
+      hud.offscreen([], t);
+      return;
+    }
+    const field = hud.playfield;
+    const list = this.offscreen;
+    list.length = 0;
+    const tol = 18 * this.frame.unit;
+    for (const f of this.fighters) {
+      if (f.isPlayer || !f.alive) continue;
+      const head = this.toScreen(f.x, f.top + 40);
+      const feet = this.toScreen(f.x, f.y);
+      const out = feet.x < field.left - tol || feet.x > field.right + tol || feet.y < field.top + tol || head.y > field.bottom - tol;
+      if (!out) continue;
+      list.push({ kid: f.kid, x: feet.x, y: (head.y + feet.y) / 2, alert: this.alerts.some((a) => a.f === f && t < a.until) });
+    }
+    hud.offscreen(list, t);
   }
 
   private frameCamera(dt: number) {
+    if (this.compact) {
+      this.followCamera(dt);
+      return;
+    }
     const cam = this.cameras.main;
     const small = this.scale.displaySize.width < 1100;
     const k = 1 - Math.exp(-dt * 3);
@@ -236,6 +420,15 @@ export class ArenaScene extends Phaser.Scene {
     const p = this.player!;
     const arena = ARENAS[this.levelIndex];
     hud.flash(this.text.ready, "#fbf5e6", 700, this.text.readySub);
+    if (loadStats().matches < 2) {
+      if (hud.hasTouch && this.compact) {
+        hud.setTutorial("basics");
+        this.tutorial = { moved: false, threw: false, step: "basics" };
+      } else {
+        hud.hint(hud.hasTouch ? this.text.controlsTouch : this.text.controlsKeys, 4200);
+        this.mechanicDelay = 3400;
+      }
+    }
     this.sfx("beep", 0.8);
     this.ctx.onEvent({ type: "announce", message: this.text.intro(arena.title[this.locale], p.kid) });
     this.time.delayedCall(950, () => {
@@ -261,7 +454,7 @@ export class ArenaScene extends Phaser.Scene {
     }
     if (!markHint(arena.mechanic)) return;
     const text = this.text.hints[arena.mechanic];
-    this.time.delayedCall(700, () => {
+    this.time.delayedCall(this.mechanicDelay, () => {
       if (this.mode !== "play") return;
       this.hud?.hint(text);
       this.ctx.onEvent({ type: "announce", message: text });
@@ -474,7 +667,28 @@ export class ArenaScene extends Phaser.Scene {
     return { x: o.x + o.vx * k, y: o.y + o.vy * k };
   }
 
+  private manualAim(p: Fighter, angle: number): Aim {
+    let best: Fighter | null = null;
+    let bestDiff = 0.2;
+    for (const o of this.fighters) {
+      if (o === p || !o.alive || Math.hypot(o.x - p.x, o.y - p.y) > PILLOW.range * 1.02) continue;
+      const diff = Math.abs(Phaser.Math.Angle.Wrap(this.angleTo(p, o.x, o.y) - angle));
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = o;
+      }
+    }
+    if (best) {
+      const q = this.led(p, best);
+      return { angle: this.angleTo(p, q.x, q.y), target: best, x: best.x, y: best.y, free: false };
+    }
+    const reach = PILLOW.range * 0.92;
+    return { angle, target: null, x: p.x + Math.cos(angle) * reach, y: p.y + Math.sin(angle) * reach * 0.86, free: true };
+  }
+
   private computeAim(p: Fighter): Aim {
+    const touchAim = this.hud?.touch.aim;
+    if (touchAim !== null && touchAim !== undefined) return this.manualAim(p, touchAim);
     if (this.aimMode === "mouse") {
       const gx = this.aim.x;
       const gy = this.aim.y + PILLOW.lift;
@@ -555,6 +769,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    this.hud?.tick(this.time.now);
     if (time < this.freezeUntil) return;
     let left = Math.min(delta, FRAME_MAX_MS);
     while (left > 0 && this.time.now >= this.freezeUntil) {
@@ -573,7 +788,13 @@ export class ArenaScene extends Phaser.Scene {
       }
       this.alerts = this.alerts.filter((a) => a.img.active);
     }
-    if (this.player && this.hud) this.hud.avoid(this.player.x, this.player.y - 100);
+    if (this.player && this.hud) {
+      const at = this.toScreen(this.player.x, this.player.y - 100);
+      this.hud.avoid(at.x, at.y);
+      const p = this.player;
+      this.hud.setCooldown(p.canThrow(t) ? 1 : Phaser.Math.Clamp(1 - (p.readyAt - t) / p.stats.cooldown, 0, 0.99), p.special);
+    }
+    this.trackOffscreen(t);
     if (this.drop && this.spawner?.spot) this.drop.update(t, this.matchTime - this.spawner.spawnedAt);
     this.sweat(t);
   }
@@ -622,12 +843,20 @@ export class ArenaScene extends Phaser.Scene {
               mx = touch.x;
               my = touch.y;
             }
-            const queued = this.time.now - this.throwQueued < 180 || this.time.now - (touch?.tapAt ?? -99999) < 180;
+            if (this.tutorial && touch) this.learn(touch.active && Math.hypot(touch.x, touch.y) > 0.3, false);
+            const shotWindow = touch?.shot != null ? 320 : 180;
+            const tapped = this.time.now - (touch?.tapAt ?? -99999) < shotWindow;
+            const queued = this.time.now - this.throwQueued < 180 || tapped;
             const wants = k.space.isDown || this.mouseDown || Boolean(touch?.throwing) || queued;
             if (wants && f.canThrow(t)) {
-              f.requestThrow(t, this.aimAngle(f), PILLOW.windup + (f.special ? SPECIAL.windup : 0));
+              const manual = touch && tapped && touch.shot !== null ? this.manualAim(f, touch.shot).angle : null;
+              f.requestThrow(t, manual ?? this.aimAngle(f), PILLOW.windup + (f.special ? SPECIAL.windup : 0));
+              if (this.tutorial) this.learn(false, true, manual !== null);
               this.throwQueued = -99999;
-              if (touch) touch.tapAt = -99999;
+              if (touch) {
+                touch.tapAt = -99999;
+                touch.shot = null;
+              }
             }
           }
         } else if (this.mode !== "over") {
@@ -649,7 +878,7 @@ export class ArenaScene extends Phaser.Scene {
       this.updatePillows(t, dt);
       if (this.mode === "play") this.updateSpecial();
     }
-    if (this.mode === "play" || this.mode === "intro") this.frameCamera(dt);
+    if (this.mode === "play" || this.mode === "intro" || (this.mode === "attract" && this.compact)) this.frameCamera(dt);
     this.room.update(t, dt, this.fighters.filter((f) => f.alive), (n, v) => this.sfx(n, v, 120));
   }
 
@@ -753,7 +982,7 @@ export class ArenaScene extends Phaser.Scene {
       g.fillTriangle(o.x - 17, hy - 3, o.x + 17, hy - 3, o.x, hy + 19);
       g.fillStyle(0xffc83d, a);
       g.fillTriangle(o.x - 11, hy, o.x + 11, hy, o.x, hy + 13);
-    } else if (this.aimMode === "mouse") {
+    } else if (this.aimMode === "mouse" || this.hud?.aiming) {
       const end = Math.min(1, (PILLOW.range * 0.98) / Math.max(1, Math.hypot(aim.x - ox, aim.y - oy)));
       const rx = ox + (aim.x - ox) * end;
       const ry = oy + (aim.y - oy) * end - PILLOW.lift;
@@ -1118,8 +1347,7 @@ export class ArenaScene extends Phaser.Scene {
         winner.cheer();
         hud.setCheer(winner.kid);
         if (!reduced) {
-          this.cameras.main.pan(Phaser.Math.Clamp(winner.x, W / 2 - 300, W / 2 + 300), Phaser.Math.Clamp(winner.y - 150, H / 2 - 160, H / 2 + 160), 900, "Sine.easeInOut");
-          this.cameras.main.zoomTo(1.18, 900, "Sine.easeInOut");
+          this.celebrateCamera(winner);
           this.confetti(winner.x, winner.y - 260);
         }
       }
@@ -1192,6 +1420,26 @@ export class ArenaScene extends Phaser.Scene {
     this.resultTimer = this.time.delayedCall(won ? 2600 : 2400, () => this.sendResult());
   }
 
+  private celebrateCamera(winner: Fighter) {
+    const cam = this.cameras.main;
+    const f = this.frame;
+    if (f.kind === "full") {
+      cam.pan(Phaser.Math.Clamp(winner.x, W / 2 - 300, W / 2 + 300), Phaser.Math.Clamp(winner.y - 150, H / 2 - 160, H / 2 + 160), 900, "Sine.easeInOut");
+      cam.zoomTo(1.18, 900, "Sine.easeInOut");
+      return;
+    }
+    const z = f.zoom * 1.12;
+    const vw = f.width / z;
+    const vh = f.height / z;
+    const shift = (f.height / 2 - (f.hud + f.height - f.deck) / 2) / z;
+    const minTop = f.kind === "tall" ? Math.max(-WALL_EXT, this.ceilingY) : 0;
+    const maxBottom = f.kind === "tall" ? LIP + f.deck / z : H;
+    const cx = vw >= W ? W / 2 : Phaser.Math.Clamp(winner.x, vw / 2, W - vw / 2);
+    const cy = Phaser.Math.Clamp(winner.y - 130 + shift, minTop + vh / 2, Math.max(minTop + vh / 2, maxBottom - vh / 2));
+    cam.pan(cx, cy, 900, "Sine.easeInOut");
+    cam.zoomTo(z, 900, "Sine.easeInOut");
+  }
+
   private sendResult() {
     const result = this.pending;
     if (!result) return;
@@ -1229,14 +1477,18 @@ export class ArenaScene extends Phaser.Scene {
   private starBurst() {
     if (this.ctx.reducedMotion || !this.uiCam) return;
     this.buildingHud = true;
+    const f = this.frame;
+    const u = f.kind === "full" ? 1 : f.unit / 2.4;
+    const cx = f.width / 2;
+    const cy = f.kind === "full" ? 175 : f.hud + 70 * f.unit;
     for (let i = 0; i < 7; i += 1) {
       const a = -Math.PI + (i / 6) * Math.PI;
-      const star = this.add.image(W / 2, 175, "star").setDepth(2009).setScale(0.4);
+      const star = this.add.image(cx, cy, "star").setDepth(2009).setScale(0.4 * u);
       this.tweens.add({
         targets: star,
-        x: W / 2 + Math.cos(a) * Phaser.Math.Between(330, 470),
-        y: 175 + Math.sin(a) * Phaser.Math.Between(110, 170) + 30,
-        scale: Phaser.Math.FloatBetween(1, 1.5),
+        x: cx + Math.cos(a) * Phaser.Math.Between(330, 470) * Math.min(u, (f.width * 0.42) / 470),
+        y: cy + (Math.sin(a) * Phaser.Math.Between(110, 170) + 30) * u,
+        scale: Phaser.Math.FloatBetween(1, 1.5) * u,
         angle: Phaser.Math.Between(-180, 180),
         duration: 520,
         ease: "Back.easeOut",

@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { H, W } from "../config";
+import { LIP, WALL_EXT } from "../layout";
 import type { ArenaDef, PropDef, React } from "../arenas";
 import { arenaBoxes, NavGrid, solidBoxes, type Box } from "../nav";
 import type { PajamaSfx } from "../sounds";
@@ -319,6 +320,8 @@ export class Room {
   private theme: Theme;
   private cat: Cat | null = null;
   private cushions: Phaser.GameObjects.Image[] = [];
+  private ceiling: Phaser.GameObjects.Graphics | null = null;
+  private skyGlow: Phaser.GameObjects.Image | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -401,22 +404,35 @@ export class Room {
     this.scene.tweens.add({ targets: c, angle: c.angle + Phaser.Math.Between(140, 260) * (Math.random() < 0.5 ? -1 : 1), duration: 420 });
   }
 
+  get deckColor() {
+    return this.theme.base;
+  }
+
+  setCeiling(y: number) {
+    this.ceiling?.setY(y);
+    this.skyGlow?.setY(y);
+    this.ambient.setCeiling(y);
+  }
+
   private drawShell() {
     const s = this.scene;
     const d = this.def;
     const t = this.theme;
     const wb = d.wallBottom;
-    s.add.tileSprite(0, 0, W, wb, `wall-${d.theme}`).setOrigin(0, 0).setDepth(0);
-    s.add.tileSprite(0, wb, W, H - wb, `floor-${d.theme}`).setOrigin(0, 0).setDepth(0.5);
+    const sky = -WALL_EXT - 60;
+    const floorEnd = LIP + 240;
+    s.add.tileSprite(0, sky, W, wb - sky, `wall-${d.theme}`).setOrigin(0, 0).setDepth(0).setTilePosition(0, sky);
+    s.add.tileSprite(0, wb, W, floorEnd - wb, `floor-${d.theme}`).setOrigin(0, 0).setDepth(0.5);
     const g = s.add.graphics().setDepth(1);
-    g.fillStyle(0x140f26, 0.35);
-    g.fillRect(0, 0, W, 40);
-    g.fillStyle(0x140f26, 0.18);
-    g.fillRect(0, 40, W, 40);
+    const ceiling = s.add.graphics().setDepth(1);
+    ceiling.fillStyle(0x140f26, 0.35);
+    ceiling.fillRect(0, 0, W, 40);
+    ceiling.fillStyle(0x140f26, 0.18);
+    ceiling.fillRect(0, 40, W, 40);
+    this.ceiling = ceiling;
     if (d.theme === "yard") {
       s.add.tileSprite(0, wb - 136, W, 138, "fence").setOrigin(0, 0).setTileScale(0.8 / RES, 0.8 / RES).setDepth(3);
-      const glow = s.add.image(W / 2, 0, "glow").setDisplaySize(W * 1.4, 520).setTint(0x3a4a8a).setAlpha(0.35).setDepth(0.6);
-      void glow;
+      this.skyGlow = s.add.image(W / 2, 0, "glow").setDisplaySize(W * 1.4, 520).setTint(0x3a4a8a).setAlpha(0.35).setDepth(0.6);
       g.fillStyle(0x140f26, 0.3);
       g.fillRect(0, wb, W, 18);
       return;
@@ -431,14 +447,14 @@ export class Room {
     const side = s.add.graphics().setDepth(2);
     const inset = 120;
     side.fillStyle(t.side, 1);
-    side.fillPoints([new Phaser.Math.Vector2(0, 0), new Phaser.Math.Vector2(inset, 0), new Phaser.Math.Vector2(inset, wb), new Phaser.Math.Vector2(0, wb + 150)], true);
-    side.fillPoints([new Phaser.Math.Vector2(W, 0), new Phaser.Math.Vector2(W - inset, 0), new Phaser.Math.Vector2(W - inset, wb), new Phaser.Math.Vector2(W, wb + 150)], true);
+    side.fillPoints([new Phaser.Math.Vector2(0, sky), new Phaser.Math.Vector2(inset, sky), new Phaser.Math.Vector2(inset, wb), new Phaser.Math.Vector2(0, wb + 150)], true);
+    side.fillPoints([new Phaser.Math.Vector2(W, sky), new Phaser.Math.Vector2(W - inset, sky), new Phaser.Math.Vector2(W - inset, wb), new Phaser.Math.Vector2(W, wb + 150)], true);
     side.fillStyle(0x140f26, 0.35);
-    side.fillPoints([new Phaser.Math.Vector2(0, wb + 150), new Phaser.Math.Vector2(inset, wb), new Phaser.Math.Vector2(inset - 30, H), new Phaser.Math.Vector2(0, H)], true);
-    side.fillPoints([new Phaser.Math.Vector2(W, wb + 150), new Phaser.Math.Vector2(W - inset, wb), new Phaser.Math.Vector2(W - inset + 30, H), new Phaser.Math.Vector2(W, H)], true);
+    side.fillPoints([new Phaser.Math.Vector2(0, wb + 150), new Phaser.Math.Vector2(inset, wb), new Phaser.Math.Vector2(inset - 30, H), new Phaser.Math.Vector2(inset - 30, floorEnd), new Phaser.Math.Vector2(0, floorEnd)], true);
+    side.fillPoints([new Phaser.Math.Vector2(W, wb + 150), new Phaser.Math.Vector2(W - inset, wb), new Phaser.Math.Vector2(W - inset + 30, H), new Phaser.Math.Vector2(W - inset + 30, floorEnd), new Phaser.Math.Vector2(W, floorEnd)], true);
     side.lineStyle(5, 0x1d1830, 0.9);
-    side.lineBetween(inset, 0, inset, wb);
-    side.lineBetween(W - inset, 0, W - inset, wb);
+    side.lineBetween(inset, sky, inset, wb);
+    side.lineBetween(W - inset, sky, W - inset, wb);
     side.lineBetween(inset, wb, 0, wb + 150);
     side.lineBetween(W - inset, wb, W, wb + 150);
     const shade = s.add.image(W / 2, wb + 10, "glow").setDisplaySize(W * 1.6, 120).setTint(0x140f26).setAlpha(0.35).setDepth(1.5);

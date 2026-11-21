@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { AMMO } from "@/games/dead-end-street/config";
+import { PROJECTILE_ORDER } from "@/games/dead-end-street/config";
+import { MAX_AMMO } from "@/games/dead-end-street/phases";
 import { ANGLE_STEPS, MAX_STEPS, POWER_STEPS } from "@/games/dead-end-street/sim";
 import { GAME_SLUGS } from "@/lib/competition/rules";
 import { isDayKey } from "@/lib/missions/calendar";
@@ -14,10 +15,18 @@ export const statsSchema = z
   .record(statKey, z.number().int().min(-INT).max(INT))
   .refine((stats) => Object.keys(stats).length <= 24, "estatísticas demais");
 
+const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2 } as const;
+
+export function outdatedReplay(body: unknown) {
+  const replay = (body as { result?: { replay?: { kind?: unknown; version?: unknown } } } | null)?.result?.replay;
+  if (!replay || typeof replay.kind !== "string" || typeof replay.version !== "number" || !Object.hasOwn(REPLAY_VERSIONS, replay.kind)) return false;
+  return replay.version < REPLAY_VERSIONS[replay.kind as keyof typeof REPLAY_VERSIONS];
+}
+
 const labReplaySchema = z
   .object({
     kind: z.literal("lab-placements"),
-    version: z.literal(1),
+    version: z.literal(REPLAY_VERSIONS["lab-placements"]),
     parts: z
       .array(
         z
@@ -36,7 +45,7 @@ const labReplaySchema = z
 const streetReplaySchema = z
   .object({
     kind: z.literal("street-launches"),
-    version: z.literal(1),
+    version: z.literal(REPLAY_VERSIONS["street-launches"]),
     launches: z
       .array(
         z
@@ -44,10 +53,11 @@ const streetReplaySchema = z
             at: z.number().int().min(0).max(MAX_STEPS),
             angle: z.number().int().min(ANGLE_STEPS.min).max(ANGLE_STEPS.max),
             power: z.number().int().min(POWER_STEPS.min).max(POWER_STEPS.max),
+            ammo: z.enum(PROJECTILE_ORDER),
           })
           .strict(),
       )
-      .max(AMMO.length),
+      .max(MAX_AMMO),
   })
   .strict();
 

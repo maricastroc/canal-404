@@ -25,6 +25,7 @@ import {
   RadioTower,
   Rewind,
   RotateCcw,
+  Smartphone,
   Smile,
   Star,
   Target,
@@ -55,6 +56,7 @@ export const HouseIcon = make(House);
 export const ControllerIcon = make(Gamepad2);
 export const StarIcon = make(Star);
 export const SmileyIcon = make(Smile);
+export const PhoneIcon = make(Smartphone);
 export const GiftIcon = make(Gift);
 export const TowerIcon = make(RadioTower);
 export const ArrowLeftIcon = make(ArrowLeft);

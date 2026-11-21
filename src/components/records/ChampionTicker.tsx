@@ -13,6 +13,7 @@ import { formatBest } from "@/lib/competition/format";
 import { useCompetition } from "@/lib/competition/hooks";
 import { recordsHref } from "@/lib/competition/links";
 import type { BoardEntry } from "@/lib/competition/types";
+import { boardNickname } from "@/lib/competition/nickname";
 
 type Fetched = { key: string; ok: boolean; leader: BoardEntry | null };
 
@@ -63,7 +64,7 @@ export function ChampionTicker({ slug, levelWord = "fase" }: { slug: GameSlug; l
     : !current.ok
       ? copy.arcade
       : current.leader
-        ? `${current.leader.nickname} #${current.leader.tag} · ${formatBest(slug, current.leader.metrics, locale)}`
+        ? `${boardNickname(current.leader.nickname)} #${current.leader.tag} · ${formatBest(slug, current.leader.metrics, locale)}`
         : copy.empty;
 
   return (

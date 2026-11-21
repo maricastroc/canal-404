@@ -185,9 +185,9 @@ The portal handles loading with a real progress bar, the intro screen, pause, re
 
 ## Rua Sem Saída (`dead-end-street`)
 
-A slingshot mounted on a wagon: pull back (mouse or touch) or use the arrow keys to aim and Space to launch. Three short rounds in Seu Arlindo's yard (close targets, then behind obstacles, then up high) with seven launches of four projectile types with different physics. The neighborhood reacts: the cat runs, the trash can lid flies, the bird escapes the birdhouse. Points per target, round, mess, combos and leftover ammo; the high score is saved locally.
+A slingshot mounted on a wagon: pull back (mouse or touch) or use the arrow keys to aim and Space to launch. Nine levels in Seu Arlindo's yard, in three acts: aiming practice, chain reactions (dominoes, buckets, a hose, a drawbridge for a bowling ball) and Seu Arlindo's revenge (a leaf blower, a gate that turns after every launch and the Giant Gnome). Each level has an ammo stock and the player picks what to throw: the sneaker stays where it lands, the balloon soaks and shoves, the tire is heavy and the duck bounces. Stars measure how few launches it took; the yard gets messier from level to level and Seu Arlindo angrier.
 
-The physics and the rules live in `sim.ts`, outside Phaser, with timers counted in simulation steps. Each result carries the launches (step, angle and power), and the server replays them with the same simulation before the match enters the board ([decision 0009](docs/decisions/0009-street-replay.md)).
+The levels are data (`phases.ts`) and the physics and rules live in `sim.ts`, outside Phaser, with timers counted in simulation steps. Each result carries the launches (step, angle, power and projectile), and the server replays them with the same simulation before the run enters that level's board ([decision 0009](docs/decisions/0009-street-replay.md), [decision 0011](docs/decisions/0011-street-campaign.md)).
 
 ## Laboratório de Péssimas Ideias (`bad-ideas-lab`)
 

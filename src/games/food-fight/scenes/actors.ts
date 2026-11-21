@@ -37,6 +37,7 @@ export class Rival {
   trayKid = false;
   shielded = false;
   brawl = false;
+  x: number;
 
   constructor(
     private scene: Phaser.Scene,
@@ -46,6 +47,7 @@ export class Rival {
     private reduced: boolean,
   ) {
     const depth = slot.row === "back" ? 3 : 6;
+    this.x = slot.x;
     this.body = scene.add.image(0, 0, "rival-cap-1-up").setOrigin(0.5, 1);
     this.splat = scene.add.image(0, -150, "splat-food").setScale(0.9).setVisible(false);
     this.tray = scene.add.image(0, TRAY_UP_Y, "tray").setAngle(-5).setVisible(false);
@@ -71,6 +73,12 @@ export class Rival {
     return this.slot.scale * this.def.size;
   }
 
+  placeAt(x: number, now: number) {
+    this.x = x;
+    this.container.setX(x);
+    this.syncAttachments(now);
+  }
+
   get hiddenY() {
     return this.slot.upY + SPRITE_H * this.slot.scale * this.def.size + 10;
   }
@@ -93,7 +101,7 @@ export class Rival {
 
   face() {
     const s = this.scale;
-    return { x: this.slot.x, y: this.container.y - 140 * s };
+    return { x: this.x, y: this.container.y - 140 * s };
   }
 
   top() {
@@ -218,14 +226,14 @@ export class Rival {
     if (this.reduced) landed();
     else {
       this.puddingFalling = true;
-      this.scene.tweens.add({ targets: this.pudding, x: this.slot.x, y: this.top() + 12 * this.scale, angle: 180, duration: 260, ease: "Quad.easeIn", onComplete: landed });
+      this.scene.tweens.add({ targets: this.pudding, x: this.x, y: this.top() + 12 * this.scale, angle: 180, duration: 260, ease: "Quad.easeIn", onComplete: landed });
     }
     return { result: "down", interrupted: true };
   }
 
   hand(dir = 1) {
     const s = this.scale;
-    return { x: this.slot.x + 80 * s * dir, y: this.container.y - 176 * s };
+    return { x: this.x + 80 * s * dir, y: this.container.y - 176 * s };
   }
 
   throwPose(dir: number) {
@@ -286,7 +294,7 @@ export class Rival {
   }
 
   taunt(text: string) {
-    const t = cartoonText(this.scene, this.slot.x, this.top() - 30, text, {
+    const t = cartoonText(this.scene, this.x, this.top() - 30, text, {
       size: this.slot.row === "back" ? 30 : 36,
       color: "#fbf5e6",
       font: this.fonts.display,
@@ -294,6 +302,8 @@ export class Rival {
     })
       .setOrigin(0.5)
       .setDepth(15);
+    const view = this.scene.cameras.main.worldView;
+    if (view.width > t.width) t.setX(Phaser.Math.Clamp(t.x, view.x + t.width / 2 + 8, view.right - t.width / 2 - 8));
     this.scene.tweens.add({ targets: t, y: t.y - 30, alpha: 0, delay: 500, duration: 400, onComplete: () => t.destroy() });
   }
 
@@ -306,11 +316,11 @@ export class Rival {
     if (this.alert.visible) {
       const k = this.windupMs ? Phaser.Math.Clamp((now - this.windupStart) / this.windupMs, 0, 1) : 0;
       const pulse = this.reduced ? 1 : 1 + Math.sin(now / (110 - k * 60)) * 0.12;
-      this.alert.setPosition(this.slot.x - 50 * this.scale, this.top() - 26).setScale((this.slot.row === "back" ? 0.85 : 1) * pulse);
+      this.alert.setPosition(this.x - 50 * this.scale, this.top() - 26).setScale((this.slot.row === "back" ? 0.85 : 1) * pulse);
       this.alert.setColor(k > 0.66 ? "#ef4f43" : "#ffc83d");
     }
     if (this.dizzy.visible) {
-      this.dizzy.setPosition(this.slot.x + (this.reduced ? 0 : Math.sin(now / 90) * 14), this.top() - 8);
+      this.dizzy.setPosition(this.x + (this.reduced ? 0 : Math.sin(now / 90) * 14), this.top() - 8);
     }
   }
 
@@ -339,6 +349,8 @@ export class LunchLady {
   angry = false;
   private speed = LUNCH_LADY.speed;
   private walked = 0;
+  private exitX = LUNCH_LADY.exitX;
+  private stretch = 1;
 
   constructor(
     private scene: Phaser.Scene,
@@ -349,11 +361,13 @@ export class LunchLady {
     this.marker = scene.add.image(-300, 420, "icon-ban").setDepth(15).setAlpha(0.92).setVisible(false);
   }
 
-  start() {
+  start(enterX: number, exitX: number, stretch: number) {
     this.active = true;
     this.angry = false;
     this.walked = 0;
-    this.img.setTexture("lady-walk-0").setPosition(LUNCH_LADY.enterX, LUNCH_LADY.y).setAngle(0).setVisible(true);
+    this.exitX = exitX;
+    this.stretch = stretch;
+    this.img.setTexture("lady-walk-0").setPosition(enterX, LUNCH_LADY.y).setAngle(0).setVisible(true);
     this.shadow.setVisible(true);
     this.marker.setVisible(true);
     this.place();
@@ -380,13 +394,21 @@ export class LunchLady {
     this.marker.setPosition(this.img.x, LUNCH_LADY.y - this.img.displayHeight - 34 - lift);
   }
 
+  retarget(x: number, exitX: number, stretch: number) {
+    this.exitX = exitX;
+    this.stretch = stretch;
+    if (!this.active) return;
+    this.img.setX(x);
+    this.place();
+  }
+
   update(delta: number) {
     if (!this.active) return;
     const step = this.speed * delta * (this.angry ? 1.6 : 1);
-    this.img.x -= step;
+    this.img.x -= step * this.stretch;
     this.walked += step;
     this.place();
-    if (this.img.x < LUNCH_LADY.exitX) this.hide();
+    if (this.img.x < this.exitX) this.hide();
   }
 
   scold() {
@@ -411,6 +433,7 @@ export type CookPhase = "away" | "warning" | "entering" | "grabbing" | "leaving"
 export class Cook {
   readonly img: Phaser.GameObjects.Image;
   phase: CookPhase = "away";
+  private baseY: number = COOK.y;
   private clock = 0;
   private carrying = false;
   private found = false;
@@ -424,6 +447,12 @@ export class Cook {
 
   get busy() {
     return this.phase !== "away";
+  }
+
+  setBaseY(y: number) {
+    this.baseY = y;
+    this.scene.tweens.killTweensOf(this.img);
+    this.img.setY(y);
   }
 
   get grabbing() {
@@ -443,7 +472,7 @@ export class Cook {
   private walkFrame(prefix: string) {
     const frame = Math.floor(this.clock / 150) % 2;
     this.img.setTexture(`${prefix}-${frame}`);
-    this.img.setY(COOK.y - (this.reduced || frame === 0 ? 0 : 6));
+    this.img.setY(this.baseY - (this.reduced || frame === 0 ? 0 : 6));
     if (!this.reduced) this.img.setAngle(frame ? -1.5 : 1.5);
   }
 
@@ -454,7 +483,7 @@ export class Cook {
       if (this.clock >= COOK.warnMs) {
         this.phase = "entering";
         this.clock = 0;
-        this.img.setPosition(COOK.enterX, COOK.y).setVisible(true);
+        this.img.setPosition(COOK.enterX, this.baseY).setVisible(true);
       }
       return;
     }
@@ -464,8 +493,8 @@ export class Cook {
       if (this.img.x >= COOK.standX) {
         this.phase = "grabbing";
         this.clock = 0;
-        this.img.setTexture("cook-reach").setAngle(0).setY(COOK.y);
-        if (!this.reduced) this.scene.tweens.add({ targets: this.img, y: COOK.y + 10, duration: 160, yoyo: true, repeat: 1, ease: "Sine.easeInOut" });
+        this.img.setTexture("cook-reach").setAngle(0).setY(this.baseY);
+        if (!this.reduced) this.scene.tweens.add({ targets: this.img, y: this.baseY + 10, duration: 160, yoyo: true, repeat: 1, ease: "Sine.easeInOut" });
         onArrive();
       }
       return;

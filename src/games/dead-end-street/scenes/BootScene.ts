@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { Angle, Check, Lock, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero } from "lucide";
+import { Angle, Check, Droplet, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero, Star } from "lucide";
 import { loadIcons, type IconSpec } from "@/games/kit/icons";
 import type { GameHostContext } from "@/games/types";
 
@@ -46,6 +46,19 @@ export const ASSETS: [key: string, file: string, width: number, height: number][
   ["letter", "letter.svg", 38, 26],
   ["spark", "spark.svg", 26, 26],
   ["birdhouse-empty", "birdhouse-empty.svg", 80, 90],
+  ["arlindo-angry", "arlindo-angry.svg", 150, 140],
+  ["arlindo-soaked", "arlindo-soaked.svg", 150, 140],
+  ["brick", "brick.svg", 28, 102],
+  ["melon", "melon.svg", 62, 62],
+  ["bowling-ball", "bowling-ball.svg", 58, 58],
+  ["bucket", "bucket.svg", 66, 66],
+  ["parasol", "parasol.svg", 230, 222],
+  ["faucet", "faucet.svg", 42, 38],
+  ["blower", "blower.svg", 104, 80],
+  ["sandbag", "sandbag.svg", 66, 72],
+  ["sun-gnome", "sun-gnome.svg", 100, 60],
+  ["giant-gnome", "giant-gnome.svg", 112, 242],
+  ["sprinkler", "sprinkler.svg", 44, 34],
 ];
 
 const INK = "#1d1830";
@@ -63,7 +76,9 @@ export const ICONS: IconSpec[] = [
   { key: "icon-force-max", icon: Signal, size: ICON_SIZE, color: "#ef4f43", strokeWidth: 2.6 },
   { key: "icon-check-outline", icon: Check, size: ICON_SIZE, color: INK, strokeWidth: 6.4 },
   { key: "icon-check", icon: Check, size: ICON_SIZE, color: "#93cf4c", strokeWidth: 3.2 },
-  { key: "icon-lock-ink", icon: Lock, size: ICON_SIZE, color: INK, strokeWidth: 3 },
+  { key: "icon-drop-outline", icon: Droplet, size: ICON_SIZE, color: INK, strokeWidth: 6.4 },
+  { key: "icon-drop", icon: Droplet, size: ICON_SIZE, color: "#5cb9f0", strokeWidth: 3.2, fill: "#a9dcf7" },
+  { key: "icon-star", icon: Star, size: ICON_SIZE, color: INK, strokeWidth: 2.4, fill: "#ffc83d" },
 ];
 
 export class BootScene extends Phaser.Scene {
