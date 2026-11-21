@@ -59,9 +59,9 @@ export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; 
       { label: copy.plays, value: record?.plays ? String(record.plays) : "0" },
     ];
     return (
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
         {levelItems.map((item) => (
-          <div key={item.label} className="min-w-24 rounded-lg border-[3px] border-ink bg-cream px-3 py-1.5 text-center shadow-[var(--shadow-ink-sm)]">
+          <div key={item.label} className="min-w-0 rounded-lg border-[3px] border-ink bg-cream px-2 py-1.5 text-center shadow-[var(--shadow-ink-sm)] sm:min-w-24 sm:px-3">
             <p className="font-display text-[11px] uppercase tracking-widest text-ink-soft">{item.label}</p>
             <p className="font-display text-xl leading-tight text-ink tabular-nums">{item.value}</p>
           </div>
@@ -75,14 +75,14 @@ export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; 
     { label: copy.wins, value: record?.wins ? String(record.wins) : "0" },
   ];
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
       {items.map((item) => (
-        <div key={item.label} className="min-w-24 rounded-lg border-[3px] border-ink bg-cream px-3 py-1.5 text-center shadow-[var(--shadow-ink-sm)]">
+        <div key={item.label} className="min-w-0 rounded-lg border-[3px] border-ink bg-cream px-2 py-1.5 text-center shadow-[var(--shadow-ink-sm)] sm:min-w-24 sm:px-3">
           <p className="font-display text-[11px] uppercase tracking-widest text-ink-soft">{item.label}</p>
           <p className="font-display text-xl leading-tight text-ink tabular-nums">{item.value}</p>
         </div>
       ))}
-      <div className="rounded-lg border-[3px] border-ink bg-cream px-3 py-1.5 text-center shadow-[var(--shadow-ink-sm)]">
+      <div className="min-w-0 rounded-lg border-[3px] border-ink bg-cream px-2 py-1.5 text-center shadow-[var(--shadow-ink-sm)] sm:px-3">
         <p className="font-display text-[11px] uppercase tracking-widest text-ink-soft">{copy.best}</p>
         <Stars count={record?.bestStars ?? 0} />
       </div>

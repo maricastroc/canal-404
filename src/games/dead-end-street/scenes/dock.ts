@@ -128,7 +128,9 @@ export class DockHud implements StreetHud {
   private coachTimer?: Phaser.Time.TimerEvent;
   private coachStep: CoachStep | null = null;
   private pins = new Map<string, Pin>();
-  private navPill: Phaser.GameObjects.Container | null = null;
+  private navPill: Phaser.GameObjects.Text | null = null;
+  private navigating = false;
+  private trayParts: Phaser.GameObjects.GameObject[] = [];
   private navText: string | null = null;
   private marks: Phaser.GameObjects.Graphics | null = null;
   private inset: { x: number; y: number; w: number; h: number } | null = null;
@@ -218,6 +220,7 @@ export class DockHud implements StreetHud {
     for (const obj of this.objs) obj.destroy();
     this.objs = [];
     this.slots = [];
+    this.trayParts = [];
     this.cells = [];
     this.parStars = [];
     this.steppers = [];
@@ -254,9 +257,10 @@ export class DockHud implements StreetHud {
     bg.fillRect(0, 0, w, frame.top.h);
     bg.fillStyle(INK_HEX, 1);
     bg.fillRect(0, frame.top.h - 3 * k, w, 3 * k);
-    const rowA = t + 23 * k;
-    const rowB = t + 56 * k;
-    const rowC = t + 86 * k;
+    const barH = frame.top.h - t;
+    const rowA = t + barH * 0.22;
+    const rowB = t + barH * 0.54;
+    const rowC = t + barH * 0.83;
 
     const boxW = Phaser.Math.Clamp((w / k) * 0.28, 98, 124) * k;
     const boxX = right - boxW;
@@ -287,7 +291,7 @@ export class DockHud implements StreetHud {
     const hit = this.add(this.hitRect(Math.max(title.x + title.width, titleX) - left, 38 * k, left, rowA - 19 * k).setDepth(DEPTH.ui));
     hit.on("pointerdown", () => this.toggleGoal());
 
-    const size = 31 * k;
+    const size = Math.min(31 * k, barH * 0.3);
     const step = size + 6 * k;
     phase.targets.forEach((target, i) => {
       const x = left + size / 2 + i * step;
@@ -370,11 +374,12 @@ export class DockHud implements StreetHud {
     this.slotsRect = { x: padL, y: slotTop - pad, w: trayW, h: size + 2 * pad };
     if (many) {
       const tray = this.add(scene.add.graphics().setDepth(DEPTH.ui - 0.5));
+      this.trayParts.push(tray);
       tray.fillStyle(WELL, 1);
       tray.fillRoundedRect(padL, slotTop - pad, trayW, size + 2 * pad, (size + 2 * pad) / 2);
       tray.lineStyle(2.5 * k, INK_HEX, 1);
       tray.strokeRoundedRect(padL, slotTop - pad, trayW, size + 2 * pad, (size + 2 * pad) / 2);
-      this.add(scene.add.image(padL + trayW - pad - swapW / 2 - 1 * k, slotTop + size / 2, "icon-swap").setDisplaySize(17 * k, 17 * k).setDepth(DEPTH.ui).setAlpha(0.85));
+      this.trayParts.push(this.add(scene.add.image(padL + trayW - pad - swapW / 2 - 1 * k, slotTop + size / 2, "icon-swap").setDisplaySize(17 * k, 17 * k).setDepth(DEPTH.ui).setAlpha(0.85)));
     }
     kinds.forEach((id, i) => {
       const cx = padL + pad + size / 2 + i * (size + gap);
@@ -581,7 +586,9 @@ export class DockHud implements StreetHud {
         g.lineStyle(3 * k, 0xfffaf0, 0.95);
         g.strokeCircle(0, 0, r + 3.5 * k);
       }
-      slot.root.setAlpha(left > 0 ? 1 : 0.35);
+      slot.root.setAlpha(this.navigating ? 0.4 : left > 0 ? 1 : 0.35);
+      const slotHit = slot.root.list[3] as Phaser.GameObjects.Rectangle;
+      if (slotHit.input) slotHit.input.enabled = !this.navigating;
       slot.root.setScale(1);
       slot.root.y = slot.baseY - (on ? 2 * k : 0);
     }
@@ -619,11 +626,12 @@ export class DockHud implements StreetHud {
 
   private drawAim() {
     const { angle, power } = this.state;
-    const active = angle !== null && power !== null;
+    const shown = angle !== null && power !== null;
+    const active = shown && !this.navigating;
     this.steppers.forEach((s, i) => {
-      s.root.setAlpha(active ? 1 : 0.45);
+      s.root.setAlpha(active ? 1 : 0.42);
       for (const b of s.buttons) (b.list[2] as Phaser.GameObjects.Rectangle).input!.enabled = active;
-      if (!active) return;
+      if (!shown) return;
       s.value.setText(i === 0 ? `${Math.round(angle)}°` : `${Math.round(power * 100)}%`);
       s.value.y = 20 * this.k + glyphOffset(s.value);
     });
@@ -650,7 +658,7 @@ export class DockHud implements StreetHud {
       g.fillStyle(0xffffff, 0.25);
       g.fillRoundedRect(-w / 2 + 6 * k, -h / 2 + 5 * k, w - 12 * k, 10 * k, 5 * k);
     }
-    btn.setAlpha(this.state.fire === "off" ? 0.55 : ready ? 1 : 0.8);
+    btn.setAlpha(this.state.fire === "off" || this.navigating ? 0.45 : ready ? 1 : 0.8);
     const hit = btn.list[3] as Phaser.GameObjects.Rectangle;
     if (hit.input) hit.input.enabled = ready;
   }
@@ -850,8 +858,24 @@ export class DockHud implements StreetHud {
     if (text === this.navText) return;
     this.navText = text;
     this.navPill?.destroy();
-    this.navPill = text && this.frame.kind === "tall" ? this.pill(text, MINT, DEPTH.coach + 0.5) : null;
+    this.navPill = null;
+    if (text && this.frame.kind === "tall") {
+      const k = this.k;
+      const label = this.label(this.frame.width / 2, this.frame.dock.y + 17 * k, text, 13, "#9df0dc").setOrigin(0.5);
+      label.y += glyphOffset(label) * 0.5;
+      this.navPill = this.add(label.setDepth(DEPTH.coach + 0.5), false);
+    }
     this.syncInfo();
+    for (const o of this.coachObjs) (o as Phaser.GameObjects.Graphics).setVisible(!text);
+  }
+
+  setNavigating(on: boolean) {
+    if (on === this.navigating) return;
+    this.navigating = on;
+    for (const part of this.trayParts) (part as Phaser.GameObjects.Graphics).setAlpha(on ? 0.4 : 1);
+    this.drawAmmo();
+    this.drawAim();
+    this.drawFire();
   }
 
   setInset(rect: { x: number; y: number; w: number; h: number } | null) {
@@ -980,14 +1004,14 @@ export class DockHud implements StreetHud {
     );
   }
 
-  pin(key: string, screen: Vec, kind: PinKind, tex?: string, persistent = false) {
+  pin(key: string, screen: Vec, kind: PinKind, tex?: string, persistent = false, above = false) {
     const { k, frame, scene } = this;
     const st = frame.stage;
     const m = 24 * k;
     const top = st.y + m;
     const x = Phaser.Math.Clamp(screen.x, st.x + m, st.x + st.w - m);
-    const y = Phaser.Math.Clamp(screen.y, top, st.y + st.h - m - 30 * k);
-    const angle = Math.atan2(screen.y - y, screen.x - x);
+    const y = above ? Phaser.Math.Clamp(screen.y - 30 * k, top, st.y + st.h - m) : Phaser.Math.Clamp(screen.y, top, st.y + st.h - m - 30 * k);
+    const angle = above ? Math.PI / 2 : Math.atan2(screen.y - y, screen.x - x);
     let pin = this.pins.get(key);
     if (!pin) {
       const r = 15 * k;

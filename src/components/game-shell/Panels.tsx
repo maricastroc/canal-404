@@ -19,7 +19,7 @@ import { useCopy, useLocale, useLocalePath } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { formatNumber } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
-import { useTouchScreen } from "@/lib/device";
+import { useNarrowScreen, useTouchScreen } from "@/lib/device";
 import type { JoinOutcome } from "@/lib/competition/client";
 import { missionOverridesStars } from "@/lib/missions/goals";
 import type { MissionState, MissionView } from "@/lib/missions/types";
@@ -151,7 +151,7 @@ const COPY = localized({
 function useAutoFocus<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   useEffect(() => {
-    const id = window.setTimeout(() => ref.current?.focus(), 60);
+    const id = window.setTimeout(() => ref.current?.focus({ preventScroll: true }), 60);
     return () => window.clearTimeout(id);
   }, []);
   return ref;
@@ -168,7 +168,9 @@ export function OverlayFrame({
 }) {
   const present = useIsPresent();
   return (
-    <div className={`absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-plum-950/70 p-3 backdrop-blur-[1px] sm:p-6 ${present ? "" : "pointer-events-none"}`}>
+    <div
+      className={`absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-plum-950/70 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-6 backdrop-blur-[1px] [scrollbar-gutter:stable] sm:p-6 ${present ? "" : "pointer-events-none"}`}
+    >
       <motion.div
         role="dialog"
         aria-modal="true"
@@ -599,6 +601,7 @@ export function ResultPanel({
   const copy = COPY[locale];
   const Cast = GAME_CAST[game.slug];
   const mainRef = useAutoFocus<HTMLButtonElement>();
+  const narrow = useNarrowScreen();
   const { play } = useSound();
   useEffect(() => {
     if (!result.won) return;
@@ -608,6 +611,44 @@ export function ResultPanel({
     return () => ids.forEach((id) => window.clearTimeout(id));
   }, [play, result.won, result.stars]);
   const title = result.copy?.title ?? (result.won ? game.copy?.winTitle : game.copy?.loseTitle) ?? (result.won ? copy.win : copy.lose);
+  const actions = (
+    <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:whitespace-nowrap max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
+      {onNext && !mission ? (
+        <InkButton ref={mainRef} tone="sun" onClick={onNext}>
+          <PlayIcon className="size-5 text-ink" /> {copy.nextLevel(word)}
+        </InkButton>
+      ) : null}
+      <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "cream" : "sun"} onClick={onRestart} className={onNext && !mission ? "max-[420px]:[&>svg]:hidden" : "sm:px-7"}>
+        {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
+        {mission ? copy.retryMission : (result.restartLabel ?? (result.level && word === "fase" ? copy.replayLevel : copy.playAgain))}
+      </InkButton>
+      {onNext && mission ? (
+        <InkButton tone="cream" onClick={onNext}>
+          <PlayIcon className="size-5 text-ink" /> {copy.nextLevel(word)}
+        </InkButton>
+      ) : null}
+      {onAlt && result.alt ? (
+        <InkButton tone="cream" onClick={onAlt}>
+          {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}
+        </InkButton>
+      ) : null}
+      {onLevels ? null : (
+        <InkLink href="/games" tone="cream">
+          {copy.catalog}
+        </InkLink>
+      )}
+      <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 max-sm:col-span-2 max-sm:justify-center max-sm:gap-x-2 max-sm:[&>*]:px-1 max-sm:[&>*]:text-[15px] max-sm:[&>*]:tracking-normal">
+        {onLevels ? (
+          <button type="button" onClick={onLevels} className={TERTIARY}>
+            <LevelsIcon className="size-4" /> {copy.pickLevel(word)}
+          </button>
+        ) : null}
+        <Link href="/" className={TERTIARY}>
+          <HouseIcon className="size-4" /> {copy.backToRoom}
+        </Link>
+      </div>
+    </div>
+  );
   const text = result.copy?.text ?? (result.won ? game.copy?.winText : game.copy?.loseText) ?? "";
   return (
     <OverlayFrame label={result.won ? copy.winLabel(title) : copy.loseLabel(title)} className="max-w-2xl p-5 sm:p-7 wideshort:max-w-5xl wideshort:p-5">
@@ -689,44 +730,10 @@ export function ResultPanel({
           {mission ? <MissionLine view={mission} board={board ?? null} /> : null}
           {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
           {!onNext && <NextProgram current={game.slug} />}
-          <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-4 max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:whitespace-nowrap max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
-            {onNext && !mission ? (
-              <InkButton ref={mainRef} tone="sun" onClick={onNext}>
-                <PlayIcon className="size-5 text-ink" /> {copy.nextLevel(word)}
-              </InkButton>
-            ) : null}
-            <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "cream" : "sun"} onClick={onRestart} className={onNext && !mission ? "max-[420px]:[&>svg]:hidden" : "sm:px-7"}>
-              {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
-              {mission ? copy.retryMission : (result.restartLabel ?? (result.level && word === "fase" ? copy.replayLevel : copy.playAgain))}
-            </InkButton>
-            {onNext && mission ? (
-              <InkButton tone="cream" onClick={onNext}>
-                <PlayIcon className="size-5 text-ink" /> {copy.nextLevel(word)}
-              </InkButton>
-            ) : null}
-            {onAlt && result.alt ? (
-              <InkButton tone="cream" onClick={onAlt}>
-                {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}
-              </InkButton>
-            ) : null}
-            {onLevels ? null : (
-              <InkLink href="/games" tone="cream">
-                {copy.catalog}
-              </InkLink>
-            )}
-            <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 max-sm:col-span-2 max-sm:justify-center">
-              {onLevels ? (
-                <button type="button" onClick={onLevels} className={TERTIARY}>
-                  <LevelsIcon className="size-4" /> {copy.pickLevel(word)}
-                </button>
-              ) : null}
-              <Link href="/" className={TERTIARY}>
-                <HouseIcon className="size-4" /> {copy.backToRoom}
-              </Link>
-            </div>
-          </div>
+          {narrow ? null : actions}
         </div>
       </div>
+      {narrow ? actions : null}
     </OverlayFrame>
   );
 }

@@ -29,6 +29,7 @@ import { computeLevelProgress } from "./levelProgress";
 import { LoadingScreen, pickTip } from "./LoadingScreen";
 import { useAnnouncer } from "./useAnnouncer";
 import type { BoardState } from "./BoardLine";
+import { HeaderToast, useHeaderToast } from "./HeaderToast";
 import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
@@ -189,6 +190,7 @@ export function GameShell({ slug }: { slug: string }) {
   const hydrated = useHydrated();
   const [tipSeed] = useState(() => Math.floor(Math.random() * 1000));
   const touchScreen = useTouchScreen();
+  const headerToast = useHeaderToast();
   const deviceTips = touchScreen ? game.touchTips : game.keyTips;
   const tip = pickTip(hydrated ? tipSeed : 0, game.tips && deviceTips ? [...game.tips, ...deviceTips] : game.tips, locale);
   const levelRecords = progressState.games[slug]?.levels;
@@ -590,7 +592,10 @@ export function GameShell({ slug }: { slug: string }) {
           <ArrowLeftIcon className="size-4" />
           <span className="hidden sm:inline">{copy.back}</span>
         </Link>
-        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[15px] uppercase leading-[1.05] text-sun max-[359px]:text-[13px] sm:line-clamp-1 sm:flex-initial sm:text-2xl sm:leading-normal sm:tracking-wide">{game.title}</p>
+        <div className="relative min-w-0 flex-1 self-stretch sm:flex-initial sm:self-auto">
+          <p className={`line-clamp-2 flex h-full items-center font-display text-[15px] uppercase leading-[1.05] text-sun max-[359px]:text-[13px] sm:line-clamp-1 sm:block sm:h-auto sm:text-2xl sm:leading-normal sm:tracking-wide ${headerToast ? "max-sm:invisible" : ""}`}>{game.title}</p>
+          <HeaderToast />
+        </div>
         {missionRun && canControl ? (
           <p className="hidden min-w-0 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-lime px-2 py-0.5 font-display text-xs uppercase tracking-wide text-ink md:flex">
             <MissionIcon className="size-4" />

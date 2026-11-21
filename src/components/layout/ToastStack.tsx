@@ -18,7 +18,7 @@ export function ToastStack() {
       aria-relevant="additions"
       className={`pointer-events-none fixed z-[80] ${
         inGame
-          ? "left-1/2 top-2.5 w-max max-w-[min(34vw,22rem)] -translate-x-1/2"
+          ? "left-1/2 top-2.5 w-max max-w-[min(34vw,22rem)] -translate-x-1/2 max-sm:opacity-0"
           : "inset-x-3 top-20 sm:inset-x-auto sm:right-5 sm:w-96 [@media(max-height:520px)]:top-16 [@media(max-height:520px)]:w-72"
       }`}
     >
