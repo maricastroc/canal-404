@@ -290,65 +290,64 @@ function Puff({ x, y, r, opacity = 0.9 }: { x: number; y: number; r: number; opa
   );
 }
 
-function Neighborhood({ road, k, houses }: { road: Road; k: number; houses: [string, number, number, number][] }) {
+const COVER_ROAD: Road = { x0: -20, y0: 152.6, x1: 340, y1: 249.8, s: 0.3 };
+const COVER_STREET = 240;
+const BACK_ROW = -207;
+
+function CoverHouse({ name, x, k, w, h, road }: { name: string; x: number; k: number; w: number; h: number; road: Road }) {
+  const ground = roadAt(road, x + (w * k) / 2 - 44 * k) - (COVER_STREET + 26) * road.s;
+  return <Kit name={`sample/${name}`} cx={x} ground={ground} k={k} w={w} h={h} />;
+}
+
+function Dust({ x, y, angle, r }: { x: number; y: number; angle: number; r: number }) {
   return (
-    <g>
-      {houses.map(([name, x, w, h]) => {
-        const right = x + ((w - 88) * k) / 2;
-        const ground = roadAt(road, right) - 150 * road.s;
-        return <Kit key={`${name}${x}`} name={`sample/${name}`} cx={x} ground={ground} k={k} w={w} h={h} />;
-      })}
+    <g transform={`translate(${r1(x)} ${r1(y)}) rotate(${r1(angle)})`}>
+      <Puff x={-r * 1.6} y={-r * 0.6} r={r} opacity={0.9} />
+      <Puff x={-r * 4} y={-r * 1.2} r={r * 0.7} opacity={0.6} />
     </g>
   );
 }
-
-const COVER_ROAD: Road = { x0: -20, y0: 156, x1: 340, y1: 264, s: 0.4 };
 
 export function DownhillDerbyCoverArt() {
   const road = COVER_ROAD;
   const a = roadAngle(road);
   const s = road.s;
   const lane = (x: number, l: number) => roadAt(road, x) + l * s;
-  const ramp = { x0: 186, len: 140, rise: 84 };
-  const lip = { x: ramp.x0 + ramp.len * s, y: lane(ramp.x0 + ramp.len * s, 0) - ramp.rise * s };
-  const mila = { x: 100, y: lane(100, -126) };
-  const bruno = { x: 154, y: lane(154, -84) };
-  const lina = { x: 206, y: lane(206, -42) };
-  const deco = { x: 270, y: 112 };
+  const ramp = { x0: 186, len: 150, rise: 84 };
+  const lipX = ramp.x0 + ramp.len * s;
+  const lip = { x: lipX, y: lane(lipX, 0) - ramp.rise * s };
+  const bruno = { x: 50, y: lane(50, BACK_ROW) };
+  const lina = { x: 164, y: lane(164, BACK_ROW) };
+  const mila = { x: 104, y: lane(104, -10) };
+  const deco = { x: 268, y: lip.y - 14 };
   return (
     <>
-      <circle cx={214} cy={36} r={24} fill={C.sun} />
-      <Cloud x={128} y={24} s={0.7} />
-      <Cloud x={300} y={18} s={0.5} opacity={0.9} />
-      <Kit name="sample/bg-morro" cx={260} ground={140} k={0.24} w={1600} h={420} />
-      <Kit name="antena/antena-404" cx={292} ground={104} k={0.07} w={648} h={1196} />
-      <Kit name="sample/bg-telhados" cx={220} ground={168} k={0.22} w={1600} h={360} opacity={0.95} />
-      <Neighborhood
-        road={road}
-        k={0.24}
-        houses={[
-          ["facade-sobrado-rosa", 22, 428, 648],
-          ["facade-terrea-amarelo", 128, 468, 390],
-          ["facade-terrea-lilas", 238, 468, 390],
-          ["facade-mercadinho-pessego", 346, 508, 416],
-        ]}
-      />
-      <Street road={road} />
-      <g transform="translate(64 214) scale(0.3)">
-        <image href={`${ART}/dog-a.svg`} x={-90} y={-146} width={200} height={150} />
-      </g>
-      <Shadow x={mila.x} y={mila.y} w={60} angle={a} />
-      <Racer who="mila" x={mila.x} y={mila.y} s={s} angle={a} face="smug" />
-      <Shadow x={bruno.x} y={bruno.y} w={56} angle={a} />
-      <SpeedLines x={bruno.x - 44} y={bruno.y - 20} angle={a} s={s} rows={[[-50, -10, -60], [-10, -20, -80]]} />
-      <Racer who="bruno" x={bruno.x} y={bruno.y} s={s} angle={a} face="wow" />
+      <rect width={320} height={240} fill={C.sky} />
+      <circle cx={286} cy={30} r={20} fill={C.sun} />
+      <Cloud x={196} y={22} s={0.5} />
+      <Kit name="sample/bg-morro" cx={250} ground={92} k={0.16} w={1600} h={420} />
+      <Kit name="antena/antena-404" cx={228} ground={62} k={0.045} w={648} h={1196} />
+      <CoverHouse road={road} name="facade-terrea-amarelo" x={14} k={0.15} w={468} h={390} />
+      <CoverHouse road={road} name="facade-sobrado-rosa" x={78} k={0.15} w={428} h={648} />
+      <CoverHouse road={road} name="facade-terrea-lilas" x={146} k={0.15} w={468} h={390} />
+      <Kit name="sample/poste" cx={186} ground={lane(186, -COVER_STREET - 22)} k={0.14} w={308} h={656} />
+      <CoverHouse road={road} name="facade-mercadinho-pessego" x={226} k={0.15} w={508} h={416} />
+      <Kit name="sample/ipe" cx={300} ground={lane(300, -COVER_STREET - 22)} k={0.17} w={448} h={486} />
+      <Street road={road} width={COVER_STREET} />
+      <Kit name="sample/vizinho-juninho-cheer" cx={30} ground={lane(30, 64)} k={0.2} w={270} h={246} />
+      <Shadow x={bruno.x} y={bruno.y} w={52} angle={a} />
+      <Dust x={bruno.x - 34} y={bruno.y} angle={a} r={4} />
+      <Racer who="bruno" x={bruno.x} y={bruno.y} s={s} angle={a} face="panic" arm="grip" />
       <Shadow x={lina.x} y={lina.y} w={56} angle={a} />
+      <Dust x={lina.x - 36} y={lina.y} angle={a} r={4} />
       <Racer who="lina" x={lina.x} y={lina.y} s={s} angle={a} face="strain" arm="grip" spin={20} />
       <Ramp road={road} x0={ramp.x0} len={ramp.len} rise={ramp.rise} back={-24} />
-      <Shadow x={deco.x + 10} y={lane(deco.x + 10, 0)} w={50} angle={a} opacity={0.16} />
-      <Dots from={{ x: lip.x + 2, y: lip.y - 6 }} via={{ x: lip.x + 6, y: lip.y - 34 }} to={{ x: deco.x - 26, y: deco.y - 14 }} n={3} r={2.2} />
-      <SpeedLines x={deco.x - 50} y={deco.y - 36} angle={-14} s={s} rows={[[-40, -20, -70], [0, -30, -100], [40, -20, -60]]} />
-      <Racer who="deco" x={deco.x} y={deco.y} s={s} angle={-10} face="happy" arm="up" reach={-24} />
+      <Shadow x={mila.x} y={mila.y} w={62} angle={a} />
+      <Dust x={mila.x - 40} y={mila.y} angle={a} r={5} />
+      <Racer who="mila" x={mila.x} y={mila.y} s={s} angle={a} face="smug" />
+      <Shadow x={deco.x + 10} y={lane(deco.x + 10, 0)} w={46} angle={a} opacity={0.16} />
+      <Dots from={{ x: lip.x + 2, y: lip.y - 6 }} via={{ x: lip.x + 8, y: lip.y - 22 }} to={{ x: deco.x - 34, y: deco.y - 12 }} n={3} r={1.8} />
+      <Racer who="deco" x={deco.x} y={deco.y} s={s} angle={-16} face="happy" arm="up" reach={-24} />
     </>
   );
 }

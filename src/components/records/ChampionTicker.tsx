@@ -22,14 +22,14 @@ const COPY = localized({
     word: { fase: "Fase", arena: "Arena", pista: "Pista" },
     tuning: "Sintonizando o placar…",
     arcade: "Ver o fliperama de recordes",
-    empty: "O quadro dos campeões ainda está vazio. Que tal colocar seu nome nele?",
+    empty: "Ainda não tem ninguém no quadro dos campeões. Que tal ser o primeiro?",
     title: "Quadro dos campeões",
   },
   en: {
     word: { fase: "Level", arena: "Arena", pista: "Track" },
     tuning: "Tuning in the board…",
     arcade: "Visit the record arcade",
-    empty: "The hall of champions is still empty. How about putting your name on it?",
+    empty: "Nobody's in the hall of champions yet. How about being the first?",
     title: "Hall of champions",
   },
 });
