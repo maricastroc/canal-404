@@ -97,3 +97,37 @@ export function squiggle(scene: Phaser.Scene, fonts: Fonts, x: number, y: number
   scene.tweens.add({ targets: t, angle: 8, duration: 60, yoyo: true, repeat: 5 });
   scene.tweens.add({ targets: t, y: y - size, alpha: 0, delay: 500, duration: 400, onComplete: () => t.destroy() });
 }
+
+export function soundLine(scene: Phaser.Scene, x0: number, y0: number, x1: number, y1: number, s: number, depth = 52) {
+  const g = scene.add.graphics().setDepth(depth);
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  const steps = Math.max(2, Math.floor(len / (s * 0.45)));
+  for (let i = 1; i < steps; i += 1) {
+    const t = i / steps;
+    const cx = x0 + (x1 - x0) * t;
+    const cy = y0 + (y1 - y0) * t;
+    g.lineStyle(Math.max(3, s * 0.04), 0xd9ccff, 0.95);
+    g.beginPath();
+    g.arc(cx, cy, s * 0.14, ang - 0.7, ang + 0.7);
+    g.strokePath();
+  }
+  g.setAlpha(0);
+  scene.tweens.add({ targets: g, alpha: 1, duration: 120, hold: 650, yoyo: true, onComplete: () => g.destroy() });
+}
+
+export function sightLine(scene: Phaser.Scene, x0: number, y0: number, x1: number, y1: number, s: number, depth = 52) {
+  const g = scene.add.graphics().setDepth(depth);
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const dash = s * 0.12;
+  g.lineStyle(Math.max(4, s * 0.05), 0xef4f43, 1);
+  for (let d = 0; d < len; d += dash * 2) {
+    const t0 = d / len;
+    const t1 = Math.min(1, (d + dash) / len);
+    g.lineBetween(x0 + (x1 - x0) * t0, y0 + (y1 - y0) * t0, x0 + (x1 - x0) * t1, y0 + (y1 - y0) * t1);
+  }
+  g.lineStyle(Math.max(4, s * 0.05), 0xef4f43, 1);
+  g.strokeCircle(x1, y1, s * 0.42);
+  g.setAlpha(0);
+  scene.tweens.add({ targets: g, alpha: 1, duration: 140, hold: 1600, yoyo: true, onComplete: () => g.destroy() });
+}

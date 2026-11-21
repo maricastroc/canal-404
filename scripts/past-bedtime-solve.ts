@@ -12,6 +12,7 @@ type Proof = { label: string; holds: (level: LevelDef, turns: number, emptyTurns
 const unsolvable = (level: LevelDef) => solve(createSim(level)) === null;
 
 const PROOFS: Record<string, Proof> = {
+  doorway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
   hallway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
   kitchen: { label: "slower than an empty kitchen, so Grandma's round has to be waited out", holds: (_l, turns, empty) => empty !== null && turns > empty },
   living: { label: "unsolvable without creaky boards to lure Pipoca", holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/~/g, ".")) }) },

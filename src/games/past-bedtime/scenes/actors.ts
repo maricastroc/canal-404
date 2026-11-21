@@ -1,4 +1,4 @@
-import type * as Phaser from "phaser";
+import * as Phaser from "phaser";
 import type { Dir } from "../sim/types";
 
 const INK = 0x1d1830;
@@ -156,6 +156,38 @@ function sweat(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number) 
   g.strokePath();
 }
 
+export class StatusIcon {
+  readonly text: Phaser.GameObjects.Text;
+  private current = "";
+
+  constructor(
+    private scene: Phaser.Scene,
+    parent: Phaser.GameObjects.Container,
+    font: string,
+    size: number,
+    y: number,
+  ) {
+    this.text = scene.add
+      .text(0, y, "", { fontFamily: font, fontSize: `${Math.round(size)}px`, color: "#1d1830", padding: { x: Math.round(size * 0.32), y: 2 } })
+      .setOrigin(0.5)
+      .setVisible(false);
+    parent.add(this.text);
+    scene.tweens.add({ targets: this.text, y: y - size * 0.18, duration: 520, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  show(label: string | null, bg = "#ffe39a") {
+    if (!label) {
+      this.current = "";
+      this.text.setVisible(false);
+      return;
+    }
+    if (label === this.current && this.text.visible) return;
+    this.current = label;
+    this.text.setText(label).setBackgroundColor(bg).setVisible(true).setScale(0.3);
+    this.scene.tweens.add({ targets: this.text, scale: 1, duration: 220, ease: "Back.easeOut" });
+  }
+}
+
 export type BrunoMood = "calm" | "tense" | "breath" | "scared" | "caught" | "happy" | "sneak";
 
 export class BrunoView {
@@ -166,6 +198,8 @@ export class BrunoView {
   private facing: Dir = 1;
   private mood: BrunoMood = "calm";
   private bob?: Phaser.Tweens.Tween;
+  private blinking = false;
+  private glanceX: number | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -185,6 +219,31 @@ export class BrunoView {
     this.bob?.remove();
     this.body.y = 0;
     this.bob = this.scene.tweens.add({ targets: this.body, y: -this.s * 0.025, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  blink() {
+    if (this.facing === 0 || this.mood === "happy" || this.mood === "breath") return;
+    this.blinking = true;
+    this.draw();
+    this.scene.time.delayedCall(130, () => {
+      this.blinking = false;
+      this.draw();
+    });
+  }
+
+  glance(dx: number) {
+    if (this.facing === 0) return;
+    this.glanceX = dx;
+    this.draw();
+    this.scene.tweens.add({ targets: this.body, angle: dx * 4, duration: 160, yoyo: true, hold: 420 });
+    this.scene.time.delayedCall(750, () => {
+      this.glanceX = null;
+      this.draw();
+    });
+  }
+
+  wince() {
+    this.scene.tweens.add({ targets: this.body, scaleY: 0.86, scaleX: 1.1, duration: 90, yoyo: true, repeat: 1 });
   }
 
   setMood(mood: BrunoMood) {
@@ -315,7 +374,7 @@ export class BrunoView {
     g.fillPath();
     g.lineStyle(3, INK, 1);
     g.strokePath();
-    const look = this.facing === 2 ? { x: 0, y: 0.6 } : { x: turn, y: 0 };
+    const look = this.glanceX !== null ? { x: this.glanceX, y: 0.1 } : this.facing === 2 ? { x: 0, y: 0.6 } : { x: turn, y: 0 };
     const cx = hx + turn * r * 0.16;
     const cy = hy + r * 0.12;
     const spec: Record<BrunoMood, FaceSpec> = {
@@ -327,7 +386,8 @@ export class BrunoView {
       caught: { eyes: "wide", mouth: "grin", brows: "worried", look: { x: 0, y: 0.4 }, glasses: true, blush: true },
       happy: { eyes: "happy", mouth: "smile", brows: "up", look, glasses: true, blush: true },
     };
-    face(g, cx, cy, r * 0.82, spec[this.mood]);
+    const chosen = spec[this.mood];
+    face(g, cx, cy, r * 0.82, this.blinking && (chosen.eyes === "dot" || chosen.eyes === "wide") ? { ...chosen, eyes: "closed" } : chosen);
     if (this.mood === "tense" || this.mood === "caught" || this.mood === "scared") sweat(g, hx + r * 0.95, hy - r * 0.5, r * 0.22);
     if (this.mood === "caught") sweat(g, hx - r * 0.95, hy - r * 0.35, r * 0.18);
   }
@@ -367,7 +427,13 @@ export class DadView {
   }
 
   headPoint() {
-    return { x: this.container.x + this.head.x, y: this.container.y + this.head.y - this.s * 0.3 };
+    const k = this.container.scaleX;
+    return { x: this.container.x + this.head.x * k, y: this.container.y + (this.head.y - this.s * 0.3) * k };
+  }
+
+  stir() {
+    if (this.mood !== "sleep") return;
+    this.scene.tweens.add({ targets: this.head, angle: { from: -8, to: 8 }, duration: 120, yoyo: true, repeat: 1, onComplete: () => this.head.setAngle(this.seat === "armchair" ? 16 : 0) });
   }
 
   set(mood: SleeperMood, facing: Dir) {
@@ -455,25 +521,49 @@ export class GrandmaView {
   private body: Phaser.GameObjects.Container;
   private mood: GrandmaMood = "walk";
   private facing: Dir = 2;
+  private beamPivot: Phaser.GameObjects.Container;
+  private beamSway: Phaser.GameObjects.Container;
+  private sway?: Phaser.Tweens.Tween;
 
   constructor(
     private scene: Phaser.Scene,
     private s: number,
+    beamLength: number,
   ) {
     const shadow = scene.add.graphics();
     shadow.fillStyle(0x000000, 0.35);
     shadow.fillEllipse(0, s * 0.3, s * 0.6, s * 0.18);
+    const beam = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    const L = beamLength * 0.8;
+    beam.fillStyle(0xffe39a, 0.12);
+    beam.fillTriangle(0, 0, -L * 0.2, -L, L * 0.2, -L);
+    beam.fillStyle(0xfff4c8, 0.2);
+    beam.fillTriangle(0, 0, -L * 0.09, -L * 0.8, L * 0.09, -L * 0.8);
+    beam.fillStyle(0xffffff, 0.45);
+    beam.fillCircle(0, 0, s * 0.1);
+    this.beamSway = scene.add.container(0, 0, [beam]);
+    this.beamPivot = scene.add.container(0, 0, [this.beamSway]);
     this.gfx = scene.add.graphics();
     this.body = scene.add.container(0, 0, [this.gfx]);
-    this.container = scene.add.container(0, 0, [shadow, this.body]).setDepth(33);
+    this.container = scene.add.container(0, 0, [shadow, this.beamPivot, this.body]).setDepth(33);
     this.draw();
+    this.startSway();
+  }
+
+  private startSway() {
+    this.sway?.remove();
+    this.beamSway.setAngle(0);
+    const alert = this.mood !== "walk";
+    this.sway = this.scene.tweens.add({ targets: this.beamSway, angle: { from: alert ? -9 : -5, to: alert ? 9 : 5 }, duration: alert ? 180 : 1300, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   }
 
   set(mood: GrandmaMood, facing: Dir) {
     if (mood === this.mood && facing === this.facing) return;
+    const moodChanged = mood !== this.mood;
     this.mood = mood;
     this.facing = facing;
     this.draw();
+    if (moodChanged) this.startSway();
   }
 
   walkTo(x: number, y: number, duration: number) {
@@ -483,7 +573,7 @@ export class GrandmaView {
   }
 
   headPoint() {
-    return { x: this.container.x, y: this.container.y - this.s * 0.4 };
+    return { x: this.container.x, y: this.container.y - this.s * 0.4 * this.container.scaleY };
   }
 
   private draw() {
@@ -491,6 +581,7 @@ export class GrandmaView {
     const s = this.s;
     const look = lookOf(this.facing);
     const back = this.facing === 0;
+    this.beamPivot.setPosition(look.x * s * 0.34, s * 0.1 + look.y * s * 0.26).setAngle(this.facing * 90);
     g.clear();
     g.fillStyle(0xf06ba8, 1);
     g.lineStyle(3.5, INK, 1);
@@ -587,7 +678,12 @@ export class DogView {
   }
 
   headPoint() {
-    return { x: this.container.x, y: this.container.y - this.s * 0.3 };
+    return { x: this.container.x, y: this.container.y - this.s * 0.3 * this.container.scaleY };
+  }
+
+  twitch() {
+    if (this.mood !== "sleep") return;
+    this.scene.tweens.add({ targets: this.body, angle: { from: -6, to: 6 }, duration: 80, yoyo: true, repeat: 2, onComplete: () => this.body.setAngle(0) });
   }
 
   jump() {
@@ -705,11 +801,15 @@ export class ClockView {
   private bird: Phaser.GameObjects.Graphics;
   private door: Phaser.GameObjects.Graphics;
   private number: Phaser.GameObjects.Text;
+  private ring: Phaser.GameObjects.Graphics;
+  private now: Phaser.GameObjects.Text;
+  private urging = false;
 
   constructor(
     private scene: Phaser.Scene,
     private s: number,
     font: string,
+    nowLabel: string,
   ) {
     const g = scene.add.graphics();
     const w = s * 0.62;
@@ -748,7 +848,17 @@ export class ClockView {
     this.pendulum.strokeCircle(0, s * 0.36, s * 0.06);
     this.pendulum.setPosition(0, s * 0.34);
     this.number = scene.add.text(0, s * 0.12, "", { fontFamily: font, fontSize: `${Math.round(s * 0.24)}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
-    this.container = scene.add.container(0, 0, [this.pendulum, g, this.door, this.bird, this.number]).setDepth(36);
+    this.ring = scene.add.graphics();
+    this.ring.lineStyle(6, 0xffe39a, 1);
+    this.ring.strokeCircle(0, s * 0.12, s * 0.3);
+    this.ring.setVisible(false);
+    this.now = scene.add
+      .text(0, -s * 0.72, nowLabel, { fontFamily: font, fontSize: `${Math.round(s * 0.26)}px`, color: "#ffe39a", stroke: "#1d1830", strokeThickness: 6, padding: { x: 4, y: 4 } })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.container = scene.add.container(0, 0, [this.ring, this.pendulum, g, this.door, this.bird, this.number, this.now]).setDepth(36);
+    scene.tweens.add({ targets: this.ring, scale: { from: 0.85, to: 1.25 }, alpha: { from: 1, to: 0.2 }, duration: 600, repeat: -1 });
+    scene.tweens.add({ targets: this.now, y: -s * 0.8, duration: 380, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     scene.tweens.add({ targets: this.pendulum, angle: { from: -16, to: 16 }, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   }
 
@@ -757,6 +867,14 @@ export class ClockView {
     this.number.setColor(n === 1 ? "#ef4f43" : "#1d1830");
     this.door.setAlpha(n === 1 ? 0.45 : 1);
     if (n === 1) this.scene.tweens.add({ targets: this.number, scale: { from: 1.4, to: 1 }, duration: 260, ease: "Back.easeOut" });
+    this.urging = n === 1;
+    this.ring.setVisible(this.urging);
+    this.now.setVisible(this.urging);
+  }
+
+  quiet() {
+    this.ring.setVisible(false);
+    this.now.setVisible(false);
   }
 
   sing() {

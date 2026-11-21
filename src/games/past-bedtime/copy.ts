@@ -13,13 +13,15 @@ export type NightCopy = {
   hintsUsed: (n: number) => string;
   plan: string;
   legendTitle: string;
-  legend: { creak: string; clock: string; light: string; next: string; dog: string; goal: string };
+  legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string };
   buttons: { wait: string; undo: string; restart: string; hint: string; next: string; again: string; undoCaught: string };
   keys: string;
   touchKeys: string;
   notes: {
     cuckooNow: string;
     cuckooSoon: string;
+    stepNow: string;
+    creakCaught: string;
     cuckooIn: (n: number) => string;
     masked: string;
     unheard: string;
@@ -61,6 +63,7 @@ export type NightCopy = {
     dogSniff: string;
     dogCatch: string;
     cuckoo: string;
+    now: string;
     creak: string;
     brunoExcuse: Record<string, string>;
     brunoWin: Record<string, string>;
@@ -76,11 +79,17 @@ export const NIGHT_COPY = localized<NightCopy>({
     mission: "Missão: gravar a Sessão Chiado",
     level: (n, total) => `Parte ${n} de ${total}`,
     levels: {
+      doorway: {
+        title: "A porta dos pais",
+        goal: "Passar pela porta do quarto sem acordar o pai.",
+        target: "corredor",
+        intro: ["A tábua roxa range e acorda o pai.", "O número no cuco conta as jogadas até ele cantar.", "Quando estiver em 1, pise na tábua: o canto abafa o rangido."],
+      },
       hallway: {
         title: "O corredor",
         goal: "Chegar na escada sem acordar o pai.",
         target: "escada",
-        intro: ["Tábua torta range.", "Quando o cuco canta, ninguém ouve nada."],
+        intro: ["Agora são várias tábuas.", "Pise nelas só no canto do cuco. Parado em cima não range.", "Tábua longe do pai pode ranger: ele não ouve."],
       },
       kitchen: {
         title: "A cozinha",
@@ -103,10 +112,11 @@ export const NIGHT_COPY = localized<NightCopy>({
     legendTitle: "Legenda",
     legend: {
       creak: "tábua que range",
-      clock: "o cuco abafa o barulho",
-      light: "na luz, te veem",
-      next: "luz da próxima jogada",
-      dog: "a Pipoca segue o barulho",
+      marks: "♪ pode · ! acorda",
+      clock: "cuco abafa barulho",
+      light: "luz: te veem",
+      next: "luz da próxima",
+      dog: "Pipoca segue o som",
       goal: "objetivo",
     },
     buttons: { wait: "Esperar", undo: "Desfazer", restart: "Recomeçar", hint: "Dica", next: "Próxima parte", again: "Jogar de novo", undoCaught: "Desfazer a última jogada" },
@@ -115,6 +125,8 @@ export const NIGHT_COPY = localized<NightCopy>({
     notes: {
       cuckooNow: "O cuco vai cantar agora!",
       cuckooSoon: "Cuco na próxima jogada.",
+      stepNow: "Cuco em 1: pise na tábua agora!",
+      creakCaught: "Pisei na tábua fora do canto do cuco.",
       cuckooIn: (n) => `Cuco em ${n} jogadas.`,
       masked: "O cuco abafou o rangido!",
       unheard: "Rangeu… mas ninguém ouviu.",
@@ -156,9 +168,10 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogSniff: "snif snif",
       dogCatch: "AU! AU!",
       cuckoo: "CUCO!",
+      now: "AGORA!",
       creak: "NHÉÉC",
       brunoExcuse: { dad: "Eu… tava com sede?", grandma: "Fui no banheiro, Vó!", pipoca: "Psiu! Pipoca!" },
-      brunoWin: { hallway: "Ufa!", kitchen: "Passei!", living: "Gravando!" },
+      brunoWin: { doorway: "Passei!", hallway: "Ufa!", kitchen: "Passei!", living: "Gravando!" },
       brunoThink: "Pensa, Bruno, pensa…",
     },
     replayOk: "Reprodução idêntica",
@@ -169,11 +182,17 @@ export const NIGHT_COPY = localized<NightCopy>({
     mission: "Mission: tape the Static Show",
     level: (n, total) => `Part ${n} of ${total}`,
     levels: {
+      doorway: {
+        title: "Past Mom and Dad's door",
+        goal: "Get past the bedroom door without waking Dad.",
+        target: "hallway",
+        intro: ["The purple board creaks and wakes Dad.", "The number on the cuckoo clock counts the moves until it sings.", "When it shows 1, step on the board: the song covers the creak."],
+      },
       hallway: {
         title: "The hallway",
         goal: "Reach the stairs without waking Dad.",
         target: "stairs",
-        intro: ["Loose boards creak.", "When the cuckoo sings, nobody hears a thing."],
+        intro: ["Now there are lots of boards.", "Step on them only when the cuckoo sings. Standing still doesn't creak.", "A board far from Dad can creak: he won't hear it."],
       },
       kitchen: {
         title: "The kitchen",
@@ -196,9 +215,10 @@ export const NIGHT_COPY = localized<NightCopy>({
     legendTitle: "Key",
     legend: {
       creak: "creaky board",
-      clock: "the cuckoo covers noise",
-      light: "in the light, they see you",
-      next: "light after your move",
+      marks: "♪ safe · ! wakes",
+      clock: "cuckoo hides noise",
+      light: "light: you're seen",
+      next: "light next move",
       dog: "Pipoca follows noise",
       goal: "goal",
     },
@@ -208,6 +228,8 @@ export const NIGHT_COPY = localized<NightCopy>({
     notes: {
       cuckooNow: "The cuckoo sings right now!",
       cuckooSoon: "Cuckoo on the next move.",
+      stepNow: "Cuckoo at 1: step on the board now!",
+      creakCaught: "I stepped on a board when the cuckoo wasn't singing.",
       cuckooIn: (n) => `Cuckoo in ${n} moves.`,
       masked: "The cuckoo covered the creak!",
       unheard: "It creaked… but nobody heard.",
@@ -249,9 +271,10 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogSniff: "sniff sniff",
       dogCatch: "WOOF! WOOF!",
       cuckoo: "CUCKOO!",
+      now: "NOW!",
       creak: "CREEAK",
       brunoExcuse: { dad: "I was… thirsty?", grandma: "Just the bathroom, Grandma!", pipoca: "Shh! Pipoca!" },
-      brunoWin: { hallway: "Phew!", kitchen: "Made it!", living: "Recording!" },
+      brunoWin: { doorway: "Made it!", hallway: "Phew!", kitchen: "Made it!", living: "Recording!" },
       brunoThink: "Think, Bruno, think…",
     },
     replayOk: "Replay identical",

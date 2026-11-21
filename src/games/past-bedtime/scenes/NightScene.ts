@@ -10,9 +10,11 @@ import { agentPos, canMove, createSim, isCuckooTurn, replay, stars, stateKey, st
 import { solve } from "../sim/solver";
 import { DX, DY, type Action, type Dir, type SimEvent, type State } from "../sim/types";
 import { NIGHT_SFX } from "../sounds";
-import { BrunoView, ClockView, DadView, DogView, GrandmaView, type BrunoMood } from "./actors";
-import { floatZ, noiseRing, pop, say, squiggle, type BubbleTone } from "./fx";
-import { drawCreaks, drawFloor, drawGoal, drawMoonlight, drawProps, drawWalls, NIGHT } from "./house";
+import { BrunoView, ClockView, DadView, DogView, GrandmaView, StatusIcon, type BrunoMood } from "./actors";
+import { decorFor, drawFloorDecor, drawTopDecor, drawWallDecor } from "./decor";
+import { NightLighting, type DynamicLight } from "./lighting";
+import { floatZ, noiseRing, pop, say, sightLine, soundLine, squiggle, type BubbleTone } from "./fx";
+import { drawCreakMarks, drawCreaks, drawFloor, drawGoal, drawProps, drawWalls, NIGHT, themeFor } from "./house";
 import { computeLayout, tileCenter, type Layout, type Orientation } from "./layout";
 import { Notebook, type ButtonId, type LegendItem } from "./notebook";
 
@@ -32,7 +34,9 @@ export type NightBridge = {
 
 export type Command = "up" | "right" | "down" | "left" | "wait" | "undo" | "restart" | "hint" | "next" | "again" | `level:${number}`;
 
-type AgentView = { kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView };
+type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView }) & { status: StatusIcon };
+
+const CHAR_SCALE = 1.14;
 
 const MOVE_MS = 190;
 const DIRS: Record<"up" | "right" | "down" | "left", Dir> = { up: 0, right: 1, down: 2, left: 3 };
@@ -59,12 +63,14 @@ export class NightScene extends Phaser.Scene {
   private hintLayer!: Phaser.GameObjects.Graphics;
   private badges: Phaser.GameObjects.Text[] = [];
   private lightsOn!: Phaser.GameObjects.Rectangle;
+  private lighting!: NightLighting;
   private ambient?: Phaser.Time.TimerEvent;
   private lineIndex = 0;
   private lastBubble = 0;
   private lastInput = 0;
   private pointerStart: { x: number; y: number } | null = null;
   private wasBreathing = false;
+  private flinch = false;
   private bubbles: Phaser.GameObjects.Container[] = [];
 
   constructor() {
@@ -93,7 +99,7 @@ export class NightScene extends Phaser.Scene {
     this.bridge.onLevel(index);
     const level = LEVELS[index];
     this.sim = createSim(level);
-    this.layout = computeLayout(this.bridge.orientation, this.sim.grid.w, this.sim.grid.h);
+    this.layout = computeLayout(this.bridge.orientation, this.sim.grid);
     this.ambient?.remove();
     this.tweens.killAll();
     this.time.removeAllEvents();
@@ -110,49 +116,62 @@ export class NightScene extends Phaser.Scene {
     const grid = this.sim.grid;
     const L = this.layout;
     const s = L.tile;
+    const theme = themeFor(level.id);
+    const decor = decorFor(level.id);
     const floor = this.add.graphics().setDepth(0);
-    drawFloor(floor, grid, L);
+    drawFloor(floor, grid, L, theme);
+    drawFloorDecor(floor, decor, L);
     drawCreaks(floor, grid, L);
-    drawMoonlight(floor, grid, L);
+    const walls = this.add.graphics().setDepth(1);
+    drawWalls(walls, grid, L, theme);
+    drawWallDecor(walls, decor, L);
     const props = this.add.graphics().setDepth(3);
     drawProps(props, grid, L);
-    drawGoal(props, grid, L);
-    const walls = this.add.graphics().setDepth(20);
-    drawWalls(walls, grid, L);
+    drawTopDecor(props, decor, L);
+    this.lighting = new NightLighting(this, L, decor.lights, decor.darkness, decor.lamps);
+    const marks = this.add.graphics().setDepth(7);
+    drawCreakMarks(marks, grid, L);
+    const goal = this.add.graphics().setDepth(8);
+    drawGoal(goal, grid, L);
+    this.tweens.add({ targets: goal, alpha: { from: 1, to: 0.55 }, duration: 900, yoyo: true, repeat: -1 });
     const target = this.copy.levels[level.id]?.target ?? "";
     const goalC = tileCenter(L, grid.goal.x, grid.goal.y);
     this.add
-      .text(goalC.x, goalC.y + s * 0.5, target, { fontFamily: this.bridge.fonts.hand, fontSize: `${Math.round(s * 0.3)}px`, color: "#9df0dc", padding: { x: 2, y: 2 } })
+      .text(goalC.x, goalC.y + s * 0.18, target, { fontFamily: this.bridge.fonts.hand, fontSize: `${Math.round(Math.max(26, s * 0.26))}px`, color: "#9df0dc", stroke: "#1d1830", strokeThickness: 6, padding: { x: 2, y: 2 } })
       .setOrigin(0.5, 0)
       .setDepth(21);
+    if (level.id === "living") this.vcrClock(L);
     this.lightGfx = this.add.graphics().setDepth(10);
     this.forecast = this.add.graphics().setDepth(12);
     this.hover = this.add.graphics().setDepth(13);
     this.hintLayer = this.add.graphics().setDepth(14);
-    this.lightsOn = this.add.rectangle(L.ox, L.oy, grid.w * s, grid.h * s, 0xffe8a0, 0).setOrigin(0).setDepth(45);
+    this.drawFrame();
+    this.lightsOn = this.add.rectangle(L.board.x, L.board.y, L.board.w, L.board.h, 0xffe8a0, 0).setOrigin(0).setDepth(45);
+    const iconSize = Math.max(30, s * 0.34);
     level.agents.forEach((def, i) => {
       const c = tileCenter(L, ...this.xy(agentPos(grid, i, this.state.agents[i])));
       if (def.kind === "sleeper") {
         const onBed = level.props.some((p) => p.kind === "bed" && p.x === def.x && def.y >= p.y && def.y < p.y + (p.h ?? 1));
         const view = new DadView(this, s, onBed ? "bed" : "armchair");
-        view.container.setPosition(c.x, c.y);
-        this.agents.push({ kind: "dad", view });
+        view.container.setPosition(c.x, c.y).setScale(CHAR_SCALE * 0.94);
+        this.agents.push({ kind: "dad", view, status: new StatusIcon(this, view.container, this.bridge.fonts.display, iconSize, onBed ? -s * 1.1 : -s * 0.62) });
       } else if (def.kind === "patrol") {
-        const view = new GrandmaView(this, s);
-        view.container.setPosition(c.x, c.y);
-        this.agents.push({ kind: "grandma", view });
+        const view = new GrandmaView(this, s, def.range * s);
+        view.container.setPosition(c.x, c.y).setScale(CHAR_SCALE);
+        this.agents.push({ kind: "grandma", view, status: new StatusIcon(this, view.container, this.bridge.fonts.display, iconSize, -s * 0.66) });
       } else {
         const view = new DogView(this, s);
-        view.container.setPosition(c.x, c.y);
-        this.agents.push({ kind: "dog", view });
+        view.container.setPosition(c.x, c.y).setScale(CHAR_SCALE);
+        this.agents.push({ kind: "dog", view, status: new StatusIcon(this, view.container, this.bridge.fonts.display, iconSize, -s * 0.5) });
       }
     });
     if (level.clock) {
-      this.clock = new ClockView(this, s, this.bridge.fonts.display);
+      this.clock = new ClockView(this, s, this.bridge.fonts.display, this.copy.lines.now);
       const c = tileCenter(L, level.clock.x, level.clock.y);
-      this.clock.container.setPosition(c.x, c.y - s * 0.1);
+      this.clock.container.setPosition(c.x, c.y - s * 0.02);
     }
     this.bruno = new BrunoView(this, s);
+    this.bruno.container.setScale(CHAR_SCALE);
     const b = tileCenter(L, this.state.x, this.state.y);
     this.bruno.place(b.x, b.y);
     this.notebook = new Notebook(
@@ -167,11 +186,46 @@ export class NightScene extends Phaser.Scene {
     const text = this.copy.levels[level.id];
     this.notebook.setLevel(index, LEVELS.length, text.title, text.goal, level.par, LEVELS.map((l) => progress[l.id] ?? 0), this.legendFor());
     this.notebook.setStats(0, 0);
-    text.intro.forEach((line, i) => this.time.delayedCall(250 + i * 900, () => this.notebook.getMode() === "play" && this.history.length === 0 && this.notebook.note(line, "info")));
+    this.time.delayedCall(250, () => this.notebook.getMode() === "play" && this.history.length === 0 && this.notebook.intro(text.intro));
     this.syncViews(false);
     this.refreshOverlays();
     this.ambient = this.time.addEvent({ delay: 1400, loop: true, callback: () => this.ambientTick() });
+    if (this.lighting.hasFlicker() && !this.bridge.reducedMotion) this.time.addEvent({ delay: 140, loop: true, callback: () => this.lighting.flicker() });
     this.lastInput = this.time.now;
+  }
+
+  private drawFrame() {
+    const L = this.layout;
+    const b = L.board;
+    const g = this.add.graphics().setDepth(22);
+    g.fillStyle(NIGHT.void, 1);
+    g.fillRect(0, 0, L.W, b.y);
+    g.fillRect(0, b.y + b.h, L.W, L.H - b.y - b.h);
+    g.fillRect(0, b.y, b.x, b.h);
+    g.fillRect(b.x + b.w, b.y, L.W - b.x - b.w, b.h);
+    g.fillStyle(0x000000, 0.5);
+    g.fillRoundedRect(b.x + 7, b.y + b.h - 4, b.w, 12, 6);
+    g.lineStyle(7, NIGHT.ink, 1);
+    g.strokeRoundedRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6, 14);
+    g.lineStyle(2, 0x5a4a8a, 0.9);
+    g.strokeRoundedRect(b.x - 9, b.y - 9, b.w + 18, b.h + 18, 18);
+    const v = this.add.graphics().setDepth(21.5);
+    const edge = L.tile * 0.5;
+    for (let i = 0; i < 6; i += 1) {
+      v.lineStyle(edge / 6, 0x05030f, 0.18 - i * 0.025);
+      v.strokeRect(b.x + (i * edge) / 6 + edge / 12, b.y + (i * edge) / 6 + edge / 12, b.w - (i * edge) / 3 - edge / 6, b.h - (i * edge) / 3 - edge / 6);
+    }
+  }
+
+  private vcrClock(L: Layout) {
+    const grid = this.sim.grid;
+    const c = tileCenter(L, grid.goal.x, grid.goal.y);
+    const s = L.tile;
+    const t = this.add
+      .text(c.x - s * 0.18, c.y - s * 0.18, "12:00", { fontFamily: this.bridge.fonts.display, fontSize: `${Math.round(s * 0.14)}px`, color: "#ff6b6b", padding: { x: 2, y: 1 } })
+      .setOrigin(0.5)
+      .setDepth(9);
+    this.tweens.add({ targets: t, alpha: { from: 1, to: 0.1 }, duration: 500, yoyo: true, repeat: -1, hold: 300 });
   }
 
   private xy(p: { x: number; y: number }): [number, number] {
@@ -181,7 +235,7 @@ export class NightScene extends Phaser.Scene {
   private legendFor(): LegendItem[] {
     const level = this.sim.grid.level;
     const items: LegendItem[] = [];
-    if (level.map.some((r) => r.includes("~"))) items.push("creak");
+    if (level.map.some((r) => r.includes("~"))) items.push("creak", "marks");
     if (level.clock) items.push("clock");
     items.push("light", "next");
     if (level.agents.some((a) => a.kind === "dog")) items.push("dog");
@@ -289,17 +343,22 @@ export class NightScene extends Phaser.Scene {
           const c = tileCenter(L, e.x, e.y);
           if (e.masked) {
             this.sfx(NIGHT_SFX.creakSoft, 0.6);
+            for (const a of this.agents) if (a.kind === "dad") a.view.stir();
             squiggle(this, fonts, c.x, c.y - s * 0.4, this.copy.lines.creak.toLowerCase(), Math.round(s * 0.2), "#8a83a3");
           } else {
             this.sfx(NIGHT_SFX.creak);
             squiggle(this, fonts, c.x, c.y - s * 0.55, this.copy.lines.creak, Math.round(s * 0.34));
             noiseRing(this, c.x, c.y, s * this.sim.grid.level.loud, 0xd7cdfa);
+            this.bruno.wince();
+            this.flinch = true;
             this.cameras.main.shake(120, 0.002);
           }
           break;
         }
         case "heard": {
           const a = this.agents[e.agent];
+          const from = tileCenter(L, e.x, e.y);
+          soundLine(this, from.x, from.y, a.view.headPoint().x, a.view.headPoint().y, s);
           if (a.kind === "dog") {
             const p = a.view.headPoint();
             pop(this, fonts, p.x, p.y - s * 0.2, this.copy.lines.dogWake, Math.round(s * 0.42));
@@ -397,7 +456,7 @@ export class NightScene extends Phaser.Scene {
     this.syncViews(true);
     this.refreshOverlays();
     if (this.state.status === "caught") {
-      this.playCaught();
+      this.playCaught(events);
       return;
     }
     if (this.state.status === "won") {
@@ -405,6 +464,11 @@ export class NightScene extends Phaser.Scene {
       return;
     }
     this.turnNote(prev, events);
+    if (this.flinch) {
+      this.flinch = false;
+      this.bruno.setMood("scared");
+      this.time.delayedCall(650, () => this.state.status === "playing" && this.bruno.setMood(this.moodFor(this.state)));
+    }
     const next = this.queued;
     this.queued = null;
     if (next) this.command(next);
@@ -439,7 +503,10 @@ export class NightScene extends Phaser.Scene {
       }
       if (a.kind === "sleeper" && a.awake > 0 && !heard.some((h) => h.type === "heard" && h.agent === i)) nb.note(n.stillAwake(a.awake), "warn");
     });
-    if (level.clock && turnsToCuckoo(this.sim.grid, this.state.turn) === 1) nb.note(n.cuckooSoon, "warn");
+    if (level.clock && turnsToCuckoo(this.sim.grid, this.state.turn) === 1) {
+      const board = ([0, 1, 2, 3] as Dir[]).some((d) => canMove(this.sim, this.state, d) && isCreaky(this.sim.grid, this.state.x + DX[d], this.state.y + DY[d]));
+      nb.note(board ? n.stepNow : n.cuckooSoon, board ? "good" : "warn");
+    }
     const breathing = this.bruno.getMood() === "breath";
     if (breathing && !this.wasBreathing) {
       nb.note(n.holdBreath, "info");
@@ -480,19 +547,26 @@ export class NightScene extends Phaser.Scene {
     st.agents.forEach((a, i) => {
       const view = this.agents[i];
       const c = tileCenter(L, ...this.xy(agentPos(grid, i, a)));
-      if (a.kind === "sleeper" && view.kind === "dad") view.view.set(a.awake > 0 ? "awake" : "sleep", a.facing);
-      else if (a.kind === "patrol" && view.kind === "grandma") {
+      if (a.kind === "sleeper" && view.kind === "dad") {
+        view.view.set(a.awake > 0 ? "awake" : "sleep", a.facing);
+        view.status.show(a.awake > 0 ? "!" : null, "#ff9d8a");
+      } else if (a.kind === "patrol" && view.kind === "grandma") {
         view.view.set(a.alert > 0 ? "alert" : "walk", a.facing);
+        view.status.show(a.alert > 0 ? "?" : null, "#ffe39a");
         if (!animate) {
           this.tweens.killTweensOf(view.view.container);
           view.view.container.setPosition(c.x, c.y);
         }
       } else if (a.kind === "dog" && view.kind === "dog") {
         view.view.set(a.mode === "sleep" ? "sleep" : a.mode === "sniff" ? "sniff" : "walk", a.facing);
+        view.status.show(a.mode === "sleep" ? null : a.mode === "sniff" ? "?" : "!", "#ffc89a");
         if (!animate) view.view.place(c.x, c.y);
       }
     });
-    if (this.clock) this.clock.setCountdown(turnsToCuckoo(grid, st.turn));
+    if (this.clock) {
+      this.clock.setCountdown(turnsToCuckoo(grid, st.turn));
+      if (st.status !== "playing") this.clock.quiet();
+    }
     if (st.status === "playing") this.bruno.setMood(this.moodFor(st));
   }
 
@@ -535,23 +609,40 @@ export class NightScene extends Phaser.Scene {
     const st = this.state;
     const grid = this.sim.grid;
     const L = this.layout;
-    st.agents.forEach((_a, i) => {
-      const tiles = watchedTiles(grid, st.agents, i);
-      if (tiles.length === 0) return;
-      const src = tileCenter(L, ...this.xy(agentPos(grid, i, st.agents[i])));
-      g.fillStyle(NIGHT.light, 0.12);
-      for (const idx of tiles) {
-        const r = this.tileRect(g, idx);
-        g.fillTriangle(src.x, src.y, r.x, r.y + r.s / 2, r.x + r.s, r.y + r.s / 2);
+    const s = L.tile;
+    const lit: { x: number; y: number }[] = [];
+    const dynamic: DynamicLight[] = [];
+    st.agents.forEach((a, i) => {
+      const def = grid.level.agents[i];
+      if (a.kind === "sleeper") this.lighting.setLamp(def.id, a.awake > 0);
+      if (a.kind === "sleeper" && a.awake > 0) {
+        const lamp = this.lighting.lampPosition(def.id);
+        if (lamp) dynamic.push({ x: lamp.x, y: lamp.y, r: s * 2.2, strength: 0.8 });
       }
+      if (a.kind === "patrol") {
+        const c = tileCenter(L, a.x, a.y);
+        dynamic.push({ x: c.x + DX[a.facing] * s * 1.2, y: c.y + DY[a.facing] * s * 1.2, r: s * 1.7, strength: 0.55 });
+      }
+      const tiles = watchedTiles(grid, st.agents, i);
       for (const idx of tiles) {
-        const r = this.tileRect(g, idx, 2);
-        g.fillStyle(NIGHT.light, 0.4);
-        g.fillRoundedRect(r.x, r.y, r.s, r.s, 8);
-        g.lineStyle(3, NIGHT.lightEdge, 0.8);
-        g.strokeRoundedRect(r.x, r.y, r.s, r.s, 8);
+        lit.push({ x: idx % grid.w, y: Math.floor(idx / grid.w) });
+        const r = this.tileRect(g, idx, 3);
+        g.fillStyle(NIGHT.light, 0.34);
+        g.fillRoundedRect(r.x, r.y, r.s, r.s, 10);
+        g.lineStyle(4, NIGHT.lightEdge, 0.95);
+        g.strokeRoundedRect(r.x, r.y, r.s, r.s, 10);
+        const ex = r.x + r.s * 0.2;
+        const ey = r.y + r.s * 0.2;
+        const ew = r.s * 0.13;
+        g.fillStyle(0xfffbe8, 0.95);
+        g.fillEllipse(ex, ey, ew * 2, ew * 1.15);
+        g.lineStyle(2.5, 0xb8690c, 1);
+        g.strokeEllipse(ex, ey, ew * 2, ew * 1.15);
+        g.fillStyle(0x1d1830, 1);
+        g.fillCircle(ex, ey, ew * 0.38);
       }
     });
+    this.lighting.render(dynamic, lit);
   }
 
   private drawForecast() {
@@ -566,6 +657,7 @@ export class NightScene extends Phaser.Scene {
     const s = L.tile;
     const now = new Set<number>();
     st.agents.forEach((_a, i) => watchedTiles(grid, st.agents, i).forEach((t) => now.add(t)));
+    this.boardMarks(st);
     const predicted = step(this.sim, st, "wait");
     if (predicted) {
       const nextAgents = predicted.state.agents;
@@ -620,6 +712,38 @@ export class NightScene extends Phaser.Scene {
     });
   }
 
+  private boardMarks(st: State) {
+    const grid = this.sim.grid;
+    const L = this.layout;
+    const masked = isCuckooTurn(grid, st.turn + 1);
+    let maxHear = 0;
+    for (const def of grid.level.agents) maxHear = Math.max(maxHear, def.hear);
+    for (const d of [0, 1, 2, 3] as Dir[]) {
+      if (!canMove(this.sim, st, d)) continue;
+      const x = st.x + DX[d];
+      const y = st.y + DY[d];
+      if (!isCreaky(grid, x, y)) continue;
+      let heard = false;
+      if (!masked) {
+        const reach = noiseDistances(grid, x, y, grid.level.loud + maxHear);
+        st.agents.forEach((a, i) => {
+          const p = agentPos(grid, i, a);
+          const dist = reach.get(p.y * grid.w + p.x);
+          if (dist !== undefined && dist <= grid.level.loud + grid.level.agents[i].hear) heard = true;
+        });
+      }
+      const c = tileCenter(L, x, y);
+      const label = masked ? "♪" : heard ? "!" : "~";
+      const bg = masked ? "#9df0dc" : heard ? "#ff9d8a" : "#d7cdfa";
+      const t = this.add
+        .text(c.x, c.y, label, { fontFamily: this.bridge.fonts.display, fontSize: `${Math.round(L.tile * 0.28)}px`, color: "#1d1830", backgroundColor: bg, padding: { x: 8, y: 2 } })
+        .setOrigin(0.5)
+        .setDepth(39)
+        .setAlpha(0.95);
+      this.badges.push(t);
+    }
+  }
+
   private badge(p: { x: number; y: number }, text: string) {
     const L = this.layout;
     const c = tileCenter(L, p.x, p.y);
@@ -646,15 +770,20 @@ export class NightScene extends Phaser.Scene {
     g.lineBetween(ex, ey, ex - Math.cos(ang + 0.5) * s * 0.16, ey - Math.sin(ang + 0.5) * s * 0.16);
   }
 
-  private playCaught() {
+  private playCaught(events: SimEvent[]) {
     const st = this.state;
     const L = this.layout;
     const s = L.tile;
     const level = this.sim.grid.level;
     const catcher = this.agents[st.caughtBy];
     const id = level.agents[st.caughtBy]?.id ?? "dad";
+    this.flinch = false;
     this.bruno.freeze();
     this.bruno.setMood("scared");
+    if (catcher && st.reason !== "dog") {
+      const h = catcher.view.headPoint();
+      sightLine(this, h.x, h.y, this.bruno.container.x, this.bruno.container.y - s * 0.2, s);
+    }
     this.sfx(NIGHT_SFX.caught);
     this.tweens.add({ targets: this.lightsOn, fillAlpha: { from: 0, to: 0.32 }, duration: 160, ease: "Quad.easeOut" });
     if (catcher?.kind === "dad") {
@@ -682,7 +811,8 @@ export class NightScene extends Phaser.Scene {
       const b = this.bruno.container;
       this.talk(b.x, b.y - s * 0.5, this.copy.lines.brunoExcuse[id] ?? "…", "normal", 2400);
     });
-    this.notebook.showCaught(this.copy.notes.caught[id] ?? "");
+    const byCreak = level.agents[st.caughtBy]?.kind === "sleeper" && events.some((e) => e.type === "creak" && !e.masked);
+    this.notebook.showCaught(byCreak ? this.copy.notes.creakCaught : (this.copy.notes.caught[id] ?? ""));
   }
 
   private dirTowards(x0: number, y0: number, x1: number, y1: number): Dir {
@@ -878,6 +1008,13 @@ export class NightScene extends Phaser.Scene {
         const p = view.view.headPoint();
         floatZ(this, fonts, p.x + s * 0.1, p.y + s * 0.1, Math.round(s * 0.2));
       }
+    });
+    if (st.status === "playing" && Math.random() < 0.45) this.bruno.blink();
+    if (st.status === "playing" && this.time.now - this.lastInput > 3000 && Math.random() < 0.3) this.bruno.glance(Math.random() < 0.5 ? -1 : 1);
+    st.agents.forEach((a, i) => {
+      const view = this.agents[i];
+      const p = agentPos(this.sim.grid, i, a);
+      if (a.kind === "dog" && a.mode === "sleep" && view.kind === "dog" && Math.abs(p.x - st.x) + Math.abs(p.y - st.y) <= 3 && Math.random() < 0.4) view.view.twitch();
     });
     if (st.status === "playing" && this.time.now - this.lastInput > 7000 && Math.random() < 0.3) {
       const b = this.bruno.container;

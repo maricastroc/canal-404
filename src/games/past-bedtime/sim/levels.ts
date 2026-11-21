@@ -1,5 +1,24 @@
 import type { LevelDef } from "./types";
 
+export const DOORWAY: LevelDef = {
+  id: "doorway",
+  map: [
+    "#########",
+    "###.o.###",
+    "###.o.###",
+    "#B..~..G#",
+    "#########",
+  ],
+  loud: 5,
+  clock: { period: 4, x: 2, y: 2 },
+  agents: [{ kind: "sleeper", id: "dad", x: 4, y: 2, wake: 3, range: 4, cone: "wide", hear: 0 }],
+  props: [
+    { kind: "bed", x: 4, y: 1, h: 2 },
+    { kind: "door", x: 0, y: 3 },
+  ],
+  par: 7,
+};
+
 export const HALLWAY: LevelDef = {
   id: "hallway",
   map: [
@@ -56,12 +75,12 @@ export const KITCHEN: LevelDef = {
   props: [
     { kind: "table", x: 4, y: 3, w: 4, h: 2 },
     { kind: "fridge", x: 1, y: 1 },
-    { kind: "counter", x: 2, y: 1 },
-    { kind: "counter", x: 8, y: 1 },
+    { kind: "stove", x: 2, y: 1 },
+    { kind: "sink", x: 8, y: 1 },
     { kind: "counter", x: 10, y: 1, w: 2 },
-    { kind: "counter", x: 1, y: 6, w: 2 },
+    { kind: "counterLow", x: 1, y: 6, w: 2 },
     { kind: "plant", x: 4, y: 6 },
-    { kind: "counter", x: 9, y: 6, w: 3 },
+    { kind: "counterLow", x: 9, y: 6, w: 3 },
     { kind: "door", x: 12, y: 2 },
     { kind: "door", x: 0, y: 4 },
   ],
@@ -97,4 +116,4 @@ export const LIVING: LevelDef = {
   par: 16,
 };
 
-export const LEVELS: readonly LevelDef[] = [HALLWAY, KITCHEN, LIVING];
+export const LEVELS: readonly LevelDef[] = [DOORWAY, HALLWAY, KITCHEN, LIVING];
