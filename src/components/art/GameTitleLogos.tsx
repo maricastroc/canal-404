@@ -321,6 +321,63 @@ function DownhillDerbyLogoArt({ className, locale }: { className?: string; local
   );
 }
 
+const PAST_BEDTIME = localized({
+  "pt-BR": { label: "Madrugada", first: "", firstSize: 0, last: "MADRUGADA", lastSize: 56, lastY: 150 },
+  en: { label: "Past Bedtime", first: "PAST", firstSize: 62, last: "BEDTIME", lastSize: 80, lastY: 168 },
+});
+
+function NightWord({ word, x, y, size, fill, stroke }: { word: string; x: number; y: number; size: number; fill: string; stroke: number }) {
+  return (
+    <>
+      <text x={x + 6} y={y + 6} textAnchor="middle" fontSize={size} fill={P.ink} letterSpacing="2">
+        {word}
+      </text>
+      <text x={x} y={y} textAnchor="middle" fontSize={size} fill={fill} stroke={P.ink} strokeWidth={stroke} paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+        {word}
+      </text>
+    </>
+  );
+}
+
+function PastBedtimeLogoArt({ className, locale }: { className?: string; locale: Locale }) {
+  const t = PAST_BEDTIME[locale];
+  return (
+    <svg viewBox="-10 -8 380 232" className={className} role="img" aria-label={t.label}>
+      <g transform="translate(318 44)">
+        <circle r="34" fill={P.sunPale} stroke={P.ink} strokeWidth="6" />
+        <circle cx="16" cy="-10" r="30" fill={P.plum800} />
+      </g>
+      <g fill={P.sunPale}>
+        <path d="M40 40 Q40 52 52 52 Q40 52 40 64 Q40 52 28 52 Q40 52 40 40 Z" />
+        <path d="M262 18 Q262 26 270 26 Q262 26 262 34 Q262 26 254 26 Q262 26 262 18 Z" />
+        <path d="M350 112 Q350 120 358 120 Q350 120 350 128 Q350 120 342 120 Q350 120 350 112 Z" />
+      </g>
+      <g style={display}>
+        {t.first && (
+          <g transform="rotate(-4 120 90)">
+            <NightWord word={t.first} x={124} y={92} size={t.firstSize} fill={P.plum300} stroke={10} />
+          </g>
+        )}
+        <g transform="rotate(-3 180 150)">
+          <NightWord word={t.last} x={180} y={t.lastY} size={t.lastSize} fill={P.sky} stroke={12} />
+        </g>
+        <g fill={P.plum300} stroke={P.ink} strokeWidth="4" paintOrder="stroke">
+          <text x="300" y="214" fontSize="26">
+            z
+          </text>
+          <text x="322" y="196" fontSize="34">
+            Z
+          </text>
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+export function PastBedtimeLogo({ className }: { className?: string }) {
+  return <PastBedtimeLogoArt className={className} locale={useLocale()} />;
+}
+
 export function DownhillDerbyLogo({ className }: { className?: string }) {
   return <DownhillDerbyLogoArt className={className} locale={useLocale()} />;
 }

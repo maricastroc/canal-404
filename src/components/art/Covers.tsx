@@ -8,6 +8,7 @@ import { arcPoint, Fork, House, Sparkle4 } from "./DeadEndStreetArt";
 const OffAirVacationCoverArt = dynamic(() => import("./OffAirVacationArt").then((m) => m.OffAirVacationCoverArt));
 const OperationRecessCoverArt = dynamic(() => import("./OperationRecessArt").then((m) => m.OperationRecessCoverArt));
 const PajamaWarCoverArt = dynamic(() => import("./PajamaWarArt").then((m) => m.PajamaWarCoverArt));
+const PastBedtimeCoverArt = dynamic(() => import("./PastBedtimeArt").then((m) => m.PastBedtimeCoverArt));
 const DownhillDerbyCoverArt = dynamic(() => import("./DownhillDerbyArt").then((m) => m.DownhillDerbyCoverArt));
 
 const ink = { stroke: P.ink, strokeWidth: 4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
@@ -56,6 +57,7 @@ const COVER_ALT = localized({
     "pajama-war": "Capa de Guerra do Pijama: Lia, Nico e Bia numa guerra de travesseiros no quarto, com penas voando",
     "off-air-vacation": "Capa de Férias Fora do Ar: Déco chega ao Resort 404 com mala e mapa e encara o Sr. Bigodes, sério demais atrás do balcão da recepção, enquanto o relógio da fachada está parado às 4:04 e a TV ao lado só mostra chuvisco",
     "downhill-derby": "Capa de Ladeira Abaixo: Déco pula uma lombada no carrinho de madeira, na frente da Lina e seu ventilador, da Mila na banheira de guarda-chuva e do Bruno, preocupado, numa ladeira do bairro com a antena do Canal 404 no morro",
+    "past-bedtime": "Capa de Madrugada: de madrugada, o Bruno passa na ponta dos pés pela sala escura, logo depois do facho da lanterna da Vó, rumo ao videocassete piscando 12:00, enquanto a Pipoca dorme e o Pixel vigia de cima da TV",
   },
   en: {
     "dead-end-street": "Dead End Street cover: Déco and Lina in a cart with a giant spoon, launching a sneaker at a stack of flowerpots with a gnome",
@@ -66,6 +68,7 @@ const COVER_ALT = localized({
     "pajama-war": "Pajama War cover: Lia, Nico and Bia in a pillow war in the bedroom, with feathers flying",
     "off-air-vacation": "Off-Air Vacation cover: Déco arrives at Resort 404 with a suitcase and a map and faces Mr. Bigodes, far too serious behind the front desk, while the clock on the building is stuck at 4:04 and the TV next to it only shows static",
     "downhill-derby": "Downhill Derby cover: Déco jumps a speed bump in his wooden cart ahead of Lina and her fan, Mila in her bathtub with an umbrella and a worried Bruno, down a neighborhood hill with the Canal 404 antenna on the hilltop",
+    "past-bedtime": "Past Bedtime cover: in the middle of the night, Bruno tiptoes across the dark living room just past the beam of Grandma's flashlight, heading for the VCR blinking 12:00, while Pipoca sleeps and Pixel keeps watch from on top of the TV",
   },
 });
 
@@ -474,6 +477,14 @@ export function DownhillDerbyCover({ decorative, locale = DEFAULT_LOCALE }: Cove
   );
 }
 
+export function PastBedtimeCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
+  return (
+    <Frame decorative={decorative} bg="#241e45" label={COVER_ALT[locale]["past-bedtime"]}>
+      <PastBedtimeCoverArt />
+    </Frame>
+  );
+}
+
 export const COVERS: Record<string, (props: CoverProps) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetCover,
   "bad-ideas-lab": BadIdeasLabCover,
@@ -482,6 +493,7 @@ export const COVERS: Record<string, (props: CoverProps) => React.JSX.Element> = 
   "operation-recess": OperationRecessCover,
   "off-air-vacation": OffAirVacationCover,
   "downhill-derby": DownhillDerbyCover,
+  "past-bedtime": PastBedtimeCover,
 };
 
 export function GameCover({ slug, decorative, locale }: { slug: string } & CoverProps) {

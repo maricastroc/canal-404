@@ -6,7 +6,9 @@ import type { Locale } from "@/i18n/locales";
 import { NIGHT_COPY, type NightCopy } from "../copy";
 import { isCreaky, isHiding, isWall, noiseDistances, pathTo } from "../sim/grid";
 import { ACTS, LEVELS } from "../sim/levels";
-import { agentPos, canMove, createSim, isCuckooTurn, isPeeking, replay, stars, stateKey, step, turnsToCuckoo, turnsToKnock, turnsToToss, watchedTiles, type Sim } from "../sim/sim";
+import { encodeMoves } from "../sim/judge";
+import { partStars } from "../sim/score";
+import { agentPos, canMove, createSim, isCuckooTurn, isPeeking, step, turnsToCuckoo, turnsToKnock, turnsToToss, watchedTiles, type Sim } from "../sim/sim";
 import { solve } from "../sim/solver";
 import { DX, DY, type Action, type Dir, type SimEvent, type State } from "../sim/types";
 import { NIGHT_SFX } from "../sounds";
@@ -22,7 +24,9 @@ import { computeLayout, tileCenter, wobble, type Layout, type Orientation } from
 import { Notebook, type ButtonId, type LegendItem } from "./notebook";
 import type { NightUiScene } from "./NightUi";
 
-export type WinReport = { level: string; turns: number; par: number; stars: number; hints: number; replayOk: boolean };
+export type WinReport = { level: string; index: number; turns: number; par: number; stars: number; hints: number; moves: string; wakes: number; creaks: number; covered: number };
+
+export type Carry = { actions: readonly Action[]; hints: number };
 
 export type NightBridge = {
   locale: Locale;
@@ -32,12 +36,15 @@ export type NightBridge = {
   touch: boolean;
   art: ArtMode;
   level: number;
-  progress: { load: () => Record<string, number>; save: (id: string, turns: number, stars: number) => void };
+  carry: Carry | null;
+  stars: () => Record<string, number>;
+  onLoad: (value: number) => void;
+  onReady: () => void;
   onLevel: (index: number) => void;
   onWin: (report: WinReport) => void;
 };
 
-export type Command = "up" | "right" | "down" | "left" | "wait" | "undo" | "restart" | "hint" | "next" | "again" | "rules" | "view" | `level:${number}`;
+export type Command = "up" | "right" | "down" | "left" | "wait" | "undo" | "restart" | "hint" | "next" | "rules" | "view";
 
 type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView } | { kind: "cat"; view: CatView }) & { status: StatusIcon };
 
@@ -96,6 +103,7 @@ export class NightScene extends Phaser.Scene {
 
   preload() {
     const bridge = this.registry.get("bridge") as NightBridge;
+    this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => bridge.onLoad(value));
     if (bridge.art === "final") loadArt(this);
   }
 
@@ -112,6 +120,39 @@ export class NightScene extends Phaser.Scene {
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.onPointerUp(p));
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => this.onPointerMove(p));
     this.loadLevel(this.levelIndex);
+    const carry = this.bridge.carry;
+    this.bridge.carry = null;
+    if (carry) this.restore(carry);
+    this.bridge.onReady();
+  }
+
+  loadPart(index: number) {
+    this.loadLevel(Math.max(0, Math.min(LEVELS.length - 1, index)));
+  }
+
+  carry(): Carry {
+    return { actions: [...this.actions], hints: this.hints };
+  }
+
+  private restore(carry: Carry) {
+    this.story?.close();
+    this.hints = carry.hints;
+    for (const action of carry.actions) {
+      if (this.state.status !== "playing") break;
+      const next = step(this.sim, this.state, action);
+      if (!next) break;
+      if (next.state.status === "caught") break;
+      this.history.push(this.state);
+      this.actions.push(action);
+      this.state = next.state;
+    }
+    const b = tileCenter(this.layout, this.state.x, this.state.y);
+    this.bruno.place(b.x, b.y);
+    this.syncViews(false);
+    this.refreshOverlays();
+    this.notebook.setPlan(this.actions);
+    this.notebook.setStats(this.state.turn, this.hints);
+    if (this.state.status === "won") this.notebook.showWin(this.state.turn, this.sim.grid.level.par, partStars(this.sim.grid.level.par, this.state.turn, this.hints), this.levelIndex === LEVELS.length - 1, this.copy.lines.brunoWin[this.sim.grid.level.id] ?? this.copy.notes.won);
   }
 
   private sfx(recipe: SoundRecipe, volume = 1) {
@@ -205,9 +246,8 @@ export class NightScene extends Phaser.Scene {
       this.bridge.fonts,
       this.copy,
       (id) => this.onButton(id),
-      (i) => this.command(`level:${i}`),
     );
-    const progress = this.bridge.progress.load();
+    const progress = this.bridge.stars();
     const text = this.copy.levels[level.id];
     const actOf = LEVELS.map((_l, i) => Math.max(0, ACTS.findIndex((a) => i >= a.first && i <= a.last)));
     const act = ACTS[actOf[index]];
@@ -382,11 +422,6 @@ export class NightScene extends Phaser.Scene {
       }
       this.story.close();
     }
-    if (cmd.startsWith("level:")) {
-      const i = Number(cmd.slice(6));
-      if (Number.isInteger(i) && i >= 0 && i < LEVELS.length) this.loadLevel(i);
-      return;
-    }
     if (this.busy) {
       if (cmd === "undo" || cmd === "restart") {
         this.busy = false;
@@ -406,10 +441,6 @@ export class NightScene extends Phaser.Scene {
         this.hint();
         return;
       case "next":
-        if (this.state.status === "won" && this.levelIndex < LEVELS.length - 1) this.loadLevel(this.levelIndex + 1);
-        return;
-      case "again":
-        if (this.state.status === "won") this.restart();
         return;
       case "wait":
         this.act("wait");
@@ -1229,7 +1260,7 @@ export class NightScene extends Phaser.Scene {
   private playWin() {
     const level = this.sim.grid.level;
     const turns = this.state.turn;
-    const got = Math.min(stars(level.par, turns), this.hints > 0 ? 2 : 3);
+    const got = partStars(level.par, turns, this.hints);
     const L = this.layout;
     const s = L.tile;
     this.bruno.setMood("happy");
@@ -1240,10 +1271,8 @@ export class NightScene extends Phaser.Scene {
     const b = this.bruno.container;
     this.talk(b.x, b.y - s * 0.5, line, "cheer", 2600, "bruno");
     this.notebook.showWin(turns, level.par, got, this.levelIndex === LEVELS.length - 1, line);
-    this.bridge.progress.save(level.id, turns, got);
-    const replayed = replay(level, this.actions);
-    const replayOk = !!replayed && replayed.status === "won" && replayed.turn === turns && stateKey(this.sim, replayed) === stateKey(this.sim, this.state);
-    this.bridge.onWin({ level: level.id, turns, par: level.par, stars: got, hints: this.hints, replayOk });
+    const st = this.state;
+    this.bridge.onWin({ level: level.id, index: this.levelIndex, turns, par: level.par, stars: got, hints: this.hints, moves: encodeMoves(this.actions), wakes: st.wakes, creaks: st.creaks - st.masked, covered: st.masked });
   }
 
   private undo() {

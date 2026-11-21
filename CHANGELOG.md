@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Madrugada entra no catálogo
+- **An eighth game: Madrugada** (EN "Past Bedtime", `/play/past-bedtime`). A turn-based stealth puzzle: Bruno sneaks downstairs at three in the morning to tape the Sessão Chiado and then gets back to bed without waking Dad, Grandma, Pipoca or Pixel. Ten parts in four acts, played with the keyboard or by swiping and tapping on phones, upright or sideways.
+- **Parts and stars.** The portal's intro lists the parts and a win unlocks the next one. Stars are 3 at the part's target, 2 within three moves of it and 1 after that; a hint from Bruno's notebook caps the part at 2. The result is the portal's own panel with the moves against the target and the score: 1,000 for the part plus 100 for each move under target + 10.
+- **A board per part, replayed by the channel.** Each result carries the moves; the server replays them with the game's own rules and ranks fewest moves, then fewer wake-ups, then fewer creaks outside the cuckoo. Runs with a hint don't go on the board ([decision 0013](docs/decisions/0013-bedtime-replay.md)). No daily missions yet.
+- Catalog art: cover, logo, how-to panels, result cast, a cartridge line in the broadcast room and share images. The record arcade fits eight games.
+- The hidden prototype route, its draft-art switch and its session list are gone. Progress now lives in the portal's save, and the notebook's part tabs only show the stars. The portal can word levels as "parte" ("Escolha a parte", "Próxima parte").
+
 ### Ladeira Abaixo: capa nova e textos revisados
 - **New cover.** The four friends race down one hill in two rows: Bruno worried at the back, Mila in her bathtub, Lina with her fan, and Déco in the lead jumping a speed bump, with a plain green hill holding the 404 antenna behind the houses. Everyone stays whole inside the frame, with a safe margin for the room TV, and the share images were regenerated.
 - **Friendlier copy.** The game page, track picker, how-to section, controls, garage, results and race tips were rewritten to read more naturally and match the game: one term per idea ("pontos de show", "multiplicador", "pódio", "desbloquear"). The how-to section now has its own introduction (`howToIntro` in the registry).

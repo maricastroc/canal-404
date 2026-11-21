@@ -14,6 +14,8 @@ const REJECTIONS_EN: Record<string, string> = {
   launches_failed: "The channel replayed your launches and the match didn't go that way.",
   bad_run: "The inputs you sent don't fit a Downhill Derby run.",
   run_failed: "The channel replayed your run and it didn't end that way.",
+  bad_moves: "The moves you sent don't fit a Past Bedtime part.",
+  moves_failed: "The channel replayed your moves and Bruno didn't get there that way.",
   too_fast: "This run ended too fast to be true.",
 };
 
