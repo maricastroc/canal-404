@@ -16,7 +16,7 @@ export type NightCopy = {
   speaker: string;
   names: { dad: string; grandma: string; dog: string; cat: string; bruno: string };
   view: { house: string; back: string };
-  status: { toss: (n: number) => string; sleepsIn: (n: number) => string; looking: (n: number) => string; sniffing: (n: number) => string; going: string; returning: string; knock: (n: number) => string };
+  status: { toss: (n: number) => string; sleepsIn: (n: number) => string; looking: (n: number) => string; sniffing: (n: number) => string; going: string; returning: string; knock: (n: number) => string; look: (n: number) => string; peek: (n: number) => string };
   pages: { rules: string; moves: string; back: string; rulesTitle: string; movesTitle: string; empty: string };
   legendTitle: string;
   legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string; hide: string; cat: string; route: string; toss: string; near: string };
@@ -142,7 +142,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "A Vó dá a volta na mesa, mas cada volta é de um jeito.",
           "Numa ela confere o canto da pia, na outra o canto da geladeira.",
-          "O olho numerado mostra onde ela vai olhar e em quantas jogadas.",
+          "O olho com a plaquinha “olha em…” mostra onde ela vai olhar e daqui a quantas jogadas.",
         ],
         story: "A Vó tá fazendo ronda na cozinha. E toda volta ela confere um canto diferente.",
       },
@@ -214,6 +214,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       going: "indo ver!",
       returning: "voltando",
       knock: (n) => (n === 1 ? "vai derrubar!" : `derruba em ${n}`),
+      look: (n) => (n === 1 ? "vai olhar!" : `olha em ${n}`),
+      peek: (n) => (n === 1 ? "vai espiar!" : `espia em ${n}`),
     },
     pages: { rules: "Regras e legenda", moves: "Jogadas", back: "Voltar", rulesTitle: "Como funciona", movesTitle: "Plano até agora", empty: "Nenhuma jogada ainda." },
     legendTitle: "Legenda",
@@ -366,7 +368,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Grandma circles the table, but never the same way twice.",
           "One lap she checks the sink corner, the next the fridge corner.",
-          "The numbered eye shows where she'll look and in how many moves.",
+          "The eye with the “looks in…” tag shows where she'll look and how many moves from now.",
         ],
         story: "Grandma is doing her rounds in the kitchen. And every lap she checks a different corner.",
       },
@@ -438,6 +440,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       going: "checking!",
       returning: "heading back",
       knock: (n) => (n === 1 ? "about to knock!" : `knocks in ${n}`),
+      look: (n) => (n === 1 ? "about to look!" : `looks in ${n}`),
+      peek: (n) => (n === 1 ? "about to peek!" : `peeks in ${n}`),
     },
     pages: { rules: "Rules and key", moves: "Moves", back: "Back", rulesTitle: "How it works", movesTitle: "Plan so far", empty: "No moves yet." },
     legendTitle: "Key",

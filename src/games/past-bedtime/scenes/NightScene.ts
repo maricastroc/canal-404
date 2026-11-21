@@ -1048,12 +1048,8 @@ export class NightScene extends Phaser.Scene {
         marks.fillStyle(0x1d1830, fade);
         marks.fillCircle(t.x, t.y, s * 0.05);
         this.watchSpots.push({ x: tx, y: ty });
-        const label = this.add
-          .text(t.x + s * 0.3, t.y - s * 0.3, String(k), { fontFamily: this.bridge.fonts.display, fontSize: `${Math.round(s * 0.2)}px`, color: "#1d1830", backgroundColor: peeking ? "#ff9d8a" : "#ffe39a", padding: { x: 6, y: 1 } })
-          .setOrigin(0.5)
-          .setDepth(39)
-          .setAlpha(fade);
-        this.badges.push(label);
+        const onBruno = tx === this.state.x && ty === this.state.y;
+        this.badges.push(this.lookTag(t.x, t.y - s * (onBruno ? 1.02 : 0.46), peeking ? this.copy.status.peek(k) : this.copy.status.look(k), peeking ? 0xff9d8a : 0xffe39a, Math.max(fade, 0.9)));
       }
       px = step.x;
       py = step.y;
@@ -1083,6 +1079,21 @@ export class NightScene extends Phaser.Scene {
       const c = tileCenter(L, x, y);
       this.badges.push(this.markBadge(c.x, c.y - L.tile * 0.04, masked ? "safe" : heard ? "wake" : "creak"));
     }
+  }
+
+  private lookTag(x: number, y: number, text: string, fill: number, alpha: number) {
+    const s = this.layout.tile;
+    const label = this.add.text(0, 0, text, { fontFamily: this.bridge.fonts.round ?? this.bridge.fonts.body, fontStyle: "700", fontSize: `${Math.round(Math.max(16, s * 0.15))}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
+    const w = label.width + s * 0.16;
+    const h = label.height + 2;
+    const g = this.add.graphics();
+    g.fillStyle(NIGHT.ink, 0.55);
+    g.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, h / 2);
+    g.fillStyle(fill, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    g.lineStyle(3, NIGHT.ink, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    return this.add.container(x, y, [g, label]).setDepth(39).setAlpha(alpha);
   }
 
   private markBadge(x: number, y: number, kind: "safe" | "wake" | "creak") {
@@ -1296,8 +1307,8 @@ export class NightScene extends Phaser.Scene {
     this.hints += 1;
     this.notebook.setStats(this.state.turn, this.hints);
     this.sfx(NIGHT_SFX.pencil);
-    const a = solution.actions[0];
     const st = this.state;
+    const a = this.calmestStep(st, solution.turns) ?? solution.actions[0];
     const g = this.hintLayer;
     const s = this.layout.tile;
     const c = tileCenter(this.layout, st.x, st.y);
@@ -1337,6 +1348,18 @@ export class NightScene extends Phaser.Scene {
       y: cy + (px * Math.sin(ang) + py * Math.cos(ang)) * r,
     }));
     g.fillPoints(shape, true);
+  }
+
+  private calmestStep(st: State, best: number): Action | null {
+    const last = this.actions[this.actions.length - 1];
+    const back = last === undefined || last === "wait" ? null : (((last + 2) % 4) as Dir);
+    const order: Action[] = ["wait", ...([0, 1, 2, 3] as Dir[]).filter((d) => d !== back), ...(back === null ? [] : [back])];
+    for (const action of order) {
+      const next = step(this.sim, st, action);
+      if (!next || next.state.status === "caught") continue;
+      if (next.state.status === "won" ? best === 1 : (solve(this.sim, next.state)?.turns ?? Infinity) + 1 === best) return action;
+    }
+    return null;
   }
 
   private tileAtPointer(p: Phaser.Input.Pointer) {
