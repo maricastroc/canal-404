@@ -55,7 +55,6 @@ const ORANGE = 0xff8a3d;
 const MINT = 0x63d6c1;
 const SLOT = 0xecd9b2;
 const MUTED = 0x8a80a8;
-const GREEN = 0x93cf4c;
 const WELL = 0x1f1740;
 const DEPTH = { panel: 40, ui: 41, pin: 43, card: 44, token: 45, coach: 46, banner: 47 };
 const FACE: Record<Speaker, { crop: [number, number, number]; fill: number; name: string }> = {
