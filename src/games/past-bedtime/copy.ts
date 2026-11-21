@@ -13,7 +13,9 @@ export type NightCopy = {
   hintsUsed: (n: number) => string;
   plan: string;
   legendTitle: string;
-  legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string };
+  legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string; hide: string; cat: string };
+  acts: Record<string, string>;
+  actLabel: (n: number, name: string) => string;
   buttons: { wait: string; undo: string; restart: string; hint: string; next: string; again: string; undoCaught: string };
   keys: string;
   touchKeys: string;
@@ -36,6 +38,10 @@ export type NightCopy = {
     dogSniff: string;
     dogBack: string;
     dogHome: string;
+    hidden: string;
+    hiddenSafe: string;
+    knockSoon: string;
+    knocked: string;
     hint: string;
     noHint: string;
     undone: string;
@@ -62,6 +68,8 @@ export type NightCopy = {
     dogWake: string;
     dogSniff: string;
     dogCatch: string;
+    knock: string;
+    meow: string;
     cuckoo: string;
     now: string;
     creak: string;
@@ -97,11 +105,47 @@ export const NIGHT_COPY = localized<NightCopy>({
         target: "porta",
         intro: ["A Vó não dorme.", "Ela dá voltas na mesa com a lanterna."],
       },
+      stairs: {
+        title: "A escada",
+        goal: "Descer e chegar na porta da cozinha.",
+        target: "cozinha",
+        intro: ["A Vó acordou e anda de um lado pro outro.", "A lanterna só ilumina pra frente. Espere ela virar de costas."],
+      },
+      pantry: {
+        title: "A despensa",
+        goal: "Passar pela Vó e sair pela porta da área.",
+        target: "área",
+        intro: ["Aqui não dá pra seguir a Vó: o corredor é estreito.", "Atrás da cortina, a lanterna não te acha."],
+      },
+      laundry: {
+        title: "A área de serviço",
+        goal: "Passar pela Pipoca e chegar na porta.",
+        target: "porta",
+        intro: ["A Pipoca dorme bem na passagem.", "Ela sempre vai ver de onde veio o barulho."],
+      },
+      dining: {
+        title: "A sala de jantar",
+        goal: "Atravessar até a sala de estar.",
+        target: "sala",
+        intro: ["Aqui não tem tábua solta pra fazer barulho.", "Mas o Pixel derruba alguma coisa de tempos em tempos."],
+      },
+      sofa: {
+        title: "O pai no sofá",
+        goal: "Atravessar a sala sem o pai te ver.",
+        target: "TV",
+        intro: ["Toda vez que o Pixel derruba algo, o pai acorda e olha pra lá.", "Atrás das plantas ele não te vê."],
+      },
       living: {
         title: "A sala da TV",
         goal: "Chegar no videocassete.",
         target: "vídeo",
-        intro: ["A Pipoca dorme bem na passagem.", "Ela sempre vai ver de onde veio o barulho."],
+        intro: ["A Pipoca de novo, e o pai cochilando na poltrona.", "A tábua perto dele também acorda o pai."],
+      },
+      return: {
+        title: "A volta",
+        goal: "Voltar pro quarto com a fita gravada.",
+        target: "quarto",
+        intro: ["A Vó subiu e está andando no corredor.", "Tábua só no canto do cuco, e longe da lanterna."],
       },
     },
     moves: "Jogadas",
@@ -110,6 +154,8 @@ export const NIGHT_COPY = localized<NightCopy>({
     hintsUsed: (n) => (n === 1 ? "1 dica usada" : `${n} dicas usadas`),
     plan: "Plano até agora",
     legendTitle: "Legenda",
+    actLabel: (n, name) => (n === 4 ? "Final" : `Ato ${n} · ${name}`),
+    acts: { upstairs: "Lá em cima", grandma: "A Vó acordada", pets: "Pipoca e Pixel", back: "A volta" },
     legend: {
       creak: "tábua que range",
       marks: "♪ pode · ! acorda",
@@ -117,6 +163,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       light: "luz: te veem",
       next: "luz da próxima",
       dog: "Pipoca segue o som",
+      hide: "esconderijo",
+      cat: "Pixel faz barulho",
       goal: "objetivo",
     },
     buttons: { wait: "Esperar", undo: "Desfazer", restart: "Recomeçar", hint: "Dica", next: "Próxima parte", again: "Jogar de novo", undoCaught: "Desfazer a última jogada" },
@@ -141,6 +189,10 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogSniff: "Está farejando. Corre!",
       dogBack: "Ela está voltando para a almofada!",
       dogHome: "A Pipoca deitou de novo.",
+      hidden: "Escondido. Ninguém me vê aqui.",
+      hiddenSafe: "A luz passou e não me viu!",
+      knockSoon: "O Pixel vai derrubar algo na próxima jogada.",
+      knocked: "O Pixel derrubou alguma coisa!",
       hint: "Dica: a seta a lápis mostra a próxima jogada.",
       noHint: "Daqui não tem saída. Melhor desfazer.",
       undone: "Risquei a última jogada.",
@@ -167,11 +219,13 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogWake: "?!",
       dogSniff: "snif snif",
       dogCatch: "AU! AU!",
+      knock: "CATAPLOFT!",
+      meow: "miau",
       cuckoo: "CUCO!",
       now: "AGORA!",
       creak: "NHÉÉC",
       brunoExcuse: { dad: "Eu… tava com sede?", grandma: "Fui no banheiro, Vó!", pipoca: "Psiu! Pipoca!" },
-      brunoWin: { doorway: "Passei!", hallway: "Ufa!", kitchen: "Passei!", living: "Gravando!" },
+      brunoWin: { doorway: "Passei!", hallway: "Ufa!", stairs: "Desci!", kitchen: "Passei!", pantry: "Ufa, a cortina!", laundry: "Valeu, Pipoca!", dining: "Valeu, Pixel!", sofa: "Nem viu!", living: "Gravando!", return: "Missão cumprida!" },
       brunoThink: "Pensa, Bruno, pensa…",
     },
     replayOk: "Reprodução idêntica",
@@ -200,11 +254,47 @@ export const NIGHT_COPY = localized<NightCopy>({
         target: "door",
         intro: ["Grandma doesn't sleep.", "She walks around the table with a flashlight."],
       },
+      stairs: {
+        title: "The stairs",
+        goal: "Get down to the kitchen door.",
+        target: "kitchen",
+        intro: ["Grandma is up and walking back and forth.", "The flashlight only points ahead. Wait for her to turn her back."],
+      },
+      pantry: {
+        title: "The pantry",
+        goal: "Get past Grandma and out the back door.",
+        target: "door",
+        intro: ["You can't trail Grandma here: the aisle is too narrow.", "Behind the curtain, the flashlight can't find you."],
+      },
+      laundry: {
+        title: "The laundry room",
+        goal: "Get past Pipoca to the door.",
+        target: "door",
+        intro: ["Pipoca sleeps right in the doorway.", "She always goes to check on a noise."],
+      },
+      dining: {
+        title: "The dining room",
+        goal: "Cross over to the living room.",
+        target: "living room",
+        intro: ["No loose boards to make noise here.", "But Pixel knocks something over every so often."],
+      },
+      sofa: {
+        title: "Dad on the sofa",
+        goal: "Cross the room without Dad seeing you.",
+        target: "TV",
+        intro: ["Every time Pixel knocks something over, Dad wakes up and looks over there.", "Behind the plants he can't see you."],
+      },
       living: {
         title: "The TV room",
         goal: "Get to the VCR.",
         target: "VCR",
-        intro: ["Pipoca sleeps right in the doorway.", "She always goes to check on a noise."],
+        intro: ["Pipoca again, and Dad dozing in the armchair.", "The board near him wakes Dad too."],
+      },
+      return: {
+        title: "The way back",
+        goal: "Get back to your room with the tape.",
+        target: "bedroom",
+        intro: ["Grandma came upstairs and is walking the hallway.", "Boards only when the cuckoo sings, and away from the flashlight."],
       },
     },
     moves: "Moves",
@@ -213,6 +303,8 @@ export const NIGHT_COPY = localized<NightCopy>({
     hintsUsed: (n) => (n === 1 ? "1 hint used" : `${n} hints used`),
     plan: "Plan so far",
     legendTitle: "Key",
+    actLabel: (n, name) => (n === 4 ? "Finale" : `Act ${n} · ${name}`),
+    acts: { upstairs: "Upstairs", grandma: "Grandma's up", pets: "Pipoca and Pixel", back: "The way back" },
     legend: {
       creak: "creaky board",
       marks: "♪ safe · ! wakes",
@@ -220,6 +312,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       light: "light: you're seen",
       next: "light next move",
       dog: "Pipoca follows noise",
+      hide: "hiding spot",
+      cat: "Pixel makes noise",
       goal: "goal",
     },
     buttons: { wait: "Wait", undo: "Undo", restart: "Restart", hint: "Hint", next: "Next part", again: "Play again", undoCaught: "Undo the last move" },
@@ -244,6 +338,10 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogSniff: "She's sniffing. Run!",
       dogBack: "She's heading back to her cushion!",
       dogHome: "Pipoca lay down again.",
+      hidden: "Hidden. Nobody can see me here.",
+      hiddenSafe: "The light went by and missed me!",
+      knockSoon: "Pixel knocks something over on the next move.",
+      knocked: "Pixel knocked something over!",
       hint: "Hint: the pencil arrow shows the next move.",
       noHint: "No way out from here. Better undo.",
       undone: "Crossed out the last move.",
@@ -270,11 +368,13 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogWake: "?!",
       dogSniff: "sniff sniff",
       dogCatch: "WOOF! WOOF!",
+      knock: "CRASH!",
+      meow: "meow",
       cuckoo: "CUCKOO!",
       now: "NOW!",
       creak: "CREEAK",
       brunoExcuse: { dad: "I was… thirsty?", grandma: "Just the bathroom, Grandma!", pipoca: "Shh! Pipoca!" },
-      brunoWin: { doorway: "Made it!", hallway: "Phew!", kitchen: "Made it!", living: "Recording!" },
+      brunoWin: { doorway: "Made it!", hallway: "Phew!", stairs: "Down!", kitchen: "Made it!", pantry: "Phew, that curtain!", laundry: "Thanks, Pipoca!", dining: "Thanks, Pixel!", sofa: "He never saw me!", living: "Recording!", return: "Mission done!" },
       brunoThink: "Think, Bruno, think…",
     },
     replayOk: "Replay identical",

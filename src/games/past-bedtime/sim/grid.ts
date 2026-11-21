@@ -45,7 +45,11 @@ export function isOpaque(grid: Grid, x: number, y: number) {
 
 export function isFloor(grid: Grid, x: number, y: number) {
   const t = tileAt(grid, x, y);
-  return t === "." || t === "~" || t === "G";
+  return t === "." || t === "~" || t === "G" || t === "h";
+}
+
+export function isHiding(grid: Grid, x: number, y: number) {
+  return tileAt(grid, x, y) === "h";
 }
 
 export function isCreaky(grid: Grid, x: number, y: number) {

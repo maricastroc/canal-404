@@ -8,13 +8,13 @@ const COPY = localized({
   "pt-BR": {
     title: "Madrugada · protótipo",
     description: "Protótipo de Madrugada para testar o stealth por turnos, o barulho, o cuco e o caderno do Bruno.",
-    kicker: "Protótipo · Etapa 0",
+    kicker: "Protótipo · Etapa 1",
     heading: "Madrugada",
   },
   en: {
     title: "Past Bedtime · prototype",
     description: "Prototype of Past Bedtime for testing turn-based stealth, noise, the cuckoo clock and Bruno's notebook.",
-    kicker: "Prototype · Stage 0",
+    kicker: "Prototype · Stage 1",
     heading: "Past Bedtime",
   },
 });

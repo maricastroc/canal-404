@@ -35,9 +35,63 @@ const THEMES: Record<string, Theme> = {
 };
 
 export function themeFor(levelId: string): Theme {
-  if (levelId === "kitchen") return THEMES.kitchen;
-  if (levelId === "living") return THEMES.living;
+  if (levelId === "kitchen" || levelId === "pantry" || levelId === "laundry") return THEMES.kitchen;
+  if (levelId === "living" || levelId === "dining" || levelId === "sofa") return THEMES.living;
   return THEMES.hall;
+}
+
+export type HideStyle = "curtain" | "plant";
+
+export function hideStyleFor(levelId: string): HideStyle {
+  return levelId === "sofa" ? "plant" : "curtain";
+}
+
+export function drawHides(back: Phaser.GameObjects.Graphics, front: Phaser.GameObjects.Graphics, grid: Grid, layout: Layout, style: HideStyle) {
+  const s = layout.tile;
+  for (let y = 0; y < grid.h; y += 1) {
+    for (let x = 0; x < grid.w; x += 1) {
+      if (grid.tiles[y * grid.w + x] !== "h") continue;
+      const px = layout.ox + x * s;
+      const py = layout.oy + y * s;
+      if (style === "curtain") {
+        back.fillStyle(0x000000, 0.3);
+        back.fillRect(px + s * 0.06, py + s * 0.06, s * 0.88, s * 0.88);
+        back.fillStyle(0x7c4527, 1);
+        back.fillRect(px - s * 0.02, py - s * 0.08, s * 1.04, s * 0.07);
+        const folds = 5;
+        for (let i = 0; i < folds; i += 1) {
+          const fx = px + (i * s) / folds;
+          front.fillStyle(i % 2 ? 0xc4687c : 0xd9838f, 0.93);
+          front.fillRect(fx, py + s * 0.36, s / folds + 1, s * 0.58);
+        }
+        front.lineStyle(3, NIGHT.ink, 1);
+        front.strokeRect(px, py + s * 0.36, s, s * 0.58);
+        front.lineStyle(2, 0xf6e7c4, 0.7);
+        front.lineBetween(px + 4, py + s * 0.88, px + s - 4, py + s * 0.88);
+        back.fillStyle(0xd9838f, 1);
+        for (let i = 0; i < 5; i += 1) back.fillRect(px + (i * s) / 5 + 2, py - s * 0.02, s / 5 - 4, s * 0.4);
+        back.lineStyle(2.5, NIGHT.ink, 1);
+        back.strokeRect(px, py - s * 0.02, s, s * 0.4);
+      } else {
+        back.fillStyle(0x000000, 0.3);
+        back.fillEllipse(px + s * 0.5, py + s * 0.9, s * 0.8, s * 0.2);
+        const leaves = (g: Phaser.GameObjects.Graphics, cy: number, scale: number, alpha: number) => {
+          g.fillStyle(0x4c9a43, alpha);
+          g.lineStyle(2.5, NIGHT.ink, alpha);
+          for (let i = 0; i < 7; i += 1) {
+            const a = Math.PI * (0.05 + (i * 0.9) / 6);
+            const lx = px + s * 0.5 - Math.cos(a) * s * 0.34 * scale;
+            const ly = cy - Math.sin(a) * s * 0.3 * scale;
+            g.fillEllipse(lx, ly, s * 0.2 * scale, s * 0.42 * scale);
+            g.strokeEllipse(lx, ly, s * 0.2 * scale, s * 0.42 * scale);
+          }
+        };
+        leaves(back, py + s * 0.35, 1.15, 1);
+        rect(front, px + s * 0.26, py + s * 0.62, s * 0.48, s * 0.32, 0xc0703f, s * 0.08, 3);
+        leaves(front, py + s * 0.7, 0.8, 0.95);
+      }
+    }
+  }
 }
 
 export type FaceKind = "none" | "face" | "tall" | "cap";
@@ -511,6 +565,16 @@ function drawProp(g: Phaser.GameObjects.Graphics, prop: PropDef, layout: Layout)
       for (let i = 0; i < 5; i += 1) g.fillCircle(x + s * (0.3 + i * 0.1), y + s * (0.5 + (i % 2) * 0.12), s * 0.025);
       break;
     case "stairs": {
+      if (prop.f === 0) {
+        for (let i = 0; i < 5; i += 1) {
+          const shade3 = [0x48301f, 0x63402a, 0x7f5436, 0x9a6844, 0xb27c57][i];
+          g.fillStyle(shade3, 1);
+          g.fillRect(x + s * 0.04, y + s * 0.04 + i * s * 0.18, w - s * 0.08, s * 0.18);
+          g.lineStyle(2.5, ink, 1);
+          g.strokeRect(x + s * 0.04, y + s * 0.04 + i * s * 0.18, w - s * 0.08, s * 0.18);
+        }
+        break;
+      }
       for (let i = 0; i < 5; i += 1) {
         const shade2 = [0xb27c57, 0x9a6844, 0x7f5436, 0x63402a, 0x48301f][i];
         g.fillStyle(shade2, 1);
@@ -523,6 +587,65 @@ function drawProp(g: Phaser.GameObjects.Graphics, prop: PropDef, layout: Layout)
     }
     case "door":
       break;
+    case "pantry": {
+      box(g, x + s * 0.04, y - s * 0.4, s * 0.92, s * 1.3, 0xb88a5e, 0x8a5a3c, s * 0.9, 5);
+      const jars = [0xffc83d, 0xef4f43, 0xf6f1e4, 0x93cf4c, 0xc0703f, 0x5cb9f0];
+      for (let r = 0; r < 2; r += 1) {
+        g.lineStyle(3, 0x6a3f2a, 1);
+        g.lineBetween(x + s * 0.08, y - s * 0.02 + r * s * 0.38, x + s * 0.92, y - s * 0.02 + r * s * 0.38);
+        for (let i = 0; i < 3; i += 1) {
+          const jx = x + s * (0.14 + i * 0.26);
+          const jy = y - s * 0.3 + r * s * 0.38;
+          rect(g, jx, jy, s * 0.2, s * 0.26, 0xe9f2f6, 4, 2);
+          g.fillStyle(jars[(i + r * 3) % jars.length], 1);
+          g.fillRect(jx + 3, jy + s * 0.1, s * 0.2 - 6, s * 0.14);
+        }
+      }
+      break;
+    }
+    case "washer": {
+      box(g, x + s * 0.06, y + s * 0.04, s * 0.88, h - s * 0.1, 0xeef1f7, 0xc9cfdc, s * 0.5, 8);
+      g.fillStyle(0x6f86c9, 1);
+      g.fillCircle(x + s * 0.5, y + s * 0.62, s * 0.26);
+      g.lineStyle(4, 0x9aa6b8, 1);
+      g.strokeCircle(x + s * 0.5, y + s * 0.62, s * 0.26);
+      g.fillStyle(0xa9dcf7, 0.6);
+      g.fillEllipse(x + s * 0.42, y + s * 0.55, s * 0.14, s * 0.08);
+      box(g, x + s * 1.06, y + s * 0.04, s * 0.88, h - s * 0.1, 0xdce8ec, 0xb3c7cf, s * 0.5, 8);
+      rect(g, x + s * 1.18, y + s * 0.12, s * 0.64, s * 0.9, 0x9fb6c4, s * 0.12, 3);
+      g.lineStyle(2.5, 0x6f7b8f, 1);
+      for (let i = 0; i < 4; i += 1) g.lineBetween(x + s * 1.24, y + s * (0.3 + i * 0.16), x + s * 1.76, y + s * (0.3 + i * 0.16));
+      rect(g, x + s * 1.3, y + s * 1.2, s * 0.4, s * 0.26, 0x5cb9f0, s * 0.06, 2.5);
+      rect(g, x + s * 0.25, y + s * 1.22, s * 0.3, s * 0.36, 0xf06ba8, s * 0.08, 2.5);
+      break;
+    }
+    case "cabinet": {
+      box(g, x + s * 0.06, y - s * 0.5, s * 0.88, s * 1.38, 0x8a5a3c, 0x6a3f2a, s * 1.0, 6);
+      rect(g, x + s * 0.14, y - s * 0.12, s * 0.72, s * 0.5, 0xa9dcf7, 4, 2.5);
+      for (let i = 0; i < 3; i += 1) {
+        g.fillStyle(0xf6f1e4, 1);
+        g.fillCircle(x + s * (0.28 + i * 0.22), y + s * 0.02, s * 0.07);
+        g.fillCircle(x + s * (0.28 + i * 0.22), y + s * 0.24, s * 0.06);
+      }
+      break;
+    }
+    case "chair": {
+      box(g, x + s * 0.2, y + s * 0.18, s * 0.6, s * 0.68, 0xb07a4f, 0x8a5a3c, s * 0.16, 6);
+      rect(g, x + s * 0.2, y + s * 0.06, s * 0.6, s * 0.2, 0x9a6440, 4, 3);
+      g.fillStyle(0xef4f43, 0.8);
+      g.fillRoundedRect(x + s * 0.28, y + s * 0.34, s * 0.44, s * 0.28, 6);
+      break;
+    }
+    case "sideboard": {
+      box(g, x + s * 0.04, y + s * 0.12, w - s * 0.08, s * 0.82, 0x9a6440, 0x6d4a3a, s * 0.4, 6);
+      for (let i = 0; i < (prop.w ?? 1); i += 1) rect(g, x + i * s + s * 0.16, y + s * 0.62, s * 0.68, s * 0.26, 0x8a5a3c, 3, 2);
+      g.fillStyle(0xf6f1e4, 1);
+      g.fillEllipse(x + w * 0.25, y + s * 0.3, s * 0.36, s * 0.16);
+      rect(g, x + w * 0.72, y + s * 0.16, s * 0.16, s * 0.26, 0x63d6c1, s * 0.06, 2.5);
+      g.fillStyle(0xf06ba8, 1);
+      g.fillCircle(x + w * 0.8, y + s * 0.14, s * 0.07);
+      break;
+    }
     default:
       rect(g, x + s * 0.08, y + s * 0.08, w - s * 0.16, h - s * 0.16, 0x7a4a32, 8);
   }

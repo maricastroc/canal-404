@@ -15,7 +15,7 @@ export type NoteKind = keyof typeof COLORS;
 
 export type ButtonId = "wait" | "undo" | "restart" | "hint" | "next" | "again" | "undoCaught";
 
-export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "dog" | "goal";
+export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "dog" | "goal" | "hide" | "cat";
 
 type Col = { x: number; w: number };
 
@@ -147,6 +147,7 @@ export class Notebook {
     const sp = this.spots;
     this.texts.title = this.raw(sp.title.x, sp.title.y, copy.notebookTitle, 50, PENCIL);
     this.texts.mission = this.raw(sp.mission.x, sp.mission.y, copy.mission, 25, PENCIL_SOFT);
+    this.texts.act = this.onLine(sp.heading.x, sp.heading.line - 1, "", 23, PENCIL_SOFT);
     this.texts.heading = this.onLine(sp.heading.x, sp.heading.line, "", 42, PENCIL);
     this.texts.goal = this.onLine(sp.goal.x, sp.goal.line, "", 29, PENCIL, sp.goal.w);
     this.texts.moves = this.onLine(sp.stats.x, sp.stats.line, "", 38, PENCIL);
@@ -219,13 +220,14 @@ export class Notebook {
     g.lineBetween(dx + 28, dy + 13, dx + 8, dy + 29);
   }
 
-  setLevel(index: number, total: number, title: string, goal: string, par: number, progress: number[], legend: LegendItem[]) {
+  setLevel(index: number, total: number, title: string, goal: string, par: number, progress: number[], legend: LegendItem[], acts: number[] = [], actLabel = "") {
     this.texts.heading.setText(`${index + 1}. ${title}`);
+    this.texts.act.setText(actLabel);
     this.texts.goal.setText(goal);
     this.texts.starsAt.setText(this.copy.starsAt(par));
     this.texts.par.setText(`${this.copy.par}: ${par}`);
     this.drawInk(par);
-    this.buildTabs(index, total, progress);
+    this.buildTabs(index, total, progress, acts);
     this.buildLegend(legend);
     this.notes = [];
     this.renderNotes();
@@ -248,30 +250,43 @@ export class Notebook {
     this.texts.hints.setText(hints > 0 ? this.copy.hintsUsed(hints) : "");
   }
 
-  private buildTabs(active: number, total: number, progress: number[]) {
+  private buildTabs(active: number, total: number, progress: number[], acts: number[]) {
     for (const t of this.tabs) t.destroy();
     this.tabs = [];
     const sp = this.spots.tabs;
-    const colors = [0xffe39a, 0xf9b6d4, 0xa9dcf7, 0xc8f0b4];
-    const tw = Math.min(150, sp.w / total);
-    const th = 52;
+    const actColors = [0xffe39a, 0xf9b6d4, 0xa9dcf7, 0xc8f0b4];
+    const groups = new Set(acts).size;
+    const gap = 10;
+    const cell = Math.min(56, (sp.w - gap * Math.max(0, groups - 1)) / total);
+    const r = Math.min(20, cell * 0.42);
+    let x = sp.x + cell / 2;
     for (let i = 0; i < total; i += 1) {
-      const g = this.scene.add.graphics();
+      if (i > 0 && acts[i] !== acts[i - 1]) x += gap;
       const on = i === active;
-      const bw = tw - 10;
+      const got = progress[i] ?? 0;
+      const g = this.scene.add.graphics();
+      const rr = on ? r * 1.18 : r;
       g.fillStyle(INK, 1);
-      g.fillRoundedRect(3, 4, bw, th, 8);
-      g.fillStyle(colors[i % colors.length], 1);
-      g.fillRoundedRect(0, 0, bw, th, 8);
-      g.lineStyle(on ? 4.5 : 2.5, INK, 1);
-      g.strokeRoundedRect(0, 0, bw, th, 8);
-      const gap = Math.min(22, (bw - 46) / 3);
-      for (let k = 0; k < 3; k += 1) star(g, 40 + gap * 0.5 + k * gap, th / 2, Math.min(9, gap * 0.45), k < (progress[i] ?? 0));
-      const label = this.scene.add.text(10, th / 2, String(i + 1), { fontFamily: this.fonts.hand, fontSize: "34px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0, 0.5);
-      const c = this.scene.add.container(sp.x + i * tw, sp.y + (on ? -4 : 1), [g, label]).setAngle(on ? -2 : (wobble(i) - 0.5) * 3);
-      this.makeClickable(c, bw, th, () => this.onTab(i));
+      g.fillCircle(2, 3, rr);
+      g.fillStyle(got >= 3 ? 0xffc83d : got > 0 ? 0xffe9b0 : actColors[(acts[i] ?? 0) % actColors.length], 1);
+      g.fillCircle(0, 0, rr);
+      g.lineStyle(on ? 4 : 2.5, INK, 1);
+      g.strokeCircle(0, 0, rr);
+      for (let k = 0; k < got; k += 1) {
+        g.fillStyle(0xc4352c, 1);
+        g.fillCircle((k - (got - 1) / 2) * rr * 0.42, rr * 0.82, rr * 0.13);
+      }
+      const label = this.scene.add.text(0, -1, String(i + 1), { fontFamily: this.fonts.hand, fontSize: `${Math.round(rr * 1.25)}px`, color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+      const c = this.scene.add.container(x, sp.y + 28 + (on ? -2 : 0), [g, label]).setAngle((wobble(i * 3) - 0.5) * 6);
+      const zone = this.scene.add.zone(0, 0, cell, cell).setInteractive({ useHandCursor: true });
+      zone.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+        ev.stopPropagation();
+        this.onTab(i);
+      });
+      c.add(zone);
       this.container.add(c);
       this.tabs.push(c);
+      x += cell;
     }
   }
 
@@ -356,6 +371,23 @@ export class Notebook {
           g.fillCircle(x + k * 8, y - 8 - (k === 0 ? 3 : 0), 4);
           g.strokeCircle(x + k * 8, y - 8 - (k === 0 ? 3 : 0), 4);
         }
+        break;
+      case "hide":
+        g.fillStyle(0xd9838f, 1);
+        g.fillRect(x - 13, y - 13, 26, 26);
+        g.lineStyle(2.5, INK, 1);
+        g.strokeRect(x - 13, y - 13, 26, 26);
+        g.lineBetween(x - 4, y - 13, x - 4, y + 13);
+        g.lineBetween(x + 5, y - 13, x + 5, y + 13);
+        break;
+      case "cat":
+        g.fillStyle(0x2a2342, 1);
+        g.fillCircle(x, y + 2, 10);
+        g.fillTriangle(x - 10, y - 2, x - 3, y - 8, x - 9, y - 14);
+        g.fillTriangle(x + 10, y - 2, x + 3, y - 8, x + 9, y - 14);
+        g.fillStyle(0xc8f07a, 1);
+        g.fillCircle(x - 4, y, 2.5);
+        g.fillCircle(x + 4, y, 2.5);
         break;
       case "goal":
         g.lineStyle(3, 0x2fa996, 1);

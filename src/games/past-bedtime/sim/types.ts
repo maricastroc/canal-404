@@ -17,11 +17,13 @@ export type PatrolDef = { kind: "patrol"; id: string; path: PatrolStep[]; start:
 
 export type DogDef = { kind: "dog"; id: string; x: number; y: number; hear: number; sniff: number };
 
-export type AgentDef = SleeperDef | PatrolDef | DogDef;
+export type CatDef = { kind: "cat"; id: string; x: number; y: number; sx: number; sy: number; period: number; offset: number; loud: number; hear: number };
+
+export type AgentDef = SleeperDef | PatrolDef | DogDef | CatDef;
 
 export type ClockDef = { period: number; x: number; y: number };
 
-export type PropKind = "bed" | "nightstand" | "sofa" | "armchair" | "table" | "chair" | "fridge" | "counter" | "counterLow" | "stove" | "sink" | "shelf" | "plant" | "tv" | "vcr" | "dogbed" | "stairs" | "door" | "rug" | "window" | "toybox" | "laundry";
+export type PropKind = "bed" | "nightstand" | "sofa" | "armchair" | "table" | "chair" | "fridge" | "counter" | "counterLow" | "stove" | "sink" | "pantry" | "washer" | "cabinet" | "sideboard" | "shelf" | "plant" | "tv" | "vcr" | "dogbed" | "stairs" | "door" | "rug" | "window" | "toybox" | "laundry";
 
 export type PropDef = { kind: PropKind; x: number; y: number; w?: number; h?: number; f?: Dir };
 
@@ -43,7 +45,9 @@ export type DogMode = "sleep" | "go" | "sniff" | "back";
 
 export type DogState = { kind: "dog"; x: number; y: number; mode: DogMode; tx: number; ty: number; timer: number; facing: Dir };
 
-export type AgentState = SleeperState | PatrolState | DogState;
+export type CatState = { kind: "cat" };
+
+export type AgentState = SleeperState | PatrolState | DogState | CatState;
 
 export type Status = "playing" | "caught" | "won";
 
@@ -67,8 +71,9 @@ export type SimEvent =
   | { type: "move"; from: Point; to: Point; dir: Dir }
   | { type: "wait" }
   | { type: "creak"; x: number; y: number; masked: boolean }
+  | { type: "knock"; agent: number; x: number; y: number }
   | { type: "cuckoo" }
-  | { type: "heard"; agent: number; x: number; y: number }
+  | { type: "heard"; agent: number; x: number; y: number; source: number }
   | { type: "wake"; agent: number; facing: Dir }
   | { type: "sleep"; agent: number }
   | { type: "alert"; agent: number; facing: Dir }

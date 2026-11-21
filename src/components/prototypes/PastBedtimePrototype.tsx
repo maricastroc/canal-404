@@ -19,7 +19,7 @@ const COPY = localized({
     moves: (turns: number, par: number) => `${turns} jogadas (meta ${par})`,
     hints: (n: number) => (n === 0 ? "sem dica" : n === 1 ? "1 dica" : `${n} dicas`),
     stars: (n: number) => `${n} de 3 estrelas`,
-    keys: "Setas ou WASD andam · Espaço ou toque no Bruno espera · Z desfaz · R recomeça · H dica · 1 a 4 trocam de parte · Enter vai para a próxima",
+    keys: "Setas ou WASD andam · Espaço ou toque no Bruno espera · Z desfaz · R recomeça · H dica · [ e ] trocam de parte · Enter vai para a próxima",
   },
   en: {
     loading: "Turning off the lights…",
@@ -28,7 +28,7 @@ const COPY = localized({
     moves: (turns: number, par: number) => `${turns} moves (target ${par})`,
     hints: (n: number) => (n === 0 ? "no hints" : n === 1 ? "1 hint" : `${n} hints`),
     stars: (n: number) => `${n} of 3 stars`,
-    keys: "Arrows or WASD move · Space or tapping Bruno waits · Z undoes · R restarts · H hints · 1 to 4 switch parts · Enter goes to the next one",
+    keys: "Arrows or WASD move · Space or tapping Bruno waits · Z undoes · R restarts · H hints · [ and ] switch parts · Enter goes to the next one",
   },
 });
 
@@ -93,10 +93,6 @@ const KEYS: Record<string, Command> = {
   KeyH: "hint",
   Enter: "next",
   NumpadEnter: "next",
-  Digit1: "level:0",
-  Digit2: "level:1",
-  Digit3: "level:2",
-  Digit4: "level:3",
 };
 
 export function PastBedtimePrototype() {
@@ -158,6 +154,12 @@ export function PastBedtimePrototype() {
     })();
     const keydown = (e: KeyboardEvent) => {
       if (isFormField(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code === "BracketLeft" || e.code === "BracketRight") {
+        e.preventDefault();
+        if (e.repeat) return;
+        handleRef.current?.command(`level:${levelRef.current + (e.code === "BracketRight" ? 1 : -1)}`);
+        return;
+      }
       const cmd = KEYS[e.code];
       if (!cmd) return;
       e.preventDefault();

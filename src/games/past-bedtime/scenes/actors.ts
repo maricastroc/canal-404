@@ -883,3 +883,91 @@ export class ClockView {
     this.scene.tweens.add({ targets: this.container, angle: { from: -3, to: 3 }, duration: 60, yoyo: true, repeat: 3, onComplete: () => this.container.setAngle(0) });
   }
 }
+
+export type CatMood = "idle" | "ready" | "swipe";
+
+export class CatView {
+  readonly container: Phaser.GameObjects.Container;
+  private body: Phaser.GameObjects.Container;
+  private gfx: Phaser.GameObjects.Graphics;
+  private tail: Phaser.GameObjects.Graphics;
+  private mood: CatMood = "idle";
+
+  constructor(
+    private scene: Phaser.Scene,
+    private s: number,
+  ) {
+    this.tail = scene.add.graphics();
+    this.gfx = scene.add.graphics();
+    this.body = scene.add.container(0, 0, [this.tail, this.gfx]);
+    this.container = scene.add.container(0, 0, [this.body]).setDepth(33);
+    this.draw();
+    scene.tweens.add({ targets: this.tail, angle: { from: -14, to: 14 }, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  headPoint() {
+    return { x: this.container.x, y: this.container.y - this.s * 0.42 * this.container.scaleY };
+  }
+
+  set(mood: CatMood) {
+    if (mood === this.mood) return;
+    this.mood = mood;
+    this.draw();
+  }
+
+  swipe(onHit: () => void) {
+    this.set("swipe");
+    this.scene.tweens.add({ targets: this.body, x: this.s * 0.12, duration: 110, yoyo: true, ease: "Quad.easeOut", onYoyo: onHit, onComplete: () => this.set("idle") });
+  }
+
+  private draw() {
+    const g = this.gfx;
+    const t = this.tail;
+    const s = this.s;
+    const fur = 0x2a2342;
+    const ink = 0x1d1830;
+    g.clear();
+    t.clear();
+    t.setPosition(s * 0.16, s * 0.12);
+    t.lineStyle(s * 0.07, ink, 1);
+    t.beginPath();
+    t.arc(s * 0.06, -s * 0.14, s * 0.16, Math.PI * 0.5, Math.PI * (this.mood === "ready" ? 1.9 : 1.4));
+    t.strokePath();
+    t.lineStyle(s * 0.045, fur, 1);
+    t.beginPath();
+    t.arc(s * 0.06, -s * 0.14, s * 0.16, Math.PI * 0.5, Math.PI * (this.mood === "ready" ? 1.9 : 1.4));
+    t.strokePath();
+    const crouch = this.mood === "ready" ? 0.04 : 0;
+    g.fillStyle(fur, 1);
+    g.lineStyle(3, ink, 1);
+    g.fillEllipse(0, s * (0.08 + crouch), s * 0.38, s * 0.34);
+    g.strokeEllipse(0, s * (0.08 + crouch), s * 0.38, s * 0.34);
+    const hy = -s * (0.16 - crouch);
+    g.fillTriangle(-s * 0.16, hy - s * 0.02, -s * 0.06, hy - s * 0.12, -s * 0.15, hy - s * 0.2);
+    g.fillTriangle(s * 0.16, hy - s * 0.02, s * 0.06, hy - s * 0.12, s * 0.15, hy - s * 0.2);
+    g.strokeTriangle(-s * 0.16, hy - s * 0.02, -s * 0.06, hy - s * 0.12, -s * 0.15, hy - s * 0.2);
+    g.strokeTriangle(s * 0.16, hy - s * 0.02, s * 0.06, hy - s * 0.12, s * 0.15, hy - s * 0.2);
+    g.fillCircle(0, hy, s * 0.15);
+    g.strokeCircle(0, hy, s * 0.15);
+    const wide = this.mood !== "idle";
+    for (const side of [-1, 1]) {
+      g.fillStyle(0xc8f07a, 1);
+      g.fillEllipse(side * s * 0.06, hy - s * 0.01, s * 0.07, wide ? s * 0.07 : s * 0.035);
+      g.fillStyle(ink, 1);
+      g.fillEllipse(side * s * 0.06, hy - s * 0.01, s * 0.02, wide ? s * 0.06 : s * 0.03);
+    }
+    g.fillStyle(0xf06ba8, 1);
+    g.fillTriangle(-s * 0.025, hy + s * 0.05, s * 0.025, hy + s * 0.05, 0, hy + s * 0.08);
+    g.lineStyle(1.5, 0xd9ccff, 0.8);
+    for (const side of [-1, 1]) {
+      g.lineBetween(side * s * 0.05, hy + s * 0.07, side * s * 0.2, hy + s * 0.05);
+      g.lineBetween(side * s * 0.05, hy + s * 0.08, side * s * 0.2, hy + s * 0.1);
+    }
+    if (this.mood === "swipe") {
+      g.fillStyle(fur, 1);
+      g.fillEllipse(s * 0.22, s * 0.0, s * 0.16, s * 0.09);
+      g.lineStyle(2.5, ink, 1);
+      g.strokeEllipse(s * 0.22, s * 0.0, s * 0.16, s * 0.09);
+    }
+  }
+}

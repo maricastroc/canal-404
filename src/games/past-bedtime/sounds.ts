@@ -68,6 +68,16 @@ export const NIGHT_SFX = {
   bump: {
     layers: [{ kind: "tone", wave: "sine", from: 160, to: 90, duration: 0.09, gain: 0.06 }],
   },
+  knock: {
+    layers: [
+      { kind: "noise", duration: 0.32, gain: 0.16, filter: { type: "bandpass", from: 2400, to: 900, q: 1.4 } },
+      { kind: "tone", wave: "triangle", from: 1500, to: 600, duration: 0.18, gain: 0.05, glide: "exp" },
+      { kind: "noise", duration: 0.12, delay: 0.16, gain: 0.08, filter: { type: "highpass", from: 3000 } },
+    ],
+  },
+  meow: {
+    layers: [{ kind: "tone", wave: "triangle", from: 620, to: 880, duration: 0.3, gain: 0.05, glide: "exp", vibrato: { rate: 8, depth: 30 } }],
+  },
   win: {
     layers: [
       { kind: "tone", wave: "triangle", from: 523, to: 523, duration: 0.12, gain: 0.07 },

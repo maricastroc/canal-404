@@ -1,5 +1,5 @@
-import { buildGrid, coneTiles, dirTo, firstStep, isCreaky, isFloor, noiseDistances, type Grid } from "./grid";
-import { DX, DY, type Action, type AgentState, type CatchReason, type Dir, type DogState, type LevelDef, type PatrolDef, type SimEvent, type State } from "./types";
+import { buildGrid, coneTiles, dirTo, firstStep, isCreaky, isFloor, isHiding, noiseDistances, type Grid } from "./grid";
+import { DX, DY, type Action, type AgentState, type CatDef, type CatchReason, type Dir, type DogState, type LevelDef, type PatrolDef, type SimEvent, type State } from "./types";
 
 export const STAR_SLACK = 3;
 
@@ -20,6 +20,7 @@ export function createSim(level: LevelDef): Sim {
       const p = def.path[def.start];
       return { kind: "patrol", idx: def.start, x: p.x, y: p.y, facing: patrolFacing(def, def.start, 2), alert: 0 };
     }
+    if (def.kind === "cat") return { kind: "cat" };
     return { kind: "dog", x: def.x, y: def.y, mode: "sleep", tx: def.x, ty: def.y, timer: 0, facing: 2 };
   });
   const initial: State = { turn: 0, x: grid.start.x, y: grid.start.y, facing: 1, agents, status: "playing", caughtBy: -1, reason: null, creaks: 0, masked: 0, wakes: 0 };
@@ -27,9 +28,9 @@ export function createSim(level: LevelDef): Sim {
 }
 
 export function agentPos(grid: Grid, index: number, agent: AgentState) {
-  if (agent.kind === "sleeper") {
+  if (agent.kind === "sleeper" || agent.kind === "cat") {
     const def = grid.level.agents[index];
-    return def.kind === "sleeper" ? { x: def.x, y: def.y } : { x: 0, y: 0 };
+    return def.kind === "sleeper" || def.kind === "cat" ? { x: def.x, y: def.y } : { x: 0, y: 0 };
   }
   return { x: agent.x, y: agent.y };
 }
@@ -55,6 +56,15 @@ export function turnsToCuckoo(grid: Grid, turn: number) {
   return clock.period;
 }
 
+export function isKnockTurn(def: CatDef, turn: number) {
+  return turn > 0 && (turn + def.offset) % def.period === 0;
+}
+
+export function turnsToKnock(def: CatDef, turn: number) {
+  for (let k = 1; k <= def.period; k += 1) if (isKnockTurn(def, turn + k)) return k;
+  return def.period;
+}
+
 export function watchedTiles(grid: Grid, agents: readonly AgentState[], index: number): number[] {
   const agent = agents[index];
   const def = grid.level.agents[index];
@@ -65,13 +75,14 @@ export function watchedTiles(grid: Grid, agents: readonly AgentState[], index: n
 
 function detect(grid: Grid, agents: readonly AgentState[], x: number, y: number, lightReason: CatchReason): { agent: number; reason: CatchReason } | null {
   const idx = y * grid.w + x;
+  const hidden = isHiding(grid, x, y);
   for (let i = 0; i < agents.length; i += 1) {
     const a = agents[i];
     if (a.kind === "dog") {
       if (a.mode !== "sleep" && Math.abs(a.x - x) + Math.abs(a.y - y) === 1) return { agent: i, reason: "dog" };
       continue;
     }
-    if (watchedTiles(grid, agents, i).includes(idx)) return { agent: i, reason: lightReason };
+    if (!hidden && watchedTiles(grid, agents, i).includes(idx)) return { agent: i, reason: lightReason };
   }
   return null;
 }
@@ -106,13 +117,18 @@ export function step(sim: Sim, state: State, action: Action): { state: State; ev
   let creaks = state.creaks;
   let masked = state.masked;
   let wakes = state.wakes;
-  let noise = false;
+  const noises: { x: number; y: number; loud: number; source: number; tx: number; ty: number }[] = [];
   if (action !== "wait" && isCreaky(grid, x, y)) {
     creaks += 1;
     if (cuckoo) masked += 1;
-    else noise = true;
+    else noises.push({ x, y, loud: level.loud, source: -1, tx: x, ty: y });
     events.push({ type: "creak", x, y, masked: cuckoo });
   }
+  level.agents.forEach((def, i) => {
+    if (def.kind !== "cat" || !isKnockTurn(def, turn)) return;
+    noises.push({ x: def.x, y: def.y, loud: def.loud, source: i, tx: def.sx, ty: def.sy });
+    events.push({ type: "knock", agent: i, x: def.x, y: def.y });
+  });
   const base = { turn, x, y, facing, creaks, masked, wakes };
   const walked = detect(grid, state.agents, x, y, "walked");
   if (walked) {
@@ -121,31 +137,40 @@ export function step(sim: Sim, state: State, action: Action): { state: State; ev
   }
   const agents: AgentState[] = state.agents.map((a) => ({ ...a }));
   const heard = agents.map(() => false);
-  if (noise) {
+  if (noises.length) {
     let maxHear = 0;
     for (const def of level.agents) maxHear = Math.max(maxHear, def.hear);
-    const dist = noiseDistances(grid, x, y, level.loud + maxHear);
+    const maps = noises.map((n) => noiseDistances(grid, n.x, n.y, n.loud + maxHear));
     agents.forEach((a, i) => {
       const def = level.agents[i];
+      if (a.kind === "cat") return;
       const p = agentPos(grid, i, a);
-      const d = dist.get(p.y * grid.w + p.x);
-      if (d === undefined || d > level.loud + def.hear) return;
+      let best = -1;
+      let bestD = Infinity;
+      noises.forEach((n, k) => {
+        const d = maps[k].get(p.y * grid.w + p.x);
+        if (d === undefined || d > n.loud + def.hear || d >= bestD) return;
+        best = k;
+        bestD = d;
+      });
+      if (best < 0) return;
+      const n = noises[best];
       heard[i] = true;
-      events.push({ type: "heard", agent: i, x, y });
+      events.push({ type: "heard", agent: i, x: n.x, y: n.y, source: n.source });
       if (a.kind === "sleeper") {
         if (a.awake === 0) wakes += 1;
         a.awake = def.kind === "sleeper" ? def.wake : 1;
-        a.facing = dirTo(p.x, p.y, x, y, a.facing);
+        a.facing = dirTo(p.x, p.y, n.x, n.y, a.facing);
         events.push({ type: "wake", agent: i, facing: a.facing });
       } else if (a.kind === "patrol") {
         a.alert = def.kind === "patrol" ? def.alert : 1;
-        a.facing = dirTo(p.x, p.y, x, y, a.facing);
+        a.facing = dirTo(p.x, p.y, n.x, n.y, a.facing);
         events.push({ type: "alert", agent: i, facing: a.facing });
       } else {
         if (a.mode === "sleep") wakes += 1;
         a.mode = "go";
-        a.tx = x;
-        a.ty = y;
+        a.tx = n.tx;
+        a.ty = n.ty;
         a.timer = 0;
       }
     });
@@ -220,10 +245,20 @@ function moveDog(sim: Sim, agents: AgentState[], i: number, dog: DogState, homeX
   }
 }
 
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+export function cycleOf(level: LevelDef) {
+  let cycle = level.clock?.period ?? 1;
+  for (const def of level.agents) if (def.kind === "cat") cycle = (cycle * def.period) / gcd(cycle, def.period);
+  return cycle;
+}
+
 export function stateKey(sim: Sim, s: State): string {
-  const clock = sim.grid.level.clock;
-  let key = `${s.x},${s.y},${clock ? s.turn % clock.period : 0}`;
+  let key = `${s.x},${s.y},${s.turn % cycleOf(sim.grid.level)}`;
   for (const a of s.agents) {
+    if (a.kind === "cat") continue;
     if (a.kind === "sleeper") key += a.awake > 0 ? `|s${a.awake}${a.facing}` : "|s0";
     else if (a.kind === "patrol") key += `|p${a.idx},${a.facing},${a.alert}`;
     else key += `|d${a.x},${a.y},${a.mode[1]}${a.mode === "go" ? `${a.tx},${a.ty}` : ""}${a.mode === "sniff" ? a.timer : ""}`;

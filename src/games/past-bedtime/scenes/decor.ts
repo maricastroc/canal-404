@@ -143,6 +143,108 @@ const DECOR: Record<string, Decor> = {
   },
 };
 
+DECOR.stairs = {
+  darkness: 0.6,
+  wall: [
+    { kind: "hooks", x: 4.08, y: 1.2, w: 0.84, h: 1.6 },
+    { kind: "window", x: 5.15, y: 1.3, w: 1.6, h: 0.9, v: "curtain" },
+    { kind: "frame", x: 7.15, y: 1.35, w: 0.7, h: 0.62, v: 0 },
+    { kind: "frame", x: 8.2, y: 1.45, w: 0.6, h: 0.5, v: 3 },
+    { kind: "console", x: 9.04, y: 1.9, w: 0.92, h: 0.96 },
+    { kind: "railing", x: 3.0, y: 1.9, w: 1.0, h: 0.96 },
+    { kind: "sideDoor", x: 10.0, y: 3.0, v: "left" },
+  ],
+  floor: [
+    { kind: "runner", x: 3.1, y: 3.16, w: 5.8, h: 0.68, v: 0x9a6a72 },
+    { kind: "comic", x: 6.4, y: 4.55 },
+  ],
+  top: [],
+  lights: [
+    { kind: "shaft", top: [5.15, 6.75, 2.2], bottom: [5.6, 7.7, 4.95], color: MOON, strength: 0.5 },
+    { kind: "glow", x: 1.6, y: 1.4, r: 1.3, color: MOON, strength: 0.35 },
+    { kind: "glow", x: 9.9, y: 3.5, r: 0.9, color: WARM, strength: 0.3 },
+  ],
+  lamps: [],
+};
+
+DECOR.pantry = {
+  darkness: 0.66,
+  wall: [
+    { kind: "spices", x: 2.06, y: 0.3, w: 0.88, h: 0.42 },
+    { kind: "calendar", x: 4.25, y: 0.24, w: 0.5, h: 0.58 },
+    { kind: "pans", x: 6.05, y: 0.22, w: 0.9, h: 0.6 },
+    { kind: "spices", x: 8.06, y: 0.3, w: 0.88, h: 0.42 },
+    { kind: "smallDoor", x: 10.1, y: 0.18, w: 0.8, h: 0.8 },
+    { kind: "sideDoor", x: 1.0, y: 2.0, v: "right" },
+  ],
+  floor: [],
+  top: [],
+  lights: [
+    { kind: "glow", x: 10.5, y: 1.2, r: 0.9, color: MOON, strength: 0.45 },
+    { kind: "glow", x: 1.1, y: 2.5, r: 0.8, color: WARM, strength: 0.25 },
+  ],
+  lamps: [],
+};
+
+DECOR.laundry = {
+  darkness: 0.62,
+  wall: [
+    { kind: "clothesline", x: 1.05, y: 0.2, w: 3.9, h: 0.7 },
+    { kind: "window", x: 6.6, y: 0.24, w: 1.8, h: 0.56, v: "checker" },
+    { kind: "spices", x: 8.6, y: 0.3, w: 0.9, h: 0.42 },
+    { kind: "sideDoor", x: 10.0, y: 2.0, v: "left" },
+  ],
+  floor: [{ kind: "rug", x: 6.2, y: 1.2, w: 1.6, h: 0.7, v: 0x4f7f8f }],
+  top: [],
+  lights: [
+    { kind: "shaft", top: [6.6, 8.4, 0.8], bottom: [7.1, 9.3, 4.95], color: MOON, strength: 0.5 },
+    { kind: "glow", x: 9.9, y: 2.5, r: 0.9, color: TV, strength: 0.35, flicker: true },
+  ],
+  lamps: [],
+};
+
+DECOR.dining = {
+  darkness: 0.6,
+  wall: [
+    { kind: "frame", x: 2.1, y: 0.26, w: 1.5, h: 0.6, v: 4 },
+    { kind: "clock", x: 4.4, y: 0.5 },
+    { kind: "window", x: 6.4, y: 0.24, w: 1.8, h: 0.56, v: "curtain" },
+    { kind: "fern", x: 9.2, y: 0.2 },
+    { kind: "lintel", x: 5.0, y: 2.0 },
+    { kind: "sideDoor", x: 11.0, y: 3.0, v: "left" },
+  ],
+  floor: [
+    { kind: "oval", x: 1.3, y: 2.3, w: 3.4, h: 2.4, v: 0x9a6a72 },
+    { kind: "oval", x: 6.4, y: 2.3, w: 3.4, h: 2.4, v: 0x3f7a8c },
+  ],
+  top: [],
+  lights: [
+    { kind: "shaft", top: [6.4, 8.2, 0.8], bottom: [6.9, 9.1, 3.95], color: MOON, strength: 0.45 },
+    { kind: "glow", x: 10.9, y: 3.5, r: 1.2, color: TV, strength: 0.45, flicker: true },
+  ],
+  lamps: [],
+};
+
+DECOR.sofa = {
+  darkness: 0.6,
+  wall: [
+    { kind: "window", x: 1.6, y: 0.24, w: 1.8, h: 0.56, v: "curtain" },
+    { kind: "floorLamp", x: 4.55, y: 0.1 },
+    { kind: "frame", x: 5.25, y: 0.26, w: 1.5, h: 0.58, v: 4 },
+    { kind: "wallShelf", x: 7.9, y: 0.3, w: 1.6, h: 0.42, v: "vhs" },
+    { kind: "sideDoor", x: 11.0, y: 3.0, v: "left" },
+  ],
+  floor: [{ kind: "oval", x: 2.6, y: 2.05, w: 6.8, h: 2.9, v: 0x3f7a8c }],
+  top: [],
+  lights: [
+    { kind: "shaft", top: [1.6, 3.4, 0.8], bottom: [2.1, 4.3, 4.95], color: MOON, strength: 0.45 },
+    { kind: "glow", x: 10.9, y: 3.5, r: 1.6, color: TV, strength: 0.55, flicker: true },
+  ],
+  lamps: [{ owner: "dad", x: 4.55, y: 0.32 }],
+};
+
+DECOR.return = { ...DECOR.hallway, lights: DECOR.hallway.lights.filter((l) => !(l.kind === "glow" && l.color === TV)).concat([{ kind: "glow", x: 12.5, y: 5.5, r: 1.1, color: MOON, strength: 0.3 }]) };
+
 export function decorFor(levelId: string): Decor {
   return DECOR[levelId] ?? { wall: [], floor: [], top: [], lights: [], lamps: [], darkness: 0.55 };
 }
@@ -436,6 +538,27 @@ export function drawWallDecor(g: Phaser.GameObjects.Graphics, decor: Decor, layo
       case "lintel":
         rect(g, x, y + s * 0.78, s, s * 0.08, 0xf0dfc8, 2, 2);
         break;
+      case "smallDoor": {
+        rect(g, x, y, w, h, 0x9a6440, 3, 3);
+        g.fillStyle(0xffc83d, 1);
+        g.fillCircle(x + w * 0.8, y + h * 0.55, s * 0.04);
+        break;
+      }
+      case "clothesline": {
+        g.lineStyle(2.5, 0xeee4cf, 1);
+        g.lineBetween(x, y + s * 0.08, x + w, y + s * 0.08);
+        const clothes = [0x5cb9f0, 0xf06ba8, 0xffc83d, 0x63d6c1, 0xef4f43];
+        for (let i = 0; i < 5; i += 1) {
+          const cx = x + w * (0.08 + i * 0.2);
+          const cw = s * (i % 2 ? 0.3 : 0.4);
+          const ch = s * (i % 2 ? 0.28 : 0.5);
+          rect(g, cx, y + s * 0.06, cw, ch, clothes[i], 4, 2.5);
+          g.fillStyle(0xc9a24a, 1);
+          g.fillRect(cx + cw * 0.2, y + s * 0.03, s * 0.03, s * 0.08);
+          g.fillRect(cx + cw * 0.7, y + s * 0.03, s * 0.03, s * 0.08);
+        }
+        break;
+      }
       case "sideDoor": {
         const left = it.v === "left";
         const dx = left ? x + s * 0.02 : x - s * 0.2;
