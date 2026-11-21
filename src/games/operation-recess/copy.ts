@@ -57,6 +57,7 @@ export const COPY = localized({
       attackKeys: "J PARA ATACAR",
       attackTouchSay: "Toque na espada para atacar.",
       attackKeysSay: "Aperte J para atacar.",
+      coach: { move: "SEGURE PARA ANDAR", jump: "TOQUE PARA PULAR", attack: "TOQUE PARA ATACAR" },
     },
     deck: { move: "ANDAR", jump: "PULAR", attack: "ESPADA" },
     words: {
@@ -184,6 +185,7 @@ export const COPY = localized({
       attackKeys: "J TO ATTACK",
       attackTouchSay: "Tap the sword to attack.",
       attackKeysSay: "Press J to attack.",
+      coach: { move: "HOLD TO MOVE", jump: "TAP TO JUMP", attack: "TAP TO ATTACK" },
     },
     deck: { move: "MOVE", jump: "JUMP", attack: "SWORD" },
     words: {

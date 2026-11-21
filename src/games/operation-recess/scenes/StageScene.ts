@@ -8,7 +8,7 @@ import { recessStarHint, recessStars } from "../score";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { Inspector } from "./boss";
-import { FrameCamera, type Focus } from "./camera";
+import { FrameCamera, type Focus, type High } from "./camera";
 import { TouchDeck } from "./deck";
 import { makeEnemy, ShieldMonitor, Wave, WhistleMonitor, type Enemy, type HeroView, type StageApi } from "./enemies";
 import { Ball, BallSpawner, Bell, Cart, Item } from "./hazards";
@@ -31,6 +31,7 @@ type Warning = { text: Phaser.GameObjects.Text; x: number; y: number };
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
+const FIGHT_RANGE = 480;
 const learned = new Set<Lesson>();
 
 export class StageScene extends Phaser.Scene {
@@ -455,6 +456,12 @@ export class StageScene extends Phaser.Scene {
     this.lessonUntil = this.t + 9000;
     this.lessonPast = Infinity;
     const tut = this.copy.tutorial;
+    if (this.compact && TOUCH_UI) {
+      const role = lesson === "walk" ? "move" : lesson === "jump" ? "jump" : "attack";
+      this.deck.coach(role, tut.coach[role]);
+      if (lesson === "attack") this.announce(tut.attackTouchSay);
+      return;
+    }
     if (lesson === "walk") this.showChip(tut.walk, TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
     if (lesson === "jump") {
       this.showChip(TOUCH_UI ? tut.jumpTouch : tut.jumpKeys, TOUCH_UI ? ["chip-jump"] : []);
@@ -478,6 +485,7 @@ export class StageScene extends Phaser.Scene {
       this.hud.pulseJump(false);
       this.deck.pulseJump(false);
     }
+    this.deck.coach(null);
     this.lesson = null;
     this.hideChip();
   }
@@ -909,6 +917,11 @@ export class StageScene extends Phaser.Scene {
     this.hud.setProgress(k, this.level.checkpoints.map((c) => cx(c) / end));
   }
 
+  private attackLessonReach() {
+    if (!this.compact) return 640;
+    return Math.min(640, this.cameras.main.worldView.right - 90 - this.hero.x);
+  }
+
   private updateTutorial() {
     if (!this.tutorialOn) return;
     const h = this.hero;
@@ -916,14 +929,18 @@ export class StageScene extends Phaser.Scene {
     if (this.lesson) return;
     if (!learned.has("walk")) return;
     if (!learned.has("jump") && h.x > cx(4)) this.teach("jump");
-    else if (!learned.has("attack") && h.grounded && this.enemies.some((e) => !e.dead && e.x > h.x && e.x - h.x < 640 && Math.abs(e.feet - h.feet) < 200)) this.teach("attack");
+    else if (!learned.has("attack") && h.grounded && this.enemies.some((e) => !e.dead && e.x > h.x && e.x - h.x < this.attackLessonReach() && Math.abs(e.feet - h.feet) < 200)) this.teach("attack");
     if ((["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l) || this.shown.has(l))) this.tutorialOn = false;
   }
 
   private focusPoints(): Focus[] {
     const h = this.hero;
     const focus: Focus[] = [];
-    for (const e of this.enemies) if (!e.dead && Math.abs(e.feet - h.feet) < 520) focus.push({ x: e.x, pad: 150 });
+    for (const e of this.enemies) {
+      if (e.dead || Math.abs(e.feet - h.feet) > 520) continue;
+      const fight = Math.abs(e.x - h.x) < FIGHT_RANGE && Math.abs(e.feet - h.feet) < 200;
+      focus.push({ x: e.x, pad: fight ? 130 : 150, fight });
+    }
     for (const w of this.waves) if (w.alive) focus.push({ x: w.img.x, pad: 90 });
     for (const b of this.balls) if (b.harmful) focus.push({ x: b.img.x, pad: 70 });
     for (const w of this.watchers) if (w.awake) focus.push({ x: w.x, pad: 170 });
@@ -935,13 +952,23 @@ export class StageScene extends Phaser.Scene {
     return focus;
   }
 
+  private highPoints(): High[] {
+    const highs: High[] = [];
+    for (const pl of this.level.platforms) highs.push({ x0: cx(pl.col), x1: cx(pl.col + pl.w), y: cy(pl.row) });
+    for (const e of this.enemies) if (!e.dead && e.feet < FLOOR_Y - 40) highs.push({ x0: e.x - 90, x1: e.x + 90, y: e.body.top - 20 });
+    for (const it of this.items) if (!it.taken && it.img.y < FLOOR_Y - 120) highs.push({ x0: it.img.x - 40, x1: it.img.x + 40, y: it.img.y - 40 });
+    return highs;
+  }
+
   private updateFrameCamera(dt: number) {
     const h = this.hero;
     const margin = this.deck.sideRoom() / this.cameras.main.zoom;
     const bounds = this.arena.entered ? { left: this.arena.left - margin, right: this.arena.right + margin } : { left: -margin, right: this.world.width + margin };
-    const below = this.enemies.some((e) => !e.dead && Math.abs(e.x - h.x) < 700 && e.feet > h.feet + 120);
+    const under = this.enemies.filter((e) => !e.dead && Math.abs(e.x - h.x) < 700 && e.feet > h.feet + 120).map((e) => e.feet);
+    const below = under.length ? Math.max(...under) : null;
     const scale = this.arena.entered ? ARENA_GROW : 1;
-    this.frameCam.update(dt, this.frame, { x: h.x, top: h.top, facing: h.facing, vy: h.body.velocity.y, scale }, this.focusPoints(), bounds, this.arena.entered, below);
+    const b = h.body;
+    this.frameCam.update(dt, this.frame, { x: h.x, top: h.top, feet: h.feet, facing: h.facing, vy: b.velocity.y, grounded: h.grounded, scale }, this.focusPoints(), this.highPoints(), bounds, this.arena.entered, below);
     this.scenery.frameSky(this.cameras.main);
   }
 
@@ -1009,6 +1036,11 @@ export class StageScene extends Phaser.Scene {
       for (const b of this.balls) {
         const side = out(b.img.x);
         if (b.harmful && side === 1 && b.img.x - v.right < 900) marks.push({ side, y: sp(b.img.x, b.img.y)[1], tone: "shot" });
+      }
+      for (const w of this.watchers) {
+        const side = out(w.x);
+        const dist = side < 0 ? v.x - w.x : w.x - v.right;
+        if (side !== 0 && w.alert && dist < 700) marks.push({ side, y: sp(w.x, FLOOR_Y - 330)[1], tone: "warn" });
       }
       if (boss) {
         const side = out(boss.x);
@@ -1181,13 +1213,14 @@ export class StageScene extends Phaser.Scene {
 
   private nextHint(x: number): Hint | null {
     const view = this.cameras.main.worldView;
-    const seen = (at: number) => at > view.x + 140 && at < view.right - 140;
+    const edge = this.compact ? 60 : 140;
+    const seen = (at: number) => at > view.x + edge && at < view.right - edge;
     const fixed = (ax: number, ay: number) => () => ({ x: ax, y: ay });
     const follow = (e: Enemy) => () => (e.dead ? null : { x: e.x, y: e.body.top - 150 });
     const fresh = (lesson: Lesson) => !learned.has(lesson) && !this.shown.has(lesson);
     const locker = this.lockers.find((l) => l.shaking && seen(l.x) && x < l.x);
     if (locker && fresh("locker")) return { lesson: "locker", anchor: fixed(locker.x, FLOOR_Y - 330), past: locker.x + 60 };
-    const watcher = this.watchers.find((w) => x > w.x - 900 && x < w.x - 400 && seen(w.x));
+    const watcher = this.watchers.find((w) => x > w.x - 900 && x < w.x - (this.compact ? 240 : 400) && seen(w.x));
     if (watcher && fresh("watcher")) return { lesson: "watcher", anchor: fixed(watcher.x, FLOOR_Y - 500), past: watcher.x };
     const rope = this.ropes.find((r) => seen(r.mid) && x < r.x0);
     if (rope && fresh("rope")) return { lesson: "rope", anchor: fixed(rope.mid, FLOOR_Y - 300), past: rope.x1 };

@@ -280,6 +280,10 @@ export class Watcher {
     return this.phase !== "asleep";
   }
 
+  get alert() {
+    return this.phase === "peek" || this.phase === "look";
+  }
+
   update(t: number, h: HeroState) {
     const near = Math.abs(h.x - this.x) < 1150;
     if (this.phase === "asleep") {

@@ -16,8 +16,8 @@ export type Frame = {
   safe: Insets;
 };
 
-export const TALL = { width: 1080, widthPerCss: 2, maxWidth: 1600, hud: 54, deck: { share: 0.24, min: 128, max: 196 }, view: { perCss: 2.26, min: 800, max: 1280 }, floor: { min: 70, max: 150 }, ceiling: 30, zoomIn: 1.16, playMin: 700 };
-export const BAND = { height: 1080, hud: 46, maxHeight: 520, minAspect: 1.6, view: 900, floor: 150 };
+export const TALL = { width: 1080, widthPerCss: 2, maxWidth: 1600, hud: 54, deck: { share: 0.24, min: 128, max: 196 }, view: { perCss: 1.64, min: 560, max: 900, tighten: 0.88 }, play: { min: 620, max: 760 }, floor: { min: 70, max: 150 } };
+export const BAND = { height: 1080, hud: 46, maxHeight: 520, minAspect: 1.6, view: 780, floor: 150 };
 
 const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
@@ -33,11 +33,11 @@ function tallFrame(cssW: number, cssH: number, insets: Insets): Frame {
   const deck = Math.min(TALL.deck.max, Math.max(TALL.deck.min, cssH * TALL.deck.share)) + insets.bottom;
   const play = Math.max(1, cssH - deck - hud);
   const view = Math.min(TALL.view.max, Math.max(TALL.view.min, cssW * TALL.view.perCss));
-  let s = Math.min(cssW / view, play / TALL.playMin);
-  const want = FLOOR_Y + TALL.floor.max + TALL.ceiling;
-  if (play / s > want) s = Math.min(s * TALL.zoomIn, play / want);
-  const extra = Math.max(0, play / s - FLOOR_Y - TALL.floor.min);
-  const floor = Math.min(TALL.floor.max, TALL.floor.min + extra * 0.45);
+  let s = cssW / view;
+  if (play / s < TALL.play.min) s = play / TALL.play.min;
+  if (play / s > TALL.play.max) s = Math.min(cssW / (view * TALL.view.tighten), play / TALL.play.max);
+  const extra = Math.max(0, play / s - TALL.play.max);
+  const floor = TALL.floor.min + Math.min(extra, TALL.floor.max - TALL.floor.min);
   const ceiling = Math.max(0, play / s - FLOOR_Y - floor);
   return { kind: "tall", width: Math.round(cssW * unit), height: Math.round(cssH * unit), unit, zoom: s * unit, hud: hud * unit, deck: deck * unit, floor, ceiling, safe: scaled(insets, unit) };
 }
