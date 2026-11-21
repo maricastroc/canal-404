@@ -48,7 +48,7 @@ const BASE = {
   "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"] },
   "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], orientation: "upright" },
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
-  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"] },
+  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"], orientation: "any" },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1" },
 } satisfies Record<string, GameBase>;
 
@@ -255,15 +255,17 @@ const TEXT = gameText({
       tags: ["Ação", "Plataforma", "Aventura"],
       objective: "Atravesse a escola com a espada de papelão, escape dos monitores e derrote o Inspetor do Silêncio. O recreio depende de você!",
       controls: [
-        { input: "← → ou A D", action: "Andar" },
-        { input: "Espaço, ↑ ou W", action: "Pular (segure para ir mais alto)" },
-        { input: "J", action: "Atacar com a espada de papelão" },
-        { input: "Botões na tela", action: "Andar, pular e atacar no celular" },
-        { input: "Esc ou P", action: "Pausar" },
+        { input: "← → ou A D", action: "Andar", on: "keys" },
+        { input: "Espaço, ↑ ou W", action: "Pular (segure para ir mais alto)", on: "keys" },
+        { input: "J", action: "Atacar com a espada de papelão", on: "keys" },
+        { input: "Esc ou P", action: "Pausar", on: "keys" },
+        { input: "Setas, embaixo à esquerda", action: "Andar. Deslize o dedo de uma seta para a outra para virar.", on: "touch" },
+        { input: "Botão amarelo", action: "Pular. Segure para ir mais alto.", on: "touch" },
+        { input: "Botão rosa", action: "Atacar com a espada de papelão", on: "touch" },
       ],
       howTo: [
         { title: "Corra", text: "Poça escorrega e buraco derruba. Na corda, pule quando ela descer. Armário tremeu? Pare ou feche com uma espadada." },
-        { title: "Ataque", text: "Aperte J para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
+        { title: "Ataque", text: "Use a espada para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
         { title: "Avance", text: "Se a luz do Inspetor parar em você, saia dela. Toque os sinos para salvar o caminho até a diretoria." },
       ],
       levels: [
@@ -286,6 +288,7 @@ const TEXT = gameText({
         "Lanche devolve um coração. Sino salva o caminho.",
         "Acerte o Inspetor quando ele ficar tonto, cansado ou com a prancheta presa.",
       ],
+      touchTips: ["Segure a seta e toque no pulo ao mesmo tempo para pular correndo.", "Deslize o polegar entre as setas para virar sem soltar."],
       controlsSummary: "Operação: Recreio. Setas andam, espaço pula, J ataca, Esc pausa.",
       copy: {
         winTitle: "Recreio liberado!",
@@ -538,15 +541,17 @@ const TEXT = gameText({
       tags: ["Action", "Platformer", "Adventure"],
       objective: "Cross the school with your cardboard sword, get past the monitors and defeat the Silence Inspector. Recess is counting on you!",
       controls: [
-        { input: "← → or A D", action: "Move" },
-        { input: "Space, ↑ or W", action: "Jump (hold to go higher)" },
-        { input: "J", action: "Attack with the cardboard sword" },
-        { input: "On-screen buttons", action: "Move, jump and attack on a phone" },
-        { input: "Esc or P", action: "Pause" },
+        { input: "← → or A D", action: "Move", on: "keys" },
+        { input: "Space, ↑ or W", action: "Jump (hold to go higher)", on: "keys" },
+        { input: "J", action: "Attack with the cardboard sword", on: "keys" },
+        { input: "Esc or P", action: "Pause", on: "keys" },
+        { input: "Arrows, bottom left", action: "Move. Slide your finger from one arrow to the other to turn.", on: "touch" },
+        { input: "Yellow button", action: "Jump. Hold it to go higher.", on: "touch" },
+        { input: "Pink button", action: "Attack with the cardboard sword", on: "touch" },
       ],
       howTo: [
         { title: "Run", text: "Puddles are slippery and holes make you fall. On the jump rope, jump when it comes down. Locker shaking? Stop, or slam it shut with your sword." },
-        { title: "Attack", text: "Press J to hit the monitors. Take down every monitor in a level to earn the 3rd star. The stop sign (PARE) blocks from the front: attack from behind or when he lowers it." },
+        { title: "Attack", text: "Use your sword to hit the monitors. Take down every monitor in a level to earn the 3rd star. The stop sign (PARE) blocks from the front: attack from behind or when he lowers it." },
         { title: "Advance", text: "If the Inspector's spotlight lands on you, get out of it. Ring the bells to save your progress on the way to the principal's office." },
       ],
       levels: [
@@ -569,6 +574,7 @@ const TEXT = gameText({
         "Snacks give back a heart. Bells save your progress.",
         "Hit the Inspector when he's dizzy, tired or has his clipboard stuck.",
       ],
+      touchTips: ["Hold an arrow and tap jump at the same time to jump while running.", "Slide your thumb between the arrows to turn without letting go."],
       controlsSummary: "Operation: Recess. Arrows move, space jumps, J attacks, Esc pauses.",
       copy: {
         winTitle: "Recess is back!",

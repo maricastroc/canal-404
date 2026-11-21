@@ -276,6 +276,10 @@ export class Watcher {
     return this.phase === "look";
   }
 
+  get awake() {
+    return this.phase !== "asleep";
+  }
+
   update(t: number, h: HeroState) {
     const near = Math.abs(h.x - this.x) < 1150;
     if (this.phase === "asleep") {
