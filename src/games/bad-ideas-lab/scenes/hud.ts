@@ -1,18 +1,68 @@
 import * as Phaser from "phaser";
 import { H, PARTS, W, type PartType } from "../config";
 import type { LabCopy, LevelText } from "../copy";
+import type { Vec } from "../geometry";
+import type { Frame, FrameKind } from "../layout";
 import type { LevelDef } from "../levels";
 import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
 import { addIcon, setIcon, type IconName } from "../icons";
 
-type Handlers = {
+export type HudHandlers = {
   onSlotDown: (type: PartType, pointer: Phaser.Input.Pointer) => void;
   onRun: () => void;
   onClear: () => void;
   onHint: () => void;
   onRotate: () => void;
+  onRotateBack: () => void;
   onRemove: () => void;
+  onUndo: () => void;
 };
+
+export type HudSetup = {
+  scene: Phaser.Scene;
+  fonts: Fonts;
+  level: LevelDef;
+  text: LevelText;
+  copy: LabCopy;
+  index: number;
+  total: number;
+  slotTypes: PartType[];
+  reduced: boolean;
+  handlers: HudHandlers;
+};
+
+export type ToolbarAnchor = { x: number; top: number; bottom: number };
+
+export type StarReveal = (index: number, lit: boolean, x: number, y: number) => void;
+
+export interface LabHudView {
+  readonly kind: FrameKind;
+  readonly uiScale: number;
+  readonly textScale: number;
+  layout(frame: Frame, displayScale: number): void;
+  setEnabled(on: boolean): void;
+  setCounts(remaining: Partial<Record<PartType, number>>): void;
+  setUsed(used: number, par: number): void;
+  setUndo(available: boolean): void;
+  highlightSlot(type: PartType | null): void;
+  nudgeTray(): void;
+  pulseRun(on: boolean): void;
+  pulseHint(on: boolean): void;
+  slotCenter(type: PartType): Vec;
+  showToolbar(anchor: ToolbarAnchor, touch: boolean): void;
+  hideToolbar(): void;
+  isOverTray(part: Vec, pointer: Vec): boolean;
+  setBoxHover(on: boolean): void;
+  covers(x: number, y: number): boolean;
+  showTag(text: string, x: number, y: number): void;
+  hideTag(): void;
+  hideGoal(): void;
+  setRunning(on: boolean): void;
+  setDone(): void;
+  flash(text: string, color: string, hold?: number): void;
+  celebrate(stars: number, onStar: StarReveal): void;
+  destroy(): void;
+}
 
 type Slot = {
   type: PartType;
@@ -47,7 +97,7 @@ const TOOL_H = 66;
 const RUN_GAP = 30;
 const BTN = { hint: 124, clear: 150, run: 228 };
 
-function drawButtonBg(g: Phaser.GameObjects.Graphics, w: number, h: number, fill: number) {
+export function drawButtonBg(g: Phaser.GameObjects.Graphics, w: number, h: number, fill: number) {
   g.clear();
   g.fillStyle(INK_HEX, 1);
   g.fillRoundedRect(-w / 2 + 4, -h / 2 + 5, w, h, 16);
@@ -57,7 +107,7 @@ function drawButtonBg(g: Phaser.GameObjects.Graphics, w: number, h: number, fill
   g.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
 }
 
-function centerGlyphs(text: Phaser.GameObjects.Text) {
+export function centerGlyphs(text: Phaser.GameObjects.Text) {
   if (!text.text) return text.setY(0);
   const { ascent, descent } = text.getTextMetrics();
   text.style.syncFont(text.canvas, text.context);
@@ -65,7 +115,8 @@ function centerGlyphs(text: Phaser.GameObjects.Text) {
   return text.setY((m.actualBoundingBoxAscent - m.actualBoundingBoxDescent - ascent + descent) / 2);
 }
 
-export class LabHud {
+export class DeskHud implements LabHudView {
+  readonly kind = "full";
   uiScale = 1;
   private levelCard: Phaser.GameObjects.Container;
   private partsCard: Phaser.GameObjects.Container;
@@ -79,6 +130,11 @@ export class LabHud {
   private clearBtn: Button;
   private hintBtn: Button;
   private toolbar: Phaser.GameObjects.Container;
+  private toolRotate: Button;
+  private toolBack: Button;
+  private toolRemove: Button;
+  private toolTouch = false;
+  private celebration: Phaser.GameObjects.GameObject[] = [];
   private banner: Phaser.GameObjects.Text;
   private tag: Phaser.GameObjects.Text;
   private hintPulse?: Phaser.Tweens.Tween;
@@ -89,18 +145,18 @@ export class LabHud {
   private enabled = true;
   private running = false;
 
-  constructor(
-    private scene: Phaser.Scene,
-    private fonts: Fonts,
-    level: LevelDef,
-    text: LevelText,
-    private copy: LabCopy,
-    index: number,
-    total: number,
-    slotTypes: PartType[],
-    private reduced: boolean,
-    private handlers: Handlers,
-  ) {
+  private scene: Phaser.Scene;
+  private fonts: Fonts;
+  private copy: LabCopy;
+  private reduced: boolean;
+  private handlers: HudHandlers;
+
+  constructor({ scene, fonts, level, text, copy, index, total, slotTypes, reduced, handlers }: HudSetup) {
+    this.scene = scene;
+    this.fonts = fonts;
+    this.copy = copy;
+    this.reduced = reduced;
+    this.handlers = handlers;
     this.build = level.build;
     const lg = scene.add.graphics();
     const cardW = LEVEL_CARD_W;
@@ -153,9 +209,11 @@ export class LabHud {
     trayChildren.push(this.hintBtn.root, this.clearBtn.root, this.runBtn.root);
     this.tray = scene.add.container(W / 2, H - TRAY_BOTTOM, trayChildren).setDepth(20);
 
-    const rotate = this.makeButton("", 72, 72, 0xffc83d, -44, 0, ["rotate"], () => this.handlers.onRotate());
-    const remove = this.makeButton("", 72, 72, 0xef4f43, 44, 0, ["remove", "remove-inner"], () => this.handlers.onRemove());
-    this.toolbar = scene.add.container(0, 0, [rotate.root, remove.root]).setDepth(24).setVisible(false);
+    this.toolBack = this.makeButton("", 72, 72, 0xffc83d, -88, 0, ["rotate-back"], () => this.handlers.onRotateBack());
+    this.toolRotate = this.makeButton("", 72, 72, 0xffc83d, -44, 0, ["rotate"], () => this.handlers.onRotate());
+    this.toolRemove = this.makeButton("", 72, 72, 0xef4f43, 44, 0, ["remove", "remove-inner"], () => this.handlers.onRemove());
+    this.toolBack.root.setVisible(false);
+    this.toolbar = scene.add.container(0, 0, [this.toolBack.root, this.toolRotate.root, this.toolRemove.root]).setDepth(24).setVisible(false);
 
     this.banner = cartoonText(scene, W / 2, 330, "", { size: 110, color: "#ffc83d", font: fonts.display, stroke: 0.2 })
       .setOrigin(0.5)
@@ -241,7 +299,11 @@ export class LabHud {
     return btn;
   }
 
-  layout(displayScale: number) {
+  get textScale() {
+    return Math.min(this.uiScale, 1.5);
+  }
+
+  layout(_frame: Frame, displayScale: number) {
     this.uiScale = Phaser.Math.Clamp(displayScale * 0.55, 1, 1.75);
     const s = this.uiScale;
     const b = this.build;
@@ -268,10 +330,20 @@ export class LabHud {
     return H - TRAY_BOTTOM - (SLOT_H + TRAY_PAD * 2) * this.tray.scaleY;
   }
 
-  isOverTray(x: number, y: number) {
+  isOverTray(part: Vec) {
     const half = (this.trayW / 2) * this.tray.scaleX;
-    return y >= this.trayTop() - 10 && x >= W / 2 - half - 10 && x <= W / 2 + half + 10;
+    return part.y >= this.trayTop() - 10 && part.x >= W / 2 - half - 10 && part.x <= W / 2 + half + 10;
   }
+
+  setBoxHover() {}
+
+  covers() {
+    return false;
+  }
+
+  setUndo() {}
+
+  hideGoal() {}
 
   setCounts(remaining: Partial<Record<PartType, number>>) {
     for (const slot of this.slots) {
@@ -382,9 +454,19 @@ export class LabHud {
     return { x: m.tx, y: m.ty };
   }
 
-  showToolbar(x: number, y: number) {
+  showToolbar(anchor: ToolbarAnchor, touch: boolean) {
+    if (touch !== this.toolTouch) {
+      this.toolTouch = touch;
+      this.toolBack.root.setVisible(touch);
+      this.toolRotate.root.setX(touch ? 0 : -44);
+      this.toolRemove.root.setX(touch ? 88 : 44);
+    }
     const s = this.toolbar.scaleX;
-    const cx = Phaser.Math.Clamp(x, 100 * s, W - 100 * s);
+    const above = anchor.top - 62 * s;
+    const x = anchor.x;
+    const y = above > 190 ? above : anchor.bottom + 62 * s;
+    const reach = touch ? 136 : 100;
+    const cx = Phaser.Math.Clamp(x, reach * s, W - reach * s);
     const cy = Phaser.Math.Clamp(y, 60 * s + 150, this.trayTop() - 50 * s);
     this.toolbar.setPosition(cx, cy).setVisible(true);
   }
@@ -410,7 +492,7 @@ export class LabHud {
     this.scene.tweens.add({ targets: b, alpha: 0, delay: hold, duration: 260, onComplete: () => b.setVisible(false) });
   }
 
-  celebrate(stars: number, onStar: (index: number, lit: boolean, x: number, y: number) => void) {
+  celebrate(stars: number, onStar: StarReveal) {
     const scene = this.scene;
     const s = Math.min(this.uiScale, 1.2);
     const title = cartoonText(scene, W / 2, 196, this.copy.hud.worked, { size: 96, color: "#93cf4c", font: this.fonts.display, stroke: 0.2 })
@@ -427,6 +509,7 @@ export class LabHud {
     plate.strokeRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
     const icons = [0, 1, 2].map((i) => scene.add.image((i - 1) * 96, 0, "star").setScale(2.1).setTint(0x5a4d8a).setAlpha(0.55));
     const group = scene.add.container(W / 2, 196 + 122 * s, [plate, ...icons]).setDepth(26).setScale(s);
+    this.celebration = [title, group];
     const reveal = (i: number) => {
       const icon = icons[i];
       const lit = i < stars;
@@ -451,9 +534,12 @@ export class LabHud {
     [0, 1, 2].forEach((i) => scene.time.delayedCall(460 + i * 190, () => reveal(i)));
   }
 
-  hideAll() {
-    this.tray.setVisible(false);
-    this.hideToolbar();
-    this.hideTag();
+  destroy() {
+    this.hintPulse?.stop();
+    this.runPulse?.stop();
+    for (const obj of [this.levelCard, this.partsCard, this.tray, this.toolbar, this.banner, this.runArrow, this.tag, ...this.celebration]) {
+      this.scene.tweens.killTweensOf(obj);
+      obj.destroy();
+    }
   }
 }

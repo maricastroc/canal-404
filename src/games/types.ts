@@ -65,6 +65,7 @@ export type GameInstance = {
   resume: () => void;
   restart: () => void;
   alt?: () => void;
+  hold?: (on: boolean) => void;
   setHighScore: (value: number) => void;
   destroy: () => void;
 };

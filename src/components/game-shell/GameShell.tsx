@@ -64,6 +64,8 @@ const COPY = localized({
     rotate: "Dica: gire o celular para ver maior",
     upright: "Segure o celular em pé",
     uprightText: (title: string) => `${title} se joga com o celular na vertical.`,
+    sideways: "Gire o celular",
+    sidewaysText: (title: string) => `${title} se joga com o celular deitado. Se a tela não girar, desligue o bloqueio de rotação.`,
   },
   en: {
     missionGone: "That mission is already off the air. Today's mission is on the Mission 404 page.",
@@ -91,6 +93,8 @@ const COPY = localized({
     rotate: "Tip: turn your phone sideways for a bigger view",
     upright: "Hold your phone upright",
     uprightText: (title: string) => `${title} is played with your phone held upright.`,
+    sideways: "Turn your phone sideways",
+    sidewaysText: (title: string) => `${title} is played with your phone held sideways. If the screen doesn't turn, switch off rotation lock.`,
   },
 });
 
@@ -99,18 +103,26 @@ type PendingRun = { ticket: Promise<TicketGrant | null> | null; result: GameResu
 const noopSubscribe = () => () => {};
 
 const PHONE_SIDEWAYS = "(orientation: landscape) and (pointer: coarse) and (max-height: 500px)";
-
-function subscribeSideways(onChange: () => void) {
-  const media = window.matchMedia(PHONE_SIDEWAYS);
-  media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
-}
-
-function phoneSideways() {
-  return window.matchMedia(PHONE_SIDEWAYS).matches;
-}
+const PHONE_UPRIGHT = "(orientation: portrait) and (pointer: coarse) and (max-width: 500px)";
 
 const never = () => false;
+
+function mediaStore(query: string) {
+  return {
+    subscribe(onChange: () => void) {
+      const media = window.matchMedia(query);
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
+    },
+    matches: () => window.matchMedia(query).matches,
+  };
+}
+
+const WRONG_WAY = {
+  upright: mediaStore(PHONE_SIDEWAYS),
+  sideways: mediaStore(PHONE_UPRIGHT),
+  any: { subscribe: noopSubscribe, matches: never },
+};
 
 function missionParam() {
   const day = new URLSearchParams(window.location.search).get("mission");
@@ -158,7 +170,8 @@ export function GameShell({ slug }: { slug: string }) {
   const runRef = useRef<{ level: string; attempt: number; startedAt: number; ticket: Promise<TicketGrant | null> | null; mission: MissionView | null } | null>(null);
   const requestedMission = useSyncExternalStore(noopSubscribe, missionParam, () => "");
   const upright = game.orientation === "upright";
-  const sideways = useSyncExternalStore(upright ? subscribeSideways : noopSubscribe, upright ? phoneSideways : never, never);
+  const wrongWayStore = WRONG_WAY[game.orientation ?? "any"];
+  const wrongWay = useSyncExternalStore(wrongWayStore.subscribe, wrongWayStore.matches, never);
   const [skippedMission, setSkippedMission] = useState(false);
   const missionWanted = Boolean(requestedMission) && !skippedMission;
   const missionFeed = useMissionToday(missionWanted);
@@ -447,6 +460,12 @@ export function GameShell({ slug }: { slug: string }) {
     return () => media.removeEventListener("change", onChange);
   }, [upright, setStage]);
 
+  const holding = game.orientation === "sideways" && wrongWay && stage === "playing";
+
+  useEffect(() => {
+    instanceRef.current?.hold?.(holding);
+  }, [holding]);
+
   useEffect(() => {
     if (stage !== "paused") return;
     const since = performance.now();
@@ -590,14 +609,14 @@ export function GameShell({ slug }: { slug: string }) {
           <ArrowLeftIcon className="size-4" />
           <span className="hidden sm:inline">{copy.back}</span>
         </Link>
-        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[15px] uppercase leading-[1.05] text-sun max-[359px]:text-[13px] sm:line-clamp-1 sm:flex-none sm:text-2xl sm:leading-normal sm:tracking-wide">{game.title}</p>
+        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[15px] uppercase leading-[1.05] text-sun max-[359px]:text-[13px] sm:line-clamp-1 sm:flex-initial sm:text-2xl sm:leading-normal sm:tracking-wide">{game.title}</p>
         {missionRun && canControl ? (
           <p className="hidden min-w-0 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-lime px-2 py-0.5 font-display text-xs uppercase tracking-wide text-ink md:flex">
             <MissionIcon className="size-4" />
             <span className="truncate">{copy.mission(missionText(missionRun, locale).title)}</span>
           </p>
         ) : null}
-        <p className="ml-auto hidden rounded-lg border-[3px] border-ink bg-plum-950 px-3 py-0.5 font-display text-sm tabular-nums text-cream sm:block" aria-hidden>
+        <p className="ml-auto hidden shrink-0 whitespace-nowrap rounded-lg border-[3px] border-ink bg-plum-950 px-3 py-0.5 font-display text-sm tabular-nums text-cream sm:block" aria-hidden>
           {copy.points(score)}
         </p>
         <button
@@ -715,15 +734,15 @@ export function GameShell({ slug }: { slug: string }) {
 
         {showLoader && <LoadingScreen progress={progress} tip={tip} leaving={leaving} />}
 
-        {sideways && (
+        {wrongWay && (upright || holding) && (
           <div role="status" className="absolute inset-0 z-50 grid place-items-center bg-plum-900 p-4" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
             <div className="paper flex max-w-sm items-center gap-4 border-[3px] border-ink p-5 shadow-[var(--shadow-ink-lg)] wobbly">
               <span className="grid size-16 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-sun text-ink">
-                <PhoneIcon className="size-9" />
+                <PhoneIcon className={upright ? "size-9" : "size-9 rotate-90"} />
               </span>
               <div>
-                <p className="font-display text-2xl uppercase leading-tight tracking-wide text-ink">{copy.upright}</p>
-                <p className="mt-1 text-base text-ink-soft">{copy.uprightText(game.title)}</p>
+                <p className="font-display text-2xl uppercase leading-tight tracking-wide text-ink">{upright ? copy.upright : copy.sideways}</p>
+                <p className="mt-1 text-base text-ink-soft">{upright ? copy.uprightText(game.title) : copy.sidewaysText(game.title)}</p>
               </div>
             </div>
           </div>

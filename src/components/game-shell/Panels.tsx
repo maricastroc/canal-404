@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "@/i18n/Link";
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
+import { animate, motion, useIsPresent, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
@@ -166,8 +166,9 @@ export function OverlayFrame({
   label: string;
   className?: string;
 }) {
+  const present = useIsPresent();
   return (
-    <div className="absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-plum-950/70 p-3 backdrop-blur-[1px] sm:p-6">
+    <div className={`absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-plum-950/70 p-3 backdrop-blur-[1px] sm:p-6 ${present ? "" : "pointer-events-none"}`}>
       <motion.div
         role="dialog"
         aria-modal="true"
