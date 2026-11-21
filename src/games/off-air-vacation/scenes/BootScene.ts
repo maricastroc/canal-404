@@ -4,6 +4,7 @@ import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { CHAR_RES } from "../config";
 import type { VacationText } from "../text/pt-BR";
+import { paintSigns } from "./signs";
 
 const BASE = "/assets/off-air-vacation/";
 
@@ -104,6 +105,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     const ctx = this.registry.get("ctx") as GameHostContext;
     const load = this.registry.get("textLoad") as Promise<VacationText>;
+    paintSigns(this, ctx.fonts.round ?? ctx.fonts.body);
     void load.then((text) => {
       if (!(this.sys.game as Phaser.Game | null)) return;
       this.registry.set("text", text);

@@ -483,8 +483,7 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
   },
   records: async (d) => {
     const L = d.text.lines.records;
-    const rows = [L.tilt];
-    if (d.s.secrets.includes("machine")) rows.push(L.dec);
+    const rows = d.s.secrets.includes("machine") ? [L.dec, L.tilt] : [L.tilt];
     rows.push(L.placar);
     if (d.s.flags.tiltWon) rows.push(L.deco);
     await d.say("narrator", L.board(rows.join(" ")));

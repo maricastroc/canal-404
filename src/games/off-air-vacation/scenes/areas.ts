@@ -514,7 +514,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.spot({ id: "lounge", x: 1260, y: 1850, r: 120, verb: b.text.verbs.examine, script: "loungeToken", hint: "secret" });
     b.spot({ id: "capi", x: 380, y: 1800, r: 170, verb: b.text.verbs.talk, script: "capi" });
     b.spot({ id: "juiceMenu", x: 170, y: 1800, r: 90, verb: b.text.verbs.read, script: "juiceMenu" });
-    b.spot({ id: "poolSign", x: 1150, y: 1610, r: 110, verb: b.text.verbs.read, script: "poolSign" });
+    b.spot({ id: "poolSign", x: 1240, y: 1610, r: 110, verb: b.text.verbs.read, script: "poolSign" });
     b.spot({ id: "towel", x: 960, y: 1850, r: 100, verb: b.text.verbs.examine, script: "towel" });
     b.spot({ id: "enterHotel", x: 1200, y: 830, r: 120, verb: b.text.verbs.enter, script: "enterHotel" });
     b.spot({ id: "enterArcade", x: 2250, y: 830, r: 120, verb: b.text.verbs.enter, script: "enterArcade" });
@@ -674,7 +674,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         errBusy = false;
       });
     });
-    const msgBox = b.world.add.text(1220, 338, "", { fontFamily: "Courier New, monospace", fontSize: "13px", fontStyle: "bold", color: "#7dffb2", align: "center", wordWrap: { width: 92 } }).setOrigin(0.5).setDepth(532);
+    const msgBox = b.world.add.text(1220, 338, "", { fontFamily: b.fonts.round ?? b.fonts.body, fontSize: "15px", fontStyle: "700", color: "#7dffb2", align: "center", lineSpacing: -2, wordWrap: { width: 90 }, padding: { x: 1, y: 2 } }).setOrigin(0.5).setDepth(532);
     b.act("brokenScreen", async () => {
       errBusy = true;
       bursts.set("cabD", b.world.time.now + 300);
@@ -720,17 +720,24 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
         chase.fillCircle(x, y, on ? 5 : 3.5);
       });
     });
-    const recText = b.world.add.text(300, 80, "", { fontFamily: "Courier New, monospace", fontSize: "19px", fontStyle: "bold", color: "#ffe39a", lineSpacing: 5 }).setOrigin(0.5, 0).setDepth(3);
+    const font = b.fonts.round ?? b.fonts.body;
+    const recRows = [0, 1, 2, 3].map((i) => {
+      const y = 92 + i * 28;
+      const style = { fontFamily: font, fontSize: "20px", fontStyle: "700", color: "#ffe39a", padding: { x: 1, y: 2 } };
+      return [b.world.add.text(178, y, "", style).setOrigin(0, 0.5).setDepth(3), b.world.add.text(422, y, "", style).setOrigin(1, 0.5).setDepth(3)] as const;
+    });
     let recSig = "";
     b.onUpdate(() => {
-      const rows = [b.text.scenery.boardTilt];
-      if (b.s.secrets.includes("machine")) rows.push(b.text.scenery.boardDec);
-      rows.push(b.text.scenery.boardPlacar(rows.length + 1));
-      if (b.s.flags.tiltWon) rows.push(b.text.scenery.boardDeco(rows.length + 1));
-      const sig = rows.join("|");
+      const board = b.text.scenery.board;
+      const rows = [b.s.secrets.includes("machine") ? board.dec : null, board.tilt, board.placar, b.s.flags.tiltWon ? board.deco : null].filter((r) => r !== null);
+      const sig = rows.map((r) => r[0]).join("|");
       if (sig === recSig) return;
       recSig = sig;
-      recText.setText(rows.join("\n"));
+      recRows.forEach(([name, score], i) => {
+        const row = rows[i];
+        name.setText(row ? `${i + 1}. ${row[0]}` : "").setColor(row === board.deco ? "#9df0dc" : "#ffe39a");
+        score.setText(row ? row[1] : "").setColor(row === board.deco ? "#9df0dc" : "#ffe39a");
+      });
     });
     void records;
     b.prop("poster-pijama", 776, 330, { origin: [0.5, 0.5], depth: "wall", scale: 0.68 });
