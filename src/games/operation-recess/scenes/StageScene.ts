@@ -2,15 +2,20 @@ import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
 import { COPY, levelCopy, type LevelCopy, type RecessCopy } from "../copy";
+import { FULL_FRAME, type Frame } from "../layout";
 import { LEVELS, type LevelDef } from "../levels";
 import { recessStarHint, recessStars } from "../score";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { Inspector } from "./boss";
+import { FrameCamera, type Focus } from "./camera";
+import { TouchDeck } from "./deck";
 import { makeEnemy, ShieldMonitor, Wave, WhistleMonitor, type Enemy, type HeroView, type StageApi } from "./enemies";
 import { Ball, BallSpawner, Bell, Cart, Item } from "./hazards";
+import { currentFrame, watchFrame } from "./frame";
 import { Locker, makeGadgetTextures, Pad, Rope, Searchlight, Watcher, WobblyShelf, type HeroState } from "./gadgets";
 import { RecessHud } from "./hud";
+import { EdgeMarkers, type Mark } from "./markers";
 import { Hero } from "./player";
 import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
@@ -21,6 +26,7 @@ type Anchor = () => { x: number; y: number } | null;
 type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean; anchor?: Anchor; tip?: Phaser.GameObjects.Graphics; at?: { x: number; y: number } };
 type Hint = { lesson: Lesson; anchor: Anchor; past: number };
 type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
+type Warning = { text: Phaser.GameObjects.Text; x: number; y: number };
 
 const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 const STEP_MAX_MS = 50;
@@ -82,6 +88,14 @@ export class StageScene extends Phaser.Scene {
   private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
   private buildingHud = false;
   private scenery!: Scenery;
+  private frame: Frame = FULL_FRAME;
+  private frameCam!: FrameCamera;
+  private deck!: TouchDeck;
+  private markers!: EdgeMarkers;
+  private vignette!: Phaser.GameObjects.Image;
+  private warnings: Warning[] = [];
+  private controlsOn = false;
+  private lastDt = 0;
 
   constructor() {
     super("stage");
@@ -127,6 +141,8 @@ export class StageScene extends Phaser.Scene {
     this.chips = [];
     this.exitZone = null;
     this.lastSound = new Map();
+    this.warnings = [];
+    this.controlsOn = false;
   }
 
   create() {
@@ -140,8 +156,10 @@ export class StageScene extends Phaser.Scene {
     const resume = Boolean(this.registry.get("resume")) && cp?.level === this.levelIndex ? cp : null;
     if (!resume) this.registry.set("checkpoint", null);
 
+    this.frame = currentFrame(this);
+    this.frameCam = new FrameCamera(this.cameras.main);
     this.cameras.main.setZoom(ZOOM);
-    this.uiCam = this.cameras.add(0, 0, W, H).setName("ui");
+    this.uiCam = this.cameras.add(0, 0, this.frame.width, this.frame.height).setName("ui");
     this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, this.route, this);
     this.scenery = new Scenery(this, this.level, this.level.length * TILE, reduced);
     this.world = buildWorld(this, this.level);
@@ -242,8 +260,10 @@ export class StageScene extends Phaser.Scene {
 
     this.buildingHud = true;
     const vignette = { corridor: 0.32, yard: 0.18, office: 0.5 }[this.level.theme];
-    this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setScrollFactor(0).setDepth(50).setAlpha(vignette);
+    this.vignette = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setScrollFactor(0).setDepth(50).setAlpha(vignette);
     this.hud = new RecessHud(this, this.ctx.fonts, this.text.title, this.levelIndex, LEVELS.length, reduced, this.ctx.locale, (a) => this.onPad(a));
+    this.deck = new TouchDeck(this, this.ctx.fonts, this.copy.deck, this.level.theme, this.hud.touch, (a) => this.onPad(a), reduced);
+    this.markers = new EdgeMarkers(this, this.ctx.fonts, reduced);
     this.buildingHud = false;
     this.hud.setHearts(this.hearts);
     this.hud.setScore(this.score);
@@ -252,10 +272,10 @@ export class StageScene extends Phaser.Scene {
     this.setupInput();
 
     this.events.on(Phaser.Scenes.Events.POST_UPDATE, this.syncVisual, this);
-    this.applyScale();
-    this.scale.on(Phaser.Scale.Events.RESIZE, this.applyScale, this);
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
+    watchFrame(this, (frame) => this.applyFrame(frame));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off(Phaser.Scale.Events.RESIZE, this.applyScale, this);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
       this.events.off(Phaser.Scenes.Events.POST_UPDATE, this.syncVisual, this);
       this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, this.route, this);
       this.uiCam = null;
@@ -296,8 +316,7 @@ export class StageScene extends Phaser.Scene {
     if (this.mode !== "attract") return;
     this.mode = "play";
     this.hero.body.moves = true;
-    this.hud.showTouch(Boolean(TOUCH_UI));
-    this.applyScale();
+    this.setControls(true);
     if (resumed) {
       this.hud.flash(this.copy.banner.backAtBell, "#63d6c1", 900);
       this.announce(this.copy.say.resumed);
@@ -313,8 +332,62 @@ export class StageScene extends Phaser.Scene {
     }
   }
 
-  private applyScale() {
-    this.hud?.layout(this.scale.displayScale.x);
+  private get compact() {
+    return this.frame.kind !== "full";
+  }
+
+  private applyFrame(frame: Frame) {
+    const prev = this.frame;
+    this.frame = frame;
+    const main = this.cameras.main;
+    const viewH = frame.height - frame.deck;
+    main.setViewport(0, 0, frame.width, viewH);
+    this.uiCam?.setSize(frame.width, frame.height);
+    this.vignette.setDisplaySize(frame.width, viewH);
+    this.scenery.fit(this.compact);
+    this.hud.layout(frame, this.scale.displayScale.x);
+    this.deck.layout(frame, this.compact);
+    this.setControls(this.controlsOn);
+    if (this.compact) {
+      main.stopFollow();
+      main.removeBounds();
+      if (prev.kind === "full" || prev !== frame) this.frameCam.reset();
+      this.updateCamera(0);
+      return;
+    }
+    this.markers.hide();
+    if (prev.kind !== "full") this.desktopCamera();
+  }
+
+  private desktopCamera() {
+    const cam = this.cameras.main;
+    if (this.arena.entered) {
+      cam.stopFollow();
+      cam.setBounds(this.arena.left, 0, W, H);
+      cam.setZoom(ARENA_ZOOM);
+      cam.centerOn(this.arena.left + W / 2, H / 2);
+      return;
+    }
+    cam.setZoom(ZOOM);
+    cam.setBounds(0, 0, this.world.width, H);
+    this.camTop = H - H / ZOOM;
+    cam.startFollow(this.hero.rect, true, 0.14, 0, 0, 0);
+    cam.centerOn(this.hero.x, H - H / ZOOM / 2);
+  }
+
+  private setControls(on: boolean) {
+    this.controlsOn = on;
+    if (this.compact) {
+      this.hud.showTouch(false);
+      this.deck.enable(on);
+    } else {
+      this.deck.enable(false);
+      this.hud.showTouch(on && Boolean(TOUCH_UI));
+    }
+  }
+
+  private onResume() {
+    this.deck.release();
   }
 
   private sfx(name: RecessSfx, volume = 1, throttleMs = 0) {
@@ -365,6 +438,7 @@ export class StageScene extends Phaser.Scene {
 
   private warn(x: number, y: number, ms: number) {
     const t = cartoonText(this, x, y, "!", { size: 70, color: "#ef4f43", font: this.ctx.fonts.display, stroke: 0.22 }).setOrigin(0.5).setDepth(41);
+    this.warnings.push({ text: t, x, y });
     if (!this.ctx.reducedMotion) {
       t.setScale(0.4);
       this.tweens.add({ targets: t, scale: 1.15, duration: 130, ease: "Back.easeOut" });
@@ -385,6 +459,7 @@ export class StageScene extends Phaser.Scene {
     if (lesson === "jump") {
       this.showChip(TOUCH_UI ? tut.jumpTouch : tut.jumpKeys, TOUCH_UI ? ["chip-jump"] : []);
       this.hud.pulseJump(true);
+      this.deck.pulseJump(true);
     }
     if (lesson === "attack") {
       this.showChip(TOUCH_UI ? tut.attackTouch : tut.attackKeys, TOUCH_UI ? ["chip-attack"] : []);
@@ -399,18 +474,29 @@ export class StageScene extends Phaser.Scene {
   }
 
   private endLesson() {
-    if (this.lesson === "jump") this.hud.pulseJump(false);
+    if (this.lesson === "jump") {
+      this.hud.pulseJump(false);
+      this.deck.pulseJump(false);
+    }
     this.lesson = null;
     this.hideChip();
   }
 
+  private chipScale() {
+    if (!this.compact) return 1;
+    const css = this.cameras.main.zoom / this.frame.unit;
+    return Math.max(1, 15 / (24 * css));
+  }
+
   private showChip(text: string, icons: string[] = [], anchor?: Anchor) {
     this.hideChip();
-    const label = this.add.text(0, 0, text, { fontFamily: this.ctx.fonts.display, fontSize: "24px", color: "#1d1830", padding: { x: 2, y: 3 } }).setOrigin(0, 0.5);
+    const k = this.chipScale();
     const iconW = 30;
     const iconsW = icons.length ? icons.length * iconW + 4 : 0;
+    const wrap = this.compact ? Math.max(200, (this.frameCam.width || this.cameras.main.worldView.width) / k - 70 - iconsW) : 0;
+    const label = this.add.text(0, 0, text, { fontFamily: this.ctx.fonts.display, fontSize: "24px", color: "#1d1830", padding: { x: 2, y: 3 }, align: "center", ...(wrap ? { wordWrap: { width: wrap } } : {}) }).setOrigin(0, 0.5);
     const w = iconsW + label.width + 28;
-    const h = 46;
+    const h = Math.max(46, label.height + 14);
     const bg = this.add.graphics();
     bg.fillStyle(INK_HEX, 0.9);
     bg.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, 12);
@@ -437,15 +523,16 @@ export class StageScene extends Phaser.Scene {
       parts.splice(1, 0, tip);
     }
     const start = anchor?.() ?? { x: this.hero.x, y: this.hero.top - 34 };
-    const chip: Chip = { box: this.add.container(start.x, start.y, parts).setDepth(45).setAlpha(0), half: w / 2, lift: 0, dx: 0, leaving: false, anchor, tip, at: start };
+    const chip: Chip = { box: this.add.container(start.x, start.y, parts).setDepth(45).setAlpha(0).setScale(k), half: (w / 2) * k, lift: 0, dx: 0, leaving: false, anchor, tip, at: start };
+    chip.box.setData("k", k).setData("h", h * k);
     this.chips.push(chip);
     if (this.ctx.reducedMotion) {
       this.tweens.add({ targets: chip.box, alpha: 1, duration: 160 });
       return;
     }
     chip.lift = -10;
-    chip.box.setScale(0.9);
-    this.tweens.add({ targets: chip.box, alpha: 1, scale: 1, duration: 200, ease: "Back.easeOut" });
+    chip.box.setScale(0.9 * k);
+    this.tweens.add({ targets: chip.box, alpha: 1, scale: k, duration: 200, ease: "Back.easeOut" });
     this.tweens.add({ targets: chip, lift: 0, duration: 200, ease: "Quad.easeOut" });
   }
 
@@ -459,7 +546,7 @@ export class StageScene extends Phaser.Scene {
       };
       if (this.ctx.reducedMotion) this.tweens.add({ targets: chip.box, alpha: 0, duration: 160, onComplete: done });
       else {
-        this.tweens.add({ targets: chip.box, alpha: 0, scale: 0.92, duration: 260, ease: "Quad.easeIn", onComplete: done });
+        this.tweens.add({ targets: chip.box, alpha: 0, scale: 0.92 * ((chip.box.getData("k") as number | undefined) ?? 1), duration: 260, ease: "Quad.easeIn", onComplete: done });
         this.tweens.add({ targets: chip, lift: 18, duration: 260, ease: "Quad.easeOut" });
       }
     }
@@ -470,19 +557,23 @@ export class StageScene extends Phaser.Scene {
     const foe = this.enemies.filter((e) => !e.dead && Math.abs(e.x - this.hero.x) < 420).sort((a, b) => Math.abs(a.x - this.hero.x) - Math.abs(b.x - this.hero.x))[0];
     const want = foe ? -Math.sign(foe.x - this.hero.x) * 70 : 0;
     const view = this.cameras.main.worldView;
+    const field = this.compact ? this.frameCam.playTop(this.frame) : view.y;
     for (const chip of this.chips) {
       if (chip.anchor) {
         const at = chip.anchor() ?? chip.at!;
         chip.at = at;
         const x = Phaser.Math.Clamp(at.x, view.x + chip.half + 16, view.right - chip.half - 16);
-        const y = Phaser.Math.Clamp(at.y, view.y + 150, view.bottom - 160);
+        const half = ((chip.box.getData("h") as number | undefined) ?? 46) / 2;
+        const y = this.compact ? Phaser.Math.Clamp(at.y, field + half + 24, view.bottom - half - 40) : Phaser.Math.Clamp(at.y, view.y + 150, view.bottom - 160);
         chip.box.setPosition(x, y - chip.lift);
         chip.tip?.setX(Phaser.Math.Clamp(at.x - x, -chip.half + 22, chip.half - 22));
         continue;
       }
       chip.dx = Phaser.Math.Linear(chip.dx, want, 0.12);
       const x = Phaser.Math.Clamp(this.hero.x + chip.dx, view.x + chip.half + 16, view.right - chip.half - 16);
-      chip.box.setPosition(x, this.hero.top - 34 - chip.lift);
+      const half = ((chip.box.getData("h") as number | undefined) ?? 46) / 2;
+      const y = this.compact ? Math.max(this.hero.top - 12 - half, field + half + 16) : this.hero.top - 34;
+      chip.box.setPosition(x, y - chip.lift);
     }
   }
 
@@ -616,6 +707,7 @@ export class StageScene extends Phaser.Scene {
     }
     this.endLesson();
     this.hud.hideControls();
+    this.setControls(false);
     this.hero.body.setVelocityX(0);
     this.sfx("lose", 1);
     const cp = this.registry.get("checkpoint") as Checkpoint | null;
@@ -672,6 +764,7 @@ export class StageScene extends Phaser.Scene {
     this.clearShots();
     this.endLesson();
     this.hud.hideControls();
+    this.setControls(false);
     this.hero.body.setVelocity(0, this.hero.body.velocity.y);
     this.hero.cheer();
     this.registry.set("checkpoint", null);
@@ -737,13 +830,15 @@ export class StageScene extends Phaser.Scene {
     this.hud.flash(this.copy.banner.recess, "#93cf4c", 2800, this.copy.banner.recessSub);
     this.announce(this.copy.say.recess);
     const left = this.arena.left;
+    const view = this.cameras.main.worldView;
+    const spread = this.compact ? this.cheerSpots(view) : null;
     const kids: [string, number][] = [
-      ["deco", left + 360],
-      ["mila", left + 1560],
-      ["lina", left + 1760],
+      ["deco", spread?.[0] ?? left + 360],
+      ["mila", spread?.[1] ?? left + 1560],
+      ["lina", spread?.[2] ?? left + 1760],
     ];
     kids.forEach(([name, x], i) => {
-      const fromX = x < left + W / 2 ? left - 120 : left + W + 120;
+      const fromX = spread ? (x < view.centerX ? view.x - 140 : view.right + 140) : x < left + W / 2 ? left - 120 : left + W + 120;
       const img = this.add.image(fromX, FLOOR_Y, `kid-${name}-a`).setOrigin(0.5, 1).setDepth(14).setScale(KID_SCALE * ARENA_GROW);
       if (reduced) img.setX(x);
       else this.tweens.add({ targets: img, x, duration: 900, delay: i * 180, ease: "Quad.easeOut" });
@@ -752,19 +847,42 @@ export class StageScene extends Phaser.Scene {
     });
     if (reduced) return;
     const colors = [0xef4f43, 0xffc83d, 0x63d6c1, 0x5cb9f0, 0xf06ba8, 0x93cf4c];
+    const span = spread ? { x: view.x, w: view.width, y: this.frameCam.playTop(this.frame) - 20 } : { x: left, w: W, y: -20 };
     for (let i = 0; i < 46; i += 1) {
-      const c = this.add.image(left + Phaser.Math.Between(80, W - 80), -20, "confetti").setTint(colors[i % colors.length]).setDepth(36).setAngle(Phaser.Math.Between(0, 180));
+      const c = this.add.image(span.x + Phaser.Math.Between(80, Math.max(81, span.w - 80)), span.y, "confetti").setTint(colors[i % colors.length]).setDepth(36).setAngle(Phaser.Math.Between(0, 180));
       this.tweens.add({ targets: c, y: FLOOR_Y - Phaser.Math.Between(0, 40), angle: c.angle + Phaser.Math.Between(180, 540), x: c.x + Phaser.Math.Between(-80, 80), duration: Phaser.Math.Between(1600, 2600), delay: Phaser.Math.Between(0, 900), ease: "Sine.easeIn" });
     }
   }
 
+  private cheerSpots(view: Phaser.Geom.Rectangle) {
+    const left = Math.max(view.x, this.arena.left) + 90;
+    const right = Math.min(view.right, this.arena.right) - 90;
+    const busy = [{ x: this.hero.x, r: 0 }, ...(this.boss ? [{ x: this.boss.sprite.x, r: 90 }] : [])];
+    const spots: number[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      let best = left;
+      let bestGap = -Infinity;
+      for (let x = left; x <= right; x += 30) {
+        const gap = Math.min(...busy.map((b) => Math.abs(x - b.x) - b.r), ...spots.map((sx) => Math.abs(x - sx)));
+        if (gap > bestGap) {
+          best = x;
+          bestGap = gap;
+        }
+      }
+      spots.push(best);
+    }
+    return spots.sort((a, b) => a - b);
+  }
+
   private enterArena() {
     this.arena.entered = true;
-    const cam = this.cameras.main;
-    cam.stopFollow();
-    cam.setBounds(this.arena.left, 0, W, H);
-    cam.zoomTo(ARENA_ZOOM, 700, "Sine.easeInOut");
-    cam.pan(this.arena.left + W / 2, H / 2, 700, "Sine.easeInOut");
+    if (!this.compact) {
+      const cam = this.cameras.main;
+      cam.stopFollow();
+      cam.setBounds(this.arena.left, 0, W, H);
+      cam.zoomTo(ARENA_ZOOM, 700, "Sine.easeInOut");
+      cam.pan(this.arena.left + W / 2, H / 2, 700, "Sine.easeInOut");
+    }
     this.gate = this.add.zone(this.arena.left - 20, FLOOR_Y - 400, 40, 800);
     this.physics.add.existing(this.gate, true);
     this.physics.add.collider(this.hero.rect, this.gate);
@@ -802,7 +920,36 @@ export class StageScene extends Phaser.Scene {
     if ((["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l) || this.shown.has(l))) this.tutorialOn = false;
   }
 
+  private focusPoints(): Focus[] {
+    const h = this.hero;
+    const focus: Focus[] = [];
+    for (const e of this.enemies) if (!e.dead && Math.abs(e.feet - h.feet) < 520) focus.push({ x: e.x, pad: 150 });
+    for (const w of this.waves) if (w.alive) focus.push({ x: w.img.x, pad: 90 });
+    for (const b of this.balls) if (b.harmful) focus.push({ x: b.img.x, pad: 70 });
+    for (const w of this.watchers) if (w.awake) focus.push({ x: w.x, pad: 170 });
+    for (const l of this.lockers) if (l.shaking) focus.push({ x: l.x, pad: 130 });
+    for (const l of this.spotlights) focus.push({ x: l.spotX, pad: 160 });
+    for (const r of this.ropes) focus.push({ x: r.mid, pad: (r.x1 - r.x0) / 2 + 40 });
+    if (this.exitZone) focus.push({ x: this.exitZone.centerX, pad: 140 });
+    if (this.boss && this.arena.entered && this.boss.state !== "beaten") focus.push({ x: this.boss.x, pad: 240, always: true });
+    return focus;
+  }
+
+  private updateFrameCamera(dt: number) {
+    const h = this.hero;
+    const margin = this.deck.sideRoom() / this.cameras.main.zoom;
+    const bounds = this.arena.entered ? { left: this.arena.left - margin, right: this.arena.right + margin } : { left: -margin, right: this.world.width + margin };
+    const below = this.enemies.some((e) => !e.dead && Math.abs(e.x - h.x) < 700 && e.feet > h.feet + 120);
+    const scale = this.arena.entered ? ARENA_GROW : 1;
+    this.frameCam.update(dt, this.frame, { x: h.x, top: h.top, facing: h.facing, vy: h.body.velocity.y, scale }, this.focusPoints(), bounds, this.arena.entered, below);
+    this.scenery.frameSky(this.cameras.main);
+  }
+
   private updateCamera(dt: number) {
+    if (this.compact) {
+      this.updateFrameCamera(dt);
+      return;
+    }
     if (this.arena.entered) return;
     const cam = this.cameras.main;
     const h = this.hero;
@@ -835,8 +982,47 @@ export class StageScene extends Phaser.Scene {
     for (const w of this.waves) others.push(sp(w.img.x, w.img.y - 60));
     for (const b of this.balls) others.push(sp(b.img.x, b.img.y));
     const [hx, hy] = sp(this.hero.x, this.hero.body.center.y);
-    this.hud.avoid(hx, hy, others);
+    this.hud.avoid(hx, hy, others, sp(this.hero.x, this.hero.top)[1]);
+    if (this.compact) this.syncCompact(v, sp, hx, hy, others);
     if (this.scenery.spotlight && this.boss) this.scenery.spotlight.x = Phaser.Math.Linear(this.scenery.spotlight.x, this.boss.x, 0.08);
+  }
+
+  private syncCompact(v: Phaser.Geom.Rectangle, sp: (x: number, y: number) => [number, number], hx: number, hy: number, others: [number, number][]) {
+    this.warnings = this.warnings.filter((w) => w.text.active);
+    const marks: Mark[] = [];
+    const out = (x: number): -1 | 1 | 0 => (x < v.x + 24 ? -1 : x > v.right - 24 ? 1 : 0);
+    if (this.mode === "play") {
+      const boss = this.boss && this.arena.entered && this.boss.state !== "beaten" ? this.boss : null;
+      let bossWarn = false;
+      for (const w of this.warnings) {
+        const side = out(w.x);
+        if (side === 0) continue;
+        if (boss && Math.abs(w.x - boss.x) < 220) bossWarn = true;
+        else marks.push({ side, y: sp(w.x, w.y)[1], tone: "warn" });
+      }
+      for (const w of this.waves) {
+        if (!w.alive) continue;
+        const side = out(w.img.x);
+        const dist = side < 0 ? v.x - w.img.x : w.img.x - v.right;
+        if (side !== 0 && dist < 900 && (w.img.flipX ? -1 : 1) === -side) marks.push({ side, y: sp(w.img.x, w.img.y - 50)[1], tone: "shot" });
+      }
+      for (const b of this.balls) {
+        const side = out(b.img.x);
+        if (b.harmful && side === 1 && b.img.x - v.right < 900) marks.push({ side, y: sp(b.img.x, b.img.y)[1], tone: "shot" });
+      }
+      if (boss) {
+        const side = out(boss.x);
+        if (side !== 0) marks.push({ side, y: sp(boss.x, boss.body.center.y)[1], tone: bossWarn ? "warn" : "boss" });
+      }
+    }
+    const f = this.frame;
+    this.markers.update(marks, f, f.hud, f.height - f.deck, this.lastDt);
+    const zones = f.kind === "band" ? this.deck.zones() : null;
+    if (zones) {
+      const near = (z: Phaser.Geom.Rectangle) => (x: number, y: number) => x > z.x - 90 && x < z.right + 90 && y > z.y - 160 && y < z.bottom + 60;
+      const [l, r] = zones.map(near);
+      this.deck.fade(l(hx, hy) || others.some(([x, y]) => l(x, y)) ? 0.4 : 1, r(hx, hy) || others.some(([x, y]) => r(x, y)) ? 0.4 : 1);
+    }
   }
 
   update(time: number, delta: number) {
@@ -855,6 +1041,7 @@ export class StageScene extends Phaser.Scene {
   }
 
   private step(dt: number) {
+    this.lastDt = dt;
     this.t += dt * 1000;
     const t = this.t;
 

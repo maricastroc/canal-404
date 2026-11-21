@@ -15,9 +15,13 @@ type ArenaRefs = {
   left: number;
 };
 type Reactive = { img: Phaser.GameObjects.Image; kind: ReactKind; lastHit: number };
+type Layer = { obj: Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Transform; y: number };
 type Pile = { x: number; y: number; at: number };
 
 const D = { far: 0.1, mid: 0.4, wall: 0.6, back: 0.8, floor: 0.9, front: 52 };
+const REST_SCROLL_Y = (H - H / 1.22) / 2;
+const MARGIN = 1400;
+const CEILING = { corridor: { base: 0x3f3170, beam: 0x2b2150, step: 320, beamX: 150, beamW: 20 }, office: { base: 0x3a2014, beam: 0x2b170e, step: 240, beamX: 110, beamW: 20 } };
 
 function canvasTexture(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) {
   if (scene.textures.exists(key)) return;
@@ -210,6 +214,10 @@ export class Scenery {
   private hitCount = 0;
   private paperFrom: { x: number; y: number } | null = null;
   private nextAmbient = 2500;
+  private layers: Layer[] = [];
+  private sky: Phaser.GameObjects.Image | null = null;
+  private ceiling: Phaser.GameObjects.GameObject[] = [];
+  private compact = false;
   readonly spotlight: Phaser.GameObjects.Image | null = null;
 
   constructor(
@@ -226,6 +234,60 @@ export class Scenery {
       this.office();
       if (level.boss) this.spotlight = this.arena(level.boss.arena * TILE);
     }
+  }
+
+  private layer<T extends Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Transform>(obj: T) {
+    this.layers.push({ obj, y: obj.y });
+    return obj;
+  }
+
+  fit(compact: boolean) {
+    if (compact === this.compact) return;
+    this.compact = compact;
+    for (const { obj, y } of this.layers) {
+      obj.setY(compact ? y + REST_SCROLL_Y : y);
+      obj.setScrollFactor(obj.scrollFactorX, compact ? 1 : 0);
+    }
+    if (compact && !this.ceiling.length) this.ceiling = [...this.drawMargins(), ...(this.level.theme === "yard" ? [] : this.drawCeiling(this.level.theme))];
+    for (const o of this.ceiling) (o as Phaser.GameObjects.Image).setVisible(compact);
+    if (!compact) this.sky?.setOrigin(0, 0).setPosition(0, 0).setDisplaySize(W * 1.4, H * 1.4);
+  }
+
+  frameSky(cam: Phaser.Cameras.Scene2D.Camera) {
+    if (!this.compact || !this.sky) return;
+    this.sky.setOrigin(0.5).setPosition(cam.width / 2, cam.height / 2).setDisplaySize((cam.width / cam.zoom) * 1.04, (cam.height / cam.zoom) * 1.04);
+  }
+
+  private drawMargins() {
+    const theme = this.level.theme;
+    const out: Phaser.GameObjects.TileSprite[] = [];
+    for (const x0 of [-MARGIN, this.width]) {
+      if (theme !== "yard") out.push(this.scene.add.tileSprite(x0, 0, MARGIN, FLOOR_Y, `wall-${theme}`).setOrigin(0, 0).setDepth(0).setTilePosition(x0, 0));
+      out.push(this.scene.add.tileSprite(x0, FLOOR_Y, MARGIN, H - FLOOR_Y + 200, `floor-${theme}`).setOrigin(0, 0).setDepth(5).setTilePosition(x0, 0));
+    }
+    return out;
+  }
+
+  private drawCeiling(theme: "corridor" | "office") {
+    const c = CEILING[theme];
+    const key = `ceiling-${theme}`;
+    gfxTexture(this.scene, key, c.step, 200, (g) => {
+      g.fillStyle(c.base, 1);
+      g.fillRect(0, 0, c.step, 200);
+      g.fillStyle(c.beam, 1);
+      g.fillRect(c.beamX, 0, c.beamW, 200);
+    });
+    const depth = 1200;
+    const x0 = -MARGIN;
+    const span = this.width + MARGIN * 2;
+    const t = this.scene.add.tileSprite(x0, -depth, span, depth, key).setOrigin(0, 0).setDepth(0).setTilePosition(x0, 0);
+    const g = this.scene.add.graphics().setDepth(0.01);
+    g.fillStyle(c.beam, 1);
+    g.fillRect(x0, -14, span, 14);
+    g.fillStyle(INK_HEX, 0.35);
+    g.fillRect(x0, -3, span, 3);
+    const shade = this.scene.add.image(x0, -14, "shade-top").setOrigin(0, 1).setFlipY(true).setDisplaySize(span, 520).setDepth(0.02).setAlpha(0.9);
+    return [t, g, shade];
   }
 
   private img(key: string, x: number, y: number, depth: number, origin: [number, number] = [0.5, 1]) {
@@ -369,33 +431,33 @@ export class Scenery {
 
   private yard() {
     const s = this.scene;
-    s.add.image(0, 0, "sky").setOrigin(0, 0).setDisplaySize(W * 1.4, H * 1.4).setScrollFactor(0).setDepth(0);
-    s.add.circle(1500, 210, 74, 0xffe39a).setStrokeStyle(6, INK_HEX).setScrollFactor(0.04, 0).setDepth(D.far);
-    for (let i = 0; i < 6; i += 1) this.img("cloud", 200 + i * 520, 170 + (i % 3) * 70, D.far, [0.5, 0.5]).setScrollFactor(0.1, 0).setScale(0.8 + (i % 2) * 0.3);
-    for (let i = 0; i < 3; i += 1) this.img("trees-far", i * 1600, 840, D.far + 0.05, [0, 1]).setScrollFactor(0.2, 0).setScale(1.3);
+    this.sky = s.add.image(0, 0, "sky").setOrigin(0, 0).setDisplaySize(W * 1.4, H * 1.4).setScrollFactor(0).setDepth(0);
+    this.layer(s.add.circle(1500, 210, 74, 0xffe39a).setStrokeStyle(6, INK_HEX).setScrollFactor(0.04, 0).setDepth(D.far));
+    for (let i = 0; i < 6; i += 1) this.layer(this.img("cloud", 200 + i * 520, 170 + (i % 3) * 70, D.far, [0.5, 0.5]).setScrollFactor(0.1, 0).setScale(0.8 + (i % 2) * 0.3));
+    for (let i = 0; i < 3; i += 1) this.layer(this.img("trees-far", i * 1600, 840, D.far + 0.05, [0, 1]).setScrollFactor(0.2, 0).setScale(1.3));
     const buildings: [string, number, number][] = [
       ["building", 360, 0.85],
       ["building-b", 1500, 0.9],
       ["building", 2700, 0.8],
       ["building-b", 3600, 0.85],
     ];
-    for (const [key, x, sc] of buildings) this.img(key, x, 860, D.mid, [0.5, 1]).setScrollFactor(0.4, 0).setScale(sc);
+    for (const [key, x, sc] of buildings) this.layer(this.img(key, x, 860, D.mid, [0.5, 1]).setScrollFactor(0.4, 0).setScale(sc));
     const near: [string, number, number][] = [
       ["building-b", 700, 1.2],
       ["building", 2100, 1.25],
       ["building-b", 3300, 1.2],
     ];
-    for (const [key, x, sc] of near) this.img(key, x, 850, D.mid + 0.02, [0.5, 1]).setScrollFactor(0.5, 0).setScale(sc);
+    for (const [key, x, sc] of near) this.layer(this.img(key, x, 850, D.mid + 0.02, [0.5, 1]).setScrollFactor(0.5, 0).setScale(sc));
     for (const [a, b] of [
       [300, 1900],
       [2500, 4400],
     ]) {
-      s.add.tileSprite(a, 620, b - a, 220, "fence-tile").setOrigin(0, 0).setScrollFactor(0.65, 0).setDepth(D.mid + 0.1);
-      const g = s.add.graphics().setScrollFactor(0.65, 0).setDepth(D.mid + 0.05);
+      this.layer(s.add.tileSprite(a, 620, b - a, 220, "fence-tile").setOrigin(0, 0).setScrollFactor(0.65, 0).setDepth(D.mid + 0.1));
+      const g = this.layer(s.add.graphics().setScrollFactor(0.65, 0).setDepth(D.mid + 0.05));
       g.fillStyle(0xc9a06a, 1);
       g.fillRect(a, 836, b - a, 30);
     }
-    for (const x of [620, 1500, 2900, 3900]) this.img("hoop", x, 860, D.mid + 0.12).setScrollFactor(0.65, 0).setScale(0.8);
+    for (const x of [620, 1500, 2900, 3900]) this.layer(this.img("hoop", x, 860, D.mid + 0.12).setScrollFactor(0.65, 0).setScale(0.8));
     this.floor("floor-yard");
     for (const x of [260, 2560, 4380, 5980]) this.img("tree-big", x, FLOOR_Y + 8, D.back);
     this.img("kiosk", 3060, FLOOR_Y, D.back);

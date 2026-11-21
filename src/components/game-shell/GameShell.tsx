@@ -581,7 +581,7 @@ export function GameShell({ slug }: { slug: string }) {
 
   return (
     <div onFocus={afterFocus} className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
-      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b-[3px] border-ink bg-plum-800 px-2 sm:gap-3 sm:px-4">
+      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b-[3px] border-ink bg-plum-800 px-2 max-[359px]:gap-1 max-[359px]:px-1.5 sm:gap-3 sm:px-4">
         <Link
           href={`/games/${slug}`}
           onClick={() => play("back")}
@@ -590,7 +590,7 @@ export function GameShell({ slug }: { slug: string }) {
           <ArrowLeftIcon className="size-4" />
           <span className="hidden sm:inline">{copy.back}</span>
         </Link>
-        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[15px] uppercase leading-[1.05] text-sun sm:line-clamp-1 sm:flex-none sm:text-2xl sm:leading-normal sm:tracking-wide">{game.title}</p>
+        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[15px] uppercase leading-[1.05] text-sun max-[359px]:text-[13px] sm:line-clamp-1 sm:flex-none sm:text-2xl sm:leading-normal sm:tracking-wide">{game.title}</p>
         {missionRun && canControl ? (
           <p className="hidden min-w-0 items-center gap-1.5 rounded-lg border-[3px] border-ink bg-lime px-2 py-0.5 font-display text-xs uppercase tracking-wide text-ink md:flex">
             <MissionIcon className="size-4" />
