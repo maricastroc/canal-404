@@ -1,0 +1,1205 @@
+import * as Phaser from "phaser";
+import type { Dir } from "../sim/types";
+import { artKey, hasArt } from "./art";
+import { ART_FILES } from "./artManifest";
+
+const INK = 0x1d1830;
+
+export type Eyes = "dot" | "closed" | "wide" | "happy" | "squeeze" | "squint" | "angry";
+export type Mouth = "line" | "o" | "grin" | "smile" | "snore" | "yell" | "tight" | "wobbly";
+export type Brows = "none" | "up" | "worried" | "angry" | "flat";
+
+type FaceSpec = { eyes: Eyes; mouth: Mouth; brows?: Brows; look?: { x: number; y: number }; glasses?: boolean; blush?: boolean; tint?: number; gap?: number };
+
+const LOOK: Record<Dir, { x: number; y: number }> = { 0: { x: 0, y: -1 }, 1: { x: 1, y: 0 }, 2: { x: 0, y: 1 }, 3: { x: -1, y: 0 } };
+
+export function lookOf(dir: Dir) {
+  return LOOK[dir];
+}
+
+function face(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number, spec: FaceSpec) {
+  const look = spec.look ?? { x: 0, y: 0 };
+  const gap = r * (spec.gap ?? 0.42);
+  const ex = cx + look.x * r * 0.22;
+  const ey = cy - r * 0.05 + look.y * r * 0.12;
+  if (spec.blush) {
+    g.fillStyle(0xff9d8a, 0.75);
+    g.fillEllipse(ex - gap * 1.25, ey + r * 0.38, r * 0.34, r * 0.2);
+    g.fillEllipse(ex + gap * 1.25, ey + r * 0.38, r * 0.34, r * 0.2);
+  }
+  for (const side of [-1, 1]) {
+    const x = ex + side * gap;
+    g.lineStyle(Math.max(2, r * 0.09), INK, 1);
+    switch (spec.eyes) {
+      case "dot":
+        g.fillStyle(INK, 1);
+        g.fillCircle(x + look.x * r * 0.05, ey + look.y * r * 0.05, r * 0.11);
+        break;
+      case "wide":
+        g.fillStyle(0xffffff, 1);
+        g.fillCircle(x, ey, r * 0.2);
+        g.strokeCircle(x, ey, r * 0.2);
+        g.fillStyle(INK, 1);
+        g.fillCircle(x + look.x * r * 0.08, ey + look.y * r * 0.08, r * 0.07);
+        break;
+      case "closed":
+        g.beginPath();
+        g.arc(x, ey - r * 0.02, r * 0.13, 0.15 * Math.PI, 0.85 * Math.PI);
+        g.strokePath();
+        break;
+      case "happy":
+        g.beginPath();
+        g.arc(x, ey + r * 0.06, r * 0.13, 1.15 * Math.PI, 1.85 * Math.PI);
+        g.strokePath();
+        break;
+      case "squeeze":
+        g.lineBetween(x - r * 0.13, ey - r * 0.07 * side, x + r * 0.13, ey);
+        g.lineBetween(x - r * 0.13, ey + r * 0.07 * side, x + r * 0.13, ey);
+        break;
+      case "squint":
+        g.lineBetween(x - r * 0.12, ey, x + r * 0.12, ey);
+        break;
+      case "angry":
+        g.fillStyle(INK, 1);
+        g.fillCircle(x + look.x * r * 0.05, ey + look.y * r * 0.05, r * 0.1);
+        break;
+    }
+    if (spec.glasses) {
+      g.lineStyle(Math.max(2, r * 0.07), INK, 1);
+      g.fillStyle(0xa9dcf7, 0.25);
+      g.fillCircle(x, ey, r * 0.27);
+      g.strokeCircle(x, ey, r * 0.27);
+    }
+    const by = ey - r * (spec.glasses ? 0.42 : 0.3);
+    g.lineStyle(Math.max(2.5, r * 0.1), INK, 1);
+    switch (spec.brows ?? "none") {
+      case "up":
+        g.lineBetween(x - r * 0.15, by - r * 0.08, x + r * 0.15, by - r * 0.08);
+        break;
+      case "worried":
+        g.lineBetween(x - r * 0.15 * side, by - r * 0.1, x + r * 0.15 * side, by + r * 0.02);
+        break;
+      case "angry":
+        g.lineBetween(x - r * 0.16 * side, by - r * 0.04, x + r * 0.16 * side, by + r * 0.12);
+        break;
+      case "flat":
+        g.lineBetween(x - r * 0.15, by, x + r * 0.15, by);
+        break;
+    }
+  }
+  if (spec.glasses) {
+    g.lineStyle(Math.max(2, r * 0.07), INK, 1);
+    g.lineBetween(ex - gap + r * 0.27, ey, ex + gap - r * 0.27, ey);
+  }
+  const mx = cx + look.x * r * 0.2;
+  const my = cy + r * 0.5 + look.y * r * 0.06;
+  g.lineStyle(Math.max(2, r * 0.09), INK, 1);
+  switch (spec.mouth) {
+    case "line":
+      g.lineBetween(mx - r * 0.14, my, mx + r * 0.14, my - r * 0.02);
+      break;
+    case "tight":
+      g.lineBetween(mx - r * 0.1, my, mx + r * 0.1, my);
+      g.lineBetween(mx - r * 0.12, my - r * 0.03, mx - r * 0.1, my);
+      g.lineBetween(mx + r * 0.12, my - r * 0.03, mx + r * 0.1, my);
+      break;
+    case "o":
+      g.fillStyle(0x5c2333, 1);
+      g.fillEllipse(mx, my, r * 0.2, r * 0.24);
+      g.strokeEllipse(mx, my, r * 0.2, r * 0.24);
+      break;
+    case "snore":
+      g.fillStyle(0x5c2333, 1);
+      g.fillEllipse(mx, my + r * 0.02, r * 0.24, r * 0.16);
+      g.strokeEllipse(mx, my + r * 0.02, r * 0.24, r * 0.16);
+      break;
+    case "yell":
+      g.fillStyle(0x5c2333, 1);
+      g.fillEllipse(mx, my + r * 0.06, r * 0.46, r * 0.4);
+      g.strokeEllipse(mx, my + r * 0.06, r * 0.46, r * 0.4);
+      g.fillStyle(0xef4f43, 1);
+      g.fillEllipse(mx, my + r * 0.16, r * 0.24, r * 0.12);
+      break;
+    case "smile":
+      g.beginPath();
+      g.arc(mx, my - r * 0.12, r * 0.22, 0.15 * Math.PI, 0.85 * Math.PI);
+      g.strokePath();
+      break;
+    case "grin": {
+      g.fillStyle(0xffffff, 1);
+      g.fillRoundedRect(mx - r * 0.3, my - r * 0.1, r * 0.6, r * 0.22, r * 0.08);
+      g.strokeRoundedRect(mx - r * 0.3, my - r * 0.1, r * 0.6, r * 0.22, r * 0.08);
+      g.lineStyle(Math.max(1.5, r * 0.05), INK, 1);
+      g.lineBetween(mx - r * 0.3, my + r * 0.01, mx + r * 0.3, my + r * 0.01);
+      for (let i = -1; i <= 1; i += 1) g.lineBetween(mx + i * r * 0.13, my - r * 0.1, mx + i * r * 0.13, my + r * 0.12);
+      break;
+    }
+    case "wobbly":
+      g.beginPath();
+      g.moveTo(mx - r * 0.2, my);
+      g.lineTo(mx - r * 0.1, my - r * 0.05);
+      g.lineTo(mx, my);
+      g.lineTo(mx + r * 0.1, my - r * 0.05);
+      g.lineTo(mx + r * 0.2, my);
+      g.strokePath();
+      break;
+  }
+}
+
+function sweat(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number) {
+  g.fillStyle(0x9fdcff, 1);
+  g.lineStyle(2, INK, 1);
+  g.beginPath();
+  g.moveTo(x, y - r);
+  g.lineTo(x + r * 0.6, y + r * 0.2);
+  g.arc(x, y + r * 0.2, r * 0.6, 0, Math.PI);
+  g.closePath();
+  g.fillPath();
+  g.strokePath();
+}
+
+function fitArt(img: Phaser.GameObjects.Image, name: string, unit: number) {
+  if (!hasArt(name)) return;
+  const [vx, vy, vw, vh] = ART_FILES[name];
+  img.setTexture(artKey(name)).setOrigin(-vx / vw, -vy / vh).setDisplaySize(vw * unit, vh * unit);
+}
+
+export class StatusIcon {
+  readonly root: Phaser.GameObjects.Container;
+  readonly text: Phaser.GameObjects.Text;
+  private bg: Phaser.GameObjects.Graphics;
+  private current = "";
+  private wanted = false;
+
+  constructor(
+    private scene: Phaser.Scene,
+    parent: Phaser.GameObjects.Container,
+    font: string,
+    private size: number,
+    readonly offsetY: number,
+    readonly offsetX = 0,
+  ) {
+    this.bg = scene.add.graphics();
+    this.text = scene.add.text(0, 0, "", { fontFamily: font, fontStyle: "700", fontSize: `${Math.round(size * 0.62)}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
+    const bob = scene.add.container(0, 0, [this.bg, this.text]);
+    this.root = scene.add.container(0, 0, [bob]).setVisible(false).setDepth(37);
+    const follow = () => {
+      const k = parent.scaleX;
+      this.root.setPosition(parent.x + offsetX * k, parent.y + offsetY * k);
+      this.root.setVisible(this.wanted && parent.visible);
+    };
+    follow();
+    scene.events.on("update", follow);
+    parent.once("destroy", () => {
+      scene.events.off("update", follow);
+      this.root.destroy();
+    });
+    scene.tweens.add({ targets: bob, y: -size * 0.14, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  show(label: string | null, bg = "#ffe39a") {
+    if (!label) {
+      this.current = "";
+      this.wanted = false;
+      this.root.setVisible(false);
+      return;
+    }
+    const key = `${label}|${bg}`;
+    if (key === this.current && this.wanted) return;
+    const fresh = !this.wanted;
+    this.wanted = true;
+    this.current = key;
+    this.text.setText(label);
+    const w = this.text.width + this.size * 0.5;
+    const h = this.text.height + 4;
+    const fill = Phaser.Display.Color.HexStringToColor(bg).color;
+    const g = this.bg;
+    g.clear();
+    g.fillStyle(0x1d1830, 0.55);
+    g.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, h / 2);
+    g.fillStyle(fill, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    g.lineStyle(3, 0x1d1830, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    g.lineStyle(2.5, 0xffffff, 0.6);
+    g.lineBetween(-w / 2 + h * 0.5, -h / 2 + 5, -w / 2 + Math.min(w * 0.4, h * 1.6), -h / 2 + 5);
+    this.root.setVisible(true);
+    if (fresh) {
+      this.root.setScale(0.3);
+      this.scene.tweens.add({ targets: this.root, scale: 1, duration: 220, ease: "Back.easeOut" });
+    }
+  }
+}
+
+export type BrunoMood = "calm" | "tense" | "breath" | "scared" | "caught" | "happy" | "sneak" | "relief";
+
+export class BrunoView {
+  readonly container: Phaser.GameObjects.Container;
+  private shadow: Phaser.GameObjects.Graphics;
+  private body: Phaser.GameObjects.Container;
+  private gfx: Phaser.GameObjects.Graphics;
+  private facing: Dir = 1;
+  private mood: BrunoMood = "calm";
+  private bob?: Phaser.Tweens.Tween;
+  private blinking = false;
+  private glanceX: number | null = null;
+  private sprite: Phaser.GameObjects.Image | null = null;
+  private hidden = false;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private s: number,
+    art = false,
+  ) {
+    this.shadow = scene.add.graphics();
+    this.shadow.fillStyle(0x000000, 0.35);
+    this.shadow.fillEllipse(0, s * 0.3, s * 0.56, s * 0.18);
+    this.gfx = scene.add.graphics();
+    this.body = scene.add.container(0, 0, [this.gfx]);
+    if (art && hasArt("bruno-front-calm")) {
+      const [vx, vy, vw, vh] = ART_FILES["bruno-front-calm"];
+      const unit = (s * 1.2) / 228;
+      this.sprite = scene.add
+        .image(0, s * 0.36, artKey("bruno-front-calm"))
+        .setOrigin((75 - vx) / vw, (210 - vy) / vh)
+        .setDisplaySize(vw * unit, vh * unit);
+      this.shadow.clear();
+      this.shadow.fillStyle(0x000000, 0.38);
+      this.shadow.fillEllipse(0, s * 0.33, s * 0.62, s * 0.2);
+      this.body.add(this.sprite);
+    }
+    this.container = scene.add.container(0, 0, [this.shadow, this.body]).setDepth(34);
+    this.draw();
+    this.startBob();
+  }
+
+  private startBob() {
+    this.bob?.remove();
+    this.body.y = 0;
+    this.bob = this.scene.tweens.add({ targets: this.body, y: -this.s * 0.025, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  blink() {
+    if (this.facing === 0 || this.mood === "happy" || this.mood === "breath") return;
+    this.blinking = true;
+    this.draw();
+    this.scene.time.delayedCall(130, () => {
+      this.blinking = false;
+      this.draw();
+    });
+  }
+
+  glance(dx: number) {
+    if (this.facing === 0) return;
+    this.glanceX = dx;
+    this.draw();
+    this.scene.tweens.add({ targets: this.body, angle: dx * 4, duration: 160, yoyo: true, hold: 420 });
+    this.scene.time.delayedCall(750, () => {
+      this.glanceX = null;
+      this.draw();
+    });
+  }
+
+  wince() {
+    this.scene.tweens.add({ targets: this.body, scaleY: 0.86, scaleX: 1.1, duration: 90, yoyo: true, repeat: 1 });
+  }
+
+  setHidden(hidden: boolean) {
+    if (hidden === this.hidden) return;
+    this.hidden = hidden;
+    if (this.sprite) {
+      if (hidden) this.sprite.setTint(0xa8b2dc);
+      else this.sprite.clearTint();
+    } else this.gfx.setAlpha(hidden ? 0.75 : 1);
+    this.shadow.setAlpha(hidden ? 0.4 : 1);
+    this.scene.tweens.add({ targets: this.body, scaleY: hidden ? 0.93 : 1, duration: 180, ease: "Sine.easeOut" });
+  }
+
+  setMood(mood: BrunoMood) {
+    if (mood === this.mood) return;
+    this.mood = mood;
+    this.draw();
+  }
+
+  getMood() {
+    return this.mood;
+  }
+
+  setFacing(dir: Dir) {
+    if (dir === this.facing) return;
+    this.facing = dir;
+    this.draw();
+  }
+
+  place(x: number, y: number) {
+    this.scene.tweens.killTweensOf(this.container);
+    this.container.setPosition(x, y);
+  }
+
+  hop(x: number, y: number, duration: number) {
+    this.scene.tweens.killTweensOf(this.container);
+    const sx = this.container.x;
+    const sy = this.container.y;
+    const lift = this.s * 0.14;
+    this.scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration,
+      ease: "Sine.easeInOut",
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        this.container.setPosition(sx + (x - sx) * t, sy + (y - sy) * t - Math.sin(t * Math.PI) * lift);
+        this.body.scaleY = 1 + Math.sin(t * Math.PI) * 0.06;
+        this.body.scaleX = 1 - Math.sin(t * Math.PI) * 0.04;
+      },
+      onComplete: () => {
+        this.container.setPosition(x, y);
+        this.body.setScale(1);
+      },
+    });
+  }
+
+  rewind(x: number, y: number, duration: number) {
+    this.scene.tweens.killTweensOf(this.container);
+    this.scene.tweens.add({ targets: this.container, x, y, duration, ease: "Cubic.easeOut" });
+    this.scene.tweens.add({ targets: this.body, angle: { from: -10, to: 0 }, duration, ease: "Back.easeOut" });
+  }
+
+  bump(dir: Dir) {
+    const look = LOOK[dir];
+    this.scene.tweens.add({ targets: this.body, x: look.x * this.s * 0.08, y: look.y * this.s * 0.08, duration: 70, yoyo: true, ease: "Sine.easeOut", onComplete: () => this.body.setPosition(0, 0) });
+  }
+
+  freeze() {
+    this.bob?.pause();
+    this.scene.tweens.add({ targets: this.body, scaleY: 1.12, scaleX: 0.92, duration: 120, yoyo: true, repeat: 1 });
+  }
+
+  cheer() {
+    this.scene.tweens.add({ targets: this.body, y: -this.s * 0.25, duration: 180, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
+  }
+
+  resume() {
+    this.body.setScale(1).setAngle(0);
+    this.startBob();
+  }
+
+  private draw() {
+    if (this.sprite) {
+      let name: string;
+      let flip = false;
+      if (this.facing === 0) name = "bruno-back";
+      else if (this.facing === 2 && this.glanceX === null) {
+        name = `bruno-front-${this.mood}`;
+        if (this.blinking && hasArt(`${name}-blink`)) name = `${name}-blink`;
+      } else {
+        name = `bruno-side-${this.mood}`;
+        flip = this.glanceX !== null ? this.glanceX < 0 : this.facing === 3;
+      }
+      if (hasArt(name)) this.sprite.setTexture(artKey(name)).setFlipX(flip);
+      return;
+    }
+    const g = this.gfx;
+    const s = this.s;
+    const back = this.facing === 0;
+    const turn = this.facing === 1 ? 1 : this.facing === 3 ? -1 : 0;
+    g.clear();
+    const bodyY = s * 0.14;
+    g.fillStyle(0x5cb9f0, 1);
+    g.fillEllipse(0, bodyY, s * 0.48, s * 0.4);
+    g.lineStyle(2, 0xa9dcf7, 0.9);
+    for (let i = -2; i <= 2; i += 1) g.lineBetween(i * s * 0.08, bodyY - s * 0.17, i * s * 0.08, bodyY + s * 0.17);
+    g.lineStyle(3.5, INK, 1);
+    g.strokeEllipse(0, bodyY, s * 0.48, s * 0.4);
+    const handY = bodyY + s * 0.04;
+    g.fillStyle(0xffd2a8, 1);
+    g.fillCircle(-s * 0.25, handY, s * 0.065);
+    g.strokeCircle(-s * 0.25, handY, s * 0.065);
+    if (!back) {
+      const nx = turn >= 0 ? s * 0.2 : -s * 0.34;
+      g.fillStyle(0xfbf5e6, 1);
+      g.fillRect(nx, bodyY - s * 0.06, s * 0.15, s * 0.2);
+      g.lineStyle(2.5, INK, 1);
+      g.strokeRect(nx, bodyY - s * 0.06, s * 0.15, s * 0.2);
+      g.lineStyle(1.5, 0xef4f43, 1);
+      g.lineBetween(nx + s * 0.035, bodyY - s * 0.06, nx + s * 0.035, bodyY + s * 0.14);
+    }
+    g.fillStyle(0xffd2a8, 1);
+    g.lineStyle(3.5, INK, 1);
+    g.fillCircle(s * 0.25, handY, s * 0.065);
+    g.strokeCircle(s * 0.25, handY, s * 0.065);
+    const hx = turn * s * 0.03;
+    const hy = -s * 0.13;
+    const r = s * 0.25;
+    const tint = this.mood === "breath" ? 0xf0b8c8 : 0xffd2a8;
+    g.fillStyle(tint, 1);
+    g.fillCircle(hx, hy, r);
+    g.lineStyle(3.5, INK, 1);
+    g.strokeCircle(hx, hy, r);
+    g.fillStyle(0x4a2c1c, 1);
+    if (back) {
+      g.fillCircle(hx, hy - r * 0.05, r * 0.94);
+      g.lineStyle(3.5, INK, 1);
+      g.strokeCircle(hx, hy - r * 0.05, r * 0.94);
+      g.lineStyle(3, 0x6b4430, 1);
+      g.beginPath();
+      g.arc(hx, hy + r * 0.1, r * 0.4, 1.1 * Math.PI, 1.9 * Math.PI);
+      g.strokePath();
+      return;
+    }
+    g.beginPath();
+    g.arc(hx, hy, r, Math.PI * 1.02, Math.PI * 1.98);
+    g.lineTo(hx + r * 0.9, hy - r * 0.22);
+    g.lineTo(hx + r * 0.3 + turn * r * 0.2, hy - r * 0.42);
+    g.lineTo(hx - r * 0.2 + turn * r * 0.2, hy - r * 0.32);
+    g.lineTo(hx - r * 0.9, hy - r * 0.22);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(3, INK, 1);
+    g.strokePath();
+    const look = this.glanceX !== null ? { x: this.glanceX, y: 0.1 } : this.facing === 2 ? { x: 0, y: 0.6 } : { x: turn, y: 0 };
+    const cx = hx + turn * r * 0.16;
+    const cy = hy + r * 0.12;
+    const spec: Record<BrunoMood, FaceSpec> = {
+      calm: { eyes: "dot", mouth: "line", brows: "flat", look, glasses: true },
+      sneak: { eyes: "dot", mouth: "tight", brows: "flat", look, glasses: true },
+      tense: { eyes: "dot", mouth: "wobbly", brows: "worried", look, glasses: true },
+      breath: { eyes: "squeeze", mouth: "tight", brows: "worried", look, glasses: true, blush: true },
+      scared: { eyes: "wide", mouth: "o", brows: "up", look, glasses: true },
+      caught: { eyes: "wide", mouth: "grin", brows: "worried", look: { x: 0, y: 0.4 }, glasses: true, blush: true },
+      happy: { eyes: "happy", mouth: "smile", brows: "up", look, glasses: true, blush: true },
+      relief: { eyes: "happy", mouth: "o", brows: "up", look, glasses: true, blush: true },
+    };
+    const chosen = spec[this.mood];
+    face(g, cx, cy, r * 0.82, this.blinking && (chosen.eyes === "dot" || chosen.eyes === "wide") ? { ...chosen, eyes: "closed" } : chosen);
+    if (this.mood === "tense" || this.mood === "caught" || this.mood === "scared") sweat(g, hx + r * 0.95, hy - r * 0.5, r * 0.22);
+    if (this.mood === "caught") sweat(g, hx - r * 0.95, hy - r * 0.35, r * 0.18);
+  }
+}
+
+export type SleeperSeat = "bed" | "armchair";
+
+export type SleeperMood = "sleep" | "stir" | "startled" | "suspicious" | "sleepy" | "awake" | "angry" | "drowsy";
+
+const PROC_MOOD: Record<SleeperMood, "sleep" | "awake" | "angry" | "drowsy"> = { sleep: "sleep", stir: "sleep", startled: "awake", suspicious: "awake", sleepy: "drowsy", awake: "awake", angry: "angry", drowsy: "drowsy" };
+
+export class DadView {
+  readonly container: Phaser.GameObjects.Container;
+  private gfx: Phaser.GameObjects.Graphics;
+  private head: Phaser.GameObjects.Container;
+  private headGfx: Phaser.GameObjects.Graphics;
+  private mood: SleeperMood = "sleep";
+  private facing: Dir = 2;
+  private breathe?: Phaser.Tweens.Tween;
+  private sprite: Phaser.GameObjects.Image | null = null;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private s: number,
+    private seat: SleeperSeat,
+    art = false,
+  ) {
+    this.gfx = scene.add.graphics();
+    this.headGfx = scene.add.graphics();
+    this.head = scene.add.container(0, 0, [this.headGfx]);
+    this.container = scene.add.container(0, 0, [this.gfx, this.head]).setDepth(32);
+    if (art && hasArt(`${this.prefix}sleep`)) {
+      this.sprite = scene.add.image(0, 0, artKey(`${this.prefix}sleep`)).setOrigin(0, 0);
+      this.container.add(this.sprite);
+      this.applyTexture(`${this.prefix}sleep`);
+    }
+    this.draw();
+    this.startBreath();
+  }
+
+  private get prefix() {
+    return this.seat === "bed" ? "dad-bed-" : "dad-seat-";
+  }
+
+  private applyTexture(name: string) {
+    if (!this.sprite || !hasArt(name)) return;
+    const s = this.s;
+    if (this.seat !== "bed") {
+      fitArt(this.sprite, name, (s * 0.8) / 100);
+      this.sprite.setPosition(0, s * 0.38);
+      this.baseY = this.sprite.y;
+      return;
+    }
+    const [vx, vy, vw, vh] = ART_FILES[name];
+    this.sprite.setTexture(artKey(name)).setPosition(-s * 0.5 + (vx / 100) * s, -s * 1.5 + (vy / 100) * s).setDisplaySize((vw / 100) * s, (vh / 100) * s);
+    this.baseY = this.sprite.y;
+  }
+
+  private baseY = 0;
+
+  private startBreath() {
+    this.breathe?.remove();
+    this.head.setScale(1);
+    if (this.sprite) {
+      const base = this.sprite.scaleY;
+      if (this.mood === "sleep") this.breathe = this.scene.tweens.add({ targets: this.sprite, scaleY: base * 1.012, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      return;
+    }
+    if (this.mood !== "sleep") return;
+    this.breathe = this.scene.tweens.add({ targets: this.head, scaleX: 1.05, scaleY: 0.96, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  headPoint() {
+    const k = this.container.scaleX;
+    if (this.sprite && this.seat !== "bed") return { x: this.container.x, y: this.container.y - this.s * 0.5 * k };
+    if (this.sprite) {
+      const up = this.mood === "sleep" || this.mood === "stir" ? 0.34 : 0.2;
+      return { x: this.container.x, y: this.container.y + (-this.s * 1.5 + up * this.s - this.s * 0.2) * k };
+    }
+    return { x: this.container.x + this.head.x * k, y: this.container.y + (this.head.y - this.s * 0.3) * k };
+  }
+
+  stir() {
+    if (this.mood !== "sleep") return;
+    if (this.sprite) {
+      this.applyTexture(`${this.prefix}stir`);
+      const x0 = this.sprite.x;
+      this.scene.tweens.add({ targets: this.sprite, x: x0 + 3, duration: 70, yoyo: true, repeat: 2, onComplete: () => this.sprite?.setX(x0) });
+      this.scene.time.delayedCall(1100, () => {
+        if (this.mood === "sleep") this.applyTexture(`${this.prefix}sleep`);
+      });
+      return;
+    }
+    this.scene.tweens.add({ targets: this.head, angle: { from: -8, to: 8 }, duration: 120, yoyo: true, repeat: 1, onComplete: () => this.head.setAngle(this.seat === "armchair" ? 16 : 0) });
+  }
+
+  set(mood: SleeperMood, facing: Dir) {
+    if (mood === this.mood && facing === this.facing) return;
+    const wasSleeping = this.mood === "sleep";
+    this.mood = mood;
+    this.facing = facing;
+    this.draw();
+    this.startBreath();
+    if (wasSleeping && mood !== "sleep") {
+      const target = this.sprite ?? this.head;
+      const y0 = this.sprite ? this.baseY : this.head.y;
+      this.scene.tweens.add({ targets: target, y: y0 - this.s * 0.12, duration: 90, yoyo: true, ease: "Quad.easeOut", onComplete: () => target.setY(y0) });
+      this.shake();
+    }
+  }
+
+  shake() {
+    this.scene.tweens.add({ targets: this.container, x: this.container.x + 4, duration: 40, yoyo: true, repeat: 5 });
+  }
+
+  private draw() {
+    if (this.sprite) {
+      const look = ["up", "right", "down", "left"][this.facing];
+      const p = this.prefix;
+      const byMood: Record<SleeperMood, string> = {
+        sleep: `${p}sleep`,
+        stir: `${p}stir`,
+        startled: `${p}startled-${look}`,
+        suspicious: `${p}suspicious-${look}`,
+        awake: `${p}startled-${look}`,
+        sleepy: `${p}sleepy`,
+        drowsy: `${p}sleepy`,
+        angry: `${p}angry`,
+      };
+      this.applyTexture(byMood[this.mood]);
+      this.gfx.clear();
+      this.headGfx.clear();
+      return;
+    }
+    const mood = PROC_MOOD[this.mood];
+    const g = this.gfx;
+    const s = this.s;
+    const up = mood !== "sleep" && mood !== "drowsy";
+    g.clear();
+    if (this.seat === "bed") {
+      const bodyTop = up ? -s * 0.38 : -s * 0.6;
+      g.fillStyle(0xf7f1e6, 1);
+      g.lineStyle(3.5, INK, 1);
+      if (up) {
+        g.fillEllipse(0, -s * 0.12, s * 0.62, s * 0.5);
+        g.strokeEllipse(0, -s * 0.12, s * 0.62, s * 0.5);
+      }
+      g.fillStyle(0x5d7cb0, 1);
+      g.fillRoundedRect(-s * 0.44, up ? -s * 0.02 : bodyTop + s * 0.2, s * 0.88, up ? s * 0.42 : s * 0.98, s * 0.12);
+      g.lineStyle(3.5, INK, 1);
+      g.strokeRoundedRect(-s * 0.44, up ? -s * 0.02 : bodyTop + s * 0.2, s * 0.88, up ? s * 0.42 : s * 0.98, s * 0.12);
+      g.lineStyle(2, 0x9fb6e0, 0.8);
+      for (let i = 1; i < 4; i += 1) g.lineBetween(-s * 0.44 + i * s * 0.22, up ? 0 : bodyTop + s * 0.22, -s * 0.44 + i * s * 0.22, s * 0.38);
+      this.head.setPosition(up ? 0 : 0, up ? -s * 0.38 : -s * 0.7);
+    } else {
+      g.fillStyle(0xf7f1e6, 1);
+      g.lineStyle(3.5, INK, 1);
+      g.fillEllipse(0, s * 0.14, s * 0.6, s * 0.46);
+      g.strokeEllipse(0, s * 0.14, s * 0.6, s * 0.46);
+      g.fillStyle(0x6b5a8f, 1);
+      g.fillRoundedRect(-s * 0.3, s * 0.2, s * 0.6, s * 0.2, 8);
+      g.strokeRoundedRect(-s * 0.3, s * 0.2, s * 0.6, s * 0.2, 8);
+      this.head.setPosition(up ? 0 : s * 0.1, up ? -s * 0.14 : -s * 0.06);
+      this.head.setAngle(up ? 0 : 16);
+    }
+    const h = this.headGfx;
+    h.clear();
+    const r = s * 0.26;
+    h.fillStyle(0xe7a874, 1);
+    h.lineStyle(3.5, INK, 1);
+    h.fillCircle(0, 0, r);
+    h.strokeCircle(0, 0, r);
+    h.fillStyle(0x2a1d1a, 1);
+    h.beginPath();
+    h.arc(0, 0, r, Math.PI * 1.05, Math.PI * 1.95);
+    for (let i = 0; i <= 6; i += 1) h.lineTo(r * 0.9 - (i * r * 1.8) / 6, -r * (i % 2 ? 0.55 : 0.75));
+    h.closePath();
+    h.fillPath();
+    h.strokePath();
+    const look = mood === "sleep" || mood === "drowsy" ? { x: 0, y: 0 } : lookOf(this.facing);
+    const spec: Record<"sleep" | "awake" | "angry" | "drowsy", FaceSpec> = {
+      sleep: { eyes: "closed", mouth: "snore", brows: "flat" },
+      drowsy: { eyes: "squint", mouth: "line", brows: "flat" },
+      awake: { eyes: "wide", mouth: "o", brows: "up", look },
+      angry: { eyes: "angry", mouth: "yell", brows: "angry", look },
+    };
+    face(h, look.x * r * 0.15, look.y * r * 0.12 + r * 0.05, r * 0.86, spec[mood]);
+    h.fillStyle(0x2a1d1a, 1);
+    const mx = look.x * r * 0.18;
+    const my = r * 0.3 + look.y * r * 0.1;
+    h.fillEllipse(mx - r * 0.2, my, r * 0.42, r * 0.18);
+    h.fillEllipse(mx + r * 0.2, my, r * 0.42, r * 0.18);
+  }
+}
+
+export type GrandmaMood = "walk" | "alert" | "shock";
+
+export class GrandmaView {
+  readonly container: Phaser.GameObjects.Container;
+  private gfx: Phaser.GameObjects.Graphics;
+  private body: Phaser.GameObjects.Container;
+  private mood: GrandmaMood = "walk";
+  private facing: Dir = 2;
+  private beamPivot: Phaser.GameObjects.Container;
+  private beamSway: Phaser.GameObjects.Container;
+  private sway?: Phaser.Tweens.Tween;
+
+  private sprite: Phaser.GameObjects.Image | null = null;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private s: number,
+    beamLength: number,
+    art = false,
+  ) {
+    const shadow = scene.add.graphics();
+    shadow.fillStyle(0x000000, 0.35);
+    shadow.fillEllipse(0, s * 0.3, s * 0.6, s * 0.18);
+    const beam = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    const L = beamLength * 0.8;
+    beam.fillStyle(0xffe39a, 0.12);
+    beam.fillTriangle(0, 0, -L * 0.2, -L, L * 0.2, -L);
+    beam.fillStyle(0xfff4c8, 0.2);
+    beam.fillTriangle(0, 0, -L * 0.09, -L * 0.8, L * 0.09, -L * 0.8);
+    beam.fillStyle(0xffffff, 0.45);
+    beam.fillCircle(0, 0, s * 0.1);
+    this.beamSway = scene.add.container(0, 0, [beam]);
+    this.beamPivot = scene.add.container(0, 0, [this.beamSway]);
+    this.gfx = scene.add.graphics();
+    this.body = scene.add.container(0, 0, [this.gfx]);
+    if (art && hasArt("gran-front-walk")) {
+      this.sprite = scene.add.image(0, s * 0.36, artKey("gran-front-walk"));
+      this.body.add(this.sprite);
+      shadow.clear();
+      shadow.fillStyle(0x000000, 0.38);
+      shadow.fillEllipse(0, s * 0.33, s * 0.66, s * 0.2);
+    }
+    this.container = scene.add.container(0, 0, [shadow, this.beamPivot, this.body]).setDepth(33);
+    this.draw();
+    this.startSway();
+  }
+
+  private startSway() {
+    this.sway?.remove();
+    this.beamSway.setAngle(0);
+    const alert = this.mood !== "walk";
+    this.sway = this.scene.tweens.add({ targets: this.beamSway, angle: { from: alert ? -9 : -5, to: alert ? 9 : 5 }, duration: alert ? 180 : 1300, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  set(mood: GrandmaMood, facing: Dir) {
+    if (mood === this.mood && facing === this.facing) return;
+    const moodChanged = mood !== this.mood;
+    this.mood = mood;
+    this.facing = facing;
+    this.draw();
+    if (moodChanged) this.startSway();
+  }
+
+  walkTo(x: number, y: number, duration: number) {
+    this.scene.tweens.killTweensOf(this.container);
+    this.scene.tweens.add({ targets: this.container, x, y, duration, ease: "Sine.easeInOut" });
+    this.scene.tweens.add({ targets: this.body, angle: { from: -6, to: 6 }, duration: duration / 2, yoyo: true, ease: "Sine.easeInOut", onComplete: () => this.body.setAngle(0) });
+  }
+
+  headPoint() {
+    return { x: this.container.x, y: this.container.y - this.s * (this.sprite ? 0.52 : 0.4) * this.container.scaleY };
+  }
+
+  private draw() {
+    const g = this.gfx;
+    const s = this.s;
+    const look = lookOf(this.facing);
+    const back = this.facing === 0;
+    if (this.sprite) {
+      const pivots: Record<Dir, [number, number]> = { 0: [s * 0.2, -s * 0.02], 1: [s * 0.4, -s * 0.08], 2: [0, s * 0.14], 3: [-s * 0.4, -s * 0.08] };
+      const [px, py] = pivots[this.facing];
+      this.beamPivot.setPosition(px, py).setAngle(this.facing * 90);
+      const name = back ? "gran-back" : this.facing === 2 ? `gran-front-${this.mood}` : `gran-side-${this.mood}`;
+      fitArt(this.sprite, name, (s * 0.78) / 100);
+      this.sprite.setFlipX(this.facing === 3);
+      g.clear();
+      return;
+    }
+    this.beamPivot.setPosition(look.x * s * 0.34, s * 0.1 + look.y * s * 0.26).setAngle(this.facing * 90);
+    g.clear();
+    g.fillStyle(0xf06ba8, 1);
+    g.lineStyle(3.5, INK, 1);
+    g.fillEllipse(0, s * 0.14, s * 0.54, s * 0.44);
+    g.strokeEllipse(0, s * 0.14, s * 0.54, s * 0.44);
+    g.lineStyle(2, 0xf9b6d4, 1);
+    g.lineBetween(0, s * 0.0, 0, s * 0.34);
+    const fx = look.x * s * 0.34;
+    const fy = s * 0.1 + look.y * s * 0.26;
+    g.fillStyle(0x9aa6b8, 1);
+    g.lineStyle(3, INK, 1);
+    g.fillRoundedRect(fx - s * 0.07, fy - s * 0.07, s * 0.14, s * 0.14, 4);
+    g.strokeRoundedRect(fx - s * 0.07, fy - s * 0.07, s * 0.14, s * 0.14, 4);
+    g.fillStyle(0xffe39a, 1);
+    g.fillCircle(fx + look.x * s * 0.08, fy + look.y * s * 0.08, s * 0.05);
+    g.fillStyle(0xffd2a8, 1);
+    g.fillCircle(fx - look.y * s * 0.05, fy + look.x * s * 0.05, s * 0.05);
+    const r = s * 0.24;
+    const hy = -s * 0.14;
+    g.fillStyle(0xffd2a8, 1);
+    g.lineStyle(3.5, INK, 1);
+    g.fillCircle(0, hy, r);
+    g.strokeCircle(0, hy, r);
+    g.fillStyle(0xd9d4e6, 1);
+    if (back) {
+      g.fillCircle(0, hy, r * 0.96);
+      g.strokeCircle(0, hy, r * 0.96);
+      g.fillCircle(0, hy + r * 0.1, r * 0.42);
+      g.strokeCircle(0, hy + r * 0.1, r * 0.42);
+      return;
+    }
+    g.beginPath();
+    g.arc(0, hy, r, Math.PI * 1.0, Math.PI * 2.0);
+    g.lineTo(r * 0.7, hy - r * 0.15);
+    g.lineTo(-r * 0.7, hy - r * 0.15);
+    g.closePath();
+    g.fillPath();
+    g.strokePath();
+    g.fillCircle(0, hy - r * 0.95, r * 0.36);
+    g.strokeCircle(0, hy - r * 0.95, r * 0.36);
+    const spec: Record<GrandmaMood, FaceSpec> = {
+      walk: { eyes: "squint", mouth: "line", brows: "flat", look, glasses: true },
+      alert: { eyes: "wide", mouth: "o", brows: "up", look, glasses: true },
+      shock: { eyes: "wide", mouth: "yell", brows: "up", look: { x: 0, y: 0.5 }, glasses: true },
+    };
+    face(g, look.x * r * 0.18, hy + r * 0.12 + look.y * r * 0.06, r * 0.82, spec[this.mood]);
+  }
+}
+
+export type DogMood = "sleep" | "alert" | "walk" | "sniff" | "happy";
+
+export class DogView {
+  readonly container: Phaser.GameObjects.Container;
+  private body: Phaser.GameObjects.Container;
+  private gfx: Phaser.GameObjects.Graphics;
+  private tail: Phaser.GameObjects.Graphics;
+  private mood: DogMood = "sleep";
+  private facing: Dir = 2;
+  private wag?: Phaser.Tweens.Tween;
+  private breathe?: Phaser.Tweens.Tween;
+  private sprite: Phaser.GameObjects.Image | null = null;
+  private lastSide: 1 | 3 = 3;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private s: number,
+    art = false,
+  ) {
+    this.gfx = scene.add.graphics();
+    this.tail = scene.add.graphics();
+    this.body = scene.add.container(0, 0, [this.tail, this.gfx]);
+    if (art && hasArt("dog-sleep")) {
+      const shadow = scene.add.graphics();
+      shadow.fillStyle(0x000000, 0.34);
+      shadow.fillEllipse(0, s * 0.31, s * 0.84, s * 0.18);
+      this.sprite = scene.add.image(0, s * 0.33, artKey("dog-sleep"));
+      this.body.add([shadow, this.sprite]);
+    }
+    this.container = scene.add.container(0, 0, [this.body]).setDepth(31);
+    this.draw();
+    this.animate();
+  }
+
+  set(mood: DogMood, facing: Dir) {
+    if (mood === this.mood && facing === this.facing) return;
+    this.mood = mood;
+    this.facing = facing;
+    this.draw();
+    this.animate();
+  }
+
+  getMood() {
+    return this.mood;
+  }
+
+  trotTo(x: number, y: number, duration: number) {
+    this.scene.tweens.killTweensOf(this.container);
+    this.scene.tweens.add({ targets: this.container, x, y, duration, ease: "Sine.easeInOut" });
+  }
+
+  place(x: number, y: number) {
+    this.scene.tweens.killTweensOf(this.container);
+    this.container.setPosition(x, y);
+  }
+
+  headPoint() {
+    return { x: this.container.x, y: this.container.y - this.s * 0.3 * this.container.scaleY };
+  }
+
+  twitch() {
+    if (this.mood !== "sleep") return;
+    this.scene.tweens.add({ targets: this.body, angle: { from: -6, to: 6 }, duration: 80, yoyo: true, repeat: 2, onComplete: () => this.body.setAngle(0) });
+  }
+
+  jump() {
+    this.scene.tweens.add({ targets: this.body, scale: 1.2, duration: 120, yoyo: true, repeat: 3, ease: "Quad.easeOut" });
+  }
+
+  private animate() {
+    this.wag?.remove();
+    this.breathe?.remove();
+    this.tail.setAngle(0);
+    this.body.setScale(1);
+    if (this.sprite) {
+      this.sprite.setAngle(0);
+      if (this.mood === "sleep") this.breathe = this.scene.tweens.add({ targets: this.sprite, scaleY: this.sprite.scaleY * 1.04, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      else if (this.mood === "walk" || this.mood === "happy") this.breathe = this.scene.tweens.add({ targets: this.sprite, angle: { from: -3, to: 3 }, duration: this.mood === "happy" ? 90 : 160, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      else if (this.mood === "sniff") this.breathe = this.scene.tweens.add({ targets: this.sprite, y: this.s * 0.35, duration: 120, yoyo: true, repeat: -1 });
+      return;
+    }
+    if (this.mood === "sleep") {
+      this.breathe = this.scene.tweens.add({ targets: this.body, scaleX: 1.04, scaleY: 0.97, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      return;
+    }
+    const speed = this.mood === "happy" ? 70 : this.mood === "alert" ? 260 : 140;
+    this.wag = this.scene.tweens.add({ targets: this.tail, angle: { from: -28, to: 28 }, duration: speed, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    if (this.mood === "sniff") this.breathe = this.scene.tweens.add({ targets: this.body, y: { from: 0, to: this.s * 0.04 }, duration: 120, yoyo: true, repeat: -1 });
+  }
+
+  private draw() {
+    const g = this.gfx;
+    const t = this.tail;
+    const s = this.s;
+    const fur = 0xd89a4e;
+    const dark = 0x8d5434;
+    const muzzle = 0xf6d7a7;
+    g.clear();
+    t.clear();
+    if (this.sprite) {
+      if (this.facing === 1 || this.facing === 3) this.lastSide = this.facing;
+      this.body.setAngle(0);
+      this.sprite.setY(s * 0.33);
+      fitArt(this.sprite, this.mood === "sleep" ? "dog-sleep" : `dog-${this.mood}`, (s * (this.mood === "sleep" ? 0.9 : 0.85)) / 100);
+      this.sprite.setFlipX(this.mood !== "sleep" && this.lastSide === 3);
+      return;
+    }
+    if (this.mood === "sleep") {
+      this.body.setAngle(0);
+      g.fillStyle(fur, 1);
+      g.lineStyle(3.5, INK, 1);
+      g.fillCircle(0, s * 0.04, s * 0.3);
+      g.strokeCircle(0, s * 0.04, s * 0.3);
+      g.lineStyle(3, dark, 1);
+      g.beginPath();
+      g.arc(0, s * 0.04, s * 0.2, 0.2 * Math.PI, 1.3 * Math.PI);
+      g.strokePath();
+      g.fillStyle(fur, 1);
+      g.lineStyle(3.5, INK, 1);
+      g.fillCircle(-s * 0.1, s * 0.12, s * 0.17);
+      g.strokeCircle(-s * 0.1, s * 0.12, s * 0.17);
+      g.fillStyle(dark, 1);
+      g.fillEllipse(-s * 0.24, s * 0.04, s * 0.12, s * 0.2);
+      g.fillEllipse(0.02 * s, s * 0.0, s * 0.12, s * 0.2);
+      g.fillStyle(muzzle, 1);
+      g.fillEllipse(-s * 0.1, s * 0.2, s * 0.16, s * 0.1);
+      g.fillStyle(INK, 1);
+      g.fillCircle(-s * 0.1, s * 0.17, s * 0.025);
+      g.lineStyle(2.5, INK, 1);
+      g.beginPath();
+      g.arc(-s * 0.16, s * 0.1, s * 0.03, 0.1 * Math.PI, 0.9 * Math.PI);
+      g.strokePath();
+      g.beginPath();
+      g.arc(-s * 0.04, s * 0.1, s * 0.03, 0.1 * Math.PI, 0.9 * Math.PI);
+      g.strokePath();
+      t.fillStyle(fur, 1);
+      t.lineStyle(3, INK, 1);
+      t.fillEllipse(s * 0.22, s * 0.24, s * 0.22, s * 0.1);
+      t.strokeEllipse(s * 0.22, s * 0.24, s * 0.22, s * 0.1);
+      return;
+    }
+    this.body.setAngle(this.facing * 90);
+    t.setPosition(0, s * 0.26);
+    t.fillStyle(fur, 1);
+    t.lineStyle(3, INK, 1);
+    t.fillEllipse(0, s * 0.1, s * 0.08, s * 0.22);
+    t.strokeEllipse(0, s * 0.1, s * 0.08, s * 0.22);
+    g.fillStyle(fur, 1);
+    g.lineStyle(3.5, INK, 1);
+    g.fillEllipse(0, s * 0.08, s * 0.32, s * 0.5);
+    g.strokeEllipse(0, s * 0.08, s * 0.32, s * 0.5);
+    g.fillStyle(dark, 1);
+    g.fillEllipse(s * 0.04, s * 0.12, s * 0.14, s * 0.16);
+    const headY = this.mood === "sniff" ? -s * 0.26 : -s * 0.2;
+    const earUp = this.mood === "alert" || this.mood === "happy";
+    g.fillStyle(dark, 1);
+    g.lineStyle(3, INK, 1);
+    for (const side of [-1, 1]) {
+      g.fillEllipse(side * s * 0.13, headY + (earUp ? -s * 0.08 : s * 0.02), s * 0.1, earUp ? s * 0.18 : s * 0.16);
+      g.strokeEllipse(side * s * 0.13, headY + (earUp ? -s * 0.08 : s * 0.02), s * 0.1, earUp ? s * 0.18 : s * 0.16);
+    }
+    g.fillStyle(fur, 1);
+    g.lineStyle(3.5, INK, 1);
+    g.fillCircle(0, headY, s * 0.15);
+    g.strokeCircle(0, headY, s * 0.15);
+    g.fillStyle(muzzle, 1);
+    g.fillEllipse(0, headY - s * 0.12, s * 0.14, s * 0.12);
+    g.fillStyle(INK, 1);
+    g.fillCircle(0, headY - s * 0.17, s * 0.035);
+    if (this.mood === "happy") {
+      g.fillStyle(0xef4f43, 1);
+      g.fillEllipse(0, headY - s * 0.25, s * 0.06, s * 0.1);
+    }
+    const eyeY = headY - s * 0.04;
+    if (this.mood === "happy") {
+      g.lineStyle(2.5, INK, 1);
+      for (const side of [-1, 1]) {
+        g.beginPath();
+        g.arc(side * s * 0.06, eyeY + s * 0.01, s * 0.03, Math.PI, 2 * Math.PI);
+        g.strokePath();
+      }
+    } else {
+      g.fillStyle(INK, 1);
+      g.fillCircle(-s * 0.06, eyeY, s * (this.mood === "alert" ? 0.035 : 0.026));
+      g.fillCircle(s * 0.06, eyeY, s * (this.mood === "alert" ? 0.035 : 0.026));
+    }
+  }
+}
+
+export class ClockView {
+  readonly container: Phaser.GameObjects.Container;
+  private pendulum: Phaser.GameObjects.Graphics;
+  private bird: Phaser.GameObjects.Graphics | Phaser.GameObjects.Image;
+  private door: Phaser.GameObjects.Graphics;
+  private number: Phaser.GameObjects.Text;
+  private ring: Phaser.GameObjects.Graphics;
+  private now: Phaser.GameObjects.Text;
+  private urging = false;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private s: number,
+    font: string,
+    nowLabel: string,
+    art = false,
+  ) {
+    const g = scene.add.graphics();
+    const w = s * 0.62;
+    g.fillStyle(0x7c4527, 1);
+    g.lineStyle(3.5, INK, 1);
+    g.fillTriangle(-w * 0.62, -s * 0.18, w * 0.62, -s * 0.18, 0, -s * 0.48);
+    g.strokeTriangle(-w * 0.62, -s * 0.18, w * 0.62, -s * 0.18, 0, -s * 0.48);
+    g.fillStyle(0xb06c3f, 1);
+    g.fillRect(-w / 2, -s * 0.2, w, s * 0.56);
+    g.strokeRect(-w / 2, -s * 0.2, w, s * 0.56);
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillCircle(0, s * 0.12, s * 0.17);
+    g.strokeCircle(0, s * 0.12, s * 0.17);
+    this.bird = scene.add.graphics();
+    this.bird.fillStyle(0xffc83d, 1);
+    this.bird.lineStyle(3, INK, 1);
+    this.bird.fillCircle(0, 0, s * 0.09);
+    this.bird.strokeCircle(0, 0, s * 0.09);
+    this.bird.fillStyle(0xef4f43, 1);
+    this.bird.fillTriangle(-s * 0.04, s * 0.02, s * 0.04, s * 0.02, 0, s * 0.11);
+    this.bird.fillStyle(INK, 1);
+    this.bird.fillCircle(-s * 0.035, -s * 0.02, s * 0.015);
+    this.bird.fillCircle(s * 0.035, -s * 0.02, s * 0.015);
+    this.bird.setPosition(0, -s * 0.24).setScale(0.2).setVisible(false);
+    this.door = scene.add.graphics();
+    this.door.fillStyle(0x55301e, 1);
+    this.door.lineStyle(2.5, INK, 1);
+    this.door.fillRect(-s * 0.08, -s * 0.34, s * 0.16, s * 0.12);
+    this.door.strokeRect(-s * 0.08, -s * 0.34, s * 0.16, s * 0.12);
+    this.pendulum = scene.add.graphics();
+    this.pendulum.lineStyle(3, 0xffc83d, 1);
+    this.pendulum.lineBetween(0, 0, 0, s * 0.34);
+    this.pendulum.fillStyle(0xffc83d, 1);
+    this.pendulum.fillCircle(0, s * 0.36, s * 0.06);
+    this.pendulum.lineStyle(2.5, INK, 1);
+    this.pendulum.strokeCircle(0, s * 0.36, s * 0.06);
+    this.pendulum.setPosition(0, s * 0.34);
+    this.number = scene.add.text(0, s * 0.12, "", { fontFamily: font, fontSize: `${Math.round(s * 0.24)}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
+    this.ring = scene.add.graphics();
+    this.ring.lineStyle(6, 0xffe39a, 1);
+    this.ring.strokeCircle(0, s * 0.12, s * 0.3);
+    this.ring.setVisible(false);
+    this.now = scene.add
+      .text(0, -s * 0.72, nowLabel, { fontFamily: font, fontSize: `${Math.round(s * 0.26)}px`, color: "#ffe39a", stroke: "#1d1830", strokeThickness: 6, padding: { x: 4, y: 4 } })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.container = scene.add.container(0, 0, [this.ring, this.pendulum, g, this.door, this.bird, this.number, this.now]).setDepth(30);
+    if (art && hasArt("clock-body")) {
+      const u = s * 0.0085;
+      const place = (name: string, x: number, y: number) => {
+        const [vx, vy, vw, vh] = ART_FILES[name];
+        return scene.add.image(x, y, artKey(name)).setOrigin(-vx / vw, -vy / vh).setDisplaySize(vw * u, vh * u);
+      };
+      g.setVisible(false);
+      this.door.setVisible(false);
+      this.pendulum.setVisible(false);
+      const body = place("clock-body", 0, 0);
+      const pend = place("clock-pendulum", 0, 36 * u);
+      const bird = place("clock-bird", 0, -27 * u).setVisible(false);
+      this.container.addAt(pend, 1);
+      this.container.addAt(body, 2);
+      this.container.add(bird);
+      this.bird.destroy();
+      this.bird = bird;
+      this.number.setPosition(0, 12 * u).setFontSize(Math.round(s * 0.2));
+      this.container.bringToTop(this.number);
+      this.container.bringToTop(this.now);
+      scene.tweens.add({ targets: pend, angle: { from: -16, to: 16 }, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
+    scene.tweens.add({ targets: this.ring, scale: { from: 0.85, to: 1.25 }, alpha: { from: 1, to: 0.2 }, duration: 600, repeat: -1 });
+    scene.tweens.add({ targets: this.now, y: -s * 0.8, duration: 380, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    scene.tweens.add({ targets: this.pendulum, angle: { from: -16, to: 16 }, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  setCountdown(n: number) {
+    this.number.setText(String(n));
+    this.number.setColor(n === 1 ? "#ef4f43" : "#1d1830");
+    this.door.setAlpha(n === 1 ? 0.45 : 1);
+    if (n === 1) this.scene.tweens.add({ targets: this.number, scale: { from: 1.4, to: 1 }, duration: 260, ease: "Back.easeOut" });
+    this.urging = n === 1;
+    this.ring.setVisible(this.urging);
+    this.now.setVisible(this.urging);
+  }
+
+  quiet() {
+    this.ring.setVisible(false);
+    this.now.setVisible(false);
+  }
+
+  sing() {
+    this.bird.setVisible(true).setScale(0.2).setPosition(0, -this.s * 0.28);
+    this.scene.tweens.add({ targets: this.bird, scale: 1.3, y: -this.s * 0.62, duration: 160, ease: "Back.easeOut", yoyo: true, hold: 520, onComplete: () => this.bird.setVisible(false) });
+    this.scene.tweens.add({ targets: this.container, angle: { from: -3, to: 3 }, duration: 60, yoyo: true, repeat: 3, onComplete: () => this.container.setAngle(0) });
+  }
+}
+
+export type CatMood = "idle" | "ready" | "swipe";
+
+export class CatView {
+  readonly container: Phaser.GameObjects.Container;
+  private body: Phaser.GameObjects.Container;
+  private gfx: Phaser.GameObjects.Graphics;
+  private tail: Phaser.GameObjects.Graphics;
+  private mood: CatMood = "idle";
+  private sprite: Phaser.GameObjects.Image | null = null;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private s: number,
+    art = false,
+  ) {
+    this.tail = scene.add.graphics();
+    this.gfx = scene.add.graphics();
+    this.body = scene.add.container(0, 0, [this.tail, this.gfx]);
+    if (art && hasArt("cat-idle")) {
+      this.sprite = scene.add.image(0, s * 0.27, artKey("cat-idle"));
+      this.body.add(this.sprite);
+    }
+    this.container = scene.add.container(0, 0, [this.body]).setDepth(33);
+    this.draw();
+    scene.tweens.add({ targets: this.tail, angle: { from: -14, to: 14 }, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  headPoint() {
+    return { x: this.container.x, y: this.container.y - this.s * 0.42 * this.container.scaleY };
+  }
+
+  set(mood: CatMood) {
+    if (mood === this.mood) return;
+    this.mood = mood;
+    this.draw();
+  }
+
+  swipe(onHit: () => void) {
+    this.set("swipe");
+    this.scene.tweens.add({ targets: this.body, x: this.s * 0.12, duration: 110, yoyo: true, ease: "Quad.easeOut", onYoyo: onHit, onComplete: () => this.set("idle") });
+  }
+
+  private draw() {
+    const g = this.gfx;
+    const t = this.tail;
+    const s = this.s;
+    const fur = 0x2a2342;
+    const ink = 0x1d1830;
+    g.clear();
+    t.clear();
+    if (this.sprite) {
+      fitArt(this.sprite, `cat-${this.mood}`, (s * 0.7) / 100);
+      return;
+    }
+    t.setPosition(s * 0.16, s * 0.12);
+    t.lineStyle(s * 0.07, ink, 1);
+    t.beginPath();
+    t.arc(s * 0.06, -s * 0.14, s * 0.16, Math.PI * 0.5, Math.PI * (this.mood === "ready" ? 1.9 : 1.4));
+    t.strokePath();
+    t.lineStyle(s * 0.045, fur, 1);
+    t.beginPath();
+    t.arc(s * 0.06, -s * 0.14, s * 0.16, Math.PI * 0.5, Math.PI * (this.mood === "ready" ? 1.9 : 1.4));
+    t.strokePath();
+    const crouch = this.mood === "ready" ? 0.04 : 0;
+    g.fillStyle(fur, 1);
+    g.lineStyle(3, ink, 1);
+    g.fillEllipse(0, s * (0.08 + crouch), s * 0.38, s * 0.34);
+    g.strokeEllipse(0, s * (0.08 + crouch), s * 0.38, s * 0.34);
+    const hy = -s * (0.16 - crouch);
+    g.fillTriangle(-s * 0.16, hy - s * 0.02, -s * 0.06, hy - s * 0.12, -s * 0.15, hy - s * 0.2);
+    g.fillTriangle(s * 0.16, hy - s * 0.02, s * 0.06, hy - s * 0.12, s * 0.15, hy - s * 0.2);
+    g.strokeTriangle(-s * 0.16, hy - s * 0.02, -s * 0.06, hy - s * 0.12, -s * 0.15, hy - s * 0.2);
+    g.strokeTriangle(s * 0.16, hy - s * 0.02, s * 0.06, hy - s * 0.12, s * 0.15, hy - s * 0.2);
+    g.fillCircle(0, hy, s * 0.15);
+    g.strokeCircle(0, hy, s * 0.15);
+    const wide = this.mood !== "idle";
+    for (const side of [-1, 1]) {
+      g.fillStyle(0xc8f07a, 1);
+      g.fillEllipse(side * s * 0.06, hy - s * 0.01, s * 0.07, wide ? s * 0.07 : s * 0.035);
+      g.fillStyle(ink, 1);
+      g.fillEllipse(side * s * 0.06, hy - s * 0.01, s * 0.02, wide ? s * 0.06 : s * 0.03);
+    }
+    g.fillStyle(0xf06ba8, 1);
+    g.fillTriangle(-s * 0.025, hy + s * 0.05, s * 0.025, hy + s * 0.05, 0, hy + s * 0.08);
+    g.lineStyle(1.5, 0xd9ccff, 0.8);
+    for (const side of [-1, 1]) {
+      g.lineBetween(side * s * 0.05, hy + s * 0.07, side * s * 0.2, hy + s * 0.05);
+      g.lineBetween(side * s * 0.05, hy + s * 0.08, side * s * 0.2, hy + s * 0.1);
+    }
+    if (this.mood === "swipe") {
+      g.fillStyle(fur, 1);
+      g.fillEllipse(s * 0.22, s * 0.0, s * 0.16, s * 0.09);
+      g.lineStyle(2.5, ink, 1);
+      g.strokeEllipse(s * 0.22, s * 0.0, s * 0.16, s * 0.09);
+    }
+  }
+}

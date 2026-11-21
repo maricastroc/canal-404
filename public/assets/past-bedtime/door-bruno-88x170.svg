@@ -1,0 +1,12 @@
+<svg width="102" height="179" xmlns="http://www.w3.org/2000/svg" viewBox="-7 -7 102 179"><rect x="-5" y="-5" width="98" height="175" rx="3" fill="#eee4cf" stroke="#1d1830" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="0" y="0" width="88" height="170" rx="2" fill="#9a6440" stroke="#1d1830" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="52.8" y="0" width="35.2" height="170" fill="#7c4f32" opacity="0.35"/>
+    <rect x="13.2" y="11.9" width="61.599999999999994" height="64.6" rx="3" fill="none" stroke="#6d4a3a" stroke-width="2.4"/>
+    <rect x="13.2" y="88.4" width="61.599999999999994" height="64.6" rx="3" fill="none" stroke="#6d4a3a" stroke-width="2.4"/>
+    <path d="M17.6 17 L17.6 68" stroke="#c08a5e" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="72.16" cy="93.50000000000001" r="4.4" fill="#ffc83d" stroke="#1d1830" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="70.4" cy="90.10000000000001" r="1.4" fill="#fff"/><rect x="15.84" y="25.5" width="56.32" height="28.900000000000002" rx="4" fill="#fbf5e6" stroke="#1d1830" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="29.040000000000003" cy="39.949999999999996" r="5" fill="#5cb9f0" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M44 32.3 L46.64 39.1 L50.16 39.1 L47.52 44.2 L48.400000000000006 51 L44 46.75000000000001 L39.6 51 L40.480000000000004 44.2 L37.839999999999996 39.1 L41.36 39.1 Z" fill="#ffc83d" stroke="#1d1830" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <rect x="54.56" y="34" width="10.559999999999999" height="13.6" rx="2" fill="#ef4f43" stroke="#1d1830" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M24.64 112.2 L35.2 98.6 L40.480000000000004 122.39999999999999 Z" fill="#63d6c1" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="54.56" cy="129.2" r="6" fill="#f06ba8" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
