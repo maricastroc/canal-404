@@ -172,7 +172,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
       {badge && info.game && (
         <span
           aria-hidden
-          className="pointer-events-none absolute left-[5%] top-[6%] z-[15] -rotate-6 rounded-[4px] border-[2.5px] border-ink bg-sun px-[0.5em] py-[0.15em] font-display text-[max(7px,5.3cqw)] uppercase leading-none tracking-wide text-ink shadow-[0_2px_0_0_var(--color-ink)]"
+          className="pointer-events-none absolute left-[5%] top-[6%] z-[15] -rotate-6 rounded-[4px] border-[2.5px] border-ink bg-sun px-[0.5em] py-[0.15em] font-display text-[max(7px,5.3cqw)] uppercase leading-none tracking-wide text-ink shadow-[0_2px_0_0_var(--color-ink)] max-xl:text-[max(8.5px,5.3cqw)]"
         >
           {copy.badge[badge]}
         </span>
@@ -185,9 +185,9 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
           aria-label={copy.nextLabel(next.name, next.number)}
           className="absolute inset-x-0 bottom-0 z-20 flex h-[13%] min-h-6 items-center gap-[0.5em] overflow-hidden border-t-[2px] border-ink bg-plum-950/90 px-[6%] text-left [--focus:var(--color-sun)] focus-visible:outline-offset-[-4px] hover:bg-plum-900"
         >
-          <span className="shrink-0 rounded-[3px] bg-sun px-[0.4em] font-display text-[max(8px,4.2cqw)] uppercase leading-[1.5] text-ink">{copy.next}</span>{" "}
-          <span className="line-clamp-2 min-w-0 font-display text-[max(8px,4.5cqw)] uppercase leading-[1.1] tracking-wide text-cream">{next.name}</span>
-          <span aria-hidden className="ml-auto shrink-0 font-display text-[max(7px,5.3cqw)] leading-none text-sun">
+          <span className="shrink-0 rounded-[3px] bg-sun px-[0.4em] font-display text-[max(8px,4.2cqw)] uppercase leading-[1.5] text-ink max-xl:text-[max(8px,4.2cqw,min(5cqw,9px))]">{copy.next}</span>{" "}
+          <span className="line-clamp-2 min-w-0 font-display text-[max(8px,4.5cqw)] uppercase leading-[1.1] tracking-wide text-cream max-xl:text-[max(8px,4.5cqw,min(5.6cqw,10px))]">{next.name}</span>
+          <span aria-hidden className="ml-auto shrink-0 font-display text-[max(7px,5.3cqw)] leading-none text-sun max-xl:text-[max(10px,5.3cqw)] @max-[150px]:hidden">
             ▸
           </span>
         </button>
@@ -288,7 +288,7 @@ export function Tv({ knobAngle, zoomed, onKnob, onZoom, screenRef, zoomButtonRef
         onPointerLeave={(e) => e.pointerType === "mouse" && onHint?.(null, spot)}
         onFocus={() => onHint?.(knobHint, spot)}
         onBlur={() => onHint?.(null, spot)}
-        className="absolute z-10 cursor-pointer rounded-full [--focus:var(--color-sun)] transition-transform duration-150 hover:scale-110 active:scale-95"
+        className="absolute z-10 cursor-pointer rounded-full [--focus:var(--color-sun)] transition-transform duration-150 before:absolute before:-inset-1.5 before:content-[''] hover:scale-110 active:scale-95"
         style={knobStyle}
       >
         <TvKnob angle={knobAngle} />
@@ -307,7 +307,7 @@ export function Tv({ knobAngle, zoomed, onKnob, onZoom, screenRef, zoomButtonRef
         onPointerLeave={(e) => e.pointerType === "mouse" && onHint?.(null, spot)}
         onFocus={() => onHint?.(zoomHint, spot)}
         onBlur={() => onHint?.(null, spot)}
-        className="absolute z-10 grid cursor-zoom-in place-items-center rounded-full border-[2.5px] border-ink bg-cream text-ink shadow-[0_2px_0_0_var(--color-ink)] [--focus:var(--color-sun)] transition-transform duration-150 hover:scale-110 active:scale-95"
+        className="absolute z-10 grid cursor-zoom-in place-items-center rounded-full border-[2.5px] border-ink bg-cream text-ink shadow-[0_2px_0_0_var(--color-ink)] [--focus:var(--color-sun)] transition-transform duration-150 before:absolute before:-inset-x-2.5 before:-bottom-2.5 before:-top-1 before:content-[''] hover:scale-110 active:scale-95"
         style={zoomStyle}
       >
         <ZoomIcon className="size-[62%]" />

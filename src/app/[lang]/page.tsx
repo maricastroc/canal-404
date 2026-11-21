@@ -21,16 +21,15 @@ const COPY = localized({
 export default async function Home() {
   const copy = COPY[await getLocale()];
   return (
-    <div className="room-page relative min-h-svh overflow-x-clip xl:h-svh xl:overflow-hidden">
+    <div className="room-page relative flex h-svh flex-col overflow-x-clip xl:block xl:overflow-hidden">
       <TopBar className="xl:hidden" />
       <SideNav className="absolute inset-y-0 left-0 z-50 hidden w-[17rem] px-5 py-5 xl:flex" />
-      <main id="content" className="relative xl:ml-[17rem] xl:flex xl:h-svh xl:items-center xl:justify-center">
+      <main id="content" className="relative flex min-h-[18rem] flex-1 flex-col xl:ml-[17rem] xl:h-svh xl:flex-row xl:items-center xl:justify-center">
         <h1 className="sr-only">{copy.title}</h1>
         <p className="sr-only">{copy.intro}</p>
         <RoomPanner>
           <BroadcastRoom />
         </RoomPanner>
-        <div id="mascot-dock" className="sticky bottom-0 z-[75] px-3 pb-3 pt-2 xl:hidden" />
       </main>
     </div>
   );

@@ -27,7 +27,7 @@ function Wainscot() {
 }
 
 function Floor() {
-  const rows = [730, 772, 822, 882, 950];
+  const rows = [730, 772, 822, 882, 950, 1026, 1112, 1210];
   return (
     <g>
       <rect x="-1600" y="705" width="4800" height="1200" fill={P.floor} />
