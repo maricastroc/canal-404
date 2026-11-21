@@ -2,19 +2,19 @@
 
 import Link from "@/i18n/Link";
 import { animate, motion, useIsPresent, useMotionValue, useReducedMotion, useTransform } from "motion/react";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
 import { HouseIcon, MissionIcon, PlayIcon, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
-import { CheckIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
+import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
-import type { GameResult } from "@/games/types";
+import type { GameResult, IntroProgress } from "@/games/types";
 import { useCopy, useLocale, useLocalePath } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { formatNumber } from "@/i18n/format";
@@ -54,6 +54,12 @@ const COPY = localized({
     locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : word === "pista" ? "Chegue ao pódio na pista anterior para desbloquear." : "Termine a fase anterior"),
     noStars: "Sem estrelas",
     saved: "Sua aventura está salva. Continue de onde parou.",
+    adventure: "Sua aventura",
+    leftOff: "Você parou aqui",
+    startsHere: "Começa aqui",
+    showAdventure: "Ver aventura",
+    startShort: "Iniciar",
+    continueShort: "Continuar",
     newAdventureLabel: "Começar uma nova aventura",
     startOver: "Começar do zero?",
     startOverText: "O progresso salvo desta aventura será apagado.",
@@ -108,6 +114,12 @@ const COPY = localized({
     locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : word === "pista" ? "Make the podium on the previous track to unlock." : "Finish the previous level"),
     noStars: "No stars",
     saved: "Your adventure is saved. Pick up where you left off.",
+    adventure: "Your adventure",
+    leftOff: "Left off here",
+    startsHere: "Starts here",
+    showAdventure: "See adventure",
+    startShort: "Start",
+    continueShort: "Continue",
     newAdventureLabel: "Start a new adventure",
     startOver: "Start over?",
     startOverText: "The saved progress for this adventure will be erased.",
@@ -275,6 +287,137 @@ function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
   );
 }
 
+function PickHeader({ title, meta }: { title: string; meta?: ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <h2 className="font-display text-xl uppercase tracking-wide text-ink">{title}</h2>
+      {meta ? <p className="font-display text-sm uppercase tracking-wide text-ink-soft">{meta}</p> : null}
+    </div>
+  );
+}
+
+function PickCard({
+  badge,
+  title,
+  text,
+  tag,
+  current = false,
+  locked = false,
+  done = false,
+  footer,
+  onClick,
+}: {
+  badge: ReactNode;
+  title: string;
+  text: string;
+  tag?: string;
+  current?: boolean;
+  locked?: boolean;
+  done?: boolean;
+  footer?: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <>
+      {current && tag ? (
+        <span aria-hidden className="pointer-events-none absolute -top-2.5 right-3 z-10 rotate-2 rounded-md border-2 border-ink bg-ink px-1.5 font-display text-[11px] uppercase leading-5 tracking-wider text-sun">
+          {tag}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        disabled={locked}
+        aria-current={current ? "step" : undefined}
+        onClick={onClick}
+        className={`press grid h-full w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-xl border-ink p-2.5 text-left disabled:cursor-not-allowed disabled:border-dashed disabled:border-ink/45 disabled:opacity-70 disabled:shadow-none ${
+          current ? "border-4 bg-sun shadow-[var(--shadow-ink)]" : "border-[3px] bg-cream-2 shadow-[var(--shadow-ink-sm)]"
+        }`}
+      >
+        <span
+          className={`relative mt-0.5 grid size-10 shrink-0 place-items-center rounded-full border-[3px] font-display text-lg ${
+            locked ? "border-ink/45 bg-cream text-ink-soft" : current ? "border-ink bg-ink text-sun" : "border-ink bg-paper text-ink"
+          }`}
+        >
+          {badge}
+          {done ? (
+            <span className="absolute -bottom-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-ink bg-lime text-ink">
+              <CheckIcon className="size-3" />
+            </span>
+          ) : null}
+        </span>
+        <span className="flex min-h-full min-w-0 flex-col">
+          <span className="block text-balance font-display text-base uppercase leading-tight text-ink">{title}</span>
+          <span className="mt-0.5 block text-xs leading-snug text-ink-soft">{text}</span>
+          {footer ? <span className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1.5">{footer}</span> : null}
+        </span>
+      </button>
+    </>
+  );
+}
+
+type BarAction = {
+  key: string;
+  label: string;
+  icon?: ReactNode;
+  tone: "sun" | "cream" | "tomato";
+  size?: "lg";
+  onClick?: () => void;
+  href?: string;
+  buttonRef?: Ref<HTMLButtonElement>;
+  className?: string;
+  expanded?: boolean;
+  controls?: string;
+};
+
+const LINK_ROW =
+  "flex basis-full flex-wrap items-center gap-x-3 gap-y-1 max-sm:col-span-2 max-sm:justify-center max-sm:gap-x-2 max-sm:[&>*]:px-1 max-sm:[&>*]:text-[15px] max-sm:[&>*]:tracking-normal max-sm:[&_svg]:size-4";
+
+function ActionBar({ actions, links = [], note, className }: { actions: BarAction[]; links?: ReactNode[]; note?: ReactNode; className: string }) {
+  const narrow = useNarrowScreen();
+  const main = narrow ? actions.slice(0, 2) : actions;
+  const extra = narrow ? actions.slice(2) : [];
+  const tail = [
+    ...extra.map((a) =>
+      a.href ? (
+        <Link key={a.key} href={a.href} className={TERTIARY}>
+          {a.icon} {a.label}
+        </Link>
+      ) : (
+        <button key={a.key} type="button" onClick={a.onClick} aria-expanded={a.expanded} aria-controls={a.controls} className={TERTIARY}>
+          {a.icon} {a.label}
+        </button>
+      ),
+    ),
+    ...links,
+  ];
+  return (
+    <div className={className}>
+      {main.map((a, i) => {
+        const phone = narrow ? ["max-sm:tracking-normal", i > 0 || a.label.length > 12 ? "max-sm:[&>svg]:hidden" : "", main.length === 1 ? "max-sm:col-span-2" : ""] : [];
+        const cls = [a.className, ...phone].filter(Boolean).join(" ");
+        const body = (
+          <>
+            {a.icon}
+            {a.icon ? " " : null}
+            {a.label}
+          </>
+        );
+        return a.href ? (
+          <InkLink key={a.key} href={a.href} tone={a.tone} size={a.size} className={cls}>
+            {body}
+          </InkLink>
+        ) : (
+          <InkButton key={a.key} ref={a.buttonRef} tone={a.tone} size={a.size} onClick={a.onClick} aria-expanded={a.expanded} aria-controls={a.controls} className={cls}>
+            {body}
+          </InkButton>
+        );
+      })}
+      {note}
+      {tail.length ? <div className={LINK_ROW}>{tail}</div> : null}
+    </div>
+  );
+}
+
 function StarBurst({ delay }: { delay: number }) {
   return (
     <motion.svg
@@ -331,6 +474,7 @@ export function IntroPanel({
   game,
   highScore,
   levels,
+  progress = null,
   showHelp,
   onToggleHelp,
   onPlay,
@@ -344,6 +488,7 @@ export function IntroPanel({
   game: GameMeta;
   highScore: number;
   levels?: LevelProgress;
+  progress?: IntroProgress | null;
   showHelp: boolean;
   onToggleHelp: () => void;
   onPlay: (level?: number) => void;
@@ -367,14 +512,56 @@ export function IntroPanel({
   const totalStars = levels ? levels.stars.reduce((a, b) => a + b, 0) : 0;
   const suggested = levels ? Math.min(levels.suggested, levels.unlocked) : 0;
   const picking = !mission && !missionPending && leveled && Boolean(game.levels && levels);
+  const narrow = useNarrowScreen();
+  const adventure = narrow && progress && !mission && !missionPending && !picking ? progress : null;
+  const sectioned = picking || Boolean(adventure);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (confirming) confirmRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [confirming]);
+  const begin = game.resumable && onNew ? (resume ? () => onPlay() : onNew) : () => onPlay(leveled ? suggested : undefined);
+  const howFirst = narrow && !picking && !adventure && !mission && !missionPending && !(game.resumable && onNew);
+  const recordText = copy.record(highScore > 0 ? formatNumber(highScore, locale) : "—");
+  const helpAction: BarAction = {
+    key: "help",
+    label: showHelp ? (picking ? copy.showLevels(word) : adventure ? copy.showAdventure : copy.hideHelp) : copy.howTo,
+    tone: "cream",
+    onClick: onToggleHelp,
+    expanded: showHelp,
+    controls: "how-to-play-panel",
+  };
+  const playIcon = <PlayIcon className="size-7 text-ink" />;
+  const introActions: BarAction[] = adventure
+    ? [{ key: "play", label: game.resumable ? (resume ? copy.continueShort : copy.startShort) : copy.play, icon: playIcon, tone: "sun", size: "lg", onClick: begin, buttonRef: playRef }, helpAction]
+    : mission
+      ? [
+          { key: "mission", label: copy.startMission, icon: <MissionIcon className="size-7 text-ink" />, tone: "sun", size: "lg", onClick: onStartMission, buttonRef: playRef },
+          { key: "skip", label: copy.skipMission, tone: "cream", onClick: onSkipMission },
+          helpAction,
+        ]
+      : game.resumable && onNew
+        ? resume
+          ? [
+              { key: "play", label: copy.continueAdventure, icon: playIcon, tone: "sun", size: "lg", onClick: () => onPlay(), buttonRef: playRef },
+              { key: "new", label: copy.newAdventure, icon: <RestartIcon className="size-5" />, tone: "cream", onClick: () => setConfirming(true), expanded: confirming },
+              helpAction,
+            ]
+          : [{ key: "play", label: copy.startAdventure, icon: playIcon, tone: "sun", size: "lg", onClick: onNew, buttonRef: playRef }, helpAction]
+        : [
+            { key: "play", label: leveled ? copy.playLevel(word, suggested + 1) : copy.play, icon: playIcon, tone: "sun", size: "lg", onClick: () => onPlay(leveled ? suggested : undefined), buttonRef: playRef },
+            ...(howFirst ? [] : [helpAction]),
+          ];
   const help = (
-    <div id="how-to-play-panel" className={picking ? "" : "mt-5 border-t-[3px] border-dashed border-ink/30 pt-4"}>
-      {picking ? <h2 className="mb-3 font-display text-xl uppercase tracking-wide text-ink">{copy.howTo}</h2> : null}
+    <div id="how-to-play-panel" className={sectioned ? "" : "mt-5 border-t-[3px] border-dashed border-ink/30 pt-4"}>
+      {sectioned ? <h2 className="mb-3 font-display text-xl uppercase tracking-wide text-ink">{copy.howTo}</h2> : null}
       <ControlsList game={game} />
     </div>
   );
   return (
-    <OverlayFrame label={copy.introLabel(game.title)} className="flex max-h-full max-w-3xl flex-col p-5 sm:p-7 shorter:py-4 max-sm:block max-sm:max-h-none max-sm:py-5 [@media(max-height:540px)]:p-4">
+    <OverlayFrame
+      label={copy.introLabel(game.title)}
+      className={`flex max-h-full max-w-3xl flex-col p-5 sm:p-7 shorter:py-4 max-sm:max-h-none max-sm:py-5 [@media(max-height:540px)]:p-4 ${adventure || howFirst ? "max-sm:min-h-full" : "max-sm:block"}`}
+    >
       <div className="grid shrink-0 items-center gap-4 sm:grid-cols-[1fr_auto]">
         <div className="[@media(max-height:540px)]:flex [@media(max-height:540px)]:items-center [@media(max-height:540px)]:gap-4">
           <GameTitle game={game} />
@@ -404,15 +591,45 @@ export function IntroPanel({
             {copy.tuning}
           </p>
         ) : null}
-        {picking && showHelp ? <div className="mt-5 shorter:mt-3">{help}</div> : null}
+        {sectioned && showHelp ? <div className="mt-5 shorter:mt-3">{help}</div> : null}
+        {howFirst ? (
+          <div id="how-to-play-panel" className="mt-5 shorter:mt-3">
+            <div className="mb-3">
+              <PickHeader title={copy.howTo} meta={recordText} />
+            </div>
+            <ControlsList game={game} />
+          </div>
+        ) : null}
+        {adventure && !showHelp ? (
+          <div className="mt-5 shorter:mt-3">
+            <PickHeader title={copy.adventure} meta={recordText} />
+            <div className="relative mt-3 pt-1">
+              <PickCard
+                badge={<MissionIcon className="size-5" />}
+                title={adventure.title}
+                text={adventure.text}
+                tag={resume ? copy.leftOff : copy.startsHere}
+                current
+                footer={adventure.stats.map((stat) => (
+                  <span key={stat.label} className="font-display text-[11px] uppercase tracking-wider text-ink-soft">
+                    {stat.label} <span className="text-ink">{stat.value}</span>
+                  </span>
+                ))}
+                onClick={begin}
+              />
+            </div>
+            {resume && onNew && !confirming ? (
+              <div className="mt-2 flex justify-end">
+                <button type="button" onClick={() => setConfirming(true)} aria-expanded={confirming} className={`${TERTIARY} text-sm`}>
+                  <RestartIcon className="size-4" /> {copy.newAdventure}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {picking && !showHelp && game.levels && levels && (
           <div className="mt-5 shorter:mt-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-display text-xl uppercase tracking-wide text-ink">{copy.chooseLevel(word)}</h2>
-              <p className="font-display text-sm uppercase tracking-wide text-ink-soft">
-                {copy.starsTotal(totalStars, game.levels.length * 3)}
-              </p>
-            </div>
+            <PickHeader title={copy.chooseLevel(word)} meta={copy.starsTotal(totalStars, game.levels.length * 3)} />
             <ol className="mt-3 grid gap-x-2.5 gap-y-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
               {game.levels.map((level, i) => {
                 const locked = i > levels.unlocked;
@@ -420,54 +637,33 @@ export function IntroPanel({
                 const current = !locked && i === suggested;
                 return (
                   <li key={level.id} className="relative">
-                    {current ? (
-                      <span aria-hidden className="pointer-events-none absolute -top-2.5 right-3 z-10 rotate-2 rounded-md border-2 border-ink bg-ink px-1.5 font-display text-[11px] uppercase leading-5 tracking-wider text-sun">
-                        {copy.upNext}
-                      </span>
-                    ) : null}
-                    <button
-                      type="button"
-                      disabled={locked}
-                      aria-current={current ? "step" : undefined}
-                      onClick={() => onPlay(i)}
-                      className={`press grid h-full w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-xl border-ink p-2.5 text-left disabled:cursor-not-allowed disabled:border-dashed disabled:border-ink/45 disabled:opacity-70 disabled:shadow-none ${
-                        current ? "border-4 bg-sun shadow-[var(--shadow-ink)]" : "border-[3px] bg-cream-2 shadow-[var(--shadow-ink-sm)]"
-                      }`}
-                    >
-                      <span
-                        className={`relative mt-0.5 grid size-10 shrink-0 place-items-center rounded-full border-[3px] font-display text-lg ${
-                          locked ? "border-ink/45 bg-cream text-ink-soft" : current ? "border-ink bg-ink text-sun" : "border-ink bg-paper text-ink"
-                        }`}
-                      >
-                        {locked ? <LockIcon className="size-5" /> : i + 1}
-                        {done ? (
-                          <span className="absolute -bottom-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-ink bg-lime text-ink">
-                            <CheckIcon className="size-3" />
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="flex min-h-full min-w-0 flex-col">
-                        <span className="block text-balance font-display text-base uppercase leading-tight text-ink">{level.title}</span>
-                        <span className="mt-0.5 block text-xs leading-snug text-ink-soft">
-                          {locked ? copy.locked(word) : level.goal}
-                        </span>
-                        {locked ? null : (
-                          <span className="mt-auto flex items-center gap-2 pt-1.5">
+                    <PickCard
+                      badge={locked ? <LockIcon className="size-5" /> : i + 1}
+                      title={level.title}
+                      text={locked ? copy.locked(word) : level.goal}
+                      tag={copy.upNext}
+                      current={current}
+                      locked={locked}
+                      done={done}
+                      footer={
+                        locked ? null : (
+                          <>
                             <MiniStars count={levels.stars[i]} />
                             {done ? null : <span className="font-display text-[11px] uppercase tracking-wider text-ink-soft">{copy.noStars}</span>}
-                          </span>
-                        )}
-                      </span>
-                    </button>
+                          </>
+                        )
+                      }
+                      onClick={() => onPlay(i)}
+                    />
                   </li>
                 );
               })}
             </ol>
           </div>
         )}
-        {resume && <p className="mt-4 font-hand text-xl leading-snug text-ink-soft">{copy.saved}</p>}
-        {confirming ? (
-          <div role="alertdialog" aria-label={copy.newAdventureLabel} className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 p-4">
+        {resume && !adventure && <p className="mt-4 font-hand text-xl leading-snug text-ink-soft">{copy.saved}</p>}
+        {confirming && !(adventure && showHelp) ? (
+          <div ref={confirmRef} role="alertdialog" aria-label={copy.newAdventureLabel} className="mt-5 scroll-mb-28 rounded-xl border-[3px] border-ink bg-cream-2 p-4">
             <p className="font-display text-lg uppercase tracking-wide text-ink">{copy.startOver}</p>
             <p className="mt-1 leading-snug text-ink-soft">{copy.startOverText}</p>
             <div className="mt-3 flex flex-wrap gap-3">
@@ -480,50 +676,20 @@ export function IntroPanel({
             </div>
           </div>
         ) : null}
-        {showHelp && !picking ? help : null}
+        {showHelp && !sectioned && !howFirst ? help : null}
       </div>
-      <div
-        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-base max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:leading-tight max-[380px]:[&>button]:[text-wrap:balance] max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
-      >
-        {mission ? (
-          <>
-            <InkButton ref={playRef} size="lg" tone="sun" onClick={onStartMission}>
-              <MissionIcon className="size-7 text-ink" /> {copy.startMission}
-            </InkButton>
-            <InkButton tone="cream" onClick={onSkipMission}>
-              {copy.skipMission}
-            </InkButton>
-          </>
-        ) : game.resumable && onNew ? (
-          resume ? (
-            <>
-              <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay()}>
-                <PlayIcon className="size-7 text-ink" /> {copy.continueAdventure}
-              </InkButton>
-              <InkButton tone="cream" onClick={() => setConfirming(true)} aria-expanded={confirming}>
-                <RestartIcon className="size-5" /> {copy.newAdventure}
-              </InkButton>
-            </>
-          ) : (
-            <InkButton ref={playRef} size="lg" tone="sun" onClick={onNew}>
-              <PlayIcon className="size-7 text-ink" /> {copy.startAdventure}
-            </InkButton>
-          )
-        ) : (
-          <InkButton ref={playRef} size="lg" tone="sun" onClick={() => onPlay(leveled ? suggested : undefined)}>
-            <PlayIcon className="size-7 text-ink" /> {leveled ? copy.playLevel(word, suggested + 1) : copy.play}
-          </InkButton>
-        )}
-        <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="how-to-play-panel">
-          {showHelp ? (picking ? copy.showLevels(word) : copy.hideHelp) : copy.howTo}
-        </InkButton>
-        {!leveled && !mission && (
-          <p className="flex items-center gap-1.5 px-1 font-display text-sm uppercase leading-none tracking-wide text-ink-soft">
-            <TrophyIcon className="size-4" />
-            <span>{copy.record(highScore > 0 ? formatNumber(highScore, locale) : "—")}</span>
-          </p>
-        )}
-      </div>
+      <ActionBar
+        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-[15px] max-[380px]:[&>button>svg]:hidden max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:leading-tight max-[380px]:[&>button]:[text-wrap:balance] max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
+        actions={introActions}
+        note={
+          !leveled && !mission && !adventure && !howFirst ? (
+            <p className="flex items-center gap-1.5 px-1 font-display text-sm uppercase leading-none tracking-wide text-ink-soft">
+              <TrophyIcon className="size-4" />
+              <span>{copy.record(highScore > 0 ? formatNumber(highScore, locale) : "—")}</span>
+            </p>
+          ) : null
+        }
+      />
     </OverlayFrame>
   );
 }
@@ -617,43 +783,39 @@ export function ResultPanel({
     return () => ids.forEach((id) => window.clearTimeout(id));
   }, [play, result.won, result.stars]);
   const title = result.copy?.title ?? (result.won ? game.copy?.winTitle : game.copy?.loseTitle) ?? (result.won ? copy.win : copy.lose);
+  const nextAction: BarAction = { key: "next", label: copy.nextLevel(word), icon: <PlayIcon className="size-5 text-ink" />, tone: onNext && !mission ? "sun" : "cream", onClick: onNext };
+  const resultActions: BarAction[] = [
+    ...(onNext && !mission ? [{ ...nextAction, buttonRef: mainRef }] : []),
+    {
+      key: "restart",
+      label: mission ? copy.retryMission : narrow && game.resumable ? copy.continueShort : (result.restartLabel ?? (result.level && word === "fase" ? copy.replayLevel : copy.playAgain)),
+      icon: game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />,
+      tone: onNext && !mission ? "cream" : "sun",
+      onClick: onRestart,
+      buttonRef: onNext && !mission ? undefined : mainRef,
+      className: onNext && !mission ? "max-[420px]:[&>svg]:hidden" : "sm:px-7",
+    },
+    ...(onNext && mission ? [nextAction] : []),
+    ...(onAlt && result.alt ? [{ key: "alt", label: result.alt, icon: game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />, tone: "cream" as const, onClick: onAlt }] : []),
+    ...(onLevels ? [] : [{ key: "catalog", label: copy.catalog, icon: narrow ? <ControllerIcon className="size-4" /> : undefined, tone: "cream" as const, href: "/games" }]),
+  ];
   const actions = (
-    <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:leading-tight max-[380px]:[&>*]:[text-wrap:balance] max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
-      {onNext && !mission ? (
-        <InkButton ref={mainRef} tone="sun" onClick={onNext}>
-          <PlayIcon className="size-5 text-ink" /> {copy.nextLevel(word)}
-        </InkButton>
-      ) : null}
-      <InkButton ref={onNext && !mission ? undefined : mainRef} tone={onNext && !mission ? "cream" : "sun"} onClick={onRestart} className={onNext && !mission ? "max-[420px]:[&>svg]:hidden" : "sm:px-7"}>
-        {game.resumable ? <PlayIcon className="size-5 text-ink" /> : <RestartIcon className="size-5" />}{" "}
-        {mission ? copy.retryMission : (result.restartLabel ?? (result.level && word === "fase" ? copy.replayLevel : copy.playAgain))}
-      </InkButton>
-      {onNext && mission ? (
-        <InkButton tone="cream" onClick={onNext}>
-          <PlayIcon className="size-5 text-ink" /> {copy.nextLevel(word)}
-        </InkButton>
-      ) : null}
-      {onAlt && result.alt ? (
-        <InkButton tone="cream" onClick={onAlt}>
-          {game.resumable ? <RestartIcon className="size-5" /> : <UsersIcon className="size-5" />} {result.alt}
-        </InkButton>
-      ) : null}
-      {onLevels ? null : (
-        <InkLink href="/games" tone="cream">
-          {copy.catalog}
-        </InkLink>
-      )}
-      <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 max-sm:col-span-2 max-sm:justify-center max-sm:gap-x-2 max-sm:[&>*]:px-1 max-sm:[&>*]:text-[15px] max-sm:[&>*]:tracking-normal">
-        {onLevels ? (
-          <button type="button" onClick={onLevels} className={TERTIARY}>
-            <LevelsIcon className="size-4" /> {copy.pickLevel(word)}
-          </button>
-        ) : null}
-        <Link href="/" className={TERTIARY}>
+    <ActionBar
+      className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-[15px] max-[380px]:[&>button>svg]:hidden max-[380px]:[&>a>svg]:hidden max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:leading-tight max-[380px]:[&>*]:[text-wrap:balance] max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3"
+      actions={resultActions}
+      links={[
+        ...(onLevels
+          ? [
+              <button key="levels" type="button" onClick={onLevels} className={TERTIARY}>
+                <LevelsIcon className="size-4" /> {copy.pickLevel(word)}
+              </button>,
+            ]
+          : []),
+        <Link key="room" href="/" className={TERTIARY}>
           <HouseIcon className="size-4" /> {copy.backToRoom}
-        </Link>
-      </div>
-    </div>
+        </Link>,
+      ]}
+    />
   );
   const text = result.copy?.text ?? (result.won ? game.copy?.winText : game.copy?.loseText) ?? "";
   return (

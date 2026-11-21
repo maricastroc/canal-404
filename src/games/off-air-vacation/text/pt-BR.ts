@@ -196,6 +196,12 @@ export const TEXT = {
     missionDone: "Missão cumprida",
     missionAnnounce: (text: string) => `Missão: ${text}`,
   },
+  intro: {
+    posters: "Pôsteres",
+    tokens: "Fichas",
+    secrets: "Segredos",
+    time: "Tempo",
+  },
   touch: {
     action: "Ação",
     journal: "Diário",
