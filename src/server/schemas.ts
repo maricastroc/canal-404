@@ -15,10 +15,18 @@ export const statsSchema = z
   .record(statKey, z.number().int().min(-INT).max(INT))
   .refine((stats) => Object.keys(stats).length <= 24, "estatísticas demais");
 
+const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2 } as const;
+
+export function outdatedReplay(body: unknown) {
+  const replay = (body as { result?: { replay?: { kind?: unknown; version?: unknown } } } | null)?.result?.replay;
+  if (!replay || typeof replay.kind !== "string" || typeof replay.version !== "number" || !Object.hasOwn(REPLAY_VERSIONS, replay.kind)) return false;
+  return replay.version < REPLAY_VERSIONS[replay.kind as keyof typeof REPLAY_VERSIONS];
+}
+
 const labReplaySchema = z
   .object({
     kind: z.literal("lab-placements"),
-    version: z.literal(1),
+    version: z.literal(REPLAY_VERSIONS["lab-placements"]),
     parts: z
       .array(
         z
@@ -37,7 +45,7 @@ const labReplaySchema = z
 const streetReplaySchema = z
   .object({
     kind: z.literal("street-launches"),
-    version: z.literal(2),
+    version: z.literal(REPLAY_VERSIONS["street-launches"]),
     launches: z
       .array(
         z
