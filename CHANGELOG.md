@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ladeira Abaixo: capa nova e textos revisados
+- **New cover.** The four friends race down one hill in two rows: Bruno worried at the back, Mila in her bathtub, Lina with her fan, and Déco flying off a ramp in the lead, with Juninho cheering on the sidewalk. Everyone stays whole inside the frame, with a safe margin for the room TV, and the share images were regenerated.
+- **Friendlier copy.** The game page, track picker, how-to section, controls, garage, results and race tips were rewritten to read more naturally and match the game: one term per idea ("pontos de show", "multiplicador", "pódio", "desbloquear"). The how-to section now has its own introduction (`howToIntro` in the registry).
+- The empty hall of champions now says "Ainda não tem ninguém no quadro dos campeões. Que tal ser o primeiro?" in every game.
+
 ### Ladeira Abaixo entra no catálogo
 - **A seventh game: Ladeira Abaixo** (EN "Downhill Derby", `/play/downhill-derby`). Déco, Lina, Bruno and Mila race soapbox carts down three neighborhood hills, each a little harder: Ladeira do Seu Arlindo, Dia de Feira and Morro da Antena. Crouch to build speed, jump at the edge of the ramps, spin in the air to land straight, and put on a show with flips, poses and wheelies. Phones get on-screen buttons.
 - **Tracks and stars.** The intro lists the tracks; 1st, 2nd and 3rd place give 3, 2 and 1 stars, and a podium unlocks the next track. The result shows the place, the time against the track record, how far the next rival was, and the score: a place bonus plus the show points. "Trocar carrinho" goes back to the garage.

@@ -158,7 +158,7 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
           <h2 id="how-to-play" className="text-center font-display text-4xl uppercase tracking-wide text-cream [text-shadow:3px_4px_0_var(--color-ink)]">
             {copy.howTo}
           </h2>
-          {game.objective && <p className="mx-auto mt-2 max-w-xl text-center font-hand text-xl text-cream-2">{game.objective}</p>}
+          {(game.howToIntro ?? game.objective) && <p className="mx-auto mt-2 max-w-xl text-center font-hand text-xl text-cream-2">{game.howToIntro ?? game.objective}</p>}
           <ol className="mt-6 grid gap-6 md:grid-cols-3">
             {game.howTo.map((step, i) => (
               <li key={step.title} className={`paper border-[3px] border-ink p-3 shadow-[var(--shadow-ink)] wobbly-sm ${i === 1 ? "md:translate-y-3 md:rotate-1" : "md:-rotate-1"}`}>
