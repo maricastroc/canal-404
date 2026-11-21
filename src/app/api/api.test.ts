@@ -58,7 +58,7 @@ describe("when the database is down", () => {
     await closeDb();
     process.env.DATABASE_URL = "postgresql://nobody:nothing@127.0.0.1:1/none";
     expect(await body(await status())).toEqual({ status: "offline" });
-    const response = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "dead-end-street" } }));
+    const response = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "dead-end-street", level: "warm-up" } }));
     expect(response.status).toBe(503);
     expect(await body(response)).toEqual({ error: { code: "unavailable", message: expect.any(String) } });
   });
@@ -77,7 +77,7 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     return { response, cookie: cookieFrom(response), data: await body(response) };
   }
 
-  async function ticketAs(cookie: string | undefined, game = "dead-end-street", level: string | null = null) {
+  async function ticketAs(cookie: string | undefined, game = "dead-end-street", level: string | null = "warm-up") {
     const response = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game, level }, cookie }));
     return body(response);
   }

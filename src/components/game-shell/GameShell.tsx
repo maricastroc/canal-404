@@ -529,6 +529,7 @@ export function GameShell({ slug }: { slug: string }) {
           ...(level === undefined ? {} : { level, ...(next ? { next } : {}) }),
           ...(mission?.setup ? { setup: mission.setup } : {}),
           ...(mission ? { checkpoints: false } : {}),
+          ...(game.levels ? { records: game.levels.map((l) => ({ stars: levelRecords?.[l.id]?.stars ?? 0, score: levelRecords?.[l.id]?.score ?? 0 })) } : {}),
         };
     instanceRef.current?.start(Object.keys(options).length ? options : undefined);
     setStage("playing");

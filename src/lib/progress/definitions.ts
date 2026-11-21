@@ -213,13 +213,13 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     },
     "street-win": {
       title: "Bagunça Concluída",
-      description: "Você derrubou todos os alvos de Rua Sem Saída. O Seu Arlindo não gostou.",
-      hint: "Vença uma partida de Rua Sem Saída.",
+      description: "Você derrubou o Gnomão e o Seu Arlindo se rendeu.",
+      hint: "Complete a fase 9 de Rua Sem Saída.",
     },
     "three-stars": {
       title: "Engenheiro de Quintal",
-      description: "Você venceu Rua Sem Saída com 3 estrelas.",
-      hint: "Vença Rua Sem Saída com 3 estrelas. Sobrar munição ajuda.",
+      description: "Você ganhou 3 estrelas numa fase de Rua Sem Saída.",
+      hint: "Termine uma fase de Rua Sem Saída com poucos lançamentos.",
     },
     "domino-effect": {
       title: "Efeito Dominó",
@@ -228,8 +228,8 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     },
     "high-scorer": {
       title: "Recordista do Bairro",
-      description: "Você fez 2.500 pontos ou mais em Rua Sem Saída.",
-      hint: "Faça 2.500 pontos em Rua Sem Saída. Bagunça extra também conta.",
+      description: "Você ganhou as 27 estrelas de Rua Sem Saída.",
+      hint: "Ganhe 3 estrelas em todas as fases de Rua Sem Saída.",
     },
     "lab-first": {
       title: "Péssima Ideia Nº 1",
@@ -340,13 +340,13 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     },
     "street-win": {
       title: "Mess Complete",
-      description: "You knocked down every target in Dead End Street. Mr. Arlindo was not happy.",
-      hint: "Win a game of Dead End Street.",
+      description: "You knocked down the Giant Gnome and Mr. Arlindo gave up.",
+      hint: "Clear level 9 of Dead End Street.",
     },
     "three-stars": {
       title: "Backyard Engineer",
-      description: "You beat Dead End Street with 3 stars.",
-      hint: "Beat Dead End Street with 3 stars. Leftover ammo helps.",
+      description: "You earned 3 stars on a Dead End Street level.",
+      hint: "Clear a Dead End Street level with few launches.",
     },
     "domino-effect": {
       title: "Domino Effect",
@@ -355,8 +355,8 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     },
     "high-scorer": {
       title: "Neighborhood Record Holder",
-      description: "You scored 2,500 points or more in Dead End Street.",
-      hint: "Score 2,500 points in Dead End Street. Extra mess counts too.",
+      description: "You earned all 27 stars in Dead End Street.",
+      hint: "Get 3 stars on every Dead End Street level.",
     },
     "lab-first": {
       title: "Bad Idea No. 1",

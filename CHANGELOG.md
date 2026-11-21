@@ -4,6 +4,14 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Rua Sem Saída vira campanha de nove fases
+- **Nine levels in three acts.** Aquecimento, Mira fina and Lá no alto teach aiming, trajectories and heights. Efeito dominó, Banho de surpresa and Caminho bloqueado are about chain reactions: a row of bricks pushes a watermelon down into the garage, a duck cuts the rope of a bucket and opens the faucet in the same flight, and a bowling ball only reaches the golden gnome after a crate fills the hole and the drawbridge comes down, in that order. Arlindo contra-ataca, Confusão geral and Bagunça completa bring Seu Arlindo's gadgets: a leaf blower that sends light things back, a gate that turns after every launch and the Giant Gnome under a hanging sandbag.
+- **You pick the ammo.** Each level has its own stock. Tap the ammo, press 1 to 4 or Q. The sneaker stays where it lands, the balloon soaks and shoves, the tire is heavy and rolls, the duck is light and bounces.
+- **Stars for efficiency.** One star for clearing a level, two and three for clearing it with fewer launches; the level box shows the limit and the launches so far. Levels unlock one by one and can be replayed for more stars. The result shows the campaign stars, and clearing the last level ends with Seu Arlindo soaked, waving a white flag.
+- **Seu Arlindo grows angrier.** Calm at the window in the first act, red-faced in the second, steaming in the third, with a line for each level and reactions to every gadget. The yard keeps the marks of earlier levels: a sneaker in the tree, a crooked fence, puddles, signs and a security camera.
+- **One board per level, rules version 3.** The server replays each run with the projectile of every launch and ranks cleared levels by score, then fewer launches. The old whole-game board (version 2) no longer shows; its results came from the three-round game and are not compared with the levels. The four old street missions are retired and four new ones point at levels.
+- Achievements: "Bagunça Concluída" now asks for the last level, "Engenheiro de Quintal" for 3 stars in any level and "Recordista do Bairro" for all 27 stars.
+
 ### Texto centralizado nos botões em iPhone e sofá da sala alinhado
 - **Button labels are centered on iPhones too.** The display font (Luckiest Guy) was centered with `ascent-override`/`descent-override` in its `@font-face`. iPhones fell back to the font file's own metrics, which sit capitals about 0.14 em above the middle, so labels on buttons, tags and pills rode a couple of pixels high. The font file now carries the same 85%/15% metrics itself, so every browser places the text the same way. Chrome and desktop look the same as before.
 - **Guerra do Pijama: the mattress stack in the living room sits centered behind the sofa.** It was 40 px to the right. Its bounce line moved with it.

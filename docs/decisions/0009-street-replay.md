@@ -1,5 +1,7 @@
 # 0009: Replaying Rua Sem Saída on the server
 
+> Since [decision 0011](0011-street-campaign.md), the game has nine levels with one board each (rules version 3), the launch log records the projectile (`street-launches` version 2) and constraints use the deterministic trigonometry too.
+
 ## Context
 
 Until now the server could only check Rua Sem Saída results for plausibility ([0004](0004-result-validation.md)): target points had to add up to real targets, ammo had to match, and the match had to last the minimum time. A modified client that sent invented but consistent numbers was accepted. The game already stepped Matter at a fixed 1/60 s, but four things kept it from being replayed:

@@ -19,7 +19,7 @@ describe("run tickets", () => {
   });
 
   it("rejects tampered bodies, signatures and other secrets", () => {
-    const { token } = issueTicket(SECRET, { game: "dead-end-street", level: null, playerId: null, now: NOW });
+    const { token } = issueTicket(SECRET, { game: "dead-end-street", level: "warm-up", playerId: null, now: NOW });
     const [body, signature] = token.split(".");
     const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, "base64url").toString()), g: "food-fight" })).toString("base64url");
     expect(readTicket(SECRET, `${forged}.${signature}`, NOW)).toEqual({ ok: false, problem: "invalid" });
@@ -40,7 +40,7 @@ describe("run tickets", () => {
   });
 
   it("expires after the time to live and refuses tickets from the future", () => {
-    const { token } = issueTicket(SECRET, { game: "dead-end-street", level: null, playerId: null, now: NOW });
+    const { token } = issueTicket(SECRET, { game: "dead-end-street", level: "warm-up", playerId: null, now: NOW });
     expect(readTicket(SECRET, token, NOW + TICKET_TTL_MS + 1)).toEqual({ ok: false, problem: "expired" });
     expect(readTicket(SECRET, token, NOW - 5 * 60 * 1000)).toEqual({ ok: false, problem: "expired" });
   });

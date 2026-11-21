@@ -68,6 +68,22 @@ const EN: Record<string, MissionText> = {
     title: "Yard turned upside down",
     objective: "Move at least 7 of the 10 things in Mr. Arlindo's yard: tires, cans, the plank and the boxes.",
   },
+  "street-domino-one-launch": {
+    title: "One brick does it",
+    objective: "In “Domino effect”, knock down the flamingo and the garage gnome with a single launch.",
+  },
+  "street-bath-plumber": {
+    title: "Plumber on duty",
+    objective: "In “Surprise shower”, soak all three gnomes using the rope, the bucket and the faucet.",
+  },
+  "street-path-three": {
+    title: "Path cleared",
+    objective: "In “Blocked path”, get the bowling ball to the golden gnome in no more than 3 launches.",
+  },
+  "street-giant-two": {
+    title: "Giant Gnome down",
+    objective: "In “The big mess”, knock down the Giant Gnome and the other two gnomes in no more than 2 launches.",
+  },
   "recess-corridor-spotless": {
     title: "Scratch-free hallway",
     objective: "Get through the Forbidden hallway without taking a single hit from the monitors.",
