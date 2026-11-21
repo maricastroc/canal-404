@@ -1382,6 +1382,7 @@ export function BroadcastRoom() {
           className="pointer-events-none absolute z-[60] transition-opacity duration-500"
           style={{
             inset: -BLEED,
+            bottom: BLEED ? -BLEED : "min(0px, calc(var(--scene-h) - 100cqh))",
             opacity: lightsOn ? 0 : 1,
             background: "rgba(14, 10, 32, 0.8)",
             WebkitMaskImage: lightsOn ? undefined : lightsMask,
@@ -1450,21 +1451,28 @@ export function BroadcastRoom() {
 
       {dockTarget &&
         createPortal(
-          <div className="pointer-events-none flex min-h-20 items-end gap-2 [&_.font-hand]:text-[16px]" aria-hidden>
-            <div className="w-16 shrink-0 drop-shadow-[3px_4px_0_#1d1830]">
-              <WatchingMascot store={look} expression={expression} className="w-full" />
+          <div className="pointer-events-none flex items-end gap-2.5" aria-hidden>
+            <div className="-mx-1 shrink-0 overflow-hidden px-1 pt-3">
+              <motion.div
+                initial={false}
+                animate={{ y: bubbleText ? "0%" : "112%" }}
+                transition={reduced ? { duration: 0 } : bubbleText ? { type: "spring", stiffness: 520, damping: 22 } : { duration: 0.22, ease: "easeIn" }}
+                className="w-16 drop-shadow-[2px_3px_0_#1d1830]"
+              >
+                <WatchingMascot store={look} pose="peek" expression={expression} wiggle={wiggle} className="w-full" />
+              </motion.div>
             </div>
             <AnimatePresence mode="wait">
               {bubbleText && (
                 <motion.div
                   key={director.hint ? "hint" : `line-${director.lineKey}`}
-                  initial={{ opacity: 0, y: 12, scale: 0.9 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.85 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  className="mb-3 max-w-[22rem] flex-1"
+                  exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30, delay: 0.06 }}
+                  className="mb-6 min-w-0 max-w-[20rem] flex-1 origin-bottom-left"
                 >
-                  <SpeechBubble tail="left" className="font-hand text-[17px] leading-snug">
+                  <SpeechBubble tail="left" className="font-hand text-[16px] leading-snug">
                     {bubbleText}
                   </SpeechBubble>
                 </motion.div>

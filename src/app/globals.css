@@ -90,28 +90,29 @@ body {
 }
 
 .room-page {
-  background-color: #6b3a24;
+  background-color: #a2603a;
 }
 
-.room-pan {
-  background: linear-gradient(to bottom, #4a2236 0, #4a2236 2%, #6e3640 2%, #6e3640 78.3%, #a2603a 78.3%);
-}
-
-.room-page {
-  --room-h: clamp(24rem, min(calc(100svh - 16.5rem), 160vw), 60rem);
+.room-stage {
+  --room-nav: calc(4.75rem + env(safe-area-inset-bottom));
+  --room-fit: calc(100cqh - var(--room-nav));
+  --scene-h: clamp(16rem, min(var(--room-fit), max(150cqw, calc(var(--room-fit) - 6rem))), 60rem);
 }
 
 .room-scene {
   aspect-ratio: 16 / 9;
-  height: var(--room-h);
+  height: var(--scene-h);
+}
+
+@media (max-width: 79.99rem) {
+  .room-stage {
+    container-type: size;
+  }
 }
 
 @media (min-width: 80rem) {
   .room-page {
     background-color: #6e3640;
-  }
-  .room-pan {
-    background: none;
   }
   .room-scene {
     height: auto;
