@@ -35,8 +35,8 @@ const PLACE_COLOR = ["text-sun", "text-cream", "text-tangerine"];
 
 const COPY = localized({
   "pt-BR": {
-    word: { fase: "Fase", arena: "Arena" },
-    words: { fase: "Fases", arena: "Arenas" },
+    word: { fase: "Fase", arena: "Arena", pista: "Pista" },
+    words: { fase: "Fases", arena: "Arenas", pista: "Pistas" },
     games: "Jogos do fliperama",
     cartridge: (n: number) => `Cartucho ${n}`,
     you: "Você",
@@ -66,12 +66,12 @@ const COPY = localized({
     rules: "Regras da casa",
     tie: "Empate em tudo? Fica na frente quem chegou primeiro.",
     check: "Como o canal confere",
-    where: { fase: "desta fase", arena: "desta arena", game: "deste jogo" },
+    where: { fase: "desta fase", arena: "desta arena", pista: "desta pista", game: "deste jogo" },
     caption: (game: string, level: string | null) => `Melhores do canal em ${game}${level ? `, ${level}` : ""}`,
   },
   en: {
-    word: { fase: "Level", arena: "Arena" },
-    words: { fase: "Levels", arena: "Arenas" },
+    word: { fase: "Level", arena: "Arena", pista: "Track" },
+    words: { fase: "Levels", arena: "Arenas", pista: "Tracks" },
     games: "Arcade games",
     cartridge: (n: number) => `Cartridge ${n}`,
     you: "You",
@@ -101,14 +101,14 @@ const COPY = localized({
     rules: "House rules",
     tie: "Tied on everything? Whoever got there first stays ahead.",
     check: "How the channel checks",
-    where: { fase: "on this level", arena: "in this arena", game: "in this game" },
+    where: { fase: "on this level", arena: "in this arena", pista: "on this track", game: "in this game" },
     caption: (game: string, level: string | null) => `Channel's best in ${game}${level ? `, ${level}` : ""}`,
   },
 });
 
-function levelName(game: GameMeta, level: BoardLevel | null, word: Record<"fase" | "arena", string>) {
+function levelName(game: GameMeta, level: BoardLevel | null, word: Record<"fase" | "arena" | "pista", string>) {
   if (!level) return null;
-  return `${word[game.levelWord === "arena" ? "arena" : "fase"]} ${level.number}: ${level.title}`;
+  return `${word[game.levelWord ?? "fase"]} ${level.number}: ${level.title}`;
 }
 
 function GamePicker({ current }: { current: GameSlug }) {
@@ -117,12 +117,12 @@ function GamePicker({ current }: { current: GameSlug }) {
   const locale = useLocale();
   return (
     <nav aria-label={copy.games}>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <ul className="flex flex-wrap justify-center gap-3">
         {GAME_SLUGS.map((slug, i) => {
           const game = getGame(slug, locale)!;
           const active = slug === current;
           return (
-            <li key={slug} className="flex">
+            <li key={slug} className="flex basis-[calc(50%-0.375rem)] sm:basis-[calc(25%-0.5625rem)] lg:basis-[calc((100%-4.5rem)/7)]">
               <Link
                 href={recordsHref(slug)}
                 scroll={false}
@@ -152,7 +152,7 @@ function GamePicker({ current }: { current: GameSlug }) {
 function LevelPicker({ game, levels, current }: { game: GameMeta & { slug: GameSlug }; levels: BoardLevel[]; current: string | null }) {
   const { play } = useSound();
   const copy = useCopy(COPY);
-  const kind = game.levelWord === "arena" ? "arena" : "fase";
+  const kind = game.levelWord ?? "fase";
   const word = copy.words[kind];
   return (
     <nav aria-label={word} className="px-3 pt-3">
@@ -423,7 +423,7 @@ export function RecordArcade() {
   const levels = rankedLevels(slug, locale);
   const current = levels?.find((l) => l.id === level) ?? null;
   const name = levelName(game, current, copy.word);
-  const where = current ? copy.where[game.levelWord === "arena" ? "arena" : "fase"] : copy.where.game;
+  const where = current ? copy.where[game.levelWord ?? "fase"] : copy.where.game;
   const caption = copy.caption(game.title, name);
 
   const retry = async () => {

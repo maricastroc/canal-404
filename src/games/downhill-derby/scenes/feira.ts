@@ -6,7 +6,7 @@ import { heightAt, type Obstacle } from "../sim/track";
 import { INK } from "./cart";
 import type { Extra } from "./cast";
 import { drawFrontWall, facadeRow, PAD, placed, poleLine, SAMPLE_RES, type SampleSpots } from "./sample";
-import { BACK_LANE as STREET_BACK, LANE_OFFSETS, STREET, type Builder } from "./terrain";
+import { BACK_LANE, LANE_OFFSETS, STREET, type Builder } from "./terrain";
 
 const NAMES = [
   "banca-frutas",
@@ -36,7 +36,6 @@ export const FEIRA_FILES: [string, string][] = NAMES.map((n) => [`f-${n}`, n]);
 
 export const CIDINHA: Extra = { id: "cidinha", kind: "full", idle: "f-dona-cidinha-idle", cheer: "f-dona-cidinha-cheer", height: (176 * 270) / 232 };
 
-const BACK_LANE = STREET_BACK;
 const STALL_SCALE = 0.84;
 const STALLS = ["banca-frutas", "banca-verduras", "banca-pastel", "banca-flores"] as const;
 const CLOTH: [number, number][] = [

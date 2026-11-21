@@ -5,13 +5,12 @@ import { heightAt } from "../sim/track";
 import { INK } from "./cart";
 import { plaza, stairs, stairsWall } from "./feira";
 import { drawFrontWall, facadeRow, PAD, placed, poleLine, SAMPLE_RES, type SampleSpots } from "./sample";
-import { BACK_LANE as STREET_BACK, LANE_OFFSETS, LANES, type Builder } from "./terrain";
+import { BACK_LANE, LANE_OFFSETS, LANES, type Builder } from "./terrain";
 
 const NAMES = ["antena-404", "guindaste", "saco-cimento", "betoneira-base", "betoneira-tambor", "andaime", "tijolos", "sacos-cimento", "carrinho-de-mao", "tampa-bueiro", "cano-estourado", "sapo-a", "sapo-b"];
 
 export const ANTENA_FILES: [string, string][] = NAMES.map((n) => [`a-${n}`, n]);
 
-export const BACK_LANE = STREET_BACK;
 export const TUNNEL = 330;
 export const MIXER_X = 1500;
 

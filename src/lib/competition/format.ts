@@ -20,6 +20,7 @@ export function formatMetric(metric: Metric, value: number, locale: Locale) {
   if (metric.unit === "points") return `${formatNumber(value, locale)} pts`;
   if (metric.unit === "time") return formatDuration(value);
   if (metric.unit === "steps") return machineSeconds(value, locale);
+  if (metric.unit === "racetime") return `${formatNumber(value / 1000, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s`;
   const [one, many] = metric.noun ?? ["", ""];
   return `${formatNumber(value, locale)} ${value === 1 ? one : many}`.trim();
 }

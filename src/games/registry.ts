@@ -25,7 +25,7 @@ export type GameMeta = {
   howTo?: HowToStep[];
   objective?: string;
   levels?: LevelMeta[];
-  levelWord?: "fase" | "arena";
+  levelWord?: "fase" | "arena" | "pista";
   guests?: { id: string; name: string; role: string }[];
   tips?: string[];
   keyTips?: string[];
@@ -56,6 +56,7 @@ const BASE = {
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
   "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"], orientation: "any" },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1" },
+  "downhill-derby": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "lina", "bruno", "mila"], levelIds: ["arlindo", "feira", "antena"], levelWord: "pista" },
 } satisfies Record<string, GameBase>;
 
 type Slug = keyof typeof BASE;
@@ -367,6 +368,55 @@ const TEXT = gameText({
         loseText: "O resort espera por você.",
       },
     },
+    "downhill-derby": {
+      title: "Ladeira Abaixo",
+      tagline: "Carrinhos de rolimã, as ladeiras do bairro e uma corrida que ninguém quer perder.",
+      description: "Déco, Lina, Bruno e Mila montaram cada um o seu carrinho e se desafiaram nas ladeiras do bairro. Agache para embalar, pule nas rampas, gire no ar e acerte o pouso para ganhar velocidade. Quem chega primeiro lá embaixo leva o pódio. Quem dá mais show leva os pontos.",
+      tags: ["Ação", "Corrida", "Manobras"],
+      objective: "Três ladeiras do bairro, cada uma um pouco mais difícil. Suba no pódio para liberar a próxima pista e tente chegar na frente dos três amigos.",
+      levels: [
+        { title: "Ladeira do Seu Arlindo", goal: "Rampas, lixeiras e o caminhão de lixo dando ré." },
+        { title: "Dia de Feira", goal: "Pule de toldo em toldo ou encare o corredor da feira." },
+        { title: "Morro da Antena", goal: "Obra, looping e um bueiro que vira atalho." },
+      ],
+      controls: [
+        { input: "↓ ou S", action: "Agachar: embala na descida", on: "keys" },
+        { input: "Espaço", action: "Pular. Segure no ar para fazer pose", on: "keys" },
+        { input: "← → ou A D", action: "Girar no ar. No chão, empinar", on: "keys" },
+        { input: "Esc ou P", action: "Pausar", on: "keys" },
+        { input: "AGACHAR", action: "Segure para embalar na descida", on: "touch" },
+        { input: "PULAR", action: "Toque para pular. Segure no ar para fazer pose", on: "touch" },
+        { input: "Botões de girar", action: "Girar no ar. No chão, empinar", on: "touch" },
+      ],
+      howTo: [
+        { title: "Embale", text: "Agache nas descidas para ganhar velocidade e pule na beira das rampas para ir mais longe." },
+        { title: "Pouse reto", text: "No ar, gire até a silhueta do pouso ficar verde. Pouso perfeito dá embalo. Pouso torto demais capota." },
+        { title: "Dê show", text: "Mortais, poses e empinadas valem pontos de show. Emende manobras para o multiplicador subir até ×5." },
+      ],
+      tips: [
+        "Cada carrinho anda de um jeito. Experimente todos na garagem.",
+        "A Banheira acelera nas poças. Os outros carrinhos perdem embalo nelas.",
+        "A Turbina da Vovó empurra nas subidas e quase nunca perde o embalo.",
+        "O Relâmpago de Madeira levanta mais rápido depois de capotar.",
+        "Os rivais acompanham o seu ritmo. Correu melhor? Eles também apertam.",
+        "Devagar demais, o piloto rema com as mãos. Ninguém fica parado.",
+        "Pousar fazendo pose capota. Solte antes de tocar o chão.",
+        "Tem um anão dourado escondido na Ladeira do Seu Arlindo.",
+        "No Dia de Feira, passar liso pelos pombos vale pontos.",
+        "A Mila conhece os atalhos. Fique de olho para onde ela vai.",
+        "Chegue na frente da Lina no Dia de Feira para correr com a Turbina da Vovó.",
+        "Chegue na frente da Mila no Morro da Antena para correr com a Banheira.",
+      ],
+      keyTips: ["Com o Plano B, segure ↓ e a linha pontilhada mostra onde o pulo cai.", "No chão, ← → empinam o carrinho. Equilibre para ganhar pontos."],
+      touchTips: ["Com o Plano B, segure AGACHAR e a linha pontilhada mostra onde o pulo cai.", "No chão, os botões de girar empinam o carrinho. Equilibre para ganhar pontos."],
+      controlsSummary: "Ladeira Abaixo. Seta para baixo agacha, espaço pula, setas para os lados giram no ar e empinam no chão, Esc pausa.",
+      copy: {
+        winTitle: "Pódio!",
+        winText: "Lá embaixo, todo mundo quer revanche.",
+        loseTitle: "Quarto lugar",
+        loseText: "A próxima descida é sua.",
+      },
+    },
   },
   en: {
     "dead-end-street": {
@@ -663,6 +713,55 @@ const TEXT = gameText({
         winText: "Vacation goes on.",
         loseTitle: "See you soon!",
         loseText: "The resort is waiting for you.",
+      },
+    },
+    "downhill-derby": {
+      title: "Downhill Derby",
+      tagline: "Soapbox carts, the neighborhood hills and a race nobody wants to lose.",
+      description: "Déco, Lina, Bruno and Mila each built their own cart and challenged each other on the neighborhood hills. Crouch to pick up speed, jump off the ramps, spin in the air and nail the landing to go faster. Whoever reaches the bottom first takes the podium. Whoever puts on the best show takes the points.",
+      tags: ["Action", "Racing", "Tricks"],
+      objective: "Three neighborhood hills, each a little harder. Make the podium to unlock the next track and try to beat all three friends.",
+      levels: [
+        { title: "Mr. Arlindo's Hill", goal: "Ramps, trash cans and a garbage truck backing up." },
+        { title: "Market Day", goal: "Bounce from awning to awning or brave the market aisle." },
+        { title: "Antenna Hill", goal: "Roadworks, a loop and a manhole that turns into a shortcut." },
+      ],
+      controls: [
+        { input: "↓ or S", action: "Crouch: picks up speed downhill", on: "keys" },
+        { input: "Space", action: "Jump. Hold in the air to strike a pose", on: "keys" },
+        { input: "← → or A D", action: "Spin in the air. On the ground, wheelie", on: "keys" },
+        { input: "Esc or P", action: "Pause", on: "keys" },
+        { input: "CROUCH", action: "Hold to pick up speed downhill", on: "touch" },
+        { input: "JUMP", action: "Tap to jump. Hold in the air to strike a pose", on: "touch" },
+        { input: "Spin buttons", action: "Spin in the air. On the ground, wheelie", on: "touch" },
+      ],
+      howTo: [
+        { title: "Build speed", text: "Crouch on the way down to go faster and jump at the edge of the ramps to fly farther." },
+        { title: "Land straight", text: "In the air, spin until the landing outline turns green. A perfect landing gives you speed. Land too crooked and you wipe out." },
+        { title: "Put on a show", text: "Flips, poses and wheelies earn show points. Chain tricks to push the multiplier up to ×5." },
+      ],
+      tips: [
+        "Every cart rides differently. Try them all in the garage.",
+        "The Tub speeds up in puddles. The other carts lose speed in them.",
+        "Grandma's Turbo pushes you uphill and hardly ever slows down.",
+        "The Wooden Lightning gets back up faster after a wipeout.",
+        "The rivals keep up with your pace. Raced better? So will they.",
+        "Too slow and the rider paddles with their hands. Nobody ever stops.",
+        "Landing mid-pose means a wipeout. Let go before you touch the ground.",
+        "There's a golden gnome hidden on Mr. Arlindo's Hill.",
+        "On Market Day, slipping past the pigeons earns points.",
+        "Mila knows the shortcuts. Keep an eye on where she goes.",
+        "Beat Lina on Market Day to race with Grandma's Turbo.",
+        "Beat Mila on Antenna Hill to race with The Tub.",
+      ],
+      keyTips: ["With Plan B, hold ↓ and a dotted line shows where the jump lands.", "On the ground, ← → pop a wheelie. Keep it balanced for points."],
+      touchTips: ["With Plan B, hold CROUCH and a dotted line shows where the jump lands.", "On the ground, the spin buttons pop a wheelie. Keep it balanced for points."],
+      controlsSummary: "Downhill Derby. Down arrow crouches, space jumps, left and right arrows spin in the air and wheelie on the ground, Esc pauses.",
+      copy: {
+        winTitle: "Podium!",
+        winText: "Down at the bottom, everyone wants a rematch.",
+        loseTitle: "Fourth place",
+        loseText: "The next run is yours.",
       },
     },
   },

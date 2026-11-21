@@ -1,13 +1,13 @@
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 
-export const GAME_SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation"] as const;
+export const GAME_SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation", "downhill-derby"] as const;
 
 export type GameSlug = (typeof GAME_SLUGS)[number];
 
 export type RankKey = [number, number, number];
 
-export type MetricUnit = "points" | "time" | "count" | "steps";
+export type MetricUnit = "points" | "time" | "count" | "steps" | "racetime";
 
 export type Metric = { label: string; unit: MetricUnit; lowerIsBetter: boolean; noun?: readonly [string, string] };
 
@@ -69,6 +69,15 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
       { label: "Descobertas", unit: "count", lowerIsBetter: false, noun: ["descoberta", "descobertas"] },
     ],
   },
+  "downhill-derby": {
+    explain: "Cada pista tem seu placar. Menor tempo vence. Empate: menos capotadas; depois, mais pontos de show.",
+    check: "replayed",
+    metrics: [
+      { label: "Tempo", unit: "racetime", lowerIsBetter: true },
+      { label: "Capotadas", unit: "count", lowerIsBetter: true, noun: ["capotada", "capotadas"] },
+      { label: "Show", unit: "points", lowerIsBetter: false },
+    ],
+  },
 };
 
 type BoardText = { explain: string; metrics: { label: string; noun?: readonly [string, string] }[] };
@@ -97,6 +106,10 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
   "off-air-vacation": {
     explain: "Whoever discovered the most at the resort. Tiebreak: whoever took the least time.",
     metrics: [{ label: "Points" }, { label: "Time" }, { label: "Discoveries", noun: ["discovery", "discoveries"] }],
+  },
+  "downhill-derby": {
+    explain: "Each track has its own board. Fastest time wins. Tiebreak: fewer wipeouts, then more show points.",
+    metrics: [{ label: "Time" }, { label: "Wipeouts", noun: ["wipeout", "wipeouts"] }, { label: "Show" }],
   },
 };
 
@@ -133,6 +146,10 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
       explain: "O canal refaz seus lançamentos no servidor, com a mesma física do jogo, e só aceita o recorde se a partida terminar com a mesma pontuação.",
       verified: "Lançamentos refeitos pelo canal",
     },
+    "downhill-derby": {
+      explain: "O canal refaz sua descida no servidor, com a mesma física do jogo, e só aceita o tempo se a corrida terminar igual.",
+      verified: "Descida refeita pelo canal",
+    },
   },
   en: {
     "bad-ideas-lab": {
@@ -142,6 +159,10 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
     "dead-end-street": {
       explain: "The channel replays your launches on the server with the game's own physics and only accepts the record if the match ends with the same score.",
       verified: "Launches replayed by the channel",
+    },
+    "downhill-derby": {
+      explain: "The channel replays your run on the server with the game's own physics and only accepts the time if the race ends the same way.",
+      verified: "Run replayed by the channel",
     },
   },
 });

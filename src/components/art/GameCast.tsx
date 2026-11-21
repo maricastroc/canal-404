@@ -3,6 +3,7 @@ import type { Locale } from "@/i18n/locales";
 import { KidBust } from "@/components/characters/Heads";
 import { BadIdeasLabCast } from "./BadIdeasLabCast";
 import { DeadEndStreetCast } from "./DeadEndStreetCast";
+import { DownhillDerbyCast } from "./DownhillDerbyArt";
 import { FoodFightCast } from "./FoodFightArt";
 import { OffAirVacationResult } from "./OffAirVacationArt";
 import { OperationRecessCast } from "./OperationRecessArt";
@@ -52,6 +53,10 @@ function RecessCast({ mood, locale }: { mood: CastMood; locale: Locale }) {
   return <OperationRecessCast mood={mood} locale={locale} className={mood === "intro" ? "w-56 md:w-72" : "w-36 sm:w-44 sm:shorter:w-36"} />;
 }
 
+function DerbyCast({ mood, featured, locale }: { mood: CastMood; featured?: string; locale: Locale }) {
+  return <DownhillDerbyCast mood={mood} featured={featured} locale={locale} className={mood === "intro" ? "w-56 md:w-72" : "w-40 sm:w-48 sm:shorter:w-40"} />;
+}
+
 function CanteenCast({ mood }: { mood: CastMood }) {
   return <FoodFightCast mood={mood} className={mood === "intro" ? "w-56 md:w-64" : "w-44 sm:w-52 sm:shorter:w-40"} />;
 }
@@ -63,6 +68,7 @@ export const GAME_CAST: Record<string, (props: { mood: CastMood; featured?: stri
   "pajama-war": PajamaCast,
   "operation-recess": RecessCast,
   "off-air-vacation": ResortCast,
+  "downhill-derby": DerbyCast,
 };
 
 const GUEST_CARD: Record<PajamaKidId, string> = { lia: "bg-sun", nico: "bg-plum-300", bia: "bg-bubblegum" };

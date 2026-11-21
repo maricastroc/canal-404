@@ -23,8 +23,8 @@ type Line = { headline?: string; text: string; rival?: string; href?: string; li
 
 const COPY = localized({
   "pt-BR": {
-    label: { fase: "Placar da fase", arena: "Placar da arena", game: "Placar do jogo" },
-    here: { fase: "desta fase", arena: "desta arena", game: "deste jogo" },
+    label: { fase: "Placar da fase", arena: "Placar da arena", pista: "Placar da pista", game: "Placar do jogo" },
+    here: { fase: "desta fase", arena: "desta arena", pista: "desta pista", game: "deste jogo" },
     queued: "Placar fora do ar. Guardamos o resultado e enviamos quando o sinal voltar.",
     rejectedTitle: "O placar não aceitou",
     rejected: "O placar não aceitou este resultado.",
@@ -64,8 +64,8 @@ const COPY = localized({
     arcade: "Ver o fliperama de recordes",
   },
   en: {
-    label: { fase: "Level board", arena: "Arena board", game: "Game board" },
-    here: { fase: "for this level", arena: "for this arena", game: "for this game" },
+    label: { fase: "Level board", arena: "Arena board", pista: "Track board", game: "Game board" },
+    here: { fase: "for this level", arena: "for this arena", pista: "for this track", game: "for this game" },
     queued: "The board is off the air. We saved your result and will send it when the signal comes back.",
     rejectedTitle: "The board didn't accept it",
     rejected: "The board didn't accept this result.",
@@ -109,7 +109,7 @@ const COPY = localized({
 type Copy = (typeof COPY)[Locale];
 
 function levelKind(game: GameMeta) {
-  return game.levels ? (game.levelWord === "arena" ? "arena" : "fase") : "game";
+  return game.levels ? (game.levelWord ?? "fase") : "game";
 }
 
 export function boardLabel(game: GameMeta, locale: Locale) {

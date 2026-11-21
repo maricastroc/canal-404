@@ -48,8 +48,7 @@ export function decodeTape(tape: string): InputLog {
 }
 
 export async function loadRivals(course: CourseId): Promise<readonly RivalDef[]> {
-  if (course === "arlindo") return (await import("./rivals-arlindo")).RIVALS;
   if (course === "feira") return (await import("./rivals-feira")).RIVALS;
   if (course === "antena") return (await import("./rivals-antena")).RIVALS;
-  return (await import("./rivals-test")).RIVALS;
+  return (await import("./rivals-arlindo")).RIVALS;
 }

@@ -26,8 +26,6 @@ export type RaceCopy = {
   shop: { fruit: string; pastel: string; sale: string; detour: string; works: string; slow: string; cheer: string; go: string };
   passedBy: Record<CartId, string>;
   go: string;
-  paused: string;
-  pausedHint: string;
   perfect: string;
   gain: string;
   ok: string;
@@ -68,8 +66,8 @@ export type RaceCopy = {
   secret: string;
   chalk: { hold: string; jump: string };
   beep: string;
-  courses: { arlindo: string; feira: string; antena: string; test: string };
-  sections: Record<"arlindo" | "feira" | "antena" | "test", Record<string, string>>;
+  courses: { arlindo: string; feira: string; antena: string };
+  sections: Record<"arlindo" | "feira" | "antena", Record<string, string>>;
   split: string;
   cobbles: string;
   paddle: string;
@@ -77,8 +75,6 @@ export type RaceCopy = {
   signs: Record<SignKey, string>;
   start: string;
   finish: string;
-  finishTitle: string;
-  newBest: string;
   show: {
     label: string;
     tricks: Record<Exclude<TrickKind, "flip" | "pose">, string>;
@@ -88,33 +84,28 @@ export type RaceCopy = {
   };
   results: {
     place: (ordinal: string) => string;
+    arrival: (ordinal: string) => string;
     show: string;
-    showRecord: (points: string) => string;
-    newShowRecord: string;
-    bestSeq: string;
     headline: { win: string; close: string; second: string; third: string; fourth: string };
     record: (time: string) => string;
-    standings: string;
-    yourRace: string;
-    secretFound: string;
-    perfect: string;
-    ok: string;
-    crashes: string;
-    hits: string;
-    shortcut: string;
-    yes: string;
-    no: string;
-    top: string;
-    air: string;
+    newRecord: string;
     again: string;
-    againTouch: string;
+    alt: string;
+    unlocked: (cart: string) => string;
     wonBy: Record<CartId, (seconds: string) => string>;
-    secret: string;
-    pigeons: string;
-    pigeonsFound: string;
     behind: Record<CartId, (seconds: string) => string>;
   };
-  touch: { crouch: string; jump: string; restart: string; pause: string };
+  garage: {
+    title: string;
+    track: (n: number, name: string) => string;
+    go: string;
+    traits: Record<CartId, string>;
+    locked: Record<"lina" | "mila", string>;
+    ghost: (on: boolean) => string;
+    keys: string;
+    touch: string;
+  };
+  touch: { crouch: string; jump: string };
   rivalNames: Record<CartId, string>;
   carts: Record<CartId, string>;
   youAre: (name: string) => string;
@@ -147,8 +138,6 @@ export const RACE_COPY = localized<RaceCopy>({
     shop: { fruit: "FRUTAS", pastel: "PASTEL", sale: "PROMOÇÃO!", detour: "DESVIO →", works: "OBRA", slow: "DEVAGAR", cheer: "VAI, DÉCO!", go: "LADEIRA ABAIXO" },
     passedBy: { deco: "O Déco passou você!", lina: "A Lina passou você!", bruno: "O Bruno passou você!", mila: "A Mila passou você!" },
     go: "JÁ!",
-    paused: "Pausado",
-    pausedHint: "Esc ou P para voltar · R reinicia",
     perfect: "POUSO PERFEITO!",
     gain: "+ embalo",
     ok: "Pousou torto",
@@ -198,12 +187,11 @@ export const RACE_COPY = localized<RaceCopy>({
     secret: "ANÃO DOURADO!",
     chalk: { hold: "SEGURA ↓", jump: "PULA!" },
     beep: "BIP! BIP!",
-    courses: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", antena: "Morro da Antena", test: "Pista de teste" },
+    courses: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", antena: "Morro da Antena" },
     sections: {
       arlindo: { start: "Largada", descent: "Descida", crests: "Lombadas", obstacles: "Obstáculos", arlindo: "Casa do Seu Arlindo", truck: "Caminhão do lixo", clothes: "Varal", final: "Descida final" },
       feira: { start: "Largada", descent: "Descida", fruit: "Frutas rolando", market: "Feira", descent2: "Segunda descida", stairs: "Escadaria", plaza: "Praça" },
       antena: { start: "Largada", descent: "Descida", works: "Obra", loop: "Looping", manhole: "Bueiro", final: "Escadarias", plaza: "Praça" },
-      test: { start: "Largada", descent: "Descida", rollers: "Ondulações", crest: "Crista", kicker: "Rampinha", bigRamp: "Rampão", obstacles: "Obstáculos", shortcut: "Atalho", finale: "Reta final" },
     },
     split: "Parcial",
     cobbles: "Paralelepípedo: agache para trepidar menos",
@@ -253,8 +241,6 @@ export const RACE_COPY = localized<RaceCopy>({
     },
     start: "LARGADA",
     finish: "CHEGADA",
-    finishTitle: "Chegada!",
-    newBest: "Novo recorde!",
     show: {
       label: "Show",
       tricks: { lip: "Pulo no ponto", perfect: "Pouso perfeito", rail: "Deslizando", wheelie: "Empinada", nearMiss: "Raspou!", crate: "Caixote quebrado" },
@@ -264,33 +250,33 @@ export const RACE_COPY = localized<RaceCopy>({
     },
     results: {
       place: (ordinal) => `${ordinal} lugar`,
+      arrival: (ordinal) => `Chegada em ${ordinal} lugar`,
       show: "Pontos de show",
-      showRecord: (points) => `Recorde: ${points}`,
-      newShowRecord: "Recorde de show!",
-      bestSeq: "Melhor sequência",
       headline: { win: "Você venceu!", close: "Quase!", second: "Dá pra buscar!", third: "Terceiro, mas inteiro!", fourth: "Quarto. Próxima é sua!" },
       record: (time) => `Recorde: ${time}`,
-      standings: "Classificação",
-      yourRace: "Sua corrida",
-      secretFound: "Achou o anão dourado!",
-      perfect: "Pousos perfeitos",
-      ok: "Pousos tortos",
-      crashes: "Capotadas",
-      hits: "Batidas",
-      shortcut: "Atalho",
-      yes: "sim",
-      no: "não",
-      top: "Velocidade máxima",
-      air: "Tempo no ar",
+      newRecord: "Recorde da pista!",
       again: "Correr de novo",
-      againTouch: "Correr de novo",
+      alt: "Trocar carrinho",
+      unlocked: (cart) => `${cart} liberada na garagem!`,
       wonBy: { deco: (s) => `Venceu o Déco por ${s} s!`, lina: (s) => `Venceu a Lina por ${s} s!`, bruno: (s) => `Venceu o Bruno por ${s} s!`, mila: (s) => `Venceu a Mila por ${s} s!` },
-      secret: "Anão dourado",
-      pigeons: "Pombos",
-      pigeonsFound: "Passou liso pelos pombos!",
       behind: { deco: (s) => `Faltaram ${s} s para passar o Déco`, lina: (s) => `Faltaram ${s} s para passar a Lina`, bruno: (s) => `Faltaram ${s} s para passar o Bruno`, mila: (s) => `Faltaram ${s} s para passar a Mila` },
     },
-    touch: { crouch: "AGACHAR", jump: "PULAR", restart: "Reiniciar", pause: "Pausar" },
+    garage: {
+      title: "Garagem",
+      track: (n, name) => `Pista ${n}: ${name}`,
+      go: "Correr!",
+      traits: {
+        deco: "Equilibrado. Levanta rápido depois de capotar.",
+        bruno: "Mostra onde o pulo cai e perdoa pouso torto. Mais lento.",
+        lina: "O ventilador empurra na subida. Pesado, gira devagar.",
+        mila: "Leve, gira rápido e acelera nas poças. Pouso exigente.",
+      },
+      locked: { lina: "Chegue na frente da Lina no Dia de Feira", mila: "Chegue na frente da Mila no Morro da Antena" },
+      ghost: (on) => `Fantasma do seu melhor: ${on ? "ligado" : "desligado"}`,
+      keys: "← → escolhem · ESPAÇO ou ENTER corre · G liga o fantasma",
+      touch: "Toque num carrinho e depois em CORRER!",
+    },
+    touch: { crouch: "AGACHAR", jump: "PULAR" },
     rivalNames: { deco: "Déco", lina: "Lina", bruno: "Bruno", mila: "Mila" },
     carts: { deco: "Relâmpago de Madeira", lina: "Turbina da Vovó", bruno: "Plano B", mila: "Banheira" },
     youAre: (name) => `${name} (você)`,
@@ -321,8 +307,6 @@ export const RACE_COPY = localized<RaceCopy>({
     shop: { fruit: "FRUIT", pastel: "PASTRIES", sale: "SALE!", detour: "DETOUR →", works: "WORKS", slow: "SLOW", cheer: "GO, DÉCO!", go: "DOWNHILL DERBY" },
     passedBy: { deco: "Déco passed you!", lina: "Lina passed you!", bruno: "Bruno passed you!", mila: "Mila passed you!" },
     go: "GO!",
-    paused: "Paused",
-    pausedHint: "Esc or P to resume · R restarts",
     perfect: "PERFECT LANDING!",
     gain: "+ speed",
     ok: "Wobbly landing",
@@ -372,12 +356,11 @@ export const RACE_COPY = localized<RaceCopy>({
     secret: "GOLDEN GNOME!",
     chalk: { hold: "HOLD ↓", jump: "JUMP!" },
     beep: "BEEP! BEEP!",
-    courses: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", antena: "Antenna Hill", test: "Test track" },
+    courses: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", antena: "Antenna Hill" },
     sections: {
       arlindo: { start: "Start", descent: "Descent", crests: "Bumps", obstacles: "Obstacles", arlindo: "Mr. Arlindo's house", truck: "Garbage truck", clothes: "Clothesline", final: "Final descent" },
       feira: { start: "Start", descent: "Descent", fruit: "Rolling fruit", market: "Market", descent2: "Second descent", stairs: "Stairway", plaza: "Square" },
       antena: { start: "Start", descent: "Descent", works: "Roadworks", loop: "Loop", manhole: "Manhole", final: "Stairways", plaza: "Square" },
-      test: { start: "Start", descent: "Descent", rollers: "Rollers", crest: "Crest", kicker: "Kicker", bigRamp: "Big ramp", obstacles: "Obstacles", shortcut: "Shortcut", finale: "Home stretch" },
     },
     split: "Split",
     cobbles: "Cobblestones: crouch to rattle less",
@@ -427,8 +410,6 @@ export const RACE_COPY = localized<RaceCopy>({
     },
     start: "START",
     finish: "FINISH",
-    finishTitle: "Finish!",
-    newBest: "New record!",
     show: {
       label: "Show",
       tricks: { lip: "Popped on the mark", perfect: "Perfect landing", rail: "Grinding", wheelie: "Wheelie", nearMiss: "Close call!", crate: "Busted crate" },
@@ -437,34 +418,34 @@ export const RACE_COPY = localized<RaceCopy>({
       drop: "Combo lost",
     },
     results: {
-      show: "Show points",
-      showRecord: (points) => `Best: ${points}`,
-      newShowRecord: "Show record!",
-      bestSeq: "Best combo",
       place: (ordinal) => `${ordinal} place`,
+      arrival: (ordinal) => `Finished ${ordinal}`,
+      show: "Show points",
       headline: { win: "You won!", close: "So close!", second: "You can catch them!", third: "Third, but in one piece!", fourth: "Fourth. Next one's yours!" },
       record: (time) => `Best: ${time}`,
-      standings: "Standings",
-      yourRace: "Your race",
-      secretFound: "Found the golden gnome!",
-      perfect: "Perfect landings",
-      ok: "Wobbly landings",
-      crashes: "Wipeouts",
-      hits: "Bumps",
-      shortcut: "Shortcut",
-      yes: "yes",
-      no: "no",
-      top: "Top speed",
-      air: "Air time",
+      newRecord: "Track record!",
       again: "Race again",
-      againTouch: "Race again",
+      alt: "Change cart",
+      unlocked: (cart) => `${cart} unlocked in the garage!`,
       wonBy: { deco: (s) => `Beat Déco by ${s} s!`, lina: (s) => `Beat Lina by ${s} s!`, bruno: (s) => `Beat Bruno by ${s} s!`, mila: (s) => `Beat Mila by ${s} s!` },
-      secret: "Golden gnome",
-      pigeons: "Pigeons",
-      pigeonsFound: "Slipped past the pigeons!",
       behind: { deco: (s) => `${s} s short of passing Déco`, lina: (s) => `${s} s short of passing Lina`, bruno: (s) => `${s} s short of passing Bruno`, mila: (s) => `${s} s short of passing Mila` },
     },
-    touch: { crouch: "CROUCH", jump: "JUMP", restart: "Restart", pause: "Pause" },
+    garage: {
+      title: "Garage",
+      track: (n, name) => `Track ${n}: ${name}`,
+      go: "Race!",
+      traits: {
+        deco: "Balanced. Gets back up fast after a wipeout.",
+        bruno: "Shows where the jump lands and forgives wobbly landings. Slower.",
+        lina: "The fan pushes uphill. Heavy, spins slowly.",
+        mila: "Light, spins fast and speeds up in puddles. Picky landings.",
+      },
+      locked: { lina: "Finish ahead of Lina on Market Day", mila: "Finish ahead of Mila on Antenna Hill" },
+      ghost: (on) => `Ghost of your best: ${on ? "on" : "off"}`,
+      keys: "← → pick · SPACE or ENTER races · G toggles the ghost",
+      touch: "Tap a cart, then RACE!",
+    },
+    touch: { crouch: "CROUCH", jump: "JUMP" },
     rivalNames: { deco: "Déco", lina: "Lina", bruno: "Bruno", mila: "Mila" },
     carts: { deco: "Wooden Lightning", lina: "Grandma's Turbo", bruno: "Plan B", mila: "The Tub" },
     youAre: (name) => `${name} (you)`,

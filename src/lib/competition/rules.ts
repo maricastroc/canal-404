@@ -2,6 +2,7 @@ import { GRID, PARTS, STEP_MS, type PartType } from "@/games/bad-ideas-lab/confi
 import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { attemptBonus, LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
+import { isCart, isRaceCourse, replayDownhill } from "@/games/downhill-derby/sim/judge";
 import { STEP_MS as STREET_STEP_MS } from "@/games/dead-end-street/config";
 import { ammoTotal, PHASE_IDS, phaseById } from "@/games/dead-end-street/phases";
 import { replayStreet } from "@/games/dead-end-street/sim";
@@ -21,7 +22,7 @@ export { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type 
 
 export type RunClaim = { won: boolean; score: number; stars: number; stats: GameStats; replay?: GameReplay };
 
-export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed";
+export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed" | "bad_run" | "run_failed";
 
 export type Verification = "checked" | "replayed";
 
@@ -435,6 +436,34 @@ const offAirVacation: GameRule = {
   },
 };
 
+const DERBY_STATS = ["place", "crashes", "show", "hits", "perfect", "bestSeq"] as const;
+
+const downhillDerby: GameRule = {
+  game: "downhill-derby",
+  version: 1,
+  levels: ["arlindo", "feira", "antena"],
+  stats: [...DERBY_STATS, "timeMs"],
+  judge(level, claim) {
+    if (!isRaceCourse(level)) return reject("unknown_level", "pista desconhecida");
+    const r = read(claim.stats, { timeMs: [1, 240_000], place: [1, 4], crashes: [0, 500], show: [0, 1_000_000], hits: [0, 500], perfect: [0, 500], bestSeq: [0, 1_000_000] });
+    if (!r.ok) return reject("bad_stats", r.detail);
+    const run = claim.replay;
+    if (!run || run.kind !== "downhill-run" || run.version !== 1 || !isCart(run.cart) || typeof run.tape !== "string" || !Array.isArray(run.rivals)) return reject("bad_run", "descida ausente");
+    const replay = replayDownhill(level, run.cart, run.tape, run.rivals);
+    if (!replay.ok) return replay.problem === "unfinished" ? reject("run_failed", "a descida refeita não chegou ao fim") : reject("bad_run", replay.problem === "bad_rivals" ? "rivais fora das fitas" : "comandos fora das regras");
+    const t = replay.tally;
+    const s = r.values;
+    const counted = { place: t.place, crashes: t.stats.crashes, show: t.stats.show, hits: t.stats.hits, perfect: t.stats.perfect, bestSeq: t.stats.bestSeq };
+    const flags = s.timeMs === t.timeMs && DERBY_STATS.every((key) => s[key] === counted[key]) ? [] : ["stats_mismatch"];
+    return settle(
+      claim,
+      { won: t.won, score: t.score, stars: t.stars, rank: [-t.timeMs, -t.stats.crashes, t.stats.show], minElapsedMs: t.timeMs },
+      undefined,
+      { verification: "replayed", flags },
+    );
+  },
+};
+
 export const RULES: Record<GameSlug, GameRule> = {
   "dead-end-street": deadEndStreet,
   "bad-ideas-lab": badIdeasLab,
@@ -442,6 +471,7 @@ export const RULES: Record<GameSlug, GameRule> = {
   "operation-recess": operationRecess,
   "pajama-war": pajamaWar,
   "off-air-vacation": offAirVacation,
+  "downhill-derby": downhillDerby,
 };
 
 export function hasLevel(game: GameSlug, level: string | null) {

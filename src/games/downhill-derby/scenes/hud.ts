@@ -2,9 +2,7 @@ import * as Phaser from "phaser";
 import type { Locale } from "@/i18n/locales";
 import { formatNumber, ordinal } from "@/i18n/format";
 import type { RaceCopy } from "../copy";
-import type { CartId } from "../sim/carts";
 import { INK } from "./cart";
-import { star } from "./fx";
 
 export const W = 1920;
 export const H = 1080;
@@ -12,9 +10,9 @@ const SPX = 1774;
 const BAR_X = 690;
 const BAR_W = 540;
 
-export type TouchButton = "left" | "right" | "crouch" | "jump" | "restart" | "pause";
+export type TouchButton = "left" | "right" | "crouch" | "jump";
 
-export type HudButton = TouchButton | "again";
+export type HudButton = TouchButton;
 
 type Circle = { id: TouchButton; x: number; y: number; r: number; label: string; icon?: "ccw" | "cw" };
 
@@ -31,49 +29,12 @@ export type StandingRow = { name: string; color: number; you: boolean; gap: stri
 
 export type EdgeTag = { side: "left" | "right"; y: number; color: number; text: string };
 
-export type Standing = { name: string; time: number; you: boolean; who: string };
-
 export type ShowMeter = { total: number; seq: number; mult: number; timer: number; active: boolean };
 
 const SHOW_X = 1468;
 const SHOW_Y = 16;
 const SHOW_W = 320;
 const SHOW_H = 58;
-
-export type ResultsData = {
-  time: number;
-  best: number;
-  newBest: boolean;
-  standings: Standing[];
-  place: number;
-  perfect: number;
-  ok: number;
-  crashes: number;
-  hits: number;
-  shortcut: boolean;
-  topSpeed: number;
-  air: number;
-  secret: boolean | null;
-  secretKind: "gnome" | "pigeons";
-  show: number;
-  showRecord: number;
-  newShowRecord: boolean;
-  bestSeq: number;
-  firstRace: boolean;
-  starsBefore: number;
-  calm: boolean;
-  touch: boolean;
-  keyboard: boolean;
-};
-
-const PLACE_TONES = [
-  { medal: "dd-medal-1", fill: 0xffc83d, deep: "#c98a12", band: 0xffe39a },
-  { medal: "dd-medal-2", fill: 0x9aa6b8, deep: "#5d6884", band: 0xdfe5ef },
-  { medal: "dd-medal-3", fill: 0xff8a3d, deep: "#c4561b", band: 0xffd7b8 },
-  { medal: "", fill: 0xd8d2ea, deep: "#6a6385", band: 0xe9e4f5 },
-];
-
-type AgainButton = { g: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Container; x: number; y: number; w: number; h: number; hover: boolean; down: boolean; focus: boolean; keycap: boolean };
 
 export function formatTime(seconds: number, locale: Locale) {
   if (!Number.isFinite(seconds)) return "--:--";
@@ -109,15 +70,10 @@ export class Hud {
   private readonly hintText: Phaser.GameObjects.Text;
   private readonly hintBg: Phaser.GameObjects.Graphics;
   private readonly countText: Phaser.GameObjects.Text;
-  private readonly pauseGroup: Phaser.GameObjects.Container;
   private readonly touchG: Phaser.GameObjects.Graphics;
   private readonly touchLabels: Phaser.GameObjects.Text[] = [];
-  private results: Phaser.GameObjects.Container | null = null;
   private lineup: Phaser.GameObjects.Container | null = null;
   private lineupAlpha = 0;
-  private resultButtons: { id: HudButton; x: number; y: number; w: number; h: number }[] = [];
-  private again: AgainButton | null = null;
-  private calm = false;
   private headline: Callout | null = null;
   private leaving: Callout[] = [];
   private tags: Callout[] = [];
@@ -209,13 +165,6 @@ export class Hud {
     this.showTrick = this.add(scene.add.text(SHOW_X, SHOW_Y + SHOW_H + 24, "", { fontFamily: fonts.display, fontSize: "26px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 7 }));
     this.showTrick.setOrigin(0.5, 0.5).setAlpha(0);
     this.touchG = this.add(scene.add.graphics());
-    const pg = scene.add.graphics();
-    pg.fillStyle(INK, 0.55);
-    pg.fillRect(0, 0, W, H);
-    const pt = scene.add.text(W / 2, H / 2 - 30, copy.paused, { fontFamily: fonts.display, fontSize: "110px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 16 }).setOrigin(0.5);
-    const ph = scene.add.text(W / 2, H / 2 + 70, copy.pausedHint, body(32)).setOrigin(0.5);
-    this.pauseGroup = this.add(scene.add.container(0, 0, [pg, pt, ph]));
-    this.pauseGroup.setVisible(false);
   }
 
   private add<T extends Phaser.GameObjects.GameObject>(obj: T) {
@@ -266,8 +215,6 @@ export class Hud {
     this.buttons.push({ id: "right", x: 380, y: 920, r: 96, label: "", icon: "cw" });
     this.buttons.push({ id: "crouch", x: 1500, y: 940, r: 104, label: this.copy.touch.crouch });
     this.buttons.push({ id: "jump", x: 1770, y: 800, r: 112, label: this.copy.touch.jump });
-    this.buttons.push({ id: "restart", x: 1660, y: 290, r: 44, label: "R" });
-    this.buttons.push({ id: "pause", x: 1850, y: 290, r: 44, label: "II" });
     for (const b of this.buttons) {
       if (!b.label) continue;
       const t = this.add(this.scene.add.text(b.x, b.y, b.label, { fontFamily: this.fonts.display, fontSize: `${b.r > 80 ? 32 : 30}px`, color: "#fbf5e6" }));
@@ -281,9 +228,6 @@ export class Hud {
   }
 
   hitTest(x: number, y: number): HudButton | null {
-    if (this.results) {
-      for (const b of this.resultButtons) if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b.id;
-    }
     for (const b of this.buttons) {
       const dx = x - b.x;
       const dy = y - b.y;
@@ -708,394 +652,6 @@ export class Hud {
       this.lineup.destroy();
       this.lineup = null;
     }
-  }
-
-  showPause(on: boolean) {
-    this.pauseGroup.setVisible(on);
-  }
-
-  showResults(r: ResultsData) {
-    this.hideResults();
-    this.calm = r.calm;
-    const s = this.scene;
-    const res = this.copy.results;
-    const c = s.add.container(0, 0);
-    const pw = 1080;
-    const ph = 800;
-    const px = W / 2 - pw / 2;
-    const py = H / 2 - ph / 2 + 10;
-    const L = (x: number, y: number) => [x - pw / 2, y - ph / 2] as const;
-    const display = (size: number, color = "#1d1830") => ({ fontFamily: this.fonts.display, fontSize: `${size}px`, color });
-    const body = (size: number, color = "#1d1830") => ({ fontFamily: this.fonts.body, fontSize: `${size}px`, color, fontStyle: "700" });
-    const raced = r.standings.length > 1;
-    const tone = PLACE_TONES[Math.min(3, r.place - 1)];
-    const dim = s.add.graphics();
-    dim.fillStyle(INK, 0.5);
-    dim.fillRect(0, 0, W, H);
-    dim.setAlpha(0);
-    c.add(dim);
-    const panel = s.add.container(px + pw / 2, py + ph / 2);
-    c.add(panel);
-    const g = s.add.graphics();
-    g.fillStyle(INK, 1);
-    g.fillRoundedRect(-pw / 2 - 8, -ph / 2 - 8, pw + 16, ph + 16, 38);
-    g.fillStyle(0xfbf5e6, 1);
-    g.fillRoundedRect(-pw / 2, -ph / 2, pw, ph, 30);
-    if (raced) {
-      g.fillStyle(tone.band, 0.75);
-      g.fillRoundedRect(-pw / 2, -ph / 2, pw, 318, { tl: 30, tr: 30, bl: 0, br: 0 });
-    }
-    g.lineStyle(4, INK, 0.18);
-    const dash = (x0: number, y0: number, x1: number, y1: number) => {
-      const len = Math.hypot(x1 - x0, y1 - y0);
-      for (let d = 0; d < len; d += 22) {
-        const a = d / len;
-        const b = Math.min(1, (d + 11) / len);
-        g.beginPath();
-        g.moveTo(...L(x0 + (x1 - x0) * a, y0 + (y1 - y0) * a));
-        g.lineTo(...L(x0 + (x1 - x0) * b, y0 + (y1 - y0) * b));
-        g.strokePath();
-      }
-    };
-    dash(40, 318, pw - 40, 318);
-    dash(532, 350, 532, 670);
-    panel.add(g);
-    const add = <T extends Phaser.GameObjects.GameObject>(o: T) => {
-      panel.add(o);
-      return o;
-    };
-    const text = (x: number, y: number, str: string, style: Phaser.Types.GameObjects.Text.TextStyle, ox = 0, oy = 0.5) => add(s.add.text(...L(x, y), str, style).setOrigin(ox, oy));
-    const me = r.standings[r.place - 1];
-    const tx = raced ? 340 : 60;
-    const hy = raced ? 0 : -24;
-    const placeLabel = raced ? text(tx, 64, res.place(ordinal(r.place, this.locale)).toUpperCase(), display(34, tone.deep)) : null;
-    const ahead = r.place > 1 ? r.standings[r.place - 2] : null;
-    const next = r.place === 1 ? r.standings[1] : null;
-    const gapTo = ahead ?? next;
-    const gap = gapTo && me ? Math.abs(me.time - gapTo.time) : Infinity;
-    const headlineText = !raced ? this.copy.finishTitle : r.place === 1 ? res.headline.win : r.place === 2 ? (gap < 1 ? res.headline.close : res.headline.second) : r.place === 3 ? res.headline.third : res.headline.fourth;
-    const headline = text(tx, 128 + hy, headlineText.toUpperCase(), display(r.place === 1 ? 70 : 60, r.place === 1 ? "#e8433a" : "#1d1830"));
-    const time = text(tx, 212 + hy, formatTime(r.time, this.locale), display(84));
-    let sticker: Phaser.GameObjects.Container | null = null;
-    if (r.newBest) {
-      const label = s.add.text(0, 0, this.copy.newBest.toUpperCase(), display(28)).setOrigin(0.5);
-      const w = label.width + 36;
-      const sg = s.add.graphics();
-      sg.fillStyle(INK, 1);
-      sg.fillRoundedRect(-w / 2 - 4, -26, w + 8, 52, 14);
-      sg.fillStyle(0x63d6c1, 1);
-      sg.fillRoundedRect(-w / 2, -22, w, 44, 11);
-      sticker = add(s.add.container(...L(tx + time.width + 40 + w / 2, 196 + hy), [sg, label]));
-      sticker.setAngle(-6);
-    } else if (!r.firstRace) {
-      text(tx + time.width + 32, 198 + hy, res.record(formatTime(r.best, this.locale)), body(26, "#6a6385"));
-    }
-    const showLine = text(tx + time.width + 32, 240 + hy, `${this.copy.show.label}: ${formatNumber(r.show, this.locale)}`, body(26, "#1d1830"));
-    let showChip: Phaser.GameObjects.Container | null = null;
-    if (r.newShowRecord) {
-      const label = s.add.text(0, 0, res.newShowRecord.toUpperCase(), display(20)).setOrigin(0.5);
-      const w = label.width + 26;
-      const sg = s.add.graphics();
-      sg.fillStyle(INK, 1);
-      sg.fillRoundedRect(-w / 2 - 3, -19, w + 6, 38, 11);
-      sg.fillStyle(0xf27aa8, 1);
-      sg.fillRoundedRect(-w / 2, -16, w, 32, 9);
-      showChip = add(s.add.container(...L(tx + time.width + 32 + showLine.width + 18 + w / 2, 238 + hy), [sg, label]));
-      showChip.setAngle(-4);
-    } else if (r.showRecord > 0) {
-      text(tx + time.width + 32 + showLine.width + 12, 241 + hy, `· ${res.showRecord(formatNumber(r.showRecord, this.locale))}`, body(22, "#6a6385"));
-    }
-    let verdict = "";
-    if (ahead && me && !ahead.you) verdict = res.behind[ahead.who as CartId](formatSeconds(gap, this.locale, gap < 1 ? 2 : 1));
-    else if (next && me && !next.you) verdict = res.wonBy[next.who as CartId](formatSeconds(gap, this.locale, gap < 1 ? 2 : 1));
-    const verdictText = verdict ? text(tx, 280, verdict, body(28, r.place === 1 ? "#2f9e6e" : "#c4352c")) : null;
-
-    let medal: Phaser.GameObjects.Container | null = null;
-    const stars: Phaser.GameObjects.Image[] = [];
-    let rays: Phaser.GameObjects.Graphics | null = null;
-    if (raced) {
-      const [mx, my] = L(178, 138);
-      if (r.place === 1) {
-        rays = add(s.add.graphics());
-        rays.setPosition(mx, my);
-        rays.fillStyle(0xfff1a8, 0.85);
-        for (let k = 0; k < 14; k += 1) {
-          const a = (k / 14) * Math.PI * 2;
-          rays.fillTriangle(0, 0, Math.cos(a - 0.11) * 170, Math.sin(a - 0.11) * 170, Math.cos(a + 0.11) * 170, Math.sin(a + 0.11) * 170);
-        }
-        rays.setAlpha(0);
-      }
-      const badge = tone.medal ? s.add.image(0, 0, tone.medal).setDisplaySize(226, 226) : s.add.graphics().fillStyle(INK, 1).fillCircle(0, 0, 92).fillStyle(tone.fill, 1).fillCircle(0, 0, 84);
-      const num = s.add.text(0, 2, ordinal(r.place, this.locale), display(r.place === 1 ? 66 : 60)).setOrigin(0.5);
-      if (num.width > 96) num.setScale(96 / num.width);
-      medal = add(s.add.container(mx, my, [badge, num]));
-      medal.setAngle(-6);
-      for (let k = 0; k < 3; k += 1) {
-        const earned = k < 4 - r.place;
-        const [sx, sy] = L(178 + (k - 1) * 60, 282);
-        stars.push(add(s.add.image(sx, sy, earned ? "dd-star-on" : "dd-star-off").setDisplaySize(54, 54)));
-      }
-    }
-
-    text(50, 362, res.standings.toUpperCase(), display(26, "#7b62c4"));
-    const rowY = (i: number) => 418 + i * 64;
-    const leader = r.standings[0];
-    const rows: Phaser.GameObjects.GameObject[][] = [];
-    r.standings.forEach((st, i) => {
-      const y = rowY(i);
-      const parts: Phaser.GameObjects.GameObject[] = [];
-      if (st.you) {
-        const hl = add(s.add.graphics());
-        hl.fillStyle(0xffc83d, 0.3);
-        hl.fillRoundedRect(...L(36, y - 28), 474, 56, 18);
-        parts.push(hl);
-      }
-      const t = PLACE_TONES[Math.min(3, i)];
-      const disc = add(s.add.graphics());
-      const [dx, dy] = L(76, y);
-      disc.fillStyle(INK, 1);
-      disc.fillCircle(dx, dy, 21);
-      disc.fillStyle(t.fill, 1);
-      disc.fillCircle(dx, dy, 17);
-      parts.push(disc, text(76, y + 1, String(i + 1), display(22), 0.5, 0.5));
-      parts.push(add(s.add.image(...L(126, y + 6), `${st.who}-head-${i === 0 ? "happy" : i === r.standings.length - 1 ? "sad" : "normal"}`).setScale(0.24).setOrigin(0.5, 0.62)));
-      parts.push(text(160, y, st.name, body(30, st.you ? "#c4352c" : "#1d1830")));
-      parts.push(text(490, i === 0 ? y : y - 9, formatTime(st.time, this.locale), body(30), 1, 0.5));
-      if (i > 0 && leader) parts.push(text(490, y + 19, `+${formatSeconds(st.time - leader.time, this.locale, st.time - leader.time < 1 ? 2 : 1)} s`, body(19, "#6a6385"), 1, 0.5));
-      rows.push(parts);
-    });
-
-    text(566, 362, res.yourRace.toUpperCase(), display(26, "#7b62c4"));
-    const kmh = Math.round(r.topSpeed * 0.036);
-    const highlights: [string, string, string | null][] = [
-      [formatNumber(r.perfect, this.locale), res.perfect, null],
-      [formatNumber(r.crashes, this.locale), res.crashes, null],
-      [formatNumber(r.show, this.locale), res.show, null],
-      [formatNumber(kmh, this.locale), res.top, this.copy.kmh],
-    ];
-    const statParts: Phaser.GameObjects.GameObject[] = [];
-    highlights.forEach(([value, label, unit], k) => {
-      const x = 566 + (k % 2) * 238;
-      const y = 418 + Math.floor(k / 2) * 86;
-      const v = text(x, y, value, display(48));
-      statParts.push(v);
-      if (unit) statParts.push(text(x + v.width + 8, y + 8, unit, body(20, "#6a6385")));
-      statParts.push(text(x, y + 38, label, body(21, "#6a6385")));
-    });
-    let secretChip: Phaser.GameObjects.Container | null = null;
-    const minor: [string, string][] = [
-      [res.ok, formatNumber(r.ok, this.locale)],
-      [res.hits, formatNumber(r.hits, this.locale)],
-      [res.air, `${formatSeconds(r.air, this.locale)} s`],
-      [res.shortcut, r.shortcut ? res.yes : res.no],
-    ];
-    if (r.bestSeq > 0) minor.push([res.bestSeq, formatNumber(r.bestSeq, this.locale)]);
-    if (r.secret === false) minor.push([r.secretKind === "pigeons" ? res.pigeons : res.secret, res.no]);
-    const mg = add(s.add.graphics());
-    mg.lineStyle(3, INK, 0.12);
-    mg.lineBetween(...L(566, 580), ...L(1036, 580));
-    statParts.push(mg);
-    minor.forEach(([label, value], k) => {
-      const x = 566 + (k % 2) * 238;
-      const y = 604 + Math.floor(k / 2) * 30;
-      const l = text(x, y, `${label}:`, body(19, "#8a83a3"));
-      statParts.push(l, text(x + l.width + 6, y, value, body(19, "#1d1830")));
-    });
-    if (r.secret === true) {
-      const gnome = s.add.image(0, 0, r.secretKind === "pigeons" ? "f-pombo-a" : "p-gnome-gold").setOrigin(0.5, 0.5);
-      gnome.setScale(44 / (gnome.height || 44));
-      const label = s.add.text(28, 0, (r.secretKind === "pigeons" ? res.pigeonsFound : res.secretFound).toUpperCase(), display(22, "#c98a12")).setOrigin(0, 0.5);
-      const w = label.width + 60;
-      const cg = s.add.graphics();
-      cg.fillStyle(INK, 1);
-      cg.fillRoundedRect(-34, -30, w + 16, 60, 18);
-      cg.fillStyle(0xfff1a8, 1);
-      cg.fillRoundedRect(-30, -26, w + 8, 52, 15);
-      secretChip = add(s.add.container(...L(pw - 48 - (w + 8) + 30, 62), [cg, gnome, label]));
-      secretChip.setAngle(2);
-    }
-
-    this.resultButtons = [];
-    const bw = 480;
-    const bh = 86;
-    const bx = pw / 2 - bw / 2;
-    const by = ph - 104;
-    const keycap = !r.touch;
-    const ag = add(s.add.graphics());
-    const word = s.add.text(keycap ? -30 : 0, 0, (r.touch ? res.againTouch : res.again).toUpperCase(), display(38)).setOrigin(0.5);
-    const labelParts: Phaser.GameObjects.GameObject[] = [word];
-    if (keycap) {
-      const kg = s.add.graphics();
-      const kx = word.width / 2 - 30 + 34;
-      kg.fillStyle(INK, 1);
-      kg.fillRoundedRect(kx - 4, -26, 52, 52, 12);
-      kg.fillStyle(0xfbf5e6, 1);
-      kg.fillRoundedRect(kx, -22, 44, 40, 9);
-      kg.fillStyle(0xdcc394, 1);
-      kg.fillRoundedRect(kx, 12, 44, 6, 3);
-      labelParts.push(kg, s.add.text(kx + 22, -3, "R", display(24)).setOrigin(0.5));
-    }
-    const label = add(s.add.container(...L(pw / 2, by + bh / 2), labelParts));
-    this.again = { g: ag, label, x: bx, y: by, w: bw, h: bh, hover: false, down: false, focus: r.keyboard, keycap };
-    this.drawAgain(pw, ph);
-    this.resultButtons.push({ id: "again", x: px + bx, y: py + by, w: bw, h: bh });
-
-    this.add(c);
-    this.results = c;
-    const tw = (targets: unknown, props: Record<string, unknown>) => s.tweens.add({ ...props, targets } as Phaser.Types.Tweens.TweenBuilderConfig);
-    tw(dim, { alpha: 1, duration: 200 });
-    panel.setScale(0.86).setAlpha(0);
-    tw(panel, { scale: 1, alpha: 1, duration: 260, ease: "Back.Out" });
-    if (placeLabel) {
-      placeLabel.setAlpha(0);
-      tw(placeLabel, { alpha: 1, delay: 180, duration: 160 });
-    }
-    headline.setScale(1.35).setAlpha(0);
-    tw(headline, { scale: 1, alpha: 1, delay: 230, duration: 280, ease: "Back.Out" });
-    time.setAlpha(0);
-    tw(time, { alpha: 1, delay: 320, duration: 200 });
-    if (verdictText) {
-      verdictText.setAlpha(0);
-      tw(verdictText, { alpha: 1, delay: 420, duration: 200 });
-    }
-    if (medal) {
-      const m = medal;
-      m.setScale(2.3).setAlpha(0).setAngle(-34);
-      tw(m, {
-        scale: 1,
-        alpha: 1,
-        angle: -6,
-        delay: 160,
-        duration: 380,
-        ease: "Back.Out",
-        onComplete: () => this.burst(panel, m.x, m.y, r.place === 1 ? 12 : 7, r.place === 1 ? 0xffcf3f : r.place === 2 ? 0xdfe5ef : 0xff9a5c, r.place === 3),
-      });
-    }
-    if (rays) {
-      const ry = rays;
-      tw(ry, { alpha: 1, delay: 380, duration: 300 });
-      if (!r.calm) tw(ry, { angle: 360, duration: 9000, repeat: -1 });
-    }
-    stars.forEach((st, k) => {
-      const earned = k < 4 - r.place;
-      st.setScale(0).setAlpha(0);
-      const sx = 54 / (st.width || 54);
-      tw(st, {
-        scale: sx,
-        alpha: 1,
-        delay: 560 + k * 140,
-        duration: 260,
-        ease: "Back.Out",
-        onComplete: () => {
-          if (earned && k >= r.starsBefore) this.burst(panel, st.x, st.y, 5, 0xffcf3f, false, 0.6);
-        },
-      });
-    });
-    if (showChip) {
-      const sc = showChip;
-      sc.setScale(0);
-      tw(sc, { scale: 1, delay: 760, duration: 320, ease: "Back.Out" });
-    }
-    if (sticker) {
-      const st = sticker;
-      st.setScale(0);
-      tw(st, { scale: 1, delay: 660, duration: 320, ease: "Back.Out" });
-      tw(st, { angle: 4, delay: 980, duration: 140, yoyo: true, repeat: 1 });
-    }
-    rows.forEach((parts, i) => {
-      for (const o of parts) {
-        const go = o as unknown as Phaser.GameObjects.Components.Alpha & Phaser.GameObjects.Components.Transform;
-        const x0 = go.x;
-        go.setAlpha(0);
-        go.x = x0 - 30;
-        tw(go, { alpha: 1, x: x0, delay: 420 + i * 90, duration: 240, ease: "Cubic.Out" });
-      }
-    });
-    for (const o of statParts) {
-      const go = o as unknown as Phaser.GameObjects.Components.Alpha;
-      go.setAlpha(0);
-      tw(o, { alpha: 1, delay: 620, duration: 260 });
-    }
-    if (secretChip) {
-      const sc = secretChip;
-      sc.setScale(0);
-      tw(sc, { scale: 1, delay: 860, duration: 300, ease: "Back.Out", onComplete: () => this.burst(panel, sc.x + 10, sc.y, 6, 0xffcf3f, false, 0.7) });
-    }
-    label.setAlpha(0);
-    ag.setAlpha(0);
-    tw([label, ag], { alpha: 1, delay: 300, duration: 200 });
-  }
-
-  private burst(parent: Phaser.GameObjects.Container, x: number, y: number, count: number, color: number, dust: boolean, size = 1) {
-    if (this.calm) return;
-    const s = this.scene;
-    for (let k = 0; k < count; k += 1) {
-      const g = s.add.graphics();
-      const a = (k / count) * Math.PI * 2 + 0.3;
-      if (dust) {
-        g.fillStyle(0xe9dcc0, 0.95);
-        g.fillCircle(0, 0, 16 * size);
-      } else star(g, 0, 0, 13 * size, a, color, 1);
-      g.setPosition(x, y);
-      parent.add(g);
-      const dist = (dust ? 110 : 150) * size;
-      s.tweens.add({ targets: g, x: x + Math.cos(a) * dist, y: y + Math.sin(a) * dist * (dust ? 0.4 : 1), alpha: 0, scale: dust ? 1.8 : 0.4, duration: dust ? 520 : 460, ease: "Cubic.Out", onComplete: () => g.destroy() });
-    }
-  }
-
-  private drawAgain(pw = 1080, ph = 760) {
-    const a = this.again;
-    if (!a) return;
-    const g = a.g;
-    const x = a.x - pw / 2;
-    const y = a.y - ph / 2 + (a.down ? 3 : a.hover ? -3 : 0);
-    g.clear();
-    if (a.focus) {
-      g.lineStyle(5, 0x2f86c9, 1);
-      g.strokeRoundedRect(x - 14, y - 14, a.w + 28, a.h + 28, 30);
-    }
-    g.fillStyle(INK, 1);
-    g.fillRoundedRect(x - 5, y - 5 + (a.down ? 0 : 6), a.w + 10, a.h + 10, 24);
-    g.fillRoundedRect(x - 5, y - 5, a.w + 10, a.h + 10, 24);
-    g.fillStyle(a.down ? 0xf2b92f : a.hover ? 0xffdc66 : 0xffcf3f, 1);
-    g.fillRoundedRect(x, y, a.w, a.h, 19);
-    g.fillStyle(0xffffff, a.hover ? 0.35 : 0.25);
-    g.fillRoundedRect(x + 12, y + 8, a.w - 24, 14, 7);
-    a.label.y = y + a.h / 2;
-  }
-
-  pointerAt(x: number, y: number, down = false) {
-    const id = this.hitTest(x, y);
-    const a = this.again;
-    if (a) {
-      const over = id === "again";
-      if (over !== a.hover || (over && down) !== a.down || (over && a.focus)) {
-        a.hover = over;
-        a.down = over && down;
-        a.focus = false;
-        this.drawAgain();
-      }
-    }
-    return id !== null;
-  }
-
-  keyboardFocus() {
-    const a = this.again;
-    if (!a || a.focus) return;
-    a.focus = true;
-    a.hover = false;
-    this.drawAgain();
-  }
-
-  hideResults() {
-    this.results?.destroy();
-    this.results = null;
-    this.again = null;
-    this.resultButtons = [];
-  }
-
-  get resultsShown() {
-    return this.results !== null;
   }
 
   clearPopups() {

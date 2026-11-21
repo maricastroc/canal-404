@@ -7,7 +7,9 @@ export type PlacedPartReplay = { type: string; x: number; y: number; rot: number
 
 export type LaunchReplay = { at: number; angle: number; power: number; ammo: string };
 
-export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 2; launches: LaunchReplay[] };
+export type DownhillReplay = { kind: "downhill-run"; version: 1; cart: string; tape: string; rivals: number[] };
+
+export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 2; launches: LaunchReplay[] } | DownhillReplay;
 
 export type GameResult = {
   won: boolean;

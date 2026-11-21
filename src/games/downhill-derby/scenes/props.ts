@@ -1,4 +1,4 @@
-import type { TestHill } from "../sim/testHill";
+import type { Course } from "../sim/course";
 import { INK } from "./cart";
 import type { Builder, Zone, ZoneKey } from "./terrain";
 
@@ -32,7 +32,7 @@ export const PROP_FILES: [string, string][] = [
 
 type Kit = { w: number; place: (x: number) => void };
 
-export function dressGaps(b: Builder, zones: Zone[], track: TestHill): { x: number; depth: number }[] {
+export function dressGaps(b: Builder, zones: Zone[], track: Course): { x: number; depth: number }[] {
   const deck = track.surfaces[1];
   const spans = b.taken.slice().sort((p, q) => p[0] - q[0]);
   for (const rp of track.ramps) spans.push([rp.x0 - 220, rp.x1 + 260]);

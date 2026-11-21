@@ -1,8 +1,6 @@
 import type { Ramp, Track } from "./track";
 
-export type CourseId = "arlindo" | "feira" | "antena" | "test";
-
-export const COURSE_IDS: readonly CourseId[] = ["arlindo", "feira", "antena", "test"];
+export type CourseId = "arlindo" | "feira" | "antena";
 
 export type ZoneKey = "street" | "market" | "works" | "final" | "neighborhood" | "feira" | "antena";
 
