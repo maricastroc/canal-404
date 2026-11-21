@@ -84,8 +84,12 @@ class AudioEngine {
       this.noiseBuffer = this.createNoise();
       this.pulseWave = this.createPulse();
     }
-    if (this.ctx.state === "suspended") {
-      void this.ctx.resume();
+    if (this.ctx.state !== "running") {
+      const blip = this.ctx.createBufferSource();
+      blip.buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+      blip.connect(this.ctx.destination);
+      blip.start(0);
+      this.ctx.resume().catch(() => {});
     }
     if (!this.unlocked) {
       this.unlocked = true;

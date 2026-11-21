@@ -36,7 +36,7 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
     const unlock = () => {
       getAudio().unlock();
     };
-    const events = ["pointerdown", "keydown", "touchstart"] as const;
+    const events = ["pointerdown", "pointerup", "touchend", "click", "keydown"] as const;
     events.forEach((e) => window.addEventListener(e, unlock, { capture: true, passive: true }));
     return () => {
       events.forEach((e) => window.removeEventListener(e, unlock, { capture: true }));
