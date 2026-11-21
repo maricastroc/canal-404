@@ -1,18 +1,22 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import { CHAR_RES, FOOT, H, HINT_R, INTERACT_R, SCORE, W, type AreaId, type Dir } from "../config";
-import { ALL_POSTERS, freshState, saveState, type FolkKey, type Item, type State } from "../save";
+import { sameFrame, type Frame } from "../layout";
+import { ALL_POSTERS, ALL_TOKENS, freshState, saveState, type FolkKey, type Item, type State } from "../save";
 import { RESORT_SFX, type ResortSfx } from "../sounds";
 import { ITEM_ICON, POSTER_SCRIPT, SCRIPTS, SPEAKERS, foundText, hasMain, mainObjective, score, spotLabel, type Director, type Mood, type Speaker } from "../story";
 import type { VacationText } from "../text/pt-BR";
 import { ArcadeGame } from "../ui/arcade";
+import { DeckHud } from "../ui/deck";
 import { DialogBox } from "../ui/dialog";
 import { ResortHud } from "../ui/hud";
 import { Journal, pinUi, type Tab } from "../ui/journal";
-import { cartoonText } from "../../kit/ui";
+import { PhoneJournal } from "../ui/phoneJournal";
+import { cartoonText, fitText } from "../../kit/ui";
 import { AREAS, POOL, type Builder, type NearOpts, type PropOpts, type React, type Show, type SpotDef, type Surface } from "./areas";
 import { critter, dustAt, footprint, resident, splashAt, type CritterDef, type ResidentDef } from "./life";
 import { Npc, type NpcOpts } from "./npc";
+import { currentFrame, watchFrame } from "./frame";
 import { findPath } from "./path";
 import { Player } from "./player";
 import { makeTextures } from "./textures";
@@ -79,9 +83,9 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private kicks: Kick[] = [];
   private hintMarks = new Map<string, Phaser.GameObjects.Image>();
   private player: Player | null = null;
-  private hud!: ResortHud;
+  private hud!: ResortHud | DeckHud;
   private dialog!: DialogBox;
-  private journal!: Journal;
+  private journal!: Journal | PhoneJournal;
   private arcade!: ArcadeGame;
   private keys!: Record<"up" | "down" | "left" | "right" | "w" | "a" | "s" | "d", Phaser.Input.Keyboard.Key>;
   private busy = false;
@@ -98,7 +102,13 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private speakLabel: string | undefined;
   private focus: Phaser.GameObjects.Graphics | null = null;
   private arrows: { img: Phaser.GameObjects.Image; x: number; y: number; angle: number }[] = [];
-  private frames: { rect: [number, number, number, number]; zone: [number, number, number, number] }[] = [];
+  private frames: { rect: [number, number, number, number]; zone: [number, number, number, number]; fit?: boolean }[] = [];
+  private screen!: Frame;
+  private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private pendingFrame: Frame | null = null;
+  private stopWatch: (() => void) | null = null;
+  private talkFocus: Npc | null = null;
+  private zoomGoal = 1;
   private areaActions = new Map<string, () => Promise<void> | void>();
   private greets: { who: FolkKey; lines: string[] | (() => string[]); r: number; inside: boolean; next: number; i: number }[] = [];
   private nears: Near[] = [];
@@ -112,7 +122,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
     },
     flash: (alpha = 0.6) => {
       if (this.reduced) return;
-      const veil = this.add.rectangle(0, 0, W, H, 0xffffff, alpha).setOrigin(0, 0).setScrollFactor(0).setDepth(9500);
+      const veil = this.add.rectangle(0, 0, this.scale.gameSize.width, this.scale.gameSize.height, 0xffffff, alpha).setOrigin(0, 0).setScrollFactor(0).setDepth(9500);
+      pinUi(veil);
       this.tweens.add({ targets: veil, alpha: 0, duration: 220, ease: "Quad.easeOut", onComplete: () => veil.destroy() });
     },
     shake: (ms = 200, i = 0.004) => {
@@ -168,6 +179,11 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.nears = [];
     this.reactive = [];
     this.surfaces = [];
+    this.uiCam = null;
+    this.pendingFrame = null;
+    this.stopWatch = null;
+    this.talkFocus = null;
+    this.speakLabel = undefined;
   }
 
   create() {
@@ -177,17 +193,26 @@ export class WorldScene extends Phaser.Scene implements Builder {
     makeTextures(this);
     this.s = (this.registry.get("state") as State | null) ?? freshState();
     this.registry.set("state", this.s);
+    this.screen = currentFrame(this);
+    const tall = this.screen.kind === "tall";
+    if (tall) {
+      this.uiCam = this.cameras.add(0, 0, this.screen.width, this.screen.height, false, "ui");
+      this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, this.routeObject, this);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, this.routeObject, this));
+    }
     this.cameras.main.setBackgroundColor("#1d1830");
     AREAS[this.area](this);
     this.focus = this.add.graphics().setDepth(1.35).setVisible(false);
     this.collectTall();
-    this.cameras.main.setBounds(0, 0, this.w, this.h);
+    if (tall) this.placeMain();
+    else this.cameras.main.setBounds(0, 0, this.w, this.h);
 
-    this.hud = new ResortHud(this, this.ctx.fonts, this.reduced, this.text.hud.pause);
+    this.hud = tall ? new DeckHud(this, this.ctx.fonts, this.reduced, { ...this.text.touch, pause: this.text.hud.pause }, this.screen) : new ResortHud(this, this.ctx.fonts, this.reduced, this.text.hud.pause);
     this.hud.enableTouch(TOUCH_UI);
-    this.dialog = new DialogBox(this, this.ctx.fonts, this.reduced, () => this.sfx("select", 0.6));
-    this.journal = new Journal(this, this.ctx.fonts, this.reduced, this.text);
+    this.dialog = new DialogBox(this, this.ctx.fonts, this.reduced, () => this.sfx("select", 0.6), this.screen);
+    this.journal = tall ? new PhoneJournal(this, this.ctx.fonts, this.reduced, this.text, this.screen) : new Journal(this, this.ctx.fonts, this.reduced, this.text);
     this.arcade = new ArcadeGame(this, this.ctx.fonts, this.reduced, (n, v) => this.sfx(n, v), this.text.arcade);
+    this.arcade.layout(this.screen);
 
     if (this.mode === "attract") {
       this.hud.hide(true);
@@ -205,12 +230,11 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.player.onStep = () => this.onStep();
       this.player.sync(0);
       this.unstick();
-      const [cx0, cy0] = this.cameraTarget(this.player);
-      this.cam = { x: cx0, y: cy0 };
-      this.cameras.main.setScroll(this.cam.x, this.cam.y);
+      this.snapCamera();
       this.save();
       if (this.mode === "play") this.hud.flashArea(this.text.areas[this.area]);
       this.lastObjective = mainObjective(this.s, this.text).text;
+      this.syncDeck(false);
       this.emitScore();
       if (this.area === "beach" && this.s.flags.seaPaused && !this.s.flags.gotOrder) this.hud.vhsOn(true, this.text.hud.pause);
     }
@@ -235,6 +259,81 @@ export class WorldScene extends Phaser.Scene implements Builder {
     }
     if (this.mode === "party") this.time.delayedCall(400, () => void this.party());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.save());
+    const release = () => this.hud.releaseStick();
+    this.events.on(Phaser.Scenes.Events.PAUSE, release);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.PAUSE, release));
+    this.stopWatch = watchFrame(
+      this,
+      (frame) => this.relayout(frame),
+      (frame) => {
+        this.pendingFrame = frame;
+      },
+    );
+  }
+
+  private routeObject(obj: Phaser.GameObjects.GameObject) {
+    this.uiCam?.ignore(obj);
+  }
+
+  private get upright() {
+    return this.screen.kind === "tall";
+  }
+
+  private placeMain() {
+    const f = this.screen;
+    if (f.kind !== "tall") return;
+    const r = this.mode === "play" ? f.stage : { x: 0, y: 0, w: f.width, h: f.height };
+    const cam = this.cameras.main;
+    cam.setViewport(r.x, r.y, r.w, r.h);
+    cam.setZoom(f.zoom);
+    this.zoomGoal = f.zoom;
+  }
+
+  private relayout(frame: Frame) {
+    if (sameFrame(this.screen, frame)) return;
+    this.screen = frame;
+    if (frame.kind !== "tall") return;
+    this.uiCam?.setSize(frame.width, frame.height);
+    this.placeMain();
+    if (this.hud instanceof DeckHud) this.hud.layout(frame);
+    this.dialog.layoutFrame(frame);
+    if (this.journal instanceof PhoneJournal) this.journal.layout(frame);
+    this.arcade.layout(frame);
+    if (!this.vars.panLock) this.snapCamera();
+  }
+
+  private trySwap() {
+    const next = this.pendingFrame;
+    if (!next || this.leaving || this.mode === "party") return;
+    if (this.mode === "play" && (this.busy || this.dialog.open || this.journal.open || this.arcade.active)) return;
+    this.pendingFrame = null;
+    this.stopWatch?.();
+    this.save();
+    this.registry.set("frame", next);
+    this.scale.setGameSize(next.width, next.height);
+    this.scene.restart({ mode: this.mode, area: this.area, spawn: this.mode === "attract" ? "attract" : "" });
+  }
+
+  private syncDeck(flash: boolean) {
+    const hud = this.hud;
+    if (!(hud instanceof DeckHud)) return;
+    const sc = score(this.s);
+    hud.setCounts([sc.posters, ALL_POSTERS.length], [sc.tokens, ALL_TOKENS.length]);
+    if (this.mode === "play") hud.setObjective(mainObjective(this.s, this.text).text, flash);
+  }
+
+  private tapMark(x: number, y: number) {
+    if (!TOUCH_UI && !this.upright) return;
+    const g = this.add.graphics().setDepth(1.36);
+    g.lineStyle(6, 0xfffaf0, 0.9);
+    g.strokeEllipse(0, 0, 90, 28);
+    g.setPosition(x, y);
+    if (this.reduced) {
+      this.time.delayedCall(260, () => g.destroy());
+      return;
+    }
+    g.setScale(0.5);
+    this.tweens.add({ targets: g, scale: 1.25, alpha: 0, duration: 420, ease: "Quad.easeOut", onComplete: () => g.destroy() });
   }
 
   size(w: number, h: number, minY: number, maxY: number) {
@@ -389,8 +488,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.arrows.push({ img, x, y, angle });
   }
 
-  frame(rect: [number, number, number, number], zone: [number, number, number, number]) {
-    this.frames.push({ rect, zone });
+  frame(rect: [number, number, number, number], zone: [number, number, number, number], fit = false) {
+    this.frames.push({ rect, zone, fit });
   }
 
   act(name: string, fn: () => Promise<void> | void) {
@@ -482,13 +581,18 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => this.onPointerDown(p));
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
       if (this.mode === "attract") return;
+      if (this.journal instanceof PhoneJournal && this.journal.open) this.journal.pointerMove(p);
       this.hud.pointerMove(p);
       if (this.arcade.active && p.isDown) this.arcade.pointer(p.x, true);
       if (this.dialog.waitingChoice) this.dialog.pointer(p.x, p.y, false);
     });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer) => {
+      if (this.journal instanceof PhoneJournal) this.journal.pointerUp(p);
       this.hud.pointerUp(p);
       this.arcade.release();
+    });
+    this.input.on(Phaser.Input.Events.POINTER_WHEEL, (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      if (this.journal instanceof PhoneJournal && this.journal.open) this.journal.scrollBy(dy / this.screen.unit);
     });
   }
 
@@ -508,6 +612,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
       } else if (key === "arrowleft" || key === "a" || key === "q") this.journal.step(-1, this.s, this.area, ...this.mapRel());
       else if (key === "arrowright" || key === "d" || key === "e") this.journal.step(1, this.s, this.area, ...this.mapRel());
       else if (/^[1-5]$/.test(key)) this.journal.switchTo((["missions", "found", "collection", "people", "map"] as Tab[])[Number(key) - 1], this.s, this.area, ...this.mapRel());
+      else if (this.journal instanceof PhoneJournal && (key === "arrowup" || key === "w")) this.journal.scrollBy(-60);
+      else if (this.journal instanceof PhoneJournal && (key === "arrowdown" || key === "s")) this.journal.scrollBy(60);
       return;
     }
     if (key === "escape" || key === "p") {
@@ -535,7 +641,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private onPointerDown(p: Phaser.Input.Pointer) {
     if (this.mode === "attract") return;
     if (this.journal.open) {
-      const hit = this.journal.hit(p.x, p.y);
+      const hit = this.journal instanceof PhoneJournal ? this.journal.hit(p.x, p.y, p.id) : this.journal.hit(p.x, p.y);
       if (hit === "close") this.closeJournal();
       else if (hit) {
         this.sfx("select", 0.6);
@@ -562,6 +668,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
       if (this.hud.touch.action) this.interact();
       return;
     }
+    if (this.upright) {
+      const st = this.screen.stage;
+      if (p.y < st.y || p.y > st.y + st.h) return;
+    }
     const wp = p.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
     let best: SpotDef | null = null;
     let bestD = Infinity;
@@ -577,7 +687,11 @@ export class WorldScene extends Phaser.Scene implements Builder {
     if (best) {
       const [sx, sy] = best.at ? best.at() : [best.x, best.y];
       this.walkTo(sx, sy, best);
-    } else if (!TOUCH_UI) this.walkTo(wp.x, wp.y, null);
+      this.tapMark(sx, sy);
+    } else {
+      this.walkTo(wp.x, wp.y, null);
+      this.tapMark(wp.x, wp.y);
+    }
   }
 
   walkTo(x: number, y: number, spot: SpotDef | null) {
@@ -715,6 +829,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private emitScore() {
     const sc = score(this.s);
     const total = (this.s.flags.ended ? SCORE.mystery : 0) + sc.posters * SCORE.poster + sc.tokens * SCORE.token + sc.secrets * SCORE.secret;
+    if (this.hud instanceof DeckHud) this.hud.setCounts([sc.posters, ALL_POSTERS.length], [sc.tokens, ALL_TOKENS.length]);
     this.ctx.onEvent({ type: "score", score: total });
   }
 
@@ -727,7 +842,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
     if (m.text === this.lastObjective) return;
     this.lastObjective = m.text;
     this.sfx("quest", 0.8);
-    this.hud.toast(m.done ? this.text.hud.missionDone : this.text.hud.mission, m.text, "ui-target", 0xffc83d);
+    this.hud.toast(m.done ? this.text.hud.missionDone : this.text.hud.mission, m.text, this.upright ? "ui-target-l" : "ui-target", 0xffc83d);
+    this.syncDeck(true);
     this.ctx.onEvent({ type: "announce", message: this.text.hud.missionAnnounce(m.text) });
   }
 
@@ -751,6 +867,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       npc.setMood(mood, 0, 0);
       npc.talk(true);
       if (this.player) this.player.face(npc.x - this.player.x, npc.y - this.player.y);
+      this.talkFocus = npc;
     }
     let face: string | null = null;
     if (who === "deco") face = `face-deco-${mood === "happy" ? "happy" : mood === "surprised" ? "wow" : "normal"}`;
@@ -789,9 +906,11 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.vars.lentoTalking = false;
       this.speakLabel = undefined;
       this.vars.talking = null;
+      this.talkFocus = null;
       if (this.dialog.open) this.dialog.close();
       this.busy = false;
       this.refresh();
+      this.syncDeck(false);
       this.save();
       const go = this.pendingGoto;
       this.pendingGoto = null;
@@ -856,7 +975,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       case "arcade": {
         this.dialog.close();
         this.hud.hide(true);
-        await this.arcade.play(TOUCH_UI);
+        await this.arcade.play(TOUCH_UI || this.upright);
         this.hud.hide(false);
         return;
       }
@@ -946,19 +1065,24 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       case "endOff": {
         this.sfx("bars", 1);
+        const sw = this.scale.gameSize.width;
+        const sh = this.scale.gameSize.height;
         const bars = this.add.graphics().setDepth(9600).setScrollFactor(0);
         const colors = [0xfbf5e6, 0xffc83d, 0x63d6c1, 0x93cf4c, 0xf06ba8, 0xef4f43, 0x5cb9f0];
         colors.forEach((c, i) => {
           bars.fillStyle(c, 1);
-          bars.fillRect((i * W) / 7, 0, W / 7 + 1, H * 0.72);
+          bars.fillRect((i * sw) / 7, 0, sw / 7 + 1, sh * 0.72);
         });
         bars.fillStyle(0x1d1830, 1);
-        bars.fillRect(0, H * 0.72, W, H * 0.28);
-        const t = cartoonText(this, W / 2, H * 0.86, this.text.world.endOff, { size: 72, color: "#fbf5e6", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(9601).setScrollFactor(0);
+        bars.fillRect(0, sh * 0.72, sw, sh * 0.28);
+        const t = cartoonText(this, sw / 2, sh * 0.86, this.text.world.endOff, { size: 72, color: "#fbf5e6", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(9601).setScrollFactor(0);
+        if (this.upright) fitText(t, sw - 40 * this.screen.unit, 72, 30);
+        pinUi(bars);
+        pinUi(t);
         await this.wait(2000);
         bars.clear();
         bars.fillStyle(0x000000, 1);
-        bars.fillRect(0, 0, W, H);
+        bars.fillRect(0, 0, sw, sh);
         t.destroy();
         this.vars.blackout = bars;
         await this.wait(1100);
@@ -1183,21 +1307,36 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.player.cheer(true);
     }
     this.vars.panLock = true;
-    this.cameras.main.pan(P.pan[0], P.pan[1], this.reduced ? 0 : 900, "Sine.easeInOut");
+    if (this.upright) {
+      this.zoomGoal = this.screen.zoom * 0.8;
+      this.cameras.main.zoomTo(this.zoomGoal, this.reduced ? 0 : 900, "Sine.easeInOut");
+      this.partyPan(P.player[0]);
+    } else this.cameras.main.pan(P.pan[0], P.pan[1], this.reduced ? 0 : 900, "Sine.easeInOut");
     this.vars.fireworks = this.time.addEvent({ delay: 900, loop: true, callback: () => this.firework() });
     this.sfx("win", 1);
     await this.wait(900);
     const off = this.s.ending === "off";
     const T = this.text.world;
     await this.say("narrator", off ? T.partyOff : T.partyOn);
+    this.partyPan((P.bigodes[0] + P.player[0]) / 2);
     await this.say("bigodes", off ? T.bigodesOff : T.bigodesOn, "happy");
+    this.partyPan(P.player[0]);
     await this.say("deco", T.decoParty, "happy");
     this.dialog.close();
+    this.partyPan(P.player[0], true);
     await this.wait(400);
     this.endCard(off);
     this.ctx.onEvent({ type: "achievement", id: "offair-mystery" });
     await this.wait(this.reduced ? 1600 : 2800);
     this.finish();
+  }
+
+  private partyPan(x: number, settle = false) {
+    if (!this.upright) return;
+    const cam = this.cameras.main;
+    const vh = cam.height / this.zoomGoal;
+    const y = POOL.party.player[1] + 30 - vh * 0.2;
+    cam.pan(x, settle ? Math.min(y, this.h - vh / 2) : y, this.reduced ? 0 : 800, "Sine.easeInOut");
   }
 
   private firework() {
@@ -1214,9 +1353,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
     }
     const gl = this.glow(x, y, 300, 300, c, 0.5, 4499);
     this.tweens.add({ targets: gl, alpha: 0, duration: 800, onComplete: () => gl.destroy() });
+    const view = this.cameras.main.worldView;
     for (let i = 0; i < 6; i += 1) {
-      const cf = this.add.image(this.cameras.main.scrollX + Math.random() * W, this.cameras.main.scrollY - 20, "confetti").setTint(colors[i % 5]).setDepth(4600).setAngle(Math.random() * 180);
-      this.tweens.add({ targets: cf, y: cf.y + H + 40, angle: cf.angle + 400, x: cf.x + (Math.random() - 0.5) * 200, duration: 2600 + Math.random() * 1200, onComplete: () => cf.destroy() });
+      const cf = this.add.image(view.x + Math.random() * view.width, view.y - 20, "confetti").setTint(colors[i % 5]).setDepth(4600).setAngle(Math.random() * 180);
+      this.tweens.add({ targets: cf, y: cf.y + view.height + 40, angle: cf.angle + 400, x: cf.x + (Math.random() - 0.5) * 200, duration: 2600 + Math.random() * 1200, onComplete: () => cf.destroy() });
     }
   }
 
@@ -1231,6 +1371,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
     const t1 = cartoonText(this, 0, -40, this.text.world.cardTitle, { size: 72, color: "#f06ba8", font: this.ctx.fonts.display, stroke: 0.18 }).setOrigin(0.5);
     const t2 = cartoonText(this, 0, 60, off ? this.text.world.cardOff : this.text.world.cardOn, { size: 46, color: "#1d1830", font: this.ctx.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
     const card = this.add.container(W / 2, H / 2 - 80, [g, t1, t2]).setDepth(9700);
+    if (this.upright) {
+      const f = this.screen;
+      card.setPosition(f.width / 2, f.stage.y + f.stage.h * 0.36).setScale(Math.min(1, (f.width - 24 * f.unit) / 980));
+    }
     pinUi(card);
     if (!this.reduced) {
       card.setScale(0.4).setAlpha(0);
@@ -1283,6 +1427,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   }
 
   update(time: number, delta: number) {
+    if (this.pendingFrame) this.trySwap();
     const dt = Math.min(delta, 50) / 1000;
     for (const u of this.updaters) u(time, dt);
     for (const [, n] of this.npcs) n.update(time, this.player?.x ?? 0, this.mode === "play" ? (this.player?.y ?? Infinity) : Infinity);
@@ -1463,7 +1608,14 @@ export class WorldScene extends Phaser.Scene implements Builder {
     }
   }
 
+  private viewSize(zoom = this.cameras.main.zoom): [number, number] {
+    if (!this.upright) return [W, H];
+    const cam = this.cameras.main;
+    return [cam.width / zoom, cam.height / zoom];
+  }
+
   private cameraTarget(p: Player) {
+    if (this.upright) return this.tallTarget(p);
     let tx = Phaser.Math.Clamp(p.x + p.vx * 0.25 - W / 2, 0, Math.max(0, this.w - W));
     let ty = Phaser.Math.Clamp(p.y - 130 + p.vy * 0.15 - H / 2, 0, Math.max(0, this.h - H));
     for (const f of this.frames) {
@@ -1482,6 +1634,65 @@ export class WorldScene extends Phaser.Scene implements Builder {
       break;
     }
     return [tx, ty];
+  }
+
+  private tallTarget(p: Player): [number, number] {
+    const base = this.screen.zoom;
+    let zoom = base;
+    let fx = p.x + p.vx * 0.42;
+    let fy = p.y - 175 + p.vy * 0.36;
+    const npc = this.talkFocus;
+    if (npc && this.dialog.open && npc.sprite.visible) {
+      const [vw0] = this.viewSize(base);
+      if (Math.abs(npc.x - p.x) < vw0 * 0.75 && Math.abs(npc.y - p.y) < 500) {
+        fx = (p.x + npc.x) / 2;
+        fy = (p.y + npc.y) / 2 - 150;
+      }
+    }
+    let frame: (typeof this.frames)[number] | null = null;
+    for (const f of this.frames) {
+      const [zx, zy, zw, zh] = f.zone;
+      if (p.x >= zx && p.x <= zx + zw && p.y >= zy && p.y <= zy + zh) {
+        frame = f;
+        break;
+      }
+    }
+    const coverPx = this.dialog.open ? Math.max(0, this.screen.stage.y + this.screen.stage.h - this.dialog.top) : 0;
+    if (frame?.fit) {
+      const [rx, ry, rw, rh] = frame.rect;
+      const top = Math.min(ry, p.top - 40);
+      const bottom = Math.max(ry + rh, p.y + 50);
+      const cam = this.cameras.main;
+      zoom = Phaser.Math.Clamp(Math.min((cam.height - coverPx) / (bottom - top), cam.width / (rw + 60)), base * 0.6, base);
+      fy = (top + bottom) / 2;
+      const half = cam.width / zoom / 2;
+      fx = Phaser.Math.Clamp(rx + rw / 2, p.x - half + 120, p.x + half - 120);
+    }
+    this.zoomGoal = zoom;
+    const [vw, vh] = this.viewSize(zoom);
+    const cover = coverPx / zoom;
+    const span = (lo: number, size: number, area: number, extra = 0) => (area <= size ? (area - size) / 2 : Phaser.Math.Clamp(lo, 0, area - size + extra));
+    let tx = fx - vw / 2;
+    let ty = fy - vh / 2 + cover / 2;
+    const near = this.nearest;
+    if (near && !this.dialog.open) {
+      const npc = this.npcs.get(near.id as FolkKey);
+      const [, sy] = near.at ? near.at() : [near.x, near.y];
+      const top = npc ? npc.topY - 64 - npc.barkHeight - 60 : sy - 230;
+      if (top < ty) ty = Math.max(top, p.y + 60 - vh);
+    }
+    if (frame && !frame.fit) {
+      const [rx, ry, rw, rh] = frame.rect;
+      const fit = (v: number, lo: number, hi: number, plo: number, phi: number) => {
+        const a = Math.max(lo, plo);
+        const b = Math.min(hi, phi);
+        return a <= b ? Phaser.Math.Clamp(v, a, b) : v;
+      };
+      const mx = Math.min(300, vw * 0.3);
+      if (rw <= vw) tx = fit(tx, rx + rw - vw, rx, p.x - vw + mx, p.x - mx);
+      if (rh <= vh - cover) ty = fit(ty, ry + rh - vh + cover, ry, p.y - vh + cover + 190, p.y - 300);
+    }
+    return [span(tx, vw, this.w), span(ty, vh, this.h, cover)];
   }
 
   private updateGreets(time: number) {
@@ -1650,14 +1861,48 @@ export class WorldScene extends Phaser.Scene implements Builder {
     }
   }
 
+  private snapCamera() {
+    const p = this.player;
+    if (!p) return;
+    const [x, y] = this.cameraTarget(p);
+    const cam = this.cameras.main;
+    if (!this.upright) {
+      this.cam = { x, y };
+      cam.setScroll(this.cam.x, this.cam.y);
+      return;
+    }
+    const [vw, vh] = this.viewSize(this.zoomGoal);
+    this.cam = { x: x + vw / 2, y: y + vh / 2 };
+    cam.setZoom(this.zoomGoal);
+    this.applyTallScroll(this.zoomGoal);
+  }
+
+  private applyTallScroll(z: number) {
+    const cam = this.cameras.main;
+    const [vw, vh] = this.viewSize(z);
+    const left = Math.round((this.cam.x - vw / 2) * z) / z;
+    const top = Math.round((this.cam.y - vh / 2) * z) / z;
+    cam.setScroll(left - (cam.width - vw) / 2, top - (cam.height - vh) / 2);
+  }
+
   private updateCamera(dt: number) {
     const p = this.player!;
     const cam = this.cameras.main;
     const [tx, ty] = this.cameraTarget(p);
     const k = this.reduced ? 1 : 1 - Math.exp(-dt * 5);
-    this.cam.x += (tx - this.cam.x) * k;
-    this.cam.y += (ty - this.cam.y) * k;
-    if (!this.vars.panLock) cam.setScroll(Math.round(this.cam.x), Math.round(this.cam.y));
+    if (!this.upright) {
+      this.cam.x += (tx - this.cam.x) * k;
+      this.cam.y += (ty - this.cam.y) * k;
+      if (!this.vars.panLock) cam.setScroll(Math.round(this.cam.x), Math.round(this.cam.y));
+      return;
+    }
+    if (this.vars.panLock) return;
+    const [gw, gh] = this.viewSize(this.zoomGoal);
+    this.cam.x += (tx + gw / 2 - this.cam.x) * k;
+    this.cam.y += (ty + gh / 2 - this.cam.y) * k;
+    const z = this.reduced ? this.zoomGoal : cam.zoom + (this.zoomGoal - cam.zoom) * (1 - Math.exp(-dt * 3));
+    if (Math.abs(z - cam.zoom) > 1e-5) cam.setZoom(z);
+    this.applyTallScroll(cam.zoom);
   }
 }
 

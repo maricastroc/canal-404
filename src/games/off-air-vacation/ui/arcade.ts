@@ -1,10 +1,12 @@
 import * as Phaser from "phaser";
 import { INK_HEX, type Fonts } from "../../kit/ui";
+import type { Frame } from "../layout";
 import type { ResortSfx } from "../sounds";
 import type { VacationText } from "../text/pt-BR";
 import { pinUi } from "./journal";
 
 const FIELD = { x: 560, y: 250, w: 800, h: 520 };
+const CABINET = { x: FIELD.x - 70, y: FIELD.y - 140, w: FIELD.w + 140, h: FIELD.h + 230 };
 const GOAL = 10;
 
 type Drop = { img: Phaser.GameObjects.Image; good: boolean; vy: number; spin: number };
@@ -22,6 +24,7 @@ export class ArcadeGame {
   private done: (() => void) | null = null;
   private targetX: number | null = null;
   private flash: Phaser.GameObjects.Rectangle;
+  private dim: Phaser.GameObjects.Rectangle;
 
   constructor(
     private scene: Phaser.Scene,
@@ -31,6 +34,7 @@ export class ArcadeGame {
     private text: VacationText["arcade"],
   ) {
     const dim = scene.add.rectangle(0, 0, 1920, 1080, 0x140f26, 0.7).setOrigin(0, 0);
+    this.dim = dim;
     const g = scene.add.graphics();
     g.fillStyle(INK_HEX, 1);
     g.fillRoundedRect(FIELD.x - 70 + 10, FIELD.y - 140 + 12, FIELD.w + 140, FIELD.h + 230, 40);
@@ -79,9 +83,23 @@ export class ArcadeGame {
     return this.running || this.root.visible;
   }
 
+  layout(frame: Frame) {
+    if (frame.kind !== "tall") return;
+    const u = frame.unit;
+    const top = frame.safe.top;
+    const avail = frame.height - top - frame.safe.bottom;
+    const k = Math.min((frame.width - 20 * u) / CABINET.w, (avail - 40 * u) / CABINET.h, 1.6);
+    const cx = frame.width / 2;
+    const cy = top + avail * 0.46;
+    this.root.setScale(k).setPosition(cx - (CABINET.x + CABINET.w / 2) * k, cy - (CABINET.y + CABINET.h / 2) * k);
+    this.dim.setPosition(-this.root.x / k, -this.root.y / k).setSize(frame.width / k + 2, frame.height / k + 2);
+    this.hint.setFontSize(Math.max(30, (14 * u) / k));
+  }
+
   pointer(px: number, down: boolean) {
     if (!this.running) return;
-    if (down) this.targetX = Phaser.Math.Clamp(px, FIELD.x + 60, FIELD.x + FIELD.w - 60);
+    const lx = (px - this.root.x) / this.root.scaleX;
+    if (down) this.targetX = Phaser.Math.Clamp(lx, FIELD.x + 60, FIELD.x + FIELD.w - 60);
   }
 
   release() {
@@ -102,7 +120,8 @@ export class ArcadeGame {
     if (this.t >= this.spawnAt) {
       const good = Math.random() < 0.62;
       const x = Phaser.Math.Between(FIELD.x + 50, FIELD.x + FIELD.w - 50);
-      const img = this.scene.add.image(x, FIELD.y - 30, good ? "arc-signal" : "arc-static").setScrollFactor(0);
+      const img = this.scene.add.image(x, FIELD.y - 30, good ? "arc-signal" : "arc-static");
+      pinUi(img);
       this.root.addAt(img, this.root.list.length - 2);
       this.drops.push({ img, good, vy: 300 + Math.min(220, this.t / 60) + Math.random() * 80, spin: good ? 0 : (Math.random() - 0.5) * 3 });
       this.spawnAt = this.t + Math.max(380, 640 - this.t / 60);

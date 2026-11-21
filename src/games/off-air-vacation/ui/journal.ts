@@ -6,15 +6,15 @@ import type { VacationText } from "../text/pt-BR";
 import { INK_HEX, type Fonts } from "../../kit/ui";
 
 export type Tab = "missions" | "found" | "collection" | "people" | "map";
-const TABS: Tab[] = ["missions", "found", "collection", "people", "map"];
+export const TABS: Tab[] = ["missions", "found", "collection", "people", "map"];
 const BOOK = { x: 170, y: 110, w: 1580, h: 900 };
 const RULE0 = BOOK.y + 150;
 const RULE = 52;
 const RULES = 14;
 const ruleY = (k: number) => RULE0 + k * RULE;
-const FOLKS: FolkKey[] = ["bigodes", "marola", "capi", "tilt", "placar", "marisa", "clique", "lento", "psiu", "cavuca", "chiado", "mascot"];
-const FACE: Record<FolkKey, string> = Object.fromEntries(FOLKS.map((id) => [id, `face-${id}-normal`])) as Record<FolkKey, string>;
-const FOLK_COLOR: Record<FolkKey, number> = {
+export const FOLKS: FolkKey[] = ["bigodes", "marola", "capi", "tilt", "placar", "marisa", "clique", "lento", "psiu", "cavuca", "chiado", "mascot"];
+export const FACE: Record<FolkKey, string> = Object.fromEntries(FOLKS.map((id) => [id, `face-${id}-normal`])) as Record<FolkKey, string>;
+export const FOLK_COLOR: Record<FolkKey, number> = {
   bigodes: 0xef4f43,
   marola: 0x5cb9f0,
   tilt: 0xb9a6ef,
@@ -29,10 +29,18 @@ const FOLK_COLOR: Record<FolkKey, number> = {
   placar: 0xef4f43,
 };
 
-export function pinUi(obj: Phaser.GameObjects.GameObject) {
-  const o = obj as Phaser.GameObjects.GameObject & { setScrollFactor?: (x: number, y?: number) => unknown; list?: Phaser.GameObjects.GameObject[] };
+type Pinnable = Phaser.GameObjects.GameObject & { setScrollFactor?: (x: number, y?: number) => unknown; list?: Phaser.GameObjects.GameObject[] };
+
+function pinTree(o: Pinnable, filter: number | null) {
   o.setScrollFactor?.(0, 0);
-  if (o.list) for (const c of o.list) pinUi(c);
+  if (filter !== null) o.cameraFilter = filter;
+  if (o.list) for (const c of o.list) pinTree(c as Pinnable, filter);
+}
+
+export function pinUi(obj: Phaser.GameObjects.GameObject) {
+  const cams = obj.scene?.cameras;
+  const filter = cams?.getCamera("ui") ? cams.main.id : null;
+  pinTree(obj as Pinnable, filter);
 }
 
 export class Journal {

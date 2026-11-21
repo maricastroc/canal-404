@@ -2,7 +2,7 @@
 
 import Link from "@/i18n/Link";
 import { animate, motion, useIsPresent, useMotionValue, useReducedMotion, useTransform } from "motion/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
@@ -25,6 +25,10 @@ import { missionOverridesStars } from "@/lib/missions/goals";
 import type { MissionState, MissionView } from "@/lib/missions/types";
 import { BoardLine, type BoardState } from "./BoardLine";
 import { MissionBrief, MissionLine } from "./MissionLine";
+
+function longestWord(text: string) {
+  return Math.max(1, ...text.split(/\s+/).map((word) => word.length));
+}
 
 const TERTIARY =
   "inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1 font-display text-base uppercase tracking-wide text-ink-soft underline decoration-2 underline-offset-4 hover:text-ink";
@@ -479,7 +483,7 @@ export function IntroPanel({
         {showHelp && !picking ? help : null}
       </div>
       <div
-        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-base max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:whitespace-nowrap max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
+        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-base max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:leading-tight max-[380px]:[&>button]:[text-wrap:balance] max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
       >
         {mission ? (
           <>
@@ -614,7 +618,7 @@ export function ResultPanel({
   }, [play, result.won, result.stars]);
   const title = result.copy?.title ?? (result.won ? game.copy?.winTitle : game.copy?.loseTitle) ?? (result.won ? copy.win : copy.lose);
   const actions = (
-    <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:whitespace-nowrap max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
+    <div className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-base max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:leading-tight max-[380px]:[&>*]:[text-wrap:balance] max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3">
       {onNext && !mission ? (
         <InkButton ref={mainRef} tone="sun" onClick={onNext}>
           <PlayIcon className="size-5 text-ink" /> {copy.nextLevel(word)}
@@ -677,8 +681,8 @@ export function ResultPanel({
                   <Mascot404 expression="sad" className="w-24 shrink-0" />
                 )}
               </div>
-              <div className="min-w-0 flex-1 max-sm:basis-40 wideshort:basis-48">
-                <h2 className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink max-sm:text-[clamp(1.6rem,8.4vw,2.2rem)] wideshort:text-[clamp(2rem,3.4vw,2.6rem)]">{title}</h2>
+              <div className="min-w-0 flex-1 max-sm:basis-40 max-sm:[container-type:inline-size] wideshort:basis-48">
+                <h2 style={{ "--word": longestWord(title) } as CSSProperties} className="font-display text-[clamp(2.2rem,6vw,3.4rem)] uppercase leading-none tracking-wide text-ink max-sm:text-[min(clamp(1.6rem,8.4vw,2.2rem),calc(161cqw/var(--word)))] wideshort:text-[clamp(2rem,3.4vw,2.6rem)]">{title}</h2>
                 {text && <p className="mt-1 text-pretty font-hand text-xl leading-snug text-ink-soft max-sm:text-lg">{text}</p>}
               </div>
             </div>

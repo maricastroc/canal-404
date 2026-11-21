@@ -80,7 +80,7 @@ export type Builder = {
   pushHero(x: number, y: number): boolean;
   isBlocked(x: number, y: number): boolean;
   arrow(x: number, y: number, angle: number): void;
-  frame(rect: [number, number, number, number], zone: [number, number, number, number]): void;
+  frame(rect: [number, number, number, number], zone: [number, number, number, number], fit?: boolean): void;
   fonts: Fonts;
   act(name: string, fn: () => Promise<void> | void): void;
   bark(who: FolkKey, text: string, sound?: ResortSfx | null): void;
@@ -1578,6 +1578,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.spot({ id: "mug", x: 1320, y: 840, r: 100, verb: b.text.verbs.examine, script: "mug" });
     b.spot({ id: "window", x: 220, y: 900, r: 90, verb: b.text.verbs.look, script: "stationWindow" });
     b.exit(840, 1040, 240, 40, "forest", "door");
+    b.frame([450, 40, 1100, 500], [440, 740, 1120, 260], true);
     b.glow(960, 1080, 460, 140, 0xbff7ff, 0.35, 0.45);
     b.prop("doormat", 960, 1082, { origin: [0.5, 1], depth: "floor", scale: 0.8 });
     b.arrow(960, 1030, 90);

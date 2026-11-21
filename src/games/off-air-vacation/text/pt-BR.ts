@@ -196,6 +196,11 @@ export const TEXT = {
     missionDone: "Missão cumprida",
     missionAnnounce: (text: string) => `Missão: ${text}`,
   },
+  touch: {
+    action: "Ação",
+    journal: "Diário",
+    map: "Mapa",
+  },
   journal: {
     tabs: { missions: "Missões", found: "Descobertas", collection: "Coleção", people: "Personagens", map: "Mapa" },
     mainHead: "Missão principal",

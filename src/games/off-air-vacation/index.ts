@@ -1,9 +1,9 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import type { Locale } from "@/i18n/locales";
-import { H, W } from "./config";
 import { clearState, freshState, loadState } from "./save";
 import { BootScene } from "./scenes/BootScene";
+import { measureFrame } from "./scenes/frame";
 import { WorldScene } from "./scenes/WorldScene";
 import type { VacationText } from "./text/pt-BR";
 
@@ -15,11 +15,12 @@ const TEXT_LOADERS: Record<Locale, () => Promise<{ TEXT: VacationText }>> = {
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
   const text = TEXT_LOADERS[ctx.locale]().then((m) => m.TEXT);
+  const frame = measureFrame(ctx.parent);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,
-    width: W,
-    height: H,
+    width: frame.width,
+    height: frame.height,
     backgroundColor: "#1d1830",
     transparent: false,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
@@ -32,6 +33,7 @@ function mount(ctx: GameHostContext): GameInstance {
     callbacks: {
       preBoot: (g) => {
         g.registry.set("ctx", ctx);
+        g.registry.set("frame", frame);
         g.registry.set("state", null);
         g.registry.set("textLoad", text);
       },
