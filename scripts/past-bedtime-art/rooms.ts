@@ -1,24 +1,25 @@
 import { propArtName } from "../../src/games/past-bedtime/scenes/art";
 import type { LevelDef, PropDef } from "../../src/games/past-bedtime/sim/types";
 import { hydraulicBody } from "./grandma";
+import { aquarium, redCementBody, sewingMachine } from "./pets";
 import { ink, P, rnd, svg, type Sheet } from "./kit";
 
 const INK = P.ink;
 
-export type Material = "wood" | "checker" | "parquet" | "hydraulic";
+export type Material = "wood" | "checker" | "parquet" | "hydraulic" | "cement";
 
 export type WallTheme = "hall" | "kitchen" | "living";
 
 export function materialFor(levelId: string): Material {
   if (levelId === "kitchen" || levelId === "pantry") return "hydraulic";
-  if (levelId === "laundry") return "checker";
+  if (levelId === "laundry") return "cement";
   if (levelId === "living" || levelId === "dining" || levelId === "sofa") return "parquet";
   return "wood";
 }
 
 export function wallThemeFor(levelId: string): WallTheme {
   const m = materialFor(levelId);
-  return m === "checker" || m === "hydraulic" ? "kitchen" : m === "parquet" ? "living" : "hall";
+  return m === "checker" || m === "hydraulic" || m === "cement" ? "kitchen" : m === "parquet" ? "living" : "hall";
 }
 
 const WOOD = { line: "#74472f", hi: "#c8916a", knot: "#8a5a3c" };
@@ -112,7 +113,7 @@ export function roomFloor(level: LevelDef) {
   const w = level.map[0].length;
   const h = level.map.length;
   const m = materialFor(level.id);
-  return floorShell(level, m === "hydraulic" ? hydraulicBody(w, h) : m === "checker" ? checkerBody(w, h) : m === "parquet" ? parquetBody(w, h) : woodBody(w, h));
+  return floorShell(level, m === "cement" ? redCementBody(w, h) : m === "hydraulic" ? hydraulicBody(w, h) : m === "checker" ? checkerBody(w, h) : m === "parquet" ? parquetBody(w, h) : woodBody(w, h));
 }
 
 const WALLS: Record<Exclude<WallTheme, "hall">, { paper: string; alt: string; motif: string; crown: string; crownShade: string; base: string; baseHi: string }> = {
@@ -329,7 +330,8 @@ function tv() {
   return svg("0 -50 100 146", `
     <rect x="12" y="52" width="76" height="40" rx="6" fill="#6a3f2a" ${ink(3)}/><path d="M18 62 L82 62" stroke="#8a5a3c" stroke-width="3"/>
     <path d="M50 -6 L30 -42 M50 -6 L72 -44" ${ink(4)}/><path d="M50 -6 L30 -42 M50 -6 L72 -44" stroke="#9aa6b8" stroke-width="2"/>
-    <circle cx="72" cy="-44" r="7" fill="#d9dce4" ${ink(2)}/><circle cx="30" cy="-42" r="4" fill="#d9dce4" ${ink(1.5)}/>
+    <circle cx="30" cy="-42" r="4" fill="#d9dce4" ${ink(1.5)}/>
+    ${[[-4, -3], [3, -5], [5, 2], [-3, 4], [0, 0], [6, -1], [-6, 1]].map(([dx, dy]) => `<circle cx="${72 + dx}" cy="${-46 + dy}" r="5" fill="#c9cfdc" ${ink(1.4)}/>`).join("")}${[[-3, -3], [3, 1], [-1, 3]].map(([dx, dy]) => `<path d="M${72 + dx - 3} ${-46 + dy} q3 -3 6 0" stroke="#fff" stroke-width="1.2" fill="none"/>`).join("")}
     ${block(6, -6, 88, 76, "#7a5a3a", "#5a3d26", 10, 10)}
     <rect x="14" y="2" width="56" height="50" rx="10" fill="#9df0dc" ${ink(3)}/>${lines}
     <ellipse cx="30" cy="14" rx="7" ry="4" fill="#fff" opacity="0.5"/>
@@ -433,6 +435,10 @@ function propArt(p: PropDef): string | null {
       return glassCabinet();
     case "chair":
       return chair();
+    case "sewing":
+      return sewingMachine();
+    case "aquarium":
+      return aquarium();
     case "sideboard":
       return sideboard(w);
     case "sofa":

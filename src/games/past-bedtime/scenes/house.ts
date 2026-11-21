@@ -629,6 +629,19 @@ function drawProp(g: Phaser.GameObjects.Graphics, prop: PropDef, layout: Layout)
       }
       break;
     }
+    case "sewing": {
+      box(g, x + s * 0.08, y + s * 0.2, s * 0.84, s * 0.22, 0x8a5a3c, 0x6a3f2a, s * 0.06, 4);
+      rect(g, x + s * 0.24, y - s * 0.2, s * 0.5, s * 0.4, 0x1d1830, 6, 2.5);
+      rect(g, x + s * 0.42, y + s * 0.76, s * 0.36, s * 0.1, 0x2b2150, 3, 2);
+      break;
+    }
+    case "aquarium": {
+      box(g, x + s * 0.12, y + s * 0.34, s * 0.76, s * 0.52, 0x6d4a3a, 0x5a3d26, s * 0.2, 4);
+      rect(g, x + s * 0.1, y - s * 0.22, s * 0.8, s * 0.58, 0x4fd1c5, 4, 2.5);
+      g.fillStyle(0xffb35c, 1);
+      g.fillEllipse(x + s * 0.42, y + s * 0.02, s * 0.12, s * 0.07);
+      break;
+    }
     case "chair": {
       box(g, x + s * 0.2, y + s * 0.18, s * 0.6, s * 0.68, 0xb07a4f, 0x8a5a3c, s * 0.16, 6);
       rect(g, x + s * 0.2, y + s * 0.06, s * 0.6, s * 0.2, 0x9a6440, 4, 3);

@@ -25,7 +25,7 @@ export type AgentDef = SleeperDef | PatrolDef | DogDef | CatDef;
 
 export type ClockDef = { period: number; x: number; y: number };
 
-export type PropKind = "bed" | "nightstand" | "sofa" | "armchair" | "table" | "chair" | "fridge" | "counter" | "counterLow" | "stove" | "sink" | "pantry" | "washer" | "cabinet" | "sideboard" | "shelf" | "plant" | "tv" | "vcr" | "dogbed" | "stairs" | "door" | "rug" | "window" | "toybox" | "laundry";
+export type PropKind = "bed" | "nightstand" | "sofa" | "armchair" | "table" | "chair" | "fridge" | "counter" | "counterLow" | "stove" | "sink" | "pantry" | "washer" | "cabinet" | "sideboard" | "shelf" | "plant" | "tv" | "vcr" | "dogbed" | "stairs" | "door" | "rug" | "window" | "toybox" | "laundry" | "sewing" | "aquarium";
 
 export type PropDef = { kind: PropKind; x: number; y: number; w?: number; h?: number; f?: Dir };
 

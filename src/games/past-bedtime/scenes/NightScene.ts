@@ -180,7 +180,8 @@ export class NightScene extends Phaser.Scene {
         this.agents.push({ kind: "grandma", view, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize, charArt ? -s * 1.0 : -s * 0.66) });
       } else if (def.kind === "cat") {
         const view = new CatView(this, s, charArt);
-        view.container.setPosition(c.x, c.y - s * 0.32).setScale(CHAR_SCALE);
+        const perch = level.props.find((p) => p.x <= def.x && def.x < p.x + (p.w ?? 1) && p.y <= def.y && def.y < p.y + (p.h ?? 1));
+        view.container.setPosition(c.x, c.y - s * (perch?.kind === "cabinet" ? 0.98 : 0.32)).setScale(CHAR_SCALE);
         this.agents.push({ kind: "cat", view, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize * 0.9, -s * 0.62) });
       } else {
         const view = new DogView(this, s, charArt);

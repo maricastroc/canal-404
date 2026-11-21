@@ -64,6 +64,9 @@ export function decorArtName(kind: string, w: number | undefined, h: number | un
       return `jamb-${Math.round((h ?? 1) * 100)}`;
     case "kidDrawing":
     case "doily":
+    case "clothesline":
+    case "laundryShelf":
+    case "pawPrints":
     case "tableRug":
     case "braidRug":
     case "passadeira":
@@ -95,7 +98,32 @@ export function decorArtName(kind: string, w: number | undefined, h: number | un
     case "jars":
     case "blender":
     case "fruit":
+    case "namePlate":
+    case "dogBowls":
+    case "leash":
+    case "ironingBoard":
+    case "boneToy":
+    case "tennisBall":
+    case "catTree":
+    case "ovalMirror":
+    case "crookedFrame":
+    case "pennant":
+    case "turntable":
+    case "popcorn":
+    case "popcornBowl":
+    case "remote":
+    case "scarf":
+    case "poster404":
+    case "vhsStack":
+    case "bucketMop":
+    case "catBowl":
+    case "toyMouse":
+    case "hangingFern":
+    case "spill":
+    case "yarnBall":
       return kind;
+    case "oval":
+      return `oval-${Number(v ?? 0).toString(16)}-${dims}`;
     case "lamp":
     case "switch":
     case "sock":

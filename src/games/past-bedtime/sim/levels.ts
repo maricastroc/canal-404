@@ -215,8 +215,8 @@ export const DINING: LevelDef = {
   ],
   props: [
     { kind: "cabinet", x: 1, y: 1 },
-    { kind: "chair", x: 3, y: 2 },
-    { kind: "chair", x: 3, y: 4 },
+    { kind: "sewing", x: 3, y: 2 },
+    { kind: "aquarium", x: 3, y: 4 },
     { kind: "plant", x: 8, y: 2 },
     { kind: "plant", x: 8, y: 4 },
     { kind: "dogbed", x: 5, y: 3 },
