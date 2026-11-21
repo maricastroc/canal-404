@@ -240,7 +240,7 @@ function GameTitle({ game }: { game: GameMeta }) {
   const Logo = GAME_LOGOS[game.slug];
   return Logo ? (
     <h1>
-      <Logo className="w-full max-w-md shorter:max-w-xs [@media(max-height:540px)]:w-40 [@media(max-height:540px)]:max-w-none" bare />
+      <Logo className="w-full max-w-md shorter:max-w-xs max-sm:mx-auto max-sm:max-w-[16rem] [@media(max-height:540px)]:w-40 [@media(max-height:540px)]:max-w-none" bare />
     </h1>
   ) : (
     <h1 className="font-display text-4xl uppercase text-ink">{game.title}</h1>
@@ -370,11 +370,11 @@ export function IntroPanel({
     </div>
   );
   return (
-    <OverlayFrame label={copy.introLabel(game.title)} className="flex max-h-full max-w-3xl flex-col p-5 sm:p-7 shorter:py-4 [@media(max-height:540px)]:p-4">
+    <OverlayFrame label={copy.introLabel(game.title)} className="flex max-h-full max-w-3xl flex-col p-5 sm:p-7 shorter:py-4 max-sm:block max-sm:max-h-none max-sm:py-5 [@media(max-height:540px)]:p-4">
       <div className="grid shrink-0 items-center gap-4 sm:grid-cols-[1fr_auto]">
         <div className="[@media(max-height:540px)]:flex [@media(max-height:540px)]:items-center [@media(max-height:540px)]:gap-4">
           <GameTitle game={game} />
-          <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
+          <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base max-sm:mt-3 max-sm:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
         </div>
         <div className="hidden sm:block [@media(max-height:540px)]:hidden">{Cast ? <Cast mood="intro" locale={locale} /> : <CastPair game={game} />}</div>
       </div>
@@ -383,7 +383,7 @@ export function IntroPanel({
         tabIndex={showHelp ? 0 : undefined}
         role={showHelp ? "region" : undefined}
         aria-label={showHelp ? copy.howTo : undefined}
-        className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun"
+        className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun max-sm:overflow-visible"
       >
         {missionNotice ? (
           <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
@@ -478,7 +478,9 @@ export function IntroPanel({
         ) : null}
         {showHelp && !picking ? help : null}
       </div>
-      <div className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 ${missionPending ? "invisible" : ""}`}>
+      <div
+        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-base max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:whitespace-nowrap max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
+      >
         {mission ? (
           <>
             <InkButton ref={playRef} size="lg" tone="sun" onClick={onStartMission}>
