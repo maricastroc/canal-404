@@ -6,9 +6,19 @@ export type Pose = { x: number; y: number; zoom: number };
 
 export type Vec = { x: number; y: number };
 
-export type CameraMode = "auto" | "free" | "overview";
+export type CameraMode = "auto" | "free" | "overview" | "inspect";
 
-export const CAM = { sky: -1700, floor: 1090, maxZoom: 1.8, aim: { left: 0.08, right: 0.92, top: 0.12 }, flight: { left: 0.18, right: 0.62, top: 0.16 }, action: { left: 0.24, right: 0.76, top: 0.22 } };
+export type Margin = { x: number; top: number };
+
+export const CAM = {
+  sky: -1700,
+  floor: 1090,
+  maxZoom: 1.8,
+  hold: 0.86,
+  aim: { zoom: 0.74, margin: { x: 0.07, top: 0.1 } },
+  flight: { zoom: 0.72, margin: { x: 0.16, top: 0.14 }, lead: 22 },
+  action: { zoom: 0.8, margin: { x: 0.2, top: 0.18 } },
+};
 
 type Anim = { from: Pose; to: Pose; t: number; ms: number; done?: () => void };
 
@@ -19,6 +29,7 @@ function ease(t: number) {
 export class StreetCamera {
   private frame: Frame = FULL_FRAME;
   private anim: Anim | null = null;
+  private bounds: Rect = { x: 0, y: 0, w: W, h: TALL.band.bottom };
   mode: CameraMode = "auto";
 
   constructor(
@@ -41,6 +52,14 @@ export class StreetCamera {
 
   get playZoom() {
     return this.frame.zoom;
+  }
+
+  get navigating() {
+    return this.mode === "overview" || this.mode === "inspect";
+  }
+
+  setBounds(rect: Rect) {
+    this.bounds = rect;
   }
 
   cssPerWorld(zoom = this.cam.zoom) {
@@ -85,7 +104,8 @@ export class StreetCamera {
     const zoom = Phaser.Math.Clamp(p.zoom, f.overview, f.zoom * CAM.maxZoom);
     const { w, h } = this.size(zoom);
     const x = w >= W ? W / 2 : Phaser.Math.Clamp(p.x, w / 2, W - w / 2);
-    const y = Phaser.Math.Clamp(p.y, CAM.sky + h / 2, Math.max(CAM.sky + h / 2, CAM.floor - h / 2));
+    const floor = zoom < f.zoom * 0.6 ? CAM.floor + 600 : CAM.floor;
+    const y = Phaser.Math.Clamp(p.y, CAM.sky + h / 2, Math.max(CAM.sky + h / 2, floor - h / 2));
     return { x, y, zoom };
   }
 
@@ -129,58 +149,70 @@ export class StreetCamera {
   }
 
   overviewPose(): Pose {
-    const zoom = this.frame.overview;
+    const b = this.bounds;
+    const zoom = Math.max(this.frame.overview, Math.min(this.cam.width / b.w, this.frame.zoom));
     const { h } = this.size(zoom);
-    return this.clamp({ x: W / 2, y: Math.min(TALL.band.bottom + 30 - h / 2, 540), zoom });
+    const clearance = (56 * this.frame.unit) / zoom;
+    return this.clamp({ x: b.x + b.w / 2, y: TALL.band.bottom + clearance - h / 2, zoom });
   }
 
-  private keep(point: Vec, band: { left: number; right: number; top: number }): Pose {
-    const p = this.pose;
+  inspectPose(at: Vec): Pose {
     const zoom = this.frame.zoom;
+    return this.clamp({ x: at.x, y: this.restY(zoom), zoom });
+  }
+
+  private zoomFor(pts: Vec[], m: Margin) {
+    const xs = pts.map((p) => p.x);
+    const top = Math.min(...pts.map((p) => p.y));
+    const needW = Math.max(1, Math.max(...xs) - Math.min(...xs)) / (1 - 2 * m.x);
+    const needH = Math.max(1, TALL.band.bottom - top) / (1 - m.top);
+    return Math.min(this.cam.width / needW, this.cam.height / needH);
+  }
+
+  fit(points: Vec[], must: number, minScale: number, m: Margin): Pose {
+    const play = this.frame.zoom;
+    const range: [number, number] = [play * minScale, play];
+    let chosen = points.slice(0, must);
+    let zoom = play;
+    for (let n = points.length; n >= must; n -= 1) {
+      const pts = points.slice(0, n);
+      const z = this.zoomFor(pts, m);
+      if (z >= range[0] || n === must) {
+        chosen = pts;
+        zoom = Phaser.Math.Clamp(z, range[0], range[1]);
+        break;
+      }
+    }
+    const cur = this.pose;
+    if (cur.zoom >= range[0] - 1e-6 && cur.zoom <= zoom * 1.0001 && cur.zoom >= zoom * CAM.hold) zoom = cur.zoom;
     const { w, h } = this.size(zoom);
-    let left = p.x - w / 2;
-    if (point.x < left + band.left * w) left = point.x - band.left * w;
-    if (point.x > left + band.right * w) left = point.x - band.right * w;
-    const restTop = this.restY(zoom) - h / 2;
-    const top = Math.min(restTop, point.y - band.top * h);
+    const xs = chosen.map((p) => p.x);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const lo = maxX - (1 - m.x) * w;
+    const hi = minX - m.x * w;
+    const first = chosen[0];
+    const left = lo <= hi ? Phaser.Math.Clamp(cur.x - w / 2, lo, hi) : Phaser.Math.Clamp(cur.x - w / 2, first.x - (1 - m.x) * w, first.x - m.x * w);
+    const restTop = TALL.band.bottom - h;
+    const top = Math.min(restTop, Math.min(...chosen.map((p) => p.y)) - m.top * h);
     return this.clamp({ x: left + w / 2, y: top + h / 2, zoom });
   }
 
-  frameAim(required: Vec[], optional: Vec[] = []): Pose {
-    const zoom = this.frame.zoom;
-    const { w, h } = this.size(zoom);
-    const band = CAM.aim;
-    const fits = (pts: Vec[]) => {
-      const lo = Math.max(...pts.map((q) => q.x - band.right * w));
-      const hi = Math.min(...pts.map((q) => q.x - band.left * w));
-      return lo <= hi ? { lo, hi } : null;
-    };
-    let pts = [...required, ...optional];
-    let range = fits(pts);
-    if (!range) {
-      pts = required;
-      range = fits(pts);
-    }
-    if (!range) {
-      pts = required.slice(0, 1);
-      range = fits(pts)!;
-    }
-    const p = this.pose;
-    const left = Phaser.Math.Clamp(p.x - w / 2, range.lo, range.hi);
-    const restTop = this.restY(zoom) - h / 2;
-    const top = Math.min(restTop, ...pts.map((q) => q.y - band.top * h));
-    return this.clamp({ x: left + w / 2, y: top + h / 2, zoom });
+  frameAim(points: Vec[]) {
+    return this.fit(points, Math.min(2, points.length), CAM.aim.zoom, CAM.aim.margin);
   }
 
   frameFlight(at: Vec, vel: Vec): Pose {
     const view = this.visible();
-    const next = this.keep(at, CAM.flight);
+    const f = CAM.flight;
+    const ahead = { x: at.x + vel.x * f.lead, y: Math.min(at.y, at.y + vel.y * f.lead) };
+    const next = this.fit([at, ahead], 1, f.zoom, f.margin);
     if (at.x < view.x && vel.x > 0.5) next.x = Math.max(next.x, this.pose.x);
     return next;
   }
 
-  frameAction(focus: Vec) {
-    return this.keep(focus, CAM.action);
+  frameAction(points: Vec[]) {
+    return this.fit(points, 1, CAM.action.zoom, CAM.action.margin);
   }
 
   animateTo(p: Pose, ms = 600, done?: () => void) {
@@ -211,11 +243,17 @@ export class StreetCamera {
     return true;
   }
 
-  chase(target: Pose, delta: number, ms: number) {
+  chase(target: Pose, delta: number, ms: number, zoomMs = 650) {
     const p = this.pose;
     const k = this.reduced ? 1 : 1 - Math.exp(-delta / ms);
-    const settle = (from: number, to: number, eps: number) => (Math.abs(to - from) < eps ? to : from + (to - from) * k);
-    this.set({ x: settle(p.x, target.x, 0.3), y: settle(p.y, target.y, 0.3), zoom: settle(p.zoom, target.zoom, 0.0005) });
+    const kz = this.reduced ? 1 : 1 - Math.exp(-delta / Math.max(ms, zoomMs));
+    const settle = (from: number, to: number, eps: number, f: number) => (Math.abs(to - from) < eps ? to : from + (to - from) * f);
+    const zoom = settle(p.zoom, target.zoom, 0.0005, kz);
+    const { w, h } = this.size(zoom);
+    const tw = this.size(target.zoom);
+    const left = settle(p.x - this.size(p.zoom).w / 2, target.x - tw.w / 2, 0.3, k);
+    const bottom = settle(p.y + this.size(p.zoom).h / 2, target.y + tw.h / 2, 0.3, k);
+    this.set({ x: left + w / 2, y: bottom - h / 2, zoom });
   }
 
   panBy(dx: number, dy: number) {

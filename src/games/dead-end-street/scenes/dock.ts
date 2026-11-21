@@ -12,11 +12,11 @@ export type Speaker = "deco" | "lina" | "arlindo";
 
 export type CoachStep = "ammo" | "aim" | "fire" | "follow";
 
-export type ViewMode = "auto" | "free" | "overview";
+export type ViewMode = "auto" | "free" | "overview" | "inspect";
 
 export type FireState = "ready" | "wait" | "off";
 
-export type PinKind = "star" | "gadget" | "shot";
+export type PinKind = "star" | "gadget" | "shot" | "sling";
 
 type Vec = { x: number; y: number };
 
@@ -39,9 +39,9 @@ export type DockSetup = {
   mount: (obj: Phaser.GameObjects.GameObject) => void;
 };
 
-type Slot = { id: ProjectileId; root: Phaser.GameObjects.Container; disc: Phaser.GameObjects.Graphics; count: Phaser.GameObjects.Text; size: number };
+type Slot = { id: ProjectileId; root: Phaser.GameObjects.Container; disc: Phaser.GameObjects.Graphics; count: Phaser.GameObjects.Text; size: number; baseY: number };
 
-type Cell = { x: number; y: number; img: Phaser.GameObjects.Image; check: Phaser.GameObjects.Image; drop: Phaser.GameObjects.Image | null; base: number };
+type Cell = { x: number; y: number; img: Phaser.GameObjects.Image; check: Phaser.GameObjects.Image; drop: Phaser.GameObjects.Image | null; base: number; bg: Phaser.GameObjects.Graphics; size: number };
 
 type Stepper = { root: Phaser.GameObjects.Container; value: Phaser.GameObjects.Text; buttons: Phaser.GameObjects.Container[] };
 
@@ -55,6 +55,8 @@ const ORANGE = 0xff8a3d;
 const MINT = 0x63d6c1;
 const SLOT = 0xecd9b2;
 const MUTED = 0x8a80a8;
+const GREEN = 0x93cf4c;
+const WELL = 0x1f1740;
 const DEPTH = { panel: 40, ui: 41, pin: 43, card: 44, token: 45, coach: 46, banner: 47 };
 const FACE: Record<Speaker, { crop: [number, number, number]; fill: number; name: string }> = {
   deco: { crop: [20, 2, 100], fill: 0xffb27a, name: "#c4352c" },
@@ -100,9 +102,10 @@ export class DockHud implements StreetHud {
   private cells: Cell[] = [];
   private parStars: Phaser.GameObjects.Image[] = [];
   private scoreText: Phaser.GameObjects.Text | null = null;
-  private scoreLabel: Phaser.GameObjects.Text | null = null;
   private bestText: Phaser.GameObjects.Text | null = null;
   private shotsText: Phaser.GameObjects.Text | null = null;
+  private progressText: Phaser.GameObjects.Text | null = null;
+  private scoreMax = 100;
   private infoName: Phaser.GameObjects.Text | null = null;
   private infoTip: Phaser.GameObjects.Text | null = null;
   private steppers: Stepper[] = [];
@@ -126,6 +129,11 @@ export class DockHud implements StreetHud {
   private coachTimer?: Phaser.Time.TimerEvent;
   private coachStep: CoachStep | null = null;
   private pins = new Map<string, Pin>();
+  private navPill: Phaser.GameObjects.Container | null = null;
+  private navText: string | null = null;
+  private marks: Phaser.GameObjects.Graphics | null = null;
+  private inset: { x: number; y: number; w: number; h: number } | null = null;
+  private insetRing: Phaser.GameObjects.Graphics | null = null;
   private holdTimer?: Phaser.Time.TimerEvent;
   private holdStart = 0;
   private state = {
@@ -201,6 +209,9 @@ export class DockHud implements StreetHud {
     this.buildDock();
     this.buildView();
     this.refreshAll();
+    const nav = this.navText;
+    this.navText = null;
+    this.setNavHint(nav);
   }
 
   private clearBuilt() {
@@ -217,6 +228,13 @@ export class DockHud implements StreetHud {
     this.coach(null);
     for (const pin of this.pins.values()) pin.root.destroy();
     this.pins.clear();
+    this.navPill?.destroy();
+    this.navPill = null;
+    this.marks?.destroy();
+    this.marks = null;
+    this.insetRing?.destroy();
+    this.insetRing = null;
+    this.inset = null;
   }
 
   destroy() {
@@ -230,53 +248,97 @@ export class DockHud implements StreetHud {
     const { phase, index, total } = this.setup;
     const w = frame.width;
     const left = 10 * k + frame.safe.left;
-    const right = w - 12 * k - frame.safe.right;
+    const right = w - 10 * k - frame.safe.right;
     const t = frame.safe.top;
     const bg = this.add(scene.add.graphics().setDepth(DEPTH.panel));
     bg.fillStyle(PANEL, 1);
     bg.fillRect(0, 0, w, frame.top.h);
     bg.fillStyle(INK_HEX, 1);
     bg.fillRect(0, frame.top.h - 3 * k, w, 3 * k);
-    const y1 = t + 19 * k;
-    const y2 = t + 45 * k;
+    const rowA = t + 23 * k;
+    const rowB = t + 56 * k;
+    const rowC = t + 86 * k;
 
-    this.scoreText = this.add(this.label(right, y1, "0", 22, "#ffc83d", { stroke: 0.16 }).setOrigin(1, 0.5).setDepth(DEPTH.ui));
-    this.scoreLabel = this.add(this.label(0, y1, this.copy.touch.score, 9.5, "#b9a6ef").setOrigin(1, 0.5).setDepth(DEPTH.ui));
+    const boxW = Phaser.Math.Clamp((w / k) * 0.28, 98, 124) * k;
+    const boxX = right - boxW;
+    const boxTop = t + 7 * k;
+    const boxH = frame.top.h - t - 16 * k;
+    const well = this.add(scene.add.graphics().setDepth(DEPTH.panel));
+    well.fillStyle(WELL, 1);
+    well.fillRoundedRect(boxX, boxTop, boxW, boxH, 12 * k);
+    well.lineStyle(2.5 * k, INK_HEX, 1);
+    well.strokeRoundedRect(boxX, boxTop, boxW, boxH, 12 * k);
+    const cx = boxX + boxW / 2;
+    this.scoreMax = boxW - 12 * k;
+    this.add(this.label(cx, boxTop + 14 * k, this.copy.touch.score, 12.5, "#b9a6ef").setOrigin(0.5).setDepth(DEPTH.ui));
+    this.scoreText = this.add(this.label(cx, boxTop + 41 * k, "0", 28, "#ffc83d", { stroke: 0.16 }).setOrigin(0.5).setDepth(DEPTH.ui));
+    this.bestText = this.add(this.label(cx, boxTop + boxH - 14 * k, "", 12, "#f7ecd4").setOrigin(0.5).setDepth(DEPTH.ui));
 
-    const chipText = this.label(0, 0, this.copy.hud.phase(index + 1, total), 11, INK).setOrigin(0.5);
-    const chipW = chipText.width + 12 * k;
-    const chipH = 21 * k;
+    const areaR = boxX - 10 * k;
+    const chipText = this.label(0, 0, this.copy.hud.phase(index + 1, total), 13, INK).setOrigin(0.5);
+    const chipW = chipText.width + 14 * k;
+    const chipH = 25 * k;
     const chipBg = scene.add.graphics();
-    raised(chipBg, -chipW / 2, -chipH / 2, chipW, chipH, 7 * k, MINT, k);
+    raised(chipBg, -chipW / 2, -chipH / 2, chipW, chipH, 8 * k, MINT, k);
     chipText.y = glyphOffset(chipText);
-    this.add(scene.add.container(left + chipW / 2, y1, [chipBg, chipText]).setDepth(DEPTH.ui));
-    const titleX = left + chipW + 8 * k;
-    const title = this.add(this.label(titleX, y1, "", 16, "#ffc83d", { stroke: 0.14 }).setOrigin(0, 0.5).setDepth(DEPTH.ui));
-    const titleMax = right - 110 * k - titleX;
-    fitLine(title, this.copy.phases[phase.id].title.toUpperCase(), titleMax, 16 * k, 11 * k);
-    const hit = this.add(this.hitRect(title.x + title.width - left, 34 * k, left, y1 - 17 * k).setDepth(DEPTH.ui));
+    this.add(scene.add.container(left + chipW / 2, rowA, [chipBg, chipText]).setDepth(DEPTH.ui));
+    const titleX = left + chipW + 9 * k;
+    const title = this.add(this.label(titleX, rowA, "", 21, "#ffc83d", { stroke: 0.15 }).setOrigin(0, 0.5).setDepth(DEPTH.ui));
+    fitLine(title, this.copy.phases[phase.id].title.toUpperCase(), areaR - titleX, 21 * k, 13 * k);
+    const hit = this.add(this.hitRect(Math.max(title.x + title.width, titleX) - left, 38 * k, left, rowA - 19 * k).setDepth(DEPTH.ui));
     hit.on("pointerdown", () => this.toggleGoal());
 
-    const cell = 30 * k;
+    const size = 31 * k;
+    const step = size + 6 * k;
     phase.targets.forEach((target, i) => {
-      const x = left + cell / 2 + i * cell;
-      const img = scene.add.image(x, y2, target.tex);
-      const base = Math.min((24 * k) / img.width, (25 * k) / img.height);
+      const x = left + size / 2 + i * step;
+      const cellBg = scene.add.graphics();
+      const img = scene.add.image(x, rowB, target.tex);
+      const base = Math.min((size - 7 * k) / img.width, (size - 5 * k) / img.height);
       img.setScale(base);
-      const drop = target.kind === "soak" ? scene.add.image(x + 9 * k, y2 + 7 * k, "icon-drop").setDisplaySize(15 * k, 15 * k) : null;
-      const check = scene.add.image(x + 9 * k, y2 + 7 * k, "icon-check").setDisplaySize(17 * k, 17 * k).setVisible(false);
+      const drop = target.kind === "soak" ? scene.add.image(x + size / 2 - 3 * k, rowB + size / 2 - 3 * k, "icon-drop").setDisplaySize(16 * k, 16 * k) : null;
+      const check = scene.add.image(x + size / 2 - 3 * k, rowB - size / 2 + 3 * k, "icon-check").setDisplaySize(20 * k, 20 * k).setVisible(false);
+      this.add(cellBg.setDepth(DEPTH.ui));
       this.add(img.setDepth(DEPTH.ui));
-      if (drop) this.add(drop.setDepth(DEPTH.ui));
-      this.add(check.setDepth(DEPTH.ui + 0.1));
-      this.cells.push({ x, y: y2, img, check, drop, base });
+      if (drop) this.add(drop.setDepth(DEPTH.ui + 0.1));
+      this.add(check.setDepth(DEPTH.ui + 0.2));
+      const cell: Cell = { x, y: rowB, img, check, drop, base, bg: cellBg, size };
+      this.cells.push(cell);
+      this.drawCell(cell, false);
     });
-    let x = left + phase.targets.length * cell + 8 * k;
+    const afterCells = left + phase.targets.length * step + 4 * k;
+    this.progressText = this.add(this.label(afterCells, rowB, "", 18, "#f7ecd4", { stroke: 0.14 }).setOrigin(0, 0.5).setDepth(DEPTH.ui));
+
+    let x = left;
     for (let i = 0; i < 3; i += 1) {
-      this.parStars.push(this.add(scene.add.image(x + 6.5 * k, y2, "icon-star").setDisplaySize(13 * k, 13 * k).setDepth(DEPTH.ui)));
-      x += 14 * k;
+      this.parStars.push(this.add(scene.add.image(x + 8.5 * k, rowC, "icon-star").setDisplaySize(17 * k, 17 * k).setDepth(DEPTH.ui)));
+      x += 18.5 * k;
     }
-    this.shotsText = this.add(this.label(x + 4 * k, y2, "", 10.5, "#f7ecd4").setOrigin(0, 0.5).setDepth(DEPTH.ui));
-    this.bestText = this.add(this.label(right, y2, "", 10.5, "#b9a6ef").setOrigin(1, 0.5).setDepth(DEPTH.ui));
+    this.shotsText = this.add(this.label(x + 6 * k, rowC, "", 13.5, "#f7ecd4").setOrigin(0, 0.5).setDepth(DEPTH.ui));
+  }
+
+  private drawCell(cell: Cell, done: boolean) {
+    const k = this.k;
+    const g = cell.bg;
+    const s = cell.size;
+    g.clear();
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(cell.x - s / 2 + 2 * k, cell.y - s / 2 + 2.5 * k, s, s, 8 * k);
+    g.fillStyle(done ? 0x4f8a3a : CREAM_HEX, 1);
+    g.fillRoundedRect(cell.x - s / 2, cell.y - s / 2, s, s, 8 * k);
+    g.lineStyle(2.5 * k, INK_HEX, 1);
+    g.strokeRoundedRect(cell.x - s / 2, cell.y - s / 2, s, s, 8 * k);
+    cell.img.setAlpha(done ? 0.55 : 1);
+    cell.drop?.setVisible(!done);
+    cell.check.setVisible(done);
+  }
+
+  private drawProgress() {
+    const text = this.progressText;
+    if (!text) return;
+    const n = this.state.checked.size;
+    const total = this.setup.phase.targets.length;
+    text.setText(`${n}/${total}`).setColor(n >= total ? "#93cf4c" : "#f7ecd4");
   }
 
   private buildDock() {
@@ -299,11 +361,24 @@ export class DockHud implements StreetHud {
     this.infoTip = this.add(this.label(padL, d.y + 17.5 * k, "", 13.5, "#f7ecd4", { hand: true }).setOrigin(0, 0.5).setDepth(DEPTH.ui));
 
     const kinds = PROJECTILE_ORDER.filter((id) => (this.setup.phase.ammo[id] ?? 0) > 0);
-    const size = Math.min(56 * k, (leftW - 3 * 8 * k) / 4);
-    const slotTop = d.y + 30 * k;
-    this.slotsRect = { x: padL, y: slotTop, w: kinds.length * size + (kinds.length - 1) * 8 * k, h: size };
+    const many = kinds.length > 1;
+    const gap = 6 * k;
+    const pad = 4 * k;
+    const swapW = many ? 22 * k : 0;
+    const size = Math.min(54 * k, (leftW - 2 * pad - swapW - 3 * gap) / 4);
+    const slotTop = d.y + 31 * k;
+    const trayW = 2 * pad + kinds.length * size + (kinds.length - 1) * gap + swapW;
+    this.slotsRect = { x: padL, y: slotTop - pad, w: trayW, h: size + 2 * pad };
+    if (many) {
+      const tray = this.add(scene.add.graphics().setDepth(DEPTH.ui - 0.5));
+      tray.fillStyle(WELL, 1);
+      tray.fillRoundedRect(padL, slotTop - pad, trayW, size + 2 * pad, (size + 2 * pad) / 2);
+      tray.lineStyle(2.5 * k, INK_HEX, 1);
+      tray.strokeRoundedRect(padL, slotTop - pad, trayW, size + 2 * pad, (size + 2 * pad) / 2);
+      this.add(scene.add.image(padL + trayW - pad - swapW / 2 - 1 * k, slotTop + size / 2, "icon-swap").setDisplaySize(17 * k, 17 * k).setDepth(DEPTH.ui).setAlpha(0.85));
+    }
     kinds.forEach((id, i) => {
-      const cx = padL + size / 2 + i * (size + 8 * k);
+      const cx = padL + pad + size / 2 + i * (size + gap);
       const cy = slotTop + size / 2;
       const disc = scene.add.graphics();
       const icon = scene.add.image(0, -1 * k, PROJECTILES[id].tex);
@@ -312,7 +387,7 @@ export class DockHud implements StreetHud {
       const hit = this.hitRect(size + 6 * k, size + 8 * k);
       const root = this.add(scene.add.container(cx, cy, [disc, icon, count, hit]).setDepth(DEPTH.ui));
       this.press(root, hit, () => this.setup.handlers.onPick(id));
-      this.slots.push({ id, root, disc, count, size });
+      this.slots.push({ id, root, disc, count, size, baseY: cy });
     });
 
     const groupW = (leftW - 8 * k) / 2;
@@ -398,6 +473,7 @@ export class DockHud implements StreetHud {
     this.setBest(this.state.best);
     this.setLaunches(this.state.launches);
     for (const i of this.state.checked) this.markCell(i, false);
+    this.drawProgress();
     this.drawAmmo();
     this.drawAim();
     this.drawFire();
@@ -408,8 +484,7 @@ export class DockHud implements StreetHud {
     this.state.score = score;
     const text = this.scoreText;
     if (!text) return;
-    text.setText(formatNumber(score, this.setup.locale));
-    this.scoreLabel?.setPosition(text.x - text.width - 5 * this.k, text.y + 1 * this.k);
+    fitLine(text, formatNumber(score, this.setup.locale), this.scoreMax, 28 * this.k, 18 * this.k);
     if (pulse && !this.setup.reduced) this.scene.tweens.add({ targets: text, scale: { from: 1.22, to: 1 }, duration: 240, ease: "Back.easeOut" });
   }
 
@@ -437,11 +512,10 @@ export class DockHud implements StreetHud {
   private markCell(index: number, animate: boolean) {
     const cell = this.cells[index];
     if (!cell) return;
-    cell.img.setAlpha(0.5);
-    cell.drop?.setVisible(false);
-    cell.check.setVisible(true);
+    this.drawCell(cell, true);
+    this.drawProgress();
     if (!animate || this.setup.reduced) return;
-    const size = 17 * this.k;
+    const size = 20 * this.k;
     cell.check.setDisplaySize(size * 0.2, size * 0.2);
     this.scene.tweens.add({ targets: cell.check, displayWidth: size, displayHeight: size, duration: 280, ease: "Back.easeOut" });
     this.scene.tweens.add({ targets: cell.img, scale: { from: cell.base * 1.4, to: cell.base }, duration: 260, ease: "Back.easeOut" });
@@ -504,9 +578,13 @@ export class DockHud implements StreetHud {
       g.strokeCircle(bx, by, br);
       slot.count.setText(String(left)).setColor(on ? "#ffc83d" : INK);
       slot.count.setPosition(bx, by + glyphOffset(slot.count));
+      if (on) {
+        g.lineStyle(3 * k, 0xfffaf0, 0.95);
+        g.strokeCircle(0, 0, r + 3.5 * k);
+      }
       slot.root.setAlpha(left > 0 ? 1 : 0.35);
       slot.root.setScale(1);
-      slot.root.setData("on", on);
+      slot.root.y = slot.baseY - (on ? 2 * k : 0);
     }
     const name = this.infoName;
     const tip = this.infoTip;
@@ -687,7 +765,7 @@ export class DockHud implements StreetHud {
     frameG.strokeRoundedRect(fx, fy, fs, fs, 9 * k);
     name.setPosition(tx, pad - 2 * k);
     body.setPosition(tx, pad + name.height - 5 * k);
-    const x = side === "left" ? 8 * k + frame.safe.left : frame.width - 8 * k - frame.safe.right - w;
+    const x = side === "left" ? (this.inset ? this.inset.x + this.inset.w + 10 * k : 8 * k + frame.safe.left) : frame.width - 8 * k - frame.safe.right - w;
     let y = st.y + 8 * k;
     const other = side === "left" ? this.cards.right : this.cards.left;
     if (other && (side === "left" ? x + w + 6 * k > other.x : other.x + other.w + 6 * k > x)) {
@@ -737,12 +815,11 @@ export class DockHud implements StreetHud {
     this.coachTweens = [];
     this.coachObjs = [];
     this.coachStep = step;
-    this.infoName?.setVisible(!step);
-    this.infoTip?.setVisible(!step);
+    this.syncInfo();
     if (!step || this.frame.kind !== "tall") return;
     const k = this.k;
     const copy = this.copy.touch.coach;
-    this.pill(copy[step]);
+    this.coachObjs.push(this.pill(copy[step], YELLOW, DEPTH.coach));
     if (step === "ammo") {
       const r = this.slotsRect;
       this.ring(r.x - 5 * k, r.y - 5 * k, r.w + 10 * k, r.h + 10 * k, r.h / 2 + 5 * k);
@@ -764,23 +841,83 @@ export class DockHud implements StreetHud {
     this.coachTimer = this.scene.time.delayedCall(3600, () => this.coach(null));
   }
 
-  private pill(text: string) {
+  private syncInfo() {
+    const show = !this.coachStep && !this.navText;
+    this.infoName?.setVisible(show);
+    this.infoTip?.setVisible(show);
+  }
+
+  setNavHint(text: string | null) {
+    if (text === this.navText) return;
+    this.navText = text;
+    this.navPill?.destroy();
+    this.navPill = text && this.frame.kind === "tall" ? this.pill(text, MINT, DEPTH.coach + 0.5) : null;
+    this.syncInfo();
+  }
+
+  setInset(rect: { x: number; y: number; w: number; h: number } | null) {
+    const same = rect && this.inset && rect.x === this.inset.x && rect.y === this.inset.y && rect.w === this.inset.w;
+    if (same || (!rect && !this.inset)) return;
+    this.inset = rect;
+    this.insetRing?.destroy();
+    this.insetRing = null;
+    if (!rect) return;
+    const k = this.k;
+    const g = this.add(this.scene.add.graphics().setDepth(DEPTH.card - 0.5), false);
+    const cx = rect.x + rect.w / 2;
+    const cy = rect.y + rect.h / 2;
+    const r = rect.w / 2;
+    g.lineStyle(7 * k, INK_HEX, 1);
+    g.strokeCircle(cx + 1.5 * k, cy + 2.5 * k, r + 1.5 * k);
+    g.lineStyle(4 * k, CREAM_HEX, 1);
+    g.strokeCircle(cx, cy, r + 1 * k);
+    g.lineStyle(2 * k, INK_HEX, 1);
+    g.strokeCircle(cx, cy, r + 3.5 * k);
+    this.insetRing = g;
+    const card = this.cards.left;
+    if (card && card.root.x < rect.x + rect.w) card.root.x = rect.x + rect.w + 10 * this.k;
+  }
+
+  setMarks(points: Vec[]) {
+    if (!points.length) {
+      this.marks?.clear();
+      return;
+    }
+    if (!this.marks) this.marks = this.add(this.scene.add.graphics().setDepth(DEPTH.pin), false);
+    const g = this.marks;
+    const k = this.k;
+    const st = this.frame.stage;
+    const bob = this.setup.reduced ? 0 : Math.sin(this.scene.time.now / 170) * 3 * k;
+    g.clear();
+    for (const p of points) {
+      if (p.x < st.x || p.x > st.x + st.w || p.y < st.y + 20 * k || p.y > st.y + st.h) continue;
+      const y = p.y - 6 * k + bob;
+      g.fillStyle(INK_HEX, 1);
+      g.fillTriangle(p.x - 12 * k + 2 * k, y - 18 * k + 2.5 * k, p.x + 12 * k + 2 * k, y - 18 * k + 2.5 * k, p.x + 2 * k, y + 2.5 * k);
+      g.fillStyle(YELLOW, 1);
+      g.fillTriangle(p.x - 12 * k, y - 18 * k, p.x + 12 * k, y - 18 * k, p.x, y);
+      g.lineStyle(2.5 * k, INK_HEX, 1);
+      g.strokeTriangle(p.x - 12 * k, y - 18 * k, p.x + 12 * k, y - 18 * k, p.x, y);
+    }
+  }
+
+  private pill(text: string, fill: number, depth: number) {
     const { k, frame, scene } = this;
     const d = frame.dock;
     const x0 = 6 * k + frame.safe.left;
     const w = frame.width - x0 - 6 * k - frame.safe.right;
     const h = 24 * k;
     const g = scene.add.graphics();
-    raised(g, 0, 0, w, h, h / 2, YELLOW, k);
+    raised(g, 0, 0, w, h, h / 2, fill, k);
     const label = this.label(w / 2, h / 2, "", 12.5, INK).setOrigin(0.5);
     fitLine(label, text, w - 20 * k, 12.5 * k, 9.5 * k);
     label.y = h / 2 + glyphOffset(label);
-    const root = this.add(scene.add.container(x0, d.y + 5 * k, [g, label]).setDepth(DEPTH.coach), false);
-    this.coachObjs.push(root);
+    const root = this.add(scene.add.container(x0, d.y + 5 * k, [g, label]).setDepth(depth), false);
     if (!this.setup.reduced) {
       root.setAlpha(0);
-      this.coachTweens.push(scene.tweens.add({ targets: root, alpha: 1, duration: 200 }));
+      scene.tweens.add({ targets: root, alpha: 1, duration: 200 });
     }
+    return root;
   }
 
   private ring(x: number, y: number, w: number, h: number, r: number, strength = 1) {
@@ -858,7 +995,7 @@ export class DockHud implements StreetHud {
       const bg = scene.add.graphics();
       bg.fillStyle(INK_HEX, 1);
       bg.fillCircle(1.5 * k, 2.5 * k, r);
-      bg.fillStyle(kind === "star" ? YELLOW : kind === "gadget" ? MINT : CREAM_HEX, 1);
+      bg.fillStyle(kind === "star" ? YELLOW : kind === "gadget" || kind === "sling" ? MINT : CREAM_HEX, 1);
       bg.fillCircle(0, 0, r);
       bg.lineStyle(2.5 * k, INK_HEX, 1);
       bg.strokeCircle(0, 0, r);

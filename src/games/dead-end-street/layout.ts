@@ -22,10 +22,10 @@ export const TALL = {
   minRatio: 1.1,
   unit: 2.5,
   pixels: 3_200_000,
-  top: 62,
+  top: 104,
   dock: 148,
-  band: { top: 0, bottom: 1040 },
-  view: { min: 640, max: 1120 },
+  band: { top: 150, bottom: 1058 },
+  view: { min: 600, max: 1120 },
 };
 
 const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };

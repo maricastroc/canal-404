@@ -131,6 +131,10 @@ export const COPY = localized({
         fire: "Ajuste fino aqui. Pronto? LANÇAR!",
         follow: "A câmera segue o tiro. VER TUDO mostra o quintal",
       },
+      nav: {
+        overview: "Toque numa parte do quintal para ver de perto",
+        inspect: "Arraste para olhar. VOLTAR leva de volta à mira",
+      },
       start: (n: number, total: number, title: string, goal: string) =>
         `Fase ${n} de ${total}: ${title}. ${goal}. Arraste na cena para mirar, ajuste ângulo e força nos botões e toque em Lançar.`,
     },
@@ -260,6 +264,10 @@ export const COPY = localized({
         aim: "Drag on the yard: farther is stronger",
         fire: "Fine-tune here. Ready? LAUNCH!",
         follow: "The camera follows the shot. SEE ALL shows the yard",
+      },
+      nav: {
+        overview: "Tap a spot in the yard to look closer",
+        inspect: "Drag to look around. BACK returns to aiming",
       },
       start: (n: number, total: number, title: string, goal: string) =>
         `Level ${n} of ${total}: ${title}. ${goal}. Drag on the yard to aim, fine-tune angle and power with the buttons and tap Launch.`,
