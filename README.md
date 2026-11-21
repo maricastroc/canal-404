@@ -2,7 +2,7 @@
 
 ![Canal 404: six games in one channel](docs/screenshots/banner.webp)
 
-A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and six complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama** and **Férias Fora do Ar**.
+A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and seven complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama**, **Férias Fora do Ar** and **Ladeira Abaixo**.
 
 The code, file names and ids are in English. The portal and all six games are in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
 
@@ -51,6 +51,12 @@ The code, file names and ids are in English. The portal and all six games are in
     <td align="center"><b>Operação: Recreio</b></td>
     <td align="center"><b>Guerra do Pijama</b></td>
     <td align="center"><b>Férias Fora do Ar</b></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/downhill-derby.webp" alt="Ladeira Abaixo: Déco in the air on Seu Arlindo's hill, with the landing outline ahead"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Ladeira Abaixo</b></td>
   </tr>
 </table>
 
@@ -132,7 +138,7 @@ With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests
 
 Every page also exists in English under `/en` (`/en/games`, `/en/play/food-fight`...). Unprefixed URLs are pt-BR, `/pt-BR/...` redirects to them, and the switch in the navigation reloads the same page in the other language.
 
-Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama) and `off-air-vacation` (Férias Fora do Ar).
+Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama), `off-air-vacation` (Férias Fora do Ar) and `downhill-derby` (Ladeira Abaixo).
 
 ## Structure
 
@@ -160,6 +166,7 @@ src/
     food-fight/          cafeteria food fight (scenes, rivals, sounds)
     operation-recess/    side-scrolling action platformer (phases, hero, enemies, boss, sounds)
     pajama-war/          three-way pillow fight (arenas, fighters, AI, pillows, sounds)
+    downhill-derby/      soapbox race (simulation and judge shared with the server, rival tapes, tracks, garage, sounds)
     competition/         nickname form and the scoreboard membership card
     records/             record arcade and the champion strip on game pages
   lib/
@@ -181,7 +188,7 @@ Games are independent from the portal. Each one exports a `GameModule` with `mou
 3. Add the loader in `src/games/loaders.ts`.
 4. Draw the cover in `src/components/art/Covers.tsx` and the logo in `src/components/art/GameLogos.tsx`, with the title in both languages (`GameTitleLogos.tsx`). Labels in the how-to art that copy the game's buttons follow the page's language too.
 
-The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements, screen-reader announcements and the scoreboard. To compete, a game reports integer `stats` in its result and gets a rule in `src/lib/competition/rules.ts` that recomputes its score from them. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`. A game gets daily missions by adding entries to `src/lib/missions/catalog.ts` with goals over stats its rule already checks, plus a proof in `catalog.test.ts` ([decision 0006](docs/decisions/0006-daily-missions.md)).
+The portal handles loading with a real progress bar, the intro screen, pause, results, high scores, achievements, screen-reader announcements and the scoreboard. To compete, a game reports integer `stats` in its result and gets a rule in `src/lib/competition/rules.ts` that recomputes its score from them. Games with levels declare `levels` in the registry and return `level` in the result: the portal shows the level picker (each level unlocks the next), saves stars per level and offers "Próxima fase". A game can call its levels arenas or tracks (`levelWord`), list guest characters for the cast section (`guests`), and add one extra result button by returning `alt` in the result and implementing `alt()` (Guerra do Pijama uses it for "Trocar personagem"). Games that save their own progress declare `resumable` (their `localStorage` key): the intro then offers "Continuar aventura" and "Nova aventura" (with a confirmation), `start({ fresh: true })` starts over, and the result can rename its main button with `restartLabel`. A game gets daily missions by adding entries to `src/lib/missions/catalog.ts` with goals over stats its rule already checks, plus a proof in `catalog.test.ts` ([decision 0006](docs/decisions/0006-daily-missions.md)).
 
 ## Rua Sem Saída (`dead-end-street`)
 
@@ -242,6 +249,14 @@ The world is split into areas loaded one at a time with a fade. Déco (about 220
 Small ambient touches reinforce the broadcast theme: the lobby TV catches fragments of old Canal 404 shows, the broken arcade cabinet flashes ERRO 404, the beach kiosk radio picks up interrupted transmissions, the lighthouse blinks in groups of four, the antenna sends out signal waves, and a ghost peeks out of the ghost train arch now and then. Residents blink, the receptionist follows the player with his eyes, crabs run and hide when the player gets close, and fireflies, falling leaves and flickering lanterns keep the forest moving. Progress is saved automatically in `localStorage` (`canal404:off-air-vacation:v1`) on every area change, item and quest step, and every few seconds. A full playthrough was verified with a bot that walks with the game's own pathfinding and collision, plays every quest, secret and both endings, and reloads the page halfway to test "Continuar aventura".
 
 The resort also reacts to Déco just walking around. Plants, hedges, palms, umbrellas and ferns rustle and drop a leaf as he brushes past, suitcases and pinball machines jingle, lounges bounce, signs and lantern posts wobble, and stools and the station chair spin. Residents turn to face him and look up when he gets close; Cavuca and Seu Lento stop walking to let him pass instead of walking through him. A kitten in the lobby tags along for a while, fish in the pool dart away from the edge, gulls on the pier take off when he walks up, frogs by the stream hop into the water, butterflies flutter off and fireflies drift away from him. Two background residents with their own lines, Seu Coaxo on a pool lounge and Seu Siri on the beach, comment when he walks by. The ground answers too: footprints in the sand that the tide erases, ripples at the pool rim and along the stream, dust on the forest trail, wooden steps on the pier and bridge, and the tide pushing him back when a wave comes in. The beachball can be kicked into the pool, where it floats for a while. The arcade cabinets light up as he passes, the station monitors show his live feed, the big red button glows when he's near, and the sleeping mascot in room 404 mumbles if he walks around the bed.
+
+## Ladeira Abaixo (`downhill-derby`)
+
+A side-view soapbox race down three neighborhood hills, each a little harder: Ladeira do Seu Arlindo (ramps, trash cans, a garbage truck backing up and a rooftop shortcut), Dia de Feira (awnings to bounce across in rhythm, rolling fruit, pigeons, a stairway and a handrail) and Morro da Antena at dusk (roadworks with seesaw planks and swinging cement bags, a loop and a manhole that drops into a sewer shortcut). Hold ↓ to crouch and pick up speed downhill, Space jumps (best at the edge of a ramp), and ← → spin in the air until the landing outline turns green; on the ground they start a balanced wheelie. A fresh Space held in the air is a pose that must be let go before landing. Phones get on-screen CROUCH, JUMP and spin buttons.
+
+Before each track the garage picks the cart: Déco's Relâmpago de Madeira (gets up faster after a wipeout), Bruno's Plano B (shows where the jump lands, forgiving landings, slower), Lina's Turbina da Vovó (a fan that pushes uphill, heavy, slow spins; unlocked by finishing ahead of Lina on Dia de Feira) and Mila's Banheira (light, fast spins, speeds up in puddles, picky landings; unlocked by finishing ahead of Mila on Morro da Antena). Racing in a friend's cart leaves their spot to Déco. The three rivals are recorded runs that adapt to the player's pace during the visit, Mila shows the shortcuts, and the garage can turn on the ghost of the visit's best run. Tricks, poses, wheelies, grinds and near misses earn show points with a multiplier up to ×5; the HUD shows split times against the track record.
+
+Places give stars (1st, 2nd and 3rd), and a podium unlocks the next track. The simulation lives in `sim/`, outside Phaser, at a fixed 1/120 s. Each result carries the race's inputs and the server replays them before the time enters that track's board ([decision 0012](docs/decisions/0012-downhill-replay.md)). Track records, unlocked carts, the last cart and the ghost setting are saved in `canal404:downhill-derby:v1`.
 
 ## Accessibility
 

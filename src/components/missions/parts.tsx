@@ -10,8 +10,8 @@ import { useCountdown } from "@/lib/missions/hooks";
 import type { MissionState, MissionView } from "@/lib/missions/types";
 
 const PLACE = localized({
-  "pt-BR": { fase: "Fase", arena: "Arena" },
-  en: { fase: "Level", arena: "Arena" },
+  "pt-BR": { fase: "Fase", arena: "Arena", pista: "Pista" },
+  en: { fase: "Level", arena: "Arena", pista: "Track" },
 });
 
 export function missionHref(mission: Pick<MissionView, "game" | "day">) {
@@ -23,7 +23,7 @@ export function missionPlace(mission: Pick<MissionView, "game" | "level">, local
   if (!game) return { game: mission.game, level: null as string | null };
   if (!mission.level || !game.levels) return { game: game.title, level: null };
   const index = game.levels.findIndex((l) => l.id === mission.level);
-  const word = PLACE[locale][game.levelWord === "arena" ? "arena" : "fase"];
+  const word = PLACE[locale][game.levelWord ?? "fase"];
   return { game: game.title, level: index >= 0 ? `${word} ${index + 1}: ${game.levels[index].title}` : null };
 }
 

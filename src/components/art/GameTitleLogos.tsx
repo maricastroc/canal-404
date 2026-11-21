@@ -269,6 +269,62 @@ function OffAirVacationLogoArt({ className, locale }: { className?: string; loca
   );
 }
 
+const DOWNHILL_DERBY = localized({
+  "pt-BR": { label: "Ladeira Abaixo", first: "LADEIRA", firstSize: 72, last: "ABAIXO", lastSize: 90, step: 5 },
+  en: { label: "Downhill Derby", first: "DOWNHILL", firstSize: 62, last: "DERBY", lastSize: 98, step: 6 },
+});
+
+function Slope({ word, x, y, size, step, fill, stroke }: { word: string; x: number; y: number; size: number; step: number; fill: string; stroke: number }) {
+  const chars = Array.from(word);
+  const lift = ((chars.length - 1) * step) / 2;
+  const letters = (key: string) =>
+    chars.map((c, i) => (
+      <tspan key={`${key}${i}`} dy={i === 0 ? -lift : step}>
+        {c}
+      </tspan>
+    ));
+  return (
+    <>
+      <text x={x + 6} y={y + 6} textAnchor="middle" fontSize={size} fill={P.ink} letterSpacing="2">
+        {letters("s")}
+      </text>
+      <text x={x} y={y} textAnchor="middle" fontSize={size} fill={fill} stroke={P.ink} strokeWidth={stroke} paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+        {letters("f")}
+      </text>
+    </>
+  );
+}
+
+function DownhillDerbyLogoArt({ className, locale }: { className?: string; locale: Locale }) {
+  const t = DOWNHILL_DERBY[locale];
+  return (
+    <svg viewBox="-22 -8 404 232" className={className} role="img" aria-label={t.label}>
+      <g transform="rotate(9 180 110)">
+        <path d="M-2 190 L334 190" stroke={P.ink} strokeWidth="20" strokeLinecap="round" />
+        <path d="M-2 190 L334 190" stroke={P.inkSoft} strokeWidth="10" strokeLinecap="round" />
+        <path d="M24 190 L50 190 M94 190 L120 190 M164 190 L190 190 M234 190 L260 190" stroke={P.sun} strokeWidth="4" strokeLinecap="round" />
+        <g style={display}>
+          <g transform="rotate(-5 194 60)">
+            <Slope word={t.first} x={194} y={80} size={t.firstSize} step={2} fill={P.sun} stroke={10} />
+          </g>
+          <Slope word={t.last} x={176} y={168} size={t.lastSize} step={t.step} fill={P.tangerine} stroke={12} />
+        </g>
+        <path d="M-12 108 L20 108 M-20 128 L24 128 M-10 148 L16 148" stroke={P.ink} strokeWidth="6" strokeLinecap="round" />
+        <g transform="translate(360 172)">
+          <circle r="20" fill={P.ink} />
+          <circle r="12" fill={P.steelDeep} />
+          <circle r="5" fill={P.steel} />
+          <path d="M-7 -13 Q0 -17 8 -12" stroke={P.white} strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.7" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+export function DownhillDerbyLogo({ className }: { className?: string }) {
+  return <DownhillDerbyLogoArt className={className} locale={useLocale()} />;
+}
+
 export function PajamaWarLogo({ className }: { className?: string }) {
   return <PajamaWarLogoArt className={className} locale={useLocale()} />;
 }

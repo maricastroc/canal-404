@@ -4,6 +4,14 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ladeira Abaixo entra no catálogo
+- **A seventh game: Ladeira Abaixo** (EN "Downhill Derby", `/play/downhill-derby`). Déco, Lina, Bruno and Mila race soapbox carts down three neighborhood hills, each a little harder: Ladeira do Seu Arlindo, Dia de Feira and Morro da Antena. Crouch to build speed, jump at the edge of the ramps, spin in the air to land straight, and put on a show with flips, poses and wheelies. Phones get on-screen buttons.
+- **Tracks and stars.** The intro lists the tracks; 1st, 2nd and 3rd place give 3, 2 and 1 stars, and a podium unlocks the next track. The result shows the place, the time against the track record, how far the next rival was, and the score: a place bonus plus the show points. "Trocar carrinho" goes back to the garage.
+- **The garage.** Before each track you pick a cart. Relâmpago de Madeira and Plano B are open from the start; Turbina da Vovó opens by finishing ahead of Lina on Dia de Feira, and the Banheira by finishing ahead of Mila on Morro da Antena. Racing in a friend's cart leaves their spot to Déco. The garage also turns on the ghost of your best run in the visit.
+- **A board per track, replayed by the channel.** Each result carries the race's inputs; the server replays them with the game's own physics and ranks the fastest time, then fewer wipeouts, then more show points ([decision 0012](docs/decisions/0012-downhill-replay.md)). Every finished race counts, whatever the place.
+- **Saved on the device** in `canal404:downhill-derby:v1`: track records with section splits, unlocked carts, the last cart and the ghost setting. "Apagar meu progresso" clears it with the rest.
+- The hidden prototype route and its calibration panel are gone, and so is the test track. The portal now words levels as "pista" where a game asks for it ("Escolha a pista", "Próxima pista").
+
 ### Aviso de jogo atualizado no placar
 - **A page left open during a deploy now says to reload.** A Rua Sem Saída page opened before the nine-level campaign went live still sent the old three-round result, and the board answered "Resultado em formato inválido". Now the board answers that the game was updated and the page needs a reload, both when the old page asks for a ticket without a level and when it sends a launch log in an older format.
 - The result screen and the mission line show "O jogo foi atualizado" with the same advice. Old pages show it under "O placar não aceitou", since their code predates the new message. Scores, rankings and boards are unchanged.

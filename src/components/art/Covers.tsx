@@ -8,6 +8,7 @@ import { arcPoint, Fork, House, Sparkle4 } from "./DeadEndStreetArt";
 const OffAirVacationCoverArt = dynamic(() => import("./OffAirVacationArt").then((m) => m.OffAirVacationCoverArt));
 const OperationRecessCoverArt = dynamic(() => import("./OperationRecessArt").then((m) => m.OperationRecessCoverArt));
 const PajamaWarCoverArt = dynamic(() => import("./PajamaWarArt").then((m) => m.PajamaWarCoverArt));
+const DownhillDerbyCoverArt = dynamic(() => import("./DownhillDerbyArt").then((m) => m.DownhillDerbyCoverArt));
 
 const ink = { stroke: P.ink, strokeWidth: 4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
@@ -54,6 +55,7 @@ const COVER_ALT = localized({
     "operation-recess": "Capa de Operação: Recreio: no corredor da escola, Bruno ergue a espada de papelão contra um monitor que apita bloqueando o caminho para a diretoria",
     "pajama-war": "Capa de Guerra do Pijama: Lia, Nico e Bia numa guerra de travesseiros no quarto, com penas voando",
     "off-air-vacation": "Capa de Férias Fora do Ar: Déco chega ao Resort 404 com mala e mapa e encara o Sr. Bigodes, sério demais atrás do balcão da recepção, enquanto o relógio da fachada está parado às 4:04 e a TV ao lado só mostra chuvisco",
+    "downhill-derby": "Capa de Ladeira Abaixo: Déco voa de uma rampa no seu carrinho de madeira enquanto Mila, Bruno e Lina descem logo atrás, cada um no seu carrinho, numa ladeira do bairro com a antena do Canal 404 no morro",
   },
   en: {
     "dead-end-street": "Dead End Street cover: Déco and Lina in a cart with a giant spoon, launching a sneaker at a stack of flowerpots with a gnome",
@@ -63,6 +65,7 @@ const COVER_ALT = localized({
     "operation-recess": "Operation: Recess cover: in the school hallway, Bruno raises his cardboard sword at a whistle-blowing hall monitor who blocks the way to the principal's office",
     "pajama-war": "Pajama War cover: Lia, Nico and Bia in a pillow war in the bedroom, with feathers flying",
     "off-air-vacation": "Off-Air Vacation cover: Déco arrives at Resort 404 with a suitcase and a map and faces Mr. Bigodes, far too serious behind the front desk, while the clock on the building is stuck at 4:04 and the TV next to it only shows static",
+    "downhill-derby": "Downhill Derby cover: Déco flies off a ramp in his wooden cart while Mila, Bruno and Lina race close behind, each in their own cart, down a neighborhood hill with the Canal 404 antenna on the hilltop",
   },
 });
 
@@ -463,6 +466,14 @@ export function OffAirVacationCover({ decorative, locale = DEFAULT_LOCALE }: Cov
   );
 }
 
+export function DownhillDerbyCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
+  return (
+    <Frame decorative={decorative} bg="#8fd4f7" label={COVER_ALT[locale]["downhill-derby"]}>
+      <DownhillDerbyCoverArt />
+    </Frame>
+  );
+}
+
 export const COVERS: Record<string, (props: CoverProps) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetCover,
   "bad-ideas-lab": BadIdeasLabCover,
@@ -470,6 +481,7 @@ export const COVERS: Record<string, (props: CoverProps) => React.JSX.Element> = 
   "pajama-war": PajamaWarCover,
   "operation-recess": OperationRecessCover,
   "off-air-vacation": OffAirVacationCover,
+  "downhill-derby": DownhillDerbyCover,
 };
 
 export function GameCover({ slug, decorative, locale }: { slug: string } & CoverProps) {

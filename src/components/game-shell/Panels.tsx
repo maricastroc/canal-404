@@ -33,7 +33,9 @@ export type IntroMission = { view: MissionView; state: MissionState | null };
 
 type LevelWord = NonNullable<GameMeta["levelWord"]>;
 
-const LEVEL: Record<LevelWord, string> = { fase: "level", arena: "arena" };
+const LEVEL: Record<LevelWord, string> = { fase: "level", arena: "arena", pista: "track" };
+
+const PICK: Record<LevelWord, string> = { fase: "Pick a level", arena: "Pick an arena", pista: "Pick a track" };
 
 const COPY = localized({
   "pt-BR": {
@@ -45,7 +47,7 @@ const COPY = localized({
     chooseLevel: (word: LevelWord) => `Escolha a ${word}`,
     starsTotal: (count: number, total: number) => `Estrelas: ${count}/${total}`,
     upNext: "A seguir",
-    locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : "Termine a fase anterior"),
+    locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : word === "pista" ? "Suba no pódio na pista anterior" : "Termine a fase anterior"),
     noStars: "Sem estrelas",
     saved: "Sua aventura está salva. Continue de onde parou.",
     newAdventureLabel: "Começar uma nova aventura",
@@ -96,10 +98,10 @@ const COPY = localized({
     howTo: "How to play",
     missionLink: "See today's mission",
     tuning: "Tuning in the mission…",
-    chooseLevel: (word: LevelWord) => (word === "arena" ? "Pick an arena" : "Pick a level"),
+    chooseLevel: (word: LevelWord) => PICK[word],
     starsTotal: (count: number, total: number) => `Stars: ${count}/${total}`,
     upNext: "Up next",
-    locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : "Finish the previous level"),
+    locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : word === "pista" ? "Make the podium on the previous track" : "Finish the previous level"),
     noStars: "No stars",
     saved: "Your adventure is saved. Pick up where you left off.",
     newAdventureLabel: "Start a new adventure",
@@ -129,14 +131,14 @@ const COPY = localized({
     loseLabel: (title: string) => `Game over: ${title}`,
     bestResult: "Best result!",
     newRecord: "New record!",
-    levelOf: (word: LevelWord, n: number, total: number, title: string) => `${word === "arena" ? "Arena" : "Level"} ${n} of ${total} · ${title}`,
+    levelOf: (word: LevelWord, n: number, total: number, title: string) => `${LEVEL[word][0].toUpperCase() + LEVEL[word].slice(1)} ${n} of ${total} · ${title}`,
     total: "Total",
     retryMission: "Try the mission again",
     replayLevel: "Replay level",
     playAgain: "Play again",
     nextLevel: (word: LevelWord) => `Next ${LEVEL[word]}`,
     catalog: "See catalog",
-    pickLevel: (word: LevelWord) => (word === "arena" ? "Pick an arena" : "Pick a level"),
+    pickLevel: (word: LevelWord) => PICK[word],
     backToRoom: "Back to the room",
     errorLabel: "Loading error",
     lost: "Signal lost",

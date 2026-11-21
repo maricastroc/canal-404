@@ -2,6 +2,8 @@ import { z } from "zod";
 import { PROJECTILE_ORDER } from "@/games/dead-end-street/config";
 import { MAX_AMMO } from "@/games/dead-end-street/phases";
 import { ANGLE_STEPS, MAX_STEPS, POWER_STEPS } from "@/games/dead-end-street/sim";
+import { CART_IDS } from "@/games/downhill-derby/sim/carts";
+import { TAPE_MAX, TAPE_PATTERN } from "@/games/downhill-derby/sim/judge";
 import { GAME_SLUGS } from "@/lib/competition/rules";
 import { isDayKey } from "@/lib/missions/calendar";
 
@@ -15,7 +17,7 @@ export const statsSchema = z
   .record(statKey, z.number().int().min(-INT).max(INT))
   .refine((stats) => Object.keys(stats).length <= 24, "estatísticas demais");
 
-const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2 } as const;
+const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2, "downhill-run": 1 } as const;
 
 export function outdatedReplay(body: unknown) {
   const replay = (body as { result?: { replay?: { kind?: unknown; version?: unknown } } } | null)?.result?.replay;
@@ -61,7 +63,17 @@ const streetReplaySchema = z
   })
   .strict();
 
-export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema]);
+const downhillReplaySchema = z
+  .object({
+    kind: z.literal("downhill-run"),
+    version: z.literal(REPLAY_VERSIONS["downhill-run"]),
+    cart: z.enum(CART_IDS as [string, ...string[]]),
+    tape: z.string().max(TAPE_MAX).regex(TAPE_PATTERN),
+    rivals: z.array(z.number().int().min(0).max(255)).length(3),
+  })
+  .strict();
+
+export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema, downhillReplaySchema]);
 
 export const submitSchema = z
   .object({

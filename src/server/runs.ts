@@ -24,6 +24,8 @@ export const REJECTION_TEXT: Record<string, string> = {
   replay_failed: "O laboratório do canal montou essa máquina e a bolinha não chegou lá.",
   bad_launches: "Os lançamentos enviados não cabem numa partida da Rua Sem Saída.",
   launches_failed: "O canal refez seus lançamentos e a partida não aconteceu desse jeito.",
+  bad_run: "Os comandos enviados não cabem numa descida do Ladeira Abaixo.",
+  run_failed: "O canal refez sua descida e ela não terminou desse jeito.",
   too_fast: "Essa partida terminou rápido demais para ser verdade.",
 };
 

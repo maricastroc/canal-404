@@ -35,14 +35,14 @@ type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
 
 type LevelWord = NonNullable<GameMeta["levelWord"]>;
 
-const LEVEL: Record<LevelWord, { word: string; Word: string }> = { fase: { word: "level", Word: "Level" }, arena: { word: "arena", Word: "Arena" } };
+const LEVEL: Record<LevelWord, { word: string; Word: string }> = { fase: { word: "level", Word: "Level" }, arena: { word: "arena", Word: "Arena" }, pista: { word: "track", Word: "Track" } };
 
 const COPY = localized({
   "pt-BR": {
     missionGone: "Essa missão já saiu do ar. A missão de hoje está na página da Missão 404.",
     missionElsewhere: "A missão de hoje é em outro jogo.",
     missionNoSignal: "Sem sinal da missão agora. Dá para jogar normalmente, mas a partida não conta para a missão.",
-    firstWinUnlocked: (word: LevelWord, next: number) => `Primeira vitória nesta ${word}. ${word === "arena" ? "Arena" : "Fase"} ${next} liberada!`,
+    firstWinUnlocked: (word: LevelWord, next: number) => `Primeira vitória nesta ${word}. ${word[0].toUpperCase() + word.slice(1)} ${next} liberada!`,
     firstWin: (word: LevelWord) => `Primeira vitória nesta ${word}.`,
     beatStars: (stars: number) => `Antes, seu melhor aqui era ${stars} ${stars === 1 ? "estrela" : "estrelas"}.`,
     sameStars: (stars: number) => `Mesmas ${stars} ${stars === 1 ? "estrela" : "estrelas"} de antes, com mais pontos.`,
@@ -50,7 +50,7 @@ const COPY = localized({
     previousRecord: (score: number) => `Seu recorde anterior era ${formatNumber(score, "pt-BR")}.`,
     firstRecord: "Primeira partida registrada. Esse é o recorde a bater.",
     recordStands: (score: number) => `Seu recorde continua ${formatNumber(score, "pt-BR")}.`,
-    levelPrefix: (word: LevelWord, n: number, title: string) => `${word === "arena" ? "Arena" : "Fase"} ${n}, ${title}: `,
+    levelPrefix: (word: LevelWord, n: number, title: string) => `${word[0].toUpperCase() + word.slice(1)} ${n}, ${title}: `,
     announceWin: (prefix: string, score: number, stars: number, best: boolean) => `${prefix}vitória! ${score} pontos, ${stars} estrelas.${best ? " Melhor resultado!" : ""}`,
     announceLose: (prefix: string, score: number) => `${prefix}fim de jogo. ${score} pontos.`,
     back: "Voltar",

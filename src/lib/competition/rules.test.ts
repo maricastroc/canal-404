@@ -7,6 +7,9 @@ import { recessStars } from "@/games/operation-recess/score";
 import { STEP_MS, type ProjectileId } from "@/games/dead-end-street/config";
 import { SOLUTIONS as STREET } from "@/games/dead-end-street/solutions";
 import { replayStreet, StreetSim, type Launch } from "@/games/dead-end-street/sim";
+import { replayDownhill } from "@/games/downhill-derby/sim/judge";
+import { KNOWN_RUNS, type KnownRun } from "@/games/downhill-derby/sim/solutions";
+import { encodeTape, decodeTape } from "@/games/downhill-derby/sim/tapes";
 import { boardId, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
 
 const RECESS_MONITORS = Object.fromEntries(RECESS_LEVELS.map((l) => [l.id, l.enemies.length]));
@@ -38,6 +41,14 @@ function streetLog(level: string, shots: [ProjectileId, number, number][]) {
   const launches = sim.launches.map((l) => ({ ...l }));
   sim.destroy();
   return launches;
+}
+
+function derby(run: KnownRun, rivals = [0, 0, 0], tape = run.tape, claim: Partial<RunClaim> = {}): RunClaim {
+  const replay = replayDownhill(run.course, run.cart, run.tape, rivals);
+  if (!replay.ok) throw new Error(replay.problem);
+  const t = replay.tally;
+  const { crashes, show, hits, perfect, bestSeq } = t.stats;
+  return { won: t.won, score: t.score, stars: t.stars, stats: { timeMs: t.timeMs, place: t.place, crashes, show, hits, perfect, bestSeq }, replay: { kind: "downhill-run", version: 1, cart: run.cart, tape, rivals }, ...claim };
 }
 
 function lab(level: string, parts: { type: string; x: number; y: number; rot: number }[], steps: number, runs = 2): RunClaim {
@@ -398,5 +409,54 @@ describe("Férias Fora do Ar", () => {
 
   it("rejects an adventure finished in under a minute", () => {
     expect(judgeRun("off-air-vacation", null, resort({ timeMs: 20_000 }))).toMatchObject({ ok: false, reason: "bad_stats" });
+  });
+});
+
+describe("Ladeira Abaixo", () => {
+  const roof = KNOWN_RUNS.arlindoRoof;
+  const sewer = KNOWN_RUNS.antenaSewer;
+
+  it("replays the run and ranks the fastest time first, then fewer wipeouts, then show points", () => {
+    const v = ok(judgeRun("downhill-derby", "arlindo", derby(roof)));
+    expect(v).toMatchObject({ won: true, score: 7225, stars: 2, eligible: true, verification: "replayed", flags: [], minElapsedMs: 35242 });
+    expect(v.rank).toEqual([-35242, -0, 6625]);
+    expect(metricValues("downhill-derby", v.rank)).toEqual([35242, 0, 6625]);
+    expect(boardId("downhill-derby", "arlindo")).toBe("downhill-derby/arlindo/v1");
+    expect(ok(judgeRun("downhill-derby", "antena", derby(sewer)))).toMatchObject({ won: true, score: 11625, stars: 3, flags: [] });
+  });
+
+  it("places the run against the rival tapes it raced", () => {
+    expect(ok(judgeRun("downhill-derby", "arlindo", derby(roof, [5, 5, 5])))).toMatchObject({ stars: 3, score: 7625 });
+    expect(judgeRun("downhill-derby", "arlindo", { ...derby(roof, [5, 5, 5]), replay: derby(roof).replay })).toMatchObject({ ok: false, reason: "score_mismatch" });
+    expect(judgeRun("downhill-derby", "arlindo", derby(roof, [0, 0, 0], roof.tape, { replay: { kind: "downhill-run", version: 1, cart: "bruno", tape: roof.tape, rivals: [99, 0, 0] } }))).toMatchObject({ ok: false, reason: "bad_run" });
+  });
+
+  it("rejects a score the run did not make and flags stats that do not match", () => {
+    expect(judgeRun("downhill-derby", "arlindo", derby(roof, [0, 0, 0], roof.tape, { score: 9999 }))).toMatchObject({ ok: false, reason: "score_mismatch" });
+    const claim = derby(roof);
+    const v = ok(judgeRun("downhill-derby", "arlindo", { ...claim, stats: { ...claim.stats, timeMs: 30000 } }));
+    expect(v.flags).toEqual(["stats_mismatch"]);
+    expect(v.rank[0]).toBe(-35242);
+  });
+
+  it("rejects missing, malformed and impossible input logs", () => {
+    const claim = derby(roof);
+    const log = decodeTape(roof.tape);
+    const withTape = (tape: string, cart = "bruno") => ({ ...claim, replay: { kind: "downhill-run" as const, version: 1 as const, cart, tape, rivals: [0, 0, 0] } });
+    const jump = log.findIndex((v, i) => i % 2 === 1 && (v & 2) !== 0);
+    const held = [...log];
+    held.splice(jump + 1, 2);
+    const late = [...log, log[log.length - 2] + 500, 1];
+    expect(judgeRun("downhill-derby", "arlindo", { ...claim, replay: undefined })).toMatchObject({ ok: false, reason: "bad_run" });
+    expect(judgeRun("downhill-derby", "arlindo", withTape(roof.tape, "skate"))).toMatchObject({ ok: false, reason: "bad_run" });
+    expect(judgeRun("downhill-derby", "arlindo", withTape(`${roof.tape}~`))).toMatchObject({ ok: false, reason: "bad_run" });
+    expect(judgeRun("downhill-derby", "arlindo", withTape(encodeTape(held)))).toMatchObject({ ok: false, reason: "bad_run" });
+    expect(judgeRun("downhill-derby", "arlindo", withTape(encodeTape(late)))).toMatchObject({ ok: false, reason: "bad_run" });
+    expect(judgeRun("downhill-derby", "arlindo", withTape(encodeTape([1, 12, 2, 0])))).toMatchObject({ ok: false, reason: "bad_run" });
+  });
+
+  it("needs one of the three tracks", () => {
+    expect(judgeRun("downhill-derby", null, derby(roof))).toMatchObject({ ok: false, reason: "unknown_level" });
+    expect(judgeRun("downhill-derby", "test", derby(roof))).toMatchObject({ ok: false, reason: "unknown_level" });
   });
 });
