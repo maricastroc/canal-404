@@ -4,8 +4,8 @@ import { DEFAULT_CAMERA, InputState } from "./input";
 import { raceResult } from "./result";
 import { isUnlocked, loadSave, updateSave } from "./save";
 import { BootScene } from "./scenes/BootScene";
+import { measureFrame } from "./scenes/frame";
 import { GarageScene, type GarageData, type GarageHost } from "./scenes/GarageScene";
-import { H, W } from "./scenes/hud";
 import { RaceScene, type RaceFinish, type RaceForm, type SceneBridge } from "./scenes/RaceScene";
 import { CART_IDS, UNLOCKS, type CartId } from "./sim/carts";
 import type { CourseId } from "./sim/course";
@@ -111,11 +111,12 @@ function mount(ctx: GameHostContext): GameInstance {
     },
   };
 
+  const frame = measureFrame(ctx.parent);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,
-    width: W,
-    height: H,
+    width: frame.width,
+    height: frame.height,
     backgroundColor: "#8fd4f7",
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false, powerPreference: "high-performance" },
@@ -127,6 +128,7 @@ function mount(ctx: GameHostContext): GameInstance {
     callbacks: {
       preBoot: (g) => {
         g.registry.set("ctx", ctx);
+        g.registry.set("frame", frame);
         g.registry.set("bridge", bridge);
         g.registry.set("garage", garageHost);
         g.registry.set("attract", { attract: true, course: course(), index: level, cart, ghost, unlocked: initial.unlocked } satisfies GarageData);

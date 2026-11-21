@@ -2,10 +2,10 @@ import * as Phaser from "phaser";
 import type { Locale } from "@/i18n/locales";
 import { formatNumber, ordinal } from "@/i18n/format";
 import type { RaceCopy } from "../copy";
+import { H, W } from "../layout";
 import { INK } from "./cart";
 
-export const W = 1920;
-export const H = 1080;
+export { H, W };
 const SPX = 1774;
 const BAR_X = 690;
 const BAR_W = 540;
@@ -31,6 +31,36 @@ export type EdgeTag = { side: "left" | "right"; y: number; color: number; text: 
 
 export type ShowMeter = { total: number; seq: number; mult: number; timer: number; active: boolean };
 
+export type Pin = { y: number; kind: "jump" | "duck" | "ramp"; near: number };
+
+export type HudData = { time: number; rows: StandingRow[]; speed: number; tier: number; trend: number; markers: Marker[]; edges: EdgeTag[]; finishX: number; startX: number; reduced: boolean; showHint: boolean; anchor: { x: number; y: number }; pins?: Pin[]; started?: boolean };
+
+export type ShoutOptions = { priority: number; color: string; size?: number; sub?: string; life?: number };
+
+export type LineupEntry = { who: string; name: string; cart: string; color: number };
+
+export interface RaceHud {
+  setTouch(touch: boolean): void;
+  resetHint(): void;
+  setPressed(pressed: Set<TouchButton>): void;
+  hitTest(x: number, y: number): HudButton | null;
+  flashSpeed(delta: number): void;
+  update(dt: number, data: HudData): void;
+  showMeter(dt: number, m: ShowMeter): void;
+  split(name: string, value: string, color: string): void;
+  showTrickText(text: string, color?: string): void;
+  showBank(points: number, label: string): void;
+  showDrop(text: string): void;
+  shout(key: string, text: string, opts: ShoutOptions): void;
+  tag(key: string, text: string, color: string): void;
+  tip(text: string, life?: number): void;
+  countdown(text: string | null): void;
+  showLineup(entries: LineupEntry[]): void;
+  fadeLineup(dt: number): void;
+  clearPopups(): void;
+  destroy(): void;
+}
+
 const SHOW_X = 1468;
 const SHOW_Y = 16;
 const SHOW_W = 320;
@@ -48,7 +78,7 @@ export function formatSeconds(seconds: number, locale: Locale, digits = 1) {
   return formatNumber(seconds, locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-export class Hud {
+export class Hud implements RaceHud {
   private readonly scene: Phaser.Scene;
   private readonly layer: Phaser.GameObjects.Layer;
   private readonly copy: RaceCopy;
@@ -104,6 +134,7 @@ export class Hud {
   private trickLife = 0;
   private totalPop = 0;
   private seqDrop = 0;
+  private owned: Phaser.GameObjects.GameObject[] = [];
 
   constructor(scene: Phaser.Scene, layer: Phaser.GameObjects.Layer, copy: RaceCopy, locale: Locale, fonts: { display: string; body: string }) {
     this.scene = scene;
@@ -169,7 +200,19 @@ export class Hud {
 
   private add<T extends Phaser.GameObjects.GameObject>(obj: T) {
     this.layer.add(obj);
+    this.owned.push(obj);
+    if (this.owned.length > 240) this.owned = this.owned.filter((o) => o.scene);
     return obj;
+  }
+
+  destroy() {
+    this.scene.tweens.killTweensOf(this.countText);
+    for (const obj of this.owned) obj.destroy();
+    this.owned.length = 0;
+    this.lineup = null;
+    this.headline = null;
+    this.leaving = [];
+    this.tags = [];
   }
 
   private drawPanels() {
@@ -275,10 +318,7 @@ export class Hud {
     }
   }
 
-  update(
-    dt: number,
-    data: { time: number; rows: StandingRow[]; speed: number; tier: number; trend: number; markers: Marker[]; edges: EdgeTag[]; finishX: number; startX: number; reduced: boolean; showHint: boolean; anchor: { x: number; y: number } },
-  ) {
+  update(dt: number, data: HudData) {
     this.timeText.setText(formatTime(data.time, this.locale));
     this.splitLife = Math.max(0, this.splitLife - dt);
     const sa = Math.min(1, this.splitLife * 2.5);
@@ -531,7 +571,7 @@ export class Hud {
     c.sub?.destroy();
   }
 
-  shout(key: string, text: string, opts: { priority: number; color: string; size?: number; sub?: string; life?: number }) {
+  shout(key: string, text: string, opts: ShoutOptions) {
     const cur = this.headline;
     if (cur && cur.key === key) {
       cur.text.setText(text);
@@ -618,7 +658,7 @@ export class Hud {
     }
   }
 
-  showLineup(entries: { who: string; name: string; cart: string; color: number }[]) {
+  showLineup(entries: LineupEntry[]) {
     this.lineup?.destroy();
     const s = this.scene;
     const c = s.add.container(0, 0);

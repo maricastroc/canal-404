@@ -58,7 +58,7 @@ const BASE = {
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
   "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"], orientation: "any" },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1", orientation: "any" },
-  "downhill-derby": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "lina", "bruno", "mila"], levelIds: ["arlindo", "feira", "antena"], levelWord: "pista" },
+  "downhill-derby": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "lina", "bruno", "mila"], levelIds: ["arlindo", "feira", "antena"], levelWord: "pista", orientation: "any" },
 } satisfies Record<string, GameBase>;
 
 type Slug = keyof typeof BASE;
@@ -408,7 +408,7 @@ const TEXT = gameText({
         { input: "Espaço", action: "Pule rampas e obstáculos. Segure no ar para fazer uma pose.", on: "keys" },
         { input: "← → ou A D", action: "No ar, gire o carrinho para acertar o pouso. No chão, empine e equilibre para ganhar pontos.", on: "keys" },
         { input: "Esc ou P", action: "Pause ou retome a corrida.", on: "keys" },
-        { input: "AGACHAR", action: "Segure para ganhar velocidade nas descidas.", on: "touch" },
+        { input: "AGACHAR", action: "Segure para ganhar velocidade nas descidas. Para pular, é só deslizar o dedo até PULAR.", on: "touch" },
         { input: "PULAR", action: "Toque para pular. Segure no ar para fazer uma pose.", on: "touch" },
         { input: "Setas de girar", action: "No ar, gire o carrinho para acertar o pouso. No chão, empine e equilibre para ganhar pontos.", on: "touch" },
       ],
@@ -777,7 +777,7 @@ const TEXT = gameText({
         { input: "Space", action: "Jump ramps and obstacles. Hold in the air to strike a pose.", on: "keys" },
         { input: "← → or A D", action: "In the air, spin the cart to land straight. On the ground, pop a wheelie and balance it for points.", on: "keys" },
         { input: "Esc or P", action: "Pause or resume the race.", on: "keys" },
-        { input: "CROUCH", action: "Hold to build speed on the way down.", on: "touch" },
+        { input: "CROUCH", action: "Hold to build speed on the way down. To jump, just slide your thumb over to JUMP.", on: "touch" },
         { input: "JUMP", action: "Tap to jump. Hold in the air to strike a pose.", on: "touch" },
         { input: "Spin arrows", action: "In the air, spin the cart to land straight. On the ground, pop a wheelie and balance it for points.", on: "touch" },
       ],

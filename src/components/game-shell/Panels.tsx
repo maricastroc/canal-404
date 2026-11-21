@@ -14,10 +14,10 @@ import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
-import type { GameResult, IntroProgress } from "@/games/types";
+import type { GameResult, IntroProgress, ResultFact, ResultStanding } from "@/games/types";
 import { useCopy, useLocale, useLocalePath } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
-import { formatNumber } from "@/i18n/format";
+import { formatNumber, ordinal } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
 import { useNarrowScreen, useTouchScreen } from "@/lib/device";
 import type { JoinOutcome } from "@/lib/competition/client";
@@ -87,6 +87,8 @@ const COPY = localized({
     loseLabel: (title: string) => `Fim de jogo: ${title}`,
     bestResult: "Melhor resultado!",
     newRecord: "Novo recorde!",
+    standings: "Classificação",
+    facts: "Sua corrida",
     levelOf: (word: LevelWord, n: number, total: number, title: string) => `${word[0].toUpperCase() + word.slice(1)} ${n} de ${total} · ${title}`,
     total: "Total",
     retryMission: "Tentar a missão de novo",
@@ -147,6 +149,8 @@ const COPY = localized({
     loseLabel: (title: string) => `Game over: ${title}`,
     bestResult: "Best result!",
     newRecord: "New record!",
+    standings: "Standings",
+    facts: "Your run",
     levelOf: (word: LevelWord, n: number, total: number, title: string) => `${LEVEL[word][0].toUpperCase() + LEVEL[word].slice(1)} ${n} of ${total} · ${title}`,
     total: "Total",
     retryMission: "Try the mission again",
@@ -869,6 +873,8 @@ export function ResultPanel({
           </div>
         </div>
         <div className="wideshort:mt-4">
+          {result.standings?.length ? <Standings rows={result.standings} label={copy.standings} /> : null}
+          {result.facts?.length ? <Facts facts={result.facts} label={copy.facts} /> : null}
           <dl className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 px-4 pt-1 max-sm:mt-3 max-sm:px-3 wideshort:mt-3">
             {result.breakdown.map((row, i) => (
               <motion.div
@@ -903,6 +909,44 @@ export function ResultPanel({
       </div>
       {narrow ? actions : null}
     </OverlayFrame>
+  );
+}
+
+function Standings({ rows, label }: { rows: ResultStanding[]; label: string }) {
+  const locale = useLocale();
+  return (
+    <ol aria-label={label} className="mt-5 grid grid-cols-4 gap-2 max-sm:mt-4 max-sm:gap-1.5 wideshort:mt-3">
+      {rows.map((row, i) => (
+        <motion.li
+          key={`${row.name}-${i}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 + i * 0.08 }}
+          className={`relative flex min-w-0 flex-col items-center rounded-xl border-[3px] border-ink px-1 pb-1.5 pt-2.5 text-center ${row.you ? "bg-sun shadow-[var(--shadow-ink-sm)]" : "bg-cream-2"}`}
+        >
+          <span className="absolute -left-2 -top-2.5 rounded-md border-2 border-ink bg-cream px-1 font-display text-sm leading-tight text-ink">{ordinal(i + 1, locale)}</span>
+          {row.avatar ? (
+            <span aria-hidden className="size-11 shrink-0 rounded-full border-[3px] border-ink bg-[length:128%] bg-[position:50%_30%] bg-no-repeat max-[360px]:size-9" style={{ backgroundColor: row.color, backgroundImage: `url(${row.avatar})` }} />
+          ) : null}
+          <span className="mt-1 w-full truncate font-display text-sm uppercase leading-tight tracking-wide text-ink max-[360px]:text-xs">{row.name}</span>
+          {row.detail ? <span className="sr-only">{row.detail}</span> : null}
+          <span className="font-display text-sm leading-tight tabular-nums text-ink-soft max-[360px]:text-xs">{row.value}</span>
+        </motion.li>
+      ))}
+    </ol>
+  );
+}
+
+function Facts({ facts, label }: { facts: ResultFact[]; label: string }) {
+  return (
+    <dl aria-label={label} className="mt-2 grid grid-cols-4 gap-1.5">
+      {facts.map((fact, i) => (
+        <motion.div key={fact.label} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 + i * 0.06 }} className="flex flex-col-reverse items-center rounded-lg border-2 border-dashed border-ink/25 px-1 py-1.5 text-center">
+          <dt className="mt-0.5 text-[11px] font-bold leading-tight text-ink-soft sm:text-xs">{fact.label}</dt>
+          <dd className="font-display text-lg leading-none tabular-nums text-ink">{fact.value}</dd>
+        </motion.div>
+      ))}
+    </dl>
   );
 }
 

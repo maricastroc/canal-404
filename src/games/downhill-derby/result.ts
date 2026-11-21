@@ -1,5 +1,5 @@
 import type { GameResult } from "@/games/types";
-import { ordinal } from "@/i18n/format";
+import { formatNumber, ordinal } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
 import { RACE_COPY } from "./copy";
 import type { RaceFinish } from "./scenes/RaceScene";
@@ -8,6 +8,8 @@ import type { CartId } from "./sim/carts";
 import { PLACE_POINTS, placeStars, raceMs, raceScore, RACE_COURSES } from "./sim/score";
 
 export const REPLAY_KIND = "downhill-run";
+
+const RACER_COLORS: Record<CartId, string> = { deco: "#ffc83d", lina: "#f27aa8", bruno: "#56c7a0", mila: "#a98bef" };
 
 export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | null): GameResult {
   const copy = RACE_COPY[locale];
@@ -43,5 +45,19 @@ export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | nul
     featured: f.cart,
     restartLabel: r.again,
     alt: r.alt,
+    standings: f.standings.map((s, i) => ({
+      name: s.you ? copy.you : copy.rivalNames[s.who],
+      detail: s.you ? copy.youAre(copy.rivalNames[s.who]) : copy.carts[s.who],
+      value: formatTime(s.time, locale),
+      you: s.you,
+      avatar: `/assets/downhill-derby/${s.who}-head-${i === 0 ? (s.you ? "smug" : "happy") : s.you ? "strain" : "normal"}.svg`,
+      color: s.you ? "#ff7a1a" : RACER_COLORS[s.who],
+    })),
+    facts: [
+      { label: r.facts.perfect, value: formatNumber(f.stats.perfect, locale) },
+      { label: r.facts.combo, value: formatNumber(f.stats.bestSeq, locale) },
+      { label: r.facts.hits, value: formatNumber(f.stats.hits, locale) },
+      { label: r.facts.crashes, value: formatNumber(f.stats.crashes, locale) },
+    ],
   };
 }

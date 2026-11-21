@@ -11,6 +11,10 @@ export type DownhillReplay = { kind: "downhill-run"; version: 1; cart: string; t
 
 export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 2; launches: LaunchReplay[] } | DownhillReplay;
 
+export type ResultStanding = { name: string; value: string; detail?: string; you?: boolean; avatar?: string; color?: string };
+
+export type ResultFact = { label: string; value: string };
+
 export type GameResult = {
   won: boolean;
   score: number;
@@ -26,6 +30,8 @@ export type GameResult = {
   alt?: string;
   featured?: string;
   restartLabel?: string;
+  standings?: ResultStanding[];
+  facts?: ResultFact[];
 };
 
 export type MatchSetup = { character?: string };
