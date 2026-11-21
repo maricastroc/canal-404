@@ -33,6 +33,8 @@ const DECOR: Record<string, Decor> = {
       { kind: "hooks", x: 7.08, y: 1.2, w: 0.84, h: 1.6 },
       { kind: "jamb", x: 2.9, y: 1.0, h: 1.86 },
       { kind: "jamb", x: 6.0, y: 1.0, h: 1.86 },
+      { kind: "alarmClock", x: 5.42, y: 0.7 },
+      { kind: "outlet", x: 2.55, y: 2.62 },
     ],
     floor: [
       { kind: "runner", x: 1.08, y: 3.14, w: 1.84, h: 0.72, v: 0x3f7a8c },
@@ -66,6 +68,14 @@ const DECOR: Record<string, Decor> = {
       { kind: "door", x: 10.06, y: 2.16, w: 0.88, h: 1.7, v: "plain" },
       { kind: "window", x: 11.1, y: 1.3, w: 1.6, h: 1.0 },
       { kind: "railing", x: 12.0, y: 2.9, w: 1.0, h: 0.96 },
+      { kind: "toyShelf", x: 2.12, y: 2.74 },
+      { kind: "growthChart", x: 2.08, y: 2.32 },
+      { kind: "kidDrawing", x: 3.12, y: 2.92, w: 0.56, h: 0.48 },
+      { kind: "mouseHole", x: 3.55, y: 3.99 },
+      { kind: "sconce", x: 3.55, y: 1.25 },
+      { kind: "sconce", x: 9.95, y: 1.3 },
+      { kind: "outlet", x: 8.5, y: 3.62 },
+      { kind: "basket", x: 11.45, y: 3.6 },
     ],
     floor: [
       { kind: "rug", x: 1.12, y: 4.14, w: 1.76, h: 2.72, v: 0x4f7f8f },

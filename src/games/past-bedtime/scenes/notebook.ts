@@ -15,40 +15,50 @@ export type NoteKind = keyof typeof COLORS;
 
 export type ButtonId = "wait" | "undo" | "restart" | "hint" | "next" | "again" | "undoCaught";
 
-export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "dog" | "goal" | "hide" | "cat";
+export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "dog" | "goal" | "hide" | "cat" | "route" | "toss" | "near";
+
+type PageKind = "rules" | "moves";
 
 type Col = { x: number; w: number };
+type Area = { x: number; y: number; w: number; h: number };
 
 type Spots = {
   title: { x: number; y: number };
   mission: { x: number; y: number };
   tabs: Col & { y: number };
+  act: Col & { line: number };
   heading: Col & { line: number };
   goal: Col & { line: number };
   stats: Col & { line: number };
-  notes: Col & { line: number; last: number };
-  plan: Col & { line: number; rows: number };
-  legend: Col & { line: number; cols: number };
+  card: Area;
+  links: Col & { y: number };
+  win: Col & { line: number };
+  page: Area;
   buttons: Col & { y: number; h: number };
   lastLine: number;
   divider: number | null;
 };
 
+const lineY = (k: number) => LINE0 + STEP * k;
+
 function spotsFor(layout: Layout): Spots {
   const { w, h } = layout.notebook;
+  const buttons = layout.orientation === "landscape" ? { x: 22, w: w - 44, y: h - 94, h: 74 } : { x: 30, w: w - 60, y: h - 100, h: 80 };
   if (layout.orientation === "landscape") {
     const col = { x: 74, w: w - 100 };
     return {
       title: { x: 74, y: 22 },
       mission: { x: 76, y: 84 },
       tabs: { ...col, y: 140 },
+      act: { ...col, line: 2 },
       heading: { ...col, line: 3 },
       goal: { ...col, line: 4 },
       stats: { ...col, line: 7 },
-      notes: { ...col, line: 9, last: 14 },
-      plan: { ...col, line: 15, rows: 2 },
-      legend: { ...col, line: 18, cols: 2 },
-      buttons: { x: 22, w: w - 44, y: h - 94, h: 74 },
+      card: { x: 64, y: lineY(8) + 26, w: w - 90, h: lineY(12) - lineY(8) - 14 },
+      links: { ...col, y: lineY(14) + 6 },
+      win: { ...col, line: 9 },
+      page: { x: 16, y: 118, w: w - 32, h: buttons.y - 132 },
+      buttons,
       lastLine: 21,
       divider: null,
     };
@@ -59,19 +69,19 @@ function spotsFor(layout: Layout): Spots {
     title: { x: 74, y: 22 },
     mission: { x: 76, y: 84 },
     tabs: { ...right, y: 28 },
-    heading: { ...left, line: 1 },
-    goal: { ...left, line: 2 },
-    stats: { ...left, line: 5 },
-    notes: { ...left, line: 7, last: 15 },
-    plan: { ...right, line: 1, rows: 3 },
-    legend: { ...right, line: 6, cols: 1 },
-    buttons: { x: 30, w: w - 60, y: h - 100, h: 80 },
+    act: { ...left, line: 1 },
+    heading: { ...left, line: 2 },
+    goal: { ...left, line: 3 },
+    stats: { ...left, line: 6 },
+    card: { x: right.x - 6, y: lineY(1) - 20, w: right.w + 6, h: lineY(7) - lineY(1) },
+    links: { ...right, y: lineY(8) + 8 },
+    win: { ...right, line: 2 },
+    page: { x: 16, y: 118, w: w - 32, h: buttons.y - 132 },
+    buttons,
     lastLine: 16,
     divider: 534,
   };
 }
-
-const lineY = (k: number) => LINE0 + STEP * k;
 
 function star(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, filled: boolean) {
   const pts: { x: number; y: number }[] = [];
@@ -116,16 +126,21 @@ export class Notebook {
   private spots: Spots;
   private paper: Phaser.GameObjects.Graphics;
   private ink: Phaser.GameObjects.Graphics;
-  private overlay: Phaser.GameObjects.Graphics;
   private texts: Record<string, Phaser.GameObjects.Text> = {};
-  private notes: { text: string; kind: NoteKind }[] = [];
-  private noteTexts: Phaser.GameObjects.Text[] = [];
-  private planCells: Phaser.GameObjects.Container[] = [];
+  private card: Phaser.GameObjects.Container;
+  private cardText: Phaser.GameObjects.Text;
+  private cardSub: Phaser.GameObjects.Text;
+  private tip: { text: string; kind: NoteKind } | null = null;
+  private rules: string[] = [];
+  private legend: LegendItem[] = [];
   private planActions: Action[] = [];
+  private hints = 0;
   private tabs: Phaser.GameObjects.Container[] = [];
   private buttons: Phaser.GameObjects.Container[] = [];
-  private legendObjects: Phaser.GameObjects.GameObject[] = [];
+  private links: Phaser.GameObjects.Container[] = [];
   private stampObjects: Phaser.GameObjects.GameObject[] = [];
+  private page: Phaser.GameObjects.Container | null = null;
+  private pageKind: PageKind | null = null;
   private writeTimer?: Phaser.Time.TimerEvent;
   private mode: "play" | "caught" | "won" = "play";
 
@@ -141,21 +156,35 @@ export class Notebook {
     const { x, y } = layout.notebook;
     this.paper = scene.add.graphics();
     this.ink = scene.add.graphics();
-    this.overlay = scene.add.graphics();
     this.container = scene.add.container(x, y, [this.paper, this.ink]).setDepth(80);
     this.drawPaper();
     const sp = this.spots;
     this.texts.title = this.raw(sp.title.x, sp.title.y, copy.notebookTitle, 50, PENCIL);
-    this.texts.mission = this.raw(sp.mission.x, sp.mission.y, copy.mission, 25, PENCIL_SOFT);
-    this.texts.act = this.onLine(sp.heading.x, sp.heading.line - 1, "", 23, PENCIL_SOFT);
+    this.texts.mission = this.raw(sp.mission.x, sp.mission.y, copy.mission, 24, PENCIL_SOFT);
+    this.texts.act = this.onLine(sp.act.x, sp.act.line, "", 23, PENCIL_SOFT);
     this.texts.heading = this.onLine(sp.heading.x, sp.heading.line, "", 42, PENCIL);
-    this.texts.goal = this.onLine(sp.goal.x, sp.goal.line, "", 29, PENCIL, sp.goal.w);
-    this.texts.moves = this.onLine(sp.stats.x, sp.stats.line, "", 38, PENCIL);
-    this.texts.par = this.onLine(sp.stats.x + sp.stats.w, sp.stats.line, "", 29, PENCIL_SOFT).setOrigin(1, 0);
+    this.texts.goal = this.onLine(sp.goal.x, sp.goal.line, "", 30, PENCIL, sp.goal.w);
+    this.texts.moves = this.onLine(sp.stats.x, sp.stats.line, "", 40, PENCIL);
+    this.texts.par = this.onLine(sp.stats.x + sp.stats.w, sp.stats.line, "", 30, PENCIL_SOFT).setOrigin(1, 0);
     this.texts.starsAt = this.onLine(sp.stats.x + 124, sp.stats.line + 1, "", 23, PENCIL_SOFT);
-    this.texts.planLabel = this.onLine(sp.plan.x, sp.plan.line, copy.plan, 24, PENCIL_SOFT);
-    this.texts.hints = this.onLine(sp.plan.x + sp.plan.w, sp.plan.line, "", 22, PENCIL_SOFT).setOrigin(1, 0);
-    this.container.add(this.overlay);
+    const c = sp.card;
+    const cardBg = scene.add.graphics();
+    cardBg.fillStyle(INK, 0.85);
+    cardBg.fillRoundedRect(5, 7, c.w, c.h, 6);
+    cardBg.fillStyle(0xfff1b8, 1);
+    cardBg.fillRoundedRect(0, 0, c.w, c.h, 6);
+    cardBg.lineStyle(3, INK, 1);
+    cardBg.strokeRoundedRect(0, 0, c.w, c.h, 6);
+    cardBg.fillStyle(0xe9d98c, 1);
+    cardBg.fillTriangle(c.w - 34, c.h, c.w, c.h - 34, c.w, c.h);
+    cardBg.lineStyle(2, INK, 0.7);
+    cardBg.lineBetween(c.w - 34, c.h, c.w, c.h - 34);
+    cardBg.fillStyle(0xffffff, 0.55);
+    cardBg.fillRect(c.w / 2 - 44, -10, 88, 22);
+    this.cardText = scene.add.text(22, 26, "", { fontFamily: fonts.hand, fontSize: "31px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 }, lineSpacing: 2 });
+    this.cardSub = scene.add.text(22, 0, "", { fontFamily: fonts.hand, fontSize: "24px", color: PENCIL_SOFT, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 } });
+    this.card = scene.add.container(c.x, c.y, [cardBg, this.cardText, this.cardSub]).setAngle(-1.2);
+    this.container.add(this.card);
   }
 
   private raw(x: number, y: number, value: string, size: number, color: string, wrap?: number) {
@@ -173,15 +202,10 @@ export class Notebook {
   private onLine(x: number, line: number, value: string, size: number, color: string, wrap?: number) {
     const t = this.raw(x, 0, value || "Ág", size, color, wrap);
     const metrics = t.style.getTextMetrics();
-    const single = metrics.ascent + metrics.descent;
-    t.setLineSpacing(STEP - single);
+    t.setLineSpacing(STEP - (metrics.ascent + metrics.descent));
     t.setY(lineY(line) - 3 - metrics.ascent + Math.round(size * 0.1));
     if (!value) t.setText("");
     return t;
-  }
-
-  private linesOf(t: Phaser.GameObjects.Text) {
-    return Math.max(1, t.getWrappedText().length);
   }
 
   private drawPaper() {
@@ -226,14 +250,16 @@ export class Notebook {
     this.texts.goal.setText(goal);
     this.texts.starsAt.setText(this.copy.starsAt(par));
     this.texts.par.setText(`${this.copy.par}: ${par}`);
+    this.legend = legend;
     this.drawInk(par);
     this.buildTabs(index, total, progress, acts);
-    this.buildLegend(legend);
-    this.notes = [];
-    this.renderNotes();
-    this.setPlan([]);
+    this.closePage();
     this.clearStamp();
     this.mode = "play";
+    this.tip = null;
+    this.planActions = [];
+    this.renderCard(false);
+    this.buildLinks();
     this.buildButtons(["wait", "undo", "restart", "hint"]);
   }
 
@@ -247,7 +273,253 @@ export class Notebook {
 
   setStats(turns: number, hints: number) {
     this.texts.moves.setText(`${this.copy.moves}: ${turns}`);
-    this.texts.hints.setText(hints > 0 ? this.copy.hintsUsed(hints) : "");
+    this.hints = hints;
+    if (this.pageKind === "moves") this.openPage("moves");
+    this.buildLinks();
+  }
+
+  private buildLinks() {
+    for (const l of this.links) l.destroy();
+    this.links = [];
+    if (this.mode === "won") return;
+    const sp = this.spots.links;
+    const items: { kind: PageKind; label: string; fill: number }[] = [
+      { kind: "rules", label: this.copy.pages.rules, fill: 0xc8f0b4 },
+      { kind: "moves", label: `${this.copy.pages.moves} · ${this.planActions.length}`, fill: 0xf9d3e4 },
+    ];
+    const gap = 12;
+    const w = (sp.w - gap) / 2;
+    items.forEach((it, i) => {
+      const g = this.scene.add.graphics();
+      g.fillStyle(INK, 1);
+      g.fillRoundedRect(3, 4, w, 50, 10);
+      g.fillStyle(it.fill, 1);
+      g.fillRoundedRect(0, 0, w, 50, 10);
+      g.lineStyle(this.pageKind === it.kind ? 4 : 2.5, INK, 1);
+      g.strokeRoundedRect(0, 0, w, 50, 10);
+      const t = this.scene.add.text(w / 2, 25, it.label, { fontFamily: this.fonts.hand, fontSize: "25px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+      if (t.width > w - 14) t.setFontSize(Math.floor((25 * (w - 14)) / t.width));
+      const c = this.scene.add.container(sp.x + i * (w + gap), sp.y, [g, t]).setAngle((wobble(i * 5 + 2) - 0.5) * 2);
+      this.makeClickable(c, w, 50, () => (this.pageKind === it.kind ? this.closePage() : this.openPage(it.kind)));
+      this.container.add(c);
+      this.links.push(c);
+    });
+  }
+
+  togglePage(kind: PageKind) {
+    if (this.pageKind === kind) this.closePage();
+    else this.openPage(kind);
+  }
+
+  closePage() {
+    this.page?.destroy();
+    this.page = null;
+    const was = this.pageKind;
+    this.pageKind = null;
+    if (was) this.buildLinks();
+  }
+
+  private openPage(kind: PageKind) {
+    this.page?.destroy();
+    this.pageKind = kind;
+    const a = this.spots.page;
+    const g = this.scene.add.graphics();
+    g.fillStyle(INK, 0.85);
+    g.fillRoundedRect(6, 8, a.w, a.h, 12);
+    g.fillStyle(0xfffdf4, 1);
+    g.fillRoundedRect(0, 0, a.w, a.h, 12);
+    g.lineStyle(3, INK, 1);
+    g.strokeRoundedRect(0, 0, a.w, a.h, 12);
+    g.lineStyle(2, 0x9cc7ea, 0.6);
+    for (let ly = 70; ly < a.h - 10; ly += STEP) g.lineBetween(10, ly, a.w - 10, ly);
+    g.lineStyle(2.5, 0xef8a8a, 0.8);
+    g.lineBetween(44, 6, 44, a.h - 6);
+    const parts: Phaser.GameObjects.GameObject[] = [g];
+    const title = this.scene.add.text(58, 14, kind === "rules" ? this.copy.pages.rulesTitle : this.copy.pages.movesTitle, { fontFamily: this.fonts.hand, fontSize: "38px", color: PENCIL, padding: { x: 2, y: 3 } });
+    parts.push(title);
+    const closeW = 120;
+    const closeBg = this.scene.add.graphics();
+    closeBg.fillStyle(INK, 1);
+    closeBg.fillRoundedRect(3, 4, closeW, 46, 10);
+    closeBg.fillStyle(0xffffff, 1);
+    closeBg.fillRoundedRect(0, 0, closeW, 46, 10);
+    closeBg.lineStyle(2.5, INK, 1);
+    closeBg.strokeRoundedRect(0, 0, closeW, 46, 10);
+    const closeT = this.scene.add.text(closeW / 2, 23, `✕ ${this.copy.pages.back}`, { fontFamily: this.fonts.hand, fontSize: "24px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+    const close = this.scene.add.container(a.w - closeW - 14, 14, [closeBg, closeT]);
+    this.makeClickable(close, closeW, 46, () => this.closePage());
+    parts.push(close);
+    let y = 80;
+    const textW = a.w - 80;
+    if (kind === "rules") {
+      for (const line of this.rules) {
+        const t = this.scene.add.text(58, y, `– ${line}`, { fontFamily: this.fonts.hand, fontSize: "26px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: textW }, lineSpacing: 4 });
+        parts.push(t);
+        y += t.height + 10;
+      }
+      y += 12;
+      const sub = this.scene.add.text(58, y, this.copy.legendTitle, { fontFamily: this.fonts.hand, fontSize: "28px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } });
+      parts.push(sub);
+      y += 46;
+      for (const item of this.legend) {
+        const ig = this.scene.add.graphics();
+        this.drawLegendIcon(ig, item, 76, y + 16);
+        const t = this.scene.add.text(104, y, this.copy.legend[item], { fontFamily: this.fonts.hand, fontSize: "25px", color: PENCIL, padding: { x: 2, y: 3 } });
+        parts.push(ig, t);
+        y += 40;
+      }
+    } else {
+      const runs = runsOf(this.planActions);
+      if (!runs.length) parts.push(this.scene.add.text(58, y, this.copy.pages.empty, { fontFamily: this.fonts.hand, fontSize: "26px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));
+      let x = 58;
+      for (const r of runs) {
+        const arrow = this.scene.add.text(0, 0, r.action === "wait" ? "·" : ARROWS[r.action], { fontFamily: this.fonts.hand, fontSize: "36px", color: PENCIL, padding: { x: 2, y: 3 } });
+        const cell: Phaser.GameObjects.GameObject[] = [arrow];
+        let w = Math.max(26, arrow.width);
+        if (r.count > 1) {
+          const n = this.scene.add.text(arrow.width - 2, 16, String(r.count), { fontFamily: this.fonts.hand, fontSize: "22px", color: "#a85d08", padding: { x: 2, y: 3 } });
+          cell.push(n);
+          w += n.width - 2;
+        }
+        if (x + w > a.w - 20) {
+          x = 58;
+          y += 46;
+        }
+        parts.push(this.scene.add.container(x, y, cell));
+        x += w + 12;
+      }
+      if (this.hints > 0) parts.push(this.scene.add.text(58, y + 60, this.copy.hintsUsed(this.hints), { fontFamily: this.fonts.hand, fontSize: "24px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));
+    }
+    this.page = this.scene.add.container(a.x, a.y, parts);
+    this.container.add(this.page);
+    this.buildLinks();
+  }
+
+  private renderCard(animate: boolean, sub = "") {
+    this.writeTimer?.remove();
+    const tip = this.tip;
+    this.card.setVisible(this.mode !== "won");
+    this.cardText.setText(tip ? tip.text : "").setColor(tip ? COLORS[tip.kind] : PENCIL);
+    this.cardSub.setText(sub).setY(this.cardText.y + this.cardText.height + 8);
+    if (!animate || !tip) return;
+    const full = tip.text;
+    let shown = 1;
+    this.cardText.setText(full.slice(0, shown));
+    this.writeTimer = this.scene.time.addEvent({
+      delay: 16,
+      repeat: full.length,
+      callback: () => {
+        shown += 2;
+        if (this.cardText.active) this.cardText.setText(full.slice(0, shown));
+      },
+    });
+  }
+
+  note(text: string, kind: NoteKind = "info") {
+    if (this.mode !== "play") return;
+    if (this.tip?.text === text) return;
+    this.tip = { text, kind };
+    this.renderCard(true);
+  }
+
+  intro(lines: string[]) {
+    this.rules = lines;
+    this.tip = lines.length ? { text: lines[lines.length - 1], kind: "info" } : null;
+    this.renderCard(true);
+  }
+
+  clearNotes() {
+    this.tip = null;
+    this.renderCard(false);
+  }
+
+  setPlan(actions: readonly Action[]) {
+    this.planActions = [...actions];
+    if (this.pageKind === "moves") this.openPage("moves");
+    else this.buildLinks();
+  }
+
+  strikeLast(done: () => void) {
+    if (this.planActions.length === 0) {
+      done();
+      return;
+    }
+    const target = this.links[1];
+    if (target) this.scene.tweens.add({ targets: target, angle: { from: -6, to: 6 }, duration: 60, yoyo: true, repeat: 1 });
+    this.scene.time.delayedCall(120, done);
+  }
+
+  private clearStamp() {
+    for (const o of this.stampObjects) o.destroy();
+    this.stampObjects = [];
+  }
+
+  showCaught(reason: string) {
+    this.clearStamp();
+    this.closePage();
+    this.mode = "caught";
+    this.tip = { text: reason, kind: "bad" };
+    this.renderCard(false, this.copy.notes.undoTip);
+    const c = this.spots.card;
+    const stamp = this.scene.add.text(0, 0, this.copy.notes.failed, { fontFamily: this.fonts.display, fontSize: "34px", color: "#c4352c", padding: { x: 10, y: 6 } }).setOrigin(0.5);
+    const frame = this.scene.add.graphics();
+    frame.lineStyle(5, 0xc4352c, 1);
+    frame.strokeRoundedRect(-stamp.width / 2 - 6, -stamp.height / 2, stamp.width + 12, stamp.height, 10);
+    const box = this.scene.add.container(c.x + c.w * 0.6, c.y + c.h + 4, [frame, stamp]).setAngle(-7).setAlpha(0).setScale(1.8);
+    this.container.add(box);
+    this.stampObjects.push(box);
+    this.scene.tweens.add({ targets: box, alpha: 0.92, scale: 1, duration: 220, ease: "Back.easeOut" });
+    this.buildButtons(["undoCaught", "restart"]);
+  }
+
+  clearCaught() {
+    if (this.mode !== "caught") return;
+    this.mode = "play";
+    this.clearStamp();
+    this.tip = null;
+    this.renderCard(false);
+    this.buildButtons(["wait", "undo", "restart", "hint"]);
+  }
+
+  showWin(turns: number, par: number, stars: number, isLast: boolean, line: string) {
+    this.clearStamp();
+    this.closePage();
+    this.mode = "won";
+    this.renderCard(false);
+    this.buildLinks();
+    const sp = this.spots.win;
+    const title = this.onLine(sp.x, sp.line, this.copy.wonTitle, 46, "#23794b");
+    const g = this.scene.add.graphics();
+    this.container.add(g);
+    const starY = lineY(sp.line + 2) - 20;
+    for (let i = 0; i < 3; i += 1) {
+      const filled = i < stars;
+      this.scene.time.delayedCall(200 + i * 240, () => {
+        if (!g.active) return;
+        star(g, sp.x + 34 + i * 72, starY, 28, filled);
+      });
+    }
+    const moves = this.onLine(sp.x, sp.line + 3, this.copy.wonMoves(turns, par), 30, PENCIL);
+    const extra = turns - par;
+    const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? this.copy.wonPerfect : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
+    const verdictLines = Math.max(1, verdict.getWrappedText().length);
+    const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w);
+    this.stampObjects.push(title, g, moves, verdict, quote);
+    if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 5 + verdictLines, this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
+    this.buildButtons(isLast ? ["again"] : ["next", "again"]);
+  }
+
+  clearWin() {
+    if (this.mode !== "won") return;
+    this.mode = "play";
+    this.clearStamp();
+    this.renderCard(false);
+    this.buildLinks();
+    this.buildButtons(["wait", "undo", "restart", "hint"]);
+  }
+
+  getMode() {
+    return this.mode;
   }
 
   private buildTabs(active: number, total: number, progress: number[], acts: number[]) {
@@ -298,26 +570,6 @@ export class Notebook {
       fn();
     });
     c.add(zone);
-  }
-
-  private buildLegend(items: LegendItem[]) {
-    for (const o of this.legendObjects) o.destroy();
-    this.legendObjects = [];
-    const sp = this.spots.legend;
-    this.legendObjects.push(this.onLine(sp.x, sp.line, this.copy.legendTitle, 24, PENCIL_SOFT));
-    const colW = sp.w / sp.cols;
-    items.forEach((item, i) => {
-      const col = i % sp.cols;
-      const row = Math.floor(i / sp.cols);
-      const ix = sp.x + col * colW;
-      const line = sp.line + 1 + row;
-      const g = this.scene.add.graphics();
-      this.drawLegendIcon(g, item, ix + 15, lineY(line) - 13);
-      this.container.add(g);
-      const t = this.onLine(ix + 38, line, this.copy.legend[item], 22, PENCIL);
-      if (t.width > colW - 40) t.setFontSize(Math.max(18, Math.floor((22 * (colW - 40)) / t.width)));
-      this.legendObjects.push(g, t);
-    });
   }
 
   private drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: number, y: number) {
@@ -389,213 +641,38 @@ export class Notebook {
         g.fillCircle(x - 4, y, 2.5);
         g.fillCircle(x + 4, y, 2.5);
         break;
+      case "route":
+        for (const [dx, dy] of [[-9, 6], [-1, -2], [7, -10]]) {
+          g.fillStyle(0xff8fc8, 1);
+          g.fillEllipse(x + dx, y + dy, 10, 7);
+          g.lineStyle(1.5, INK, 1);
+          g.strokeEllipse(x + dx, y + dy, 10, 7);
+        }
+        break;
+      case "toss":
+        g.fillStyle(0xd9ccff, 1);
+        g.fillRoundedRect(x - 15, y - 12, 30, 24, 8);
+        g.strokeRoundedRect(x - 15, y - 12, 30, 24, 8);
+        g.lineStyle(2.5, INK, 1);
+        g.beginPath();
+        g.arc(x, y, 6, -2.4, 1.6);
+        g.strokePath();
+        g.fillStyle(INK, 1);
+        g.fillTriangle(x + 7, y + 3, x + 1, y + 7, x + 4, y + 1);
+        break;
+      case "near":
+        g.fillStyle(0xff9d8a, 1);
+        g.fillCircle(x, y, 13);
+        g.strokeCircle(x, y, 13);
+        g.lineStyle(3, INK, 1);
+        g.lineBetween(x - 6, y - 6, x + 6, y + 6);
+        g.lineBetween(x + 6, y - 6, x - 6, y + 6);
+        break;
       case "goal":
         g.lineStyle(3, 0x2fa996, 1);
         g.strokeRect(x - 14, y - 13, 28, 26);
         break;
     }
-  }
-
-  note(text: string, kind: NoteKind = "info") {
-    if (this.notes[0]?.text === text) return;
-    this.notes = this.notes.filter((n) => n.text !== text);
-    this.notes.unshift({ text, kind });
-    this.notes = this.notes.slice(0, 5);
-    this.renderNotes(true);
-  }
-
-  intro(lines: string[]) {
-    this.notes = lines.map((text) => ({ text, kind: "info" as NoteKind }));
-    this.renderNotes(false, true);
-    this.noteTexts.forEach((t, i) => {
-      const visible = t.visible;
-      t.setAlpha(0);
-      if (visible) this.scene.tweens.add({ targets: t, alpha: 1, delay: i * 900, duration: 400 });
-    });
-  }
-
-  clearNotes() {
-    this.notes = [];
-    this.renderNotes();
-  }
-
-  private renderNotes(animateFirst = false, even = false) {
-    for (const t of this.noteTexts) t.destroy();
-    this.noteTexts = [];
-    this.writeTimer?.remove();
-    const sp = this.spots.notes;
-    let line = sp.line;
-    this.notes.forEach((n, i) => {
-      const size = even ? 26 : i === 0 ? 28 : 25;
-      const t = this.onLine(sp.x, line, `– ${n.text}`, size, COLORS[n.kind], sp.w);
-      t.setAlpha(even || i === 0 ? 1 : Math.max(0.45, 0.85 - i * 0.12));
-      this.noteTexts.push(t);
-      const used = this.linesOf(t);
-      if (line + used - 1 > sp.last) t.setVisible(false);
-      line += used;
-      if (i === 0 && animateFirst) {
-        const full = t.text;
-        let shown = 2;
-        t.setText(full.slice(0, shown));
-        this.writeTimer = this.scene.time.addEvent({
-          delay: 16,
-          repeat: full.length,
-          callback: () => {
-            shown += 2;
-            if (t.active) t.setText(full.slice(0, shown));
-          },
-        });
-      }
-    });
-  }
-
-  setPlan(actions: readonly Action[]) {
-    this.planActions = [...actions];
-    for (const c of this.planCells) c.destroy();
-    this.planCells = [];
-    const sp = this.spots.plan;
-    const runs = runsOf(actions);
-    const cells = runs.map((r) => {
-      const arrow = this.raw(0, 0, r.action === "wait" ? "·" : ARROWS[r.action], 34, PENCIL);
-      const parts: Phaser.GameObjects.GameObject[] = [arrow];
-      let width = Math.max(24, arrow.width);
-      if (r.count > 1) {
-        const count = this.raw(arrow.width - 2, 14, String(r.count), 21, "#a85d08");
-        parts.push(count);
-        width = arrow.width + count.width - 2;
-      }
-      const c = this.scene.add.container(0, 0, parts);
-      this.container.add(c);
-      return { c, width: width + 10, arrow };
-    });
-    const rows: (typeof cells)[] = [[]];
-    let used = 0;
-    for (const cell of cells) {
-      if (used + cell.width > sp.w && rows[rows.length - 1].length) {
-        rows.push([]);
-        used = 0;
-      }
-      rows[rows.length - 1].push(cell);
-      used += cell.width;
-    }
-    const keep = rows.slice(-sp.rows);
-    const dropped = rows.length > sp.rows;
-    for (const row of rows.slice(0, rows.length - keep.length)) for (const cell of row) cell.c.destroy();
-    keep.forEach((row, r) => {
-      let x = sp.x + (dropped && r === 0 ? 26 : 0);
-      const baseLine = sp.line + 1 + r;
-      for (const cell of row) {
-        const m = cell.arrow.style.getTextMetrics();
-        cell.c.setPosition(x, lineY(baseLine) - 3 - m.ascent + 4).setAngle((wobble(x + r * 11) - 0.5) * 6);
-        x += cell.width;
-        this.planCells.push(cell.c);
-      }
-    });
-    if (dropped) {
-      const dots = this.onLine(sp.x, sp.line + 1, "…", 30, PENCIL_SOFT);
-      this.planCells.unshift(this.scene.add.container(0, 0, [dots]));
-      this.container.add(this.planCells[0]);
-    }
-  }
-
-  strikeLast(done: () => void) {
-    const last = this.planCells[this.planCells.length - 1];
-    if (!last || this.planActions.length === 0) {
-      done();
-      return;
-    }
-    const g = this.scene.add.graphics();
-    g.lineStyle(4, 0xc4352c, 1);
-    g.lineBetween(last.x - 4, last.y + 34, last.x + 32, last.y + 10);
-    g.lineBetween(last.x - 2, last.y + 12, last.x + 30, last.y + 36);
-    this.container.add(g);
-    g.setAlpha(0);
-    this.scene.tweens.add({ targets: g, alpha: 1, duration: 90, hold: 90, yoyo: true, onComplete: () => g.destroy() });
-    this.scene.time.delayedCall(150, done);
-  }
-
-  private clearStamp() {
-    for (const o of this.stampObjects) o.destroy();
-    this.stampObjects = [];
-    this.overlay.clear();
-    for (const t of this.noteTexts) t.setAlpha(1);
-  }
-
-  showCaught(reason: string) {
-    this.clearStamp();
-    this.mode = "caught";
-    const sp = this.spots.notes;
-    this.notes = [
-      { text: reason, kind: "bad" },
-      { text: this.copy.notes.undoTip, kind: "info" },
-    ];
-    this.renderNotes();
-    const cy = lineY(sp.line + 3) + 6;
-    const stamp = this.scene.add
-      .text(0, 0, this.copy.notes.failed, { fontFamily: this.fonts.display, fontSize: "50px", color: "#c4352c", padding: { x: 10, y: 6 } })
-      .setOrigin(0.5);
-    const frame = this.scene.add.graphics();
-    frame.lineStyle(5, 0xc4352c, 1);
-    frame.strokeRoundedRect(-stamp.width / 2 - 6, -stamp.height / 2, stamp.width + 12, stamp.height, 10);
-    const c = this.scene.add.container(sp.x + sp.w / 2, cy, [frame, stamp]).setAngle(-8).setAlpha(0).setScale(1.8);
-    this.container.add(c);
-    this.stampObjects.push(c);
-    this.scene.tweens.add({ targets: c, alpha: 0.92, scale: 1, duration: 220, ease: "Back.easeOut" });
-    this.buildButtons(["undoCaught", "restart"]);
-  }
-
-  clearCaught() {
-    if (this.mode !== "caught") return;
-    this.mode = "play";
-    this.clearStamp();
-    this.notes = [];
-    this.renderNotes();
-    this.buildButtons(["wait", "undo", "restart", "hint"]);
-  }
-
-  showWin(turns: number, par: number, stars: number, isLast: boolean, line: string) {
-    this.clearStamp();
-    this.mode = "won";
-    const sp = this.spots.notes;
-    for (const t of this.noteTexts) t.setVisible(false);
-    this.setPlanVisible(false);
-    const title = this.onLine(sp.x, sp.line, this.copy.wonTitle, 46, "#23794b");
-    const g = this.scene.add.graphics();
-    this.container.add(g);
-    const starY = lineY(sp.line + 2) - 20;
-    for (let i = 0; i < 3; i += 1) {
-      const filled = i < stars;
-      this.scene.time.delayedCall(200 + i * 240, () => {
-        if (!g.active) return;
-        star(g, sp.x + 34 + i * 72, starY, 28, filled);
-      });
-    }
-    const moves = this.onLine(sp.x, sp.line + 3, this.copy.wonMoves(turns, par), 30, PENCIL);
-    const extra = turns - par;
-    const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? this.copy.wonPerfect : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
-    const quote = this.onLine(sp.x, sp.line + 4 + this.linesOf(verdict), `“${line}”`, 30, PENCIL, sp.w);
-    this.stampObjects.push(title, g, moves, verdict, quote);
-    if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 5 + this.linesOf(verdict), this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
-    this.buildButtons(isLast ? ["again"] : ["next", "again"]);
-  }
-
-  clearWin() {
-    if (this.mode !== "won") return;
-    this.mode = "play";
-    this.clearStamp();
-    for (const t of this.noteTexts) t.setVisible(true);
-    this.setPlanVisible(true);
-    this.buildButtons(["wait", "undo", "restart", "hint"]);
-  }
-
-  private setPlanVisible(on: boolean) {
-    this.texts.planLabel.setVisible(on);
-    this.texts.hints.setVisible(on);
-    for (const c of this.planCells) c.setVisible(on);
-  }
-
-  getMode() {
-    return this.mode;
   }
 
   private buildButtons(ids: ButtonId[]) {

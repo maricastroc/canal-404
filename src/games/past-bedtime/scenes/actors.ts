@@ -1,5 +1,7 @@
 import * as Phaser from "phaser";
 import type { Dir } from "../sim/types";
+import { artKey, hasArt } from "./art";
+import { ART_FILES } from "./artManifest";
 
 const INK = 0x1d1830;
 
@@ -188,7 +190,7 @@ export class StatusIcon {
   }
 }
 
-export type BrunoMood = "calm" | "tense" | "breath" | "scared" | "caught" | "happy" | "sneak";
+export type BrunoMood = "calm" | "tense" | "breath" | "scared" | "caught" | "happy" | "sneak" | "relief";
 
 export class BrunoView {
   readonly container: Phaser.GameObjects.Container;
@@ -200,16 +202,30 @@ export class BrunoView {
   private bob?: Phaser.Tweens.Tween;
   private blinking = false;
   private glanceX: number | null = null;
+  private sprite: Phaser.GameObjects.Image | null = null;
 
   constructor(
     private scene: Phaser.Scene,
     private s: number,
+    art = false,
   ) {
     this.shadow = scene.add.graphics();
     this.shadow.fillStyle(0x000000, 0.35);
     this.shadow.fillEllipse(0, s * 0.3, s * 0.56, s * 0.18);
     this.gfx = scene.add.graphics();
     this.body = scene.add.container(0, 0, [this.gfx]);
+    if (art && hasArt("bruno-front-calm")) {
+      const [vx, vy, vw, vh] = ART_FILES["bruno-front-calm"];
+      const unit = (s * 1.2) / 228;
+      this.sprite = scene.add
+        .image(0, s * 0.36, artKey("bruno-front-calm"))
+        .setOrigin((75 - vx) / vw, (210 - vy) / vh)
+        .setDisplaySize(vw * unit, vh * unit);
+      this.shadow.clear();
+      this.shadow.fillStyle(0x000000, 0.38);
+      this.shadow.fillEllipse(0, s * 0.33, s * 0.62, s * 0.2);
+      this.body.add(this.sprite);
+    }
     this.container = scene.add.container(0, 0, [this.shadow, this.body]).setDepth(34);
     this.draw();
     this.startBob();
@@ -316,6 +332,20 @@ export class BrunoView {
   }
 
   private draw() {
+    if (this.sprite) {
+      let name: string;
+      let flip = false;
+      if (this.facing === 0) name = "bruno-back";
+      else if (this.facing === 2 && this.glanceX === null) {
+        name = `bruno-front-${this.mood}`;
+        if (this.blinking && hasArt(`${name}-blink`)) name = `${name}-blink`;
+      } else {
+        name = `bruno-side-${this.mood}`;
+        flip = this.glanceX !== null ? this.glanceX < 0 : this.facing === 3;
+      }
+      if (hasArt(name)) this.sprite.setTexture(artKey(name)).setFlipX(flip);
+      return;
+    }
     const g = this.gfx;
     const s = this.s;
     const back = this.facing === 0;
@@ -385,6 +415,7 @@ export class BrunoView {
       scared: { eyes: "wide", mouth: "o", brows: "up", look, glasses: true },
       caught: { eyes: "wide", mouth: "grin", brows: "worried", look: { x: 0, y: 0.4 }, glasses: true, blush: true },
       happy: { eyes: "happy", mouth: "smile", brows: "up", look, glasses: true, blush: true },
+      relief: { eyes: "happy", mouth: "o", brows: "up", look, glasses: true, blush: true },
     };
     const chosen = spec[this.mood];
     face(g, cx, cy, r * 0.82, this.blinking && (chosen.eyes === "dot" || chosen.eyes === "wide") ? { ...chosen, eyes: "closed" } : chosen);
@@ -395,7 +426,9 @@ export class BrunoView {
 
 export type SleeperSeat = "bed" | "armchair";
 
-export type SleeperMood = "sleep" | "awake" | "angry" | "drowsy";
+export type SleeperMood = "sleep" | "stir" | "startled" | "suspicious" | "sleepy" | "awake" | "angry" | "drowsy";
+
+const PROC_MOOD: Record<SleeperMood, "sleep" | "awake" | "angry" | "drowsy"> = { sleep: "sleep", stir: "sleep", startled: "awake", suspicious: "awake", sleepy: "drowsy", awake: "awake", angry: "angry", drowsy: "drowsy" };
 
 export class DadView {
   readonly container: Phaser.GameObjects.Container;
@@ -405,34 +438,69 @@ export class DadView {
   private mood: SleeperMood = "sleep";
   private facing: Dir = 2;
   private breathe?: Phaser.Tweens.Tween;
+  private sprite: Phaser.GameObjects.Image | null = null;
 
   constructor(
     private scene: Phaser.Scene,
     private s: number,
     private seat: SleeperSeat,
+    art = false,
   ) {
     this.gfx = scene.add.graphics();
     this.headGfx = scene.add.graphics();
     this.head = scene.add.container(0, 0, [this.headGfx]);
     this.container = scene.add.container(0, 0, [this.gfx, this.head]).setDepth(32);
+    if (art && hasArt("dad-bed-sleep")) {
+      this.sprite = scene.add.image(0, 0, artKey("dad-bed-sleep")).setOrigin(0, 0);
+      this.container.add(this.sprite);
+      this.applyTexture("dad-bed-sleep");
+    }
     this.draw();
     this.startBreath();
   }
 
+  private applyTexture(name: string) {
+    if (!this.sprite || !hasArt(name)) return;
+    const [vx, vy, vw, vh] = ART_FILES[name];
+    const s = this.s;
+    this.sprite.setTexture(artKey(name)).setPosition(-s * 0.5 + (vx / 100) * s, -s * 1.5 + (vy / 100) * s).setDisplaySize((vw / 100) * s, (vh / 100) * s);
+    this.baseY = this.sprite.y;
+  }
+
+  private baseY = 0;
+
   private startBreath() {
     this.breathe?.remove();
     this.head.setScale(1);
+    if (this.sprite) {
+      const base = this.sprite.scaleY;
+      if (this.mood === "sleep") this.breathe = this.scene.tweens.add({ targets: this.sprite, scaleY: base * 1.012, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      return;
+    }
     if (this.mood !== "sleep") return;
     this.breathe = this.scene.tweens.add({ targets: this.head, scaleX: 1.05, scaleY: 0.96, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   }
 
   headPoint() {
     const k = this.container.scaleX;
+    if (this.sprite) {
+      const up = this.mood === "sleep" || this.mood === "stir" ? 0.34 : 0.2;
+      return { x: this.container.x, y: this.container.y + (-this.s * 1.5 + up * this.s - this.s * 0.2) * k };
+    }
     return { x: this.container.x + this.head.x * k, y: this.container.y + (this.head.y - this.s * 0.3) * k };
   }
 
   stir() {
     if (this.mood !== "sleep") return;
+    if (this.sprite) {
+      this.applyTexture("dad-bed-stir");
+      const x0 = this.sprite.x;
+      this.scene.tweens.add({ targets: this.sprite, x: x0 + 3, duration: 70, yoyo: true, repeat: 2, onComplete: () => this.sprite?.setX(x0) });
+      this.scene.time.delayedCall(1100, () => {
+        if (this.mood === "sleep") this.applyTexture("dad-bed-sleep");
+      });
+      return;
+    }
     this.scene.tweens.add({ targets: this.head, angle: { from: -8, to: 8 }, duration: 120, yoyo: true, repeat: 1, onComplete: () => this.head.setAngle(this.seat === "armchair" ? 16 : 0) });
   }
 
@@ -444,7 +512,10 @@ export class DadView {
     this.draw();
     this.startBreath();
     if (wasSleeping && mood !== "sleep") {
-      this.scene.tweens.add({ targets: this.head, y: this.head.y - this.s * 0.1, duration: 90, yoyo: true, ease: "Quad.easeOut" });
+      const target = this.sprite ?? this.head;
+      const y0 = this.sprite ? this.baseY : this.head.y;
+      this.scene.tweens.add({ targets: target, y: y0 - this.s * 0.12, duration: 90, yoyo: true, ease: "Quad.easeOut", onComplete: () => target.setY(y0) });
+      this.shake();
     }
   }
 
@@ -453,9 +524,27 @@ export class DadView {
   }
 
   private draw() {
+    if (this.sprite) {
+      const look = ["up", "right", "down", "left"][this.facing];
+      const byMood: Record<SleeperMood, string> = {
+        sleep: "dad-bed-sleep",
+        stir: "dad-bed-stir",
+        startled: `dad-bed-startled-${look}`,
+        suspicious: `dad-bed-suspicious-${look}`,
+        awake: `dad-bed-startled-${look}`,
+        sleepy: "dad-bed-sleepy",
+        drowsy: "dad-bed-sleepy",
+        angry: "dad-bed-angry",
+      };
+      this.applyTexture(byMood[this.mood]);
+      this.gfx.clear();
+      this.headGfx.clear();
+      return;
+    }
+    const mood = PROC_MOOD[this.mood];
     const g = this.gfx;
     const s = this.s;
-    const up = this.mood !== "sleep" && this.mood !== "drowsy";
+    const up = mood !== "sleep" && mood !== "drowsy";
     g.clear();
     if (this.seat === "bed") {
       const bodyTop = up ? -s * 0.38 : -s * 0.6;
@@ -497,14 +586,14 @@ export class DadView {
     h.closePath();
     h.fillPath();
     h.strokePath();
-    const look = this.mood === "sleep" || this.mood === "drowsy" ? { x: 0, y: 0 } : lookOf(this.facing);
-    const spec: Record<SleeperMood, FaceSpec> = {
+    const look = mood === "sleep" || mood === "drowsy" ? { x: 0, y: 0 } : lookOf(this.facing);
+    const spec: Record<"sleep" | "awake" | "angry" | "drowsy", FaceSpec> = {
       sleep: { eyes: "closed", mouth: "snore", brows: "flat" },
       drowsy: { eyes: "squint", mouth: "line", brows: "flat" },
       awake: { eyes: "wide", mouth: "o", brows: "up", look },
       angry: { eyes: "angry", mouth: "yell", brows: "angry", look },
     };
-    face(h, look.x * r * 0.15, look.y * r * 0.12 + r * 0.05, r * 0.86, spec[this.mood]);
+    face(h, look.x * r * 0.15, look.y * r * 0.12 + r * 0.05, r * 0.86, spec[mood]);
     h.fillStyle(0x2a1d1a, 1);
     const mx = look.x * r * 0.18;
     const my = r * 0.3 + look.y * r * 0.1;
@@ -798,7 +887,7 @@ export class DogView {
 export class ClockView {
   readonly container: Phaser.GameObjects.Container;
   private pendulum: Phaser.GameObjects.Graphics;
-  private bird: Phaser.GameObjects.Graphics;
+  private bird: Phaser.GameObjects.Graphics | Phaser.GameObjects.Image;
   private door: Phaser.GameObjects.Graphics;
   private number: Phaser.GameObjects.Text;
   private ring: Phaser.GameObjects.Graphics;
@@ -810,6 +899,7 @@ export class ClockView {
     private s: number,
     font: string,
     nowLabel: string,
+    art = false,
   ) {
     const g = scene.add.graphics();
     const w = s * 0.62;
@@ -856,7 +946,29 @@ export class ClockView {
       .text(0, -s * 0.72, nowLabel, { fontFamily: font, fontSize: `${Math.round(s * 0.26)}px`, color: "#ffe39a", stroke: "#1d1830", strokeThickness: 6, padding: { x: 4, y: 4 } })
       .setOrigin(0.5)
       .setVisible(false);
-    this.container = scene.add.container(0, 0, [this.ring, this.pendulum, g, this.door, this.bird, this.number, this.now]).setDepth(36);
+    this.container = scene.add.container(0, 0, [this.ring, this.pendulum, g, this.door, this.bird, this.number, this.now]).setDepth(30);
+    if (art && hasArt("clock-body")) {
+      const u = s * 0.0085;
+      const place = (name: string, x: number, y: number) => {
+        const [vx, vy, vw, vh] = ART_FILES[name];
+        return scene.add.image(x, y, artKey(name)).setOrigin(-vx / vw, -vy / vh).setDisplaySize(vw * u, vh * u);
+      };
+      g.setVisible(false);
+      this.door.setVisible(false);
+      this.pendulum.setVisible(false);
+      const body = place("clock-body", 0, 0);
+      const pend = place("clock-pendulum", 0, 36 * u);
+      const bird = place("clock-bird", 0, -27 * u).setVisible(false);
+      this.container.addAt(pend, 1);
+      this.container.addAt(body, 2);
+      this.container.add(bird);
+      this.bird.destroy();
+      this.bird = bird;
+      this.number.setPosition(0, 12 * u).setFontSize(Math.round(s * 0.2));
+      this.container.bringToTop(this.number);
+      this.container.bringToTop(this.now);
+      scene.tweens.add({ targets: pend, angle: { from: -16, to: 16 }, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
     scene.tweens.add({ targets: this.ring, scale: { from: 0.85, to: 1.25 }, alpha: { from: 1, to: 0.2 }, duration: 600, repeat: -1 });
     scene.tweens.add({ targets: this.now, y: -s * 0.8, duration: 380, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     scene.tweens.add({ targets: this.pendulum, angle: { from: -16, to: 16 }, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });

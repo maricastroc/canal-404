@@ -7,11 +7,13 @@ export type Action = Dir | "wait";
 
 export type Point = { x: number; y: number };
 
-export type PatrolStep = { x: number; y: number; f?: Dir };
+export type PatrolStep = { x: number; y: number; f?: Dir; peek?: boolean };
 
 export type ConeShape = "wide" | "narrow";
 
-export type SleeperDef = { kind: "sleeper"; id: string; x: number; y: number; wake: number; range: number; cone: ConeShape; hear: number };
+export type TossDef = { period: number; offset: number; facing: Dir };
+
+export type SleeperDef = { kind: "sleeper"; id: string; x: number; y: number; wake: number; range: number; cone: ConeShape; hear: number; toss?: TossDef };
 
 export type PatrolDef = { kind: "patrol"; id: string; path: PatrolStep[]; start: number; range: number; cone: ConeShape; hear: number; alert: number };
 
@@ -37,13 +39,13 @@ export type LevelDef = {
   par: number;
 };
 
-export type SleeperState = { kind: "sleeper"; awake: number; facing: Dir };
+export type SleeperState = { kind: "sleeper"; awake: number; facing: Dir; stir: number };
 
 export type PatrolState = { kind: "patrol"; idx: number; x: number; y: number; facing: Dir; alert: number };
 
 export type DogMode = "sleep" | "go" | "sniff" | "back";
 
-export type DogState = { kind: "dog"; x: number; y: number; mode: DogMode; tx: number; ty: number; timer: number; facing: Dir };
+export type DogState = { kind: "dog"; x: number; y: number; mode: DogMode; tx: number; ty: number; timer: number; facing: Dir; stir: number };
 
 export type CatState = { kind: "cat" };
 
@@ -75,6 +77,8 @@ export type SimEvent =
   | { type: "cuckoo" }
   | { type: "heard"; agent: number; x: number; y: number; source: number }
   | { type: "wake"; agent: number; facing: Dir }
+  | { type: "stir"; agent: number; level: number }
+  | { type: "toss"; agent: number; facing: Dir }
   | { type: "sleep"; agent: number }
   | { type: "alert"; agent: number; facing: Dir }
   | { type: "resume"; agent: number }

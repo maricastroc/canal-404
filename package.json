@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "og": "node scripts/og-images.mjs",
     "solve:bedtime": "jiti scripts/past-bedtime-solve.ts",
+    "art:bedtime": "jiti scripts/past-bedtime-art/build.ts",
     "postinstall": "prisma generate",
     "db:up": "docker compose up -d --wait db",
     "db:migrate": "prisma migrate dev",

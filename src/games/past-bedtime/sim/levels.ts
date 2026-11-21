@@ -1,4 +1,26 @@
-import type { LevelDef, PatrolStep } from "./types";
+import type { Dir, LevelDef, PatrolStep } from "./types";
+
+function run(y: number, a: number, b: number): PatrolStep[] {
+  const out: PatrolStep[] = [];
+  const d = a <= b ? 1 : -1;
+  for (let x = a; x !== b + d; x += d) out.push({ x, y });
+  return out;
+}
+
+function column(x: number, a: number, b: number): PatrolStep[] {
+  const out: PatrolStep[] = [];
+  const d = a <= b ? 1 : -1;
+  for (let y = a; y !== b + d; y += d) out.push({ x, y });
+  return out;
+}
+
+function look(x: number, y: number, f: Dir): PatrolStep {
+  return { x, y, f };
+}
+
+function peek(x: number, y: number, f: Dir): PatrolStep {
+  return { x, y, f, peek: true };
+}
 
 function pingpong(y: number, a: number, b: number): PatrolStep[] {
   const out: PatrolStep[] = [];
@@ -40,13 +62,13 @@ export const HALLWAY: LevelDef = {
   ],
   loud: 5,
   clock: { period: 3, x: 2, y: 3 },
-  agents: [{ kind: "sleeper", id: "dad", x: 6, y: 2, wake: 3, range: 4, cone: "wide", hear: 0 }],
+  agents: [{ kind: "sleeper", id: "dad", x: 6, y: 2, wake: 3, range: 4, cone: "wide", hear: 0, toss: { period: 7, offset: 0, facing: 2 } }],
   props: [
     { kind: "bed", x: 6, y: 1, h: 2 },
     { kind: "stairs", x: 12, y: 5 },
     { kind: "door", x: 0, y: 5 },
   ],
-  par: 16,
+  par: 18,
 };
 
 export const KITCHEN: LevelDef = {
@@ -67,10 +89,8 @@ export const KITCHEN: LevelDef = {
       kind: "patrol",
       id: "grandma",
       path: [
-        { x: 3, y: 2 }, { x: 4, y: 2 }, { x: 5, y: 2 }, { x: 6, y: 2 }, { x: 7, y: 2 }, { x: 8, y: 2 },
-        { x: 8, y: 3 }, { x: 8, y: 4 }, { x: 8, y: 5 },
-        { x: 7, y: 5 }, { x: 6, y: 5 }, { x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 },
-        { x: 3, y: 4 }, { x: 3, y: 3 },
+        ...run(2, 3, 8), ...column(8, 3, 5), ...run(5, 7, 2), look(2, 4, 3), { x: 2, y: 3 }, { x: 2, y: 2 },
+        ...run(2, 3, 9), { x: 9, y: 3 }, look(9, 4, 1), { x: 9, y: 5 }, ...run(5, 8, 3), { x: 3, y: 4 }, { x: 3, y: 3 },
       ],
       start: 10,
       range: 3,
@@ -107,7 +127,7 @@ export const LIVING: LevelDef = {
   ],
   loud: 3,
   agents: [
-    { kind: "sleeper", id: "dad", x: 1, y: 1, wake: 3, range: 4, cone: "wide", hear: 0 },
+    { kind: "sleeper", id: "dad", x: 1, y: 1, wake: 3, range: 4, cone: "wide", hear: 0, toss: { period: 8, offset: 0, facing: 2 } },
     { kind: "dog", id: "pipoca", x: 6, y: 3, hear: 4, sniff: 2 },
   ],
   props: [
@@ -148,7 +168,7 @@ export const PANTRY: LevelDef = {
     "############",
   ],
   loud: 3,
-  agents: [{ kind: "patrol", id: "grandma", path: pingpong(2, 2, 10), start: 6, range: 3, cone: "narrow", hear: 0, alert: 2 }],
+  agents: [{ kind: "patrol", id: "grandma", path: [...run(2, 2, 10), ...run(2, 9, 3), ...run(2, 2, 10), ...run(2, 9, 6), peek(5, 2, 0), ...run(2, 4, 3)], start: 6, range: 3, cone: "narrow", hear: 0, alert: 2 }],
   props: [
     { kind: "pantry", x: 1, y: 1 },
     { kind: "pantry", x: 3, y: 1 },
@@ -242,14 +262,14 @@ export const RETURN: LevelDef = {
   loud: 5,
   clock: { period: 3, x: 2, y: 3 },
   agents: [
-    { kind: "sleeper", id: "dad", x: 6, y: 2, wake: 3, range: 4, cone: "wide", hear: 0 },
-    { kind: "patrol", id: "grandma", path: pingpong(6, 1, 11), start: 6, range: 3, cone: "narrow", hear: 0, alert: 2 },
+    { kind: "sleeper", id: "dad", x: 6, y: 2, wake: 3, range: 4, cone: "wide", hear: 0, toss: { period: 7, offset: 0, facing: 2 } },
+    { kind: "patrol", id: "grandma", path: [...run(6, 1, 3), look(4, 6, 0), ...run(6, 4, 8), look(9, 6, 0), ...run(6, 9, 11), ...run(6, 10, 2)], start: 6, range: 3, cone: "narrow", hear: 0, alert: 2 },
   ],
   props: [
     { kind: "bed", x: 6, y: 1, h: 2 },
     { kind: "stairs", x: 12, y: 5 },
   ],
-  par: 19,
+  par: 23,
 };
 
 export const LEVELS: readonly LevelDef[] = [DOORWAY, HALLWAY, STAIRS, KITCHEN, PANTRY, LAUNDRY, DINING, SOFA, LIVING, RETURN];

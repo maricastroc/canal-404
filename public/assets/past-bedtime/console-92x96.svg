@@ -1,0 +1,10 @@
+<svg width="100" height="114" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -14 100 114">
+    <rect x="2" y="28.799999999999997" width="88" height="15.36" rx="3" fill="#9a6440" stroke="#1d1830" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="7.36" y="44.160000000000004" width="77.28" height="24.96" rx="2" fill="#7a4a32" stroke="#1d1830" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="46" cy="56.64" r="2.5" fill="#c9a24a"/>
+    <path d="M12.88 69.12 L11.04 96 M79.12 69.12 L80.96 96" stroke="#1d1830" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="11.04" y="11.52" width="33.12" height="19.200000000000003" rx="5" fill="#ef4f43" stroke="#1d1830" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M11.96 11.52 Q27.599999999999998 -3.84 43.239999999999995 11.52" fill="#ef4f43" stroke="#1d1830" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="27.599999999999998" cy="21.12" r="5.52" fill="#fbf5e6" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M57.04 28.799999999999997 L55.199999999999996 5.76 Q64.39999999999999 -1.92 73.60000000000001 5.76 L71.76 28.799999999999997 Z" fill="#63d6c1" stroke="#1d1830" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="60.720000000000006" cy="-3.84" r="5" fill="#f06ba8" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="69.92" cy="-5.76" r="4" fill="#ffc83d" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>

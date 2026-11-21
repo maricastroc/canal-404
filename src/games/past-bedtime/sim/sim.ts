@@ -1,5 +1,5 @@
 import { buildGrid, coneTiles, dirTo, firstStep, isCreaky, isFloor, isHiding, noiseDistances, type Grid } from "./grid";
-import { DX, DY, type Action, type AgentState, type CatDef, type CatchReason, type Dir, type DogState, type LevelDef, type PatrolDef, type SimEvent, type State } from "./types";
+import { DX, DY, type Action, type AgentState, type CatDef, type CatchReason, type Dir, type DogState, type LevelDef, type PatrolDef, type SimEvent, type SleeperDef, type State } from "./types";
 
 export const STAR_SLACK = 3;
 
@@ -15,13 +15,13 @@ function patrolFacing(def: PatrolDef, idx: number, fallback: Dir): Dir {
 export function createSim(level: LevelDef): Sim {
   const grid = buildGrid(level);
   const agents: AgentState[] = level.agents.map((def) => {
-    if (def.kind === "sleeper") return { kind: "sleeper", awake: 0, facing: 2 };
+    if (def.kind === "sleeper") return { kind: "sleeper", awake: 0, facing: 2, stir: 0 };
     if (def.kind === "patrol") {
       const p = def.path[def.start];
       return { kind: "patrol", idx: def.start, x: p.x, y: p.y, facing: patrolFacing(def, def.start, 2), alert: 0 };
     }
     if (def.kind === "cat") return { kind: "cat" };
-    return { kind: "dog", x: def.x, y: def.y, mode: "sleep", tx: def.x, ty: def.y, timer: 0, facing: 2 };
+    return { kind: "dog", x: def.x, y: def.y, mode: "sleep", tx: def.x, ty: def.y, timer: 0, facing: 2, stir: 0 };
   });
   const initial: State = { turn: 0, x: grid.start.x, y: grid.start.y, facing: 1, agents, status: "playing", caughtBy: -1, reason: null, creaks: 0, masked: 0, wakes: 0 };
   return { grid, initial };
@@ -56,6 +56,22 @@ export function turnsToCuckoo(grid: Grid, turn: number) {
   return clock.period;
 }
 
+export const STIR_WAKE = 2;
+
+export function nextTo(ax: number, ay: number, bx: number, by: number) {
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by)) === 1;
+}
+
+export function isTossTurn(def: SleeperDef, turn: number) {
+  return !!def.toss && turn > 0 && (turn + def.toss.offset) % def.toss.period === 0;
+}
+
+export function turnsToToss(def: SleeperDef, turn: number) {
+  if (!def.toss) return -1;
+  for (let k = 1; k <= def.toss.period; k += 1) if (isTossTurn(def, turn + k)) return k;
+  return def.toss.period;
+}
+
 export function isKnockTurn(def: CatDef, turn: number) {
   return turn > 0 && (turn + def.offset) % def.period === 0;
 }
@@ -73,6 +89,12 @@ export function watchedTiles(grid: Grid, agents: readonly AgentState[], index: n
   return [];
 }
 
+export function isPeeking(grid: Grid, agents: readonly AgentState[], index: number) {
+  const a = agents[index];
+  const def = grid.level.agents[index];
+  return a.kind === "patrol" && def.kind === "patrol" && a.alert === 0 && !!def.path[a.idx].peek;
+}
+
 function detect(grid: Grid, agents: readonly AgentState[], x: number, y: number, lightReason: CatchReason): { agent: number; reason: CatchReason } | null {
   const idx = y * grid.w + x;
   const hidden = isHiding(grid, x, y);
@@ -82,7 +104,7 @@ function detect(grid: Grid, agents: readonly AgentState[], x: number, y: number,
       if (a.mode !== "sleep" && Math.abs(a.x - x) + Math.abs(a.y - y) === 1) return { agent: i, reason: "dog" };
       continue;
     }
-    if (!hidden && watchedTiles(grid, agents, i).includes(idx)) return { agent: i, reason: lightReason };
+    if ((!hidden || isPeeking(grid, agents, i)) && watchedTiles(grid, agents, i).includes(idx)) return { agent: i, reason: lightReason };
   }
   return null;
 }
@@ -137,13 +159,41 @@ export function step(sim: Sim, state: State, action: Action): { state: State; ev
   }
   const agents: AgentState[] = state.agents.map((a) => ({ ...a }));
   const heard = agents.map(() => false);
+  agents.forEach((a, i) => {
+    if (a.kind !== "sleeper" && a.kind !== "dog") return;
+    const asleep = a.kind === "sleeper" ? a.awake === 0 : a.mode === "sleep";
+    const p = agentPos(grid, i, a);
+    if (!asleep || !nextTo(p.x, p.y, x, y)) {
+      a.stir = 0;
+      return;
+    }
+    if (action !== "wait") return;
+    a.stir += 1;
+    events.push({ type: "stir", agent: i, level: a.stir });
+    if (a.stir < STIR_WAKE) return;
+    a.stir = 0;
+    heard[i] = true;
+    wakes += 1;
+    events.push({ type: "heard", agent: i, x, y, source: -2 });
+    if (a.kind === "sleeper") {
+      const def = level.agents[i];
+      a.awake = def.kind === "sleeper" ? def.wake : 1;
+      a.facing = dirTo(p.x, p.y, x, y, a.facing);
+      events.push({ type: "wake", agent: i, facing: a.facing });
+    } else {
+      a.mode = "go";
+      a.tx = x;
+      a.ty = y;
+      a.timer = 0;
+    }
+  });
   if (noises.length) {
     let maxHear = 0;
     for (const def of level.agents) maxHear = Math.max(maxHear, def.hear);
     const maps = noises.map((n) => noiseDistances(grid, n.x, n.y, n.loud + maxHear));
     agents.forEach((a, i) => {
       const def = level.agents[i];
-      if (a.kind === "cat") return;
+      if (a.kind === "cat" || heard[i]) return;
       const p = agentPos(grid, i, a);
       let best = -1;
       let bestD = Infinity;
@@ -168,6 +218,7 @@ export function step(sim: Sim, state: State, action: Action): { state: State; ev
         events.push({ type: "alert", agent: i, facing: a.facing });
       } else {
         if (a.mode === "sleep") wakes += 1;
+        a.stir = 0;
         a.mode = "go";
         a.tx = n.tx;
         a.ty = n.ty;
@@ -204,6 +255,14 @@ export function step(sim: Sim, state: State, action: Action): { state: State; ev
       return;
     }
     if (a.kind === "dog" && def.kind === "dog") moveDog(sim, agents, i, a, def.x, def.y, def.sniff, x, y, events);
+  });
+  agents.forEach((a, i) => {
+    const def = level.agents[i];
+    if (a.kind !== "sleeper" || def.kind !== "sleeper" || a.awake > 0 || !isTossTurn(def, turn)) return;
+    a.awake = 1;
+    a.stir = 0;
+    a.facing = def.toss!.facing;
+    events.push({ type: "toss", agent: i, facing: a.facing });
   });
   const seen = detect(grid, agents, x, y, "light");
   if (seen) {
@@ -251,7 +310,10 @@ function gcd(a: number, b: number): number {
 
 export function cycleOf(level: LevelDef) {
   let cycle = level.clock?.period ?? 1;
-  for (const def of level.agents) if (def.kind === "cat") cycle = (cycle * def.period) / gcd(cycle, def.period);
+  for (const def of level.agents) {
+    const period = def.kind === "cat" ? def.period : def.kind === "sleeper" && def.toss ? def.toss.period : 1;
+    cycle = (cycle * period) / gcd(cycle, period);
+  }
   return cycle;
 }
 
@@ -259,9 +321,9 @@ export function stateKey(sim: Sim, s: State): string {
   let key = `${s.x},${s.y},${s.turn % cycleOf(sim.grid.level)}`;
   for (const a of s.agents) {
     if (a.kind === "cat") continue;
-    if (a.kind === "sleeper") key += a.awake > 0 ? `|s${a.awake}${a.facing}` : "|s0";
+    if (a.kind === "sleeper") key += a.awake > 0 ? `|s${a.awake}${a.facing}` : `|s0${a.stir}`;
     else if (a.kind === "patrol") key += `|p${a.idx},${a.facing},${a.alert}`;
-    else key += `|d${a.x},${a.y},${a.mode[1]}${a.mode === "go" ? `${a.tx},${a.ty}` : ""}${a.mode === "sniff" ? a.timer : ""}`;
+    else key += `|d${a.x},${a.y},${a.mode[1]}${a.mode === "go" ? `${a.tx},${a.ty}` : ""}${a.mode === "sniff" ? a.timer : ""}${a.mode === "sleep" ? a.stir : ""}`;
   }
   return key;
 }

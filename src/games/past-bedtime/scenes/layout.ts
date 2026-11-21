@@ -12,6 +12,9 @@ export type Layout = {
   H: number;
   map: Rect;
   board: Rect;
+  frame: Rect;
+  scroll: boolean;
+  overview: number;
   view: View;
   tile: number;
   ox: number;
@@ -21,10 +24,11 @@ export type Layout = {
 
 export const CANVAS: Record<Orientation, { W: number; H: number }> = { landscape: { W: 1920, H: 1080 }, portrait: { W: 1080, H: 1650 } };
 
-const SIDE_PAD = 0.36;
+const SIDE_PAD = 0.2;
 const TOP_PAD = 1;
 const BOTTOM_PAD = 0.3;
 const MAX_TILE = 200;
+const MIN_TILE: Record<Orientation, number> = { landscape: 164, portrait: 126 };
 
 export function boardView(grid: Grid): View {
   let minX = grid.w;
@@ -50,18 +54,24 @@ export function boardView(grid: Grid): View {
 
 export function computeLayout(orientation: Orientation, grid: Grid): Layout {
   const { W, H } = CANVAS[orientation];
-  const map: Rect = orientation === "landscape" ? { x: 18, y: 18, w: 1366, h: 1044 } : { x: 16, y: 16, w: 1048, h: 700 };
-  const notebook: Rect = orientation === "landscape" ? { x: 1404, y: 18, w: 498, h: 1044 } : { x: 20, y: 734, w: 1040, h: 896 };
+  const map: Rect = orientation === "landscape" ? { x: 12, y: 12, w: 1404, h: 1056 } : { x: 12, y: 12, w: 1056, h: 708 };
+  const notebook: Rect = orientation === "landscape" ? { x: 1428, y: 12, w: 480, h: 1056 } : { x: 20, y: 734, w: 1040, h: 896 };
   const view = boardView(grid);
   const vw = view.x1 - view.x0;
   const vh = view.y1 - view.y0;
-  const tile = Math.floor(Math.min(map.w / vw, map.h / vh, MAX_TILE));
+  const fit = Math.min(map.w / vw, map.h / vh);
+  const tile = Math.floor(Math.min(MAX_TILE, Math.max(fit, MIN_TILE[orientation])));
   const bw = Math.round(vw * tile);
   const bh = Math.round(vh * tile);
-  const board: Rect = { x: Math.round(map.x + (map.w - bw) / 2), y: Math.round(map.y + (map.h - bh) / 2), w: bw, h: bh };
+  const fitsX = bw <= map.w;
+  const fitsY = bh <= map.h;
+  const board: Rect = { x: fitsX ? Math.round(map.x + (map.w - bw) / 2) : map.x, y: fitsY ? Math.round(map.y + (map.h - bh) / 2) : map.y, w: bw, h: bh };
+  const frame: Rect = { x: board.x, y: board.y, w: Math.min(bw, map.w), h: Math.min(bh, map.h) };
+  const scroll = !fitsX || !fitsY;
+  const overview = Math.min(1, frame.w / bw, frame.h / bh);
   const ox = Math.round(board.x - view.x0 * tile);
   const oy = Math.round(board.y - view.y0 * tile);
-  return { orientation, W, H, map, board, view, tile, ox, oy, notebook };
+  return { orientation, W, H, map, board, frame, scroll, overview, view, tile, ox, oy, notebook };
 }
 
 export function tileCenter(layout: Layout, x: number, y: number) {

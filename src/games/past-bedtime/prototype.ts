@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { CANVAS } from "./scenes/layout";
 import { NightScene, type Command, type NightBridge } from "./scenes/NightScene";
+import { NightUiScene } from "./scenes/NightUi";
 
 export type PrototypeHandle = {
   command: (cmd: Command) => void;
@@ -22,7 +23,7 @@ export function mountPrototype(parent: HTMLElement, bridge: NightBridge): Protot
     banner: false,
     audio: { noAudio: true },
     disableContextMenu: true,
-    scene: [NightScene],
+    scene: [NightUiScene, NightScene],
     callbacks: {
       preBoot: (g) => {
         g.registry.set("bridge", bridge);

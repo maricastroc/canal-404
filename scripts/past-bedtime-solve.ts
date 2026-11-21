@@ -1,9 +1,11 @@
 import { LEVELS } from "../src/games/past-bedtime/sim/levels";
 import { createSim, step } from "../src/games/past-bedtime/sim/sim";
-import { solve } from "../src/games/past-bedtime/sim/solver";
+import { audit, solve } from "../src/games/past-bedtime/sim/solver";
 import type { Action, LevelDef } from "../src/games/past-bedtime/sim/types";
 
 const ARROWS = ["↑", "→", "↓", "←"];
+
+const PREVIEW = 4;
 
 const format = (actions: readonly Action[]) => actions.map((a) => (a === "wait" ? "·" : ARROWS[a])).join("");
 
@@ -46,6 +48,10 @@ for (const level of LEVELS) {
   console.log(`   creaks ${state.creaks} (covered by the cuckoo ${state.masked}), wake-ups ${state.wakes}, waits ${waits}`);
   const empty = solve(createSim({ ...level, agents: [] }));
   if (empty) console.log(`   empty house: ${empty.turns} moves, so the residents cost ${solution.turns - empty.turns}`);
+  const report = audit(sim);
+  const fair = report.stuck === 0 && report.longestTrap <= PREVIEW;
+  if (!fair) failed = true;
+  console.log(`   ${fair ? "✓" : "✗"} fair: ${report.stuck} states that can never win, longest trap ${report.longestTrap} turns (preview shows ${PREVIEW}), waiting forever is safe on ${report.campTiles} of ${report.floorTiles} tiles`);
   const proof = PROOFS[level.id];
   if (proof) {
     const holds = proof.holds(level, solution.turns, empty?.turns ?? null);

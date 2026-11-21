@@ -1,6 +1,6 @@
 import { localized } from "@/i18n/copy";
 
-export type LevelText = { title: string; goal: string; target: string; intro: string[] };
+export type LevelText = { title: string; goal: string; target: string; intro: string[]; story: string };
 
 export type NightCopy = {
   notebookTitle: string;
@@ -12,8 +12,12 @@ export type NightCopy = {
   starsAt: (turns: number) => string;
   hintsUsed: (n: number) => string;
   plan: string;
+  speaker: string;
+  names: { dad: string; grandma: string; dog: string; cat: string; bruno: string };
+  view: { house: string; back: string };
+  pages: { rules: string; moves: string; back: string; rulesTitle: string; movesTitle: string; empty: string };
   legendTitle: string;
-  legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string; hide: string; cat: string };
+  legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string; hide: string; cat: string; route: string; toss: string; near: string };
   acts: Record<string, string>;
   actLabel: (n: number, name: string) => string;
   buttons: { wait: string; undo: string; restart: string; hint: string; next: string; again: string; undoCaught: string };
@@ -32,6 +36,10 @@ export type NightCopy = {
     stillAwake: (n: number) => string;
     backToSleep: string;
     holdBreath: string;
+    stirred: string;
+    tossed: string;
+    tossSoon: string;
+    peekSoon: string;
     grandmaStopped: string;
     grandmaBack: string;
     dogGoing: string;
@@ -58,24 +66,28 @@ export type NightCopy = {
   lastLevel: string;
   lines: {
     dadSleep: string[];
+    dadStir: string[];
+    dadToss: string[];
     dadWake: string[];
     dadSleepAgain: string[];
-    dadCatch: string;
+    dadCatch: string[];
     grandmaWalk: string[];
-    grandmaAlert: string;
+    grandmaAlert: string[];
     grandmaResume: string[];
-    grandmaCatch: string;
+    grandmaPeek: string[];
+    grandmaCatch: string[];
     dogWake: string;
+    dogStir: string;
     dogSniff: string;
-    dogCatch: string;
-    knock: string;
+    dogCatch: string[];
+    knock: string[];
     meow: string;
     cuckoo: string;
     now: string;
     creak: string;
-    brunoExcuse: Record<string, string>;
+    brunoExcuse: Record<string, string[]>;
     brunoWin: Record<string, string>;
-    brunoThink: string;
+    brunoThink: string[];
   };
   replayOk: string;
   replayBad: string;
@@ -91,61 +103,93 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "A porta dos pais",
         goal: "Passar pela porta do quarto sem acordar o pai.",
         target: "corredor",
-        intro: ["A tábua roxa range e acorda o pai.", "O número no cuco conta as jogadas até ele cantar.", "Quando estiver em 1, pise na tábua: o canto abafa o rangido."],
+        intro: [
+          "A tábua roxa range. Range alto.",
+          "O número no cuco conta as jogadas até ele cantar.",
+          "Não fique parado colado na cama: o pai sente que tem gente.",
+          "Cuco em 1? Pisa na tábua: o CUCO! cobre o nhéc.",
+        ],
+        story: "Primeira porta: a dos meus pais. O pai tem sono de passarinho…",
       },
       hallway: {
         title: "O corredor",
-        goal: "Chegar na escada sem acordar o pai.",
+        goal: "Chegar na escada sem o pai te pegar.",
         target: "escada",
-        intro: ["Agora são várias tábuas.", "Pise nelas só no canto do cuco. Parado em cima não range.", "Tábua longe do pai pode ranger: ele não ouve."],
-      },
-      kitchen: {
-        title: "A cozinha",
-        goal: "Atravessar a cozinha até a porta da sala.",
-        target: "porta",
-        intro: ["A Vó não dorme.", "Ela dá voltas na mesa com a lanterna."],
+        intro: [
+          "O corredor inteiro é de tábua.",
+          "Tábua longe do pai pode ranger: ele não ouve.",
+          "O ↻ em cima do pai conta as jogadas até ele virar na cama e espiar a porta.",
+          "Tábua só no CUCO!, e fora da porta quando ele virar.",
+        ],
+        story: "Esse corredor range que nem navio velho. E o pai vira na cama de tempos em tempos…",
       },
       stairs: {
         title: "A escada",
         goal: "Descer e chegar na porta da cozinha.",
         target: "cozinha",
-        intro: ["A Vó acordou e anda de um lado pro outro.", "A lanterna só ilumina pra frente. Espere ela virar de costas."],
+        intro: ["A Vó vai e volta no pé da escada.", "As pegadas amarelas são os próximos passos dela.", "A lanterna só aponta pra frente. Desce quando ela virar de costas."],
+        story: "A Vó levantou pra fazer chá. Justo no pé da escada.",
+      },
+      kitchen: {
+        title: "A cozinha",
+        goal: "Atravessar a cozinha até a porta da sala.",
+        target: "porta",
+        intro: [
+          "A Vó dá a volta na mesa, mas cada volta é de um jeito.",
+          "Numa ela confere o canto da pia, na outra o canto da geladeira.",
+          "O olho numerado mostra onde ela vai olhar e em quantas jogadas.",
+        ],
+        story: "A Vó tá fazendo ronda na cozinha. E toda volta ela confere um canto diferente.",
       },
       pantry: {
         title: "A despensa",
         goal: "Passar pela Vó e sair pela porta da área.",
         target: "área",
-        intro: ["Aqui não dá pra seguir a Vó: o corredor é estreito.", "Atrás da cortina, a lanterna não te acha."],
+        intro: [
+          "Corredor estreito: não dá pra ir atrás dela.",
+          "Atrás da cortina a lanterna não te acha…",
+          "…a não ser quando ela vem conferir. Olho vermelho = ela vai espiar o esconderijo.",
+        ],
+        story: "Corredor apertado, Vó vindo… e ela adora conferir a despensa.",
       },
       laundry: {
         title: "A área de serviço",
         goal: "Passar pela Pipoca e chegar na porta.",
         target: "porta",
-        intro: ["A Pipoca dorme bem na passagem.", "Ela sempre vai ver de onde veio o barulho."],
+        intro: ["A Pipoca dorme bem na passagem.", "Barulho? Ela sempre corre pra ver de onde veio.", "Parado do lado dela, ela acorda. Atrai ela pra longe."],
+        story: "A Pipoca dormiu na porta. Se me vir, vai querer brincar. Às três da manhã.",
       },
       dining: {
         title: "A sala de jantar",
         goal: "Atravessar até a sala de estar.",
         target: "sala",
-        intro: ["Aqui não tem tábua solta pra fazer barulho.", "Mas o Pixel derruba alguma coisa de tempos em tempos."],
+        intro: ["Nenhuma tábua solta aqui.", "Mas o Pixel derruba alguma coisa de tempos em tempos: o número em cima dele avisa.", "O segredo é estar no lugar certo quando ele derrubar."],
+        story: "Nenhuma tábua pra me ajudar. Mas o Pixel… o Pixel é o caos em forma de gato.",
       },
       sofa: {
         title: "O pai no sofá",
         goal: "Atravessar a sala sem o pai te ver.",
         target: "TV",
-        intro: ["Toda vez que o Pixel derruba algo, o pai acorda e olha pra lá.", "Atrás das plantas ele não te vê."],
+        intro: ["Toda vez que o Pixel derruba algo, o pai acorda e olha pra lá.", "Atrás das plantas ele não te vê.", "Ele dorme de novo depois de umas jogadas: conta no número dele."],
+        story: "O pai cochilou no sofá vendo o jogo. E o Pixel está em cima do rack.",
       },
       living: {
         title: "A sala da TV",
         goal: "Chegar no videocassete.",
         target: "vídeo",
-        intro: ["A Pipoca de novo, e o pai cochilando na poltrona.", "A tábua perto dele também acorda o pai."],
+        intro: ["Pipoca de novo, e o pai cochilando na poltrona.", "A tábua perto dele acorda o pai também.", "Ele vira de tempos em tempos: fica de olho no ↻."],
+        story: "O videocassete está logo ali, piscando 12:00. Só falta a Pipoca sair do caminho.",
       },
       return: {
         title: "A volta",
         goal: "Voltar pro quarto com a fita gravada.",
         target: "quarto",
-        intro: ["A Vó subiu e está andando no corredor.", "Tábua só no canto do cuco, e longe da lanterna."],
+        intro: [
+          "A Vó subiu e vigia o corredor. Em dois pontos ela para e olha pra cima.",
+          "O pai continua virando na cama.",
+          "Tábua só no CUCO!, longe da lanterna e fora da vista do pai.",
+        ],
+        story: "Fita gravada! Agora é só voltar pro quarto… com a Vó no corredor. Moleza. Só que não.",
       },
     },
     moves: "Jogadas",
@@ -153,6 +197,10 @@ export const NIGHT_COPY = localized<NightCopy>({
     starsAt: (turns) => `3 estrelas com ${turns} jogadas`,
     hintsUsed: (n) => (n === 1 ? "1 dica usada" : `${n} dicas usadas`),
     plan: "Plano até agora",
+    speaker: "Bruno",
+    names: { dad: "Pai", grandma: "Vó", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
+    view: { house: "👁 Ver a casa toda (V)", back: "↩ Voltar pro Bruno (V)" },
+    pages: { rules: "Regras e legenda", moves: "Jogadas", back: "Voltar", rulesTitle: "Como funciona", movesTitle: "Plano até agora", empty: "Nenhuma jogada ainda." },
     legendTitle: "Legenda",
     actLabel: (n, name) => (n === 4 ? "Final" : `Ato ${n} · ${name}`),
     acts: { upstairs: "Lá em cima", grandma: "A Vó acordada", pets: "Pipoca e Pixel", back: "A volta" },
@@ -166,39 +214,46 @@ export const NIGHT_COPY = localized<NightCopy>({
       hide: "esconderijo",
       cat: "Pixel faz barulho",
       goal: "objetivo",
+      route: "pegadas: próximos passos da Vó",
+      toss: "↻ o pai vira e espia",
+      near: "parado colado: acorda",
     },
     buttons: { wait: "Esperar", undo: "Desfazer", restart: "Recomeçar", hint: "Dica", next: "Próxima parte", again: "Jogar de novo", undoCaught: "Desfazer a última jogada" },
-    keys: "Setas: andar · Espaço: esperar · Z: desfazer · R: recomeçar · H: dica",
+    keys: "Setas: andar · Espaço: esperar · Z: desfazer · R: recomeçar · H: dica · V: ver a casa",
     touchKeys: "Deslize ou toque ao lado do Bruno para andar.",
     notes: {
       cuckooNow: "O cuco vai cantar agora!",
-      cuckooSoon: "Cuco na próxima jogada.",
-      stepNow: "Cuco em 1: pise na tábua agora!",
-      creakCaught: "Pisei na tábua fora do canto do cuco.",
+      cuckooSoon: "Cuco na próxima. Prepara o pé.",
+      stepNow: "Cuco em 1: é agora, pisa na tábua!",
+      creakCaught: "Pisei na tábua sem o cuco cantar. Vacilo.",
       cuckooIn: (n) => `Cuco em ${n} jogadas.`,
-      masked: "O cuco abafou o rangido!",
-      unheard: "Rangeu… mas ninguém ouviu.",
-      woke: "Acordou! Fica longe da luz.",
-      wokeDog: "A Pipoca ouviu!",
+      masked: "O cuco cobriu o nhéc!",
+      unheard: "Rangeu… e ninguém ouviu. Sorte.",
+      woke: "Acordou! Sai da luz, rápido.",
+      wokeDog: "A Pipoca ouviu! Lá vem ela.",
       stillAwake: (n) => (n === 1 ? "Dorme de novo na próxima jogada." : `Dorme de novo em ${n} jogadas.`),
-      backToSleep: "Voltou a dormir. Ufa.",
-      holdBreath: "Nem respira…",
-      grandmaStopped: "A Vó parou para olhar.",
-      grandmaBack: "A Vó voltou para a ronda.",
-      dogGoing: "Ela foi ver o barulho. É agora!",
-      dogSniff: "Está farejando. Corre!",
-      dogBack: "Ela está voltando para a almofada!",
+      backToSleep: "Dormiu de novo. Ufa.",
+      holdBreath: "Colado em quem dorme. Se eu parar aqui, acorda!",
+      stirred: "Se mexeu! Mais uma espera aqui e acorda.",
+      tossed: "Virou na cama e espiou! Fica fora da vista.",
+      tossSoon: "O pai vai virar na próxima jogada.",
+      peekSoon: "A Vó vai espiar o esconderijo!",
+      grandmaStopped: "A Vó parou pra escutar.",
+      grandmaBack: "A Vó seguiu a ronda.",
+      dogGoing: "Ela foi atrás do barulho. Vai, vai!",
+      dogSniff: "Tá farejando. Corre!",
+      dogBack: "Ela está voltando pra almofada!",
       dogHome: "A Pipoca deitou de novo.",
-      hidden: "Escondido. Ninguém me vê aqui.",
-      hiddenSafe: "A luz passou e não me viu!",
-      knockSoon: "O Pixel vai derrubar algo na próxima jogada.",
-      knocked: "O Pixel derrubou alguma coisa!",
+      hidden: "Escondido. Daqui ninguém me vê.",
+      hiddenSafe: "A luz passou e não me achou!",
+      knockSoon: "O Pixel tá mirando no próximo copo…",
+      knocked: "Cataploft! O Pixel derrubou tudo.",
       hint: "Dica: a seta a lápis mostra a próxima jogada.",
       noHint: "Daqui não tem saída. Melhor desfazer.",
       undone: "Risquei a última jogada.",
-      restarted: "Folha nova. Plano novo.",
+      restarted: "Folha nova, plano novo.",
       failed: "PLANO FALHOU",
-      caught: { dad: "O pai me viu.", grandma: "A lanterna da Vó me achou.", pipoca: "A Pipoca me achou e latiu." },
+      caught: { dad: "O pai acordou e me pegou.", grandma: "A lanterna da Vó me achou.", pipoca: "A Pipoca me achou e fez festa." },
       undoTip: "Desfaça a última jogada e tente outra.",
       won: "Deu certo!",
     },
@@ -208,25 +263,44 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonClose: (extra) => (extra === 1 ? "Uma jogada a mais que a meta." : `${extra} jogadas a mais que a meta.`),
     lastLevel: "Essa era a última parte do protótipo.",
     lines: {
-      dadSleep: ["…mais cinco minutinhos…", "…foi impedimento…", "…tá na garagem…", "…já vou, já vou…"],
-      dadWake: ["Hã?!", "Quem tá aí?", "Hmm?"],
-      dadSleepAgain: ["…deve ser o gato.", "…é o vento.", "…zzz…"],
-      dadCatch: "BRUNO! PRA CAMA!",
-      grandmaWalk: ["Chá de camomila…", "Essa casa range toda…", "Ai, minhas costas…"],
-      grandmaAlert: "Quem tá aí?",
-      grandmaResume: ["Hum. Impressão minha.", "Deve ser rato."],
-      grandmaCatch: "BRUNINHO?! Já pra cama!",
+      dadSleep: ["…pênalti… foi pênalti…", "…mais cinco minutinhos, chefe…", "…quem comeu o último pão de queijo…", "…rebobina a fita…", "…zzz… gooool…", "…tá na gaveta, amor…"],
+      dadStir: ["…hmm… tem alguém aí?…", "…quem tá respirando no meu ouvido…", "…Bruno?… não… é sonho…"],
+      dadToss: ["…hmpf… (vira pro outro lado)", "…cadê meu travesseiro…", "…uhm… que barulhinho…"],
+      dadWake: ["Hã?! Quem tá aí?", "Que barulho foi esse?!", "Ei! Ladrão?!"],
+      dadSleepAgain: ["…deve ser o Pixel…", "…casa velha… range sozinha…", "…amanhã eu vejo… zzz"],
+      dadCatch: ["BRUNO! JÁ PRA CAMA!", "MOCINHO! Sabe que horas são?!"],
+      grandmaWalk: ["Chazinho de erva-doce…", "Essa escada me mata…", "Quem deixou essa caneca aqui?", "No meu tempo a TV desligava às dez…"],
+      grandmaAlert: ["Opa! Quem tá aí?", "Hein? Escutei um treco…"],
+      grandmaResume: ["Hmm. Devem ser meus ouvidos.", "Rato. Amanhã compro ratoeira.", "Esse gato ainda me mata do coração."],
+      grandmaPeek: ["E esse esconderijo, hein?", "Será que guardei biscoito aqui?", "Deixa eu dar uma olhadinha…"],
+      grandmaCatch: ["BRUNINHO! Que susto, menino!", "Achei! Pra cama, mocinho!"],
       dogWake: "?!",
+      dogStir: "fuén?",
       dogSniff: "snif snif",
-      dogCatch: "AU! AU!",
-      knock: "CATAPLOFT!",
+      dogCatch: ["AU! AU! (quer brincar)", "AU AU AU!"],
+      knock: ["CATAPLOFT!", "PLÉC!", "CRÁS!"],
       meow: "miau",
       cuckoo: "CUCO!",
       now: "AGORA!",
       creak: "NHÉÉC",
-      brunoExcuse: { dad: "Eu… tava com sede?", grandma: "Fui no banheiro, Vó!", pipoca: "Psiu! Pipoca!" },
-      brunoWin: { doorway: "Passei!", hallway: "Ufa!", stairs: "Desci!", kitchen: "Passei!", pantry: "Ufa, a cortina!", laundry: "Valeu, Pipoca!", dining: "Valeu, Pixel!", sofa: "Nem viu!", living: "Gravando!", return: "Missão cumprida!" },
-      brunoThink: "Pensa, Bruno, pensa…",
+      brunoExcuse: {
+        dad: ["Eu… tava com sede?", "Sonambulismo, pai! Juro!"],
+        grandma: ["Vó! Fui no banheiro!", "Vim te dar boa noite, Vó!"],
+        pipoca: ["Shhh! Pipoca, não!", "Agora não, Pipoca!"],
+      },
+      brunoWin: {
+        doorway: "Primeira porta: check!",
+        hallway: "Valeu, cuco! Te devo uma.",
+        stairs: "Degrau por degrau… desci!",
+        kitchen: "A Vó nem sonha que eu passei.",
+        pantry: "Salvo pela cortina!",
+        laundry: "Boa menina, Pipoca. Fica.",
+        dining: "Pixel, você é um gênio do caos.",
+        sofa: "Nem piscou. Ou piscou?",
+        living: "REC piscando. Sessão Chiado, aí vou eu!",
+        return: "Fita na mão. Paga a aposta, Déco!",
+      },
+      brunoThink: ["Pensa, Bruno, pensa…", "Se o Déco me visse agora…", "Calma. Respira. Planeja.", "Qual é o próximo passo?"],
     },
     replayOk: "Reprodução idêntica",
     replayBad: "Reprodução diferente",
@@ -240,61 +314,93 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "Past Mom and Dad's door",
         goal: "Get past the bedroom door without waking Dad.",
         target: "hallway",
-        intro: ["The purple board creaks and wakes Dad.", "The number on the cuckoo clock counts the moves until it sings.", "When it shows 1, step on the board: the song covers the creak."],
+        intro: [
+          "The purple board creaks. Loudly.",
+          "The number on the cuckoo clock counts the moves until it sings.",
+          "Don't stand still right next to the bed: Dad can feel someone's there.",
+          "Cuckoo at 1? Step on the board: the CUCKOO! covers the creak.",
+        ],
+        story: "First door: my parents'. Dad sleeps lighter than a bird…",
       },
       hallway: {
         title: "The hallway",
-        goal: "Reach the stairs without waking Dad.",
+        goal: "Reach the stairs without Dad catching you.",
         target: "stairs",
-        intro: ["Now there are lots of boards.", "Step on them only when the cuckoo sings. Standing still doesn't creak.", "A board far from Dad can creak: he won't hear it."],
-      },
-      kitchen: {
-        title: "The kitchen",
-        goal: "Cross the kitchen to the living room door.",
-        target: "door",
-        intro: ["Grandma doesn't sleep.", "She walks around the table with a flashlight."],
+        intro: [
+          "The whole hallway is creaky boards.",
+          "A board far from Dad can creak: he won't hear it.",
+          "The ↻ above Dad counts the moves until he rolls over and peeks at the door.",
+          "Boards only on the CUCKOO!, and away from the door when he rolls over.",
+        ],
+        story: "This hallway creaks like an old ship. And Dad rolls over every so often…",
       },
       stairs: {
         title: "The stairs",
         goal: "Get down to the kitchen door.",
         target: "kitchen",
-        intro: ["Grandma is up and walking back and forth.", "The flashlight only points ahead. Wait for her to turn her back."],
+        intro: ["Grandma paces back and forth at the foot of the stairs.", "The yellow footprints are her next steps.", "The flashlight only points ahead. Go down when she turns her back."],
+        story: "Grandma got up to make tea. Right at the foot of the stairs.",
+      },
+      kitchen: {
+        title: "The kitchen",
+        goal: "Cross the kitchen to the living room door.",
+        target: "door",
+        intro: [
+          "Grandma circles the table, but never the same way twice.",
+          "One lap she checks the sink corner, the next the fridge corner.",
+          "The numbered eye shows where she'll look and in how many moves.",
+        ],
+        story: "Grandma is doing her rounds in the kitchen. And every lap she checks a different corner.",
       },
       pantry: {
         title: "The pantry",
         goal: "Get past Grandma and out the back door.",
         target: "door",
-        intro: ["You can't trail Grandma here: the aisle is too narrow.", "Behind the curtain, the flashlight can't find you."],
+        intro: [
+          "Narrow aisle: you can't trail her here.",
+          "Behind the curtain, the flashlight can't find you…",
+          "…unless she comes to check. Red eye = she's about to peek at the hiding spot.",
+        ],
+        story: "Narrow aisle, Grandma coming… and she loves checking the pantry.",
       },
       laundry: {
         title: "The laundry room",
         goal: "Get past Pipoca to the door.",
         target: "door",
-        intro: ["Pipoca sleeps right in the doorway.", "She always goes to check on a noise."],
+        intro: ["Pipoca sleeps right in the doorway.", "A noise? She always runs to see where it came from.", "Stand still next to her and she wakes up. Lure her away."],
+        story: "Pipoca fell asleep in the doorway. If she sees me, she'll want to play. At three in the morning.",
       },
       dining: {
         title: "The dining room",
         goal: "Cross over to the living room.",
         target: "living room",
-        intro: ["No loose boards to make noise here.", "But Pixel knocks something over every so often."],
+        intro: ["No loose boards here.", "But Pixel knocks something over every so often: the number above him warns you.", "The trick is being in the right spot when he does."],
+        story: "No boards to help me here. But Pixel… Pixel is chaos shaped like a cat.",
       },
       sofa: {
         title: "Dad on the sofa",
         goal: "Cross the room without Dad seeing you.",
         target: "TV",
-        intro: ["Every time Pixel knocks something over, Dad wakes up and looks over there.", "Behind the plants he can't see you."],
+        intro: ["Every time Pixel knocks something over, Dad wakes up and looks over there.", "Behind the plants he can't see you.", "He falls back asleep after a few moves: count them on his number."],
+        story: "Dad dozed off on the sofa watching the game. And Pixel is up on the TV stand.",
       },
       living: {
         title: "The TV room",
         goal: "Get to the VCR.",
         target: "VCR",
-        intro: ["Pipoca again, and Dad dozing in the armchair.", "The board near him wakes Dad too."],
+        intro: ["Pipoca again, and Dad dozing in the armchair.", "The board near him wakes Dad too.", "He rolls over every so often: watch the ↻."],
+        story: "The VCR is right there, blinking 12:00. Pipoca just needs to get out of the way.",
       },
       return: {
         title: "The way back",
         goal: "Get back to your room with the tape.",
         target: "bedroom",
-        intro: ["Grandma came upstairs and is walking the hallway.", "Boards only when the cuckoo sings, and away from the flashlight."],
+        intro: [
+          "Grandma came upstairs and guards the hallway. At two spots she stops and looks up.",
+          "Dad keeps rolling over.",
+          "Boards only on the CUCKOO!, away from the flashlight and out of Dad's sight.",
+        ],
+        story: "Tape recorded! Now just back to my room… with Grandma in the hallway. Easy. Not.",
       },
     },
     moves: "Moves",
@@ -302,6 +408,10 @@ export const NIGHT_COPY = localized<NightCopy>({
     starsAt: (turns) => `3 stars in ${turns} moves`,
     hintsUsed: (n) => (n === 1 ? "1 hint used" : `${n} hints used`),
     plan: "Plan so far",
+    speaker: "Bruno",
+    names: { dad: "Dad", grandma: "Grandma", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
+    view: { house: "👁 See the whole house (V)", back: "↩ Back to Bruno (V)" },
+    pages: { rules: "Rules and key", moves: "Moves", back: "Back", rulesTitle: "How it works", movesTitle: "Plan so far", empty: "No moves yet." },
     legendTitle: "Key",
     actLabel: (n, name) => (n === 4 ? "Finale" : `Act ${n} · ${name}`),
     acts: { upstairs: "Upstairs", grandma: "Grandma's up", pets: "Pipoca and Pixel", back: "The way back" },
@@ -315,39 +425,46 @@ export const NIGHT_COPY = localized<NightCopy>({
       hide: "hiding spot",
       cat: "Pixel makes noise",
       goal: "goal",
+      route: "footprints: Grandma's next steps",
+      toss: "↻ Dad rolls over and peeks",
+      near: "standing next to them: wakes",
     },
     buttons: { wait: "Wait", undo: "Undo", restart: "Restart", hint: "Hint", next: "Next part", again: "Play again", undoCaught: "Undo the last move" },
-    keys: "Arrows: move · Space: wait · Z: undo · R: restart · H: hint",
+    keys: "Arrows: move · Space: wait · Z: undo · R: restart · H: hint · V: see the house",
     touchKeys: "Swipe, or tap next to Bruno to move.",
     notes: {
       cuckooNow: "The cuckoo sings right now!",
-      cuckooSoon: "Cuckoo on the next move.",
-      stepNow: "Cuckoo at 1: step on the board now!",
-      creakCaught: "I stepped on a board when the cuckoo wasn't singing.",
+      cuckooSoon: "Cuckoo next move. Get ready.",
+      stepNow: "Cuckoo at 1: now, step on the board!",
+      creakCaught: "Stepped on a board without the cuckoo. Rookie mistake.",
       cuckooIn: (n) => `Cuckoo in ${n} moves.`,
-      masked: "The cuckoo covered the creak!",
-      unheard: "It creaked… but nobody heard.",
-      woke: "Someone's up! Stay out of the light.",
-      wokeDog: "Pipoca heard it!",
+      masked: "The cuckoo drowned out the creak!",
+      unheard: "It creaked… and nobody heard. Lucky.",
+      woke: "Someone's up! Out of the light, quick.",
+      wokeDog: "Pipoca heard it! Here she comes.",
       stillAwake: (n) => (n === 1 ? "Back to sleep after the next move." : `Back to sleep in ${n} moves.`),
       backToSleep: "Back to sleep. Phew.",
-      holdBreath: "Don't even breathe…",
-      grandmaStopped: "Grandma stopped to look.",
-      grandmaBack: "Grandma is walking again.",
-      dogGoing: "She went to check. Go now!",
+      holdBreath: "Right next to a sleeper. If I stop here, they'll wake!",
+      stirred: "They stirred! One more wait here and they're up.",
+      tossed: "He rolled over and peeked! Stay out of sight.",
+      tossSoon: "Dad rolls over on the next move.",
+      peekSoon: "Grandma's about to check the hiding spot!",
+      grandmaStopped: "Grandma stopped to listen.",
+      grandmaBack: "Grandma is back on her rounds.",
+      dogGoing: "She went after the noise. Go, go!",
       dogSniff: "She's sniffing. Run!",
       dogBack: "She's heading back to her cushion!",
       dogHome: "Pipoca lay down again.",
       hidden: "Hidden. Nobody can see me here.",
       hiddenSafe: "The light went by and missed me!",
-      knockSoon: "Pixel knocks something over on the next move.",
-      knocked: "Pixel knocked something over!",
+      knockSoon: "Pixel is eyeing the next cup…",
+      knocked: "Crash! Pixel knocked it over.",
       hint: "Hint: the pencil arrow shows the next move.",
       noHint: "No way out from here. Better undo.",
       undone: "Crossed out the last move.",
-      restarted: "New page. New plan.",
+      restarted: "New page, new plan.",
       failed: "PLAN FAILED",
-      caught: { dad: "Dad saw me.", grandma: "Grandma's flashlight found me.", pipoca: "Pipoca found me and barked." },
+      caught: { dad: "Dad woke up and caught me.", grandma: "Grandma's flashlight found me.", pipoca: "Pipoca found me and threw a party." },
       undoTip: "Undo the last move and try another.",
       won: "It worked!",
     },
@@ -357,25 +474,44 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonClose: (extra) => (extra === 1 ? "One move over the target." : `${extra} moves over the target.`),
     lastLevel: "That was the last part of the prototype.",
     lines: {
-      dadSleep: ["…five more minutes…", "…that was offside…", "…it's in the garage…", "…coming, coming…"],
-      dadWake: ["Huh?!", "Who's there?", "Hmm?"],
-      dadSleepAgain: ["…must be the cat.", "…just the wind.", "…zzz…"],
-      dadCatch: "BRUNO! BED. NOW!",
-      grandmaWalk: ["Chamomile tea…", "This whole house creaks…", "Oh, my back…"],
-      grandmaAlert: "Who's there?",
-      grandmaResume: ["Hmm. Just my imagination.", "Must be a mouse."],
-      grandmaCatch: "BRUNINHO?! Off to bed!",
+      dadSleep: ["…penalty… that was a penalty…", "…five more minutes, boss…", "…who ate the last cheese bread…", "…be kind, rewind…", "…zzz… gooool…", "…it's in the drawer, honey…"],
+      dadStir: ["…hmm… someone there?…", "…who's breathing in my ear…", "…Bruno?… nah… just a dream…"],
+      dadToss: ["…hmpf… (rolls over)", "…where's my pillow…", "…mm… what's that noise…"],
+      dadWake: ["Huh?! Who's there?", "What was that?!", "Hey! A burglar?!"],
+      dadSleepAgain: ["…must be Pixel…", "…old house… creaks by itself…", "…I'll check tomorrow… zzz"],
+      dadCatch: ["BRUNO! BED. NOW!", "YOUNG MAN! Do you know what time it is?!"],
+      grandmaWalk: ["A little fennel tea…", "These stairs will be the end of me…", "Who left this mug here?", "In my day TV went off at ten…"],
+      grandmaAlert: ["Oh! Who's there?", "Hm? I heard something…"],
+      grandmaResume: ["Hmm. Must be my ears.", "A mouse. I'll buy a trap tomorrow.", "That cat will give me a heart attack."],
+      grandmaPeek: ["And what's behind here?", "Did I hide cookies in here?", "Let me take a little peek…"],
+      grandmaCatch: ["BRUNINHO! You scared me, boy!", "Gotcha! Off to bed, mister!"],
       dogWake: "?!",
+      dogStir: "hm?",
       dogSniff: "sniff sniff",
-      dogCatch: "WOOF! WOOF!",
-      knock: "CRASH!",
+      dogCatch: ["WOOF! (wants to play)", "WOOF WOOF WOOF!"],
+      knock: ["CRASH!", "CLATTER!", "THUNK!"],
       meow: "meow",
       cuckoo: "CUCKOO!",
       now: "NOW!",
       creak: "CREEAK",
-      brunoExcuse: { dad: "I was… thirsty?", grandma: "Just the bathroom, Grandma!", pipoca: "Shh! Pipoca!" },
-      brunoWin: { doorway: "Made it!", hallway: "Phew!", stairs: "Down!", kitchen: "Made it!", pantry: "Phew, that curtain!", laundry: "Thanks, Pipoca!", dining: "Thanks, Pixel!", sofa: "He never saw me!", living: "Recording!", return: "Mission done!" },
-      brunoThink: "Think, Bruno, think…",
+      brunoExcuse: {
+        dad: ["I was… thirsty?", "Sleepwalking, Dad! I swear!"],
+        grandma: ["Grandma! Just the bathroom!", "I came to say good night, Grandma!"],
+        pipoca: ["Shhh! Pipoca, no!", "Not now, Pipoca!"],
+      },
+      brunoWin: {
+        doorway: "First door: check!",
+        hallway: "Thanks, cuckoo! I owe you one.",
+        stairs: "One step at a time… I'm down!",
+        kitchen: "Grandma has no idea I got by.",
+        pantry: "Saved by the curtain!",
+        laundry: "Good girl, Pipoca. Stay.",
+        dining: "Pixel, you're a genius of chaos.",
+        sofa: "He didn't even blink. Did he?",
+        living: "REC is blinking. Static Show, here I come!",
+        return: "Tape in hand. Pay up, Déco!",
+      },
+      brunoThink: ["Think, Bruno, think…", "If Déco could see me now…", "Calm. Breathe. Plan.", "What's the next step?"],
     },
     replayOk: "Replay identical",
     replayBad: "Replay differs",

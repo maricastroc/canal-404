@@ -42,13 +42,14 @@ function ensureTextures(scene: Phaser.Scene) {
 export class NightLighting {
   private rt: Phaser.GameObjects.RenderTexture;
   private glow: Phaser.GameObjects.Image;
-  private soft: Phaser.GameObjects.Image;
+  private softTile: Phaser.GameObjects.Image;
   private shape: Phaser.GameObjects.Graphics;
   private tints: Phaser.GameObjects.GameObject[] = [];
   private flickers: { img: Phaser.GameObjects.Image; base: number }[] = [];
   private lamps = new Map<string, Phaser.GameObjects.Image>();
   private dynamic: DynamicLight[] = [];
   private lit: LitTile[] = [];
+  private soft: LitTile[] = [];
   private flickerPhase = 1;
 
   constructor(
@@ -62,7 +63,7 @@ export class NightLighting {
     const b = layout.board;
     this.rt = scene.add.renderTexture(b.x, b.y, b.w, b.h).setOrigin(0).setDepth(6);
     this.glow = scene.make.image({ key: GLOW, add: false });
-    this.soft = scene.make.image({ key: SOFT, add: false });
+    this.softTile = scene.make.image({ key: SOFT, add: false });
     this.shape = scene.make.graphics({}, false);
     const s = layout.tile;
     for (const l of lights) {
@@ -133,12 +134,13 @@ export class NightLighting {
   flicker() {
     this.flickerPhase = 0.82 + Math.random() * 0.28;
     for (const f of this.flickers) f.img.setAlpha(f.base * this.flickerPhase);
-    this.render(this.dynamic, this.lit);
+    this.render(this.dynamic, this.lit, this.soft);
   }
 
-  render(dynamic: DynamicLight[], lit: LitTile[]) {
+  render(dynamic: DynamicLight[], lit: LitTile[], soft: LitTile[] = []) {
     this.dynamic = dynamic;
     this.lit = lit;
+    this.soft = soft;
     const rt = this.rt;
     const b = this.layout.board;
     const s = this.layout.tile;
@@ -160,10 +162,15 @@ export class NightLighting {
       this.glow.setScale((d.r * 2) / 256).setAlpha(d.strength).setPosition(d.x - b.x, d.y - b.y);
       rt.erase(this.glow);
     }
-    this.soft.setScale((s * 1.1) / 128).setAlpha(0.85);
+    this.softTile.setScale((s * 0.95) / 128).setAlpha(0.42);
+    for (const t of soft) {
+      this.softTile.setPosition(this.layout.ox + (t.x + 0.5) * s - b.x, this.layout.oy + (t.y + 0.5) * s - b.y);
+      this.rt.erase(this.softTile);
+    }
+    this.softTile.setScale((s * 1.1) / 128).setAlpha(0.85);
     for (const t of lit) {
-      this.soft.setPosition(this.layout.ox + (t.x + 0.5) * s - b.x, this.layout.oy + (t.y + 0.5) * s - b.y);
-      this.rt.erase(this.soft);
+      this.softTile.setPosition(this.layout.ox + (t.x + 0.5) * s - b.x, this.layout.oy + (t.y + 0.5) * s - b.y);
+      this.rt.erase(this.softTile);
     }
   }
 }

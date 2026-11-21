@@ -1,0 +1,7 @@
+<svg width="68" height="73" xmlns="http://www.w3.org/2000/svg" viewBox="-3 -3 68 73">
+    <rect x="3" y="4" width="60" height="65" rx="3" fill="#000" opacity="0.3"/>
+    <rect x="0" y="0" width="60" height="65" rx="3" fill="#c9a24a" stroke="#1d1830" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="2" y="2" width="56" height="3.1200000000000006" fill="#e8c86a"/>
+    <rect x="7.800000000000001" y="7.800000000000001" width="44.4" height="49.4" fill="#f9b6d4" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="30" cy="34.276" r="11.544" fill="#ffd2a8" stroke="#1d1830" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="26.004" cy="32.5" r="1.3319999999999999" fill="#1d1830"/><circle cx="33.996" cy="32.5" r="1.3319999999999999" fill="#1d1830"/><path d="M26.448 36.94 Q30 40.048 33.552 36.94" fill="none" stroke="#1d1830" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M27.78 23.619999999999997 Q30 19.18 32.664 22.732" fill="none" stroke="#1d1830" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M10.8 10.8 L21.119999999999997 10.8" stroke="#fff" stroke-width="1.6" opacity="0.7" stroke-linecap="round"/></svg>
