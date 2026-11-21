@@ -15,7 +15,8 @@ export type ErrorCode =
   | "rejected"
   | "conflict"
   | "not_found"
-  | "unauthorized";
+  | "unauthorized"
+  | "outdated";
 
 const STATUS: Record<ErrorCode, number> = {
   unconfigured: 503,
@@ -33,7 +34,10 @@ const STATUS: Record<ErrorCode, number> = {
   conflict: 409,
   not_found: 404,
   unauthorized: 401,
+  outdated: 409,
 };
+
+export const OUTDATED_MESSAGE = "O jogo foi atualizado enquanto esta página estava aberta. Recarregue a página para jogar a versão nova.";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 

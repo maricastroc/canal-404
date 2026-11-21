@@ -1,18 +1,22 @@
 import { browserLabel } from "@/server/browser";
-import { addressKey, assertWritable, HttpError, json, readJson } from "@/server/http";
+import { addressKey, assertWritable, HttpError, json, OUTDATED_MESSAGE, readJson } from "@/server/http";
 import { currentPlayer } from "@/server/identity";
 import { LIMITS, enforce } from "@/server/rate-limit";
 import { competitionRoute } from "@/server/route";
 import { submitRun } from "@/server/runs";
-import { submitSchema } from "@/server/schemas";
+import { outdatedReplay, submitSchema } from "@/server/schemas";
 import { readTicket } from "@/server/tickets";
 
 export const dynamic = "force-dynamic";
 
 export const POST = competitionRoute(async ({ request, db, secret, now }) => {
   assertWritable(request);
-  const parsed = submitSchema.safeParse(await readJson(request, 16 * 1024));
-  if (!parsed.success) throw new HttpError("bad_request", "Resultado em formato inválido.");
+  const body = await readJson(request, 16 * 1024);
+  const parsed = submitSchema.safeParse(body);
+  if (!parsed.success) {
+    if (outdatedReplay(body)) throw new HttpError("outdated", OUTDATED_MESSAGE);
+    throw new HttpError("bad_request", "Resultado em formato inválido.");
+  }
   const check = readTicket(secret, parsed.data.ticket, now.getTime());
   if (!check.ok) {
     if (check.problem === "expired") throw new HttpError("expired_ticket", "Esse resultado demorou demais para chegar ao placar.");

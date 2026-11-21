@@ -1,5 +1,5 @@
-import { hasLevel } from "@/lib/competition/rules";
-import { addressKey, assertWritable, HttpError, json, readJson } from "@/server/http";
+import { hasLevel, RULES } from "@/lib/competition/rules";
+import { addressKey, assertWritable, HttpError, json, OUTDATED_MESSAGE, readJson } from "@/server/http";
 import { currentPlayer } from "@/server/identity";
 import { LIMITS, enforce } from "@/server/rate-limit";
 import { missionFits, startMission, todayChallenge } from "@/server/missions";
@@ -14,7 +14,10 @@ export const POST = competitionRoute(async ({ request, db, secret, now }) => {
   const parsed = ticketSchema.safeParse(await readJson(request, 512));
   if (!parsed.success) throw new HttpError("bad_request", "Pedido inválido.");
   const level = parsed.data.level ?? null;
-  if (!hasLevel(parsed.data.game, level)) throw new HttpError("bad_request", "Essa fase não existe no canal.");
+  if (!hasLevel(parsed.data.game, level)) {
+    if (level === null && RULES[parsed.data.game].levels) throw new HttpError("outdated", OUTDATED_MESSAGE);
+    throw new HttpError("bad_request", "Essa fase não existe no canal.");
+  }
   await enforce(db, LIMITS.ticket, addressKey(request, secret), now);
   const player = await currentPlayer(db, request, now);
   const today = parsed.data.mission ? await todayChallenge(db, now) : null;

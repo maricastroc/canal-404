@@ -31,6 +31,8 @@ const COPY = localized({
     expired: "Esse resultado demorou demais para chegar ao placar.",
     limited: "Muitos envios seguidos. Espere um pouco.",
     noTicket: "O placar estava fora do ar quando a partida começou. Este resultado ficou só no seu progresso.",
+    outdatedTitle: "O jogo foi atualizado",
+    outdated: "Esta página ficou com a versão anterior. Recarregue a página para jogar a nova e voltar ao placar.",
     practice: "Este foi só o aquecimento! A fase de treino não vale pontos no placar global.",
     resumed: "Partidas retomadas do sino não entram no placar. Jogue a fase inteira para competir.",
     noPoints: "Sem pontos, sem placar. Fica para a próxima!",
@@ -70,6 +72,8 @@ const COPY = localized({
     expired: "This result took too long to reach the board.",
     limited: "Too many submissions in a row. Wait a little.",
     noTicket: "The board was off the air when the run started. This result only went into your progress.",
+    outdatedTitle: "The game was updated",
+    outdated: "This page still has the previous version. Reload it to play the new one and get back on the board.",
     practice: "That was just the warm-up! The practice level doesn't count on the global board.",
     resumed: "Runs resumed from a bell don't go on the board. Play the whole level to compete.",
     noPoints: "No points, no board. Better luck next time!",
@@ -126,6 +130,7 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Lo
       if (outcome.why === "unconfigured") return null;
       if (outcome.why === "expired") return { text: copy.expired };
       if (outcome.why === "limited") return { text: serverMessage(outcome.error, copy.limited, locale) };
+      if (outcome.why === "outdated") return { headline: copy.outdatedTitle, text: copy.outdated };
       return { text: copy.noTicket, offline: true };
     case "accepted": {
       const { run, board } = outcome.response;

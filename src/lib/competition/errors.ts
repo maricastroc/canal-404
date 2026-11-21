@@ -20,6 +20,7 @@ const ERRORS_EN: Record<string, string> = {
   wrong_player: "This ticket belongs to someone else.",
   conflict: "Someone else already sent this result.",
   not_joined: "Pick a nickname to join the board.",
+  outdated: "The game was updated while this page was open. Reload the page to play the new version.",
 };
 
 export function serverMessage(error: ApiError | null | undefined, fallback: string, locale: Locale) {

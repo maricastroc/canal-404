@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Aviso de jogo atualizado no placar
+- **A page left open during a deploy now says to reload.** A Rua Sem Saída page opened before the nine-level campaign went live still sent the old three-round result, and the board answered "Resultado em formato inválido". Now the board answers that the game was updated and the page needs a reload, both when the old page asks for a ticket without a level and when it sends a launch log in an older format.
+- The result screen and the mission line show "O jogo foi atualizado" with the same advice. Old pages show it under "O placar não aceitou", since their code predates the new message. Scores, rankings and boards are unchanged.
+
 ### Rua Sem Saída vira campanha de nove fases
 - **Nine levels in three acts.** Aquecimento, Mira fina and Lá no alto teach aiming, trajectories and heights. Efeito dominó, Banho de surpresa and Caminho bloqueado are about chain reactions: a row of bricks pushes a watermelon down into the garage, a duck cuts the rope of a bucket and opens the faucet in the same flight, and a bowling ball only reaches the golden gnome after a crate fills the hole and the drawbridge comes down, in that order. Arlindo contra-ataca, Confusão geral and Bagunça completa bring Seu Arlindo's gadgets: a leaf blower that sends light things back, a gate that turns after every launch and the Giant Gnome under a hanging sandbag.
 - **You pick the ammo.** Each level has its own stock. Tap the ammo, press 1 to 4 or Q. The sneaker stays where it lands, the balloon soaks and shoves, the tire is heavy and rolls, the duck is light and bounces.

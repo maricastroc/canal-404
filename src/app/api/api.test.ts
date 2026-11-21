@@ -137,7 +137,9 @@ describe.skipIf(!hasTestDb)("competition API", () => {
 
   it("issues tickets only for real games and levels", async () => {
     expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "strange-house" } }))).status).toBe(400);
-    expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab" } }))).status).toBe(400);
+    const levelless = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab" } }));
+    expect(levelless.status).toBe(409);
+    expect(await body(levelless)).toMatchObject({ error: { code: "outdated" } });
     expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab", level: "attic" } }))).status).toBe(400);
     const issued = await ticketAs(undefined, "bad-ideas-lab", "pixel");
     expect(issued).toEqual({ ticket: expect.any(String), seed: expect.any(Number), expiresAt: expect.any(String), mission: null });
