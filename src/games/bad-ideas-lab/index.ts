@@ -61,19 +61,7 @@ function mount(ctx: GameHostContext): GameInstance {
       restartScene();
     },
     pause() {
-      game.registry.set("heldPaused", false);
       if (game.scene.isActive("lab")) game.scene.pause("lab");
-    },
-    hold(on: boolean) {
-      game.registry.set("held", on);
-      if (on) {
-        if (!game.scene.isActive("lab")) return;
-        game.scene.pause("lab");
-        game.registry.set("heldPaused", true);
-        return;
-      }
-      if (game.registry.get("heldPaused") && game.scene.isPaused("lab")) game.scene.resume("lab");
-      game.registry.set("heldPaused", false);
     },
     resume() {
       if (game.scene.isPaused("lab")) game.scene.resume("lab");
