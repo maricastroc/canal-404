@@ -10,6 +10,7 @@ export type NightCopy = {
   moves: string;
   par: string;
   starsAt: (turns: number) => string;
+  starsCapped: string;
   hintsUsed: (n: number) => string;
   plan: string;
   speaker: string;
@@ -64,6 +65,7 @@ export type NightCopy = {
   wonTitle: string;
   wonMoves: (turns: number, par: number) => string;
   wonPerfect: string;
+  wonWithHint: string;
   wonClose: (extra: number) => string;
   lastLevel: string;
   lines: {
@@ -198,6 +200,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     moves: "Jogadas",
     par: "Meta",
     starsAt: (turns) => `3 estrelas com ${turns} jogadas`,
+    starsCapped: "Com dica: no máximo 2 estrelas",
     hintsUsed: (n) => (n === 1 ? "1 dica usada" : `${n} dicas usadas`),
     plan: "Plano até agora",
     speaker: "Bruno",
@@ -260,8 +263,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       hiddenSafe: "A luz passou e não me achou!",
       knockSoon: "O Pixel tá mirando no próximo copo…",
       knocked: "Cataploft! O Pixel derrubou tudo.",
-      hint: "Dica: a seta amarela mostra a próxima jogada.",
-      hintWait: "Dica: agora é esperar uma jogada, onde você está.",
+      hint: "Dica: o selo amarelo mostra a próxima jogada. Agora vale no máximo 2 estrelas.",
+      hintWait: "Dica: espere uma jogada onde você está. Agora vale no máximo 2 estrelas.",
       noHint: "Daqui não tem saída. Melhor desfazer.",
       undone: "Risquei a última jogada.",
       restarted: "Folha nova, plano novo.",
@@ -273,6 +276,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonTitle: "Missão cumprida!",
     wonMoves: (turns, par) => `${turns} jogadas · meta ${par}`,
     wonPerfect: "Plano perfeito.",
+    wonWithHint: "Na meta, mas com dica. Sem dica, valia 3 estrelas.",
     wonClose: (extra) => (extra === 1 ? "Uma jogada a mais que a meta." : `${extra} jogadas a mais que a meta.`),
     lastLevel: "Essa era a última parte do protótipo.",
     lines: {
@@ -420,6 +424,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     moves: "Moves",
     par: "Target",
     starsAt: (turns) => `3 stars in ${turns} moves`,
+    starsCapped: "With a hint: 2 stars at most",
     hintsUsed: (n) => (n === 1 ? "1 hint used" : `${n} hints used`),
     plan: "Plan so far",
     speaker: "Bruno",
@@ -482,8 +487,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       hiddenSafe: "The light went by and missed me!",
       knockSoon: "Pixel is eyeing the next cup…",
       knocked: "Crash! Pixel knocked it over.",
-      hint: "Hint: the yellow arrow shows the next move.",
-      hintWait: "Hint: wait one move right where you are.",
+      hint: "Hint: the yellow badge shows the next move. Now it's 2 stars at most.",
+      hintWait: "Hint: wait one move right where you are. Now it's 2 stars at most.",
       noHint: "No way out from here. Better undo.",
       undone: "Crossed out the last move.",
       restarted: "New page, new plan.",
@@ -495,6 +500,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonTitle: "Mission done!",
     wonMoves: (turns, par) => `${turns} moves · target ${par}`,
     wonPerfect: "Perfect plan.",
+    wonWithHint: "On target, but with a hint. Without one, it was 3 stars.",
     wonClose: (extra) => (extra === 1 ? "One move over the target." : `${extra} moves over the target.`),
     lastLevel: "That was the last part of the prototype.",
     lines: {

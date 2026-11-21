@@ -135,6 +135,7 @@ export class Notebook {
   private legend: LegendItem[] = [];
   private planActions: Action[] = [];
   private hints = 0;
+  private par = 0;
   private tabs: Phaser.GameObjects.Container[] = [];
   private buttons: Phaser.GameObjects.Container[] = [];
   private links: Phaser.GameObjects.Container[] = [];
@@ -253,6 +254,7 @@ export class Notebook {
     this.texts.heading.setText(`${index + 1}. ${title}`);
     this.texts.act.setText(actLabel);
     this.texts.goal.setText(goal);
+    this.par = par;
     this.texts.starsAt.setText(this.copy.starsAt(par));
     this.texts.par.setText(`${this.copy.par}: ${par}`);
     this.legend = legend;
@@ -279,6 +281,7 @@ export class Notebook {
   setStats(turns: number, hints: number) {
     this.texts.moves.setText(`${this.copy.moves}: ${turns}`);
     this.hints = hints;
+    this.texts.starsAt.setText(hints > 0 ? this.copy.starsCapped : this.copy.starsAt(this.par));
     if (this.pageKind === "moves") this.openPage("moves");
     this.buildLinks();
   }
@@ -515,7 +518,7 @@ export class Notebook {
     }
     const moves = this.onLine(sp.x, sp.line + 3, this.copy.wonMoves(turns, par), 30, PENCIL);
     const extra = turns - par;
-    const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? this.copy.wonPerfect : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
+    const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? (stars < 3 ? this.copy.wonWithHint : this.copy.wonPerfect) : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
     const verdictLines = Math.max(1, verdict.getWrappedText().length);
     const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w, "hand");
     this.stampObjects.push(title, g, moves, verdict, quote);

@@ -1,7 +1,7 @@
 import { LEVELS } from "../src/games/past-bedtime/sim/levels";
-import { createSim, step } from "../src/games/past-bedtime/sim/sim";
+import { createSim, stateKey, step } from "../src/games/past-bedtime/sim/sim";
 import { audit, solve } from "../src/games/past-bedtime/sim/solver";
-import type { Action, LevelDef } from "../src/games/past-bedtime/sim/types";
+import type { Action, LevelDef, State } from "../src/games/past-bedtime/sim/types";
 
 const ARROWS = ["↑", "→", "↓", "←"];
 
@@ -27,6 +27,26 @@ const withoutTable = (level: LevelDef) => {
   return level.map.map((row, y) => [...row].map((c, x) => (x >= t.x && x < t.x + (t.w ?? 1) && y >= t.y && y < t.y + (t.h ?? 1) ? "." : c)).join(""));
 };
 
+const fastestWithCreaks = (level: LevelDef, cap: number) => {
+  const sim = createSim(level);
+  const queue: State[] = [sim.initial];
+  const seen = new Set([stateKey(sim, sim.initial)]);
+  for (let i = 0; i < queue.length && queue.length < 400_000; i += 1) {
+    for (const action of ["wait", 0, 1, 2, 3] as Action[]) {
+      const next = step(sim, queue[i], action);
+      if (!next || next.state.status === "caught" || next.state.creaks > cap) continue;
+      if (next.state.status === "won") return next.state.turn;
+      const key = `${stateKey(sim, next.state)}|${next.state.creaks}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      queue.push(next.state);
+    }
+  }
+  return Infinity;
+};
+
+const withoutRollover = (level: LevelDef): LevelDef => ({ ...level, agents: level.agents.map((a) => (a.kind === "sleeper" ? { ...a, toss: undefined } : a)) });
+
 const PROOFS: Record<string, Proof> = {
   doorway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
   hallway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
@@ -36,7 +56,7 @@ const PROOFS: Record<string, Proof> = {
   laundry: { label: "unsolvable with only one of the two boards, so Pipoca has to be lured twice", holds: (l) => onlyBoards(l).length > 1 && onlyBoards(l).every((map) => unsolvable({ ...l, map })) },
   dining: { label: "unsolvable without Pixel knocking things over, or without the long way around the table", holds: (l) => unsolvable({ ...l, agents: l.agents.filter((a) => a.kind !== "cat") }) && unsolvable({ ...l, map: farSideClosed(l) }) },
   sofa: { label: "unsolvable without the plants, or without the coffee table's shadow", holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }) && unsolvable({ ...l, map: withoutTable(l) }) },
-  living: { label: "unsolvable without creaky boards to lure Pipoca", holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/~/g, ".")) }) },
+  living: { label: "one lure is not enough, so Pipoca has to be called back, and Dad rolling over is what makes it hard", holds: (l) => fastestWithCreaks(l, 1) > l.par + 3 && (solve(createSim(withoutRollover(l)))?.turns ?? Infinity) < l.par },
   return: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
 };
 
