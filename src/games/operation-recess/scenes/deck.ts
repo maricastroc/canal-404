@@ -11,7 +11,37 @@ type Button = { role: "jump" | "attack"; x: number; y: number; r: number; color:
 export type DeckLabels = { move: string; jump: string; attack: string };
 
 const LIP: Record<string, number> = { corridor: 0x7b62c4, yard: 0x93cf4c, office: 0xc4352c };
-const SIZE = { rockerW: 150, rockerH: 74, r: 39, gap: 16, margin: 14, label: 12.5, slack: 7, reach: 22 };
+const SIZE = { r: 39, gap: 14, margin: 14, lip: 9, label: 12.5, labelGap: 8, slack: 7, reach: 22 };
+const glyphs = new Map<string, [number, number]>();
+
+function glyphOrigin(scene: Phaser.Scene, key: string): [number, number] {
+  const known = glyphs.get(key);
+  if (known) return known;
+  const src = scene.textures.get(key).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+  const canvas = document.createElement("canvas");
+  canvas.width = src.width;
+  canvas.height = src.height;
+  const g = canvas.getContext("2d");
+  if (!g || !canvas.width || !canvas.height) return [0.5, 0.5];
+  g.drawImage(src, 0, 0);
+  const data = g.getImageData(0, 0, canvas.width, canvas.height).data;
+  let x0 = canvas.width;
+  let y0 = canvas.height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < canvas.height; y += 1) {
+    for (let x = 0; x < canvas.width; x += 1) {
+      if (data[(y * canvas.width + x) * 4 + 3] < 40) continue;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  const origin: [number, number] = x1 < 0 ? [0.5, 0.5] : [(x0 + x1 + 1) / 2 / canvas.width, (y0 + y1 + 1) / 2 / canvas.height];
+  glyphs.set(key, origin);
+  return origin;
+}
 
 export class TouchDeck {
   private bg: Phaser.GameObjects.Graphics;
@@ -25,9 +55,18 @@ export class TouchDeck {
   private on = false;
   private enabled = false;
   private pulse?: Phaser.Tweens.Tween;
+  private coachBox: Phaser.GameObjects.Container;
+  private coachBg: Phaser.GameObjects.Graphics;
+  private coachText: Phaser.GameObjects.Text;
+  private coachRing: Phaser.GameObjects.Graphics;
+  private coachRole: Role | null = null;
+  private coachPulse?: Phaser.Tweens.Tween;
+  private labelY = 0;
+  private labelsOn = false;
   private fadeL = 1;
   private fadeR = 1;
   private rockerBox = new Phaser.Geom.Rectangle();
+  private split = 0;
   private u = 1;
 
   constructor(
@@ -57,6 +96,10 @@ export class TouchDeck {
       label: label(text),
     });
     this.buttons = [button("attack", "deck-attack", 0xf06ba8, labels.attack), button("jump", "deck-jump", 0xffc83d, labels.jump)];
+    this.coachRing = scene.add.graphics().setDepth(80.8).setScrollFactor(0).setVisible(false);
+    this.coachBg = scene.add.graphics();
+    this.coachText = cartoonText(scene, 0, 0, "", { size: 30, color: "#1d1830", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    this.coachBox = scene.add.container(0, 0, [this.coachBg, this.coachText]).setDepth(83).setScrollFactor(0).setVisible(false);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.down, this);
     scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.move, this);
     scene.input.on(Phaser.Input.Events.POINTER_UP, this.up, this);
@@ -98,34 +141,108 @@ export class TouchDeck {
     const room = width - frame.safe.left - frame.safe.right;
     const k = Phaser.Math.Clamp(room / u / 390, 0.82, 1.12);
     const r = SIZE.r * k * u;
-    const rw = SIZE.rockerW * k * u;
-    const rh = SIZE.rockerH * k * u;
+    const size = r * 2;
+    const gap = SIZE.gap * k * u;
     const margin = SIZE.margin * u;
+    const ls = (SIZE.label * u) / 30;
+    const labelGap = SIZE.labelGap * u;
+    const labelH = this.moveLabel.height * ls;
     const labels = tall && (frame.deck - frame.safe.bottom) / u >= 120;
-    const cy = tall ? frame.height - frame.deck + (frame.deck - frame.safe.bottom) / 2 - (labels ? 7 * u : 0) : bottom - margin - Math.max(r, rh / 2) - 4 * u;
+    const group = size + (labels ? labelGap + labelH : 0);
+    const deckTop = frame.height - frame.deck + SIZE.lip * u;
+    const deckRoom = frame.height - frame.safe.bottom - deckTop;
+    const cy = tall ? deckTop + Math.max(0, (deckRoom - group) / 2) + r : bottom - margin - r - 4 * u;
     const left = frame.safe.left + margin;
     const right = width - frame.safe.right - margin;
-    this.rockerBox.setTo(left, cy - rh / 2, rw, rh);
-    const jump = this.buttons[1];
-    const attack = this.buttons[0];
+    const arrowW = size;
+    this.split = gap;
+    this.rockerBox.setTo(left, cy - r, arrowW * 2 + gap, size);
+    const [attack, jump] = this.buttons;
     jump.r = r;
-    jump.x = right - r - 4 * u;
-    jump.y = cy + 6 * u;
+    jump.x = right - r;
     attack.r = r;
-    attack.x = jump.x - 2 * r - SIZE.gap * k * u;
-    attack.y = cy - 6 * u;
-    const ls = (SIZE.label * u) / 30;
-    this.moveLabel.setScale(ls).setPosition(left + rw / 2, cy + rh / 2 + 6 * u).setVisible(this.on && labels);
-    const labelY = Math.max(cy + rh / 2, jump.y + r, attack.y + r) + 7 * u;
-    this.moveLabel.setY(labelY);
+    attack.x = jump.x - size - gap;
+    for (const b of this.buttons) b.y = cy;
+    const labelY = cy + r + labelGap;
+    this.labelY = labelY;
+    this.labelsOn = this.on && labels;
+    this.moveLabel.setScale(ls).setPosition(this.rockerBox.centerX, labelY).setVisible(this.on && labels);
     for (const b of this.buttons) {
-      b.icon.setScale((r * 1.1) / 128);
+      b.icon.setOrigin(...glyphOrigin(this.scene, b.icon.texture.key)).setScale((r * 1.1) / 128);
       b.label.setScale(ls).setPosition(b.x, labelY).setVisible(this.on && labels);
     }
-    this.arrows.forEach((a) => a.setScale((rh * 0.62) / 128));
+    for (const a of this.arrows) a.setOrigin(...glyphOrigin(this.scene, a.texture.key));
+    this.arrows.forEach((a) => a.setScale((size * 0.62) / 128));
     this.drawBg();
     this.setVisible(this.on);
     this.redraw();
+    this.placeCoach();
+  }
+
+  coach(role: Role | null, text = "") {
+    this.coachRole = role;
+    this.coachPulse?.stop();
+    this.coachPulse = undefined;
+    if (role) this.coachText.setText(text);
+    this.placeCoach();
+    this.applyAlpha();
+    if (!role || !this.on || this.reduced) return;
+    this.coachRing.setAlpha(1);
+    this.coachPulse = this.scene.tweens.add({ targets: this.coachRing, alpha: 0.25, duration: 420, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  private coachTarget(role: Role) {
+    if (role === "move") return { x: this.rockerBox.centerX, top: this.rockerBox.y, bottom: this.rockerBox.bottom };
+    const b = this.buttons.find((btn) => btn.role === role)!;
+    return { x: b.x, top: b.y - b.r, bottom: b.y + b.r };
+  }
+
+  private placeCoach() {
+    const f = this.frame;
+    const role = this.coachRole;
+    const show = Boolean(f && role && this.on);
+    this.coachBox.setVisible(show);
+    this.coachRing.setVisible(show);
+    const coaching = show && f?.kind === "tall";
+    this.moveLabel.setVisible(this.labelsOn && !coaching);
+    for (const b of this.buttons) b.label.setVisible(this.labelsOn && !coaching);
+    if (!show || !f || !role) return;
+    const u = this.u;
+    const k = (13.5 * u) / 30;
+    this.coachText.setScale(k);
+    const w = this.coachText.width * k + 22 * u;
+    const h = 26 * u;
+    const at = this.coachTarget(role);
+    const minX = f.safe.left + 6 * u + w / 2;
+    const maxX = f.width - f.safe.right - 6 * u - w / 2;
+    const x = Phaser.Math.Clamp(at.x, minX, maxX);
+    const below = f.kind === "tall";
+    const y = below ? this.labelY - 4 * u + h / 2 : at.top - 14 * u - h / 2;
+    const tip = Phaser.Math.Clamp(at.x - x, -w / 2 + 14 * u, w / 2 - 14 * u);
+    const g = this.coachBg;
+    g.clear();
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(-w / 2 + 3 * u, -h / 2 + 3 * u, w, h, 9 * u);
+    const ty = below ? -h / 2 : h / 2;
+    const dir = below ? -1 : 1;
+    g.fillTriangle(tip - 9 * u, ty, tip + 9 * u, ty, tip, ty + dir * 10 * u);
+    g.fillStyle(0xffc83d, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, 9 * u);
+    g.fillTriangle(tip - 6 * u, ty - dir * 1.5 * u, tip + 6 * u, ty - dir * 1.5 * u, tip, ty + dir * 6.5 * u);
+    g.lineStyle(Math.max(2, 1.6 * u), INK_HEX, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 9 * u);
+    this.coachBox.setPosition(x, y);
+    const ring = this.coachRing;
+    ring.clear();
+    ring.lineStyle(4 * u, 0xffc83d, 1);
+    if (role === "move") {
+      const box = Phaser.Geom.Rectangle.Clone(this.rockerBox);
+      Phaser.Geom.Rectangle.Inflate(box, 8 * u, 8 * u);
+      ring.strokeRoundedRect(box.x, box.y + 3 * u, box.width, box.height, 30 * u);
+    } else {
+      const b = this.buttons.find((btn) => btn.role === role)!;
+      ring.strokeCircle(b.x, b.y + 3 * u, b.r + 9 * u);
+    }
   }
 
   private drawBg() {
@@ -167,6 +284,10 @@ export class TouchDeck {
       this.moveLabel.setVisible(false);
       for (const b of this.buttons) b.label.setVisible(false);
     }
+    if (!on) {
+      this.coachBox.setVisible(false);
+      this.coachRing.setVisible(false);
+    }
   }
 
   enable(on: boolean) {
@@ -177,8 +298,10 @@ export class TouchDeck {
 
   private applyAlpha() {
     const a = this.enabled ? 1 : 0.45;
-    for (const o of [this.rocker, ...this.arrows]) o.setAlpha(a * this.fadeL);
-    for (const o of this.buttons.flatMap((b) => [b.gfx, b.icon])) o.setAlpha(a * this.fadeR);
+    const left = this.coachRole === "move" ? 1 : this.fadeL;
+    const right = this.coachRole && this.coachRole !== "move" ? 1 : this.fadeR;
+    for (const o of [this.rocker, ...this.arrows]) o.setAlpha(a * left);
+    for (const o of this.buttons.flatMap((b) => [b.gfx, b.icon])) o.setAlpha(a * right);
   }
 
   private role(x: number, y: number): Role | null {
@@ -293,25 +416,24 @@ export class TouchDeck {
     const press = 4 * u;
     const shadow = 6 * u;
     const stroke = Math.max(3, 2.2 * u);
-    const radius = box.height / 2;
-    const half = box.width / 2;
+    const half = (box.width - this.split) / 2;
+    const radius = Math.min(half, box.height) * 0.36;
     g.clear();
-    g.fillStyle(INK_HEX, 1);
-    g.fillRoundedRect(box.x + shadow * 0.8, box.y + shadow, box.width, box.height, radius);
     const sides: [-1 | 1, number][] = [
       [-1, box.x],
-      [1, box.x + half],
+      [1, box.x + half + this.split],
     ];
     for (const [dir, x] of sides) {
       const down = (dir === -1 && this.touch.left) || (dir === 1 && this.touch.right);
       const dy = down ? press : 0;
-      const corners = dir === -1 ? { tl: radius, bl: radius, tr: 0, br: 0 } : { tl: 0, bl: 0, tr: radius, br: radius };
+      g.fillStyle(INK_HEX, 1);
+      g.fillRoundedRect(x + shadow * 0.8, box.y + shadow, half, box.height, radius);
       g.fillStyle(down ? 0xffc83d : 0xfbf5e6, 1);
-      g.fillRoundedRect(x, box.y + dy, half, box.height, corners);
+      g.fillRoundedRect(x, box.y + dy, half, box.height, radius);
       g.fillStyle(0xffffff, down ? 0.2 : 0.5);
-      g.fillRoundedRect(x + 8 * u, box.y + dy + 6 * u, half - 16 * u, 6 * u, 3 * u);
+      g.fillRoundedRect(x + 9 * u, box.y + dy + 6 * u, half - 18 * u, 6 * u, 3 * u);
       g.lineStyle(stroke, INK_HEX, 1);
-      g.strokeRoundedRect(x, box.y + dy, half, box.height, corners);
+      g.strokeRoundedRect(x, box.y + dy, half, box.height, radius);
       this.arrows[dir === -1 ? 0 : 1].setPosition(x + half / 2, box.centerY + dy);
     }
     for (const b of this.buttons) {
