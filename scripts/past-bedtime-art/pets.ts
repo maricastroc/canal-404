@@ -213,6 +213,73 @@ function ovalRug(w: number, h: number, color: string, light: string) {
   return svg(`-12 -12 ${w + 24} ${h + 24}`, `${tassels}<ellipse cx="${w / 2}" cy="${h / 2}" rx="${w / 2}" ry="${h / 2}" fill="${color}" ${ink(2.6)}/><ellipse cx="${w / 2}" cy="${h / 2}" rx="${w / 2 - 12}" ry="${h / 2 - 12}" fill="none" stroke="${light}" stroke-width="4" opacity="0.8"/><ellipse cx="${w / 2}" cy="${h / 2}" rx="${w / 2 - 22}" ry="${h / 2 - 22}" fill="none" stroke="${light}" stroke-width="2" stroke-dasharray="8 6" opacity="0.6"/>${motif}<ellipse cx="${w / 2}" cy="${h / 2}" rx="${w * 0.14}" ry="${h * 0.14}" fill="${light}" opacity="0.45"/>`);
 }
 
+function frond(bx: number, by: number, tx: number, ty: number, bend: number, leaflets: number, size: number, shade: string) {
+  const mx = (bx + tx) / 2;
+  const my = (by + ty) / 2;
+  const len = Math.hypot(tx - bx, ty - by);
+  const nx = -(ty - by) / len;
+  const ny = (tx - bx) / len;
+  const cx = mx + nx * bend;
+  const cy = my + ny * bend;
+  const at = (t: number) => ({ x: (1 - t) * (1 - t) * bx + 2 * (1 - t) * t * cx + t * t * tx, y: (1 - t) * (1 - t) * by + 2 * (1 - t) * t * cy + t * t * ty });
+  const tangent = (t: number) => {
+    const dx = 2 * (1 - t) * (cx - bx) + 2 * t * (tx - cx);
+    const dy = 2 * (1 - t) * (cy - by) + 2 * t * (ty - cy);
+    const l = Math.hypot(dx, dy);
+    return { x: dx / l, y: dy / l };
+  };
+  let leaves = "";
+  for (let i = 1; i <= leaflets; i += 1) {
+    const t = 0.18 + (i / (leaflets + 1)) * 0.8;
+    const p = at(t);
+    const d = tangent(t);
+    const L = size * (1 - t * 0.55);
+    for (const side of [-1, 1]) {
+      const ex = p.x + (d.x * 0.55 + -d.y * side * 0.85) * L;
+      const ey = p.y + (d.y * 0.55 + d.x * side * 0.85) * L + L * 0.18;
+      const lx = (p.x + ex) / 2;
+      const ly = (p.y + ey) / 2;
+      const ll = Math.hypot(ex - p.x, ey - p.y);
+      const wx = (-(ey - p.y) / ll) * L * 0.22;
+      const wy = ((ex - p.x) / ll) * L * 0.22;
+      leaves += `<path d="M${p.x.toFixed(1)} ${p.y.toFixed(1)} Q${(lx + wx).toFixed(1)} ${(ly + wy).toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)} Q${(lx - wx).toFixed(1)} ${(ly - wy).toFixed(1)} ${p.x.toFixed(1)} ${p.y.toFixed(1)} Z" fill="${(i + side) % 3 === 0 ? "#6cc35d" : shade}" ${ink(1.6)}/>`;
+    }
+  }
+  const stem = `M${bx} ${by} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${tx} ${ty}`;
+  return `<path d="${stem}" fill="none" stroke="${INK}" stroke-width="4.6" stroke-linecap="round"/><path d="${stem}" fill="none" stroke="#5a9a3e" stroke-width="2.4" stroke-linecap="round"/>${leaves}`;
+}
+
+function basketPot() {
+  let weave = "";
+  for (let i = 0; i < 6; i += 1) weave += `<path d="M${33 + i * 7} 70 L${35 + i * 6} 94" stroke="#a8774f" stroke-width="1.6" opacity="0.8"/>`;
+  for (let j = 0; j < 3; j += 1) weave += `<path d="M${32 + j} ${76 + j * 6} Q50 ${79 + j * 6} ${68 - j} ${76 + j * 6}" fill="none" stroke="#e9c48f" stroke-width="2" opacity="0.8"/>`;
+  return `<path d="M26 68 L74 68 L68 96 Q50 100 32 96 Z" fill="#c99a62" ${ink(2.6)}/>${weave}<rect x="23" y="63" width="54" height="10" rx="4" fill="#d9b07a" ${ink(2.4)}/>`;
+}
+
+export function plantHides() {
+  const back = [
+    frond(50, 64, -10, 0, 14, 5, 24, "#4c9a43"),
+    frond(50, 64, 110, 0, -14, 5, 24, "#4c9a43"),
+    frond(50, 64, 6, -46, 10, 5, 24, "#57a84c"),
+    frond(50, 64, 94, -46, -10, 5, 24, "#57a84c"),
+    frond(50, 64, 44, -70, 6, 5, 22, "#5fb354"),
+  ].join("");
+  const front = [
+    frond(50, 70, 10, 16, 8, 4, 19, "#4c9a43"),
+    frond(50, 70, 90, 16, -8, 4, 19, "#4c9a43"),
+    frond(50, 70, -6, 46, 10, 3, 20, "#57a84c"),
+    frond(50, 70, 106, 46, -10, 3, 20, "#57a84c"),
+    frond(50, 70, 22, 30, 6, 4, 20, "#57a84c"),
+    frond(50, 70, 78, 30, -6, 4, 20, "#57a84c"),
+    frond(50, 70, 38, 20, 3, 3, 16, "#5fb354"),
+    frond(50, 70, 62, 20, -3, 3, 16, "#5fb354"),
+  ].join("");
+  return {
+    "hide-plant-back": svg("-34 -90 168 190", `<ellipse cx="50" cy="94" rx="34" ry="8" fill="#000" opacity="0.3"/>${back}`),
+    "hide-plant-front": svg("-30 -4 160 106", `${front}${basketPot()}`),
+  };
+}
+
 export function ovalArt(w: number, h: number, v: number) {
   return v === 0x9a6a72 ? ovalRug(w, h, "#9a6a72", "#f9b6d4") : ovalRug(w, h, "#3f7a8c", "#a9dcf7");
 }

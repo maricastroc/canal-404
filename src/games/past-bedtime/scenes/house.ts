@@ -376,6 +376,11 @@ function drawProp(g: Phaser.GameObjects.Graphics, prop: PropDef, layout: Layout)
       for (let a = 0; a < 8; a += 1) g.strokeCircle(x + s * 0.5 + Math.cos(a) * s * 0.08, y + s * 0.12 + Math.sin(a) * s * 0.05, s * 0.025);
       break;
     }
+    case "coffeeTable":
+      g.fillStyle(0x000000, 0.3);
+      g.fillRoundedRect(x + s * 0.14, y + s * 0.3, w - s * 0.2, h - s * 0.32, 10);
+      box(g, x + s * 0.12, y + s * 0.2, w - s * 0.24, h - s * 0.32, 0xa8774f, 0x7c4f32, s * 0.12, s * 0.08);
+      break;
     case "table": {
       g.fillStyle(0x000000, 0.35);
       g.fillRoundedRect(x + s * 0.1, y + s * 0.16, w - s * 0.12, h - s * 0.12, 12);

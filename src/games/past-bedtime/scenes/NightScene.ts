@@ -163,7 +163,7 @@ export class NightScene extends Phaser.Scene {
     this.forecast = this.add.graphics().setDepth(12);
     this.routeMarks = this.add.graphics().setDepth(36);
     this.hover = this.add.graphics().setDepth(13);
-    this.hintLayer = this.add.graphics().setDepth(14);
+    this.hintLayer = this.add.graphics().setDepth(38);
     this.drawFrame();
     this.lightsOn = this.add.rectangle(L.board.x, L.board.y, L.board.w, L.board.h, 0xffe8a0, 0).setOrigin(0).setDepth(45);
     const iconSize = Math.max(30, s * 0.34);
@@ -296,12 +296,13 @@ export class NightScene extends Phaser.Scene {
     const topItems = split(decor.top);
     for (const { item, name } of topItems.art) placeArt(this, name, L, item.x, item.y, 3.2);
     drawTopDecor(props, { ...decor, top: topItems.rest }, L);
-    if (hideStyleFor(level.id) === "curtain" && hasArt("hide-curtain-front")) {
+    const hide = hideStyleFor(level.id);
+    if (hasArt(`hide-${hide}-front`)) {
       for (let y = 0; y < grid.h; y += 1) {
         for (let x = 0; x < grid.w; x += 1) {
           if (grid.tiles[y * grid.w + x] !== "h") continue;
-          placeArt(this, "hide-curtain-back", L, x, y, 3);
-          placeArt(this, "hide-curtain-front", L, x, y, 35);
+          placeArt(this, `hide-${hide}-back`, L, x, y, 3);
+          placeArt(this, `hide-${hide}-front`, L, x, y, 35);
         }
       }
       this.artHides = true;
@@ -641,8 +642,8 @@ export class NightScene extends Phaser.Scene {
       const wide = a.kind === "dad" ? s * 0.6 : 0;
       out.push({ x: c.x - s * 0.5 - wide, y: c.y - tall, w: s + wide, h: tall + s * 0.4 });
       const k = c.scaleX;
-      const sx = c.x + a.status.root.x * k;
-      const sy = c.y + a.status.root.y * k;
+      const sx = c.x + a.status.offsetX * k;
+      const sy = c.y + a.status.offsetY * k;
       out.push({ x: sx - s * 0.85, y: sy - s * 0.26, w: s * 1.7, h: s * 0.52 });
     }
     for (const bubble of this.bubbles) if (bubble.active) out.push(bubble.getData("box") as Box);
@@ -825,6 +826,7 @@ export class NightScene extends Phaser.Scene {
       if (st.status !== "playing") this.clock.quiet();
     }
     if (st.status === "playing") this.bruno.setMood(this.moodFor(st));
+    this.bruno.setHidden(st.status === "playing" && isHiding(grid, st.x, st.y));
   }
 
   private moodFor(st: State): BrunoMood {
@@ -1293,18 +1295,40 @@ export class NightScene extends Phaser.Scene {
     }
     this.hints += 1;
     this.notebook.setStats(this.state.turn, this.hints);
-    this.notebook.note(this.copy.notes.hint, "info");
     this.sfx(NIGHT_SFX.pencil);
     const a = solution.actions[0];
     const st = this.state;
+    const g = this.hintLayer;
+    const s = this.layout.tile;
+    const c = tileCenter(this.layout, st.x, st.y);
     if (a === "wait") {
-      const c = tileCenter(this.layout, st.x, st.y);
-      this.hintLayer.lineStyle(4, 0xffe39a, 1);
-      this.hintLayer.strokeCircle(c.x, c.y, this.layout.tile * 0.46);
-      pop(this, this.bridge.fonts, c.x, c.y - this.layout.tile * 0.7, this.copy.buttons.wait, Math.round(this.layout.tile * 0.3), "#ffe39a");
-    } else {
-      this.pencilArrow(this.hintLayer, st.x, st.y, st.x + DX[a], st.y + DY[a], 0xffe39a);
+      this.notebook.note(this.copy.notes.hintWait, "info");
+      for (const [w, color] of [[10, NIGHT.ink], [5, 0xffe39a]] as const) {
+        g.lineStyle(w, color, 1);
+        g.strokeCircle(c.x, c.y + s * 0.1, s * 0.46);
+      }
+      pop(this, this.bridge.fonts, c.x, c.y - s * 0.7, this.copy.buttons.wait, Math.round(s * 0.3), "#ffe39a");
+      return;
     }
+    this.notebook.note(this.copy.notes.hint, "info");
+    const t = tileCenter(this.layout, st.x + DX[a], st.y + DY[a]);
+    const x0 = c.x + (t.x - c.x) * 0.42;
+    const y0 = c.y + (t.y - c.y) * 0.42 + s * 0.12;
+    const x1 = c.x + (t.x - c.x) * 1.05;
+    const y1 = c.y + (t.y - c.y) * 1.05 + s * 0.12;
+    const ang = Math.atan2(y1 - y0, x1 - x0);
+    const head = s * 0.24;
+    const wing = (k: number) => ({ x: x1 - Math.cos(ang + k * 0.6) * head, y: y1 - Math.sin(ang + k * 0.6) * head });
+    for (const [w, color] of [[14, NIGHT.ink], [7, 0xffe39a]] as const) {
+      g.lineStyle(w, color, 1);
+      g.lineBetween(x0, y0, x1 - Math.cos(ang) * head * 0.3, y1 - Math.sin(ang) * head * 0.3);
+    }
+    const l = wing(-1);
+    const r = wing(1);
+    g.fillStyle(NIGHT.ink, 1);
+    g.fillTriangle(x1 + Math.cos(ang) * 6, y1 + Math.sin(ang) * 6, l.x - Math.cos(ang) * 4, l.y - Math.sin(ang) * 4, r.x - Math.cos(ang) * 4, r.y - Math.sin(ang) * 4);
+    g.fillStyle(0xffe39a, 1);
+    g.fillTriangle(x1, y1, l.x, l.y, r.x, r.y);
   }
 
   private tileAtPointer(p: Phaser.Input.Pointer) {

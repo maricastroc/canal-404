@@ -354,6 +354,16 @@ function dogbed() {
   return svg("0 10 100 90", `<ellipse cx="52" cy="60" rx="45" ry="33" fill="#000" opacity="0.3"/><ellipse cx="50" cy="55" rx="43" ry="32" fill="#c94785" ${ink(3.5)}/><ellipse cx="50" cy="58" rx="30" ry="20" fill="#f06ba8" ${ink(2)}/>${dots}<path d="M18 44 Q30 30 50 28" fill="none" stroke="#e086b0" stroke-width="3" stroke-linecap="round"/>`);
 }
 
+function coffeeTable(w: number) {
+  const W = w * 100;
+  let grain = "";
+  for (let i = 0; i < 4; i += 1) grain += `<path d="M${26 + i * 7} ${32 + i * 9} Q${W / 2} ${28 + i * 9} ${W - 26 - i * 9} ${33 + i * 9}" fill="none" stroke="#8a5a3c" stroke-width="1.6" opacity="0.45"/>`;
+  const legs = [22, W - 34].map((x) => `<rect x="${x}" y="78" width="12" height="14" rx="3" fill="#6d4a3a" ${ink(2.2)}/>`).join("");
+  const mags = `<g transform="rotate(-8 ${W * 0.78} 46)"><rect x="${W * 0.78 - 15}" y="36" width="30" height="21" rx="2" fill="#5cb9f0" ${ink(1.8)}/><rect x="${W * 0.78 - 11}" y="40" width="22" height="6" fill="#ffc83d"/></g><g transform="rotate(6 ${W * 0.8} 44)"><rect x="${W * 0.8 - 14}" y="33" width="28" height="20" rx="2" fill="#fbf5e6" ${ink(1.8)}/><rect x="${W * 0.8 - 10}" y="37" width="12" height="9" fill="#ef4f43"/></g>`;
+  const doily = `<ellipse cx="${W * 0.46}" cy="48" rx="34" ry="16" fill="#f6f1e4" opacity="0.92" ${ink(1.4)}/><ellipse cx="${W * 0.46}" cy="48" rx="26" ry="11" fill="none" stroke="#d9cbb0" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+  return svg(`0 8 ${W} 90`, `${legs}${block(12, 20, W - 24, 62, "#a8774f", "#7c4f32", 14, 10)}${grain}${doily}${mags}`);
+}
+
 function plant() {
   let leaves = "";
   for (let i = 0; i < 6; i += 1) {
@@ -362,7 +372,7 @@ function plant() {
     const ly = 42 + Math.sin(a) * 30;
     leaves += `<ellipse cx="${lx}" cy="${ly}" rx="9" ry="15" transform="rotate(${(a * 180) / Math.PI + 90} ${lx} ${ly})" fill="${i % 2 ? "#4c9a43" : "#5fb354"}" ${ink(2.5)}/><path d="M${lx} ${ly - 10} L${lx} ${ly + 10}" transform="rotate(${(a * 180) / Math.PI + 90} ${lx} ${ly})" stroke="#2f6e2a" stroke-width="1.5"/>`;
   }
-  return svg("10 0 84 96", `<ellipse cx="52" cy="86" rx="30" ry="8" fill="#000" opacity="0.3"/>${leaves}<path d="M28 48 L72 48 L66 88 L34 88 Z" fill="#c0703f" ${ink(3)}/><rect x="26" y="44" width="48" height="10" rx="3" fill="#d98a52" ${ink(2.5)}/>`);
+  return svg("10 -12 84 108", `<ellipse cx="52" cy="86" rx="30" ry="8" fill="#000" opacity="0.3"/>${leaves}<path d="M28 48 L72 48 L66 88 L34 88 Z" fill="#c0703f" ${ink(3)}/><rect x="26" y="44" width="48" height="10" rx="3" fill="#d98a52" ${ink(2.5)}/>`);
 }
 
 function bookshelf(w: number) {
@@ -417,6 +427,8 @@ function propArt(p: PropDef): string | null {
   switch (p.kind) {
     case "table":
       return table(w, h);
+    case "coffeeTable":
+      return coffeeTable(w);
     case "fridge":
       return fridge();
     case "stove":

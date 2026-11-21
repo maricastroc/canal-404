@@ -52,6 +52,7 @@ export type NightCopy = {
     knockSoon: string;
     knocked: string;
     hint: string;
+    hintWait: string;
     noHint: string;
     undone: string;
     restarted: string;
@@ -259,7 +260,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       hiddenSafe: "A luz passou e não me achou!",
       knockSoon: "O Pixel tá mirando no próximo copo…",
       knocked: "Cataploft! O Pixel derrubou tudo.",
-      hint: "Dica: a seta a lápis mostra a próxima jogada.",
+      hint: "Dica: a seta amarela mostra a próxima jogada.",
+      hintWait: "Dica: agora é esperar uma jogada, onde você está.",
       noHint: "Daqui não tem saída. Melhor desfazer.",
       undone: "Risquei a última jogada.",
       restarted: "Folha nova, plano novo.",
@@ -480,7 +482,8 @@ export const NIGHT_COPY = localized<NightCopy>({
       hiddenSafe: "The light went by and missed me!",
       knockSoon: "Pixel is eyeing the next cup…",
       knocked: "Crash! Pixel knocked it over.",
-      hint: "Hint: the pencil arrow shows the next move.",
+      hint: "Hint: the yellow arrow shows the next move.",
+      hintWait: "Hint: wait one move right where you are.",
       noHint: "No way out from here. Better undo.",
       undone: "Crossed out the last move.",
       restarted: "New page, new plan.",

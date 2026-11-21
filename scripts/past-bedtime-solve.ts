@@ -22,6 +22,11 @@ const farSideClosed = (level: LevelDef) => {
   return level.map.map((row, y) => (y === below ? [...row].map((c, x) => (c === "." && x >= t.x - 1 && x <= t.x + (t.w ?? 1) ? "o" : c)).join("") : row));
 };
 
+const withoutTable = (level: LevelDef) => {
+  const t = level.props.find((p) => p.kind === "coffeeTable")!;
+  return level.map.map((row, y) => [...row].map((c, x) => (x >= t.x && x < t.x + (t.w ?? 1) && y >= t.y && y < t.y + (t.h ?? 1) ? "." : c)).join(""));
+};
+
 const PROOFS: Record<string, Proof> = {
   doorway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
   hallway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
@@ -30,7 +35,7 @@ const PROOFS: Record<string, Proof> = {
   pantry: { label: "without the hiding spot the target is out of reach", holds: (l) => (solve(createSim({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }))?.turns ?? Infinity) > l.par + 3 },
   laundry: { label: "unsolvable with only one of the two boards, so Pipoca has to be lured twice", holds: (l) => onlyBoards(l).length > 1 && onlyBoards(l).every((map) => unsolvable({ ...l, map })) },
   dining: { label: "unsolvable without Pixel knocking things over, or without the long way around the table", holds: (l) => unsolvable({ ...l, agents: l.agents.filter((a) => a.kind !== "cat") }) && unsolvable({ ...l, map: farSideClosed(l) }) },
-  sofa: { label: "unsolvable without the hiding spots", holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }) },
+  sofa: { label: "unsolvable without the plants, or without the coffee table's shadow", holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }) && unsolvable({ ...l, map: withoutTable(l) }) },
   living: { label: "unsolvable without creaky boards to lure Pipoca", holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/~/g, ".")) }) },
   return: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
 };

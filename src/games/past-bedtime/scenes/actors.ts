@@ -169,31 +169,45 @@ export class StatusIcon {
   readonly text: Phaser.GameObjects.Text;
   private bg: Phaser.GameObjects.Graphics;
   private current = "";
+  private wanted = false;
 
   constructor(
     private scene: Phaser.Scene,
     parent: Phaser.GameObjects.Container,
     font: string,
     private size: number,
-    y: number,
-    x = 0,
+    readonly offsetY: number,
+    readonly offsetX = 0,
   ) {
     this.bg = scene.add.graphics();
     this.text = scene.add.text(0, 0, "", { fontFamily: font, fontStyle: "700", fontSize: `${Math.round(size * 0.62)}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
-    this.root = scene.add.container(x, y, [this.bg, this.text]).setVisible(false);
-    parent.add(this.root);
-    scene.tweens.add({ targets: this.root, y: y - size * 0.14, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    const bob = scene.add.container(0, 0, [this.bg, this.text]);
+    this.root = scene.add.container(0, 0, [bob]).setVisible(false).setDepth(37);
+    const follow = () => {
+      const k = parent.scaleX;
+      this.root.setPosition(parent.x + offsetX * k, parent.y + offsetY * k);
+      this.root.setVisible(this.wanted && parent.visible);
+    };
+    follow();
+    scene.events.on("update", follow);
+    parent.once("destroy", () => {
+      scene.events.off("update", follow);
+      this.root.destroy();
+    });
+    scene.tweens.add({ targets: bob, y: -size * 0.14, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   }
 
   show(label: string | null, bg = "#ffe39a") {
     if (!label) {
       this.current = "";
+      this.wanted = false;
       this.root.setVisible(false);
       return;
     }
     const key = `${label}|${bg}`;
-    if (key === this.current && this.root.visible) return;
-    const fresh = !this.root.visible;
+    if (key === this.current && this.wanted) return;
+    const fresh = !this.wanted;
+    this.wanted = true;
     this.current = key;
     this.text.setText(label);
     const w = this.text.width + this.size * 0.5;
@@ -230,6 +244,7 @@ export class BrunoView {
   private blinking = false;
   private glanceX: number | null = null;
   private sprite: Phaser.GameObjects.Image | null = null;
+  private hidden = false;
 
   constructor(
     private scene: Phaser.Scene,
@@ -287,6 +302,17 @@ export class BrunoView {
 
   wince() {
     this.scene.tweens.add({ targets: this.body, scaleY: 0.86, scaleX: 1.1, duration: 90, yoyo: true, repeat: 1 });
+  }
+
+  setHidden(hidden: boolean) {
+    if (hidden === this.hidden) return;
+    this.hidden = hidden;
+    if (this.sprite) {
+      if (hidden) this.sprite.setTint(0xa8b2dc);
+      else this.sprite.clearTint();
+    } else this.gfx.setAlpha(hidden ? 0.75 : 1);
+    this.shadow.setAlpha(hidden ? 0.4 : 1);
+    this.scene.tweens.add({ targets: this.body, scaleY: hidden ? 0.93 : 1, duration: 180, ease: "Sine.easeOut" });
   }
 
   setMood(mood: BrunoMood) {

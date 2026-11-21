@@ -14,7 +14,7 @@ export type SayOptions = { tone?: BubbleTone; duration?: number; depth?: number;
 
 export type Box = { x: number; y: number; w: number; h: number };
 
-const BUBBLE_FILL: Record<BubbleTone, number> = { normal: PAPER, scare: 0xfff4ef, whisper: 0xefe9fb, thought: 0xf6f3ff, shout: 0xffe39a, cheer: 0xfff3b8 };
+const BUBBLE_FILL: Record<Exclude<BubbleTone, "whisper" | "thought">, number> = { normal: PAPER, scare: 0xfff4ef, shout: 0xffe39a, cheer: 0xfff3b8 };
 
 function sparkle(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number) {
   const pts: { x: number; y: number }[] = [];
@@ -49,16 +49,17 @@ function burst(w: number, h: number) {
 }
 
 export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number, y: number, text: string, opts: SayOptions = {}) {
-  const { tone = "normal", duration = 1600, depth = 60, avoid = [], area, speaker } = opts;
+  const { tone: asked = "normal", duration = 1600, depth = 60, avoid = [], area, speaker } = opts;
+  const tone = asked === "whisper" || asked === "thought" ? "normal" : asked;
   const s = layout.tile;
-  const size = Math.round(Math.max(22, s * (tone === "shout" ? 0.3 : tone === "whisper" ? 0.23 : 0.25)));
+  const size = Math.round(Math.max(18, s * (tone === "shout" ? 0.25 : 0.2)));
   const family = tone === "shout" ? fonts.display : (fonts.round ?? fonts.body);
   const label = scene.add
     .text(0, 0, text, {
       fontFamily: family,
       fontSize: `${size}px`,
-      fontStyle: tone === "shout" ? "normal" : tone === "whisper" ? "500" : "600",
-      color: tone === "whisper" ? "#4a4268" : INK,
+      fontStyle: tone === "shout" ? "normal" : "600",
+      color: INK,
       align: "center",
       padding: { x: 4, y: 4 },
       wordWrap: { width: Math.max(s * 3.2, 260) },
@@ -67,7 +68,7 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
     .setOrigin(0.5);
   const padX = tone === "shout" ? size * 1.05 : size * 0.85;
   const padY = tone === "shout" ? size * 0.75 : size * 0.5;
-  const tagged = !!speaker && tone !== "thought";
+  const tagged = !!speaker;
   const w = Math.max(label.width + padX * 2, size * (tone === "shout" ? 5.2 : tagged ? 5 : 4.2));
   const h = label.height + padY * 2 + (tagged ? size * 0.22 : 0);
   const gap = s * 0.32;
@@ -83,6 +84,8 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
     { cx: x + gap + w / 2, cy: y - gap - h * 0.6 },
     { cx: x - gap - w / 2, cy: y - gap - h * 0.6 },
     { cx: x, cy: y - gap * 2.4 - h / 2 },
+    { cx: x + gap + w / 2, cy: y + h * 0.45 },
+    { cx: x - gap - w / 2, cy: y + h * 0.45 },
   ];
   let best = candidates[0];
   let bestScore = Infinity;
@@ -118,92 +121,47 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
   const len = Math.hypot(tipX, tipY);
   const stop = Math.max(0, len - s * 0.1);
   const tip = { x: (tipX / Math.max(1, len)) * stop, y: (tipY / Math.max(1, len)) * stop };
+  const tail = Math.abs(tip.x) > w / 2 + size * 0.4 || Math.abs(tip.y) > h / 2 + size * 0.4;
   const shadow = (dx: number, dy: number) => {
     g.fillStyle(INK_HEX, 0.85);
     if (tone === "shout") g.fillPoints(burst(w, h).map((p) => ({ x: p.x + dx, y: p.y + dy })), true);
     else g.fillRoundedRect(-w / 2 + dx, -h / 2 + dy, w, h, r);
   };
-  if (tone === "thought") {
-    const dots = [0.55, 0.78, 0.94];
-    dots.forEach((t, i) => {
-      const px = tip.x * t;
-      const py = tip.y * t + (edgeY > 0 ? 0 : 0);
-      const pr = size * (0.26 - i * 0.07);
-      g.fillStyle(INK_HEX, 0.85);
-      g.fillCircle(px + 3, py + 4, pr);
-      g.fillStyle(fill, 1);
-      g.fillCircle(px, py, pr);
-      g.lineStyle(3, INK_HEX, 1);
-      g.strokeCircle(px, py, pr);
-    });
-    const puffs: { x: number; y: number; r: number }[] = [];
-    const step = size * 0.9;
-    for (let px = -w / 2 + step * 0.6; px <= w / 2 - step * 0.6; px += step) {
-      puffs.push({ x: px, y: -h / 2 + 2, r: step * 0.62 });
-      puffs.push({ x: px, y: h / 2 - 2, r: step * 0.62 });
-    }
-    puffs.push({ x: -w / 2 + 2, y: 0, r: h * 0.42 }, { x: w / 2 - 2, y: 0, r: h * 0.42 });
-    g.fillStyle(INK_HEX, 0.85);
-    for (const p of puffs) g.fillCircle(p.x + 4, p.y + 5, p.r + 2);
-    g.fillRoundedRect(-w / 2 + 4, -h / 2 + 5, w, h, r);
-    g.fillStyle(INK_HEX, 1);
-    for (const p of puffs) g.fillCircle(p.x, p.y, p.r + 3);
-    g.fillRoundedRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6, r);
-    g.fillStyle(fill, 1);
-    for (const p of puffs) g.fillCircle(p.x, p.y, p.r);
-    g.fillRoundedRect(-w / 2, -h / 2, w, h, r);
-  } else {
-    shadow(4, 6);
+  shadow(4, 6);
+  if (tail) {
     g.fillStyle(INK_HEX, 0.85);
     g.fillTriangle(baseA.x + 4, baseA.y + 6, baseB.x + 4, baseB.y + 6, tip.x + 4, tip.y + 6);
+  }
+  g.fillStyle(fill, 1);
+  if (tone === "shout") g.fillPoints(burst(w, h), true);
+  else g.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+  if (tail) g.fillTriangle(baseA.x, baseA.y, baseB.x, baseB.y, tip.x, tip.y);
+  g.lineStyle(lw, INK_HEX, 1);
+  if (tone === "shout") g.strokePoints(burst(w, h), true);
+  else g.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+  if (tail) {
     g.fillStyle(fill, 1);
-    if (tone === "shout") g.fillPoints(burst(w, h), true);
-    else g.fillRoundedRect(-w / 2, -h / 2, w, h, r);
-    g.fillTriangle(baseA.x, baseA.y, baseB.x, baseB.y, tip.x, tip.y);
-    g.lineStyle(lw, INK_HEX, 1);
-    if (tone === "whisper") {
-      const dash = size * 0.4;
-      const per = (x0: number, y0: number, x1: number, y1: number) => {
-        const L = Math.hypot(x1 - x0, y1 - y0);
-        for (let d = 0; d < L; d += dash * 1.7) {
-          const t0 = d / L;
-          const t1 = Math.min(1, (d + dash) / L);
-          g.lineBetween(x0 + (x1 - x0) * t0, y0 + (y1 - y0) * t0, x0 + (x1 - x0) * t1, y0 + (y1 - y0) * t1);
-        }
-      };
-      g.lineStyle(3, 0x4a4268, 1);
-      per(-w / 2 + r, -h / 2, w / 2 - r, -h / 2);
-      per(w / 2, -h / 2 + r, w / 2, h / 2 - r);
-      per(w / 2 - r, h / 2, -w / 2 + r, h / 2);
-      per(-w / 2, h / 2 - r, -w / 2, -h / 2 + r);
-      per(baseA.x, baseA.y, tip.x, tip.y);
-      per(baseB.x, baseB.y, tip.x, tip.y);
-    } else {
-      if (tone === "shout") g.strokePoints(burst(w, h), true);
-      else g.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
-      g.fillStyle(fill, 1);
-      g.fillRect(Math.min(baseA.x, baseB.x) + 3, sideTail ? baseA.y + 2 : edgeY - (edgeY > 0 ? lw + 1 : -1), Math.abs(baseB.x - baseA.x) - 6 + (sideTail ? lw + 2 : 0), sideTail ? baseB.y - baseA.y - 4 : lw + 1);
-      g.lineBetween(baseA.x, baseA.y, tip.x, tip.y);
-      g.lineBetween(baseB.x, baseB.y, tip.x, tip.y);
+    g.fillRect(Math.min(baseA.x, baseB.x) + 3, sideTail ? baseA.y + 2 : edgeY - (edgeY > 0 ? lw + 1 : -1), Math.abs(baseB.x - baseA.x) - 6 + (sideTail ? lw + 2 : 0), sideTail ? baseB.y - baseA.y - 4 : lw + 1);
+    g.lineBetween(baseA.x, baseA.y, tip.x, tip.y);
+    g.lineBetween(baseB.x, baseB.y, tip.x, tip.y);
+  }
+  if (tone === "scare") {
+    g.lineStyle(2.5, 0xef4f43, 0.9);
+    g.strokeRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, Math.max(4, r - 6));
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      g.lineStyle(3.5, INK_HEX, 1);
+      g.lineBetween(sx * (w / 2 + 6), sy * (h / 2 - 4), sx * (w / 2 + 16), sy * (h / 2 + 4));
+      g.lineBetween(sx * (w / 2 - 6), sy * (h / 2 + 6), sx * (w / 2 + 2), sy * (h / 2 + 16));
     }
-    if (tone === "scare") {
-      g.lineStyle(2.5, 0xef4f43, 0.9);
-      g.strokeRoundedRect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, Math.max(4, r - 6));
-      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-        g.lineStyle(3.5, INK_HEX, 1);
-        g.lineBetween(sx * (w / 2 + 6), sy * (h / 2 - 4), sx * (w / 2 + 16), sy * (h / 2 + 4));
-        g.lineBetween(sx * (w / 2 - 6), sy * (h / 2 + 6), sx * (w / 2 + 2), sy * (h / 2 + 16));
-      }
-    }
-    if (tone === "cheer") {
-      sparkle(g, w / 2 - 4, -h / 2 - 2, size * 0.5);
-      sparkle(g, -w / 2 + 8, h / 2 + 2, size * 0.36);
-      sparkle(g, w / 2 + size * 0.5, h / 2 - size * 0.3, size * 0.28);
-    }
-    if (tone === "normal" || tone === "scare" || tone === "cheer") {
-      g.lineStyle(3, 0xffffff, 0.8);
-      g.lineBetween(-w / 2 + r * 0.8, -h / 2 + 7, -w / 2 + r * 0.8 + Math.min(w * 0.22, 60), -h / 2 + 7);
-    }
+  }
+  if (tone === "cheer") {
+    sparkle(g, w / 2 - 4, -h / 2 - 2, size * 0.5);
+    sparkle(g, -w / 2 + 8, h / 2 + 2, size * 0.36);
+    sparkle(g, w / 2 + size * 0.5, h / 2 - size * 0.3, size * 0.28);
+  }
+  if (tone === "normal" || tone === "scare" || tone === "cheer") {
+    g.lineStyle(3, 0xffffff, 0.8);
+    g.lineBetween(-w / 2 + r * 0.8, -h / 2 + 7, -w / 2 + r * 0.8 + Math.min(w * 0.22, 60), -h / 2 + 7);
   }
   const parts: Phaser.GameObjects.GameObject[] = [g, label];
   if (tone === "scare") {
@@ -239,7 +197,7 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
     parts.push(tagBox);
   }
   label.setPosition(0, (tone === "shout" ? 2 : 0) + (tagged ? size * 0.16 : 0));
-  const container = scene.add.container(cx, cy, parts).setDepth(depth).setScale(0.3).setAlpha(tone === "whisper" ? 0.94 : 1);
+  const container = scene.add.container(cx, cy, parts).setDepth(depth).setScale(0.3);
   if (tone === "shout") container.setAngle(-3);
   if (tone === "cheer") container.setAngle(2);
   container.setData("box", { x: cx - w / 2, y: cy - h / 2 - top, w, h: h + top } satisfies Box);

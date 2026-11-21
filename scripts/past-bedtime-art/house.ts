@@ -2,7 +2,7 @@ import { decorArtName } from "../../src/games/past-bedtime/scenes/art";
 import { decorFor } from "../../src/games/past-bedtime/scenes/decor";
 import type { LevelDef } from "../../src/games/past-bedtime/sim/types";
 import { grandmaDecor, grandmaHides } from "./grandma";
-import { ovalArt, petDecor } from "./pets";
+import { ovalArt, petDecor, plantHides } from "./pets";
 import { ink, P, rnd, svg, type Sheet } from "./kit";
 
 const INK = P.ink;
@@ -412,6 +412,7 @@ export function house(levels: readonly LevelDef[]): Sheet {
   put("basket", basket());
   put("kidDrawing-56x48", kidDrawing(56, 48));
   for (const [name, art] of Object.entries(grandmaHides())) put(name, art);
+  for (const [name, art] of Object.entries(plantHides())) put(name, art);
   for (const level of levels) {
     const d = decorFor(level.id);
     for (const item of [...d.wall, ...d.floor, ...d.top]) {
