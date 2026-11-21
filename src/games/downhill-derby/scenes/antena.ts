@@ -154,7 +154,7 @@ function sewer(b: Builder, course: Course) {
   const span = (x0: number, x1: number, draw: (g: Phaser.GameObjects.Graphics, xs: number[]) => void, depth: number) => {
     for (let c0 = x0; c0 < x1; c0 += 1800) {
       const c1 = Math.min(x1, c0 + 1800);
-      const g = b.add(b.chunkFor(c0 + 10), b.scene.add.graphics());
+      const g = b.add(b.chunkFor((c0 + c1) / 2), b.scene.add.graphics());
       g.setDepth(depth);
       const xs: number[] = [];
       for (let x = c0; x < c1; x += 90) xs.push(x);

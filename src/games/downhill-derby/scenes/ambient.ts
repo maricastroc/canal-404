@@ -1025,8 +1025,9 @@ export class Ambient {
     const base = this.b.backY(x);
     const root = this.add(s.add.container(x + 470, base));
     root.setDepth(-3);
-    const mascot = s.add.image(0, 10, "mascot-wave").setOrigin(0.5, 1).setScale(0.5);
-    root.add(mascot);
+    const shadow = s.add.ellipse(0, 20, 96, 16, INK, 0.28);
+    const mascot = s.add.image(0, 20, "mascot-wave").setOrigin(0.5, 1).setScale(0.5);
+    root.add([shadow, mascot]);
     this.actors.push({ x, root, reset: () => undefined, update: (_dt, t) => mascot.setRotation(Math.sin(t * 4) * 0.05) });
     this.lights = this.add(s.add.graphics());
     this.lights.setDepth(-2.8);
@@ -1038,7 +1039,8 @@ export class Ambient {
     const s = this.b.scene;
     const x = track.finish + 260;
     const y = this.b.backY(x);
-    this.finishMascot = this.add(s.add.image(x, y + 10, "mascot-cheer").setOrigin(0.5, 1).setScale(0.5));
+    this.add(s.add.ellipse(x, y + 20, 96, 16, INK, 0.28)).setDepth(-3.01);
+    this.finishMascot = this.add(s.add.image(x, y + 20, "mascot-cheer").setOrigin(0.5, 1).setScale(0.5));
     this.finishMascot.setDepth(-3);
     this.crowd(track.finish - 520, 3);
   }
@@ -1097,7 +1099,7 @@ export class Ambient {
     if (this.finishMascot) {
       this.finishJump = Math.max(0, this.finishJump - dt);
       const jump = this.finishJump > 0 ? Math.abs(Math.sin(t * 10)) * 40 : 0;
-      this.finishMascot.setY(this.b.backY(this.finishMascot.x) + 10 - jump);
+      this.finishMascot.setY(this.b.backY(this.finishMascot.x) + 20 - jump);
     }
   }
 }

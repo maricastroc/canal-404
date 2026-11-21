@@ -153,7 +153,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
     const x0 = road.xs[start];
     let end = start;
     while (end < road.xs.length - 1 && road.xs[end] < x0 + CHUNK) end += 1;
-    const c = chunkFor(x0 + 10);
+    const c = chunkFor((x0 + road.xs[end]) / 2);
     const g = add(c, scene.add.graphics());
     g.setDepth(0);
     let bottom = -Infinity;
@@ -479,7 +479,7 @@ function drawDeck(b: Builder, deck: Surface, road: Surface) {
     const x0 = deck.xs[start];
     let end = start;
     while (end < deck.xs.length - 1 && deck.xs[end] < x0 + CHUNK) end += 1;
-    const c = chunkFor(x0 + 10);
+    const c = chunkFor((x0 + deck.xs[end]) / 2);
     const g = add(c, scene.add.graphics());
     g.setDepth(1);
     const front: Phaser.Math.Vector2[] = [];

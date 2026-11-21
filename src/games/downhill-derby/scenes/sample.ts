@@ -149,7 +149,7 @@ export function drawFrontWall(b: Builder, from: number, end: number) {
   const top = (x: number) => b.backY(x) + STREET + 24;
   for (let c0 = from; c0 < end; c0 += 1800) {
     const c1 = Math.min(end, c0 + 1800);
-    const g = b.add(b.chunkFor(c0 + 10), b.scene.add.graphics());
+    const g = b.add(b.chunkFor((c0 + c1) / 2), b.scene.add.graphics());
     g.setDepth(0.02);
     const xs: number[] = [];
     for (let x = c0; x <= c1; x += 90) xs.push(x);
