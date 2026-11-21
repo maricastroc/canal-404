@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
+import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, GRAVITY, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
 import { COPY, levelCopy, type LevelCopy, type RecessCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import { LEVELS, type LevelDef } from "../levels";
@@ -21,7 +21,7 @@ import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
 
 type Mode = "attract" | "play" | "ko" | "won";
-type Lesson = "walk" | "jump" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "high";
+type Lesson = "walk" | "jump" | "hold" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "high";
 type Anchor = () => { x: number; y: number } | null;
 type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean; anchor?: Anchor; tip?: Phaser.GameObjects.Graphics; at?: { x: number; y: number } };
 type Hint = { lesson: Lesson; anchor: Anchor; past: number };
@@ -32,6 +32,11 @@ const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer:
 const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
 const FIGHT_RANGE = 480;
+const TUTORIAL: Lesson[] = ["walk", "jump", "hold", "attack"];
+const TAP_RISE = 140;
+const HOLD_RISE = 230;
+const FULL_RISE = (JUMP_V * JUMP_V) / (2 * GRAVITY);
+const LESSON_GAP = 800;
 const learned = new Set<Lesson>();
 
 export class StageScene extends Phaser.Scene {
@@ -77,6 +82,8 @@ export class StageScene extends Phaser.Scene {
   private camTop = 0;
   private tutorialOn = false;
   private tutorialFrom = 0;
+  private takeoff = FLOOR_Y;
+  private lessonEnd = 0;
   private lesson: Lesson | null = null;
   private lessonUntil = 0;
   private lessonPast = Infinity;
@@ -134,6 +141,8 @@ export class StageScene extends Phaser.Scene {
     this.lookAhead = 0;
     this.camTop = 0;
     this.tutorialOn = false;
+    this.takeoff = FLOOR_Y;
+    this.lessonEnd = 0;
     this.lesson = null;
     this.lessonUntil = 0;
     this.lessonPast = Infinity;
@@ -326,7 +335,7 @@ export class StageScene extends Phaser.Scene {
     this.hud.flash(this.text.title.toUpperCase(), "#ffc83d", 1300, this.text.intro);
     this.hintsAt = this.t + 900;
     this.announce(this.copy.say.levelStart(this.levelIndex + 1, LEVELS.length, this.text.title, this.text.intro));
-    if (this.levelIndex === 0 && !(["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l))) {
+    if (this.levelIndex === 0 && !TUTORIAL.every((l) => learned.has(l))) {
       this.tutorialOn = true;
       this.tutorialFrom = this.hero.x;
       if (!learned.has("walk")) this.teach("walk");
@@ -449,22 +458,24 @@ export class StageScene extends Phaser.Scene {
     return t;
   }
 
-  private teach(lesson: Lesson) {
+  private teach(lesson: Lesson, past = Infinity) {
     if (this.lesson || this.shown.has(lesson)) return;
     this.shown.add(lesson);
     this.lesson = lesson;
     this.lessonUntil = this.t + 9000;
-    this.lessonPast = Infinity;
+    this.lessonPast = past;
     const tut = this.copy.tutorial;
+    if (lesson === "hold") this.announce(TOUCH_UI ? tut.holdTouchSay : tut.holdKeysSay);
     if (this.compact && TOUCH_UI) {
-      const role = lesson === "walk" ? "move" : lesson === "jump" ? "jump" : "attack";
-      this.deck.coach(role, tut.coach[role]);
+      const role = lesson === "walk" ? "move" : lesson === "attack" ? "attack" : "jump";
+      this.deck.coach(role, lesson === "hold" ? tut.holdTouch : tut.coach[role]);
       if (lesson === "attack") this.announce(tut.attackTouchSay);
       return;
     }
     if (lesson === "walk") this.showChip(tut.walk, TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
-    if (lesson === "jump") {
-      this.showChip(TOUCH_UI ? tut.jumpTouch : tut.jumpKeys, TOUCH_UI ? ["chip-jump"] : []);
+    if (lesson === "jump" || lesson === "hold") {
+      const text = lesson === "jump" ? (TOUCH_UI ? tut.jumpTouch : tut.jumpKeys) : TOUCH_UI ? tut.holdTouch : tut.holdKeys;
+      this.showChip(text, TOUCH_UI ? ["chip-jump"] : []);
       this.hud.pulseJump(true);
       this.deck.pulseJump(true);
     }
@@ -481,11 +492,12 @@ export class StageScene extends Phaser.Scene {
   }
 
   private endLesson() {
-    if (this.lesson === "jump") {
+    if (this.lesson === "jump" || this.lesson === "hold") {
       this.hud.pulseJump(false);
       this.deck.pulseJump(false);
     }
     this.deck.coach(null);
+    if (this.lesson) this.lessonEnd = this.t;
     this.lesson = null;
     this.hideChip();
   }
@@ -926,11 +938,23 @@ export class StageScene extends Phaser.Scene {
     if (!this.tutorialOn) return;
     const h = this.hero;
     if (Math.abs(h.x - this.tutorialFrom) > 140) this.learn("walk");
+    if (h.grounded) this.takeoff = h.feet;
+    else if (this.takeoff - h.feet > HOLD_RISE) this.learn("hold");
     if (this.lesson) return;
     if (!learned.has("walk")) return;
+    const tall = learned.has("jump") && !learned.has("hold") && h.grounded && this.t - this.lessonEnd > LESSON_GAP ? this.tallAhead() : null;
     if (!learned.has("jump") && h.x > cx(4)) this.teach("jump");
+    else if (tall !== null) this.teach("hold", tall + 240);
     else if (!learned.has("attack") && h.grounded && this.enemies.some((e) => !e.dead && e.x > h.x && e.x - h.x < this.attackLessonReach() && Math.abs(e.feet - h.feet) < 200)) this.teach("attack");
-    if ((["walk", "jump", "attack"] as Lesson[]).every((l) => learned.has(l) || this.shown.has(l))) this.tutorialOn = false;
+    if (TUTORIAL.every((l) => learned.has(l) || this.shown.has(l))) this.tutorialOn = false;
+  }
+
+  private tallAhead() {
+    const h = this.hero;
+    const right = this.cameras.main.worldView.right - 60;
+    const tops = [...this.level.platforms, ...this.level.blocks].map((p) => ({ x: cx(p.col), y: cy(p.row) }));
+    const tall = tops.filter((p) => p.x > h.x && p.x - h.x < 520 && p.x < right && h.feet - p.y > TAP_RISE && h.feet - p.y < FULL_RISE).sort((a, b) => a.x - b.x)[0];
+    return tall ? tall.x : null;
   }
 
   private focusPoints(): Focus[] {
