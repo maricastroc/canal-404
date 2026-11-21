@@ -319,13 +319,14 @@ export function DownhillDerbyCoverArt() {
   const bruno = { x: 50, y: lane(50, BACK_ROW) };
   const lina = { x: 164, y: lane(164, BACK_ROW) };
   const mila = { x: 104, y: lane(104, -10) };
-  const deco = { x: 268, y: lip.y - 14 };
+  const deco = { x: lip.x + 15, y: lip.y - 7 };
   return (
     <>
       <rect width={320} height={240} fill={C.sky} />
       <circle cx={286} cy={30} r={20} fill={C.sun} />
       <Cloud x={196} y={22} s={0.5} />
-      <Kit name="sample/bg-morro" cx={250} ground={92} k={0.16} w={1600} h={420} />
+      <Kit name="sample/bg-morro" cx={68} ground={92} k={0.16} w={1600} h={420} />
+      <Kit name="sample/bg-morro" cx={324} ground={92} k={0.16} w={1600} h={420} />
       <Kit name="antena/antena-404" cx={228} ground={62} k={0.045} w={648} h={1196} />
       <CoverHouse road={road} name="facade-terrea-amarelo" x={14} k={0.15} w={468} h={390} />
       <CoverHouse road={road} name="facade-sobrado-rosa" x={78} k={0.15} w={428} h={648} />
@@ -341,12 +342,11 @@ export function DownhillDerbyCoverArt() {
       <Shadow x={lina.x} y={lina.y} w={56} angle={a} />
       <Dust x={lina.x - 36} y={lina.y} angle={a} r={4} />
       <Racer who="lina" x={lina.x} y={lina.y} s={s} angle={a} face="strain" arm="grip" spin={20} />
-      <Ramp road={road} x0={ramp.x0} len={ramp.len} rise={ramp.rise} back={-24} />
+      <Ramp road={road} x0={ramp.x0} len={ramp.len} rise={ramp.rise} back={-96} />
       <Shadow x={mila.x} y={mila.y} w={62} angle={a} />
       <Dust x={mila.x - 40} y={mila.y} angle={a} r={5} />
       <Racer who="mila" x={mila.x} y={mila.y} s={s} angle={a} face="smug" />
       <Shadow x={deco.x + 10} y={lane(deco.x + 10, 0)} w={46} angle={a} opacity={0.16} />
-      <Dots from={{ x: lip.x + 2, y: lip.y - 6 }} via={{ x: lip.x + 8, y: lip.y - 22 }} to={{ x: deco.x - 34, y: deco.y - 12 }} n={3} r={1.8} />
       <Racer who="deco" x={deco.x} y={deco.y} s={s} angle={-16} face="happy" arm="up" reach={-24} />
     </>
   );
