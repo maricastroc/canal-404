@@ -5,7 +5,7 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 ## Unreleased
 
 ### Ladeira Abaixo: capa nova e textos revisados
-- **New cover.** The four friends race down one hill in two rows: Bruno worried at the back, Mila in her bathtub, Lina with her fan, and Déco flying off a ramp in the lead, with Juninho cheering on the sidewalk. Everyone stays whole inside the frame, with a safe margin for the room TV, and the share images were regenerated.
+- **New cover.** The four friends race down one hill in two rows: Bruno worried at the back, Mila in her bathtub, Lina with her fan, and Déco in the lead jumping a speed bump, with a plain green hill holding the 404 antenna behind the houses. Everyone stays whole inside the frame, with a safe margin for the room TV, and the share images were regenerated.
 - **Friendlier copy.** The game page, track picker, how-to section, controls, garage, results and race tips were rewritten to read more naturally and match the game: one term per idea ("pontos de show", "multiplicador", "pódio", "desbloquear"). The how-to section now has its own introduction (`howToIntro` in the registry).
 - The empty hall of champions now says "Ainda não tem ninguém no quadro dos campeões. Que tal ser o primeiro?" in every game.
 

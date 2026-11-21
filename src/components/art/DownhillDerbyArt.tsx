@@ -308,26 +308,50 @@ function Dust({ x, y, angle, r }: { x: number; y: number; angle: number; r: numb
   );
 }
 
+function RoadHump({ road, x, w, h }: { road: Road; x: number; w: number; h: number }) {
+  const s = road.s;
+  const xs = Array.from({ length: 13 }, (_, i) => x - w / 2 + (w * i) / 12);
+  const lift = (px: number) => Math.sin((Math.PI * (px - (x - w / 2))) / w) * h;
+  const curve = (lane: number) => xs.map((px) => `${r1(px)} ${r1(roadAt(road, px) + lane * s - lift(px))}`);
+  const base = (lane: number) => xs.map((px) => `${r1(px)} ${r1(roadAt(road, px) + lane * s)}`).reverse();
+  const lens = (lane: number) => `M${[...curve(lane), ...base(lane)].join(" L")} Z`;
+  const stripes = 7;
+  const step = w / stripes;
+  const stripe = (k: number) => {
+    const sx = Array.from({ length: 5 }, (_, i) => x - w / 2 + k * step + (step * i) / 4);
+    const top = sx.map((px) => `${r1(px)} ${r1(roadAt(road, px) - lift(px))}`);
+    const bottom = sx.map((px) => `${r1(px)} ${r1(roadAt(road, px))}`).reverse();
+    return `M${[...top, ...bottom].join(" L")} Z`;
+  };
+  return (
+    <g strokeLinejoin="round" strokeLinecap="round">
+      <path d={lens(0)} fill={C.asphaltTop} />
+      {Array.from({ length: stripes }, (_, k) => (
+        <path key={k} d={stripe(k)} fill={k % 2 === 0 ? C.dash : P.ink} />
+      ))}
+      <path d={`M${curve(0).join(" L")}`} fill="none" stroke={P.ink} strokeWidth={6 * s} />
+    </g>
+  );
+}
+
 export function DownhillDerbyCoverArt() {
   const road = COVER_ROAD;
   const a = roadAngle(road);
   const s = road.s;
   const lane = (x: number, l: number) => roadAt(road, x) + l * s;
-  const ramp = { x0: 186, len: 150, rise: 84 };
-  const lipX = ramp.x0 + ramp.len * s;
-  const lip = { x: lipX, y: lane(lipX, 0) - ramp.rise * s };
+  const bump = { x: 210, w: 46, h: 10 };
+  const crest = { x: bump.x, y: lane(bump.x, 0) - bump.h };
   const bruno = { x: 50, y: lane(50, BACK_ROW) };
   const lina = { x: 164, y: lane(164, BACK_ROW) };
   const mila = { x: 104, y: lane(104, -10) };
-  const deco = { x: lip.x + 15, y: lip.y - 7 };
+  const deco = { x: 262, y: lane(262, 0) - 28 };
   return (
     <>
       <rect width={320} height={240} fill={C.sky} />
       <circle cx={286} cy={30} r={20} fill={C.sun} />
       <Cloud x={196} y={22} s={0.5} />
-      <Kit name="sample/bg-morro" cx={68} ground={92} k={0.16} w={1600} h={420} />
-      <Kit name="sample/bg-morro" cx={324} ground={92} k={0.16} w={1600} h={420} />
-      <Kit name="antena/antena-404" cx={228} ground={62} k={0.045} w={648} h={1196} />
+      <path d="M-10 80 C 50 54, 120 50, 172 66 S 262 50, 330 64 L 330 170 L -10 170 Z" fill="#c4e6c9" />
+      <Kit name="antena/antena-404" cx={228} ground={64} k={0.045} w={648} h={1196} />
       <CoverHouse road={road} name="facade-terrea-amarelo" x={14} k={0.15} w={468} h={390} />
       <CoverHouse road={road} name="facade-sobrado-rosa" x={78} k={0.15} w={428} h={648} />
       <CoverHouse road={road} name="facade-terrea-lilas" x={146} k={0.15} w={468} h={390} />
@@ -335,19 +359,19 @@ export function DownhillDerbyCoverArt() {
       <CoverHouse road={road} name="facade-mercadinho-pessego" x={226} k={0.15} w={508} h={416} />
       <Kit name="sample/ipe" cx={300} ground={lane(300, -COVER_STREET - 22)} k={0.17} w={448} h={486} />
       <Street road={road} width={COVER_STREET} />
-      <Kit name="sample/vizinho-juninho-cheer" cx={30} ground={lane(30, 64)} k={0.2} w={270} h={246} />
       <Shadow x={bruno.x} y={bruno.y} w={52} angle={a} />
       <Dust x={bruno.x - 34} y={bruno.y} angle={a} r={4} />
       <Racer who="bruno" x={bruno.x} y={bruno.y} s={s} angle={a} face="panic" arm="grip" />
       <Shadow x={lina.x} y={lina.y} w={56} angle={a} />
       <Dust x={lina.x - 36} y={lina.y} angle={a} r={4} />
       <Racer who="lina" x={lina.x} y={lina.y} s={s} angle={a} face="strain" arm="grip" spin={20} />
-      <Ramp road={road} x0={ramp.x0} len={ramp.len} rise={ramp.rise} back={-96} />
+      <RoadHump road={road} x={bump.x} w={bump.w} h={bump.h} />
       <Shadow x={mila.x} y={mila.y} w={62} angle={a} />
       <Dust x={mila.x - 40} y={mila.y} angle={a} r={5} />
       <Racer who="mila" x={mila.x} y={mila.y} s={s} angle={a} face="smug" />
-      <Shadow x={deco.x + 10} y={lane(deco.x + 10, 0)} w={46} angle={a} opacity={0.16} />
-      <Racer who="deco" x={deco.x} y={deco.y} s={s} angle={-16} face="happy" arm="up" reach={-24} />
+      <Shadow x={deco.x + 6} y={lane(deco.x + 6, 0)} w={46} angle={a} opacity={0.16} />
+      <Dots from={{ x: crest.x + 3, y: crest.y - 4 }} via={{ x: crest.x + 12, y: crest.y - 16 }} to={{ x: deco.x - 24, y: deco.y - 4 }} n={3} r={1.8} />
+      <Racer who="deco" x={deco.x} y={deco.y} s={s} angle={-12} face="happy" arm="up" reach={-24} />
     </>
   );
 }
