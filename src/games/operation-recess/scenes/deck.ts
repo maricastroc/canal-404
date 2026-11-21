@@ -11,7 +11,37 @@ type Button = { role: "jump" | "attack"; x: number; y: number; r: number; color:
 export type DeckLabels = { move: string; jump: string; attack: string };
 
 const LIP: Record<string, number> = { corridor: 0x7b62c4, yard: 0x93cf4c, office: 0xc4352c };
-const SIZE = { rockerW: 160, rockerH: 74, split: 12, r: 39, gap: 16, margin: 14, label: 12.5, slack: 7, reach: 22 };
+const SIZE = { r: 39, gap: 14, margin: 14, lip: 9, label: 12.5, labelGap: 8, slack: 7, reach: 22 };
+const glyphs = new Map<string, [number, number]>();
+
+function glyphOrigin(scene: Phaser.Scene, key: string): [number, number] {
+  const known = glyphs.get(key);
+  if (known) return known;
+  const src = scene.textures.get(key).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+  const canvas = document.createElement("canvas");
+  canvas.width = src.width;
+  canvas.height = src.height;
+  const g = canvas.getContext("2d");
+  if (!g || !canvas.width || !canvas.height) return [0.5, 0.5];
+  g.drawImage(src, 0, 0);
+  const data = g.getImageData(0, 0, canvas.width, canvas.height).data;
+  let x0 = canvas.width;
+  let y0 = canvas.height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < canvas.height; y += 1) {
+    for (let x = 0; x < canvas.width; x += 1) {
+      if (data[(y * canvas.width + x) * 4 + 3] < 40) continue;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  const origin: [number, number] = x1 < 0 ? [0.5, 0.5] : [(x0 + x1 + 1) / 2 / canvas.width, (y0 + y1 + 1) / 2 / canvas.height];
+  glyphs.set(key, origin);
+  return origin;
+}
 
 export class TouchDeck {
   private bg: Phaser.GameObjects.Graphics;
@@ -111,34 +141,38 @@ export class TouchDeck {
     const room = width - frame.safe.left - frame.safe.right;
     const k = Phaser.Math.Clamp(room / u / 390, 0.82, 1.12);
     const r = SIZE.r * k * u;
-    const rw = SIZE.rockerW * k * u;
-    const rh = SIZE.rockerH * k * u;
+    const size = r * 2;
+    const gap = SIZE.gap * k * u;
     const margin = SIZE.margin * u;
+    const ls = (SIZE.label * u) / 30;
+    const labelGap = SIZE.labelGap * u;
+    const labelH = this.moveLabel.height * ls;
     const labels = tall && (frame.deck - frame.safe.bottom) / u >= 120;
-    const cy = tall ? frame.height - frame.deck + (frame.deck - frame.safe.bottom) / 2 - (labels ? 7 * u : 0) : bottom - margin - Math.max(r, rh / 2) - 4 * u;
+    const group = size + (labels ? labelGap + labelH : 0);
+    const deckTop = frame.height - frame.deck + SIZE.lip * u;
+    const deckRoom = frame.height - frame.safe.bottom - deckTop;
+    const cy = tall ? deckTop + Math.max(0, (deckRoom - group) / 2) + r : bottom - margin - r - 4 * u;
     const left = frame.safe.left + margin;
     const right = width - frame.safe.right - margin;
-    this.rockerBox.setTo(left, cy - rh / 2, rw, rh);
-    this.split = SIZE.split * k * u;
-    const jump = this.buttons[1];
-    const attack = this.buttons[0];
+    const arrowW = size;
+    this.split = gap;
+    this.rockerBox.setTo(left, cy - r, arrowW * 2 + gap, size);
+    const [attack, jump] = this.buttons;
     jump.r = r;
-    jump.x = right - r - 4 * u;
-    jump.y = cy + 6 * u;
+    jump.x = right - r;
     attack.r = r;
-    attack.x = jump.x - 2 * r - SIZE.gap * k * u;
-    attack.y = cy - 6 * u;
-    const ls = (SIZE.label * u) / 30;
-    this.moveLabel.setScale(ls).setPosition(left + rw / 2, cy + rh / 2 + 6 * u).setVisible(this.on && labels);
-    const labelY = Math.max(cy + rh / 2, jump.y + r, attack.y + r) + 7 * u;
+    attack.x = jump.x - size - gap;
+    for (const b of this.buttons) b.y = cy;
+    const labelY = cy + r + labelGap;
     this.labelY = labelY;
     this.labelsOn = this.on && labels;
-    this.moveLabel.setY(labelY);
+    this.moveLabel.setScale(ls).setPosition(this.rockerBox.centerX, labelY).setVisible(this.on && labels);
     for (const b of this.buttons) {
-      b.icon.setScale((r * 1.1) / 128);
+      b.icon.setOrigin(...glyphOrigin(this.scene, b.icon.texture.key)).setScale((r * 1.1) / 128);
       b.label.setScale(ls).setPosition(b.x, labelY).setVisible(this.on && labels);
     }
-    this.arrows.forEach((a) => a.setScale((rh * 0.62) / 128));
+    for (const a of this.arrows) a.setOrigin(...glyphOrigin(this.scene, a.texture.key));
+    this.arrows.forEach((a) => a.setScale((size * 0.62) / 128));
     this.drawBg();
     this.setVisible(this.on);
     this.redraw();
