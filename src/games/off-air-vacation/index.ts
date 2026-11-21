@@ -1,10 +1,11 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import type { Locale } from "@/i18n/locales";
-import { clearState, freshState, loadState } from "./save";
+import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, clearState, freshState, loadState } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { WorldScene } from "./scenes/WorldScene";
+import { mainObjective, score } from "./story";
 import type { VacationText } from "./text/pt-BR";
 
 const TEXT_LOADERS: Record<Locale, () => Promise<{ TEXT: VacationText }>> = {
@@ -90,10 +91,30 @@ function mount(ctx: GameHostContext): GameInstance {
       fresh();
     },
     setHighScore() {},
+    progress() {
+      const text = game.registry.get("text") as VacationText | undefined;
+      if (!text) return null;
+      const saved = loadState();
+      const s = saved ?? freshState();
+      const sc = score(s);
+      const T = text.intro;
+      const stats = [
+        { label: T.posters, value: `${sc.posters}/${ALL_POSTERS.length}` },
+        { label: T.tokens, value: `${sc.tokens}/${ALL_TOKENS.length}` },
+        { label: T.secrets, value: `${sc.secrets}/${ALL_SECRETS.length}` },
+      ];
+      if (saved) stats.push({ label: T.time, value: clock(s.time) });
+      return { title: text.areas[s.area], text: mainObjective(s, text).text, stats };
+    },
     destroy() {
       game.destroy(true);
     },
   };
+}
+
+function clock(ms: number) {
+  const m = Math.floor(ms / 60000);
+  return m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${m} min`;
 }
 
 const offAirVacation: GameModule = { mount };

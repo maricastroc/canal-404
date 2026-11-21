@@ -59,12 +59,15 @@ export type GameHostContext = {
   onEvent: (event: GameEvent) => void;
 };
 
+export type IntroProgress = { title: string; text: string; stats: { label: string; value: string }[] };
+
 export type GameInstance = {
   start: (options?: StartOptions) => void;
   pause: () => void;
   resume: () => void;
   restart: () => void;
   alt?: () => void;
+  progress?: () => IntroProgress | null;
   setHighScore: (value: number) => void;
   destroy: () => void;
 };

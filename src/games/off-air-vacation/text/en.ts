@@ -198,6 +198,12 @@ export const TEXT: VacationText = {
     missionDone: "Mission complete",
     missionAnnounce: (text: string) => `Mission: ${text}`,
   },
+  intro: {
+    posters: "Posters",
+    tokens: "Tokens",
+    secrets: "Secrets",
+    time: "Time",
+  },
   touch: {
     action: "Action",
     journal: "Journal",
