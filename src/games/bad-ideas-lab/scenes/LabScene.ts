@@ -20,8 +20,10 @@ import { addIcon } from "../icons";
 import { LabSim, type SimTarget } from "../sim";
 import { LAB_SFX, type LabSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
+import { LabCamera, type Pose } from "./camera";
+import { DockHud } from "./dockHud";
 import { currentFrame, watchFrame } from "./frame";
-import { DeskHud, type HudHandlers, type LabHudView } from "./hud";
+import { DeskHud, type HudHandlers, type LabHudView, type Mood } from "./hud";
 import { PartView } from "./parts";
 import { RailHud } from "./railHud";
 import { MOUSE, TOUCH, distanceToPoly, halfHeight } from "./touch";
@@ -54,12 +56,23 @@ type Press = { part: Part; x: number; y: number; offsetX: number; offsetY: numbe
 
 type Issue = Conflict["issue"] | null;
 
+type Finger = { id: number; x: number; y: number };
+
+type Gesture = {
+  fingers: Finger[];
+  moved: boolean;
+  start: Vec;
+  last: { x: number; y: number; t: number };
+  vx: number;
+  vy: number;
+  pinch: { d0: number; z0: number; anchor: Vec } | null;
+};
+
 type RunTrack = { touches: string[]; launches: string[]; winds: string[] };
 
 const CONFETTI = [0xffc83d, 0xf06ba8, 0x63d6c1, 0x7b62c4, 0xff8a3d, 0x8fd4f7];
 const RESET_MS = 900;
 const UNDO_LIMIT = 40;
-const FOLLOW_MS = 180;
 const RUNS_KEY = "labRuns";
 
 function wrapLines(text: string, max = 30) {
@@ -101,6 +114,12 @@ export class LabScene extends Phaser.Scene {
   private hintPulsing = false;
   private runPulsing = false;
   private touchUi = false;
+  private camera!: LabCamera;
+  private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private gesture: Gesture | null = null;
+  private lastTap = { t: -1e9, x: 0, y: 0 };
+  private preRun: Pose | null = null;
+  private introCam?: Phaser.Time.TimerEvent;
   private goal!: GoalView;
   private buildArea!: Phaser.GameObjects.Container;
   private pipe!: Phaser.GameObjects.Image;
@@ -190,6 +209,10 @@ export class LabScene extends Phaser.Scene {
     this.hintPulsing = false;
     this.runPulsing = false;
     this.touchUi = false;
+    this.uiCam = null;
+    this.gesture = null;
+    this.lastTap = { t: -1e9, x: 0, y: 0 };
+    this.preRun = null;
   }
 
   create() {
@@ -233,7 +256,11 @@ export class LabScene extends Phaser.Scene {
     this.bulb = this.add.image(this.lina.x - 56, this.lina.y - 226, "bulb").setDepth(15).setVisible(false);
 
     this.slotTypes = PART_ORDER.filter((t) => (level.inventory[t] ?? 0) > 0);
+    this.camera = new LabCamera(this.cameras.main, reduced);
+    this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, this.routeObject, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, this.routeObject, this));
     this.frame = currentFrame(this);
+    this.setupCameras(this.frame);
     this.hud = this.makeHud(this.frame.kind);
     this.hud.setEnabled(false);
     this.refreshHud();
@@ -241,11 +268,6 @@ export class LabScene extends Phaser.Scene {
     this.setupInput();
 
     watchFrame(this, level, (frame) => this.applyFrame(frame));
-    this.events.once(Phaser.Scenes.Events.CREATE, () => {
-      if (!this.registry.get("held")) return;
-      this.registry.set("heldPaused", true);
-      this.scene.pause();
-    });
 
     if (!this.registry.get("readySent")) {
       this.registry.set("readySent", true);
@@ -273,11 +295,25 @@ export class LabScene extends Phaser.Scene {
     const intro = this.narrator.describeLevel(this.sceneInfo(), this.levelIndex, LEVELS.length, this.inventoryText());
     const how = level.guide ? this.copy.scene.howGuided : this.copy.scene.howFree(this.keyRange());
     this.announce(this.copy.scene.intro(intro, how));
-    this.time.delayedCall(350, () => this.say(this.text.story, 4600, level.guide ? 20 : 24));
+    const tall = this.hud.kind === "tall";
+    const establish = tall && !this.ctx.reducedMotion;
+    if (establish) {
+      this.camera.set(this.camera.overviewPose());
+      this.introCam = this.time.delayedCall(900, () => this.camera.animateTo(this.camera.base, 750));
+    }
+    const story = tall && level.guide ? this.copy.scene.coach.dragRamp : this.text.story;
+    this.time.delayedCall(establish ? 1500 : 350, () => this.say(story, 4600, level.guide ? 20 : 24));
+    if (tall && !level.guide && !this.registry.get("cameraTip")) {
+      this.time.delayedCall(6400, () => {
+        if (this.mode !== "build" || this.registry.get("cameraTip") || this.carry) return;
+        this.registry.set("cameraTip", true);
+        this.say(this.copy.scene.coach.camera, 4600);
+      });
+    }
     if (level.guide) {
       this.hud.highlightSlot(level.guide.type);
-      this.time.delayedCall(450, () => this.pulseGuide());
-      this.demoTimer = this.time.delayedCall(700, () => this.startDemo());
+      this.time.delayedCall(establish ? 1700 : 450, () => this.pulseGuide());
+      this.demoTimer = this.time.delayedCall(establish ? 1900 : 700, () => this.startDemo());
     } else {
       this.idleTimer = this.time.addEvent({
         delay: 7000,
@@ -289,10 +325,15 @@ export class LabScene extends Phaser.Scene {
     }
   }
 
-  private mood(kind: "idle" | "yay" | "oops", ms = 0) {
+  private mood(kind: Mood, ms = 0) {
     this.moodTimer?.remove();
     this.lina.setTexture(kind === "yay" ? "lina-yay" : kind === "oops" ? "lina-oops" : "lina");
-    if (ms) this.moodTimer = this.time.delayedCall(ms, () => this.lina.setTexture("lina"));
+    this.hud.mood(kind);
+    if (ms)
+      this.moodTimer = this.time.delayedCall(ms, () => {
+        this.lina.setTexture("lina");
+        this.hud.mood("idle");
+      });
   }
 
   private showBulb() {
@@ -419,6 +460,8 @@ export class LabScene extends Phaser.Scene {
       onRotateBack: () => this.rotateActive(-1),
       onRemove: () => this.removeActive(),
       onUndo: () => !this.dragging() && this.undo(),
+      onOverview: () => this.toggleOverview(),
+      onRecenter: () => this.recenter(),
     };
     const setup = {
       scene: this,
@@ -431,20 +474,61 @@ export class LabScene extends Phaser.Scene {
       slotTypes: this.slotTypes,
       reduced: this.ctx.reducedMotion,
       handlers,
+      mount: (obj: Phaser.GameObjects.GameObject) => {
+        if (this.uiCam) obj.cameraFilter = this.cameras.main.id;
+      },
     };
+    if (kind === "tall") return new DockHud(setup);
     return kind === "band" ? new RailHud(setup) : new DeskHud(setup);
   }
 
-  private applyFrame(frame: Frame) {
-    this.frame = frame;
-    const cam = this.cameras.main;
-    cam.setSize(frame.width, frame.height);
-    if (this.mode !== "running" && this.mode !== "done") cam.setScroll(frame.scrollX, frame.scrollY);
-    const rebuilt = this.hud.kind !== frame.kind;
-    if (rebuilt) {
-      this.hud.destroy();
-      this.hud = this.makeHud(frame.kind);
+  private routeObject(obj: Phaser.GameObjects.GameObject) {
+    this.uiCam?.ignore(obj);
+  }
+
+  private setupCameras(frame: Frame) {
+    const main = this.cameras.main;
+    if (frame.kind === "tall") {
+      if (!this.uiCam) {
+        this.uiCam = this.cameras.add(0, 0, frame.width, frame.height).setName("ui");
+        for (const obj of this.children.list) this.uiCam.ignore(obj);
+      }
+      this.uiCam.setSize(frame.width, frame.height);
+      main.setBackgroundColor("#241a45");
+      return;
     }
+    main.setBackgroundColor("rgba(0,0,0,0)");
+    if (!this.uiCam) return;
+    this.cameras.remove(this.uiCam);
+    this.uiCam = null;
+    const clear = (list: Phaser.GameObjects.GameObject[]) => {
+      for (const obj of list) {
+        obj.cameraFilter = 0;
+        if (obj instanceof Phaser.GameObjects.Container) clear(obj.list);
+      }
+    };
+    clear(this.children.list);
+  }
+
+  private toggleOverview() {
+    this.introCam?.remove();
+    this.camera.touched(this.time.now);
+    this.camera.animateTo(this.camera.isOverview() ? this.camera.base : this.camera.overviewPose());
+  }
+
+  private recenter() {
+    this.introCam?.remove();
+    this.camera.touched(this.time.now);
+    this.camera.animateTo(this.camera.base);
+  }
+
+  private applyFrame(frame: Frame) {
+    const rebuilt = this.hud.kind !== frame.kind;
+    if (rebuilt) this.hud.destroy();
+    this.frame = frame;
+    this.setupCameras(frame);
+    this.camera.apply(frame, this.mode !== "attract" && !rebuilt);
+    if (rebuilt) this.hud = this.makeHud(frame.kind);
     this.hud.layout(frame, this.scale.displayScale.x);
     if (rebuilt) this.syncHud();
     this.bubble.setBaseScale(this.hud.textScale);
@@ -474,16 +558,22 @@ export class LabScene extends Phaser.Scene {
   }
 
   private toScreen(x: number, y: number): Vec {
-    const cam = this.cameras.main;
-    return { x: x - cam.scrollX, y: y - cam.scrollY };
+    return this.camera.toScreen(x, y);
   }
 
   private toWorld(x: number, y: number): Vec {
-    const cam = this.cameras.main;
-    return { x: x + cam.scrollX, y: y + cam.scrollY };
+    return this.camera.toWorld(x, y);
+  }
+
+  private worldOf(pointer: Phaser.Input.Pointer): Vec {
+    return this.camera.toWorld(pointer.x, pointer.y);
   }
 
   private px(css: number) {
+    return (css * this.scale.displayScale.x) / this.camera.zoom;
+  }
+
+  private screenPx(css: number) {
     return css * this.scale.displayScale.x;
   }
 
@@ -498,7 +588,33 @@ export class LabScene extends Phaser.Scene {
 
   private busyFor(pointer: Phaser.Input.Pointer) {
     if (this.carry?.via === "pointer" && this.carry.pointerId !== pointer.id) return true;
+    if (this.gesture && !this.gesture.fingers.some((f) => f.id === pointer.id)) return true;
     return Boolean(this.press && this.press.pointerId !== pointer.id);
+  }
+
+  private hideSay() {
+    this.bubble.hide();
+    this.hud.hideSay();
+  }
+
+  private focusPoint(): Vec | null {
+    const part = this.carry?.part ?? this.selected;
+    const g = this.level.guide;
+    const at = part ? { x: part.view.x, y: part.view.y } : g && this.mode === "build" && !this.parts.some((p) => this.atGuide(p)) ? { x: g.x, y: g.y } : null;
+    return at ? this.toScreen(at.x, at.y) : null;
+  }
+
+  private buildCenter(): Vec {
+    const b = this.level.build;
+    if (!this.camera.free) return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    const v = this.camera.visible();
+    const left = Math.max(b.x, v.x);
+    const right = Math.min(b.x + b.w, v.x + v.w);
+    const top = Math.max(b.y, v.y);
+    const bottom = Math.min(b.y + b.h, v.y + v.h);
+    if (right - left > 120 && bottom - top > 80) return { x: (left + right) / 2, y: (top + bottom) / 2 };
+    this.camera.animateTo(this.camera.base);
+    return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
   }
 
   private sfx(name: LabSfx, volume = 1, throttleMs = 0) {
@@ -586,6 +702,7 @@ export class LabScene extends Phaser.Scene {
   }
 
   private say(text: string, duration = 2400, wrap = 30) {
+    if (this.hud.say(text, duration, this.focusPoint())) return;
     this.bubble.say(wrapLines(text, wrap), this.lina.x + 34, this.lina.y - 214, duration);
   }
 
@@ -749,7 +866,7 @@ export class LabScene extends Phaser.Scene {
     this.deselect();
     this.hud.hideTag();
     this.hud.hideGoal();
-    this.bubble.hide();
+    this.hideSay();
     this.stopDemo();
     for (const p of this.parts) p.view.destroy();
     this.parts = [];
@@ -894,6 +1011,9 @@ export class LabScene extends Phaser.Scene {
     if (guided) {
       this.say(this.copy.scene.guidedSay, 3200);
       message = this.copy.scene.guidedPlaced;
+    } else if (this.level.guide && this.hud.kind === "tall" && c.part.view.type === this.level.guide.type) {
+      this.say(this.copy.scene.coach.offGuide, 3200);
+      message = this.copy.scene.placed(this.nounOf(c.part), this.narrator.poseText(v.type, v.rot), this.placeWords(c.part), this.parts.length);
     } else {
       message = this.copy.scene.placed(this.nounOf(c.part), this.narrator.poseText(v.type, v.rot), this.placeWords(c.part), this.parts.length);
     }
@@ -943,7 +1063,9 @@ export class LabScene extends Phaser.Scene {
   private onSlotDown(type: PartType, pointer: Phaser.Input.Pointer) {
     if (this.mode !== "build" || this.busyFor(pointer)) return;
     this.touchUi = pointer.wasTouch;
-    this.bubble.hide();
+    this.introCam?.remove();
+    this.camera.stop();
+    this.hideSay();
     this.hud.hideGoal();
     this.stopDemo();
     this.firstPick(type);
@@ -955,10 +1077,11 @@ export class LabScene extends Phaser.Scene {
       this.announce(this.copy.scene.outOf(this.copy.parts[type].plural));
       return;
     }
-    const touch = pointer.wasTouch || this.hud.kind === "band";
-    const part = this.createPart(type, pointer.worldX, pointer.worldY);
+    const touch = pointer.wasTouch || this.hud.kind !== "full";
+    const w = this.worldOf(pointer);
+    const part = this.createPart(type, w.x, w.y);
     const lift = touch ? this.touchLift(part) : -MOUSE.trayLift * this.hud.uiScale;
-    part.view.setPose(snap(pointer.worldX), snap(pointer.worldY + lift), part.view.rot);
+    part.view.setPose(snap(w.x), snap(w.y + lift), part.view.rot);
     this.sfx("pick", 0.8);
     this.beginCarry(part, "pointer", {
       isNew: true,
@@ -967,12 +1090,13 @@ export class LabScene extends Phaser.Scene {
       liftY: lift,
       fromTray: true,
       moved: false,
-      startX: pointer.worldX,
-      startY: pointer.worldY,
+      startX: pointer.x,
+      startY: pointer.y,
       pointerId: pointer.id,
       touch,
-      at: { x: pointer.x, y: pointer.y, wx: pointer.worldX, wy: pointer.worldY },
+      at: { x: pointer.x, y: pointer.y, wx: w.x, wy: w.y },
     });
+    if (this.hud.kind === "tall" && this.level.guide?.type === type && !this.parts.some((p) => p !== part && this.atGuide(p))) this.say(this.copy.scene.coach.dropOnGuide, 3200);
   }
 
   private firstPick(type: PartType) {
@@ -984,7 +1108,7 @@ export class LabScene extends Phaser.Scene {
   private pickWithKeyboard(slot: number) {
     const type = this.slotTypes[slot];
     if (!type) return;
-    this.bubble.hide();
+    this.hideSay();
     this.stopDemo();
     this.firstPick(type);
     const settled = this.settleCarry();
@@ -1025,49 +1149,141 @@ export class LabScene extends Phaser.Scene {
       if (settled) this.announce(settled);
     }
     if (this.carry) return;
-    this.bubble.hide();
+    this.introCam?.remove();
+    this.camera.stop();
+    this.hideSay();
     this.hud.hideGoal();
+    const w = this.worldOf(pointer);
     this.press = {
       part,
-      x: pointer.worldX,
-      y: pointer.worldY,
-      offsetX: part.view.x - pointer.worldX,
-      offsetY: part.view.y - pointer.worldY,
+      x: pointer.x,
+      y: pointer.y,
+      offsetX: part.view.x - w.x,
+      offsetY: part.view.y - w.y,
       pointerId: pointer.id,
       touch: pointer.wasTouch,
     };
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer) {
+    if (this.moveGesture(pointer)) return;
     if (this.mode !== "build") return;
     const c = this.carry;
-    const at = { x: pointer.x, y: pointer.y, wx: pointer.worldX, wy: pointer.worldY };
+    const w = this.worldOf(pointer);
+    const at = { x: pointer.x, y: pointer.y, wx: w.x, wy: w.y };
     if (c && c.via === "pointer") {
       if (pointer.id !== c.pointerId) return;
       c.at = at;
-      const limit = c.touch ? this.px(TOUCH.drag) : MOUSE.trayDrag;
-      if (!c.moved && Phaser.Math.Distance.Between(c.startX, c.startY, pointer.worldX, pointer.worldY) > limit) c.moved = true;
-      this.moveCarry(pointer.worldX + c.offsetX, pointer.worldY + c.offsetY);
+      const limit = c.touch ? this.screenPx(TOUCH.drag) : MOUSE.trayDrag * this.camera.zoom;
+      if (!c.moved && Phaser.Math.Distance.Between(c.startX, c.startY, pointer.x, pointer.y) > limit) c.moved = true;
+      this.moveCarry(w.x + c.offsetX, w.y + c.offsetY);
       if (c.touch) {
-        c.trail.push({ t: this.time.now, wx: pointer.worldX, wy: pointer.worldY, x: c.part.view.x, y: c.part.view.y });
+        c.trail.push({ t: this.time.now, wx: w.x, wy: w.y, x: c.part.view.x, y: c.part.view.y });
         if (c.trail.length > TOUCH.trail) c.trail.shift();
       }
       return;
     }
     const p = this.press;
     if (!p || pointer.id !== p.pointerId) return;
-    const limit = p.touch ? this.px(TOUCH.drag) : MOUSE.drag;
-    if (Phaser.Math.Distance.Between(p.x, p.y, pointer.worldX, pointer.worldY) > limit) {
+    const limit = p.touch ? this.screenPx(TOUCH.drag) : MOUSE.drag * this.camera.zoom;
+    if (Phaser.Math.Distance.Between(p.x, p.y, pointer.x, pointer.y) > limit) {
       this.press = null;
       this.sfx("pick", 0.6);
       const lift = p.touch ? this.touchLift(p.part) : p.offsetY;
       const offsetY = p.touch && !this.ctx.reducedMotion ? p.offsetY : lift;
       this.beginCarry(p.part, "pointer", { offsetX: p.offsetX, offsetY, liftY: lift, moved: true, pointerId: p.pointerId, touch: p.touch, at });
-      this.moveCarry(pointer.worldX + p.offsetX, pointer.worldY + offsetY);
+      this.moveCarry(w.x + p.offsetX, w.y + offsetY);
     }
   }
 
+  private startGesture(pointer: Phaser.Input.Pointer) {
+    this.introCam?.remove();
+    this.camera.touched(this.time.now);
+    const g = this.gesture;
+    if (g) {
+      if (g.fingers.length >= 2 || g.fingers.some((f) => f.id === pointer.id)) return;
+      g.fingers.push({ id: pointer.id, x: pointer.x, y: pointer.y });
+      this.beginPinch(g);
+      return;
+    }
+    this.gesture = { fingers: [{ id: pointer.id, x: pointer.x, y: pointer.y }], moved: false, start: { x: pointer.x, y: pointer.y }, last: { x: pointer.x, y: pointer.y, t: this.time.now }, vx: 0, vy: 0, pinch: null };
+  }
+
+  private beginPinch(g: Gesture) {
+    const [a, b] = g.fingers;
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    g.moved = true;
+    g.pinch = { d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), z0: this.camera.zoom, anchor: this.toWorld(mid.x, mid.y) };
+  }
+
+  private moveGesture(pointer: Phaser.Input.Pointer) {
+    const g = this.gesture;
+    const finger = g?.fingers.find((f) => f.id === pointer.id);
+    if (!g || !finger) return false;
+    finger.x = pointer.x;
+    finger.y = pointer.y;
+    this.camera.touched(this.time.now);
+    if (g.pinch && g.fingers.length === 2) {
+      const [a, b] = g.fingers;
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      this.camera.zoomAt((g.pinch.z0 * d) / g.pinch.d0, (a.x + b.x) / 2, (a.y + b.y) / 2, g.pinch.anchor);
+      return true;
+    }
+    if (!g.moved && Phaser.Math.Distance.Between(g.start.x, g.start.y, pointer.x, pointer.y) > this.screenPx(TOUCH.drag)) {
+      g.moved = true;
+      g.last = { x: pointer.x, y: pointer.y, t: this.time.now };
+      return true;
+    }
+    if (!g.moved) return true;
+    const dt = Math.max(1, this.time.now - g.last.t);
+    const dx = pointer.x - g.last.x;
+    const dy = pointer.y - g.last.y;
+    this.camera.panBy(dx, dy);
+    g.vx = g.vx * 0.4 + (dx / dt) * 0.6;
+    g.vy = g.vy * 0.4 + (dy / dt) * 0.6;
+    g.last = { x: pointer.x, y: pointer.y, t: this.time.now };
+    if (!this.registry.get("cameraTip")) this.registry.set("cameraTip", true);
+    return true;
+  }
+
+  private endGesture(pointer: Phaser.Input.Pointer) {
+    const g = this.gesture;
+    if (!g || !g.fingers.some((f) => f.id === pointer.id)) return false;
+    g.fingers = g.fingers.filter((f) => f.id !== pointer.id);
+    if (g.fingers.length) {
+      const f = g.fingers[0];
+      g.pinch = null;
+      g.last = { x: f.x, y: f.y, t: this.time.now };
+      g.vx = 0;
+      g.vy = 0;
+      return true;
+    }
+    this.gesture = null;
+    if (g.moved) {
+      if (!g.pinch && this.time.now - g.last.t < 80) this.camera.flingWith(g.vx, g.vy);
+      return true;
+    }
+    this.tapEmpty(pointer);
+    return true;
+  }
+
+  private tapEmpty(pointer: Phaser.Input.Pointer) {
+    const now = this.time.now;
+    const double = now - this.lastTap.t < 320 && Phaser.Math.Distance.Between(this.lastTap.x, this.lastTap.y, pointer.x, pointer.y) < this.screenPx(32);
+    this.lastTap = double ? { t: -1e9, x: 0, y: 0 } : { t: now, x: pointer.x, y: pointer.y };
+    if (this.mode === "build") {
+      const settled = this.settleCarry();
+      if (settled) this.announce(settled);
+      this.deselect();
+      this.hud.hideGoal();
+    }
+    if (!double) return;
+    const at = this.worldOf(pointer);
+    this.camera.animateTo(this.camera.isOverview() ? { x: at.x, y: at.y, zoom: this.camera.base.zoom } : this.camera.overviewPose());
+  }
+
   private onPointerUp(pointer: Phaser.Input.Pointer) {
+    if (this.endGesture(pointer)) return;
     const c = this.carry;
     const pressed = this.press;
     if ((c?.via === "pointer" && c.pointerId !== pointer.id) || (pressed && pressed.pointerId !== pointer.id)) return;
@@ -1076,13 +1292,14 @@ export class LabScene extends Phaser.Scene {
       return;
     }
     if (c && c.via === "pointer") {
-      c.at = { x: pointer.x, y: pointer.y, wx: pointer.worldX, wy: pointer.worldY };
+      const w = this.worldOf(pointer);
+      c.at = { x: pointer.x, y: pointer.y, wx: w.x, wy: w.y };
       this.hud.setBoxHover(false);
       if (c.touch && c.moved) this.steadyRelease(c);
       const v = c.part.view;
       if (c.fromTray && !c.moved) {
-        const b = this.level.build;
-        const spot = this.findSpot(c.part, b.x + b.w / 2, b.y + b.h / 2);
+        const b = this.buildCenter();
+        const spot = this.findSpot(c.part, b.x, b.y);
         if (spot) {
           v.setPose(spot.x, spot.y, v.rot);
           this.dropCarry();
@@ -1307,17 +1524,28 @@ export class LabScene extends Phaser.Scene {
         this.resetAfterFail();
         return;
       }
-      if (this.mode !== "build" || this.busyFor(pointer)) return;
+      if (this.mode === "attract") return;
+      if (this.camera.free && this.gesture) {
+        this.startGesture(pointer);
+        return;
+      }
+      if (this.busyFor(pointer)) return;
       this.touchUi = pointer.wasTouch;
       const onParts = over.every((o) => this.parts.some((p) => p.view.hit === o));
-      if (pointer.wasTouch && onParts && !this.hud.covers(pointer.x, pointer.y)) {
-        const part = this.pickPart(pointer.worldX, pointer.worldY);
+      const inStage = this.camera.inStage(pointer.x, pointer.y) && !this.hud.covers(pointer.x, pointer.y);
+      if (this.mode === "build" && pointer.wasTouch && onParts && inStage) {
+        const w = this.worldOf(pointer);
+        const part = this.pickPart(w.x, w.y);
         if (part) {
           this.onPartPress(part, pointer);
           return;
         }
       }
-      if (over.length === 0) {
+      if (this.camera.free && over.length === 0 && inStage && !this.dragging()) {
+        this.startGesture(pointer);
+        return;
+      }
+      if (this.mode === "build" && over.length === 0) {
         const settled = this.settleCarry();
         if (settled) this.announce(settled);
         this.deselect();
@@ -1510,8 +1738,10 @@ export class LabScene extends Phaser.Scene {
     this.setRunPulse(false);
     this.runNudgeTimer?.remove();
     this.stopDemo();
-    this.bubble.hide();
+    this.hideSay();
     this.ranOnce = true;
+    this.preRun = this.camera.pose;
+    this.introCam?.remove();
     this.mode = "running";
     this.runs += 1;
     this.registry.set(RUNS_KEY, { level: this.level.id, runs: this.runs });
@@ -1603,6 +1833,8 @@ export class LabScene extends Phaser.Scene {
     this.refreshGuide();
     this.tweens.add({ targets: this.buildArea, alpha: 1, duration: 200 });
     this.drawTrail();
+    if (this.camera.free && this.preRun) this.camera.animateTo(this.preRun, 450);
+    this.preRun = null;
   }
 
   private puff(x: number, y: number, count: number, scale = 1, tex = "smoke") {
@@ -1780,45 +2012,21 @@ export class LabScene extends Phaser.Scene {
 
   private liftCarry(delta: number) {
     const c = this.carry;
-    if (!c || c.via !== "pointer" || c.offsetY === c.liftY) return;
+    if (!c || c.via !== "pointer" || this.mode !== "build") return;
+    const scrolled = this.camera.edgeScroll(c.at.x, delta);
+    if (c.offsetY === c.liftY && !scrolled) return;
     const gap = c.liftY - c.offsetY;
     c.offsetY = Math.abs(gap) < 2 ? c.liftY : c.offsetY + gap * Math.min(1, delta / TOUCH.liftMs);
-    this.moveCarry(c.at.wx + c.offsetX, c.at.wy + c.offsetY);
-  }
-
-  private followBall(delta: number) {
-    const f = this.frame;
-    const cam = this.cameras.main;
-    let tx = f.scrollX;
-    let ty = f.scrollY;
-    if ((this.mode === "running" || this.mode === "done") && !this.finishing && !this.ctx.reducedMotion && this.ballImg.visible) {
-      const mx = f.stage.w * 0.14;
-      const my = f.stage.h * 0.14;
-      const left = f.stage.x + tx;
-      const top = f.stage.y + ty;
-      const bx = this.ballImg.x;
-      const by = this.ballImg.y;
-      if (bx < left + mx) tx -= left + mx - bx;
-      if (bx > left + f.stage.w - mx) tx += bx - (left + f.stage.w - mx);
-      if (by < top + my) ty -= top + my - by;
-      if (by > top + f.stage.h - my) ty += by - (top + f.stage.h - my);
-      tx = Phaser.Math.Clamp(tx, Math.min(f.scrollX, -f.stage.x), Math.max(f.scrollX, W - f.stage.x - f.stage.w));
-      ty = Phaser.Math.Clamp(ty, Math.min(f.scrollY, -f.stage.y), Math.max(f.scrollY, H - f.stage.y - f.stage.h));
-    } else if (this.finishing) {
-      return;
-    }
-    if (cam.scrollX === tx && cam.scrollY === ty) return;
-    const k = Math.min(1, delta / FOLLOW_MS);
-    const nx = Math.abs(tx - cam.scrollX) < 0.5 ? tx : cam.scrollX + (tx - cam.scrollX) * k;
-    const ny = Math.abs(ty - cam.scrollY) < 0.5 ? ty : cam.scrollY + (ty - cam.scrollY) * k;
-    cam.setScroll(nx, ny);
-    if (this.selected) this.placeToolbar(this.selected);
+    const w = this.toWorld(c.at.x, c.at.y);
+    this.moveCarry(w.x + c.offsetX, w.y + c.offsetY);
   }
 
   update(_time: number, delta: number) {
     for (const p of this.parts) p.view.update(delta);
     this.liftCarry(delta);
-    this.followBall(delta);
+    const ball = (this.mode === "running" || this.mode === "done") && this.ballImg.visible ? { x: this.ballImg.x, y: this.ballImg.y } : null;
+    if (this.camera.update(delta, this.time.now, ball, this.finishing) && this.selected) this.placeToolbar(this.selected);
+    this.hud.setView({ away: this.camera.isAway(), overview: this.camera.isOverview() });
     if (this.mode !== "running") return;
     if (this.time.now < this.launchAt) {
       this.acc = 0;

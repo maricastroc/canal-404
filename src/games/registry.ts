@@ -33,7 +33,7 @@ export type GameMeta = {
   touchTips?: string[];
   controlsSummary?: string;
   resumable?: string;
-  orientation?: "upright" | "sideways" | "any";
+  orientation?: "upright" | "any";
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
@@ -52,7 +52,7 @@ const BASE = {
     cast: ["deco", "lina", "bruno"],
     levelIds: ["warm-up", "sharp-aim", "up-high", "domino", "surprise-bath", "blocked-path", "counterattack", "free-for-all", "grand-mess"],
   },
-  "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"], orientation: "sideways" },
+  "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"], orientation: "any" },
   "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], orientation: "upright" },
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
   "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"], orientation: "any" },
@@ -144,14 +144,15 @@ const TEXT = gameText({
         { input: "I", action: "Ouvir onde a peça está e o que tem perto", on: "keys" },
         { input: "L", action: "Ouvir de novo o resultado do último teste", on: "keys" },
         { input: "Esc ou P", action: "Pausar", on: "keys" },
-        { input: "Celular deitado", action: "A caixa de peças fica à esquerda e os botões, à direita", on: "touch" },
         { input: "Arrastar da caixa", action: "Levar a peça até a área tracejada. Ela fica acima do dedo para você ver onde vai cair", on: "touch" },
         { input: "Tocar na caixa", action: "A peça aparece sozinha na área tracejada", on: "touch" },
         { input: "Tocar numa peça", action: "Mostrar os botões de girar para os dois lados e de guardar", on: "touch" },
         { input: "Arrastar uma peça", action: "Mudar de lugar. Solte em cima da caixa para guardar", on: "touch" },
+        { input: "Arrastar o cenário", action: "Olhar o resto da garagem. Com dois dedos, aproxima e afasta", on: "touch" },
+        { input: "VER TUDO", action: "Mostrar a fase inteira. VOLTAR leva de novo para a área de montagem", on: "touch" },
         { input: "DESFAZER", action: "Voltar a última mudança, até um LIMPAR sem querer", on: "touch" },
         { input: "LIGAR", action: "Ligar ou desligar a máquina", on: "touch" },
-        { input: "FASE, no alto da caixa", action: "Mostrar de novo o objetivo da fase", on: "touch" },
+        { input: "FASE, no alto", action: "Mostrar de novo o objetivo da fase", on: "touch" },
       ],
       howTo: [
         { title: "Monte", text: "Arraste uma peça da caixa até a área tracejada." },
@@ -174,7 +175,7 @@ const TEXT = gameText({
         "Quanto menos peças, mais estrelas.",
         "Toda grande invenção começou como uma péssima ideia.",
       ],
-      touchTips: ["Toque numa peça da caixa e ela aparece sozinha na área tracejada.", "Mexeu no que não devia? O DESFAZER volta a última mudança."],
+      touchTips: ["Toque numa peça da caixa e ela aparece sozinha na área tracejada.", "Mexeu no que não devia? O DESFAZER volta a última mudança.", "Arraste o cenário para ver a garagem toda, ou toque em VER TUDO."],
       keyTips: ["No teclado, os números pegam peças e as setas movem.", "Z desfaz a última mudança."],
       controlsSummary: "Laboratório de Péssimas Ideias. Números pegam peças da caixa, S escolhe uma peça montada, setas movem um passo, R e Q giram, Enter coloca, C cancela, X guarda na caixa, Z desfaz, espaço liga a máquina. H pede dica, D descreve a fase, O passa pelos objetos, I diz onde a peça está, L repete o resultado do último teste, Esc pausa.",
       copy: {
@@ -503,14 +504,15 @@ const TEXT = gameText({
         { input: "I", action: "Hear where the part is and what's nearby", on: "keys" },
         { input: "L", action: "Hear the result of the last test again", on: "keys" },
         { input: "Esc or P", action: "Pause", on: "keys" },
-        { input: "Phone held sideways", action: "The parts box is on the left and the buttons are on the right", on: "touch" },
         { input: "Drag from the box", action: "Take the part to the dashed area. It floats above your finger so you can see where it lands", on: "touch" },
         { input: "Tap the box", action: "The part drops into the dashed area by itself", on: "touch" },
         { input: "Tap a part", action: "Show the buttons to rotate it either way or put it away", on: "touch" },
         { input: "Drag a part", action: "Move it. Drop it on the box to put it away", on: "touch" },
+        { input: "Drag the scene", action: "Look around the garage. Two fingers zoom in and out", on: "touch" },
+        { input: "SEE ALL", action: "Show the whole level. BACK returns to the building area", on: "touch" },
         { input: "UNDO", action: "Take back the last change, even an accidental CLEAR", on: "touch" },
         { input: "START", action: "Turn the machine on or off", on: "touch" },
-        { input: "LEVEL, at the top of the box", action: "Show the level goal again", on: "touch" },
+        { input: "LEVEL, at the top", action: "Show the level goal again", on: "touch" },
       ],
       howTo: [
         { title: "Build", text: "Drag a part from the box to the dashed area." },
@@ -533,7 +535,7 @@ const TEXT = gameText({
         "The fewer parts, the more stars.",
         "Every great invention started as a terrible idea.",
       ],
-      touchTips: ["Tap a part in the box and it drops into the dashed area by itself.", "Moved the wrong thing? UNDO takes back the last change."],
+      touchTips: ["Tap a part in the box and it drops into the dashed area by itself.", "Moved the wrong thing? UNDO takes back the last change.", "Drag the scene to see the whole garage, or tap SEE ALL."],
       keyTips: ["On a keyboard, numbers take parts and arrows move them.", "Z undoes the last change."],
       controlsSummary: "Bad Ideas Lab. Numbers take parts from the box, S selects a placed part, arrows move one step, R and Q rotate, Enter places, C cancels, X puts the part back in the box, Z undoes, space turns on the machine. H gives a hint, D describes the level, O goes through the objects, I says where the part is, L repeats the last test result, Esc pauses.",
       copy: {

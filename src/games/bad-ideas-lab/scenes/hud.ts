@@ -16,6 +16,8 @@ export type HudHandlers = {
   onRotateBack: () => void;
   onRemove: () => void;
   onUndo: () => void;
+  onOverview: () => void;
+  onRecenter: () => void;
 };
 
 export type HudSetup = {
@@ -29,7 +31,12 @@ export type HudSetup = {
   slotTypes: PartType[];
   reduced: boolean;
   handlers: HudHandlers;
+  mount?: (obj: Phaser.GameObjects.GameObject) => void;
 };
+
+export type Mood = "idle" | "yay" | "oops";
+
+export type ViewState = { away: boolean; overview: boolean };
 
 export type ToolbarAnchor = { x: number; top: number; bottom: number };
 
@@ -57,6 +64,10 @@ export interface LabHudView {
   showTag(text: string, x: number, y: number): void;
   hideTag(): void;
   hideGoal(): void;
+  say(text: string, ms: number, focus: Vec | null): boolean;
+  hideSay(): void;
+  mood(kind: Mood): void;
+  setView(view: ViewState): void;
   setRunning(on: boolean): void;
   setDone(): void;
   flash(text: string, color: string, hold?: number): void;
@@ -344,6 +355,16 @@ export class DeskHud implements LabHudView {
   setUndo() {}
 
   hideGoal() {}
+
+  say() {
+    return false;
+  }
+
+  hideSay() {}
+
+  mood() {}
+
+  setView() {}
 
   setCounts(remaining: Partial<Record<PartType, number>>) {
     for (const slot of this.slots) {
