@@ -1,17 +1,18 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
-import { H, W } from "./config";
 import { LEVELS } from "./levels";
 import { BootScene } from "./scenes/BootScene";
+import { measureFrame } from "./scenes/frame";
 import { LabScene } from "./scenes/LabScene";
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
+  const frame = measureFrame(ctx.parent, LEVELS[0]);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,
-    width: W,
-    height: H,
+    width: frame.width,
+    height: frame.height,
     backgroundColor: "#c5bce3",
     transparent: false,
     scale: {
@@ -31,6 +32,7 @@ function mount(ctx: GameHostContext): GameInstance {
     callbacks: {
       preBoot: (g) => {
         g.registry.set("ctx", ctx);
+        g.registry.set("frame", frame);
         g.registry.set("level", 0);
       },
       postBoot: () => {
@@ -59,7 +61,19 @@ function mount(ctx: GameHostContext): GameInstance {
       restartScene();
     },
     pause() {
+      game.registry.set("heldPaused", false);
       if (game.scene.isActive("lab")) game.scene.pause("lab");
+    },
+    hold(on: boolean) {
+      game.registry.set("held", on);
+      if (on) {
+        if (!game.scene.isActive("lab")) return;
+        game.scene.pause("lab");
+        game.registry.set("heldPaused", true);
+        return;
+      }
+      if (game.registry.get("heldPaused") && game.scene.isPaused("lab")) game.scene.resume("lab");
+      game.registry.set("heldPaused", false);
     },
     resume() {
       if (game.scene.isPaused("lab")) game.scene.resume("lab");

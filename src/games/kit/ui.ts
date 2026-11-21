@@ -69,6 +69,7 @@ export class Bubble {
   private text: Phaser.GameObjects.Text;
   private hideTimer?: Phaser.Time.TimerEvent;
   private baseScale = 1;
+  private bounds = { left: 0, right: SCREEN_W, top: 0 };
 
   constructor(
     private scene: Phaser.Scene,
@@ -96,6 +97,10 @@ export class Bubble {
     if (this.container.visible) this.container.setScale(scale);
   }
 
+  setBounds(left: number, right: number, top = 0) {
+    this.bounds = { left, right, top };
+  }
+
   setWrap(width: number | null) {
     this.text.setWordWrapWidth(width);
   }
@@ -120,8 +125,8 @@ export class Bubble {
     g.lineBetween(14, -24, 0, 0);
     this.text.setPosition(left + w / 2, top + h / 2);
     const s = this.baseScale;
-    const cx = Phaser.Math.Clamp(x, 12 - left * s, SCREEN_W - 12 - (left + w) * s);
-    const cy = Math.max(y, 12 - top * s);
+    const cx = Phaser.Math.Clamp(x, this.bounds.left + 12 - left * s, this.bounds.right - 12 - (left + w) * s);
+    const cy = Math.max(y, this.bounds.top + 12 - top * s);
     this.container.setPosition(cx, cy);
     this.container.setVisible(true).setAlpha(1).setScale(s * 0.4);
     this.scene.tweens.killTweensOf(this.container);

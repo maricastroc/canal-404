@@ -13,14 +13,18 @@ import {
 } from "../config";
 import { attemptBonus, LEVELS, starsFor, type LevelDef } from "../levels";
 import { goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Vec } from "../geometry";
+import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { COPY, levelText, type LabCopy, type LevelText } from "../copy";
 import { Narrator, partLandmark, pathRelation, sceneOrder, type Direction, type Landmark, type Noun, type RunOutcome, type SceneInfo } from "../narration";
 import { addIcon } from "../icons";
 import { LabSim, type SimTarget } from "../sim";
 import { LAB_SFX, type LabSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
-import { LabHud } from "./hud";
+import { currentFrame, watchFrame } from "./frame";
+import { DeskHud, type HudHandlers, type LabHudView } from "./hud";
 import { PartView } from "./parts";
+import { RailHud } from "./railHud";
+import { MOUSE, TOUCH, distanceToPoly, halfHeight } from "./touch";
 import { buildGoal, drawBlock, drawBuildArea, drawPipe, type GoalView } from "./world";
 
 type Mode = "attract" | "build" | "running" | "done";
@@ -34,13 +38,19 @@ type Carry = {
   via: "pointer" | "keyboard";
   offsetX: number;
   offsetY: number;
+  liftY: number;
   fromTray: boolean;
   moved: boolean;
   startX: number;
   startY: number;
+  pointerId: number;
+  touch: boolean;
+  at: { x: number; y: number; wx: number; wy: number };
+  trail: { t: number; wx: number; wy: number; x: number; y: number }[];
+  before: PlacedPart[];
 };
 
-type Press = { part: Part; x: number; y: number; offsetX: number; offsetY: number };
+type Press = { part: Part; x: number; y: number; offsetX: number; offsetY: number; pointerId: number; touch: boolean };
 
 type Issue = Conflict["issue"] | null;
 
@@ -48,6 +58,8 @@ type RunTrack = { touches: string[]; launches: string[]; winds: string[] };
 
 const CONFETTI = [0xffc83d, 0xf06ba8, 0x63d6c1, 0x7b62c4, 0xff8a3d, 0x8fd4f7];
 const RESET_MS = 900;
+const UNDO_LIMIT = 40;
+const FOLLOW_MS = 180;
 const RUNS_KEY = "labRuns";
 
 function wrapLines(text: string, max = 30) {
@@ -83,7 +95,12 @@ export class LabScene extends Phaser.Scene {
   private carry: Carry | null = null;
   private press: Press | null = null;
   private selected: Part | null = null;
-  private hud!: LabHud;
+  private hud!: LabHudView;
+  private frame: Frame = FULL_FRAME;
+  private history: PlacedPart[][] = [];
+  private hintPulsing = false;
+  private runPulsing = false;
+  private touchUi = false;
   private goal!: GoalView;
   private buildArea!: Phaser.GameObjects.Container;
   private pipe!: Phaser.GameObjects.Image;
@@ -168,6 +185,11 @@ export class LabScene extends Phaser.Scene {
     this.announcedValid = true;
     this.announcedPath = null;
     this.handledKeys = new WeakSet();
+    this.frame = FULL_FRAME;
+    this.history = [];
+    this.hintPulsing = false;
+    this.runPulsing = false;
+    this.touchUi = false;
   }
 
   create() {
@@ -211,22 +233,19 @@ export class LabScene extends Phaser.Scene {
     this.bulb = this.add.image(this.lina.x - 56, this.lina.y - 226, "bulb").setDepth(15).setVisible(false);
 
     this.slotTypes = PART_ORDER.filter((t) => (level.inventory[t] ?? 0) > 0);
-    this.hud = new LabHud(this, fonts, level, this.text, this.copy, this.levelIndex, LEVELS.length, this.slotTypes, reduced, {
-      onSlotDown: (type, pointer) => this.onSlotDown(type, pointer),
-      onRun: () => this.toggleRun(),
-      onClear: () => this.clearAll(),
-      onHint: () => this.showHint(),
-      onRotate: () => this.rotateActive(1),
-      onRemove: () => this.removeActive(),
-    });
+    this.frame = currentFrame(this);
+    this.hud = this.makeHud(this.frame.kind);
     this.hud.setEnabled(false);
     this.refreshHud();
 
     this.setupInput();
 
-    this.applyScale();
-    this.scale.on(Phaser.Scale.Events.RESIZE, this.applyScale, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.applyScale, this));
+    watchFrame(this, level, (frame) => this.applyFrame(frame));
+    this.events.once(Phaser.Scenes.Events.CREATE, () => {
+      if (!this.registry.get("held")) return;
+      this.registry.set("heldPaused", true);
+      this.scene.pause();
+    });
 
     if (!this.registry.get("readySent")) {
       this.registry.set("readySent", true);
@@ -356,7 +375,8 @@ export class LabScene extends Phaser.Scene {
     this.stopDemo();
     const g = this.level.guide;
     if (!g || this.ctx.reducedMotion || this.mode !== "build" || this.carry || this.parts.length) return;
-    const from = this.hud.slotCenter(g.type);
+    const slot = this.hud.slotCenter(g.type);
+    const from = this.toWorld(slot.x, slot.y);
     const img = this.add.image(from.x, from.y, PARTS[g.type].tex).setDepth(21).setAlpha(0).setAngle(partAngle(g.type, g.rot));
     this.demo = img;
     this.demoTween = this.tweens.chain({
@@ -385,14 +405,100 @@ export class LabScene extends Phaser.Scene {
     const guided = Boolean(this.level.guide);
     if ((this.ranOnce && !guided) || this.mode !== "build") return;
     this.runNudgeTimer = this.time.delayedCall(guided ? 250 : 5000, () => {
-      if (this.mode === "build" && this.parts.length && !this.carry && (guided || !this.ranOnce)) this.hud.pulseRun(true);
+      if (this.mode === "build" && this.parts.length && !this.carry && (guided || !this.ranOnce)) this.setRunPulse(true);
     });
   }
 
-  private applyScale() {
-    this.hud.layout(this.scale.displayScale.x);
-    this.bubble.setBaseScale(Math.min(this.hud.uiScale, 1.5));
+  private makeHud(kind: FrameKind): LabHudView {
+    const handlers: HudHandlers = {
+      onSlotDown: (type, pointer) => this.onSlotDown(type, pointer),
+      onRun: () => !this.dragging() && this.toggleRun(),
+      onClear: () => !this.dragging() && this.clearAll(),
+      onHint: () => !this.dragging() && this.showHint(),
+      onRotate: () => this.rotateActive(1),
+      onRotateBack: () => this.rotateActive(-1),
+      onRemove: () => this.removeActive(),
+      onUndo: () => !this.dragging() && this.undo(),
+    };
+    const setup = {
+      scene: this,
+      fonts: this.ctx.fonts,
+      level: this.level,
+      text: this.text,
+      copy: this.copy,
+      index: this.levelIndex,
+      total: LEVELS.length,
+      slotTypes: this.slotTypes,
+      reduced: this.ctx.reducedMotion,
+      handlers,
+    };
+    return kind === "band" ? new RailHud(setup) : new DeskHud(setup);
+  }
+
+  private applyFrame(frame: Frame) {
+    this.frame = frame;
+    const cam = this.cameras.main;
+    cam.setSize(frame.width, frame.height);
+    if (this.mode !== "running" && this.mode !== "done") cam.setScroll(frame.scrollX, frame.scrollY);
+    const rebuilt = this.hud.kind !== frame.kind;
+    if (rebuilt) {
+      this.hud.destroy();
+      this.hud = this.makeHud(frame.kind);
+    }
+    this.hud.layout(frame, this.scale.displayScale.x);
+    if (rebuilt) this.syncHud();
+    this.bubble.setBaseScale(this.hud.textScale);
+    this.bubble.setBounds(frame.stage.x + frame.scrollX, frame.stage.x + frame.stage.w + frame.scrollX, frame.stage.y + frame.scrollY);
     if (this.selected) this.placeToolbar(this.selected);
+  }
+
+  private syncHud() {
+    const hud = this.hud;
+    hud.setEnabled(this.mode !== "attract" && !this.finishing);
+    this.refreshHud();
+    if (this.mode === "running") hud.setRunning(true);
+    if (this.finishing) hud.setDone();
+    if (this.mode === "build" && this.level.guide && !this.pickedOnce) hud.highlightSlot(this.level.guide.type);
+    hud.pulseHint(this.hintPulsing);
+    hud.pulseRun(this.runPulsing);
+  }
+
+  private setHintPulse(on: boolean) {
+    this.hintPulsing = on;
+    this.hud.pulseHint(on);
+  }
+
+  private setRunPulse(on: boolean) {
+    this.runPulsing = on;
+    this.hud.pulseRun(on);
+  }
+
+  private toScreen(x: number, y: number): Vec {
+    const cam = this.cameras.main;
+    return { x: x - cam.scrollX, y: y - cam.scrollY };
+  }
+
+  private toWorld(x: number, y: number): Vec {
+    const cam = this.cameras.main;
+    return { x: x + cam.scrollX, y: y + cam.scrollY };
+  }
+
+  private px(css: number) {
+    return css * this.scale.displayScale.x;
+  }
+
+  private tagAt(text: string, x: number, y: number) {
+    const p = this.toScreen(x, y);
+    this.hud.showTag(text, p.x, p.y);
+  }
+
+  private dragging() {
+    return this.carry?.via === "pointer";
+  }
+
+  private busyFor(pointer: Phaser.Input.Pointer) {
+    if (this.carry?.via === "pointer" && this.carry.pointerId !== pointer.id) return true;
+    return Boolean(this.press && this.press.pointerId !== pointer.id);
   }
 
   private sfx(name: LabSfx, volume = 1, throttleMs = 0) {
@@ -530,6 +636,7 @@ export class LabScene extends Phaser.Scene {
     for (const t of this.slotTypes) counts[t] = this.remaining(t);
     this.hud.setCounts(counts);
     this.hud.setUsed(this.parts.length, this.level.par);
+    this.hud.setUndo(this.history.length > 0);
   }
 
   private describe(part: Part) {
@@ -544,10 +651,10 @@ export class LabScene extends Phaser.Scene {
     return this.conflictFor(part, x, y, rot)?.issue ?? null;
   }
 
-  private findSpot(part: Part, cx: number, cy: number) {
+  private findSpot(part: Part, cx: number, cy: number, reach = 40) {
     const sx = snap(cx);
     const sy = snap(cy);
-    for (let r = 0; r <= 40; r += 1) {
+    for (let r = 0; r <= reach; r += 1) {
       for (let dx = -r; dx <= r; dx += 1) {
         for (let dy = -r; dy <= r; dy += 1) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
@@ -578,7 +685,7 @@ export class LabScene extends Phaser.Scene {
     this.refreshHud();
     this.refreshGuide();
     if (!this.parts.length) {
-      this.hud.pulseRun(false);
+      this.setRunPulse(false);
       if (this.level.guide) this.demoTimer = this.time.delayedCall(1200, () => this.startDemo());
     }
   }
@@ -602,12 +709,95 @@ export class LabScene extends Phaser.Scene {
 
   private placeToolbar(part: Part) {
     const poly = partPoly(part.view.type, part.view.x, part.view.y, part.view.rot);
-    const top = Math.min(...poly.map((p) => p.y));
-    const bottom = Math.max(...poly.map((p) => p.y));
-    const s = Math.min(this.hud.uiScale, 1.5);
-    const above = top - 62 * s;
-    const y = above > 190 ? above : bottom + 62 * s;
-    this.hud.showToolbar(part.view.x, y);
+    const top = this.toScreen(part.view.x, Math.min(...poly.map((p) => p.y)));
+    const bottom = this.toScreen(part.view.x, Math.max(...poly.map((p) => p.y)));
+    this.hud.showToolbar({ x: top.x, top: top.y, bottom: bottom.y }, this.touchUi);
+  }
+
+  private committed(): PlacedPart[] {
+    const c = this.carry;
+    const out: PlacedPart[] = [];
+    for (const p of this.parts) {
+      const v = p.view;
+      if (c?.part === p) {
+        if (c.isNew || !c.origin) continue;
+        out.push({ type: v.type, x: c.origin.x, y: c.origin.y, rot: c.origin.rot });
+      } else {
+        out.push({ type: v.type, x: v.x, y: v.y, rot: v.rot });
+      }
+    }
+    return out;
+  }
+
+  private remember(layout: PlacedPart[] = this.committed()) {
+    this.history.push(layout);
+    if (this.history.length > UNDO_LIMIT) this.history.shift();
+    this.hud.setUndo(true);
+  }
+
+  private undo() {
+    if (this.mode !== "build") return;
+    this.cancelCarry(true);
+    this.press = null;
+    const layout = this.history.pop();
+    if (!layout) {
+      this.sfx("invalid", 0.7);
+      this.announce(this.copy.scene.nothingToUndo);
+      this.hud.setUndo(false);
+      return;
+    }
+    this.deselect();
+    this.hud.hideTag();
+    this.hud.hideGoal();
+    this.bubble.hide();
+    this.stopDemo();
+    for (const p of this.parts) p.view.destroy();
+    this.parts = [];
+    for (const placed of layout) {
+      const part = this.createPart(placed.type, placed.x, placed.y);
+      part.view.setPose(placed.x, placed.y, placed.rot);
+    }
+    this.refreshHud();
+    this.refreshGuide();
+    if (!this.parts.length) this.setRunPulse(false);
+    this.sfx("rotate", 0.8);
+    const placed = this.parts.length ? this.copy.scene.placedParts(this.parts.map((p) => this.describe(p))) : this.copy.scene.noPartsYet;
+    this.announce(this.copy.scene.undone(placed));
+  }
+
+  private steadyRelease(c: Carry) {
+    const trail = c.trail;
+    const last = trail[trail.length - 1];
+    if (!last) return;
+    let i = trail.length - 1;
+    while (i > 0 && this.time.now - trail[i].t < TOUCH.steadyMs) i -= 1;
+    const anchor = trail[i];
+    if (anchor === last) return;
+    if (Phaser.Math.Distance.Between(anchor.wx, anchor.wy, last.wx, last.wy) > this.px(TOUCH.jitter)) return;
+    const v = c.part.view;
+    if (v.x === anchor.x && v.y === anchor.y) return;
+    v.setPose(anchor.x, anchor.y, v.rot);
+    this.updateCarryLook();
+  }
+
+  private touchLift(part: Part) {
+    const v = part.view;
+    return -(halfHeight(partPoly(v.type, v.x, v.y, v.rot)) + this.px(TOUCH.lift));
+  }
+
+  private pickPart(x: number, y: number) {
+    let best: Part | null = null;
+    let bestD = this.px(TOUCH.slop);
+    for (let i = this.parts.length - 1; i >= 0; i -= 1) {
+      const p = this.parts[i];
+      const v = p.view;
+      const d = distanceToPoly({ x, y }, partPoly(v.type, v.x, v.y, v.rot));
+      if (d < bestD || (d === 0 && bestD > 0)) {
+        best = p;
+        bestD = d;
+      }
+    }
+    return best;
   }
 
   private beginCarry(part: Part, via: Carry["via"], opts: Partial<Carry> = {}) {
@@ -624,11 +814,17 @@ export class LabScene extends Phaser.Scene {
       moved: false,
       startX: v.x,
       startY: v.y,
+      pointerId: -1,
+      touch: false,
+      liftY: opts.offsetY ?? 0,
+      at: { x: 0, y: 0, wx: v.x, wy: v.y },
+      trail: [],
+      before: this.committed(),
       ...opts,
     };
     v.setDepthLift(true);
     this.lastIssue = undefined;
-    this.hud.pulseRun(false);
+    this.setRunPulse(false);
     this.updateCarryLook();
     this.refreshGuide();
     this.announcedValid = !this.conflictFor(part);
@@ -639,9 +835,11 @@ export class LabScene extends Phaser.Scene {
     const c = this.carry;
     if (!c) return;
     const v = c.part.view;
-    if (c.via === "pointer" && c.moved && this.hud.isOverTray(v.x, v.y)) {
+    const overBox = c.via === "pointer" && c.moved && this.hud.isOverTray(this.toScreen(v.x, v.y), c.at);
+    this.hud.setBoxHover(overBox);
+    if (overBox) {
       v.setLook("invalid");
-      this.hud.showTag(this.copy.scene.dropTag, v.x, v.y - 60);
+      this.tagAt(this.copy.scene.dropTag, v.x, v.y - 60);
       this.lastIssue = "tray";
       return;
     }
@@ -650,7 +848,7 @@ export class LabScene extends Phaser.Scene {
     if (issue) {
       const poly = partPoly(v.type, v.x, v.y, v.rot);
       const top = Math.min(...poly.map((p) => p.y));
-      this.hud.showTag(this.copy.scene.issue[issue], v.x, top - 16);
+      this.tagAt(this.copy.scene.issue[issue], v.x, top - 16);
     } else {
       this.hud.hideTag();
     }
@@ -679,7 +877,10 @@ export class LabScene extends Phaser.Scene {
       if (!quiet) this.announce(this.copy.scene.cantPlace(this.nounOf(c.part), conflict));
       return null;
     }
+    const o = c.origin;
+    if (c.isNew || !o || o.x !== v.x || o.y !== v.y || o.rot !== v.rot) this.remember(c.before);
     this.carry = null;
+    this.hud.setBoxHover(false);
     v.setDepthLift(false);
     v.setLook("idle");
     v.pulse();
@@ -707,6 +908,7 @@ export class LabScene extends Phaser.Scene {
     const name = this.nounOf(c.part);
     this.carry = null;
     this.hud.hideTag();
+    this.hud.setBoxHover(false);
     if (c.isNew || !c.origin) {
       this.destroyPart(c.part);
       if (!silent) {
@@ -739,8 +941,10 @@ export class LabScene extends Phaser.Scene {
   }
 
   private onSlotDown(type: PartType, pointer: Phaser.Input.Pointer) {
-    if (this.mode !== "build") return;
+    if (this.mode !== "build" || this.busyFor(pointer)) return;
+    this.touchUi = pointer.wasTouch;
     this.bubble.hide();
+    this.hud.hideGoal();
     this.stopDemo();
     this.firstPick(type);
     const settled = this.settleCarry();
@@ -751,10 +955,24 @@ export class LabScene extends Phaser.Scene {
       this.announce(this.copy.scene.outOf(this.copy.parts[type].plural));
       return;
     }
-    const lift = -80 * this.hud.uiScale;
-    const part = this.createPart(type, pointer.worldX, pointer.worldY + lift);
+    const touch = pointer.wasTouch || this.hud.kind === "band";
+    const part = this.createPart(type, pointer.worldX, pointer.worldY);
+    const lift = touch ? this.touchLift(part) : -MOUSE.trayLift * this.hud.uiScale;
+    part.view.setPose(snap(pointer.worldX), snap(pointer.worldY + lift), part.view.rot);
     this.sfx("pick", 0.8);
-    this.beginCarry(part, "pointer", { isNew: true, origin: null, offsetY: lift, fromTray: true, moved: false, startX: pointer.worldX, startY: pointer.worldY });
+    this.beginCarry(part, "pointer", {
+      isNew: true,
+      origin: null,
+      offsetY: lift,
+      liftY: lift,
+      fromTray: true,
+      moved: false,
+      startX: pointer.worldX,
+      startY: pointer.worldY,
+      pointerId: pointer.id,
+      touch,
+      at: { x: pointer.x, y: pointer.y, wx: pointer.worldX, wy: pointer.worldY },
+    });
   }
 
   private firstPick(type: PartType) {
@@ -796,40 +1014,71 @@ export class LabScene extends Phaser.Scene {
   }
 
   private onPartDown(part: Part, pointer: Phaser.Input.Pointer) {
-    if (this.mode !== "build") return;
+    if (pointer.wasTouch) return;
+    this.onPartPress(part, pointer);
+  }
+
+  private onPartPress(part: Part, pointer: Phaser.Input.Pointer) {
+    if (this.mode !== "build" || this.busyFor(pointer)) return;
     if (this.carry && this.carry.part !== part) {
       const settled = this.settleCarry();
       if (settled) this.announce(settled);
     }
     if (this.carry) return;
     this.bubble.hide();
-    this.press = { part, x: pointer.worldX, y: pointer.worldY, offsetX: part.view.x - pointer.worldX, offsetY: part.view.y - pointer.worldY };
+    this.hud.hideGoal();
+    this.press = {
+      part,
+      x: pointer.worldX,
+      y: pointer.worldY,
+      offsetX: part.view.x - pointer.worldX,
+      offsetY: part.view.y - pointer.worldY,
+      pointerId: pointer.id,
+      touch: pointer.wasTouch,
+    };
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer) {
     if (this.mode !== "build") return;
     const c = this.carry;
+    const at = { x: pointer.x, y: pointer.y, wx: pointer.worldX, wy: pointer.worldY };
     if (c && c.via === "pointer") {
-      if (!c.moved && Phaser.Math.Distance.Between(c.startX, c.startY, pointer.worldX, pointer.worldY) > 24) c.moved = true;
+      if (pointer.id !== c.pointerId) return;
+      c.at = at;
+      const limit = c.touch ? this.px(TOUCH.drag) : MOUSE.trayDrag;
+      if (!c.moved && Phaser.Math.Distance.Between(c.startX, c.startY, pointer.worldX, pointer.worldY) > limit) c.moved = true;
       this.moveCarry(pointer.worldX + c.offsetX, pointer.worldY + c.offsetY);
+      if (c.touch) {
+        c.trail.push({ t: this.time.now, wx: pointer.worldX, wy: pointer.worldY, x: c.part.view.x, y: c.part.view.y });
+        if (c.trail.length > TOUCH.trail) c.trail.shift();
+      }
       return;
     }
     const p = this.press;
-    if (p && Phaser.Math.Distance.Between(p.x, p.y, pointer.worldX, pointer.worldY) > 14) {
+    if (!p || pointer.id !== p.pointerId) return;
+    const limit = p.touch ? this.px(TOUCH.drag) : MOUSE.drag;
+    if (Phaser.Math.Distance.Between(p.x, p.y, pointer.worldX, pointer.worldY) > limit) {
       this.press = null;
       this.sfx("pick", 0.6);
-      this.beginCarry(p.part, "pointer", { offsetX: p.offsetX, offsetY: p.offsetY, moved: true });
-      this.moveCarry(pointer.worldX + p.offsetX, pointer.worldY + p.offsetY);
+      const lift = p.touch ? this.touchLift(p.part) : p.offsetY;
+      const offsetY = p.touch && !this.ctx.reducedMotion ? p.offsetY : lift;
+      this.beginCarry(p.part, "pointer", { offsetX: p.offsetX, offsetY, liftY: lift, moved: true, pointerId: p.pointerId, touch: p.touch, at });
+      this.moveCarry(pointer.worldX + p.offsetX, pointer.worldY + offsetY);
     }
   }
 
-  private onPointerUp() {
+  private onPointerUp(pointer: Phaser.Input.Pointer) {
+    const c = this.carry;
+    const pressed = this.press;
+    if ((c?.via === "pointer" && c.pointerId !== pointer.id) || (pressed && pressed.pointerId !== pointer.id)) return;
     if (this.mode !== "build") {
       this.press = null;
       return;
     }
-    const c = this.carry;
     if (c && c.via === "pointer") {
+      c.at = { x: pointer.x, y: pointer.y, wx: pointer.worldX, wy: pointer.worldY };
+      this.hud.setBoxHover(false);
+      if (c.touch && c.moved) this.steadyRelease(c);
       const v = c.part.view;
       if (c.fromTray && !c.moved) {
         const b = this.level.build;
@@ -843,8 +1092,9 @@ export class LabScene extends Phaser.Scene {
         }
         return;
       }
-      if (this.hud.isOverTray(v.x, v.y)) {
+      if (this.hud.isOverTray(this.toScreen(v.x, v.y), c.at)) {
         const name = this.nounOf(c.part);
+        if (!c.isNew && c.origin) this.remember(c.before);
         this.carry = null;
         this.hud.hideTag();
         this.destroyPart(c.part);
@@ -853,7 +1103,14 @@ export class LabScene extends Phaser.Scene {
         return;
       }
       this.snapToGuide(c.part);
-      const issue = this.issueFor(c.part);
+      let issue = this.issueFor(c.part);
+      if (issue && c.touch) {
+        const spot = this.findSpot(c.part, v.x, v.y, TOUCH.settle);
+        if (spot) {
+          v.setPose(spot.x, spot.y, v.rot);
+          issue = null;
+        }
+      }
       if (!issue) this.dropCarry();
       else {
         const conflict = this.conflictWords(c.part);
@@ -894,11 +1151,12 @@ export class LabScene extends Phaser.Scene {
         const conflict = this.conflictWords(part);
         v.setPose(v.x, v.y, was);
         this.sfx("invalid", 0.7);
-        this.hud.showTag(this.copy.scene.issue[issue], v.x, v.y - 70);
+        this.tagAt(this.copy.scene.issue[issue], v.x, v.y - 70);
         this.time.delayedCall(1100, () => !this.carry && this.hud.hideTag());
         this.announce(this.copy.scene.cantRotate(this.nounOf(part), conflict ?? ""));
         return;
       }
+      this.remember();
       v.setPose(v.x, v.y, next);
       this.placeToolbar(part);
     }
@@ -918,9 +1176,11 @@ export class LabScene extends Phaser.Scene {
     }
     const name = this.nounOf(part);
     const type = part.view.type;
+    if (!this.carry || (!this.carry.isNew && this.carry.origin)) this.remember();
     if (this.carry) {
       this.carry = null;
       this.hud.hideTag();
+      this.hud.setBoxHover(false);
     }
     this.destroyPart(part);
     this.sfx("remove", 0.8);
@@ -1015,6 +1275,7 @@ export class LabScene extends Phaser.Scene {
     if (this.mode !== "build") return;
     this.cancelCarry(true);
     if (!this.parts.length) return;
+    this.remember();
     for (const p of [...this.parts]) this.destroyPart(p);
     this.sfx("clear", 0.9);
     this.announce(this.copy.scene.cleared);
@@ -1022,7 +1283,7 @@ export class LabScene extends Phaser.Scene {
 
   private showHint() {
     if (this.mode !== "build") return;
-    this.hud.pulseHint(false);
+    this.setHintPulse(false);
     this.showBulb();
     this.say(this.text.hint, 5200);
     this.announce(this.copy.scene.hint(this.text.hint));
@@ -1039,17 +1300,28 @@ export class LabScene extends Phaser.Scene {
     ]);
     kb.on("keydown", (event: KeyboardEvent) => this.onKey(event));
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => this.onPointerMove(p));
-    this.input.on("pointerup", () => this.onPointerUp());
-    this.input.on("pointerupoutside", () => this.onPointerUp());
-    this.input.on("pointerdown", (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+    this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.onPointerUp(p));
+    this.input.on("pointerupoutside", (p: Phaser.Input.Pointer) => this.onPointerUp(p));
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.mode === "done" && this.resetTimer && !this.finishing) {
         this.resetAfterFail();
         return;
       }
-      if (this.mode === "build" && over.length === 0) {
+      if (this.mode !== "build" || this.busyFor(pointer)) return;
+      this.touchUi = pointer.wasTouch;
+      const onParts = over.every((o) => this.parts.some((p) => p.view.hit === o));
+      if (pointer.wasTouch && onParts && !this.hud.covers(pointer.x, pointer.y)) {
+        const part = this.pickPart(pointer.worldX, pointer.worldY);
+        if (part) {
+          this.onPartPress(part, pointer);
+          return;
+        }
+      }
+      if (over.length === 0) {
         const settled = this.settleCarry();
         if (settled) this.announce(settled);
         this.deselect();
+        this.hud.hideGoal();
       }
     });
   }
@@ -1167,6 +1439,9 @@ export class LabScene extends Phaser.Scene {
       case "h":
         this.showHint();
         break;
+      case "z":
+        if (!event.repeat) this.undo();
+        break;
       default:
         break;
     }
@@ -1230,8 +1505,9 @@ export class LabScene extends Phaser.Scene {
     this.press = null;
     this.deselect();
     this.hud.hideTag();
-    this.hud.pulseHint(false);
-    this.hud.pulseRun(false);
+    this.hud.hideGoal();
+    this.setHintPulse(false);
+    this.setRunPulse(false);
     this.runNudgeTimer?.remove();
     this.stopDemo();
     this.bubble.hide();
@@ -1413,7 +1689,7 @@ export class LabScene extends Phaser.Scene {
     if (showHint) this.showBulb();
     const advice = offGuide ? s.offGuideAdvice : showHint ? s.hint(this.text.hint) : s.tryAgain;
     this.announce(s.failed(report, advice, this.fails === 1));
-    if (this.fails >= 2) this.hud.pulseHint(!showHint);
+    if (this.fails >= 2) this.setHintPulse(!showHint);
     const bx = Phaser.Math.Clamp(this.ballImg.x, 80, W - 80);
     const by = Phaser.Math.Clamp(this.ballImg.y, 120, FLOOR_Y);
     this.time.delayedCall(520, () => {
@@ -1477,7 +1753,8 @@ export class LabScene extends Phaser.Scene {
       this.hud.celebrate(stars, (i, lit, x, y) => {
         if (!lit) return;
         this.ctx.audio.play(LAB_SFX.starPop, { volume: 0.9, pitch: 1 + i * 0.12 });
-        if (!this.ctx.reducedMotion) this.burst(x, y, 5, "spark");
+        const at = this.toWorld(x, y);
+        if (!this.ctx.reducedMotion) this.burst(at.x, at.y, 5, "spark");
       }),
     );
     const score = breakdown.reduce((a, b) => a + b.value, 0);
@@ -1501,8 +1778,47 @@ export class LabScene extends Phaser.Scene {
     this.time.delayedCall(Math.max(hold, 1500) + 600, () => this.ctx.onEvent({ type: "finished", result }));
   }
 
+  private liftCarry(delta: number) {
+    const c = this.carry;
+    if (!c || c.via !== "pointer" || c.offsetY === c.liftY) return;
+    const gap = c.liftY - c.offsetY;
+    c.offsetY = Math.abs(gap) < 2 ? c.liftY : c.offsetY + gap * Math.min(1, delta / TOUCH.liftMs);
+    this.moveCarry(c.at.wx + c.offsetX, c.at.wy + c.offsetY);
+  }
+
+  private followBall(delta: number) {
+    const f = this.frame;
+    const cam = this.cameras.main;
+    let tx = f.scrollX;
+    let ty = f.scrollY;
+    if ((this.mode === "running" || this.mode === "done") && !this.finishing && !this.ctx.reducedMotion && this.ballImg.visible) {
+      const mx = f.stage.w * 0.14;
+      const my = f.stage.h * 0.14;
+      const left = f.stage.x + tx;
+      const top = f.stage.y + ty;
+      const bx = this.ballImg.x;
+      const by = this.ballImg.y;
+      if (bx < left + mx) tx -= left + mx - bx;
+      if (bx > left + f.stage.w - mx) tx += bx - (left + f.stage.w - mx);
+      if (by < top + my) ty -= top + my - by;
+      if (by > top + f.stage.h - my) ty += by - (top + f.stage.h - my);
+      tx = Phaser.Math.Clamp(tx, Math.min(f.scrollX, -f.stage.x), Math.max(f.scrollX, W - f.stage.x - f.stage.w));
+      ty = Phaser.Math.Clamp(ty, Math.min(f.scrollY, -f.stage.y), Math.max(f.scrollY, H - f.stage.y - f.stage.h));
+    } else if (this.finishing) {
+      return;
+    }
+    if (cam.scrollX === tx && cam.scrollY === ty) return;
+    const k = Math.min(1, delta / FOLLOW_MS);
+    const nx = Math.abs(tx - cam.scrollX) < 0.5 ? tx : cam.scrollX + (tx - cam.scrollX) * k;
+    const ny = Math.abs(ty - cam.scrollY) < 0.5 ? ty : cam.scrollY + (ty - cam.scrollY) * k;
+    cam.setScroll(nx, ny);
+    if (this.selected) this.placeToolbar(this.selected);
+  }
+
   update(_time: number, delta: number) {
     for (const p of this.parts) p.view.update(delta);
+    this.liftCarry(delta);
+    this.followBall(delta);
     if (this.mode !== "running") return;
     if (this.time.now < this.launchAt) {
       this.acc = 0;

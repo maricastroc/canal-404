@@ -1,5 +1,5 @@
 import type * as Phaser from "phaser";
-import { ArrowBigDown, Lightbulb, Play, RotateCw, Square, Trash, X } from "lucide";
+import { ArrowBigDown, Info, Lightbulb, Play, RotateCcw, RotateCw, Square, Trash, Undo2, X } from "lucide";
 import type { IconSpec } from "../kit/icons";
 
 const INK = "#1d1830";
@@ -12,6 +12,9 @@ const ICONS = {
   trash: { icon: Trash, size: 38, strokeWidth: 2.5, fill: "#9aa6b8" },
   hint: { icon: Lightbulb, size: 40, strokeWidth: 2.4, fill: "#ffc83d" },
   rotate: { icon: RotateCw, size: 52, strokeWidth: 3.2 },
+  "rotate-back": { icon: RotateCcw, size: 52, strokeWidth: 3.2 },
+  undo: { icon: Undo2, size: 40, strokeWidth: 2.8 },
+  info: { icon: Info, size: 32, strokeWidth: 2.6, color: "#9df0dc" },
   remove: { icon: X, size: 56, strokeWidth: 3.4 },
   "remove-inner": { icon: X, size: 56, strokeWidth: 1.3, color: CREAM },
   "arrow-down": { icon: ArrowBigDown, size: 84, strokeWidth: 2, fill: "#ffc83d" },
