@@ -14,12 +14,41 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkLink, inkStyle, PaperPanel, Tag } from "@/components/ui/Primitives";
 import { IntentLink } from "@/components/ui/IntentLink";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
-import { CATEGORY_LABELS, GAMES, getGame } from "@/games/registry";
+import { CATEGORY_LABELS, GAMES, getGame, type ControlHint } from "@/games/registry";
 import { localized } from "@/i18n/copy";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/locales";
 import { isGameSlug } from "@/lib/competition/boards";
 import { CHARACTERS } from "@/lib/characters";
 import { ogImage, pageMetadata } from "@/lib/site";
+
+const castBasis = { 2: "max-sm:basis-[calc((100%-0.75rem)/2)]", 3: "max-sm:basis-[calc((100%-1.5rem)/3)]" } as const;
+
+function ControlCards({ items }: { items: ControlHint[] }) {
+  return (
+    <dl className="grid gap-2 sm:grid-cols-2">
+      {items.map((c) => (
+        <div key={c.input} className="flex flex-col rounded-lg border-2 border-ink bg-cream-2 px-3 py-2">
+          <dt className="font-display text-sm uppercase tracking-wide text-ink">{c.input}</dt>
+          <dd className="leading-snug text-ink-soft">{c.action}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function MoreControls({ label, items }: { label: string; items: ControlHint[] }) {
+  return (
+    <details className="group mt-3">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 font-display text-sm uppercase tracking-wide text-ink underline decoration-2 underline-offset-4 [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span>
+        {label}
+      </summary>
+      <div className="mt-2">
+        <ControlCards items={items} />
+      </div>
+    </details>
+  );
+}
 
 const COPY = localized({
   "pt-BR": {
@@ -30,6 +59,8 @@ const COPY = localized({
     diary: "Diário de produção",
     howTo: "Como jogar",
     controls: "Controles",
+    keysToggle: "Ver controles de teclado e mouse",
+    touchToggle: "Ver controles de toque",
     offAir: "Jogo fora do ar",
     offAirBubble: "Hmm... parece que esse jogo ainda está fora do ar.",
     offAirText: "Ele ainda está sendo desenhado. Enquanto isso, os outros jogos estão no ar e a sala de transmissão tem muita coisa escondida.",
@@ -45,6 +76,8 @@ const COPY = localized({
     diary: "Production diary",
     howTo: "How to play",
     controls: "Controls",
+    keysToggle: "See keyboard and mouse controls",
+    touchToggle: "See touch controls",
     offAir: "Game off the air",
     offAirBubble: "Hmm... looks like this game is still off the air.",
     offAirText: "It's still being drawn. Meanwhile, the other games are on the air and the broadcast room has plenty of hidden stuff.",
@@ -88,6 +121,13 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
   const Logo = GAME_LOGOS[game.slug];
   const category = CATEGORY_LABELS[locale][game.category];
   const cast = game.cast.map((id) => CHARACTERS[locale].find((c) => c.id === id)).filter((c) => c !== undefined);
+  const castCount = cast.length + (game.guests?.length ?? 0);
+  const castItem = castBasis[castCount === 2 || castCount === 4 ? 2 : 3];
+  const controls = game.controls ?? [];
+  const shared = controls.filter((c) => !c.on);
+  const keyControls = controls.filter((c) => c.on === "keys");
+  const touchControls = controls.filter((c) => c.on === "touch");
+  const splitControls = keyControls.length > 0 && touchControls.length > 0;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -99,7 +139,7 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
       </Link>
 
       <PaperPanel className={`overflow-hidden !bg-none ${accentBg[game.accent]}`}>
-        <div className="grid items-center gap-6 p-5 sm:p-8 lg:grid-cols-[1.1fr_1fr]">
+        <div className="grid items-center gap-5 p-4 sm:gap-6 sm:p-8 lg:grid-cols-[1.1fr_1fr]">
           <div className="relative">
             <div className="-rotate-2 overflow-hidden rounded-2xl border-[3px] border-ink bg-ink shadow-[var(--shadow-ink-lg)]">
               <div className={`aspect-[4/3] ${available ? "" : "saturate-[0.7]"}`}>
@@ -113,10 +153,10 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
               </span>
             )}
           </div>
-          <div className="paper rounded-2xl border-[3px] border-ink p-5 shadow-[var(--shadow-ink)] sm:p-6">
+          <div className="paper rounded-2xl border-[3px] border-ink p-4 shadow-[var(--shadow-ink)] sm:p-6">
             {Logo ? (
               <h1>
-                <Logo className="mx-auto w-full max-w-sm" />
+                <Logo className="mx-auto w-full max-w-[17rem] sm:max-w-sm" />
               </h1>
             ) : (
               <h1 className="font-display text-[clamp(2rem,5vw,3.4rem)] uppercase leading-[0.95] tracking-wide text-ink">
@@ -136,8 +176,8 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
                 ))}
             </div>
             {available ? (
-              <div className="mt-6 flex flex-col gap-4">
-                <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "lg", "self-start")}>
+              <div className="mt-5 flex flex-col gap-4 sm:mt-6">
+                <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "lg", "self-stretch sm:self-start")}>
                   <PlayIcon className="size-7 text-ink" /> {copy.play}
                 </IntentLink>
                 <GameStats slug={game.slug} levels={game.levels} levelWord={game.levelWord} />
@@ -173,17 +213,25 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
               </li>
             ))}
           </ol>
-          {game.controls && (
-            <div className="paper mx-auto mt-10 max-w-3xl border-[3px] border-ink p-5 shadow-[var(--shadow-ink)] wobbly-alt">
+          {controls.length > 0 && (
+            <div className="paper mx-auto mt-10 max-w-3xl border-[3px] border-ink p-4 shadow-[var(--shadow-ink)] wobbly-alt sm:p-5">
               <h3 className="font-display text-2xl uppercase tracking-wide text-ink">{copy.controls}</h3>
-              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-                {game.controls.map((c) => (
-                  <div key={c.input} className="flex flex-col rounded-lg border-2 border-ink bg-cream-2 px-3 py-2">
-                    <dt className="font-display text-sm uppercase tracking-wide text-ink">{c.input}</dt>
-                    <dd className="text-ink-soft">{c.action}</dd>
+              {splitControls ? (
+                <>
+                  <div className="mt-3 pointer-coarse:hidden">
+                    <ControlCards items={[...keyControls, ...shared]} />
+                    <MoreControls label={copy.touchToggle} items={touchControls} />
                   </div>
-                ))}
-              </dl>
+                  <div className="mt-3 hidden pointer-coarse:block">
+                    <ControlCards items={[...touchControls, ...shared]} />
+                    <MoreControls label={copy.keysToggle} items={keyControls} />
+                  </div>
+                </>
+              ) : (
+                <div className="mt-3">
+                  <ControlCards items={controls} />
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -215,29 +263,29 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
         <h2 id="cast" className="text-center font-display text-3xl uppercase tracking-wide text-cream [text-shadow:3px_4px_0_var(--color-ink)]">
           {copy.cast}
         </h2>
-        <ul className="mt-5 flex flex-wrap justify-center gap-5">
+        <ul className="mx-auto mt-5 flex max-w-md flex-wrap justify-center gap-3 sm:max-w-none sm:gap-5">
           {cast.map((c) => (
-            <li key={c.id}>
+            <li key={c.id} className={`min-w-0 ${castItem}`}>
               <Link
                 href={`/characters#${c.id}`}
-                className={`press flex w-36 flex-col items-center rounded-2xl border-[3px] border-ink p-2 pb-3 shadow-[var(--shadow-ink)] ${c.cardClass}`}
+                className={`press flex h-full w-full flex-col items-center rounded-2xl border-[3px] border-ink p-2 pb-3 text-center shadow-[var(--shadow-ink)] sm:w-36 ${c.cardClass}`}
               >
                 {c.id === "404" ? (
-                  <Mascot404 expression="happy" className="w-24" />
+                  <Mascot404 expression="happy" className="w-full max-w-24" />
                 ) : (
-                  <KidBust who={c.id} face="happy" className="w-24" />
+                  <KidBust who={c.id} face="happy" className="w-full max-w-24" />
                 )}
                 <span className="mt-1 font-display text-lg uppercase leading-none text-ink">{c.name}</span>
-                <span className="text-xs font-semibold uppercase tracking-wide text-ink">{c.role}</span>
+                <span className="text-xs font-semibold uppercase leading-tight tracking-wide text-ink">{c.role}</span>
               </Link>
             </li>
           ))}
           {game.guests?.map((g) => (
-            <li key={g.id}>
-              <div className={`flex w-36 flex-col items-center rounded-2xl border-[3px] border-ink p-2 pb-3 shadow-[var(--shadow-ink)] ${guestCardClass(g.id)}`}>
-                <GuestBust id={g.id} className="w-24" />
+            <li key={g.id} className={`min-w-0 ${castItem}`}>
+              <div className={`flex h-full w-full flex-col items-center rounded-2xl border-[3px] border-ink p-2 pb-3 text-center shadow-[var(--shadow-ink)] sm:w-36 ${guestCardClass(g.id)}`}>
+                <GuestBust id={g.id} className="w-full max-w-24" />
                 <span className="mt-1 font-display text-lg uppercase leading-none text-ink">{g.name}</span>
-                <span className="text-xs font-semibold uppercase tracking-wide text-ink">{g.role}</span>
+                <span className="text-xs font-semibold uppercase leading-tight tracking-wide text-ink">{g.role}</span>
               </div>
             </li>
           ))}

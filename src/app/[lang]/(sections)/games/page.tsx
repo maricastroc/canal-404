@@ -10,11 +10,11 @@ import { PageTitle, PaperPanel } from "@/components/ui/Primitives";
 const META = localized({
   "pt-BR": {
     title: "Catálogo de jogos",
-    description: "Todos os jogos do CANAL 404: Rua Sem Saída, Laboratório de Péssimas Ideias, Guerra de Lanche, Operação: Recreio, Guerra do Pijama e Férias Fora do Ar.",
+    description: "Todos os jogos do CANAL 404: Rua Sem Saída, Laboratório de Péssimas Ideias, Guerra de Lanche, Operação: Recreio, Guerra do Pijama, Férias Fora do Ar e Ladeira Abaixo.",
   },
   en: {
     title: "Game catalog",
-    description: "Every CANAL 404 game: Dead End Street, Bad Ideas Lab, Food Fight, Operation: Recess, Pajama War and Off-Air Vacation.",
+    description: "Every CANAL 404 game: Dead End Street, Bad Ideas Lab, Food Fight, Operation: Recess, Pajama War, Off-Air Vacation and Downhill Derby.",
   },
 });
 
@@ -22,12 +22,12 @@ const COPY = localized({
   "pt-BR": {
     kicker: "Fliperama do canal",
     title: "Catálogo de jogos",
-    intro: "Seis jogos prontos para jogar. Escolha um e boa sorte!",
+    intro: "Sete jogos prontos para jogar. Escolha um e boa sorte!",
   },
   en: {
     kicker: "The channel's arcade",
     title: "Game catalog",
-    intro: "Six games ready to play. Pick one and good luck!",
+    intro: "Seven games ready to play. Pick one and good luck!",
   },
 });
 

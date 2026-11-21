@@ -36,7 +36,7 @@ export function GameCatalog() {
 
   return (
     <div>
-      <div role="group" aria-label={copy.filter} className="flex flex-wrap justify-center gap-2.5">
+      <div role="group" aria-label={copy.filter} className="mx-auto flex max-w-sm flex-wrap justify-center gap-2.5 sm:max-w-none">
         {filters.map((f) => {
           const active = f === filter;
           const count = f === "all" ? games.length : games.filter((g) => g.category === f).length;
@@ -50,12 +50,12 @@ export function GameCatalog() {
                 play("click");
                 setFilter(f);
               }}
-              className={`press min-h-11 rounded-lg border-[3px] border-ink px-4 font-display text-sm uppercase tracking-wider text-ink shadow-[var(--shadow-ink-sm)] ${
+              className={`press min-h-11 whitespace-nowrap rounded-lg border-[3px] border-ink px-4 font-display text-sm uppercase tracking-wider text-ink shadow-[var(--shadow-ink-sm)] max-sm:basis-[calc(50%-0.3125rem)] max-sm:px-2 ${
                 active ? `${FILTER_TONES[f]} -rotate-2` : "bg-cream-2 hover:bg-cream"
               }`}
             >
               {f === "all" ? copy.all : CATEGORY_LABELS[locale][f]}
-              <span className="ml-1.5 text-xs opacity-70">({count})</span>
+              <span className="ml-1.5 text-[13px] tabular-nums opacity-80">({count})</span>
             </button>
           );
         })}

@@ -15,7 +15,7 @@ export const CAM = {
   floor: 1090,
   maxZoom: 1.8,
   hold: 0.86,
-  aim: { zoom: 0.74, margin: { x: 0.07, top: 0.1 } },
+  aim: { zoom: 0.88, margin: { x: 0.07, top: 0.1 } },
   flight: { zoom: 0.72, margin: { x: 0.16, top: 0.14 }, lead: 22 },
   action: { zoom: 0.8, margin: { x: 0.2, top: 0.18 } },
 };

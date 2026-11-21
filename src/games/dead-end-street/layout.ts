@@ -23,6 +23,7 @@ export const TALL = {
   unit: 2.5,
   pixels: 3_200_000,
   top: 104,
+  compactTop: 94,
   dock: 148,
   band: { top: 150, bottom: 1058 },
   view: { min: 600, max: 1120 },
@@ -45,7 +46,7 @@ export const FULL_FRAME: Frame = {
 
 function tallFrame(cssW: number, cssH: number, insets: Insets): Frame {
   const unit = Math.min(TALL.unit, Math.sqrt(TALL.pixels / (cssW * cssH)));
-  const topCss = TALL.top + insets.top;
+  const topCss = (cssH < 700 ? TALL.compactTop : TALL.top) + insets.top;
   const dockCss = TALL.dock + insets.bottom;
   const stageH = Math.max(1, cssH - topCss - dockCss);
   const band = TALL.band.bottom - TALL.band.top;

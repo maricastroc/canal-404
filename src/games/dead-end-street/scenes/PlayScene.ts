@@ -391,7 +391,7 @@ export class PlayScene extends Phaser.Scene {
       this.camera.mode = "auto";
       this.camera.set(this.camera.overviewPose());
       this.dock?.setView("auto");
-      this.introTimer = this.time.delayedCall(2300, () => this.endIntro());
+      this.introTimer = this.time.delayedCall(2300, () => this.endIntro(true));
     }
     this.time.delayedCall(700, () => this.arlindo.shout(text.arlindo, 1900));
     this.sim.start();
@@ -839,6 +839,7 @@ export class PlayScene extends Phaser.Scene {
     this.camera.mode = mode;
     this.dock?.setView(mode);
     this.dock?.setNavHint(mode === "overview" ? this.copy.touch.nav.overview : mode === "inspect" ? this.copy.touch.nav.inspect : null);
+    this.dock?.setNavigating(this.camera.navigating);
     if (mode !== "overview") this.dock?.setMarks([]);
   }
 
@@ -885,10 +886,19 @@ export class PlayScene extends Phaser.Scene {
     cam.animateTo(this.autoChase().pose, 520);
   }
 
-  private endIntro() {
+  private endIntro(beat = false) {
     if (!this.intro) return;
-    this.intro = false;
     this.introTimer?.remove();
+    this.introTimer = undefined;
+    if (beat && !this.ctx.reducedMotion) {
+      this.camera.animateTo(this.camera.home(), 850, () => {
+        this.hop(this.deco, 26);
+        this.hop(this.lina, 22);
+        this.introTimer = this.time.delayedCall(700, () => this.endIntro());
+      });
+      return;
+    }
+    this.intro = false;
     this.setCameraMode("auto");
     this.camera.animateTo(this.aimFrame(), 900, () => this.nextCoach());
   }
@@ -1059,6 +1069,12 @@ export class PlayScene extends Phaser.Scene {
     const sling = this.sim.phase === "ready" && this.readyImage !== null && cam.mode === "auto" && !this.intro && !cam.inView(ANCHOR.x - 70, ANCHOR.y, 0);
     this.slingCam?.setVisible(sling);
     dock.setInset(sling ? this.slingRect : null);
+    if (cam.navigating) {
+      const at = cam.toScreen(ANCHOR.x, ANCHOR.y - 70);
+      dock.pin("sling-nav", at, "sling", this.sim.current?.tex, true, cam.inView(ANCHOR.x, ANCHOR.y - 70, 10));
+    } else {
+      dock.unpin("sling-nav");
+    }
     if (cam.mode === "overview") {
       const marks: Vec[] = [];
       for (const t of this.sim.targets) if (!t.hit) marks.push(cam.toScreen(t.body.position.x, t.body.position.y - (this.sprites.get(t.body.id)?.displayHeight ?? 80) / 2));
