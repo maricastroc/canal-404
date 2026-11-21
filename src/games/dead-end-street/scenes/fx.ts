@@ -104,7 +104,7 @@ export class Fx {
       tire: trail("puff", { scale: { start: 0.3, end: 0.8 }, alpha: { start: 0.55, end: 0 }, lifespan: 420, speed: { min: 5, max: 20 } }),
       duck: trail("spark", { scale: { start: 0.8, end: 0 }, lifespan: 420, speed: { min: 10, max: 50 } }),
     };
-    this.flashRect = scene.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0).setDepth(19);
+    this.flashRect = scene.add.rectangle(W / 2, H / 2 - H, W * 3, H * 5, 0xffffff, 0).setDepth(19);
   }
 
   startTrail(id: ProjectileId, target: Phaser.GameObjects.GameObject & { x: number; y: number }) {

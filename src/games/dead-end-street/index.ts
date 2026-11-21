@@ -1,17 +1,18 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
-import { H, W } from "./config";
 import { PHASES } from "./phases";
 import { BootScene } from "./scenes/BootScene";
+import { measureFrame } from "./scenes/frame";
 import { PlayScene } from "./scenes/PlayScene";
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
+  const frame = measureFrame(ctx.parent);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,
-    width: W,
-    height: H,
+    width: frame.width,
+    height: frame.height,
     backgroundColor: "#8fd4f7",
     transparent: false,
     scale: {
@@ -31,6 +32,7 @@ function mount(ctx: GameHostContext): GameInstance {
     callbacks: {
       preBoot: (g) => {
         g.registry.set("ctx", ctx);
+        g.registry.set("frame", frame);
         g.registry.set("phase", 0);
         g.registry.set("records", []);
       },

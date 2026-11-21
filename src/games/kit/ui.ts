@@ -36,6 +36,18 @@ export function cartoonText(scene: Phaser.Scene, x: number, y: number, text: str
   return t;
 }
 
+export function glyphOffset(text: Phaser.GameObjects.Text) {
+  if (!text.text) return 0;
+  const { ascent, descent } = text.getTextMetrics();
+  text.style.syncFont(text.canvas, text.context);
+  const m = text.context.measureText(text.text);
+  return (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent - ascent + descent) / 2;
+}
+
+export function centerGlyphs(text: Phaser.GameObjects.Text) {
+  return text.setY(glyphOffset(text));
+}
+
 export function fitText(text: Phaser.GameObjects.Text, maxWidth: number, baseSize: number, minSize: number) {
   let size = baseSize;
   text.setFontSize(size);
