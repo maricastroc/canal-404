@@ -50,7 +50,7 @@ type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: Gran
 
 type Note = { text: string; kind: NoteKind; fleeting?: boolean };
 
-type Danger = Note & { lapse: string; stripes: boolean };
+type Danger = Note & { lapse: string };
 
 type Ahead = { result: NonNullable<ReturnType<typeof step>>; striped: Set<number> };
 
@@ -814,7 +814,7 @@ export class NightScene extends Phaser.Scene {
     const lapse: Note | null = pin && this.notebook.showing(pin.text) && this.ahead?.result.state.status !== "caught" ? { text: pin.lapse, kind: "good", fleeting: true } : null;
     const expired = this.fleeting && this.notebook.showing(this.fleeting) ? this.introNote() : null;
     const shown = danger ?? (firstStripes ? { text: n.stripes, kind: "info" } : null) ?? picks[picks.length - 1] ?? lapse ?? expired;
-    if (danger ? danger.stripes : firstStripes) this.stripesTold = true;
+    if (!danger && firstStripes) this.stripesTold = true;
     this.pinned = danger;
     this.fleeting = shown?.fleeting ? shown.text : null;
     if (shown) this.notebook.note(shown.text, shown.kind);
@@ -841,18 +841,22 @@ export class NightScene extends Phaser.Scene {
 
   private danger(): Danger | null {
     const st = this.state;
-    const grid = this.sim.grid;
     const n = this.copy.notes;
-    const ahead = this.ahead;
-    const end = ahead?.result.state;
-    if (ahead && end && end.status === "caught") {
-      const striped = ahead.striped.has(st.y * grid.w + st.x);
-      const woken = ahead.result.events.some((e) => e.type === "heard" && e.agent === end.caughtBy && e.source === -2);
-      if (woken && (striped || end.reason === "dog")) return { text: n.stirCatch(this.who(end.caughtBy)), kind: "bad", lapse: n.calm, stripes: striped };
-      if (end.reason === "light" && striped) return { text: n.seen, kind: "bad", lapse: n.clear, stripes: true };
+    const end = this.ahead?.result;
+    if (end && end.state.status === "caught") {
+      if (!this.canEscape(st)) return { text: n.trapped, kind: "bad", lapse: n.clear };
+      const woken = end.events.some((e) => e.type === "heard" && e.agent === end.state.caughtBy && e.source === -2);
+      if (!woken && end.state.reason === "light") return { text: n.seen, kind: "bad", lapse: n.clear };
     }
     const stirred = this.sleeperNear(st, STIR_WAKE - 1);
-    return stirred >= 0 ? { text: n.stirred(this.who(stirred)), kind: "bad", lapse: n.calm, stripes: false } : null;
+    return stirred >= 0 ? { text: n.stirred(this.who(stirred)), kind: "bad", lapse: n.calm } : null;
+  }
+
+  private canEscape(st: State) {
+    return ([0, 1, 2, 3] as Dir[]).some((d) => {
+      const next = step(this.sim, st, d);
+      return !!next && next.state.status !== "caught";
+    });
   }
 
   private settleNotes(fallback?: string) {
@@ -860,7 +864,6 @@ export class NightScene extends Phaser.Scene {
     this.pinned = danger;
     this.fleeting = null;
     this.wasBreathing = this.moodFor(this.state) === "breath";
-    if (danger?.stripes) this.stripesTold = true;
     if (danger) this.notebook.note(danger.text, danger.kind);
     else if (fallback) this.notebook.note(fallback, "info");
   }
