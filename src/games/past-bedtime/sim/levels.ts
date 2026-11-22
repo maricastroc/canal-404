@@ -204,7 +204,7 @@ export const DINING: LevelDef = {
   loud: 3,
   agents: [
     { kind: "dog", id: "pipoca", x: 4, y: 1, hear: 4, sniff: 2 },
-    { kind: "cat", id: "pixel", x: 8, y: 2, sx: 9, sy: 2, period: 9, offset: 4, loud: 4, hear: 0 },
+    { kind: "cat", id: "pixel", x: 2, y: 3, sx: 1, sy: 3, period: 10, offset: 9, loud: 4, hear: 0 },
   ],
   props: [
     { kind: "table", x: 6, y: 2, w: 3, h: 3 },
@@ -213,7 +213,7 @@ export const DINING: LevelDef = {
     { kind: "sewing", x: 3, y: 5 },
     { kind: "dogbed", x: 4, y: 1 },
   ],
-  par: 20,
+  par: 14,
 };
 
 export const SOFA: LevelDef = {
