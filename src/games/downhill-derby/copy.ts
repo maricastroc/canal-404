@@ -10,6 +10,7 @@ export type RaceCopy = {
   noBest: string;
   hint: string;
   hintTouch: string;
+  hintSteps: readonly string[];
   tiers: readonly [string, string, string, string];
   kmh: string;
   passed: Record<CartId, string>;
@@ -123,6 +124,7 @@ export const RACE_COPY = localized<RaceCopy>({
     noBest: "Sem tempo ainda",
     hint: "↓ agacha · ESPAÇO pula (segure no ar para fazer pose) · ← → giram no ar e empinam no chão",
     hintTouch: "Segure AGACHAR · deslize ou toque em PULAR (segure no ar para fazer pose) · as setas giram no ar e empinam no chão",
+    hintSteps: ["Segure AGACHAR e deslize ou toque em PULAR", "No ar, segure PULAR para fazer pose", "As setas giram no ar e empinam no chão"],
     tiers: ["Rolando", "Embalado", "Voando baixo", "Sem freio"],
     kmh: "km/h",
     passed: { deco: "Você passou o Déco!", lina: "Você passou a Lina!", bruno: "Você passou o Bruno!", mila: "Você passou a Mila!" },
@@ -293,6 +295,7 @@ export const RACE_COPY = localized<RaceCopy>({
     noBest: "No time yet",
     hint: "↓ crouches · SPACE jumps (hold in the air to strike a pose) · ← → spin in the air and pop wheelies on the ground",
     hintTouch: "Hold CROUCH · slide or tap to JUMP (hold in the air to strike a pose) · the arrows spin in the air and pop wheelies on the ground",
+    hintSteps: ["Hold CROUCH, then slide or tap to JUMP", "In the air, hold JUMP to strike a pose", "The arrows spin in the air and pop wheelies on the ground"],
     tiers: ["Rolling", "Picking up", "Flying low", "No brakes"],
     kmh: "km/h",
     passed: { deco: "You passed Déco!", lina: "You passed Lina!", bruno: "You passed Bruno!", mila: "You passed Mila!" },

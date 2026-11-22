@@ -152,6 +152,7 @@ export class RaceScene extends Phaser.Scene {
   private fgTint: Phaser.GameObjects.Rectangle | null = null;
   private latched = new Set<number>();
   private camOff = 0;
+  private camCarry = 0;
   private overlay!: Phaser.GameObjects.Graphics;
   private trailG!: Phaser.GameObjects.Graphics;
   private trail: { x: number; y: number; a: number }[] = [];
@@ -776,6 +777,7 @@ export class RaceScene extends Phaser.Scene {
       awning: !!land && this.track.surfaces[land.surface].kind === "awning",
       rivals: this.phase === "race" ? this.world.rivals.map((t) => this.world.sample(t, "x")) : [],
       groundBelow: (x) => this.groundBelow(x),
+      signBottom: (x0, x1) => this.signBottom(x0, x1),
       interest: (x, reach) => this.nextInterest(x, reach),
     };
   }
@@ -786,6 +788,7 @@ export class RaceScene extends Phaser.Scene {
       const t = portraitSnap(this.portraitHost(), this.sim.x, this.sim.y);
       this.cam.x = t.x;
       this.camOff = t.x - this.sim.x;
+      this.camCarry = this.sim.y;
       this.cam.y = t.y;
       this.cam.zoom = t.zoom;
       this.cam.dip = 0;
@@ -1408,6 +1411,7 @@ export class RaceScene extends Phaser.Scene {
     });
     labels.sort((p, q) => p.x - q.x);
     const ls = this.frame.kind === "tall" ? Math.max(1, (12.5 * this.frame.unit) / (30 * this.cam.zoom)) : 1;
+    const labelTop = this.phoneHud ? this.toWorld(0, this.phoneHud.hudBottom + 4 * this.frame.unit).y : -Infinity;
     for (let i = 0; i < labels.length; i += 1) {
       const l = labels[i];
       let ly = l.y;
@@ -1416,10 +1420,12 @@ export class RaceScene extends Phaser.Scene {
         if (Math.abs(o.x - l.x) < 190 * ls && Math.abs(o.y - ly) < 46 * ls) ly = o.y - 48 * ls;
         labels[j] = o;
       }
+      ly = Math.max(ly, labelTop + l.r.label.height * ls);
       l.y = ly;
       const lx = this.labelX(l.x, l.r.label, ls);
       l.r.label.setPosition(lx ?? l.x, ly).setScale(ls);
-      l.r.label.setAlpha(this.phase === "countdown" || lx === null ? 0 : Math.abs(l.x - x) > 120 ? 1 : 0.85);
+      const covered = lx !== null && this.underCallout(lx, ly, l.r.label, ls);
+      l.r.label.setAlpha(this.phase === "countdown" || lx === null ? 0 : covered ? 0.2 : Math.abs(l.x - x) > 120 ? 1 : 0.85);
     }
     const ghost = this.bridge.form.ghost;
     const showGhost = !!ghost && this.bridge.ghost;
@@ -1457,6 +1463,7 @@ export class RaceScene extends Phaser.Scene {
     this.ambient.lead = this.phase !== "countdown" ? Math.max(...this.world.rivals.map((t) => this.world.sample(t, "x"))) : -Infinity;
     this.ambient.racers = [x, ...this.world.rivals.map((t) => this.world.sample(t, "x"))];
     this.ambient.bubbleMin = this.frame.kind === "tall" ? (11.5 * this.frame.unit) / this.cam.zoom : 0;
+    this.shieldBubbles();
     this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, this.vw / (2 * this.cam.zoom));
     this.updateSigns(x);
     this.drawTrail(dt, x, y, angle, speed);
@@ -1466,6 +1473,46 @@ export class RaceScene extends Phaser.Scene {
     this.updateCamera(dt, x, y, land);
     this.updateHud(dt, x, y);
     this.updateSound(dt);
+  }
+
+  private toWorld(sx: number, sy: number) {
+    const z = this.cam.zoom;
+    return { x: this.cam.x + (sx - this.vw / 2) / z, y: this.cam.y + this.cam.dip + (sy - this.vh / 2) / z };
+  }
+
+  private shieldBubbles() {
+    const hud = this.phoneHud;
+    if (!hud) {
+      this.ambient.bubbleTop = -Infinity;
+      this.ambient.avoid = [];
+      return;
+    }
+    this.ambient.bubbleTop = this.toWorld(0, hud.hudBottom + 4 * this.frame.unit).y;
+    this.ambient.avoid = hud.calloutBoxes.map((box) => {
+      const a = this.toWorld(box.x, box.y);
+      const b = this.toWorld(box.right, box.bottom);
+      return new Phaser.Geom.Rectangle(a.x, a.y, b.x - a.x, b.y - a.y);
+    });
+  }
+
+  private underCallout(x: number, y: number, label: Phaser.GameObjects.Text, scale: number) {
+    const boxes = this.phoneHud?.calloutBoxes;
+    if (!boxes?.length) return false;
+    const p = this.toScreen(x, y);
+    const z = this.cam.zoom;
+    const w = label.width * scale * z;
+    const h = label.height * scale * z;
+    return boxes.some((box) => p.x + w / 2 > box.x && p.x - w / 2 < box.right && p.y > box.y && p.y - h < box.bottom);
+  }
+
+  private signBottom(x0: number, x1: number) {
+    let low: number | null = null;
+    for (const s of this.signs) {
+      if (s.x < x0 || s.x > x1) continue;
+      const bottom = s.y + (s.label.height / 2 + 17) * s.label.scaleY;
+      if (low === null || bottom > low) low = bottom;
+    }
+    return low;
   }
 
   private labelX(x: number, label: Phaser.GameObjects.Text, scale: number): number | null {
@@ -1846,6 +1893,8 @@ export class RaceScene extends Phaser.Scene {
     if (dt > 0) {
       this.camOff += (t.x - x - this.camOff) * damp(5, dt);
       this.cam.x = x + this.camOff;
+      const drop = y - this.camCarry;
+      if (!air && Math.abs(drop) < 120) this.cam.y += drop;
       this.cam.y += (t.y - this.cam.y) * damp(bigAir ? 3.4 : air ? 2.6 : 3.6, dt);
       this.cam.zoom += (t.zoom - this.cam.zoom) * damp(t.zoom < this.cam.zoom ? (bigAir ? 3.2 : 2.2) : 0.9, dt);
       this.cam.shake = Math.max(0, this.cam.shake - dt);
@@ -1854,6 +1903,7 @@ export class RaceScene extends Phaser.Scene {
     }
     portraitClamp(host, this.cam, x, y);
     this.camOff = this.cam.x - x;
+    this.camCarry = y;
     this.applyCamera();
   }
 
