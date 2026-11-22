@@ -1,20 +1,56 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import type { Player } from "@/generated/prisma/client";
+import { NICKNAME_PROBLEMS } from "@/lib/competition/nickname";
 import type { PublicPlayer } from "@/lib/competition/types";
-import type { Db } from "./db";
+import { isUniqueViolation, type Db } from "./db";
+import { HttpError } from "./http";
 
 export const PLAYER_COOKIE = "c404_player";
 
 const COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
 const SEEN_EVERY_MS = 6 * 60 * 60 * 1000;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const TAG_COUNT = 10_000;
+const TAG_DRAWS = 20;
+const TAG_SAVE_ATTEMPTS = 3;
 
 export function newToken() {
   return randomBytes(32).toString("base64url");
 }
 
-export function newTag() {
-  return String(randomInt(0, 10_000)).padStart(4, "0");
+function formatTag(value: number) {
+  return String(value).padStart(4, "0");
+}
+
+function newTag() {
+  return formatTag(randomInt(0, TAG_COUNT));
+}
+
+type TagOptions = { player?: string; keep?: string };
+
+async function freeTag(db: Db, nicknameKey: string, { player, keep }: TagOptions) {
+  const rows = await db.player.findMany({ where: { nicknameKey, ...(player ? { id: { not: player } } : {}) }, select: { tag: true } });
+  const taken = new Set(rows.map((row) => row.tag));
+  if (keep && !taken.has(keep)) return keep;
+  if (taken.size >= TAG_COUNT) return null;
+  for (let draw = 0; draw < TAG_DRAWS; draw += 1) {
+    const tag = newTag();
+    if (!taken.has(tag)) return tag;
+  }
+  const free = Array.from({ length: TAG_COUNT }, (_, value) => formatTag(value)).filter((tag) => !taken.has(tag));
+  return free[randomInt(0, free.length)];
+}
+
+export async function saveWithFreeTag<T>(db: Db, nicknameKey: string, save: (tag: string) => Promise<T>, options: TagOptions = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    const tag = await freeTag(db, nicknameKey, options);
+    if (!tag) throw new HttpError("bad_nickname", NICKNAME_PROBLEMS.full, { problem: "full" });
+    try {
+      return await save(tag);
+    } catch (error) {
+      if (attempt >= TAG_SAVE_ATTEMPTS || !isUniqueViolation(error)) throw error;
+    }
+  }
 }
 
 export function hashToken(token: string) {

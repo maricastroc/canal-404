@@ -135,6 +135,27 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect(await body(await meGet(apiRequest("/api/players/me", { cookie })))).toEqual({ player: null });
   });
 
+  it("never gives two players the same nickname and tag", async () => {
+    await db.$executeRawUnsafe(
+      `INSERT INTO "players" ("id", "token_hash", "nickname", "nickname_key", "tag")
+       SELECT gen_random_uuid(), lpad(n::text, 64, '0'), 'Pato Veloz', 'patoveloz', lpad(n::text, 4, '0')
+       FROM generate_series(0, 9999) AS n WHERE n <> 404`,
+    );
+    const racing = await Promise.all([joinAs("pato-veloz", "203.0.113.8"), joinAs("PATO VELOZ", "203.0.113.9")]);
+    const winner = racing.find((attempt) => attempt.response.status === 201)!;
+    const loser = racing.find((attempt) => attempt.response.status !== 201)!;
+    expect((winner.data.player as PublicPlayer).tag).toBe("0404");
+    expect(loser.response.status).toBe(422);
+    expect(loser.data).toMatchObject({ error: { code: "bad_nickname", problem: "full" } });
+
+    const { cookie, data } = await joinAs("Lina Elétrica", "203.0.113.10");
+    const tag = (data.player as PublicPlayer).tag;
+    const refused = await mePatch(apiRequest("/api/players/me", { method: "PATCH", body: { nickname: "Pato Veloz" }, cookie }));
+    expect(refused.status).toBe(422);
+    const respelled = await mePatch(apiRequest("/api/players/me", { method: "PATCH", body: { nickname: "Lina Eletrica" }, cookie }));
+    expect((await body<{ player: PublicPlayer }>(respelled)).player.tag).toBe(tag);
+  });
+
   it("issues tickets only for real games and levels", async () => {
     expect((await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "strange-house" } }))).status).toBe(400);
     const levelless = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "bad-ideas-lab" } }));

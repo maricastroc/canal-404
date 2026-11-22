@@ -4,7 +4,7 @@ import type { Locale } from "@/i18n/locales";
 export const NICKNAME_MIN = 3;
 export const NICKNAME_MAX = 16;
 
-export type NicknameProblem = "short" | "long" | "chars" | "digits" | "blocked" | "reserved";
+export type NicknameProblem = "short" | "long" | "chars" | "digits" | "blocked" | "reserved" | "full";
 
 export type NicknameCheck = { ok: true; nickname: string; key: string } | { ok: false; problem: NicknameProblem };
 
@@ -16,6 +16,7 @@ export const NICKNAME_PROBLEM_TEXT = localized<Record<NicknameProblem, string>>(
     digits: "Esse apelido parece um número de telefone ou documento. Escolha outro.",
     blocked: "Esse apelido não passa na censura do canal. Escolha outro.",
     reserved: "Esse apelido é da equipe do canal. Escolha outro.",
+    full: "Esse apelido já está lotado no placar. Escolha outro.",
   },
   en: {
     short: `Use at least ${NICKNAME_MIN} letters.`,
@@ -24,6 +25,7 @@ export const NICKNAME_PROBLEM_TEXT = localized<Record<NicknameProblem, string>>(
     digits: "That nickname looks like a phone or ID number. Pick another one.",
     blocked: "That nickname doesn't get past the channel's censors. Pick another one.",
     reserved: "That nickname belongs to the channel staff. Pick another one.",
+    full: "That nickname is full on the board. Pick another one.",
   },
 });
 

@@ -1,6 +1,6 @@
 import { checkNickname, NICKNAME_PROBLEMS } from "@/lib/competition/nickname";
 import { assertWritable, HttpError, json, readJson, sameOrigin } from "@/server/http";
-import { clearedPlayerCookie, currentPlayer, publicPlayer } from "@/server/identity";
+import { clearedPlayerCookie, currentPlayer, publicPlayer, saveWithFreeTag } from "@/server/identity";
 import { LIMITS, enforce } from "@/server/rate-limit";
 import { competitionRoute } from "@/server/route";
 import { nicknameSchema } from "@/server/schemas";
@@ -21,10 +21,12 @@ export const PATCH = competitionRoute(async ({ request, db, now }) => {
   const check = checkNickname(parsed.data.nickname);
   if (!check.ok) throw new HttpError("bad_nickname", NICKNAME_PROBLEMS[check.problem], { problem: check.problem });
   await enforce(db, LIMITS.rename, player.id, now);
-  const updated = await db.player.update({
-    where: { id: player.id },
-    data: { nickname: check.nickname, nicknameKey: check.key, renamedAt: now, lastSeenAt: now },
-  });
+  const updated = await saveWithFreeTag(
+    db,
+    check.key,
+    (tag) => db.player.update({ where: { id: player.id }, data: { nickname: check.nickname, nicknameKey: check.key, tag, renamedAt: now, lastSeenAt: now } }),
+    { player: player.id, keep: player.tag },
+  );
   return json({ player: publicPlayer(updated) });
 });
 

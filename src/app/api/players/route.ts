@@ -1,6 +1,6 @@
 import { checkNickname, NICKNAME_PROBLEMS } from "@/lib/competition/nickname";
 import { addressKey, assertWritable, HttpError, json, readJson } from "@/server/http";
-import { currentPlayer, hashToken, newTag, newToken, playerCookie, publicPlayer } from "@/server/identity";
+import { currentPlayer, hashToken, newToken, playerCookie, publicPlayer, saveWithFreeTag } from "@/server/identity";
 import { LIMITS, enforce } from "@/server/rate-limit";
 import { competitionRoute } from "@/server/route";
 import { nicknameSchema } from "@/server/schemas";
@@ -19,8 +19,8 @@ export const POST = competitionRoute(async ({ request, db, secret, now }) => {
   await enforce(db, LIMITS.join, address, now);
   await enforce(db, LIMITS.joinDaily, address, now);
   const token = newToken();
-  const player = await db.player.create({
-    data: { tokenHash: hashToken(token), nickname: check.nickname, nicknameKey: check.key, tag: newTag(), createdAt: now, lastSeenAt: now },
-  });
+  const player = await saveWithFreeTag(db, check.key, (tag) =>
+    db.player.create({ data: { tokenHash: hashToken(token), nickname: check.nickname, nicknameKey: check.key, tag, createdAt: now, lastSeenAt: now } }),
+  );
   return json({ player: publicPlayer(player) }, { status: 201, headers: { "Set-Cookie": playerCookie(token) } });
 });

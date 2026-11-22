@@ -2,9 +2,10 @@ import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { attemptBonus, LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { boardId, type GameSlug, type RunClaim } from "@/lib/competition/rules";
+import { nicknameKey } from "@/lib/competition/nickname";
 import { missionByKey } from "@/lib/missions/catalog";
 import { getDb, type Db } from "./db";
-import { hashToken, newTag, newToken } from "./identity";
+import { hashToken, newToken, saveWithFreeTag } from "./identity";
 import { issueTicket } from "./tickets";
 
 export const TEST_SECRET = "test-secret-for-canal-404-competition-0123456789";
@@ -23,9 +24,8 @@ export async function resetDb(db: Db) {
 
 export async function makePlayer(db: Db, nickname = "Pato Veloz", status: "active" | "hidden" | "banned" = "active") {
   const token = newToken();
-  const player = await db.player.create({
-    data: { tokenHash: hashToken(token), nickname, nicknameKey: nickname.toLowerCase().replace(/\s/g, ""), tag: newTag(), status },
-  });
+  const key = nicknameKey(nickname);
+  const player = await saveWithFreeTag(db, key, (tag) => db.player.create({ data: { tokenHash: hashToken(token), nickname, nicknameKey: key, tag, status } }));
   return { player, token };
 }
 
