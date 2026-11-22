@@ -59,7 +59,7 @@ export class StoryBox {
 
   show(line: string, avoid: { x: number; y: number; w: number; h: number }[] = []) {
     const k = this.k;
-    const b = this.layout.kind === "full" ? this.layout.frame : (this.layout.hud?.sheet ?? this.layout.map);
+    const b = this.layout.kind === "full" ? this.layout.frame : this.layout.map;
     const phone = this.layout.kind !== "full";
     const w = Math.min(b.w - 48 * k, 880 * k);
     const portraitR = phone ? Math.min(60 * k, w * 0.12) : 60 * k;

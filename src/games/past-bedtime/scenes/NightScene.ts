@@ -1644,9 +1644,17 @@ export class NightScene extends Phaser.Scene {
     this.buildIndicators();
     cam.useBounds = false;
     cam.setZoom(L.overview);
-    cam.centerOn(L.board.x + L.board.w / 2, L.board.y + L.board.h / 2);
+    const o = this.overviewCenter();
+    cam.centerOn(o.x, o.y);
     this.overviewOn = true;
     this.refreshViewChip();
+  }
+
+  private overviewCenter() {
+    const L = this.layout;
+    const x = L.board.x + L.board.w / 2;
+    if (L.kind !== "tall") return { x, y: L.board.y + L.board.h / 2 };
+    return { x, y: L.board.y + Math.max(L.board.h, L.frame.h / L.overview) / 2 };
   }
 
   private followTarget() {
@@ -1702,8 +1710,7 @@ export class NightScene extends Phaser.Scene {
     this.following = false;
     this.overviewOn = true;
     this.refreshViewChip();
-    const cx = L.board.x + L.board.w / 2;
-    const cy = L.board.y + L.board.h / 2;
+    const { x: cx, y: cy } = this.overviewCenter();
     if (ms === 0) {
       cam.setZoom(L.overview);
       cam.centerOn(cx, cy);

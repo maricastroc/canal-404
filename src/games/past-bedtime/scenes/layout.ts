@@ -9,7 +9,7 @@ export type View = { x0: number; y0: number; x1: number; y1: number };
 
 export type Frame = { kind: FrameKind; W: number; H: number; unit: number; safe: Insets; compact: boolean };
 
-export type Hud = { paper: Rect; strip: Rect; note: Rect; deck: Rect; pad: Rect; actions: Rect; sheet: Rect; rails: Rect[]; compact: boolean };
+export type Hud = { paper: Rect; strip: Rect; note: Rect; deck: Rect; pad: Rect; actions: Rect; rails: Rect[]; compact: boolean };
 
 export type Layout = {
   kind: FrameKind;
@@ -62,12 +62,13 @@ const TALL = {
   strip: 48,
   note: 48,
   below: 6,
-  pad: 144,
-  actions: 148,
-  deckPad: 10,
+  pad: 124,
+  actions: 128,
+  deckPad: 8,
   gap: 8,
   side: 12,
-  compact: { strip: 44, note: 44, below: 5, pad: 130, actions: 136, deckPad: 8 },
+  reach: { cols: 5.2, rows: 4.6 },
+  compact: { strip: 44, note: 44, below: 5, pad: 112, actions: 120, deckPad: 7 },
 };
 
 const BAND = { rail: 0.22, minRail: 150, maxRail: 204, pad: 0.9, padShare: 0.5 };
@@ -138,14 +139,14 @@ function fullLayout(grid: Grid): Layout {
   return { kind: "full", W, H, map, view, tile, notebook, unit: 1, ui: 1, text: 0, small: 0, hud: null, ...placeBoard(map, view, tile) };
 }
 
-function phoneTile(map: Rect, view: View, unit: number) {
+function phoneTile(map: Rect, view: View, unit: number, reach = { cols: PHONE.tile.cols, rows: Infinity }) {
   const t = PHONE.tile;
   const vw = view.x1 - view.x0;
   const vh = view.y1 - view.y0;
   const wCss = map.w / unit;
   const hCss = map.h / unit;
   const fit = Math.min(wCss / vw, hCss / vh);
-  const roomy = Math.max(t.min, Math.min(t.max, hCss / vh, wCss / t.cols));
+  const roomy = Math.max(t.min, Math.min(t.max, hCss / Math.min(vh, reach.rows), wCss / reach.cols));
   const whole = fit >= t.comfort || (fit >= roomy * t.share && (fit >= t.floor || roomy < fit * t.gain));
   const css = whole ? Math.min(fit, t.max) : roomy;
   return Math.floor(css * unit);
@@ -169,18 +170,17 @@ function tallLayout(frame: Frame, grid: Grid): Layout {
   const my = t.gap * u;
   const room: Rect = { x: safe.left + mx, y: paperH + my, w: W - safe.left - safe.right - mx * 2, h: H - safe.bottom - deckPad * 2 - controlsH - my * 2 - paperH };
   const view = boardView(grid, PHONE_SIDE_PAD);
-  const tile = phoneTile(room, view, u);
+  const tile = phoneTile(room, view, u, TALL.reach);
   const placed = placeBoard(room, view, tile, true);
   const deckY = placed.frame.y + placed.frame.h + my;
-  const controlsY = H - safe.bottom - deckPad - controlsH;
+  const controlsY = deckY + deckPad;
   const strip: Rect = { x: cx + side, y: safe.top + 9 * u, w: inner, h: stripH - 9 * u };
   const note: Rect = { x: cx + side, y: safe.top + stripH, w: inner, h: noteH };
   const pad: Rect = { x: cx + side, y: controlsY + (controlsH - padSize) / 2, w: padSize, h: padSize };
   const gap = 16 * u;
   const actions: Rect = { x: pad.x + padSize + gap, y: controlsY + (controlsH - actionsH) / 2, w: inner - padSize - gap, h: actionsH };
   const map: Rect = { x: room.x, y: room.y, w: room.w, h: placed.frame.h };
-  const sheet: Rect = { x: room.x, y: room.y, w: room.w, h: controlsY - my - room.y };
-  const hud: Hud = { paper: { x: 0, y: 0, w: W, h: paperH }, strip, note, deck: { x: 0, y: deckY, w: W, h: H - deckY }, pad, actions, sheet, rails: [], compact };
+  const hud: Hud = { paper: { x: 0, y: 0, w: W, h: paperH }, strip, note, deck: { x: 0, y: deckY, w: W, h: H - deckY }, pad, actions, rails: [], compact };
   return { kind: "tall", W, H, map, view, tile, notebook: hud.paper, unit: u, ui: PHONE.ui * u, text: PHONE.text * u, small: PHONE.small * u, hud, ...placed };
 }
 
@@ -202,7 +202,7 @@ function bandHud(frame: Frame): { hud: Hud; map: Rect } {
   const note: Rect = { x: right.x + pad, y: safe.top + 12 * u, w: innerW, h: actions.y - safe.top - 26 * u };
   const m = PHONE.margin * u;
   const map: Rect = { x: left.w + m, y: safe.top + m, w: right.x - left.w - m * 2, h: H - safe.top - safe.bottom - m * 2 };
-  return { hud: { paper: left, strip, note, deck: right, pad: padRect, actions, sheet: map, rails: [left, right], compact: false }, map };
+  return { hud: { paper: left, strip, note, deck: right, pad: padRect, actions, rails: [left, right], compact: false }, map };
 }
 
 export function computeLayout(frame: Frame, grid: Grid): Layout {

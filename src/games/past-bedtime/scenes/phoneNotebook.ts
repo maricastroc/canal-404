@@ -568,8 +568,8 @@ export class PhoneNotebook implements NotebookView {
 
   private buildActions() {
     const r = this.hud.actions;
-    const gap = this.px(7);
-    const smallH = this.px(this.band || this.compact ? 40 : 42);
+    const gap = this.px(this.band ? 7 : 6);
+    const smallH = this.px(this.band ? 40 : this.compact ? 34 : 36);
     const bigH = (r.h - smallH - gap * 2) / 2;
     this.makeButton("wait", r.x, r.y, r.w, bigH, 0xffffff, "wait", this.copy.buttons.wait, false);
     this.makeButton("undo", r.x, r.y + bigH + gap, r.w, bigH, 0xf9e0b0, "undo", this.copy.buttons.undo, false);
@@ -582,7 +582,7 @@ export class PhoneNotebook implements NotebookView {
 
   private makeButton(id: ActionId, x: number, y: number, w: number, h: number, fill: number, icon: NightIcon, label: string, small: boolean) {
     const bg = this.scene.add.graphics();
-    const iconCss = small ? 19 : Math.min(24, (h / this.u) * 0.5);
+    const iconCss = small ? Math.min(19, (h / this.u) * 0.47) : Math.min(24, (h / this.u) * 0.5);
     const img = this.scene.add.image(0, 0, iconKey(icon)).setDisplaySize(this.px(iconCss), this.px(iconCss));
     const t = this.text(0, 0, label, small ? 11.5 : this.band ? 15 : 16.5, PENCIL, "round", "700").setOrigin(0.5);
     if (small) {
@@ -859,7 +859,7 @@ export class PhoneNotebook implements NotebookView {
     const keepScroll = this.page?.kind === kind ? this.page.content.y : null;
     this.closePage();
     const s = this.scene;
-    const a = this.hud.sheet;
+    const a = this.layout.map;
     const g = s.add.graphics();
     g.fillStyle(INK, 0.85);
     g.fillRoundedRect(a.x + this.px(3), a.y + this.px(5), a.w, a.h, this.px(12));
