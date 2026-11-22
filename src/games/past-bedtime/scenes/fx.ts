@@ -52,7 +52,7 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
   const { tone: asked = "normal", duration = 1600, depth = 60, avoid = [], area, speaker } = opts;
   const tone = asked === "whisper" || asked === "thought" ? "normal" : asked;
   const s = layout.tile;
-  const size = Math.round(Math.max(18, s * (tone === "shout" ? 0.25 : 0.2)));
+  const size = Math.round(Math.max(18, s * (tone === "shout" ? 0.25 : 0.2), layout.text * (tone === "shout" ? 1.08 : 1)));
   const family = tone === "shout" ? fonts.display : (fonts.round ?? fonts.body);
   const label = scene.add
     .text(0, 0, text, {
@@ -62,7 +62,7 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
       color: INK,
       align: "center",
       padding: { x: 4, y: 4 },
-      wordWrap: { width: Math.max(s * 3.2, 260) },
+      wordWrap: { width: Math.max(s * 3.2, 260, layout.text * 12) },
       lineSpacing: 2,
     })
     .setOrigin(0.5);
@@ -180,7 +180,7 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
     parts.push(badge, mark);
   }
   if (tagged && speaker) {
-    const tagSize = Math.round(Math.max(16, size * 0.6));
+    const tagSize = Math.round(Math.max(16, size * 0.6, layout.small * 0.86));
     const tagText = scene.add.text(0, 0, speaker.name.toUpperCase(), { fontFamily: fonts.display, fontSize: `${tagSize}px`, color: INK, padding: { x: 3, y: 3 } }).setOrigin(0.5);
     const tw = tagText.width + tagSize * 0.9;
     const th = tagSize * 1.45;

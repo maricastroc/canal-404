@@ -89,7 +89,7 @@ export function drawExit(scene: Phaser.Scene, grid: Grid, layout: Layout, fonts:
       plank(gx + s * 0.06, gy + s - t, s * 0.88, t);
     }
   }
-  const size = Math.round(Math.max(20, s * 0.2));
+  const size = Math.round(Math.max(20, s * 0.2, layout.small));
   const text = scene.add.text(0, 0, side === "w" ? `← ${label}` : side === "n" ? `↑ ${label}` : `${label} →`, { fontFamily: fonts.hand, fontSize: `${size}px`, color: "#fbf5e6", padding: { x: 2, y: 2 } }).setOrigin(0.5);
   const pw = text.width + size * 0.9;
   const ph = size * 1.5;

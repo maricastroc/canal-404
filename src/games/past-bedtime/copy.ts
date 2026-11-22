@@ -17,6 +17,7 @@ export type NightCopy = {
   speaker: string;
   names: { dad: string; grandma: string; dog: string; cat: string; bruno: string };
   view: { house: string; back: string };
+  touch: { house: string; back: string; rules: string; plan: string; goal: string };
   status: { toss: (n: number) => string; sleepsIn: (n: number) => string; looking: (n: number) => string; sniffing: (n: number) => string; going: string; returning: string; knock: (n: number) => string; look: (n: number) => string; peek: (n: number) => string };
   pages: { rules: string; moves: string; back: string; rulesTitle: string; movesTitle: string; empty: string };
   legendTitle: string;
@@ -222,6 +223,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     speaker: "Bruno",
     names: { dad: "Pai", grandma: "Vó", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
     view: { house: "👁 Ver a casa toda (V)", back: "↩ Voltar para o Bruno (V)" },
+    touch: { house: "👁 Ver a casa", back: "↩ Voltar ao Bruno", rules: "Regras", plan: "Plano", goal: "Objetivo" },
     status: {
       toss: (n) => (n === 1 ? "vai virar!" : `vira em ${n}`),
       sleepsIn: (n) => `dorme em ${n}`,
@@ -463,6 +465,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     speaker: "Bruno",
     names: { dad: "Dad", grandma: "Grandma", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
     view: { house: "👁 See the whole house (V)", back: "↩ Back to Bruno (V)" },
+    touch: { house: "👁 See the house", back: "↩ Back to Bruno", rules: "Rules", plan: "Plan", goal: "Goal" },
     status: {
       toss: (n) => (n === 1 ? "rolling over!" : `rolls in ${n}`),
       sleepsIn: (n) => `asleep in ${n}`,
