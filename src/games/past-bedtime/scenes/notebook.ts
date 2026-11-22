@@ -288,7 +288,7 @@ export class Notebook {
   private buildLinks() {
     for (const l of this.links) l.destroy();
     this.links = [];
-    if (this.mode === "won") return;
+    if (this.mode === "won" || this.pageKind) return;
     const sp = this.spots.links;
     const items: { kind: PageKind; label: string; fill: number }[] = [
       { kind: "rules", label: this.copy.pages.rules, fill: 0xc8f0b4 },
@@ -302,12 +302,12 @@ export class Notebook {
       g.fillRoundedRect(3, 4, w, 50, 10);
       g.fillStyle(it.fill, 1);
       g.fillRoundedRect(0, 0, w, 50, 10);
-      g.lineStyle(this.pageKind === it.kind ? 4 : 2.5, INK, 1);
+      g.lineStyle(2.5, INK, 1);
       g.strokeRoundedRect(0, 0, w, 50, 10);
       const t = this.scene.add.text(w / 2, 25, it.label, { fontFamily: this.round, fontStyle: "700", fontSize: "23px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
       if (t.width > w - 24) t.setFontSize(Math.floor((23 * (w - 24)) / t.width));
       const c = this.scene.add.container(sp.x + i * (w + gap), sp.y, [g, t]).setAngle((wobble(i * 5 + 2) - 0.5) * 2);
-      this.makeClickable(c, w, 50, () => (this.pageKind === it.kind ? this.closePage() : this.openPage(it.kind)));
+      this.makeClickable(c, w, 50, () => this.openPage(it.kind));
       this.container.add(c);
       this.links.push(c);
     });
