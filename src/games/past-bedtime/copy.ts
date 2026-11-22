@@ -130,7 +130,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "A escada",
         goal: "Descer e chegar à porta da cozinha.",
         target: "cozinha",
-        intro: ["A Vó faz a ronda no pé da escada, indo e voltando.", "As pegadas mostram os próximos passos dela.", "A lanterna só ilumina a frente. Vá pelas costas da Vó."],
+        intro: ["A Vó faz a ronda no pé da escada: vai por baixo e volta por cima.", "As pegadas mostram os próximos passos dela.", "A lanterna só ilumina a frente. Do lado dela, tá seguro."],
         story: "A Vó levantou pra fazer chá. Justo no pé da escada.",
       },
       kitchen: {
@@ -371,7 +371,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "The stairs",
         goal: "Get down to the kitchen door.",
         target: "kitchen",
-        intro: ["Grandma paces back and forth at the foot of the stairs.", "The footprints show her next steps.", "Grandma's light only points ahead. Go behind her back."],
+        intro: ["Grandma circles the foot of the stairs: out along the bottom, back along the top.", "The footprints show her next steps.", "Grandma's light only points ahead. Beside her, you're safe."],
         story: "Grandma got up to make tea. Right at the foot of the stairs.",
       },
       kitchen: {

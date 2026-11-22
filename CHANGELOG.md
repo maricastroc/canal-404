@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Madrugada: a Vó dá a volta na escada
+- **Part 3 is harder.** Grandma no longer just paces the bottom row: she walks out along it and comes back along the top row, toward the stairs. Following her is not enough anymore; Bruno has to slip past her side, where the flashlight can't reach. The map and the target (16 moves) stay the same, and the part's notes explain the loop and the blind side.
+- **New boards.** The change bumps Madrugada's rules to version 2, so all ten parts start fresh boards ([decision 0013](docs/decisions/0013-bedtime-replay.md)).
+- **Clearer sticky note.** While waiting would get Bruno caught, the note keeps a warning ("Listrado: se eu esperar, me veem.") that good news can't hide, explains the striped tiles the first time they show up in a part, and says that two waits next to a sleeper wake them.
+
 ### Madrugada entra no catálogo
 - **An eighth game: Madrugada** (EN "Past Bedtime", `/play/past-bedtime`). A turn-based stealth puzzle: Bruno sneaks downstairs at three in the morning to tape the Sessão Chiado and then gets back to bed without waking Dad, Grandma, Pipoca or Pixel. Ten parts in four acts, played with the keyboard or by swiping and tapping on phones, upright or sideways.
 - **Parts and stars.** The portal's intro lists the parts and a win unlocks the next one. Stars are 3 at the part's target, 2 within three moves of it and 1 after that; a hint from Bruno's notebook caps the part at 2. The result is the portal's own panel with the moves against the target and the score: 1,000 for the part plus 100 for each move under target + 10.

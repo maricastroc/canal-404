@@ -22,13 +22,6 @@ function peek(x: number, y: number, f: Dir): PatrolStep {
   return { x, y, f, peek: true };
 }
 
-function pingpong(y: number, a: number, b: number): PatrolStep[] {
-  const out: PatrolStep[] = [];
-  for (let x = a; x <= b; x += 1) out.push({ x, y });
-  for (let x = b - 1; x > a; x -= 1) out.push({ x, y });
-  return out;
-}
-
 export const DOORWAY: LevelDef = {
   id: "doorway",
   map: [
@@ -154,7 +147,7 @@ export const STAIRS: LevelDef = {
     "###########",
   ],
   loud: 3,
-  agents: [{ kind: "patrol", id: "grandma", path: pingpong(4, 2, 8), start: 3, range: 3, cone: "narrow", hear: 0, alert: 2 }],
+  agents: [{ kind: "patrol", id: "grandma", path: [...run(4, 2, 8), ...run(3, 8, 2)], start: 8, range: 3, cone: "narrow", hear: 0, alert: 2 }],
   props: [{ kind: "stairs", x: 1, y: 1, w: 2, f: 0 }],
   par: 16,
 };
