@@ -893,7 +893,7 @@ const TEXT = gameText({
       objective: "Ten parts in four acts, from Mom and Dad's door to the VCR in the living room, and then back to bed. Finish each part within the move target to earn 3 stars.",
       howToIntro: "Take Bruno through the house without being seen or waking anyone up. Each part is a puzzle with a move target.",
       levels: [
-        { title: "Past Mom and Dad's door", goal: "Get past the bedroom door without waking Dad." },
+        { title: "Mom and Dad's door", goal: "Get past the bedroom door without waking Dad." },
         { title: "The hallway", goal: "Reach the stairs without waking Dad." },
         { title: "The stairs", goal: "Get down to the kitchen door." },
         { title: "The kitchen", goal: "Cross the kitchen to the living room door." },
