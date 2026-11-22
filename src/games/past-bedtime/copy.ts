@@ -36,11 +36,11 @@ export type NightCopy = {
     backToSleep: string;
     holdBreath: (who: Sleeper) => string;
     stirred: (who: Sleeper) => string;
-    stirCatch: (who: Sleeper) => string;
     seen: string;
     stripes: string;
     calm: string;
     clear: string;
+    trapped: string;
     tossed: string;
     tossSoon: string;
     peekSoon: string;
@@ -263,12 +263,12 @@ export const NIGHT_COPY = localized<NightCopy>({
       stillAwake: (n) => (n === 1 ? "O pai dorme de novo na próxima jogada." : `O pai dorme de novo em ${n} jogadas.`),
       backToSleep: "O pai dormiu de novo. Ufa.",
       holdBreath: (who) => (who === "dog" ? "Ao lado da Pipoca: duas esperas e ela acorda." : "Ao lado do pai: duas esperas e ele acorda."),
-      stirred: (who) => (who === "dog" ? "A Pipoca se mexeu! Mais uma espera e ela acorda." : "O pai se mexeu! Mais uma espera e ele acorda."),
-      stirCatch: (who) => (who === "dog" ? "A Pipoca se mexeu! Se eu esperar, ela acorda e me acha." : "O pai se mexeu! Se eu esperar, ele acorda e me vê."),
-      seen: "Se eu esperar aqui, vão me ver!",
+      stirred: (who) => (who === "dog" ? "Mais uma espera e a Pipoca acorda!" : "Mais uma espera e o pai acorda!"),
+      seen: "A lanterna vem pra cá! Preciso sair daqui.",
       stripes: "Listras: onde vai ter luz na próxima jogada.",
       calm: "Saí de perto. Aqui posso esperar.",
       clear: "Saí do caminho da luz. Aqui posso esperar.",
+      trapped: "Não tem saída! Melhor desfazer.",
       tossed: "O pai se virou! Fique fora da luz.",
       tossSoon: "Na próxima jogada, o pai se vira.",
       peekSoon: "A Vó vai espiar o esconderijo!",
@@ -504,12 +504,12 @@ export const NIGHT_COPY = localized<NightCopy>({
       stillAwake: (n) => (n === 1 ? "Dad dozes off again after the next move." : `Dad dozes off again in ${n} moves.`),
       backToSleep: "Dad's asleep again. Phew.",
       holdBreath: (who) => (who === "dog" ? "Right by Pipoca: two waits and she wakes up." : "Right by Dad: two waits and he wakes up."),
-      stirred: (who) => (who === "dog" ? "Pipoca stirred! One more wait and she's up." : "Dad stirred! One more wait and he's up."),
-      stirCatch: (who) => (who === "dog" ? "Pipoca stirred! If I wait, she wakes up and finds me." : "Dad stirred! If I wait, he wakes up and sees me."),
-      seen: "If I wait here, they'll see me!",
+      stirred: (who) => (who === "dog" ? "One more wait and Pipoca wakes up!" : "One more wait and Dad wakes up!"),
+      seen: "The flashlight's coming this way! I need to get out of here.",
       stripes: "Stripes: where the light will be next move.",
       calm: "Stepped away. I can wait here.",
       clear: "Out of the light's way. I can wait here.",
+      trapped: "No way out! Better undo.",
       tossed: "Dad rolled over! Stay out of the light.",
       tossSoon: "Dad rolls over on the next move.",
       peekSoon: "Grandma's about to peek into the hiding spot!",
