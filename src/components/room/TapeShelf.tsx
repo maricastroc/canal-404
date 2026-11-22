@@ -7,7 +7,7 @@ import { CloseIcon, EjectIcon } from "@/components/art/Icons";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { useHydrated } from "@/lib/progress/hooks";
-import { TAPES, tapeById, type Tape, type TapeId } from "./objects/tapes";
+import { tapeById, type Tape, type TapeId } from "./objects/tapes";
 import { loadTapePrograms } from "./tapes/programs";
 
 const COPY = localized({
@@ -33,6 +33,7 @@ const COPY = localized({
 
 type Props = {
   open: boolean;
+  tapes: Tape[];
   inserted: TapeId | null;
   away: TapeId[];
   origin: DOMRect | null;
@@ -98,7 +99,7 @@ function tapeAction(tape: Tape, copy: (typeof COPY)[keyof typeof COPY]) {
   return tape.torn ? copy.pickTorn(tape.torn) : copy.pick(tape.label, tape.note);
 }
 
-export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClose, onHoverSound }: Props) {
+export function TapeShelf({ open, tapes, inserted, away, origin, onPick, onEject, onClose, onHoverSound }: Props) {
   useEffect(() => {
     if (open) void loadTapePrograms();
   }, [open]);
@@ -158,6 +159,7 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
     : { x: 0, y: 40 };
   const hidden = reduced ? { opacity: 0 } : { opacity: 0, x: from.x, y: from.y, scale: 0.22, rotate: -8 };
   const playing = inserted ? tapeById(inserted, locale) : null;
+  const columns = tapes.length > 5 ? "sm:w-[calc(33.333%-0.5rem)]" : "sm:w-[calc(33.333%-0.5rem)] md:w-[calc(20%-0.6rem)]";
 
   return createPortal(
     <AnimatePresence>
@@ -183,7 +185,7 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
             animate={{ opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 }}
             exit={hidden}
             transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 520, damping: 34, mass: 0.8 }}
-            className="paper relative max-h-[calc(100svh-1.5rem)] w-full max-w-[54rem] overflow-y-auto border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly sm:p-6"
+            className={`paper relative max-h-[calc(100svh-1.5rem)] w-full ${tapes.length > 5 ? "max-w-[46rem]" : "max-w-[54rem]"} overflow-y-auto border-[3px] border-ink p-4 shadow-[var(--shadow-ink-lg)] wobbly sm:p-6`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -206,8 +208,8 @@ export function TapeShelf({ open, inserted, away, origin, onPick, onEject, onClo
             </div>
 
             <ul className="mt-5 flex flex-wrap justify-center gap-x-3 gap-y-4 rounded-xl border-[3px] border-ink bg-wood-deep p-3 shadow-[inset_0_-10px_0_rgba(0,0,0,.18)] sm:p-4">
-              {TAPES[locale].map((tape, i) => (
-                <li key={tape.id} className={`w-[calc(50%-0.4rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(20%-0.6rem)] ${i % 2 ? "rotate-1" : "-rotate-1"}`}>
+              {tapes.map((tape, i) => (
+                <li key={tape.id} className={`w-[calc(50%-0.4rem)] ${columns} ${i % 2 ? "rotate-1" : "-rotate-1"}`}>
                   {tape.id === inserted ? (
                     <PlayingSlot tape={tape} />
                   ) : away.includes(tape.id) ? (

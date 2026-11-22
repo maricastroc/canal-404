@@ -3,6 +3,7 @@ import { cartoonTape } from "./CartoonTape";
 import { forbiddenTape } from "./ForbiddenTape";
 import { karaokeTape } from "./KaraokeTape";
 import { resortTape } from "./ResortTape";
+import { staticShowTape } from "./StaticShowTape";
 import { streetAdTape } from "./StreetAdTape";
 import type { TapeProgram } from "./vhs";
 
@@ -12,4 +13,5 @@ export const TAPE_PROGRAMS: Record<TapeId, TapeProgram> = {
   "tape-resort": resortTape,
   "tape-karaoke": karaokeTape,
   tape: forbiddenTape,
+  "tape-static": staticShowTape,
 };
