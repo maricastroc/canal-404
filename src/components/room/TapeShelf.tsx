@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CloseIcon, EjectIcon } from "@/components/art/Icons";
+import { ChevronUpIcon, CloseIcon, EjectIcon } from "@/components/art/Icons";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { useHydrated } from "@/lib/progress/hooks";
@@ -232,8 +232,8 @@ export function TapeShelf({ open, tapes, inserted, away, origin, onPick, onEject
                       className="group relative block w-full rounded-lg text-left outline-none disabled:cursor-default"
                     >
                       <Cassette tape={tape} />
-                      <span aria-hidden className="pointer-events-none absolute -bottom-3.5 left-1/2 -translate-x-1/2 font-display text-sm leading-none text-sun opacity-0 group-focus-visible:opacity-100">
-                        ▲
+                      <span aria-hidden className="pointer-events-none absolute -bottom-3.5 left-1/2 -translate-x-1/2 text-sun opacity-0 group-focus-visible:opacity-100">
+                        <ChevronUpIcon className="size-4" />
                       </span>
                     </motion.button>
                   )}

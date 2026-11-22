@@ -1,7 +1,8 @@
 import type * as Phaser from "phaser";
-import type { Fonts } from "@/games/kit/ui";
+import { glyphOffset, type Fonts } from "@/games/kit/ui";
 import type { NightCopy } from "../copy";
 import type { Action } from "../sim/types";
+import { ARROW_ICONS, iconKey, STAR_ORIGIN_Y, STAR_SPAN, type NightIcon } from "./icons";
 import { wobble, type Layout } from "./layout";
 
 const INK = 0x1d1830;
@@ -84,19 +85,12 @@ function spotsFor(layout: Layout): Spots {
   };
 }
 
-export function star(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, filled: boolean) {
-  const pts: { x: number; y: number }[] = [];
-  for (let i = 0; i < 10; i += 1) {
-    const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    const rr = i % 2 ? r * 0.45 : r;
-    pts.push({ x: x + Math.cos(a) * rr + (wobble(i + x) - 0.5) * 2, y: y + Math.sin(a) * rr + (wobble(i * 3 + y) - 0.5) * 2 });
-  }
-  if (filled) {
-    g.fillStyle(0xffc83d, 1);
-    g.fillPoints(pts, true);
-  }
-  g.lineStyle(3, INK, filled ? 1 : 0.45);
-  g.strokePoints(pts, true);
+export function starIcon(scene: Phaser.Scene, x: number, y: number, r: number, filled: boolean) {
+  return scene.add
+    .image(x, y, iconKey(filled ? "star" : "starEmpty"))
+    .setOrigin(0.5, STAR_ORIGIN_Y)
+    .setDisplaySize(r * STAR_SPAN, r * STAR_SPAN)
+    .setAlpha(filled ? 1 : 0.45);
 }
 
 export function wobblyLine(g: Phaser.GameObjects.Graphics, x0: number, y0: number, x1: number, color: number, width: number, seed: number) {
@@ -107,8 +101,6 @@ export function wobblyLine(g: Phaser.GameObjects.Graphics, x0: number, y0: numbe
   for (let i = 1; i <= steps; i += 1) g.lineTo(x0 + ((x1 - x0) * i) / steps, y0 + (wobble(seed + i) - 0.5) * 5);
   g.strokePath();
 }
-
-export const ARROWS = ["↑", "→", "↓", "←"];
 
 export type Run = { action: Action; count: number };
 
@@ -122,7 +114,7 @@ export function runsOf(actions: readonly Action[]): Run[] {
   return runs;
 }
 
-export function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: number, y: number) {
+function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: number, y: number) {
   g.lineStyle(2.5, INK, 1);
   switch (item) {
     case "creak":
@@ -160,10 +152,6 @@ export function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem,
       g.fillRoundedRect(x - 14, y - 13, 28, 26, 5);
       g.lineStyle(3, 0xffb43d, 1);
       g.strokeRoundedRect(x - 14, y - 13, 28, 26, 5);
-      g.fillStyle(0xfffbe8, 1);
-      g.fillEllipse(x - 4, y - 4, 12, 7);
-      g.fillStyle(INK, 1);
-      g.fillCircle(x - 4, y - 4, 2);
       break;
     case "next":
       g.fillStyle(0xffe39a, 0.5);
@@ -210,26 +198,33 @@ export function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem,
       g.fillStyle(0xd9ccff, 1);
       g.fillRoundedRect(x - 15, y - 12, 30, 24, 8);
       g.strokeRoundedRect(x - 15, y - 12, 30, 24, 8);
-      g.lineStyle(2.5, INK, 1);
-      g.beginPath();
-      g.arc(x, y, 6, -2.4, 1.6);
-      g.strokePath();
-      g.fillStyle(INK, 1);
-      g.fillTriangle(x + 7, y + 3, x + 1, y + 7, x + 4, y + 1);
       break;
     case "near":
-      g.fillStyle(0xff9d8a, 1);
-      g.fillCircle(x, y, 13);
-      g.strokeCircle(x, y, 13);
-      g.lineStyle(3, INK, 1);
-      g.lineBetween(x - 6, y - 6, x + 6, y + 6);
-      g.lineBetween(x + 6, y - 6, x - 6, y + 6);
       break;
     case "goal":
       g.lineStyle(3, 0x2fa996, 1);
       g.strokeRect(x - 14, y - 13, 28, 26);
       break;
   }
+}
+
+const LEGEND_ICONS: Partial<Record<LegendItem, { icon: NightIcon; size: number; x: number; y: number }>> = {
+  light: { icon: "watched", size: 15, x: -4, y: -4 },
+  toss: { icon: "toss", size: 17, x: 0, y: 0 },
+  near: { icon: "near", size: 31, x: 0, y: 0 },
+};
+
+export function legendIcon(scene: Phaser.Scene, item: LegendItem) {
+  const g = scene.add.graphics();
+  drawLegendIcon(g, item, 0, 0);
+  const parts: Phaser.GameObjects.GameObject[] = [g];
+  const extra = LEGEND_ICONS[item];
+  if (extra) parts.push(scene.add.image(extra.x, extra.y, iconKey(extra.icon)).setDisplaySize(extra.size, extra.size));
+  return scene.add.container(0, 0, parts);
+}
+
+export function moveIcon(action: Action): NightIcon {
+  return action === "wait" ? "wait" : ARROW_ICONS[action];
 }
 
 export class Notebook implements NotebookView {
@@ -278,6 +273,7 @@ export class Notebook implements NotebookView {
     this.texts.moves = this.onLine(sp.stats.x, sp.stats.line, "", 40, PENCIL);
     this.texts.par = this.onLine(sp.stats.x + sp.stats.w, sp.stats.line, "", 30, PENCIL_SOFT).setOrigin(1, 0);
     this.texts.starsAt = this.onLine(sp.stats.x + 120, sp.stats.line + 1, "", 22, PENCIL_SOFT);
+    for (let i = 0; i < 3; i += 1) this.container.add(starIcon(scene, sp.stats.x + 18 + i * 36, lineY(sp.stats.line + 1) - 14, 14, false));
     const c = sp.card;
     const cardBg = scene.add.graphics();
     cardBg.fillStyle(INK, 0.85);
@@ -384,7 +380,6 @@ export class Notebook implements NotebookView {
     const sp = this.spots;
     g.clear();
     wobblyLine(g, sp.heading.x, lineY(sp.heading.line) + 4, sp.heading.x + Math.min(sp.heading.w, this.texts.heading.width + 16), 0xef4f43, 3.5, par * 7);
-    for (let i = 0; i < 3; i += 1) star(g, sp.stats.x + 18 + i * 36, lineY(sp.stats.line + 1) - 14, 14, false);
   }
 
   setStats(turns: number, hints: number) {
@@ -462,8 +457,12 @@ export class Notebook implements NotebookView {
     closeBg.fillRoundedRect(0, 0, closeW, 46, 10);
     closeBg.lineStyle(2.5, INK, 1);
     closeBg.strokeRoundedRect(0, 0, closeW, 46, 10);
-    const closeT = this.scene.add.text(closeW / 2, 23, `✕ ${this.copy.pages.back}`, { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
-    const close = this.scene.add.container(a.w - closeW - 14, 14, [closeBg, closeT]);
+    const closeT = this.scene.add.text(0, 23, this.copy.pages.back, { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0, 0.5);
+    const closeIcon = this.scene.add.image(0, 23 - glyphOffset(closeT), iconKey("close")).setDisplaySize(17, 17);
+    const closeLeft = (closeW - (closeIcon.displayWidth + 6 + closeT.width)) / 2;
+    closeIcon.setX(closeLeft + closeIcon.displayWidth / 2);
+    closeT.setX(closeLeft + closeIcon.displayWidth + 6);
+    const close = this.scene.add.container(a.w - closeW - 14, 14, [closeBg, closeIcon, closeT]);
     this.makeClickable(close, closeW, 46, () => this.closePage());
     parts.push(close);
     let y = 80;
@@ -479,8 +478,7 @@ export class Notebook implements NotebookView {
       parts.push(sub);
       y += 46;
       for (const item of this.legend) {
-        const ig = this.scene.add.graphics();
-        drawLegendIcon(ig, item, 76, y + 16);
+        const ig = legendIcon(this.scene, item).setPosition(76, y + 16);
         const t = this.scene.add.text(104, y, this.copy.legend[item], { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 3 } });
         parts.push(ig, t);
         y += 40;
@@ -490,13 +488,14 @@ export class Notebook implements NotebookView {
       if (!runs.length) parts.push(this.scene.add.text(58, y, this.copy.pages.empty, { fontFamily: this.round, fontStyle: "600", fontSize: "21px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));
       let x = 58;
       for (const r of runs) {
-        const arrow = this.scene.add.text(0, 0, r.action === "wait" ? "·" : ARROWS[r.action], { fontFamily: this.fonts.hand, fontSize: "36px", color: PENCIL, padding: { x: 2, y: 3 } });
+        const size = r.action === "wait" ? 26 : 30;
+        const arrow = this.scene.add.image(15, 24, iconKey(moveIcon(r.action))).setDisplaySize(size, size);
         const cell: Phaser.GameObjects.GameObject[] = [arrow];
-        let w = Math.max(26, arrow.width);
+        let w = 30;
         if (r.count > 1) {
-          const n = this.scene.add.text(arrow.width - 2, 16, String(r.count), { fontFamily: this.fonts.hand, fontSize: "22px", color: "#a85d08", padding: { x: 2, y: 3 } });
+          const n = this.scene.add.text(w - 1, 18, String(r.count), { fontFamily: this.fonts.hand, fontSize: "22px", color: "#a85d08", padding: { x: 2, y: 3 } });
           cell.push(n);
-          w += n.width - 2;
+          w += n.width - 3;
         }
         if (x + w > a.w - 20) {
           x = 58;
@@ -619,22 +618,20 @@ export class Notebook implements NotebookView {
     this.buildLinks();
     const sp = this.spots.win;
     const title = this.onLine(sp.x, sp.line, this.copy.wonTitle, 36, "#23794b", undefined, "display");
-    const g = this.scene.add.graphics();
-    this.container.add(g);
     const starY = lineY(sp.line + 2) - 20;
-    for (let i = 0; i < 3; i += 1) {
-      const filled = i < stars;
+    const earned = [0, 1, 2].map((i) => starIcon(this.scene, sp.x + 34 + i * 72, starY, 28, i < stars).setVisible(false));
+    this.container.add(earned);
+    earned.forEach((img, i) => {
       this.scene.time.delayedCall(200 + i * 240, () => {
-        if (!g.active) return;
-        star(g, sp.x + 34 + i * 72, starY, 28, filled);
+        if (img.active) img.setVisible(true);
       });
-    }
+    });
     const moves = this.onLine(sp.x, sp.line + 3, this.copy.wonMoves(turns, par), 30, PENCIL);
     const extra = turns - par;
     const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? (stars < 3 ? this.copy.wonWithHint : this.copy.wonPerfect) : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
     const verdictLines = Math.max(1, verdict.getWrappedText().length);
     const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w, "hand");
-    this.stampObjects.push(title, g, moves, verdict, quote);
+    this.stampObjects.push(title, ...earned, moves, verdict, quote);
     if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 5 + verdictLines, this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
     this.buildButtons([]);
   }

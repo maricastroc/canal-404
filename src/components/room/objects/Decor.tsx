@@ -1,3 +1,4 @@
+import { Play } from "lucide-react";
 import { useId } from "react";
 import { CHAOS_POSTER, PosterTexts } from "@/components/extras/posterArt";
 import { useCopy, useLocale } from "@/i18n/client";
@@ -527,8 +528,9 @@ export function VcrArt({ playing }: { playing: TapeId | null }) {
       {tape ? (
         <g>
           <rect x="616" y="728" width="78" height="14" rx="3" fill={P.plum950} />
-          <text x="621" y="739" fontSize="10" fill={P.screen} style={display} letterSpacing="1">
-            ▶ PLAY
+          <Play x="620" y="730.5" width="9" height="9" fill={P.screen} stroke={P.screen} strokeWidth={2.5} aria-hidden />
+          <text x="632" y="739" fontSize="10" fill={P.screen} style={display} letterSpacing="1">
+            PLAY
           </text>
         </g>
       ) : (

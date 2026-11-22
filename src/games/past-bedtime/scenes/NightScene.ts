@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import { getAudio } from "@/lib/audio/engine";
 import type { SoundRecipe } from "@/lib/audio/types";
-import type { Fonts } from "@/games/kit/ui";
+import { glyphOffset, type Fonts } from "@/games/kit/ui";
 import type { Locale } from "@/i18n/locales";
 import { NIGHT_COPY, type NightCopy, type Sleeper } from "../copy";
 import { isCreaky, isHiding, isWall, noiseDistances, pathTo } from "../sim/grid";
@@ -16,11 +16,11 @@ import { BrunoView, CatView, ClockView, DadView, DogView, GrandmaView, StatusIco
 import { decorFor, drawFloorDecor, drawTopDecor, drawWallDecor, type Decor } from "./decor";
 import { decorArtName, hasArt, loadArt, placeArt, propArtName, wallArtTheme, type ArtMode } from "./art";
 import { NightLighting, type DynamicLight } from "./lighting";
-import { floatZ, noiseRing, pop, say, sightLine, soundLine, squiggle, type BubbleTone, type Box, type Speaker } from "./fx";
+import { floatZ, noiseRing, pop, popIcon, say, sightLine, soundLine, squiggle, type BubbleTone, type Box, type Speaker } from "./fx";
 import { drawExit } from "./exit";
 import { StoryBox } from "./story";
 import { drawCreakMarks, drawCreaks, drawFloor, drawHides, drawProps, drawWalls, faceMap, hideStyleFor, NIGHT, themeFor } from "./house";
-import { loadNightIcons } from "./icons";
+import { ARROW_ICONS, iconKey, loadNightIcons } from "./icons";
 import { computeLayout, tileCenter, wobble, type Frame, type Layout } from "./layout";
 import { Notebook, type ButtonId, type LegendItem, type NoteKind, type NotebookView } from "./notebook";
 import type { NightUiScene } from "./NightUi";
@@ -89,6 +89,8 @@ export class NightScene extends Phaser.Scene {
   private watchSpots: { x: number; y: number }[] = [];
   private hover!: Phaser.GameObjects.Graphics;
   private hintLayer!: Phaser.GameObjects.Graphics;
+  private hintMarks!: Phaser.GameObjects.Container;
+  private litEyes: Phaser.GameObjects.Image[] = [];
   private badges: Phaser.GameObjects.GameObject[] = [];
   private lightsOn!: Phaser.GameObjects.Rectangle;
   private lighting!: NightLighting;
@@ -110,7 +112,7 @@ export class NightScene extends Phaser.Scene {
   private ui!: NightUiScene;
   private overviewOn = false;
   private following = false;
-  private viewChip: { box: Box; label: Phaser.GameObjects.Text; bg: Phaser.GameObjects.Graphics } | null = null;
+  private viewChip: { box: Box; label: Phaser.GameObjects.Text; icon: Phaser.GameObjects.Image; size: number; bg: Phaser.GameObjects.Graphics } | null = null;
   private chipRight = false;
   private indicators: { target: () => { x: number; y: number }; root: Phaser.GameObjects.Container; arrow: Phaser.GameObjects.Graphics }[] = [];
 
@@ -122,7 +124,7 @@ export class NightScene extends Phaser.Scene {
     const bridge = this.registry.get("bridge") as NightBridge;
     this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => bridge.onLoad(value));
     if (bridge.art === "final") loadArt(this);
-    if (bridge.frame.kind !== "full") loadNightIcons(this);
+    loadNightIcons(this);
   }
 
   create() {
@@ -205,6 +207,7 @@ export class NightScene extends Phaser.Scene {
     this.agents = [];
     this.clock = null;
     this.badges = [];
+    this.litEyes = [];
     this.history = [];
     this.actions = [];
     this.hints = 0;
@@ -242,7 +245,8 @@ export class NightScene extends Phaser.Scene {
     this.routeMarks = this.add.graphics().setDepth(36);
     this.hover = this.add.graphics().setDepth(13);
     this.hintLayer = this.add.graphics().setDepth(39.5);
-    this.tweens.add({ targets: this.hintLayer, y: -s * 0.06, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.hintMarks = this.add.container(0, 0).setDepth(39.5);
+    this.tweens.add({ targets: [this.hintLayer, this.hintMarks], y: -s * 0.06, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     this.drawFrame();
     this.lightsOn = this.add.rectangle(L.board.x, L.board.y, L.board.w, L.board.h, 0xffe8a0, 0).setOrigin(0).setDepth(45);
     const iconSize = Math.max(30, s * 0.34, L.small * 1.65);
@@ -522,7 +526,7 @@ export class NightScene extends Phaser.Scene {
       }
       return;
     }
-    this.hintLayer.clear();
+    this.clearHint();
     this.hover.clear();
     this.history.push(this.state);
     this.actions.push(action);
@@ -698,7 +702,7 @@ export class NightScene extends Phaser.Scene {
           break;
       }
     }
-    if (masked) this.time.delayedCall(80, () => this.clock && pop(this, fonts, this.clock.container.x + s * 0.5, this.clock.container.y - s * 0.4, "♪", Math.round(s * 0.4), "#ffe39a"));
+    if (masked) this.time.delayedCall(80, () => this.clock && popIcon(this, this.clock.container.x + s * 0.5, this.clock.container.y - s * 0.4, [iconKey("noteEdge"), iconKey("note")], Math.round(s * 0.42)));
   }
 
   private talk(x: number, y: number, text: string, tone: BubbleTone, duration: number, who?: keyof typeof SPEAKER_COLORS) {
@@ -1020,6 +1024,8 @@ export class NightScene extends Phaser.Scene {
   private drawLights() {
     const g = this.lightGfx;
     g.clear();
+    for (const eye of this.litEyes) eye.destroy();
+    this.litEyes = [];
     const st = this.state;
     const grid = this.sim.grid;
     const L = this.layout;
@@ -1046,15 +1052,8 @@ export class NightScene extends Phaser.Scene {
         g.lineStyle(4, NIGHT.lightEdge, 0.95);
         g.strokeRoundedRect(r.x, r.y, r.s, r.s, 10);
         if (isHiding(grid, idx % grid.w, Math.floor(idx / grid.w))) continue;
-        const ex = r.x + r.s * 0.2;
-        const ey = r.y + r.s * 0.2;
-        const ew = r.s * 0.13;
-        g.fillStyle(0xfffbe8, 0.95);
-        g.fillEllipse(ex, ey, ew * 2, ew * 1.15);
-        g.lineStyle(2.5, 0xb8690c, 1);
-        g.strokeEllipse(ex, ey, ew * 2, ew * 1.15);
-        g.fillStyle(0x1d1830, 1);
-        g.fillCircle(ex, ey, ew * 0.38);
+        const span = r.s * 0.31;
+        this.litEyes.push(this.add.image(r.x + r.s * 0.2, r.y + r.s * 0.2, iconKey("watched")).setDisplaySize(span, span).setDepth(10));
       }
     });
     const soft: { x: number; y: number }[] = [];
@@ -1196,12 +1195,7 @@ export class NightScene extends Phaser.Scene {
         marks.strokeCircle(t.x, t.y, s * 0.36);
         marks.lineStyle(4, peeking ? 0xff6b5a : 0xffe39a, fade);
         marks.strokeCircle(t.x, t.y, s * 0.34);
-        marks.fillStyle(0xfffbe8, fade);
-        marks.fillEllipse(t.x, t.y, s * 0.3, s * 0.17);
-        marks.lineStyle(3, 0xb8690c, fade);
-        marks.strokeEllipse(t.x, t.y, s * 0.3, s * 0.17);
-        marks.fillStyle(0x1d1830, fade);
-        marks.fillCircle(t.x, t.y, s * 0.05);
+        this.badges.push(this.add.image(t.x, t.y, iconKey("watched")).setDisplaySize(s * 0.36, s * 0.36).setDepth(36).setAlpha(fade));
         this.watchSpots.push({ x: tx, y: ty });
         const onBruno = tx === this.state.x && ty === this.state.y;
         this.badges.push(this.lookTag(t.x, t.y - s * (onBruno ? 1.02 : 0.46), peeking ? this.copy.status.peek(k) : this.copy.status.look(k), peeking ? 0xff9d8a : 0xffe39a, Math.max(fade, 0.9)));
@@ -1399,10 +1393,15 @@ export class NightScene extends Phaser.Scene {
     this.bridge.onWin({ level: level.id, index: this.levelIndex, turns, par: level.par, stars: got, hints: this.hints, moves: encodeMoves(this.actions), wakes: st.wakes, creaks: st.creaks - st.masked, covered: st.masked });
   }
 
+  private clearHint() {
+    this.hintLayer.clear();
+    this.hintMarks.removeAll(true);
+  }
+
   private undo() {
     if (this.history.length === 0) return;
     this.dropPending();
-    this.hintLayer.clear();
+    this.clearHint();
     this.sfx(NIGHT_SFX.erase);
     const wasCaught = this.state.status === "caught";
     const wasWon = this.state.status === "won";
@@ -1436,7 +1435,7 @@ export class NightScene extends Phaser.Scene {
     this.history = [];
     this.actions = [];
     this.busy = false;
-    this.hintLayer.clear();
+    this.clearHint();
     this.tweens.killTweensOf(this.lightsOn);
     this.lightsOn.setFillStyle(0xffe8a0, 0);
     this.notebook.clearCaught();
@@ -1453,7 +1452,7 @@ export class NightScene extends Phaser.Scene {
   private hint() {
     if (this.state.status !== "playing") return;
     const solution = solve(this.sim, this.state);
-    this.hintLayer.clear();
+    this.clearHint();
     if (!solution || solution.actions.length === 0) {
       this.notebook.note(this.copy.notes.noHint, "bad");
       return;
@@ -1478,7 +1477,6 @@ export class NightScene extends Phaser.Scene {
       g.beginPath();
       g.arc(cx, cy, r * 0.72, Math.PI * 1.08, Math.PI * 1.42);
       g.strokePath();
-      g.fillStyle(NIGHT.ink, 1);
     };
     if (a === "wait") {
       const text = this.copy.notes.hintWait(this.waitsAhead(st, solution.turns));
@@ -1487,8 +1485,7 @@ export class NightScene extends Phaser.Scene {
       const cx = c.x + s * 0.46;
       const cy = c.y - s * 0.62;
       badge(cx, cy);
-      g.fillRoundedRect(cx - r * 0.38, cy - r * 0.42, r * 0.26, r * 0.84, r * 0.08);
-      g.fillRoundedRect(cx + r * 0.12, cy - r * 0.42, r * 0.26, r * 0.84, r * 0.08);
+      this.hintMarks.add(this.add.image(cx, cy, iconKey("wait")).setDisplaySize(r * 1.3, r * 1.3));
       return;
     }
     this.notebook.note(this.copy.notes.hint, "info");
@@ -1500,12 +1497,7 @@ export class NightScene extends Phaser.Scene {
     g.fillStyle(0x000000, 0.3);
     g.fillEllipse(t.x, t.y + s * 0.3, r * 1.6, r * 0.5);
     badge(cx, cy);
-    const ang = Math.atan2(DY[a], DX[a]);
-    const shape = [[-0.6, -0.2], [0.05, -0.2], [0.05, -0.5], [0.62, 0], [0.05, 0.5], [0.05, 0.2], [-0.6, 0.2]].map(([px, py]) => ({
-      x: cx + (px * Math.cos(ang) - py * Math.sin(ang)) * r,
-      y: cy + (px * Math.sin(ang) + py * Math.cos(ang)) * r,
-    }));
-    g.fillPoints(shape, true);
+    this.hintMarks.add(this.add.image(cx, cy, iconKey(ARROW_ICONS[a])).setDisplaySize(r * 2.1, r * 2.1));
   }
 
   private waitsAhead(st: State, best: number) {
@@ -1724,8 +1716,9 @@ export class NightScene extends Phaser.Scene {
     const L = this.layout;
     const size = L.kind === "full" ? 26 : Math.round(14 * L.unit);
     const label = this.ui.add.text(0, 0, "", { fontFamily: this.bridge.fonts.hand, fontSize: `${size}px`, color: "#1d1830", padding: { x: 2, y: 3 } }).setOrigin(0, 0.5).setDepth(26);
+    const icon = this.ui.add.image(0, 0, iconKey("view")).setDisplaySize(size, size).setDepth(26);
     const bg = this.ui.add.graphics().setDepth(25);
-    this.viewChip = { box: { x: 0, y: 0, w: 0, h: 0 }, label, bg };
+    this.viewChip = { box: { x: 0, y: 0, w: 0, h: 0 }, label, icon, size, bg };
     const hit = this.ui.add.zone(0, 0, 10, 10).setOrigin(0).setDepth(27).setInteractive({ useHandCursor: true });
     hit.on("pointerup", () => this.command("view"));
     hit.setData("chip", true);
@@ -1739,10 +1732,12 @@ export class NightScene extends Phaser.Scene {
     const view = this.bridge.touch ? this.copy.touch : this.copy.view;
     const text = this.overviewOn ? view.back : view.house;
     chip.label.setText(text);
+    chip.icon.setTexture(iconKey(this.overviewOn ? "undo" : "view")).setDisplaySize(chip.size, chip.size);
     const full = L.kind === "full";
     const k = full ? 1 : L.unit;
     const h = full ? 52 : 38 * k;
-    const w = chip.label.width + (full ? 40 : 24 * k);
+    const gap = chip.size * 0.3;
+    const w = chip.size + gap + chip.label.width + (full ? 40 : 24 * k);
     const x = full ? L.frame.x + 18 : this.chipRight ? L.frame.x + L.frame.w - w - 8 * k : L.frame.x + 8 * k;
     const y = full ? L.frame.y + L.frame.h - h - 18 : L.frame.y + 8 * k;
     const r = full ? 14 : 10 * k;
@@ -1754,7 +1749,9 @@ export class NightScene extends Phaser.Scene {
     chip.bg.fillRoundedRect(x, y, w, h, r);
     chip.bg.lineStyle(full ? 3 : 2 * k, NIGHT.ink, 1);
     chip.bg.strokeRoundedRect(x, y, w, h, r);
-    chip.label.setPosition(x + (full ? 20 : 12 * k), y + h / 2);
+    const left = x + (full ? 20 : 12 * k);
+    chip.icon.setPosition(left + chip.size / 2, y + h / 2 - glyphOffset(chip.label));
+    chip.label.setPosition(left + chip.size + gap, y + h / 2);
     const hit = chip.label.getData("hit") as Phaser.GameObjects.Zone;
     hit.setPosition(x, y).setSize(w, h);
     hit.input?.hitArea.setTo(0, 0, w, h);

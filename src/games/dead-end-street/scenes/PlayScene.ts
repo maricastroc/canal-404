@@ -34,7 +34,7 @@ import { currentFrame, watchFrame } from "./frame";
 import { Fx } from "./fx";
 import { GadgetView } from "./gadgets";
 import { Arlindo, birdFlyOut, Cat, popLid } from "./neighborhood";
-import { Bubble, Hud, type StreetHud } from "./ui";
+import { Bubble, Hud, targetArrow, type StreetHud } from "./ui";
 import { decorate, drawStatics, plankTexture } from "./yard";
 
 type SoundMaterial = Material | "soft" | "water" | "squeaky" | "rubber";
@@ -471,15 +471,10 @@ export class PlayScene extends Phaser.Scene {
     const sprite = this.sprites.get(t.body.id);
     const x = t.body.position.x;
     const y = t.body.position.y - (sprite ? sprite.displayHeight * sprite.originY : 50) - 40;
-    const g = this.add.graphics().setDepth(13);
-    g.fillStyle(0x1d1830, 1);
-    g.fillTriangle(-17, -12, 21, -12, 2, 15);
-    g.fillStyle(t.def.kind === "soak" ? 0x5cb9f0 : 0xffc83d, 1);
-    g.fillTriangle(-19, -16, 19, -16, 0, 11);
-    g.lineStyle(4, 0x1d1830, 1);
-    g.strokeTriangle(-19, -16, 19, -16, 0, 11);
+    const g = targetArrow(this, 48, t.def.kind === "soak").setDepth(13);
     const scale = this.tall ? Math.max(1.35, 24 / (38 * this.camera.cssPerWorld())) : Math.min(this.hud.uiScale, 1.3) * 1.35;
-    g.setPosition(x, y).setScale(scale);
+    const tip = y + 11 * scale;
+    g.setPosition(x, tip).setScale(scale);
     const fade = () => this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
     if (this.ctx.reducedMotion) {
       this.time.delayedCall(1300, fade);
@@ -487,7 +482,7 @@ export class PlayScene extends Phaser.Scene {
     }
     g.setAlpha(0);
     this.tweens.add({ targets: g, alpha: 1, duration: 140 });
-    this.tweens.add({ targets: g, y: y - 12, duration: 300, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: fade });
+    this.tweens.add({ targets: g, y: tip - 12, duration: 300, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: fade });
   }
 
   private syncSprites() {
@@ -510,13 +505,14 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     const to = this.hud.iconPoint(t.index);
-    const token = this.add.image(x, y, "star").setDepth(21).setScale(1.6);
+    const token = this.add.image(x, y, "icon-star").setDepth(21).setDisplaySize(58, 58);
     this.tweens.add({ targets: token, angle: 220, duration: 560, delay: 140 });
     this.tweens.add({
       targets: token,
       x: to.x,
       y: to.y,
-      scale: 0.9,
+      displayWidth: 32,
+      displayHeight: 32,
       duration: 560,
       delay: 140,
       ease: "Cubic.easeIn",

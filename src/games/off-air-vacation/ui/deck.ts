@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 import type { Frame } from "../layout";
+import { placeVhs, type VhsLabels, type VhsMode } from "./hud";
 import { pinUi } from "./journal";
 
 const PANEL = 0x2b2150;
@@ -10,7 +11,9 @@ const CREAM = 0xfbf5e6;
 const DIM = 0x4a3d78;
 const DEPTH = { bar: 8000, banner: 8010, toast: 8020, vhs: 7990, prompt: 5950 };
 
-export type DeckText = { action: string; journal: string; map: string; pause: string };
+export type DeckText = { action: string; journal: string; map: string; vhs: VhsLabels };
+
+const STICK_ARROWS = ["ui-chev-right", "ui-chev-down", "ui-chev-left", "ui-chev-up"];
 
 type Box = { x: number; y: number; w: number; h: number };
 type Toast = { root: Phaser.GameObjects.Container; h: number; w: number };
@@ -51,7 +54,7 @@ export class DeckHud {
   private mission: { root: Phaser.GameObjects.Container; bg: Phaser.GameObjects.Graphics; text: Phaser.GameObjects.Text; box: Box } | null = null;
   private action: { root: Phaser.GameObjects.Container; bg: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; box: Box } | null = null;
   private pills: { id: "journal" | "map"; root: Phaser.GameObjects.Container; box: Box }[] = [];
-  private stick: { base: Phaser.GameObjects.Graphics; knob: Phaser.GameObjects.Graphics; zone: Box; rest: { x: number; y: number }; r: number; travel: number } | null = null;
+  private stick: { base: Phaser.GameObjects.Graphics; knob: Phaser.GameObjects.Graphics; arrows: Phaser.GameObjects.Image[]; zone: Box; rest: { x: number; y: number }; r: number; travel: number } | null = null;
   private stickId: number | null = null;
   private stickOrigin = { x: 0, y: 0 };
   private actionId: number | null = null;
@@ -59,7 +62,9 @@ export class DeckHud {
   private toasts: Toast[] = [];
   private vhs: Phaser.GameObjects.Container | null = null;
   private vhsText: Phaser.GameObjects.Text | null = null;
-  private vhsLabel: string;
+  private vhsIcon: Phaser.GameObjects.Image | null = null;
+  private vhsShade: Phaser.GameObjects.Image | null = null;
+  private vhsMode: VhsMode = "pause";
   private vhsVisible = false;
   private prompt: Phaser.GameObjects.Container;
   private promptBg: Phaser.GameObjects.Graphics;
@@ -74,7 +79,6 @@ export class DeckHud {
     frame: Frame,
   ) {
     this.frame = frame;
-    this.vhsLabel = text.pause;
     this.promptBg = scene.add.graphics();
     this.promptText = scene.add.text(0, 0, "", { fontFamily: fonts.round ?? fonts.body, fontSize: "28px", fontStyle: "700", color: "#fbf5e6", padding: { x: 2, y: 4 } }).setOrigin(0, 0.5);
     this.prompt = scene.add.container(0, 0, [this.promptBg, this.promptText]).setDepth(DEPTH.prompt).setVisible(false);
@@ -105,7 +109,7 @@ export class DeckHud {
     this.setCounts(this.state.posters, this.state.tokens);
     this.setVerb(this.state.verb, true);
     this.setTouchVisible(this.state.controls, true);
-    this.vhsOn(this.vhsVisible, this.vhsLabel);
+    this.vhsOn(this.vhsVisible, this.vhsMode);
     this.hide(this.hidden);
   }
 
@@ -193,7 +197,8 @@ export class DeckHud {
     const rest = { x: zone.x + zone.w / 2, y: zone.y + zone.h / 2 };
     const base = s.add.graphics();
     const knob = s.add.graphics();
-    this.stick = { base, knob, zone, rest, r, travel: r * 0.82 };
+    const arrows = STICK_ARROWS.map((key) => s.add.image(0, 0, key).setTint(CREAM).setDisplaySize(22 * u, 22 * u));
+    this.stick = { base, knob, arrows, zone, rest, r, travel: r * 0.82 };
     this.drawStick(rest.x, rest.y, rest.x, rest.y, false);
 
     this.pills = [];
@@ -220,7 +225,7 @@ export class DeckHud {
     const aroot = s.add.container(action.x + action.w / 2, action.y + action.h / 2, [abg, aicon, alabel]);
     this.action = { root: aroot, bg: abg, icon: aicon, label: alabel, box: action };
 
-    this.controls = s.add.container(0, 0, [well, base, knob, ...pillParts, aroot]);
+    this.controls = s.add.container(0, 0, [well, base, ...arrows, knob, ...pillParts, aroot]);
     this.deck = s.add.container(0, 0, [g, this.controls]).setDepth(DEPTH.bar);
     pinUi(this.deck);
   }
@@ -235,17 +240,11 @@ export class DeckHud {
     b.fillCircle(bx, by, st.r);
     b.lineStyle(2.5 * u, CREAM, active ? 0.75 : 0.45);
     b.strokeCircle(bx, by, st.r);
-    b.fillStyle(CREAM, active ? 0.8 : 0.55);
-    const tri = (a: number) => {
-      const d = st.r - 9 * u;
-      const s = 6 * u;
-      const cx = bx + Math.cos(a) * d;
-      const cy = by + Math.sin(a) * d;
-      const px = Math.cos(a + Math.PI / 2) * s;
-      const py = Math.sin(a + Math.PI / 2) * s;
-      b.fillTriangle(cx + Math.cos(a) * s, cy + Math.sin(a) * s, cx - Math.cos(a) * s * 0.4 + px, cy - Math.sin(a) * s * 0.4 + py, cx - Math.cos(a) * s * 0.4 - px, cy - Math.sin(a) * s * 0.4 - py);
-    };
-    for (let i = 0; i < 4; i += 1) tri((i * Math.PI) / 2);
+    const d = st.r - 7 * u;
+    st.arrows.forEach((img, i) => {
+      const a = (i * Math.PI) / 2;
+      img.setPosition(bx + Math.cos(a) * d, by + Math.sin(a) * d).setAlpha(active ? 0.8 : 0.55);
+    });
     const k = st.knob;
     k.clear();
     const kr = st.r * 0.46;
@@ -266,9 +265,11 @@ export class DeckHud {
     const st = f.stage;
     const scan = s.add.tileSprite(st.x, st.y, st.w, st.h, "scanlines").setOrigin(0, 0).setAlpha(0.35);
     const tint = s.add.rectangle(st.x, st.y, st.w, st.h, 0x5cb9f0, 0.08).setOrigin(0, 0);
-    this.vhsText = s.add.text(st.x + st.w - 14 * u, st.y + 10 * u, this.vhsLabel, { fontFamily: "Courier New, monospace", fontSize: `${22 * u}px`, fontStyle: "bold", color: "#ffffff" }).setOrigin(1, 0);
+    this.vhsText = s.add.text(st.x + st.w - 14 * u, st.y + 10 * u, this.text.vhs[this.vhsMode], { fontFamily: "Courier New, monospace", fontSize: `${22 * u}px`, fontStyle: "bold", color: "#ffffff" }).setOrigin(1, 0);
     this.vhsText.setShadow(2 * u, 2 * u, "#1d1830", 0, true, true);
-    this.vhs = s.add.container(0, 0, [tint, scan, this.vhsText]).setDepth(DEPTH.vhs).setVisible(false);
+    this.vhsShade = s.add.image(0, 0, "ui-vhs-pause").setTintFill(INK_HEX);
+    this.vhsIcon = s.add.image(0, 0, "ui-vhs-pause");
+    this.vhs = s.add.container(0, 0, [tint, scan, this.vhsShade, this.vhsIcon, this.vhsText]).setDepth(DEPTH.vhs).setVisible(false);
     pinUi(this.vhs);
   }
 
@@ -466,11 +467,14 @@ export class DeckHud {
     }
   }
 
-  vhsOn(on: boolean, label = this.text.pause) {
+  vhsOn(on: boolean, mode: VhsMode = "pause") {
     const was = this.vhsVisible;
     this.vhsVisible = on;
-    this.vhsLabel = label;
-    this.vhsText?.setText(label);
+    this.vhsMode = mode;
+    if (this.vhsText && this.vhsIcon && this.vhsShade) {
+      this.vhsText.setText(this.text.vhs[mode]);
+      placeVhs(this.vhsText, this.vhsIcon, this.vhsShade, mode, 20.5 * this.u, 2 * this.u);
+    }
     this.vhs?.setVisible(on);
     if (was !== on) this.restack();
   }

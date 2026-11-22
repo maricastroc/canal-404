@@ -1,3 +1,4 @@
+import { ArrowBigUp } from "lucide-react";
 import type React from "react";
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
@@ -408,7 +409,7 @@ function ChargeRing({ x, y, r }: { x: number; y: number; r: number }) {
     <g>
       <circle cx={x} cy={y} r={r * 1.36} fill={P.ink} opacity={0.55} />
       <circle cx={x} cy={y} r={r} fill="none" stroke="#ff7a1a" strokeWidth={r * 0.4} />
-      <path d={`M${x - r * 0.42} ${y + r * 0.28} L${x + r * 0.42} ${y + r * 0.28} L${x} ${y - r * 0.46} Z`} fill="#ff7a1a" />
+      <ArrowBigUp x={x - r * 0.62} y={y - r * 0.66} width={r * 1.24} height={r * 1.24} fill="#ff7a1a" stroke="#ff7a1a" strokeWidth={2.4} />
     </g>
   );
 }

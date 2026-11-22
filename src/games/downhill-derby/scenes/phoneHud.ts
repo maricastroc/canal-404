@@ -6,6 +6,7 @@ import type { Frame } from "../layout";
 import { INK } from "./cart";
 import type { PhoneDeck } from "./deck";
 import { formatTime, type HudButton, type HudData, type LineupEntry, type Pin, type RaceHud, type ShoutOptions, type ShowMeter, type StandingRow } from "./hud";
+import { keyArrows } from "../../kit/keyArrows";
 
 type Callout = { key: string; text: Phaser.GameObjects.Text; sub: Phaser.GameObjects.Text | null; life: number; max: number; priority: number; fade: number; rise: number };
 
@@ -139,8 +140,8 @@ export class PhoneHud implements RaceHud {
     this.showTrick = this.add(scene.add.text(0, 0, "", display("#fbf5e6")).setOrigin(0.5, 0.5).setAlpha(0));
     for (let i = 0; i < 2; i += 1) this.pins.push({ g: this.add(scene.add.graphics()), icon: this.add(scene.add.image(0, 0, "dd-ico-jump").setVisible(false)), y: 0, alpha: 0 });
     this.dockBg = this.add(scene.add.graphics());
-    this.hintText = this.add(scene.add.text(0, 0, "", { ...body(), align: "center", lineSpacing: 6 }).setOrigin(0.5, 0.5));
-    this.tipText = this.add(scene.add.text(0, 0, "", { ...body(), align: "center", lineSpacing: 6 }).setOrigin(0.5, 0.5).setAlpha(0));
+    this.hintText = keyArrows(this.add(scene.add.text(0, 0, "", { ...body(), align: "center", lineSpacing: 6 }).setOrigin(0.5, 0.5)));
+    this.tipText = keyArrows(this.add(scene.add.text(0, 0, "", { ...body(), align: "center", lineSpacing: 6 }).setOrigin(0.5, 0.5).setAlpha(0)));
     this.measure = this.add(scene.add.text(0, 0, "Ág\nÁg", { ...body(), align: "center", lineSpacing: 6 }).setVisible(false));
     this.countText = this.add(scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: "170px", color: "#ffcf3f", stroke: "#1d1830", strokeThickness: 20 }).setOrigin(0.5));
     this.countText.setVisible(false);

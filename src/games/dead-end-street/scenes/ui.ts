@@ -21,6 +21,14 @@ const PILL_TEXT_Y = PILL_MID - 2.5;
 const FORCE_ICONS = ["icon-force-0", "icon-force-1", "icon-force-2", "icon-force-3", "icon-force-4"];
 const TAG = { x: 520, bottom: 8, h: 104, pillsX: 436, ammoX: 852, slot: 60 };
 const BOX = { h: 178, cell: 70, top: 50, row: 76 };
+const ARROW_TIP = 0.86;
+
+export function targetArrow(scene: Phaser.Scene, size: number, soak = false) {
+  const key = soak ? "icon-arrow-down-soak" : "icon-arrow-down";
+  const shadow = scene.add.image(size / 24, size / 12, key).setOrigin(0.5, ARROW_TIP).setDisplaySize(size, size).setTintFill(INK_HEX);
+  const arrow = scene.add.image(0, 0, key).setOrigin(0.5, ARROW_TIP).setDisplaySize(size, size);
+  return scene.add.container(0, 0, [shadow, arrow]);
+}
 
 export interface StreetHud {
   readonly kind: FrameKind;

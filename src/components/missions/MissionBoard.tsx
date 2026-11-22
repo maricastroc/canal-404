@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useState } from "react";
-import { PlayIcon, RestartIcon, TrophyIcon } from "@/components/art/Icons";
+import { ChevronLeftIcon, ChevronRightIcon, EllipsisIcon, PlayIcon, RestartIcon, TrophyIcon } from "@/components/art/Icons";
 import { IntentLink } from "@/components/ui/IntentLink";
 import { InkButton, inkStyle } from "@/components/ui/Primitives";
 import { useCopy, useLocale } from "@/i18n/client";
@@ -197,7 +197,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
               aria-label={view?.previousDay ? copy.previousDay(dayName(view.previousDay, locale)) : copy.previous}
               className="press grid size-9 place-items-center rounded-lg border-[3px] border-ink bg-cream font-display text-lg text-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ‹
+              <ChevronLeftIcon className="size-5" />
             </button>
             <p className="min-w-[6.5rem] rounded-lg border-[3px] border-ink bg-plum-800 px-2 py-0.5 text-center font-display text-sm uppercase tracking-wider text-screen">
               <time dateTime={shownDay}>
@@ -211,7 +211,7 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
               aria-label={view?.nextDay ? copy.nextDay(dayName(view.nextDay, locale)) : copy.next}
               className="press grid size-9 place-items-center rounded-lg border-[3px] border-ink bg-cream font-display text-lg text-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ›
+              <ChevronRightIcon className="size-5" />
             </button>
           </nav>
         </div>
@@ -276,8 +276,8 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
                   {outside ? (
                     <>
                       <tr aria-hidden>
-                        <td colSpan={3} className="py-0.5 text-center font-display tracking-[0.5em] text-plum-300">
-                          ···
+                        <td colSpan={3} className="py-0.5 text-plum-300">
+                          <EllipsisIcon className="mx-auto size-5" />
                         </td>
                       </tr>
                       <Row entry={{ position: outside.position, nickname: outside.nickname, tag: outside.tag, you: true, metrics: outside.metrics }} game={view.mission.game} />
@@ -290,13 +290,13 @@ export const MissionBoard = forwardRef<HTMLElement, Props>(function MissionBoard
                 {view.pages > 1 ? (
                   <nav aria-label={copy.pages} className="flex items-center gap-2">
                     <InkButton size="sm" tone="cream" disabled={view.page <= 1} onClick={() => turn(view.page - 1)} aria-label={copy.previousPage}>
-                      ‹
+                      <ChevronLeftIcon className="size-4" />
                     </InkButton>
                     <p aria-live="polite" className="font-display text-xs uppercase tracking-wider text-cream-2">
                       {copy.page(view.page, view.pages)}
                     </p>
                     <InkButton size="sm" tone="cream" disabled={view.page >= view.pages} onClick={() => turn(view.page + 1)} aria-label={copy.nextPage}>
-                      ›
+                      <ChevronRightIcon className="size-4" />
                     </InkButton>
                   </nav>
                 ) : null}

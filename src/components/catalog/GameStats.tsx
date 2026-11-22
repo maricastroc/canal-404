@@ -1,5 +1,6 @@
 "use client";
 
+import { RatingStar } from "@/components/art/Icons";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { formatNumber } from "@/i18n/format";
@@ -31,14 +32,7 @@ function Stars({ count }: { count: number }) {
   return (
     <span role="img" className="inline-flex gap-0.5" aria-label={copy.stars(count)}>
       {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          aria-hidden
-          className={`text-2xl leading-none ${i < count ? "text-sun" : "text-cream-3"}`}
-          style={{ textShadow: "2px 2px 0 #1d1830" }}
-        >
-          ★
-        </span>
+        <RatingStar key={i} on={i < count} className="size-6" />
       ))}
     </span>
   );

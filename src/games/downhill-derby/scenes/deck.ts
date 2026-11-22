@@ -67,6 +67,7 @@ export class PhoneDeck {
   private readonly spinLabel: Phaser.GameObjects.Text;
   private readonly rounds: [Round, Round];
   private readonly gauge: Phaser.GameObjects.Graphics;
+  private readonly trend: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
   private readonly speedText: Phaser.GameObjects.Text;
   private readonly unitText: Phaser.GameObjects.Text;
   private readonly tierText: Phaser.GameObjects.Text;
@@ -119,6 +120,7 @@ export class PhoneDeck {
     const round = (id: Pad, color: number, icon: string, text: string): Round => ({ id, x: 0, y: 0, r: 0, color, gfx: this.add(scene.add.graphics()), icon: this.add(scene.add.image(0, 0, icon)), label: label(text) });
     this.rounds = [round("crouch", 0x63d6c1, "dd-ico-crouch", copy.crouch), round("jump", 0xffc83d, "dd-ico-jump", copy.jump)];
     this.gauge = this.add(scene.add.graphics());
+    this.trend = [this.add(scene.add.image(0, 0, "dd-ico-trend-up").setVisible(false)), this.add(scene.add.image(0, 0, "dd-ico-trend-down").setVisible(false))];
     this.speedText = this.add(scene.add.text(0, 0, "0", { fontFamily: fonts.display, fontSize: `${F}px`, color: "#fbf5e6" }).setOrigin(0.5, 0.5));
     this.unitText = this.add(scene.add.text(0, 0, copy.kmh, { fontFamily: fonts.body, fontSize: `${F}px`, color: "#cfc8e8", fontStyle: "700" }).setOrigin(0.5, 0.5));
     this.tierText = this.add(scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: `${F}px`, color: "#ffcf3f" }).setOrigin(0.5, 0.5));
@@ -336,6 +338,7 @@ export class PhoneDeck {
     const r = this.gaugeR;
     const g = this.gauge;
     g.clear();
+    for (const icon of this.trend) icon.setVisible(false);
     if (r < 20 * u) return;
     const x = this.gaugeX;
     const y = this.gaugeY;
@@ -364,9 +367,11 @@ export class PhoneDeck {
       const up = trend > 0;
       const s = 5 * u * (r / (SIZE.gauge * u));
       const ty = y + r * 0.62;
-      g.fillStyle(up ? 0x7fe0c4 : 0xff7a4a, Math.min(1, Math.abs(trend) * 2));
-      if (up) g.fillTriangle(x - s, ty + s * 0.7, x + s, ty + s * 0.7, x, ty - s);
-      else g.fillTriangle(x - s, ty - s * 0.7, x + s, ty - s * 0.7, x, ty + s);
+      this.trend[up ? 0 : 1]
+        .setVisible(true)
+        .setAlpha(Math.min(1, Math.abs(trend) * 2))
+        .setDisplaySize(s * 3.2, s * 3.2)
+        .setPosition(x, ty + (up ? s * 0.12 : s * 0.15));
     }
     this.tierText.setScale(this.tierBase * (1 + this.tierPop * 0.2));
     if (!this.tierText.visible) return;

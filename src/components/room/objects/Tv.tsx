@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, MouseEvent, Ref } from "react";
-import { PlayIcon, RewindIcon, ZoomIcon } from "@/components/art/Icons";
+import { ChevronRightIcon, PlayIcon, RewindIcon, ZoomIcon } from "@/components/art/Icons";
 import { IntentLink } from "@/components/ui/IntentLink";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
@@ -188,7 +188,7 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
           <span className="shrink-0 rounded-[3px] bg-sun px-[0.4em] font-display text-[max(8px,4.2cqw)] uppercase leading-[1.5] text-ink max-xl:text-[max(8px,4.2cqw,min(5cqw,9px))]">{copy.next}</span>{" "}
           <span className="line-clamp-2 min-w-0 font-display text-[max(8px,4.5cqw)] uppercase leading-[1.1] tracking-wide text-cream max-xl:text-[max(8px,4.5cqw,min(5.6cqw,10px))]">{next.name}</span>
           <span aria-hidden className="ml-auto shrink-0 font-display text-[max(7px,5.3cqw)] leading-none text-sun max-xl:text-[max(10px,5.3cqw)] @max-[150px]:hidden">
-            ▸
+            <ChevronRightIcon className="size-[1em]" />
           </span>
         </button>
       )}
@@ -215,8 +215,9 @@ export function TvScreen({ channel, badge, next = null, switching, osd, flash, r
         />
       )}
       {rewinding && (
-        <p aria-hidden className="pointer-events-none absolute left-[6%] top-[6%] z-30 font-display text-[max(9px,8.1cqw)] leading-none text-cream" style={{ textShadow: "2px 2px 0 #1d1830" }}>
-          ◀◀ REW
+        <p aria-hidden className="pointer-events-none absolute left-[6%] top-[6%] z-30 flex items-center gap-[0.3em] font-display text-[max(9px,8.1cqw)] leading-none text-cream" style={{ textShadow: "2px 2px 0 #1d1830" }}>
+          <RewindIcon className="size-[1em] drop-shadow-[2px_2px_0_#1d1830]" />
+          REW
         </p>
       )}
       {osd && (

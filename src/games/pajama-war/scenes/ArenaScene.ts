@@ -22,6 +22,7 @@ import { SpecialDrop } from "./special-drop";
 
 type Mode = "attract" | "intro" | "play" | "over";
 type Aim = { angle: number; target: Fighter | null; x: number; y: number; free: boolean };
+type AimMark = "blockInk" | "block" | "lock" | "reticleInk" | "reticle";
 
 const TOUCH_UI = typeof window !== "undefined" && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
 const SKIP_AFTER = 450;
@@ -74,6 +75,7 @@ export class ArenaScene extends Phaser.Scene {
   private heatStage = 0;
   private damageTaken = 0;
   private guide!: Phaser.GameObjects.Graphics;
+  private aimMarks!: Record<AimMark, Phaser.GameObjects.Image>;
   private youTag: Phaser.GameObjects.Container | null = null;
   private lastSound = new Map<string, number>();
   private lastOuch = 0;
@@ -183,6 +185,14 @@ export class ArenaScene extends Phaser.Scene {
       this.fighters.push(f);
     });
     this.guide = this.add.graphics().setDepth(1200);
+    const mark = (key: string, depth: number) => this.add.image(0, 0, key).setDepth(depth).setVisible(false);
+    this.aimMarks = {
+      blockInk: mark("aim-block-ink", 1201).setAlpha(0.8),
+      block: mark("aim-block", 1202),
+      lock: mark("aim-lock", 1201),
+      reticleInk: mark("aim-reticle-ink", 1201).setAlpha(0.7),
+      reticle: mark("aim-reticle", 1202),
+    };
 
     this.buildingHud = true;
     this.vignette = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setAlpha(arena.theme === "yard" ? 0.7 : 0.55).setDepth(1900);
@@ -892,6 +902,8 @@ export class ArenaScene extends Phaser.Scene {
   private drawGuide(t: number) {
     const g = this.guide;
     g.clear();
+    const marks = this.aimMarks;
+    for (const m of Object.values(marks)) m.setVisible(false);
     const p = this.player;
     if (!p || !p.alive || this.mode !== "play") {
       this.aimNow = null;
@@ -942,12 +954,8 @@ export class ArenaScene extends Phaser.Scene {
     } else if (trace.end === "block" && trace.length < want && ready) {
       const end = trace.pts[trace.pts.length - 1];
       const ez = this.flightZ(trace.length, PILLOW.range, false);
-      g.lineStyle(6, 0x1d1830, 0.8);
-      g.lineBetween(end.x - 9, end.y - ez - 9, end.x + 9, end.y - ez + 9);
-      g.lineBetween(end.x + 9, end.y - ez - 9, end.x - 9, end.y - ez + 9);
-      g.lineStyle(3, 0xfbf5e6, 1);
-      g.lineBetween(end.x - 9, end.y - ez - 9, end.x + 9, end.y - ez + 9);
-      g.lineBetween(end.x + 9, end.y - ez - 9, end.x - 9, end.y - ez + 9);
+      marks.blockInk.setPosition(end.x, end.y - ez).setVisible(true);
+      marks.block.setPosition(end.x, end.y - ez).setVisible(true);
     }
     {
       const cx = Math.cos(aim.angle);
@@ -977,23 +985,13 @@ export class ArenaScene extends Phaser.Scene {
       g.strokeEllipse(o.x, o.y + 2, 136 * pulse, 46 * pulse);
       g.lineStyle(5, 0xffc83d, a);
       g.strokeEllipse(o.x, o.y + 2, 136 * pulse, 46 * pulse);
-      const hy = o.top - 34;
-      g.fillStyle(0x1d1830, a);
-      g.fillTriangle(o.x - 17, hy - 3, o.x + 17, hy - 3, o.x, hy + 19);
-      g.fillStyle(0xffc83d, a);
-      g.fillTriangle(o.x - 11, hy, o.x + 11, hy, o.x, hy + 13);
+      marks.lock.setPosition(o.x, o.top - 32).setAlpha(a).setVisible(true);
     } else if (this.aimMode === "mouse" || this.hud?.aiming) {
       const end = Math.min(1, (PILLOW.range * 0.98) / Math.max(1, Math.hypot(aim.x - ox, aim.y - oy)));
       const rx = ox + (aim.x - ox) * end;
       const ry = oy + (aim.y - oy) * end - PILLOW.lift;
-      g.lineStyle(7, 0x1d1830, 0.7);
-      g.strokeCircle(rx, ry, 18);
-      g.lineStyle(3.5, ready ? 0xffc83d : 0xfbf5e6, ready ? 1 : 0.6);
-      g.strokeCircle(rx, ry, 18);
-      g.lineBetween(rx - 26, ry, rx - 12, ry);
-      g.lineBetween(rx + 12, ry, rx + 26, ry);
-      g.lineBetween(rx, ry - 26, rx, ry - 12);
-      g.lineBetween(rx, ry + 12, rx, ry + 26);
+      marks.reticleInk.setPosition(rx, ry).setVisible(true);
+      marks.reticle.setPosition(rx, ry).setTint(ready ? 0xffc83d : 0xfbf5e6).setAlpha(ready ? 1 : 0.6).setVisible(true);
     }
     if (!ready) {
       const k = Phaser.Math.Clamp(1 - (p.readyAt - t) / p.stats.cooldown, 0, 1);

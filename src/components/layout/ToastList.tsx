@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import { useSound } from "@/lib/audio/hooks";
 import { dismissToast, type Toast, type ToastText } from "@/lib/progress/store";
 import { StarBadge, KeyholeBadge } from "@/components/art/Badges";
+import { CloseIcon } from "@/components/art/Icons";
 
 const COPY = localized({
   "pt-BR": {
@@ -102,7 +103,7 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
         className="absolute right-2 top-2 grid size-8 place-items-center rounded-full border-2 border-ink bg-cream-2 font-display text-sm text-ink hover:bg-tomato hover:text-cream"
         aria-label={copy.close}
       >
-        ×
+        <CloseIcon className="size-4" />
       </button>
     </motion.li>
   );

@@ -1,8 +1,27 @@
 import * as Phaser from "phaser";
 import { H, W } from "../config";
-import { INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
+import { INK_HEX, cartoonText, glyphOffset, type Fonts } from "../../kit/ui";
 
 const DEPTH = 8000;
+
+export type VhsMode = "pause" | "play" | "rewind";
+export type VhsLabels = Record<VhsMode, string>;
+
+const VHS_ICON: Record<VhsMode, string> = { pause: "ui-vhs-pause", play: "ui-vhs-play", rewind: "ui-vhs-rewind" };
+
+export function placeVhs(text: Phaser.GameObjects.Text, icon: Phaser.GameObjects.Image, shade: Phaser.GameObjects.Image, mode: VhsMode, size: number, shadow: number) {
+  const x = text.x - text.width - size * 0.42 - size / 2;
+  const y = text.y + text.height / 2 - glyphOffset(text);
+  icon.setTexture(VHS_ICON[mode]).setDisplaySize(size, size).setPosition(x, y);
+  shade.setTexture(VHS_ICON[mode]).setDisplaySize(size, size).setPosition(x + shadow, y + shadow);
+}
+
+export function liveTag(scene: Phaser.Scene, font: string, label: string, right: number, top: number) {
+  const text = scene.add.text(right, top, label, { fontFamily: font, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
+  const size = 15;
+  const dot = scene.add.image(right - text.width - 3 - size / 2, top + text.height / 2 - glyphOffset(text), "ui-live").setDisplaySize(size, size);
+  return [dot, text] as const;
+}
 
 type Button = { root: Phaser.GameObjects.Container; x: number; y: number; r: number; action: string };
 
@@ -27,6 +46,8 @@ export class ResortHud {
   private touchUi = false;
   private vhs: Phaser.GameObjects.Container;
   private vhsText: Phaser.GameObjects.Text;
+  private vhsIcon: Phaser.GameObjects.Image;
+  private vhsShade: Phaser.GameObjects.Image;
   readonly top: Phaser.GameObjects.Container;
   hidden = false;
 
@@ -34,7 +55,7 @@ export class ResortHud {
     private scene: Phaser.Scene,
     private fonts: Fonts,
     private reduced: boolean,
-    private pauseLabel: string,
+    private vhsLabels: VhsLabels,
   ) {
     const mk = (x: number, y: number, icon: string, key: string, action: string) => {
       const g = scene.add.graphics();
@@ -83,9 +104,11 @@ export class ResortHud {
 
     const scan = scene.add.tileSprite(0, 0, W, H, "scanlines").setOrigin(0, 0).setAlpha(0.35);
     const tint = scene.add.rectangle(0, 0, W, H, 0x5cb9f0, 0.08).setOrigin(0, 0);
-    this.vhsText = scene.add.text(W - 70, 150, pauseLabel, { fontFamily: "Courier New, monospace", fontSize: "64px", fontStyle: "bold", color: "#ffffff" }).setOrigin(1, 0);
+    this.vhsText = scene.add.text(W - 70, 150, vhsLabels.pause, { fontFamily: "Courier New, monospace", fontSize: "64px", fontStyle: "bold", color: "#ffffff" }).setOrigin(1, 0);
     this.vhsText.setShadow(4, 4, "#1d1830", 0, true, true);
-    this.vhs = scene.add.container(0, 0, [tint, scan, this.vhsText]).setDepth(DEPTH - 10).setScrollFactor(0, 0, true).setVisible(false);
+    this.vhsShade = scene.add.image(0, 0, VHS_ICON.pause).setTintFill(INK_HEX);
+    this.vhsIcon = scene.add.image(0, 0, VHS_ICON.pause);
+    this.vhs = scene.add.container(0, 0, [tint, scan, this.vhsShade, this.vhsIcon, this.vhsText]).setDepth(DEPTH - 10).setScrollFactor(0, 0, true).setVisible(false);
   }
 
   enableTouch(on: boolean) {
@@ -215,13 +238,14 @@ export class ResortHud {
     this.action.setVisible(on && this.touchUi && !this.hidden);
   }
 
-  vhsOn(on: boolean, label = this.pauseLabel) {
-    this.vhsText.setText(label);
+  vhsOn(on: boolean, mode: VhsMode = "pause") {
+    this.vhsText.setText(this.vhsLabels[mode]);
+    placeVhs(this.vhsText, this.vhsIcon, this.vhsShade, mode, 60, 4);
     this.vhs.setVisible(on);
   }
 
-  vhsFlash(label: string, ms: number) {
-    this.vhsOn(true, label);
+  vhsFlash(mode: VhsMode, ms: number) {
+    this.vhsOn(true, mode);
     this.scene.time.delayedCall(ms, () => this.vhsOn(false));
   }
 

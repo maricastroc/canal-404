@@ -2,7 +2,7 @@
 
 import Link from "@/i18n/Link";
 import { LockedBadge, StarBadge } from "@/components/art/Badges";
-import { CardIcon, VerifiedIcon } from "@/components/art/Icons";
+import { CardIcon, SolidStarIcon, VerifiedIcon } from "@/components/art/Icons";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber } from "@/i18n/format";
@@ -171,7 +171,7 @@ function Grade({ days }: { days: RecentDay[] }) {
             key={d.day}
             className={`grid aspect-square place-items-center rounded-md border-2 border-ink text-xs font-bold tabular-nums ${GRADE_CLASS[d.state]} ${d.day === today ? "outline-2 outline-offset-1 outline-tomato" : ""}`}
           >
-            <span aria-hidden>{d.state === "completed" ? "★" : Number(d.day.slice(8))}</span>
+            <span aria-hidden>{d.state === "completed" ? <SolidStarIcon className="size-3.5" /> : Number(d.day.slice(8))}</span>
             <span className="sr-only">{copy.gradeDay(dayName(d.day, locale), copy.grade[d.state])}</span>
           </li>
         ))}

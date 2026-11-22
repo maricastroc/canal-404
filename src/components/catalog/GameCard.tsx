@@ -2,6 +2,7 @@
 
 import Link from "@/i18n/Link";
 import { GameCover } from "@/components/art/Covers";
+import { SolidStarIcon } from "@/components/art/Icons";
 import { Tag, type Tone } from "@/components/ui/Primitives";
 import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
@@ -103,8 +104,12 @@ export function GameCard({ game, index }: { game: GameMeta; index: number }) {
           <Tag tone={categoryTone[game.category]}>{CATEGORY_LABELS[locale][game.category]}</Tag>
           {available ? (
             <Tag tone="cream">
-              {game.levels
-                ? `★ ${game.levels.reduce((acc, l) => acc + (record?.levels?.[l.id]?.stars ?? 0), 0)}/${game.levels.length * 3}`
+              {game.levels ? (
+                <>
+                  <SolidStarIcon className="mr-1 size-3" />
+                  {`${game.levels.reduce((acc, l) => acc + (record?.levels?.[l.id]?.stars ?? 0), 0)}/${game.levels.length * 3}`}
+                </>
+              )
                 : record && record.highScore > 0
                   ? copy.record(record.highScore)
                   : copy.noRecord}

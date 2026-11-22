@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/art/Icons";
 import { useCopy } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
@@ -126,10 +127,14 @@ export function RoomPanner({ children }: { children: React.ReactNode }) {
       </div>
       <div className="pointer-events-none absolute inset-0 z-[73] xl:hidden">
         <button type="button" onClick={() => nudge(-1)} disabled={edges.start} aria-label={copy.left} className={`${tab} left-0 justify-items-start`}>
-          <span className={`${tabFace} -ml-[3px] rounded-r-full pr-0.5`}>◀</span>
+          <span className={`${tabFace} -ml-[3px] rounded-r-full pr-0.5`}>
+            <ChevronLeftIcon className="size-5" />
+          </span>
         </button>
         <button type="button" onClick={() => nudge(1)} disabled={edges.end} aria-label={copy.right} className={`${tab} right-0 justify-items-end`}>
-          <span className={`${tabFace} -mr-[3px] rounded-l-full pl-0.5`}>▶</span>
+          <span className={`${tabFace} -mr-[3px] rounded-l-full pl-0.5`}>
+            <ChevronRightIcon className="size-5" />
+          </span>
         </button>
       </div>
       <nav aria-label={copy.nav} className="on-dark absolute inset-x-0 bottom-0 z-[75] flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] xl:hidden">

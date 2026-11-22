@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ícones do Lucide em todo o canal
+- **One icon set.** Every icon that was still a text symbol or a hand-drawn shape now comes from Lucide, the set the portal already used: star ratings, check marks, arrows, close buttons, play and rewind labels, music notes and hearts on the site, and HUD and button icons in all nine games, including Madrugada's "Ver a casa" eye. Arrow keys inside control lists and in-game hints show as arrow icons too.
+- **Some stay hand-drawn.** Icons that are richer than Lucide's (the watcher's eye in Operação: Recreio, the garage padlocks in Ladeira Abaixo) or have no real match (comic reactions, painted signs and road chalk, particles, the finish flag, Madrugada's board markers) keep their original art.
+
 ### Ao Vivo no 404: palco, júri e pista redesenhados
 - **A lane that explains itself.** The bottom strip is now a marquee on the stage front: a music-staff ribbon carries notes drawn as ♪ in the performer's color, with speed lines and chasing bulbs showing they travel right to left into a gold, bulb-ringed hit circle with a dashed slot the note fits into. Hits flash the circle in the grade's color with sparks and a bigger pop-up; misses drop out of the lane with a red ✕; taps with no note shake the circle. Song progress, with the jury's voting points, runs along the bottom of the track, and the crowd meter and streak sit on the lane's edge.
 - **A performer at center stage.** Whoever the song features steps onto a lit podium in front of the band under two spotlights, with a name tag ("Déco no balde"). The rest of the band backs them up from a riser, the 404 takes the podium for the static ballad, and the medley swaps soloists at every change. The soloist bobs on the beat, strikes on every tap and sends music notes up on good hits. Déco is slimmer to suit the podium: narrower shoulders and waist, and he waits with the drumsticks crossed over the bucket instead of arms spread wide; the share images and README screenshot show the new stage.

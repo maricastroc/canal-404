@@ -77,18 +77,6 @@ export function makeTextures(scene: Phaser.Scene) {
     g.fillStyle(0xffffff, 1);
     g.fillCircle(15, 21, 10);
   });
-  gfx("star", 40, 40, (g) => {
-    const pts: Phaser.Math.Vector2[] = [];
-    for (let i = 0; i < 10; i += 1) {
-      const a = -Math.PI / 2 + (i * Math.PI) / 5;
-      const r = i % 2 ? 8 : 18;
-      pts.push(new Phaser.Math.Vector2(20 + Math.cos(a) * r, 20 + Math.sin(a) * r));
-    }
-    g.fillStyle(0x1d1830, 1);
-    g.fillPoints(pts.map((p) => new Phaser.Math.Vector2(p.x + 1.5, p.y + 2)), true);
-    g.fillStyle(0xffc83d, 1);
-    g.fillPoints(pts, true);
-  });
   gfx("confetti", 18, 10, (g) => {
     g.fillStyle(0xffffff, 1);
     g.fillRect(0, 0, 18, 10);

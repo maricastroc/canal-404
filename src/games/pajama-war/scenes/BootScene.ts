@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { Crosshair, Heart, HeartPulse, Play, Timer, Trophy, Zap } from "lucide";
+import { ArrowBigDown, Crosshair, Heart, HeartPulse, Play, Star, Timer, Trophy, X, Zap } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { KIDS, POSES } from "../config";
@@ -80,6 +80,12 @@ export class BootScene extends Phaser.Scene {
       { key: "icon-regen", icon: HeartPulse, size: 34, color: "#1d1830", strokeWidth: 2.6 },
       { key: "icon-play", icon: Play, size: 40, color: "#1d1830", fill: "#1d1830", strokeWidth: 2.4 },
       { key: "icon-trophy", icon: Trophy, size: 30, color: "#1d1830", strokeWidth: 2.6 },
+      { key: "star", icon: Star, size: 44, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
+      { key: "aim-block-ink", icon: X, size: 36, color: "#1d1830", strokeWidth: 4 },
+      { key: "aim-block", icon: X, size: 36, color: "#fbf5e6", strokeWidth: 2 },
+      { key: "aim-lock", icon: ArrowBigDown, size: 44, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
+      { key: "aim-reticle-ink", icon: Crosshair, size: 48, color: "#1d1830", strokeWidth: 3.5 },
+      { key: "aim-reticle", icon: Crosshair, size: 48, color: "#ffffff", strokeWidth: 1.75 },
     ]);
   }
 

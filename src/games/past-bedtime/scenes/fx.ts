@@ -224,6 +224,16 @@ export function pop(scene: Phaser.Scene, fonts: Fonts, x: number, y: number, tex
   return t;
 }
 
+export function popIcon(scene: Phaser.Scene, x: number, y: number, keys: string[], size: number, depth = 58) {
+  const c = scene.add
+    .container(x, y, keys.map((key) => scene.add.image(0, 0, key).setDisplaySize(size, size)))
+    .setDepth(depth)
+    .setScale(0.2);
+  scene.tweens.add({ targets: c, scale: 1, duration: 200, ease: "Back.easeOut" });
+  scene.tweens.add({ targets: c, y: y - size * 0.6, alpha: 0, delay: 700, duration: 380, onComplete: () => c.destroy() });
+  return c;
+}
+
 export function floatZ(scene: Phaser.Scene, fonts: Fonts, x: number, y: number, size: number, depth = 40) {
   const t = scene.add
     .text(x, y, "z", { fontFamily: fonts.hand, fontSize: `${size}px`, color: "#d8d0ff", padding: { x: 2, y: 2 } })

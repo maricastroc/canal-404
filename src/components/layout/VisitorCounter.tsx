@@ -1,5 +1,6 @@
 "use client";
 
+import { RatingStar } from "@/components/art/Icons";
 import { useCopy } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
@@ -18,8 +19,8 @@ export function VisitorCounter({ className = "" }: { className?: string }) {
     <div
       className={`relative inline-block -rotate-2 border-[3px] border-ink bg-cream px-4 py-2 shadow-[var(--shadow-ink)] wobbly-sm ${className}`}
     >
-      <span className="absolute -right-3 -top-3 text-2xl text-sun drop-shadow-[2px_2px_0_#1d1830]" aria-hidden>
-        ★
+      <span className="absolute -right-3 -top-3" aria-hidden>
+        <RatingStar className="size-7" />
       </span>
       <p className="font-display text-xs tracking-widest text-ink-soft">{copy.visitor}</p>
       <p className="font-display text-xl leading-none text-ink tabular-nums">

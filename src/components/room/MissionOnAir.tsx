@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import { CheckIcon } from "@/components/art/Icons";
 import { missionHref, missionPlace } from "@/components/missions/parts";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
@@ -74,7 +75,8 @@ function Status({ m }: { m: MissionOnAir }) {
   if (m.state === "completed") {
     return (
       <p className="inline-flex items-center gap-[0.35em] rounded-[4px] border-[2px] border-ink bg-lime px-[0.5em] py-[0.15em] font-display text-[max(7px,5cqw)] uppercase leading-none tracking-wide text-ink">
-        ✓ {copy.done}
+        <CheckIcon className="size-[1em]" />
+        {copy.done}
         {m.best ? copy.onBoard(ordinal(m.best.position, locale)) : ""}
       </p>
     );

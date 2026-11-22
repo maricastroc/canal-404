@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import Link from "@/i18n/Link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Sparkle } from "@/components/art/Badges";
+import { RatingStar } from "@/components/art/Icons";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 import { useLocale } from "@/i18n/client";
@@ -157,10 +158,10 @@ export function CharacterSelect() {
               {active && (
                 <motion.span
                   layoutId="char-marker"
-                  className="absolute -top-0.5 right-1.5 text-2xl text-sun drop-shadow-[2px_2px_0_#1d1830]"
+                  className="absolute right-1.5 top-0.5"
                   aria-hidden
                 >
-                  ★
+                  <RatingStar className="size-6" />
                 </motion.span>
               )}
             </button>

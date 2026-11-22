@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { Fonts } from "../../kit/ui";
-import { INK_HEX } from "../../kit/ui";
+import { INK_HEX, glyphOffset } from "../../kit/ui";
 import { FULL_FRAME, type Frame } from "../layout";
 import { pinUi } from "./journal";
 
@@ -16,6 +16,7 @@ const TEXT_PAD_Y = 4;
 const DEPTH = 9000;
 const CREAM = 0xfbf5e6;
 const NIGHT = 0x2b2150;
+const MORE = { face: 0xc94785, plain: 0xffc83d };
 
 type Box = { x: number; y: number; w: number; h: number };
 
@@ -30,8 +31,8 @@ export class DialogBox {
   private nameBg: Phaser.GameObjects.Graphics;
   private text: Phaser.GameObjects.Text;
   private measure: Phaser.GameObjects.Text;
-  private more: Phaser.GameObjects.Text;
-  private choices: { root: Phaser.GameObjects.Container; bg: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text; w: number; raw: string }[] = [];
+  private more: Phaser.GameObjects.Image;
+  private choices: { root: Phaser.GameObjects.Container; bg: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text; mark: Phaser.GameObjects.Image; w: number; raw: string }[] = [];
   private full = "";
   private shown = 0;
   private typing = false;
@@ -67,7 +68,7 @@ export class DialogBox {
     const style = { fontFamily: round, fontSize: `${TEXT.size}px`, fontStyle: "600", color: "#1d1830", lineSpacing: TEXT.line, padding: { x: 2, y: TEXT_PAD_Y } };
     this.text = scene.add.text(0, 0, "", style);
     this.measure = scene.add.text(0, 0, "", { ...style, wordWrap: { width: 1000 } }).setVisible(false);
-    this.more = scene.add.text(0, 0, "▼", { fontFamily: round, fontSize: "30px", fontStyle: "700", color: "#c94785" }).setOrigin(0.5);
+    this.more = scene.add.image(0, 0, "ui-chev-down").setDisplaySize(42, 42).setTint(MORE.face);
     this.root = scene.add
       .container(0, 0, [this.panel, this.portraitBg, this.portrait, this.nameTag, this.text, this.more])
       .setDepth(DEPTH)
@@ -86,7 +87,7 @@ export class DialogBox {
     const gap = 5 * u;
     for (const t of [this.text, this.measure]) t.setFontSize(size).setLineSpacing(gap);
     this.nameText.setFontSize(13.5 * u);
-    this.more.setFontSize(14 * u);
+    this.more.setDisplaySize(19 * u, 19 * u);
     this.choiceH = 46 * u;
     pinUi(this.root);
   }
@@ -196,7 +197,7 @@ export class DialogBox {
       this.nameTag.setPosition(box.x + left - 6 * u, box.y);
     }
     this.text.setPosition(box.x + left, box.y + textY).setColor(narrator ? "#fbf5e6" : "#1d1830");
-    this.more.setColor(narrator ? "#ffc83d" : "#c94785").setPosition(box.x + w - 18 * u, box.y + h - 16 * u);
+    this.more.setTint(narrator ? MORE.plain : MORE.face).setPosition(box.x + w - 18 * u, box.y + h - 16 * u);
     return lines.join("\n");
   }
 
@@ -273,7 +274,7 @@ export class DialogBox {
     this.text
       .setPosition(box.x + left, box.y + PAD.top - 4)
       .setColor(narrator ? "#fbf5e6" : "#1d1830");
-    this.more.setColor(narrator ? "#ffc83d" : "#c94785").setPosition(box.x + w - 46, box.y + h - 38);
+    this.more.setTint(narrator ? MORE.plain : MORE.face).setPosition(box.x + w - 46, box.y + h - 38);
     return lines.join("\n");
   }
 
@@ -322,11 +323,12 @@ export class DialogBox {
       const w = Math.max(400, label.width + 100);
       const bg = this.scene.add.graphics();
       const y = baseY - (options.length - 1 - i) * 82;
-      const root = this.scene.add.container(Math.min(right, 1880) - w, y, [bg, label]);
       label.setPosition(52, -2);
+      const mark = this.scene.add.image(28, -2 - glyphOffset(label), "ui-chev-right").setDisplaySize(32, 32).setTint(INK_HEX);
+      const root = this.scene.add.container(Math.min(right, 1880) - w, y, [bg, mark, label]);
       root.setScrollFactor(0, 0, true);
       this.root.add(root);
-      this.choices.push({ root, bg, label, w, raw: opt });
+      this.choices.push({ root, bg, label, mark, w, raw: opt });
     });
     this.paintChoices();
     return new Promise((resolve) => {
@@ -343,10 +345,11 @@ export class DialogBox {
       const label = this.scene.add.text(0, 0, opt, { fontFamily: round, fontSize: `${15.5 * u}px`, fontStyle: "700", color: "#fbf5e6", padding: { x: 1, y: 3 }, wordWrap: { width: this.box.w - 48 * u } }).setOrigin(0, 0.5);
       const bg = this.scene.add.graphics();
       const y = this.box.y - 12 * u - h / 2 - (options.length - 1 - i) * (h + gap);
-      const root = this.scene.add.container(this.box.x, y, [bg, label]);
       label.setPosition(20 * u, 0);
+      const mark = this.scene.add.image(10 * u, -glyphOffset(label), "ui-chev-right").setDisplaySize(15 * u, 15 * u).setTint(INK_HEX);
+      const root = this.scene.add.container(this.box.x, y, [bg, mark, label]);
       this.root.add(root);
-      this.choices.push({ root, bg, label, w: this.box.w, raw: opt });
+      this.choices.push({ root, bg, label, mark, w: this.box.w, raw: opt });
     });
     pinUi(this.root);
   }
@@ -382,7 +385,7 @@ export class DialogBox {
         c.bg.lineStyle(2.5 * u, on ? INK_HEX : 0x7b62c4, 1);
         c.bg.strokeRoundedRect(0, -h / 2, c.w, h, 14 * u);
         c.label.setColor(on ? "#1d1830" : "#fbf5e6");
-        c.label.setText((on ? "▸ " : "") + c.raw);
+        c.mark.setVisible(on);
       });
       return;
     }
@@ -396,7 +399,7 @@ export class DialogBox {
       c.bg.lineStyle(5, on ? INK_HEX : 0x7b62c4, 1);
       c.bg.strokeRoundedRect(0, -36, c.w, 66, 18);
       c.label.setColor(on ? "#1d1830" : "#fbf5e6");
-      c.label.setText((on ? "▸ " : "") + c.raw);
+      c.mark.setVisible(on);
     });
   }
 
