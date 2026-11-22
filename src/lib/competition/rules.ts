@@ -3,6 +3,9 @@ import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geomet
 import { attemptBonus, LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
 import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
 import { isCart, isRaceCourse, replayDownhill } from "@/games/downhill-derby/sim/judge";
+import { isNightLevel, replayNight } from "@/games/past-bedtime/sim/judge";
+import { LEVELS as NIGHT_LEVELS } from "@/games/past-bedtime/sim/levels";
+import { MIN_TURN_MS, partScore, partStars } from "@/games/past-bedtime/sim/score";
 import { STEP_MS as STREET_STEP_MS } from "@/games/dead-end-street/config";
 import { ammoTotal, PHASE_IDS, phaseById } from "@/games/dead-end-street/phases";
 import { replayStreet } from "@/games/dead-end-street/sim";
@@ -22,11 +25,11 @@ export { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type 
 
 export type RunClaim = { won: boolean; score: number; stars: number; stats: GameStats; replay?: GameReplay };
 
-export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed" | "bad_run" | "run_failed";
+export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed" | "bad_run" | "run_failed" | "bad_moves" | "moves_failed";
 
 export type Verification = "checked" | "replayed";
 
-export type IneligibleReason = "practice" | "not_won" | "resumed" | "no_points";
+export type IneligibleReason = "practice" | "not_won" | "resumed" | "no_points" | "hinted";
 
 export type Verdict =
   | {
@@ -464,6 +467,33 @@ const downhillDerby: GameRule = {
   },
 };
 
+const NIGHT_STATS = ["turns", "wakes", "creaks", "covered"] as const;
+
+const pastBedtime: GameRule = {
+  game: "past-bedtime",
+  version: 1,
+  levels: NIGHT_LEVELS.map((l) => l.id),
+  stats: [...NIGHT_STATS, "hints"],
+  judge(level, claim) {
+    if (!isNightLevel(level)) return reject("unknown_level", "parte desconhecida");
+    const r = read(claim.stats, { turns: [1, 400], hints: [0, 400], wakes: [0, 400], creaks: [0, 400], covered: [0, 400] });
+    if (!r.ok) return reject("bad_stats", r.detail);
+    const log = claim.replay;
+    if (!log || log.kind !== "bedtime-moves" || log.version !== 1 || typeof log.moves !== "string") return reject("bad_moves", "jogadas ausentes");
+    const replay = replayNight(level, log.moves);
+    if (!replay.ok) return replay.problem === "unfinished" ? reject("moves_failed", "o Bruno refeito não chegou lá") : reject("bad_moves", "jogadas fora das regras");
+    const t = replay.tally;
+    const hints = r.values.hints;
+    const flags = NIGHT_STATS.every((key) => r.values[key] === t[key]) ? [] : ["stats_mismatch"];
+    return settle(
+      claim,
+      { won: true, score: partScore(t.par, t.turns), stars: partStars(t.par, t.turns, hints), rank: [-t.turns, -t.wakes, -t.creaks], minElapsedMs: t.turns * MIN_TURN_MS },
+      hints > 0 ? "hinted" : undefined,
+      { verification: "replayed", flags },
+    );
+  },
+};
+
 export const RULES: Record<GameSlug, GameRule> = {
   "dead-end-street": deadEndStreet,
   "bad-ideas-lab": badIdeasLab,
@@ -472,6 +502,7 @@ export const RULES: Record<GameSlug, GameRule> = {
   "pajama-war": pajamaWar,
   "off-air-vacation": offAirVacation,
   "downhill-derby": downhillDerby,
+  "past-bedtime": pastBedtime,
 };
 
 export function hasLevel(game: GameSlug, level: string | null) {

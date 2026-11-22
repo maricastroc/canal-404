@@ -19,14 +19,14 @@ type Fetched = { key: string; ok: boolean; leader: BoardEntry | null };
 
 const COPY = localized({
   "pt-BR": {
-    word: { fase: "Fase", arena: "Arena", pista: "Pista" },
+    word: { fase: "Fase", arena: "Arena", pista: "Pista", parte: "Parte" },
     tuning: "Sintonizando o placar…",
     arcade: "Ver o fliperama de recordes",
     empty: "Ainda não tem ninguém no quadro dos campeões. Que tal ser o primeiro?",
     title: "Quadro dos campeões",
   },
   en: {
-    word: { fase: "Level", arena: "Arena", pista: "Track" },
+    word: { fase: "Level", arena: "Arena", pista: "Track", parte: "Part" },
     tuning: "Tuning in the board…",
     arcade: "Visit the record arcade",
     empty: "Nobody's in the hall of champions yet. How about being the first?",
@@ -34,7 +34,7 @@ const COPY = localized({
   },
 });
 
-export function ChampionTicker({ slug, levelWord = "fase" }: { slug: GameSlug; levelWord?: "fase" | "arena" | "pista" }) {
+export function ChampionTicker({ slug, levelWord = "fase" }: { slug: GameSlug; levelWord?: "fase" | "arena" | "pista" | "parte" }) {
   const { play } = useSound();
   const copy = useCopy(COPY);
   const locale = useLocale();

@@ -37,9 +37,9 @@ export type IntroMission = { view: MissionView; state: MissionState | null };
 
 type LevelWord = NonNullable<GameMeta["levelWord"]>;
 
-const LEVEL: Record<LevelWord, string> = { fase: "level", arena: "arena", pista: "track" };
+const LEVEL: Record<LevelWord, string> = { fase: "level", arena: "arena", pista: "track", parte: "part" };
 
-const PICK: Record<LevelWord, string> = { fase: "Pick a level", arena: "Pick an arena", pista: "Pick a track" };
+const PICK: Record<LevelWord, string> = { fase: "Pick a level", arena: "Pick an arena", pista: "Pick a track", parte: "Pick a part" };
 
 const COPY = localized({
   "pt-BR": {
@@ -51,7 +51,7 @@ const COPY = localized({
     chooseLevel: (word: LevelWord) => `Escolha a ${word}`,
     starsTotal: (count: number, total: number) => `Estrelas: ${count}/${total}`,
     upNext: "A seguir",
-    locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : word === "pista" ? "Chegue ao pódio na pista anterior para desbloquear." : "Termine a fase anterior"),
+    locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : word === "pista" ? "Chegue ao pódio na pista anterior para desbloquear." : word === "parte" ? "Termine a parte anterior" : "Termine a fase anterior"),
     noStars: "Sem estrelas",
     saved: "Sua aventura está salva. Continue de onde parou.",
     adventure: "Sua aventura",
@@ -111,7 +111,7 @@ const COPY = localized({
     chooseLevel: (word: LevelWord) => PICK[word],
     starsTotal: (count: number, total: number) => `Stars: ${count}/${total}`,
     upNext: "Up next",
-    locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : word === "pista" ? "Make the podium on the previous track to unlock." : "Finish the previous level"),
+    locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : word === "pista" ? "Make the podium on the previous track to unlock." : word === "parte" ? "Finish the previous part" : "Finish the previous level"),
     noStars: "No stars",
     saved: "Your adventure is saved. Pick up where you left off.",
     adventure: "Your adventure",

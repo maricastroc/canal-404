@@ -1,7 +1,7 @@
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 
-export const GAME_SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation", "downhill-derby"] as const;
+export const GAME_SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation", "downhill-derby", "past-bedtime"] as const;
 
 export type GameSlug = (typeof GAME_SLUGS)[number];
 
@@ -78,6 +78,15 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
       { label: "Show", unit: "points", lowerIsBetter: false },
     ],
   },
+  "past-bedtime": {
+    explain: "Cada parte tem seu placar. Menos jogadas vence. Empate: quem acordou menos gente; depois, menos rangidos fora do cuco. Partidas com dica não entram.",
+    check: "replayed",
+    metrics: [
+      { label: "Jogadas", unit: "count", lowerIsBetter: true, noun: ["jogada", "jogadas"] },
+      { label: "Despertares", unit: "count", lowerIsBetter: true, noun: ["despertar", "despertares"] },
+      { label: "Rangidos", unit: "count", lowerIsBetter: true, noun: ["rangido", "rangidos"] },
+    ],
+  },
 };
 
 type BoardText = { explain: string; metrics: { label: string; noun?: readonly [string, string] }[] };
@@ -110,6 +119,10 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
   "downhill-derby": {
     explain: "Each track has its own board. Fastest time wins. Tiebreak: fewer wipeouts, then more show points.",
     metrics: [{ label: "Time" }, { label: "Wipeouts", noun: ["wipeout", "wipeouts"] }, { label: "Show" }],
+  },
+  "past-bedtime": {
+    explain: "Each part has its own board. Fewest moves wins. Tiebreak: fewer people woken, then fewer creaks outside the cuckoo. Runs with a hint don't go on the board.",
+    metrics: [{ label: "Moves", noun: ["move", "moves"] }, { label: "Wake-ups", noun: ["wake-up", "wake-ups"] }, { label: "Creaks", noun: ["creak", "creaks"] }],
   },
 };
 
@@ -150,6 +163,10 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
       explain: "O canal refaz sua descida no servidor, com a mesma física do jogo, e só aceita o tempo se a corrida terminar igual.",
       verified: "Descida refeita pelo canal",
     },
+    "past-bedtime": {
+      explain: "O canal refaz suas jogadas no servidor, com as mesmas regras da casa, e só aceita o resultado se o Bruno chegar lá sem ser pego.",
+      verified: "Jogadas refeitas pelo canal",
+    },
   },
   en: {
     "bad-ideas-lab": {
@@ -163,6 +180,10 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
     "downhill-derby": {
       explain: "The channel replays your run on the server with the game's own physics and only accepts the time if the race ends the same way.",
       verified: "Run replayed by the channel",
+    },
+    "past-bedtime": {
+      explain: "The channel replays your moves on the server with the house's own rules and only accepts the result if Bruno gets there without being caught.",
+      verified: "Moves replayed by the channel",
     },
   },
 });

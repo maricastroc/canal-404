@@ -22,9 +22,7 @@ export type NightCopy = {
   legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string; hide: string; cat: string; route: string; toss: string; near: string };
   acts: Record<string, string>;
   actLabel: (n: number, name: string) => string;
-  buttons: { wait: string; undo: string; restart: string; hint: string; next: string; again: string; undoCaught: string };
-  keys: string;
-  touchKeys: string;
+  buttons: { wait: string; undo: string; restart: string; hint: string; undoCaught: string };
   notes: {
     cuckooNow: string;
     cuckooSoon: string;
@@ -93,8 +91,6 @@ export type NightCopy = {
     brunoWin: Record<string, string>;
     brunoThink: string[];
   };
-  replayOk: string;
-  replayBad: string;
 };
 
 export const NIGHT_COPY = localized<NightCopy>({
@@ -235,9 +231,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       toss: "“vira em N”: o pai espia",
       near: "parado colado: acorda",
     },
-    buttons: { wait: "Esperar", undo: "Desfazer", restart: "Recomeçar", hint: "Dica", next: "Próxima parte", again: "Jogar de novo", undoCaught: "Desfazer a última jogada" },
-    keys: "Setas: andar · Espaço: esperar · Z: desfazer · R: recomeçar · H: dica · V: ver a casa",
-    touchKeys: "Deslize ou toque ao lado do Bruno para andar.",
+    buttons: { wait: "Esperar", undo: "Desfazer", restart: "Recomeçar", hint: "Dica", undoCaught: "Desfazer a última jogada" },
     notes: {
       cuckooNow: "O cuco vai cantar agora!",
       cuckooSoon: "Cuco na próxima. Prepara o pé.",
@@ -280,7 +274,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonPerfect: "Plano perfeito.",
     wonWithHint: "Na meta, mas com dica. Sem dica, valia 3 estrelas.",
     wonClose: (extra) => (extra === 1 ? "Uma jogada a mais que a meta." : `${extra} jogadas a mais que a meta.`),
-    lastLevel: "Essa era a última parte do protótipo.",
+    lastLevel: "Bruno voltou para a cama. Fim da madrugada!",
     lines: {
       dadSleep: ["…pênalti… foi pênalti…", "…mais cinco minutinhos, chefe…", "…quem comeu o último pão de queijo…", "…rebobina a fita…", "…zzz… gooool…", "…tá na gaveta, amor…"],
       dadStir: ["…hmm… tem alguém aí?…", "…quem tá respirando no meu ouvido…", "…Bruno?… não… é sonho…"],
@@ -321,8 +315,6 @@ export const NIGHT_COPY = localized<NightCopy>({
       },
       brunoThink: ["Pensa, Bruno, pensa…", "Se o Déco me visse agora…", "Calma. Respira. Planeja.", "Qual é o próximo passo?"],
     },
-    replayOk: "Reprodução idêntica",
-    replayBad: "Reprodução diferente",
   },
   en: {
     notebookTitle: "Bruno's Plan",
@@ -461,9 +453,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       toss: "“rolls in N”: Dad peeks",
       near: "standing next to them: wakes",
     },
-    buttons: { wait: "Wait", undo: "Undo", restart: "Restart", hint: "Hint", next: "Next part", again: "Play again", undoCaught: "Undo the last move" },
-    keys: "Arrows: move · Space: wait · Z: undo · R: restart · H: hint · V: see the house",
-    touchKeys: "Swipe, or tap next to Bruno to move.",
+    buttons: { wait: "Wait", undo: "Undo", restart: "Restart", hint: "Hint", undoCaught: "Undo the last move" },
     notes: {
       cuckooNow: "The cuckoo sings right now!",
       cuckooSoon: "Cuckoo next move. Get ready.",
@@ -506,7 +496,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonPerfect: "Perfect plan.",
     wonWithHint: "On target, but with a hint. Without one, it was 3 stars.",
     wonClose: (extra) => (extra === 1 ? "One move over the target." : `${extra} moves over the target.`),
-    lastLevel: "That was the last part of the prototype.",
+    lastLevel: "Bruno made it back to bed. Night over!",
     lines: {
       dadSleep: ["…penalty… that was a penalty…", "…five more minutes, boss…", "…who ate the last cheese bread…", "…be kind, rewind…", "…zzz… gooool…", "…it's in the drawer, honey…"],
       dadStir: ["…hmm… someone there?…", "…who's breathing in my ear…", "…Bruno?… nah… just a dream…"],
@@ -547,7 +537,5 @@ export const NIGHT_COPY = localized<NightCopy>({
       },
       brunoThink: ["Think, Bruno, think…", "If Déco could see me now…", "Calm. Breathe. Plan.", "What's the next step?"],
     },
-    replayOk: "Replay identical",
-    replayBad: "Replay differs",
   },
 });

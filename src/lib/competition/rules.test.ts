@@ -10,6 +10,12 @@ import { replayStreet, StreetSim, type Launch } from "@/games/dead-end-street/si
 import { replayDownhill } from "@/games/downhill-derby/sim/judge";
 import { KNOWN_RUNS, type KnownRun } from "@/games/downhill-derby/sim/solutions";
 import { encodeTape, decodeTape } from "@/games/downhill-derby/sim/tapes";
+import { encodeMoves, replayNight } from "@/games/past-bedtime/sim/judge";
+import { LEVELS as NIGHT_LEVELS } from "@/games/past-bedtime/sim/levels";
+import { partScore, partStars } from "@/games/past-bedtime/sim/score";
+import { canMove, createSim } from "@/games/past-bedtime/sim/sim";
+import { solve } from "@/games/past-bedtime/sim/solver";
+import type { Dir } from "@/games/past-bedtime/sim/types";
 import { boardId, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
 
 const RECESS_MONITORS = Object.fromEntries(RECESS_LEVELS.map((l) => [l.id, l.enemies.length]));
@@ -458,5 +464,57 @@ describe("Ladeira Abaixo", () => {
   it("needs one of the three tracks", () => {
     expect(judgeRun("downhill-derby", null, derby(roof))).toMatchObject({ ok: false, reason: "unknown_level" });
     expect(judgeRun("downhill-derby", "test", derby(roof))).toMatchObject({ ok: false, reason: "unknown_level" });
+  });
+});
+
+describe("Madrugada", () => {
+  const plans = Object.fromEntries(NIGHT_LEVELS.map((l) => [l.id, encodeMoves(solve(createSim(l))!.actions)]));
+
+  function night(level: string, moves = plans[level], hints = 0, claim: Partial<RunClaim> = {}): RunClaim {
+    const replay = replayNight(level, plans[level]);
+    if (!replay.ok) throw new Error(replay.problem);
+    const t = replay.tally;
+    return { won: true, score: partScore(t.par, t.turns), stars: partStars(t.par, t.turns, hints), stats: { turns: t.turns, hints, wakes: t.wakes, creaks: t.creaks, covered: t.covered }, replay: { kind: "bedtime-moves", version: 1, moves }, ...claim };
+  }
+
+  it("replays every part's best plan at par and ranks fewer moves, then fewer wake-ups, then fewer creaks", () => {
+    for (const level of NIGHT_LEVELS) {
+      const v = ok(judgeRun("past-bedtime", level.id, night(level.id)));
+      expect(v).toMatchObject({ won: true, stars: 3, score: 2000, eligible: true, verification: "replayed", flags: [] });
+      expect(v.rank[0]).toBe(-level.par);
+    }
+    const v = ok(judgeRun("past-bedtime", "return", night("return")));
+    expect(metricValues("past-bedtime", v.rank)).toEqual([23, 2, 2]);
+    expect(boardId("past-bedtime", "return")).toBe("past-bedtime/return/v1");
+  });
+
+  it("caps a hinted run at 2 stars and keeps it off the board", () => {
+    expect(ok(judgeRun("past-bedtime", "kitchen", night("kitchen", plans.kitchen, 1)))).toMatchObject({ stars: 2, score: 2000, eligible: false, ineligible: "hinted" });
+    expect(judgeRun("past-bedtime", "kitchen", night("kitchen", plans.kitchen, 1, { stars: 3 }))).toMatchObject({ ok: false, reason: "score_mismatch" });
+  });
+
+  it("scores the moves the replay took, not the ones claimed", () => {
+    expect(judgeRun("past-bedtime", "doorway", night("doorway", plans.doorway, 0, { score: 2100 }))).toMatchObject({ ok: false, reason: "score_mismatch" });
+    const claim = night("doorway");
+    const v = ok(judgeRun("past-bedtime", "doorway", { ...claim, stats: { ...claim.stats, turns: 3 } }));
+    expect(v.flags).toEqual(["stats_mismatch"]);
+    expect(v.rank[0]).toBe(-NIGHT_LEVELS[0].par);
+  });
+
+  it("rejects missing, malformed, impossible and unfinished move lists", () => {
+    const sim = createSim(NIGHT_LEVELS[0]);
+    const wall = ([0, 1, 2, 3] as Dir[]).find((d) => !canMove(sim, sim.initial, d))!;
+    const plan = plans.doorway;
+    expect(judgeRun("past-bedtime", "doorway", { ...night("doorway"), replay: undefined })).toMatchObject({ ok: false, reason: "bad_moves" });
+    expect(judgeRun("past-bedtime", "doorway", night("doorway", `${plan}x`))).toMatchObject({ ok: false, reason: "bad_moves" });
+    expect(judgeRun("past-bedtime", "doorway", night("doorway", `${encodeMoves([wall])}${plan}`))).toMatchObject({ ok: false, reason: "bad_moves" });
+    expect(judgeRun("past-bedtime", "doorway", night("doorway", plan.slice(0, -1)))).toMatchObject({ ok: false, reason: "moves_failed" });
+    expect(judgeRun("past-bedtime", "doorway", night("doorway", `${plan}w`))).toMatchObject({ ok: false, reason: "moves_failed" });
+    expect(judgeRun("past-bedtime", "doorway", night("doorway", plans.hallway))).toMatchObject({ ok: false });
+  });
+
+  it("needs one of the ten parts", () => {
+    expect(judgeRun("past-bedtime", null, night("doorway"))).toMatchObject({ ok: false, reason: "unknown_level" });
+    expect(judgeRun("past-bedtime", "attic", night("doorway"))).toMatchObject({ ok: false, reason: "unknown_level" });
   });
 });
