@@ -569,7 +569,7 @@ export class PhoneNotebook implements NotebookView {
   private buildActions() {
     const r = this.hud.actions;
     const gap = this.px(this.band ? 7 : 6);
-    const smallH = this.px(this.band ? 40 : this.compact ? 34 : 36);
+    const smallH = this.px(this.band || this.compact ? 40 : 42);
     const bigH = (r.h - smallH - gap * 2) / 2;
     this.makeButton("wait", r.x, r.y, r.w, bigH, 0xffffff, "wait", this.copy.buttons.wait, false);
     this.makeButton("undo", r.x, r.y + bigH + gap, r.w, bigH, 0xf9e0b0, "undo", this.copy.buttons.undo, false);
@@ -582,15 +582,26 @@ export class PhoneNotebook implements NotebookView {
 
   private makeButton(id: ActionId, x: number, y: number, w: number, h: number, fill: number, icon: NightIcon, label: string, small: boolean) {
     const bg = this.scene.add.graphics();
-    const iconCss = small ? Math.min(19, (h / this.u) * 0.47) : Math.min(24, (h / this.u) * 0.5);
+    const iconCss = small ? 19 : Math.min(24, (h / this.u) * 0.5);
     const img = this.scene.add.image(0, 0, iconKey(icon)).setDisplaySize(this.px(iconCss), this.px(iconCss));
     const t = this.text(0, 0, label, small ? 11.5 : this.band ? 15 : 16.5, PENCIL, "round", "700").setOrigin(0.5);
     if (small) {
-      const maxW = w - this.px(6);
+      const room = this.px(6);
+      const maxW = w - room * 2;
       for (let size = 11.5; t.width > maxW && size > 9; size -= 0.5) t.setFontSize(Math.round(this.px(size)));
-      const block = img.displayHeight + this.px(1) + t.height;
-      img.setPosition(w / 2, (h - block) / 2 + img.displayHeight / 2);
-      t.setPosition(w / 2, img.y + img.displayHeight / 2 + this.px(1) + t.height / 2);
+      const textH = t.height - Math.round(this.px(1.5)) * 2;
+      const block = img.displayHeight + this.px(1) + textH;
+      if (h - block >= room * 2) {
+        img.setPosition(w / 2, (h - block) / 2 + img.displayHeight / 2);
+        t.setPosition(w / 2, img.y + img.displayHeight / 2 + this.px(1) + textH / 2);
+      } else {
+        img.setVisible(false);
+        for (let size = 13.5; size > 9; size -= 0.5) {
+          t.setFontSize(Math.round(this.px(size)));
+          if (t.width <= maxW) break;
+        }
+        t.setPosition(w / 2, h / 2 + this.px(0.5));
+      }
     } else {
       const gap = this.px(8);
       const maxW = w - img.displayWidth - gap - this.px(20);

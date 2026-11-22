@@ -63,13 +63,17 @@ const TALL = {
   note: 48,
   below: 6,
   pad: 124,
-  actions: 128,
+  actions: 134,
   deckPad: 8,
   gap: 8,
   side: 12,
-  reach: { cols: 5.2, rows: 4.6 },
-  compact: { strip: 44, note: 44, below: 5, pad: 112, actions: 120, deckPad: 7 },
+  reach: { cols: 5.2, rows: 4.6, fill: 3, max: 140, share: Infinity },
+  compact: { strip: 44, note: 44, below: 5, pad: 112, actions: 126, deckPad: 7 },
 };
+
+type Reach = { cols: number; rows: number; fill: number; max: number; share: number };
+
+const SIDEWAYS: Reach = { cols: PHONE.tile.cols, rows: Infinity, fill: Infinity, max: PHONE.tile.max, share: PHONE.tile.share };
 
 const BAND = { rail: 0.22, minRail: 150, maxRail: 204, pad: 0.9, padShare: 0.5 };
 
@@ -139,15 +143,17 @@ function fullLayout(grid: Grid): Layout {
   return { kind: "full", W, H, map, view, tile, notebook, unit: 1, ui: 1, text: 0, small: 0, hud: null, ...placeBoard(map, view, tile) };
 }
 
-function phoneTile(map: Rect, view: View, unit: number, reach = { cols: PHONE.tile.cols, rows: Infinity }) {
+function phoneTile(map: Rect, view: View, unit: number, reach: Reach = SIDEWAYS) {
   const t = PHONE.tile;
   const vw = view.x1 - view.x0;
   const vh = view.y1 - view.y0;
   const wCss = map.w / unit;
   const hCss = map.h / unit;
   const fit = Math.min(wCss / vw, hCss / vh);
-  const roomy = Math.max(t.min, Math.min(t.max, hCss / Math.min(vh, reach.rows), wCss / reach.cols));
-  const whole = fit >= t.comfort || (fit >= roomy * t.share && (fit >= t.floor || roomy < fit * t.gain));
+  const near = Math.min(reach.max, hCss / Math.min(vh, reach.rows), wCss / reach.cols);
+  const filled = Math.min(reach.max, hCss / vh, wCss / reach.fill);
+  const roomy = Math.max(t.min, near, filled);
+  const whole = fit >= t.comfort || (fit >= roomy * reach.share && (fit >= t.floor || roomy < fit * t.gain));
   const css = whole ? Math.min(fit, t.max) : roomy;
   return Math.floor(css * unit);
 }
