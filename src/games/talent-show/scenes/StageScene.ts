@@ -1,15 +1,20 @@
 import * as Phaser from "phaser";
+import { ArrowRight, Play, Pointer, Volume2 } from "lucide";
 import type { Locale } from "@/i18n/locales";
+import { loadIcons } from "@/games/kit/icons";
+import { cartoonText } from "@/games/kit/ui";
 import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, callFreq, keysFreq } from "../audio/player";
 import { click, type Stage } from "../audio/voices";
 import { TALENT_COPY, type JuryId, type TalentCopy } from "../copy";
 import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type CompiledSong, type Signal, type SongId } from "../song/notation";
-import { compiledSong, roundOf } from "../song/songs";
+import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
+import { DEMO_OF, ShowCard, cardDots, type CardButtonId, type CardContent } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART } from "./figure";
-import { layoutFor, type Layout, type Orientation } from "./layout";
+import { C, MEMBER_COLOR, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTrack, ribbon, type Spark } from "./lane";
+import { DESK_LIP, layoutFor, type Layout, type Orientation, type Spot } from "./layout";
 
 export type RunReport = { song: SongId; verdict: Verdict; replayed: Verdict | null; matches: boolean; log: TapLog };
 
@@ -27,56 +32,38 @@ export type TalentBridge = {
   onPauseRequest: () => void;
 };
 
-type ButtonId = "assist" | "calibrate";
-type PanelButton = { id: ButtonId; box: Phaser.Geom.Rectangle; root: Phaser.GameObjects.Container; bg: Phaser.GameObjects.Graphics; text: Phaser.GameObjects.Text };
-
 type Mode = "idle" | "intro" | "calibrating" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
 type Mood = "neutral" | "happy" | "angry" | "shock";
 type HostMood = "neutral" | "happy" | "excited" | "surprised" | "sad" | "static" | "wave";
 type Pose = "ready" | "hit";
 type KidFace = "normal" | "happy" | "wow";
+type Kid = Exclude<BandMember, "404">;
 
-const C = {
-  ink: 0x1d1830,
-  cream: 0xf7ecd4,
-  cream2: 0xecd9b2,
-  plum950: 0x140f26,
-  plum900: 0x1f1839,
-  plum800: 0x2b2150,
-  plum700: 0x3f3170,
-  plum500: 0x7b62c4,
-  plum300: 0xb9a6ef,
-  sun: 0xffc83d,
-  sunPale: 0xffe39a,
-  tangerine: 0xff8a3d,
-  tomato: 0xef4f43,
-  bubblegum: 0xf06ba8,
-  mint: 0x63d6c1,
-  sky: 0x5cb9f0,
-  gray: 0x6d6585,
-};
-
-const BAND: BandMember[] = ["deco", "lina", "bruno", "mila"];
+const BAND: Kid[] = ["deco", "lina", "bruno", "mila"];
 const JURY: JuryId[] = ["inspector", "arlindo", "lunch"];
 const JURY_BIAS: Record<JuryId, number> = { inspector: -1, arlindo: 0, lunch: 1 };
-const MEMBER_COLOR: Record<BandMember, number> = { deco: C.tangerine, lina: C.bubblegum, bruno: C.mint, mila: C.plum300, "404": C.sun };
 const MARK_COLOR: Record<Mark, string> = { perfect: "#ffc83d", good: "#63d6c1", near: "#f7ecd4", miss: "#ef4f43", held: "#ffc83d", dropped: "#ef4f43", noise: "#ef4f43" };
 const MARK_TINT: Record<Mark, number> = { perfect: C.sun, good: C.mint, near: C.cream, miss: C.tomato, held: C.sun, dropped: C.tomato, noise: C.tomato };
+const SONG_FACE: Record<SongId, string | null> = { theme: "head-deco-happy", signoff: "head-lina-happy", recess: "head-mila-happy", street: "head-bruno-happy", static: "host-happy", medley: null };
 const CUT_STING = [69, 72, 76, 74, 72, 69];
 const CALIBRATION_BEAT = 0.6;
 const CALIBRATION_COUNT = 4;
 const CALIBRATION_TAPS = 8;
+const MISS_FALL_MS = 480;
+const SPARK_MS = 380;
 
 type Popup = { text: Phaser.GameObjects.Text; born: number };
 type Burst = { born: number; color: number };
 type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; heart: Phaser.GameObjects.Graphics; mood: Mood; moodUntil: number; heartUntil: number };
-type KidView = { root: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; head: Phaser.GameObjects.Image; pose: Pose; poseUntil: number; face: KidFace; flash: KidFace; faceUntil: number; base: KidFace };
+type KidView = { root: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; head: Phaser.GameObjects.Image; pose: Pose; poseUntil: number; face: KidFace; flash: KidFace; faceUntil: number; base: KidFace; spot: Spot };
 type Fan = { img: Phaser.GameObjects.Image; variant: number; leave: number; phase: number; y: number };
+type Floater = { img: Phaser.GameObjects.Image; born: number; x: number; y: number; drift: number };
 
 export class StageScene extends Phaser.Scene {
   private bridge!: TalentBridge;
   private copy!: TalentCopy;
   private L!: Layout;
+  private laneY = 0;
   private songId: SongId = "theme";
   private compiled!: CompiledSong;
   private mode: Mode = "idle";
@@ -103,15 +90,19 @@ export class StageScene extends Phaser.Scene {
   private calibEnd = 0;
   private notice = "";
 
-  private stripG!: Phaser.GameObjects.Graphics;
-  private hitG!: Phaser.GameObjects.Graphics;
+  private notesG!: Phaser.GameObjects.Graphics;
+  private ringBaseG!: Phaser.GameObjects.Graphics;
+  private ringFrontG!: Phaser.GameObjects.Graphics;
   private meterG!: Phaser.GameObjects.Graphics;
+  private progressG!: Phaser.GameObjects.Graphics;
   private spotG!: Phaser.GameObjects.Graphics;
+  private liveDot!: Phaser.GameObjects.Graphics;
   private lostTile!: Phaser.GameObjects.TileSprite;
   private weakTile!: Phaser.GameObjects.TileSprite;
   private lostMask!: Phaser.GameObjects.Graphics;
   private weakMask!: Phaser.GameObjects.Graphics;
   private host!: Phaser.GameObjects.Image;
+  private hostSpot!: Spot;
   private hostMood: HostMood = "wave";
   private hostOverride: HostMood | null = null;
   private hostUntil = 0;
@@ -122,22 +113,28 @@ export class StageScene extends Phaser.Scene {
   private bubbleUntil = 0;
   private shh!: Phaser.GameObjects.Text;
   private shhUntil = 0;
-  private kids = new Map<BandMember, KidView>();
+  private kids = new Map<Kid, KidView>();
   private jury = new Map<JuryId, JuryView>();
   private titleText!: Phaser.GameObjects.Text;
   private subtitleText!: Phaser.GameObjects.Text;
+  private nameTag!: Phaser.GameObjects.Container;
+  private nameTagBg!: Phaser.GameObjects.Graphics;
+  private nameTagText!: Phaser.GameObjects.Text;
+  private streak!: Phaser.GameObjects.Container;
+  private streakBg!: Phaser.GameObjects.Graphics;
   private streakText!: Phaser.GameObjects.Text;
-  private hintText!: Phaser.GameObjects.Text;
+  private streakShown = 0;
   private labels: Phaser.GameObjects.Text[] = [];
   private popups: Popup[] = [];
   private bursts: Burst[] = [];
-  private panel!: Phaser.GameObjects.Container;
-  private panelTitle!: Phaser.GameObjects.Text;
-  private panelBody!: Phaser.GameObjects.Text;
-  private panelHint!: Phaser.GameObjects.Text;
-  private panelArt!: Phaser.GameObjects.Graphics;
-  private buttons: PanelButton[] = [];
-  private pressedButton: ButtonId | null = null;
+  private sparks: Spark[] = [];
+  private flash = { born: -Infinity, color: C.sun };
+  private shakeUntil = 0;
+  private missAt = new Map<number, number>();
+  private chase: { x: number; y: number }[] = [];
+  private floaters: Floater[] = [];
+  private card!: ShowCard;
+  private pressedButton: CardButtonId | null = null;
 
   constructor() {
     super("stage");
@@ -149,24 +146,41 @@ export class StageScene extends Phaser.Scene {
     for (const [name, [, , w, h, res]] of Object.entries(ART_FILES)) {
       if (!this.textures.exists(name)) this.load.svg(name, `/assets/talent-show/${name}.svg`, { width: Math.round(w * res), height: Math.round(h * res) });
     }
+    loadIcons(this, [
+      { key: "icon-pointer", icon: Pointer, size: 96, color: "#1d1830", fill: "#f7ecd4", strokeWidth: 2 },
+      { key: "icon-play", icon: Play, size: 64, color: "#1d1830", fill: "#1d1830", strokeWidth: 2.4 },
+      { key: "icon-next", icon: ArrowRight, size: 64, color: "#1d1830", strokeWidth: 3.2 },
+      { key: "icon-sound", icon: Volume2, size: 40, color: "#7b62c4", strokeWidth: 2.6 },
+    ]);
   }
 
   create() {
     this.bridge = this.registry.get("bridge") as TalentBridge;
     this.copy = TALENT_COPY[this.bridge.locale];
     this.L = layoutFor(this.bridge.orientation);
+    this.laneY = this.L.lane.track.y + this.L.lane.track.h / 2;
     const saved = this.bridge.calibration.load();
     this.hasCalibration = saved !== null;
     this.offset = saved ?? 0;
     this.makeStaticTexture();
+    this.makeNoteTexture();
     this.buildBackdrop();
-    this.buildHost();
     this.buildJury();
+    this.buildHost();
     this.buildBand();
     this.buildCrowd();
-    this.buildStrip();
-    this.buildPanel();
-    this.buildButtons();
+    this.buildLane();
+    this.buildHud();
+    const portrait = this.bridge.orientation === "portrait";
+    this.card = new ShowCard(
+      this,
+      this.copy,
+      this.bridge.fonts,
+      this.L.card,
+      { title: this.L.text.cardTitle, body: this.L.text.cardBody, small: this.L.text.cardSmall },
+      portrait,
+      this.bridge.reducedMotion,
+    );
     this.setSong("theme");
     this.setMode("idle");
     this.bridge.onReady();
@@ -175,6 +189,10 @@ export class StageScene extends Phaser.Scene {
 
   private font(kind: "display" | "body", size: number, color = "#f7ecd4"): Phaser.Types.GameObjects.Text.TextStyle {
     return { fontFamily: this.bridge.fonts[kind], fontSize: `${size}px`, color, fontStyle: kind === "body" ? "700" : undefined };
+  }
+
+  private outlined(kind: "display" | "body", size: number, color = "#f7ecd4", thickness = 8): Phaser.Types.GameObjects.Text.TextStyle {
+    return { ...this.font(kind, size, color), stroke: "#1d1830", strokeThickness: thickness };
   }
 
   private makeStaticTexture() {
@@ -197,28 +215,91 @@ export class StageScene extends Phaser.Scene {
     tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
 
-  private outlined(kind: "display" | "body", size: number, color = "#f7ecd4", thickness = 8): Phaser.Types.GameObjects.Text.TextStyle {
-    return { ...this.font(kind, size, color), stroke: "#1d1830", strokeThickness: thickness };
+  private makeNoteTexture() {
+    if (this.textures.exists("note-glyph")) return;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    const glyph = (grow: number, color: number) => {
+      g.fillStyle(color, 1);
+      g.fillEllipse(20, 50, 28 + grow * 2, 20 + grow * 2);
+      g.fillRect(29 - grow, 8 - grow, 8 + grow * 2, 44 + grow);
+      g.fillTriangle(33 - grow, 8 - grow, 54 + grow, 24, 33 - grow, 32 + grow);
+    };
+    glyph(5, C.ink);
+    glyph(0, 0xffffff);
+    g.generateTexture("note-glyph", 64, 68);
+    g.destroy();
   }
 
   private buildBackdrop() {
+    const L = this.L;
     this.add.image(0, 0, `studio-${this.bridge.orientation}`).setOrigin(0, 0).setDepth(0);
     this.spotG = this.add.graphics().setDepth(1);
-    this.titleText = this.add.text(this.L.title.x, this.L.title.y, "", this.outlined("display", this.L.title.size)).setOrigin(0, 0.5).setDepth(20);
-    this.subtitleText = this.add.text(this.L.title.x, this.L.title.y + this.L.title.size * 0.95, "", this.outlined("body", this.L.text.label + 4, "#b9a6ef", 6)).setOrigin(0, 0.5).setDepth(20);
-    this.add.text(this.L.live.x, this.L.live.y, `● ${this.copy.live}`, this.outlined("display", this.L.live.size, "#ef4f43")).setOrigin(1, 0.5).setDepth(20);
-    const m = this.L.meter;
-    this.add.text(m.x - 16, m.y + m.h / 2, this.copy.crowd, this.outlined("display", this.L.text.label + 4)).setOrigin(1, 0.5).setDepth(20);
-    this.meterG = this.add.graphics().setDepth(20);
-    this.hintText = this.add.text(this.L.hint.x, this.L.hint.y, "", this.font("body", this.L.hint.size, "#b9a6ef")).setOrigin(0.5).setDepth(20);
+    const p = L.performer;
+    for (const s of L.spots) {
+      this.spotG.fillStyle(C.sunPale, 0.11).fillTriangle(s.x - 14, s.y, s.x + 14, s.y, p.x + p.podium, p.y);
+      this.spotG.fillTriangle(s.x - 14, s.y, p.x - p.podium, p.y, p.x + p.podium, p.y);
+    }
+    this.spotG.fillStyle(C.sunPale, 0.26).fillEllipse(p.x, p.y, p.podium * 2 - 10, p.podium * 0.3);
+  }
+
+  private buildHud() {
+    const L = this.L;
+    this.titleText = this.add.text(L.title.x, L.title.y, "", this.outlined("display", L.title.size)).setOrigin(0, 0.5).setDepth(20);
+    this.subtitleText = this.add.text(L.title.x, L.title.y + L.title.size * 0.92, "", this.outlined("body", L.text.label + 2, "#b9a6ef", 6)).setOrigin(0, 0.5).setDepth(20);
+    const live = cartoonText(this, 0, 0, this.copy.live, { size: L.live.size, color: "#f7ecd4", font: this.bridge.fonts.display, stroke: 0.2, shadow: false }).setOrigin(1, 0.5);
+    const w = live.width + 58;
+    const h = L.live.size * 1.55;
+    const pill = this.add.graphics();
+    pill.fillStyle(C.ink, 1).fillRoundedRect(-w + 4, -h / 2 + 5, w, h, h / 2);
+    pill.fillStyle(C.tomato, 1).fillRoundedRect(-w, -h / 2, w, h, h / 2);
+    pill.lineStyle(4, C.ink, 1).strokeRoundedRect(-w, -h / 2, w, h, h / 2);
+    live.setPosition(-14, 0);
+    this.liveDot = this.add.graphics();
+    this.liveDot.fillStyle(C.cream, 1).fillCircle(-w + 24, 0, 9);
+    this.liveDot.lineStyle(3, C.ink, 1).strokeCircle(-w + 24, 0, 9);
+    this.add.container(L.live.x, L.live.y, [pill, this.liveDot, live]).setDepth(20);
+
+    const m = L.meter;
+    const label = cartoonText(this, 0, 0, this.copy.crowd.toUpperCase(), { size: L.text.label, color: "#f7ecd4", font: this.bridge.fonts.display, stroke: 0.22, shadow: false }).setOrigin(0, 0.5);
+    const mg = this.add.graphics();
+    mg.fillStyle(C.ink, 1).fillRoundedRect(4, 5, m.w, m.h, m.h / 2);
+    mg.fillStyle(C.plum800, 1).fillRoundedRect(0, 0, m.w, m.h, m.h / 2);
+    mg.lineStyle(4, C.ink, 1).strokeRoundedRect(0, 0, m.w, m.h, m.h / 2);
+    label.setPosition(18, m.h / 2);
+    this.meterG = this.add.graphics();
+    this.add.container(m.x, m.y, [mg, label, this.meterG]).setDepth(15);
+    this.meterG.setData("from", label.width + 32);
+
+    this.progressG = this.add.graphics().setDepth(15);
+
+    this.nameTagBg = this.add.graphics();
+    this.nameTagText = cartoonText(this, 0, 0, "", { size: L.text.tag, color: "#1d1830", font: this.bridge.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    this.nameTag = this.add.container(L.performer.x, L.nameTag.y, [this.nameTagBg, this.nameTagText]).setDepth(15);
+
+    this.streakBg = this.add.graphics();
+    this.streakText = cartoonText(this, 0, 0, "", { size: L.text.label + 2, color: "#1d1830", font: this.bridge.fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+    this.streak = this.add.container(L.streak.x, L.streak.y, [this.streakBg, this.streakText]).setDepth(15).setVisible(false);
+  }
+
+  private setNameTag(text: string) {
+    this.nameTagText.setText(text.toUpperCase());
+    const w = this.nameTagText.width + 48;
+    const h = this.L.text.tag * 1.6;
+    const g = this.nameTagBg;
+    g.clear();
+    g.fillStyle(C.ink, 1).fillRoundedRect(-w / 2 + 4, -h / 2 + 5, w, h, 14);
+    g.fillStyle(C.sun, 1).fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+    g.lineStyle(4, C.ink, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+    g.fillStyle(C.ink, 1).fillTriangle(-10, -h / 2 + 1, 10, -h / 2 + 1, 0, -h / 2 - 12);
   }
 
   private buildHost() {
     const { x, y, scale } = this.L.host;
-    this.host = this.add.image(x, y, "host-wave").setOrigin((100 - HOST_BOX.x) / HOST_BOX.w, (HOST_BOX.feet - HOST_BOX.y) / HOST_BOX.h).setScale(scale / 2).setDepth(5);
+    this.hostSpot = { x, y, scale };
+    this.host = this.add.image(x, y, "host-wave").setOrigin((100 - HOST_BOX.x) / HOST_BOX.w, (HOST_BOX.feet - HOST_BOX.y) / HOST_BOX.h).setScale(scale / 2).setDepth(7);
     this.bubbleBg = this.add.graphics();
     this.bubbleText = this.add.text(0, 0, "", this.font("display", this.L.text.bubble, "#1d1830")).setOrigin(0, 0.5);
-    this.bubble = this.add.container(x + 70 * scale, y - 300 * scale, [this.bubbleBg, this.bubbleText]).setDepth(15).setVisible(false);
+    this.bubble = this.add.container(0, 0, [this.bubbleBg, this.bubbleText]).setDepth(16).setVisible(false);
   }
 
   private say(text: string, ms = 1400) {
@@ -226,11 +307,14 @@ export class StageScene extends Phaser.Scene {
     const w = this.bubbleText.width + 44;
     const h = this.L.text.bubble * 1.7;
     this.bubbleBg.clear();
+    this.bubbleBg.fillStyle(C.ink, 1).fillRoundedRect(4, -h / 2 + 5, w, h, h / 2);
     this.bubbleBg.fillStyle(C.cream, 1).fillRoundedRect(0, -h / 2, w, h, h / 2);
     this.bubbleBg.lineStyle(5, C.ink, 1).strokeRoundedRect(0, -h / 2, w, h, h / 2);
     this.bubbleBg.fillStyle(C.cream, 1).fillTriangle(16, h / 2 - 6, 40, h / 2 - 6, 4, h / 2 + 22);
     this.bubbleBg.lineStyle(5, C.ink, 1).lineBetween(16, h / 2 - 2, 4, h / 2 + 22).lineBetween(4, h / 2 + 22, 40, h / 2 - 2);
-    this.bubble.setVisible(true);
+    const s = this.host.scale * 2;
+    const x = Math.min(this.L.W - w - 16, this.host.x + 60 * s);
+    this.bubble.setPosition(x, this.host.y - 300 * s).setVisible(true);
     this.bubbleUntil = performance.now() + ms;
   }
 
@@ -239,7 +323,7 @@ export class StageScene extends Phaser.Scene {
     this.hostUntil = performance.now() + ms;
   }
 
-  private updateHost(now: number, signal: Signal) {
+  private updateHost(now: number, signal: Signal, bob: number) {
     const live = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
     let mood: HostMood;
     if (live && signal === "lost") mood = "static";
@@ -248,11 +332,12 @@ export class StageScene extends Phaser.Scene {
     else if (this.mode === "countin" || this.mode === "resuming") mood = "excited";
     else if (this.mode === "cut") mood = "sad";
     else if (this.mode === "results") mood = (this.verdict?.stars ?? 0) >= 2 ? "happy" : (this.verdict?.stars ?? 0) === 1 ? "neutral" : "sad";
-    else mood = "neutral";
+    else mood = this.featured() === "404" ? "happy" : "neutral";
     if (mood !== this.hostMood) {
       this.hostMood = mood;
       this.host.setTexture(`host-${mood}`);
     }
+    if (!this.tweens.isTweening(this.host)) this.host.y = this.hostSpot.y - (this.featured() === "404" ? bob : 0);
   }
 
   private juryTexture(id: JuryId, mood: Mood) {
@@ -261,14 +346,13 @@ export class StageScene extends Phaser.Scene {
   }
 
   private buildJury() {
-    const { xs, y, scale } = this.L.jury;
+    const J = this.L.jury;
+    const plateY = J.deskTop - DESK_LIP + 97;
+    this.add.image(J.x0, J.deskTop - DESK_LIP, `jury-desk-${this.bridge.orientation}`).setOrigin(0, 0).setScale(0.5).setDepth(6);
     JURY.forEach((id, i) => {
       const art = JURY_ART[id];
       const img = this.add.image(0, 0, this.juryTexture(id, "neutral")).setOrigin(art.originX, art.crop / art.h).setScale(art.scale / 2);
       img.setCrop(0, 0, art.w * 2, art.crop * 2);
-      const desk = this.add.image(0, -14, "desk").setOrigin(0.5, 0).setScale(0.5);
-      const name = this.add.text(0, -14 + 77, this.copy.jury[id], this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5);
-      if (name.width > 140) name.setScale(140 / name.width);
       const top = -art.crop * art.scale;
       const plateImg = this.add.image(0, 0, "plate").setOrigin(0.5, 1).setScale(0.4);
       const plateText = this.add.text(0, -116 * 0.8, "", this.font("display", 62, "#1d1830")).setOrigin(0.5);
@@ -277,11 +361,14 @@ export class StageScene extends Phaser.Scene {
       heart.fillStyle(C.bubblegum, 1).fillCircle(-11, 0, 13).fillCircle(11, 0, 13).fillTriangle(-23, 5, 23, 5, 0, 32);
       heart.lineStyle(4, C.ink, 1).strokeCircle(-11, 0, 13).strokeCircle(11, 0, 13);
       heart.setPosition(art.plateX * 0.6, top - 10).setVisible(false);
-      this.add.container(xs[i], y, [img, desk, name, plate, heart]).setScale(scale).setDepth(6);
+      this.add.container(J.xs[i], J.deskTop + 16, [img, plate, heart]).setScale(J.scale).setDepth(5);
+      const name = this.add.text(J.xs[i], plateY, this.copy.jury[id], this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5).setDepth(6.5);
+      if (name.width > 146) name.setScale(146 / name.width);
       this.jury.set(id, { img, plate, plateText, heart, mood: "neutral", moodUntil: 0, heartUntil: 0 });
     });
     const inspector = JURY_ART.inspector;
-    this.shh = this.add.text(this.L.jury.xs[0] - 40 * scale, y - inspector.crop * inspector.scale * scale - 10, this.copy.host.shh, this.outlined("display", this.L.text.bubble, "#ef4f43"))
+    this.shh = this.add
+      .text(J.xs[0] - 50 * J.scale, J.deskTop + 16 - inspector.crop * inspector.scale * J.scale + 10, this.copy.host.shh, this.outlined("display", this.L.text.bubble, "#ef4f43"))
       .setOrigin(1, 0.5)
       .setDepth(16)
       .setVisible(false);
@@ -305,14 +392,43 @@ export class StageScene extends Phaser.Scene {
   }
 
   private buildBand() {
-    const { xs, y, scale } = this.L.band;
-    BAND.forEach((id, i) => {
+    BAND.forEach((id) => {
       const body = this.add.image(0, 0, `body-${id}-ready`).setOrigin((100 - FIGURE.x) / FIGURE.w, FEET / FIGURE.h).setScale(0.5);
       const head = this.add.image(0, -FEET, `head-${id}-normal`).setOrigin(0.5, 0).setScale(0.5);
-      const root = this.add.container(xs[i], y, [body, head]).setScale(scale).setDepth(7);
-      this.add.text(xs[i], y + 22, this.copy.band[id], this.outlined("display", this.L.text.label + 2, "#f7ecd4", 7)).setOrigin(0.5, 0).setDepth(9.5);
-      this.kids.set(id, { root, body, head, pose: "ready", poseUntil: 0, face: "normal", flash: "wow", faceUntil: 0, base: "normal" });
+      const root = this.add.container(0, 0, [body, head]).setDepth(4);
+      this.kids.set(id, { root, body, head, pose: "ready", poseUntil: 0, face: "normal", flash: "wow", faceUntil: 0, base: "normal", spot: { x: 0, y: 0, scale: 1 } });
     });
+    for (let i = 0; i < 6; i += 1) this.floaters.push({ img: this.add.image(0, 0, "note-glyph").setDepth(9).setVisible(false), born: -Infinity, x: 0, y: 0, drift: 0 });
+  }
+
+  private placeBand(animate: boolean) {
+    const featured = this.featured();
+    const L = this.L;
+    const performer: Spot = { x: L.performer.x, y: L.performer.y, scale: L.performer.scale };
+    const move = (target: Phaser.GameObjects.Container | Phaser.GameObjects.Image, spot: Spot, scale: number) => {
+      this.tweens.killTweensOf(target);
+      if (!animate || this.bridge.reducedMotion) {
+        target.setPosition(spot.x, spot.y).setScale(scale);
+        return;
+      }
+      this.tweens.add({ targets: target, x: spot.x, y: spot.y, scale, duration: 420, ease: "Sine.easeInOut" });
+    };
+    BAND.forEach((id, i) => {
+      const view = this.kids.get(id);
+      if (!view) return;
+      const lead = id === featured;
+      view.spot = lead ? performer : { x: L.backline.xs[i], y: L.backline.y, scale: L.backline.scale };
+      view.root.setDepth(lead ? 8 : 4);
+      view.body.setTint(lead ? 0xffffff : 0xd9d2ee);
+      view.head.setTint(lead ? 0xffffff : 0xd9d2ee);
+      move(view.root, view.spot, view.spot.scale);
+    });
+    const hostLead = featured === "404";
+    this.hostSpot = hostLead ? { x: performer.x, y: performer.y, scale: L.performer.scale * 1.18 } : { ...L.host };
+    this.host.setDepth(hostLead ? 8 : 7);
+    move(this.host, this.hostSpot, this.hostSpot.scale / 2);
+    const source = this.compiled.song.segments[this.segment].source ?? this.songId;
+    this.setNameTag(this.copy.songs[source].who);
   }
 
   private buildCrowd() {
@@ -346,79 +462,34 @@ export class StageScene extends Phaser.Scene {
     }
   }
 
-  private buildStrip() {
-    const S = this.L.strip;
-    this.stripG = this.add.graphics().setDepth(10);
+  private buildLane() {
+    const { housing: H, track } = this.L.lane;
+    const r = this.L.lane.r;
+    const g = this.add.graphics().setDepth(10);
+    g.fillStyle(C.ink, 0.6).fillRoundedRect(H.x + 8, H.y + 12, H.w, H.h, 34);
+    g.fillStyle(C.plum700, 1).fillRoundedRect(H.x, H.y, H.w, H.h, 34);
+    g.lineStyle(6, C.ink, 1).strokeRoundedRect(H.x, H.y, H.w, H.h, 34);
+    g.lineStyle(3, C.plum500, 1).strokeRoundedRect(H.x + 7, H.y + 7, H.w - 14, H.h - 14, 28);
+    drawTrack(g, track, this.laneY, r);
+    g.lineStyle(5, C.ink, 1).strokeRoundedRect(track.x, track.y, track.w, track.h, Math.min(26, track.h / 4));
+    for (let x = H.x + 40; x < H.x + H.w - 30; x += 46) {
+      this.chase.push({ x, y: H.y + 9 }, { x, y: H.y + H.h - 9 });
+    }
+    for (const b of this.chase) g.fillStyle(C.plum600, 1).fillCircle(b.x, b.y, 4.5);
+    this.ringBaseG = this.add.graphics().setDepth(10.5);
+    this.notesG = this.add.graphics().setDepth(11);
     this.lostMask = this.make.graphics({ x: 0, y: 0 }, false);
     this.weakMask = this.make.graphics({ x: 0, y: 0 }, false);
-    this.lostTile = this.add.tileSprite(S.x, S.y, S.w, S.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11);
-    this.weakTile = this.add.tileSprite(S.x, S.y, S.w, S.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11);
+    this.lostTile = this.add.tileSprite(track.x, track.y, track.w, track.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11.5);
+    this.weakTile = this.add.tileSprite(track.x, track.y, track.w, track.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11.5);
     this.lostTile.setMask(this.lostMask.createGeometryMask());
     this.weakTile.setMask(this.weakMask.createGeometryMask());
-    this.hitG = this.add.graphics().setDepth(12);
-    for (let i = 0; i < 8; i += 1) this.labels.push(this.add.text(0, 0, "", this.font("display", this.L.text.label)).setStroke("#1d1830", 8).setDepth(13).setVisible(false));
+    this.ringFrontG = this.add.graphics().setDepth(12);
+    for (let i = 0; i < 8; i += 1) this.labels.push(cartoonText(this, 0, 0, "", { size: this.L.text.label, color: "#f7ecd4", font: this.bridge.fonts.display, stroke: 0.22, shadow: false }).setDepth(13).setVisible(false));
     for (let i = 0; i < 6; i += 1) {
-      const text = this.add.text(S.hitX, S.y - 40, "", this.font("display", this.L.text.mark)).setOrigin(0.5).setDepth(14).setVisible(false);
-      text.setStroke("#1d1830", 10);
+      const text = cartoonText(this, this.L.lane.popupX, H.y - 40, "", { size: this.L.text.mark, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(14).setVisible(false);
       this.popups.push({ text, born: -Infinity });
     }
-    this.streakText = this.add.text(S.hitX, S.y + S.h + 6, "", this.font("display", this.L.text.label + 2, "#ffc83d")).setOrigin(0.5, 0).setDepth(14);
-  }
-
-  private buildPanel() {
-    const P = this.L.panel;
-    const bg = this.add.graphics();
-    bg.fillStyle(C.ink, 0.35).fillRoundedRect(10, 14, P.w, P.h, 36);
-    bg.fillStyle(C.cream, 1).fillRoundedRect(0, 0, P.w, P.h, 36);
-    bg.lineStyle(7, C.ink, 1).strokeRoundedRect(0, 0, P.w, P.h, 36);
-    this.panelTitle = this.add.text(P.w / 2, 70, "", this.font("display", this.L.text.panelTitle, "#1d1830")).setOrigin(0.5);
-    this.panelBody = this.add
-      .text(P.w / 2, 140, "", { ...this.font("body", this.L.text.panelBody, "#1d1830"), align: "center", wordWrap: { width: P.w - 110 }, lineSpacing: 6 })
-      .setOrigin(0.5, 0);
-    this.panelArt = this.add.graphics();
-    this.panelHint = this.add
-      .text(P.w / 2, P.h - 62, "", { ...this.font("display", this.L.text.panelBody + 4, "#3f3170"), align: "center", wordWrap: { width: P.w - 80 } })
-      .setOrigin(0.5);
-    this.panel = this.add.container(P.x, P.y, [bg, this.panelTitle, this.panelBody, this.panelArt, this.panelHint]).setDepth(30);
-  }
-
-  private showPanel(title: string, body: string, hint: string, stars: number | null = null) {
-    this.panelTitle.setText(title);
-    this.panelBody.setText(body);
-    this.panelHint.setText(hint);
-    this.panelArt.clear();
-    if (stars !== null) this.drawStars(stars);
-    this.panel.setVisible(true);
-  }
-
-  private drawStars(count: number) {
-    const P = this.L.panel;
-    const y = this.panelBody.y + this.panelBody.height + 60;
-    const r = this.bridge.orientation === "portrait" ? 46 : 40;
-    for (let i = 0; i < 3; i += 1) {
-      const cx = P.w / 2 + (i - 1) * r * 2.6;
-      const points: Phaser.Math.Vector2[] = [];
-      for (let k = 0; k < 10; k += 1) {
-        const a = -Math.PI / 2 + (k * Math.PI) / 5;
-        const rr = k % 2 === 0 ? r : r * 0.45;
-        points.push(new Phaser.Math.Vector2(cx + Math.cos(a) * rr, y + Math.sin(a) * rr));
-      }
-      this.panelArt.fillStyle(i < count ? C.sun : C.cream2, 1).fillPoints(points, true);
-      this.panelArt.lineStyle(5, C.ink, 1).strokePoints(points, true);
-    }
-  }
-
-  private drawCalibrationDots(now: number) {
-    const P = this.L.panel;
-    this.panelArt.clear();
-    const y = this.panelBody.y + this.panelBody.height + 70;
-    const gap = Math.min(100, (P.w - 120) / CALIBRATION_TAPS);
-    this.calibClicks.forEach((t, i) => {
-      const cx = P.w / 2 + (i - (CALIBRATION_TAPS - 1) / 2) * gap;
-      const color = this.calibErrors[i] !== null ? C.mint : now >= t - 0.02 ? C.plum300 : C.cream2;
-      this.panelArt.fillStyle(color, 1).fillCircle(cx, y, gap * 0.3);
-      this.panelArt.lineStyle(5, C.ink, 1).strokeCircle(cx, y, gap * 0.3);
-    });
   }
 
   private setSong(id: SongId) {
@@ -426,107 +497,91 @@ export class StageScene extends Phaser.Scene {
     this.compiled = compiledSong(id);
     const text = this.copy.songs[id];
     this.titleText.setText(text.title);
-    this.subtitleText.setText(`${this.copy.rounds[roundOf(id)]} · ${text.idea} · ${text.who}`);
+    this.subtitleText.setText(`${this.copy.rounds[roundOf(id)]} · ${text.idea}`);
     this.verdict = null;
     this.displayCrowd = 70;
     this.lastSignal = "clear";
     this.segment = 0;
     this.lastSongMs = -this.compiled.barStart[1];
-    this.drawSpotlight();
+    this.missAt.clear();
+    this.streak.setVisible(false);
+    this.streakShown = 0;
+    this.placeBand(false);
   }
 
   private featured(): BandMember {
     return this.compiled.song.segments[this.segment].featured;
   }
 
-  private drawSpotlight() {
-    const featured = this.featured();
-    this.spotG.clear();
-    const target = featured === "404" ? { x: this.L.host.x, y: this.L.host.y } : { x: this.L.band.xs[BAND.indexOf(featured)], y: this.L.band.y };
-    const top = this.L.lamps.y + 62;
-    const lamp = this.L.lamps.xs.reduce((a, b) => (Math.abs(b - target.x) < Math.abs(a - target.x) ? b : a), this.L.lamps.xs[0]);
-    this.spotG.fillStyle(C.sunPale, 0.13).fillTriangle(lamp - 16, top, lamp + 16, top, target.x + 150, target.y + 8);
-    this.spotG.fillTriangle(lamp - 16, top, target.x - 150, target.y + 8, target.x + 150, target.y + 8);
-    this.spotG.fillStyle(C.sunPale, 0.22).fillEllipse(target.x, target.y + 4, 300, 44);
+  private introContent(): CardContent {
+    const copy = this.copy;
+    const song = copy.songs[this.songId];
+    const first = !this.hasCalibration;
+    const assistOn = this.bridge.assist.get();
+    const notes = [this.notice, first ? copy.calibNext : assistOn ? copy.assistOn : ""].filter(Boolean);
+    return {
+      kicker: copy.kicker(copy.rounds[roundOf(this.songId)], SONG_ORDER.indexOf(this.songId) + 1, SONG_ORDER.length),
+      title: first ? copy.showTime : song.title,
+      lead: first ? copy.showLead : song.who,
+      face: first ? null : SONG_FACE[this.songId],
+      demo: DEMO_OF[this.songId],
+      dots: false,
+      how: song.how,
+      note: notes.join("\n"),
+      primary: first ? { label: copy.proceed, icon: "icon-next" } : { label: copy.begin, icon: "icon-play" },
+      secondary: first
+        ? []
+        : [
+            { id: "assist", label: copy.assistButton(assistOn), on: assistOn },
+            { id: "calibrate", label: copy.calibrateButton, on: false },
+          ],
+      footer: this.bridge.touch ? copy.soundNote : `${copy.soundNote}\n${copy.keysHint}`,
+    };
+  }
+
+  private calibrationContent(): CardContent {
+    const copy = this.copy;
+    return {
+      kicker: copy.calibKicker,
+      title: copy.calibTitle,
+      lead: copy.calibHow,
+      face: null,
+      demo: null,
+      dots: true,
+      how: copy.calibListen,
+      note: "",
+      primary: null,
+      secondary: [],
+      footer: copy.soundNote,
+    };
   }
 
   private setMode(mode: Mode) {
     this.mode = mode;
     this.modeSince = performance.now();
-    const copy = this.copy;
-    const song = copy.songs[this.songId];
-    this.hintText.setText("");
-    this.showButtons(false);
+    this.pressedButton = null;
     if (mode === "intro") {
       this.setKidFaces("normal");
-      const lines = [song.how];
-      if (this.notice) lines.unshift(this.notice, "");
-      if (!this.hasCalibration) lines.push("", copy.firstCalibration);
-      else if (this.bridge.assist.get()) lines.push("", copy.assistOn);
-      lines.push("", copy.soundNote);
-      const start = !this.hasCalibration ? copy.calibContinue : this.bridge.touch ? copy.startTouch : copy.startKeys;
-      this.showPanel(`${song.idea}: ${song.title}`, lines.join("\n"), start);
-      this.showButtons(this.hasCalibration);
-      if (!this.bridge.touch && this.hasCalibration) this.hintText.setText(copy.keysHint);
+      this.card.show(this.introContent());
       this.notice = "";
     } else if (mode === "calibrating") {
-      this.showPanel(copy.calibTitle, `${copy.calibHow}\n\n${copy.calibListen}`, "");
+      this.card.show(this.calibrationContent());
     } else {
-      this.panel.setVisible(false);
+      this.card.hide();
     }
   }
 
-  private buildButtons() {
-    const P = this.L.panel;
-    const gap = 30;
-    const w = (P.w - 100 - gap) / 2;
-    const h = this.bridge.orientation === "portrait" ? 78 : 66;
-    const y = P.h - 132 - h;
-    (["assist", "calibrate"] as ButtonId[]).forEach((id, i) => {
-      const x = 50 + i * (w + gap);
-      const bg = this.add.graphics();
-      const text = this.add
-        .text(w / 2, h / 2, "", { ...this.font("body", this.L.text.panelBody - 6, "#1d1830"), align: "center", wordWrap: { width: w - 24 } })
-        .setOrigin(0.5);
-      const root = this.add.container(x, y, [bg, text]);
-      this.panel.add(root);
-      this.buttons.push({ id, box: new Phaser.Geom.Rectangle(P.x + x, P.y + y, w, h), root, bg, text });
-    });
-    this.refreshButtons();
+  private buttonAt(pageX: number, pageY: number): CardButtonId | null {
+    if (this.mode !== "intro" || !this.card.visible) return null;
+    return this.card.buttonAt(this.scale.transformX(pageX), this.scale.transformY(pageY));
   }
 
-  private refreshButtons() {
-    const on = this.bridge.assist.get();
-    for (const b of this.buttons) {
-      const active = b.id === "assist" && on;
-      b.bg.clear();
-      b.bg.fillStyle(C.ink, 0.3).fillRoundedRect(4, 6, b.box.width, b.box.height, 16);
-      b.bg.fillStyle(active ? C.sun : C.cream2, 1).fillRoundedRect(0, 0, b.box.width, b.box.height, 16);
-      b.bg.lineStyle(5, C.ink, 1).strokeRoundedRect(0, 0, b.box.width, b.box.height, 16);
-      b.text.setText(b.id === "assist" ? this.copy.assistButton(on) : this.copy.calibrateButton);
-    }
-  }
-
-  private showButtons(visible: boolean) {
-    for (const b of this.buttons) b.root.setVisible(visible);
-    if (!visible) this.pressedButton = null;
-  }
-
-  private buttonAt(pageX: number, pageY: number): ButtonId | null {
-    if (this.mode !== "intro" || !this.panel.visible) return null;
-    const x = this.scale.transformX(pageX);
-    const y = this.scale.transformY(pageY);
-    return this.buttons.find((b) => b.root.visible && b.box.contains(x, y))?.id ?? null;
-  }
-
-  private pressButton(id: ButtonId) {
-    if (id === "assist") {
+  private pressButton(id: CardButtonId) {
+    if (id === "primary") this.advance(true);
+    else if (id === "assist") {
       this.bridge.assist.set(!this.bridge.assist.get());
-      this.refreshButtons();
       this.setMode("intro");
-    } else {
-      this.startCalibration();
-    }
+    } else this.startCalibration();
   }
 
   private busy() {
@@ -536,7 +591,10 @@ export class StageScene extends Phaser.Scene {
   press(timeStamp: number, id: string, pageX = -1, pageY = -1) {
     if (this.mode === "playing" || this.mode === "countin") this.registerDown(timeStamp, id);
     else if (this.mode === "calibrating") this.calibrationTap(timeStamp);
-    else if (this.mode === "intro") this.pressedButton = this.buttonAt(pageX, pageY);
+    else if (this.mode === "intro") {
+      this.pressedButton = this.buttonAt(pageX, pageY);
+      this.card.press(this.pressedButton);
+    }
   }
 
   release(timeStamp: number, id: string, pageX = -1, pageY = -1) {
@@ -547,11 +605,12 @@ export class StageScene extends Phaser.Scene {
     if (this.mode !== "intro") return;
     const pressed = this.pressedButton;
     this.pressedButton = null;
+    this.card.press(null);
     if (pressed) {
       if (this.buttonAt(pageX, pageY) === pressed) this.pressButton(pressed);
       return;
     }
-    this.advance();
+    this.advance(false);
   }
 
   key(code: string, timeStamp: number) {
@@ -570,7 +629,7 @@ export class StageScene extends Phaser.Scene {
     if (pauseKey) this.bridge.onPauseRequest();
     else if (code === "KeyA" && this.hasCalibration) this.pressButton("assist");
     else if (code === "KeyC") this.pressButton("calibrate");
-    else this.advance();
+    else this.advance(false);
   }
 
   keyUp(code: string, timeStamp: number) {
@@ -610,8 +669,8 @@ export class StageScene extends Phaser.Scene {
     return this.busy() || this.mode === "paused" || this.mode === "calibrating";
   }
 
-  private advance() {
-    if (performance.now() - this.modeSince < 600) return;
+  private advance(fromButton: boolean) {
+    if (!fromButton && performance.now() - this.modeSince < 600) return;
     if (this.mode !== "intro") return;
     if (this.hasCalibration) this.startSong();
     else this.startCalibration();
@@ -673,7 +732,7 @@ export class StageScene extends Phaser.Scene {
   }
 
   private startSong() {
-    this.panel.setVisible(false);
+    this.card.hide();
     const stage = this.ensureStage();
     if (!stage) return;
     getAudio().stopMusic();
@@ -690,9 +749,12 @@ export class StageScene extends Phaser.Scene {
     this.displayCrowd = 70;
     this.lastSignal = "clear";
     this.bursts = [];
+    this.sparks = [];
+    this.missAt.clear();
+    this.streakShown = 0;
     if (this.segment !== 0) {
       this.segment = 0;
-      this.drawSpotlight();
+      this.placeBand(true);
     }
     this.jury.forEach((view, id) => {
       view.plate.setVisible(false);
@@ -810,16 +872,22 @@ export class StageScene extends Phaser.Scene {
     view.plate.setVisible(true);
     view.plate.setData("until", performance.now() + ms);
     this.juryMood(id, grade >= 8 ? "happy" : grade <= 4 ? "angry" : "neutral", ms);
+    if (!this.bridge.reducedMotion) this.tweens.add({ targets: view.plate, y: { from: view.plate.y + 40, to: view.plate.y }, duration: 260, ease: "Back.easeOut" });
   }
 
   update() {
     const now = performance.now();
     this.clock?.sample();
     this.updateTransient(now);
+    this.card.update(now);
     if (this.mode === "calibrating") {
       const heard = this.clock ? this.clock.at(now) : 0;
-      if (heard >= this.calibClicks[0] - 0.05 && this.panelBody.text.endsWith(this.copy.calibListen)) this.panelBody.setText(`${this.copy.calibHow}\n\n${this.copy.calibGo}`);
-      this.drawCalibrationDots(heard);
+      if (heard >= this.calibClicks[0] - 0.05 && this.card.howText === this.copy.calibListen) this.card.setHow(this.copy.calibGo);
+      cardDots(
+        this.card.art,
+        this.card.artBox,
+        this.calibClicks.map((t, i) => (this.calibErrors[i] !== null ? "hit" : heard >= t - 0.02 ? "now" : "waiting")),
+      );
       if (heard > this.calibEnd) this.finishCalibration();
     }
     let shown: number;
@@ -840,11 +908,17 @@ export class StageScene extends Phaser.Scene {
     } else {
       shown = this.lastSongMs - this.offset;
     }
-    this.drawStrip(shown);
+    const moving = this.mode === "playing" || this.mode === "countin";
+    const phase = ((this.beatPos(shown) % 1) + 1) % 1;
+    const pulse = moving && !this.bridge.reducedMotion ? Math.max(0, 1 - phase * 4) : 0;
+    this.drawLane(shown, now, pulse);
     this.drawMeter();
-    this.animateBand(shown, now);
+    this.drawProgress(shown);
+    this.animateBand(shown, now, pulse);
+    this.spotG.setAlpha(0.8 + 0.2 * pulse);
+    this.liveDot.setAlpha(this.bridge.reducedMotion || Math.floor(now / 600) % 2 === 0 ? 1 : 0.25);
     const live = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
-    this.updateHost(now, live && shown >= 0 ? this.compiled.signal[barAt(this.compiled, shown)] ?? "clear" : "clear");
+    this.updateHost(now, live && shown >= 0 ? this.compiled.signal[barAt(this.compiled, shown)] ?? "clear" : "clear", pulse * 10);
   }
 
   private updateSong(songMs: number, shown: number) {
@@ -859,7 +933,7 @@ export class StageScene extends Phaser.Scene {
     }
     const verdict = judge(this.compiled, this.judgeInput(), shown);
     this.verdict = verdict;
-    for (let i = this.seen; i < verdict.events.length; i += 1) this.onMark(verdict.events[i].mark, verdict.streak);
+    for (let i = this.seen; i < verdict.events.length; i += 1) this.onMark(verdict.events[i].mark, verdict.streak, verdict.events[i].note);
     this.seen = verdict.events.length;
     verdict.sections.forEach((s, i) => {
       if (!s.closed || this.platesShown.has(i) || s.max === 0) return;
@@ -872,7 +946,7 @@ export class StageScene extends Phaser.Scene {
       const segment = this.compiled.segmentOfBar[bar];
       if (segment !== this.segment) {
         this.segment = segment;
-        this.drawSpotlight();
+        this.placeBand(true);
         const source = this.compiled.song.segments[segment].source;
         if (source) this.say(copy.host.now(copy.songs[source].title), 1800);
       }
@@ -884,19 +958,50 @@ export class StageScene extends Phaser.Scene {
       else if (this.lastSignal === "lost") this.say(copy.host.back, 1200);
       this.lastSignal = signal;
     }
-    this.streakText.setText(verdict.streak >= 5 ? copy.streak(verdict.streak) : "");
+    this.setStreak(verdict.streak);
     if (verdict.cutAt !== null) this.cut();
     else if (shown >= this.compiled.endMs) this.endSong();
   }
 
-  private onMark(mark: Mark, streak: number) {
+  private setStreak(n: number) {
+    if (n < 5) {
+      this.streak.setVisible(false);
+      this.streakShown = n;
+      return;
+    }
+    if (n === this.streakShown) return;
+    this.streakShown = n;
+    this.streakText.setText(this.copy.streak(n).toUpperCase()).setPosition(20, 0);
+    const w = this.streakText.width + 40;
+    const h = this.L.text.label * 1.7;
+    const g = this.streakBg;
+    g.clear();
+    g.fillStyle(C.ink, 1).fillRoundedRect(4, -h / 2 + 5, w, h, h / 2);
+    g.fillStyle(C.sun, 1).fillRoundedRect(0, -h / 2, w, h, h / 2);
+    g.lineStyle(4, C.ink, 1).strokeRoundedRect(0, -h / 2, w, h, h / 2);
+    this.streak.setVisible(true);
+    if (!this.bridge.reducedMotion && n % 10 === 0) this.tweens.add({ targets: this.streak, scale: { from: 1.25, to: 1 }, duration: 260, ease: "Back.easeOut" });
+  }
+
+  private onMark(mark: Mark, streak: number, note: number | null) {
     const now = performance.now();
     const popup = this.popups.reduce((a, b) => (a.born < b.born ? a : b));
     for (const p of this.popups) p.text.setVisible(false);
     popup.born = now;
-    popup.text.setText(this.copy.marks[mark]).setColor(MARK_COLOR[mark]).setVisible(true).setAlpha(1);
-    if (mark !== "miss" && mark !== "dropped") this.bursts.push({ born: now, color: MARK_TINT[mark] });
+    popup.text.setText(this.copy.marks[mark]).setColor(MARK_COLOR[mark]).setVisible(true).setAlpha(1).setScale(this.bridge.reducedMotion ? 1 : 1.3);
+    if (mark === "miss" || mark === "dropped" || mark === "noise") {
+      this.flash = { born: now, color: C.tomato };
+      if (mark === "miss" && note !== null) this.missAt.set(note, now);
+    } else {
+      this.bursts.push({ born: now, color: MARK_TINT[mark] });
+      this.flash = { born: now, color: MARK_TINT[mark] };
+      if (mark !== "near") {
+        this.sparks.push({ born: now, color: MARK_TINT[mark], seed: (now % 1000) / 160 });
+        this.floatNote();
+      }
+    }
     if (mark === "noise") {
+      this.shakeUntil = now + 240;
       this.juryMood("inspector", "angry", 1100);
       if (now > this.shhUntil) {
         this.shh.setVisible(true);
@@ -912,6 +1017,20 @@ export class StageScene extends Phaser.Scene {
     }
   }
 
+  private floatNote() {
+    if (this.bridge.reducedMotion) return;
+    const featured = this.featured();
+    const spot = featured === "404" ? this.hostSpot : this.kids.get(featured)?.spot;
+    if (!spot) return;
+    const floater = this.floaters.reduce((a, b) => (a.born < b.born ? a : b));
+    const side = Math.random() < 0.5 ? -1 : 1;
+    floater.born = performance.now();
+    floater.x = spot.x + side * (60 + Math.random() * 50) * spot.scale;
+    floater.y = spot.y - FEET * spot.scale * 0.55;
+    floater.drift = side * (20 + Math.random() * 30);
+    floater.img.setTint(MEMBER_COLOR[featured]).setVisible(true);
+  }
+
   private updateTransient(now: number) {
     if (this.bubble.visible && now > this.bubbleUntil) this.bubble.setVisible(false);
     if (this.shh.visible && now > this.shhUntil) this.shh.setVisible(false);
@@ -921,12 +1040,25 @@ export class StageScene extends Phaser.Scene {
       const until = view.plate.getData("until") as number | undefined;
       if (view.plate.visible && until !== undefined && now > until) view.plate.setVisible(false);
     });
-    const rise = this.bridge.reducedMotion ? 0 : 40;
+    const rise = this.bridge.reducedMotion ? 0 : 44;
+    const baseY = this.L.lane.housing.y - 46;
     for (const p of this.popups) {
       if (!p.text.visible) continue;
-      const age = (now - p.born) / 520;
+      const age = (now - p.born) / 620;
       if (age >= 1) p.text.setVisible(false);
-      else p.text.setY(this.L.strip.y - 36 - age * rise).setAlpha(1 - age * age);
+      else {
+        p.text.setY(baseY - age * rise).setAlpha(1 - age * age);
+        if (!this.bridge.reducedMotion) p.text.setScale(1 + 0.3 * Math.max(0, 1 - age * 6));
+      }
+    }
+    for (const f of this.floaters) {
+      if (!f.img.visible) continue;
+      const k = (now - f.born) / 900;
+      if (k >= 1) {
+        f.img.setVisible(false);
+        continue;
+      }
+      f.img.setPosition(f.x + Math.sin(k * Math.PI * 2) * 10 + f.drift * k, f.y - k * 110).setAlpha(1 - k * k).setScale(0.75 + 0.25 * Math.min(1, k * 5));
     }
   }
 
@@ -935,12 +1067,34 @@ export class StageScene extends Phaser.Scene {
     this.displayCrowd += (target - this.displayCrowd) * 0.15;
     const m = this.L.meter;
     const g = this.meterG;
+    const from = (g.getData("from") as number) ?? 120;
+    const x = from;
+    const w = m.w - from - 10;
+    const y = 8;
+    const h = m.h - 16;
     g.clear();
-    g.fillStyle(C.plum950, 1).fillRoundedRect(m.x, m.y, m.w, m.h, m.h / 2);
+    g.fillStyle(C.plum950, 1).fillRoundedRect(x, y, w, h, h / 2);
     const level = Math.max(0, Math.min(100, this.displayCrowd)) / 100;
     const color = level < 0.3 ? C.tomato : level < 0.6 ? C.sun : C.mint;
-    if (level > 0.02) g.fillStyle(color, 1).fillRoundedRect(m.x + 4, m.y + 4, Math.max(m.h - 8, (m.w - 8) * level), m.h - 8, (m.h - 8) / 2);
-    g.lineStyle(5, C.ink, 1).strokeRoundedRect(m.x, m.y, m.w, m.h, m.h / 2);
+    if (level > 0.02) g.fillStyle(color, 1).fillRoundedRect(x + 3, y + 3, Math.max(h - 6, (w - 6) * level), h - 6, (h - 6) / 2);
+    g.lineStyle(3, C.ink, 1).strokeRoundedRect(x, y, w, h, h / 2);
+  }
+
+  private drawProgress(shown: number) {
+    const P = this.L.progress;
+    const g = this.progressG;
+    g.clear();
+    if (this.mode === "idle" || this.mode === "intro" || this.mode === "calibrating") return;
+    const end = this.compiled.endMs;
+    const k = Math.max(0, Math.min(1, shown / end));
+    g.fillStyle(C.plum950, 1).fillRoundedRect(P.x, P.y - P.h / 2, P.w, P.h, P.h / 2);
+    if (k > 0) g.fillStyle(C.sun, 1).fillRoundedRect(P.x, P.y - P.h / 2, Math.max(P.h, P.w * k), P.h, P.h / 2);
+    for (const s of this.compiled.sections) {
+      const x = P.x + (P.w * s.endMs) / end;
+      g.fillStyle(C.cream, 1).fillCircle(x, P.y, P.h * 0.75);
+      g.lineStyle(3, C.ink, 1).strokeCircle(x, P.y, P.h * 0.75);
+    }
+    g.lineStyle(3, C.ink, 1).strokeRoundedRect(P.x, P.y - P.h / 2, P.w, P.h, P.h / 2);
   }
 
   private kidFlash(id: BandMember, face: KidFace, ms: number) {
@@ -962,17 +1116,18 @@ export class StageScene extends Phaser.Scene {
     });
   }
 
-  private animateBand(shown: number, now: number) {
+  private animateBand(shown: number, now: number, pulse: number) {
     const featured = this.featured();
     const moving = this.mode === "playing" || this.mode === "countin";
-    const phase = ((this.beatPos(shown) % 1) + 1) % 1;
-    const bob = moving && !this.bridge.reducedMotion ? Math.max(0, 1 - phase * 4) * 8 : 0;
+    const bob = pulse * 8;
     const streak = this.verdict?.streak ?? 0;
+    const holding = moving && this.active.size > 0;
     this.kids.forEach((view, id) => {
       const lead = id === featured || (featured === "404" && id === "deco");
-      view.root.setScale(this.L.band.scale * (lead ? 1.12 : 0.94));
+      const performer = id === featured;
       view.head.y = -FEET + bob * (lead ? 1 : 0.6);
-      const pose: Pose = now < view.poseUntil ? "hit" : "ready";
+      if (!this.tweens.isTweening(view.root)) view.root.y = view.spot.y - (performer ? bob * 0.6 : 0);
+      const pose: Pose = now < view.poseUntil || (lead && holding) ? "hit" : "ready";
       if (pose !== view.pose) {
         view.pose = pose;
         view.body.setTexture(`body-${id}-${pose}`);
@@ -996,22 +1151,23 @@ export class StageScene extends Phaser.Scene {
     return (bar + (ms - c.barStart[bar]) / (c.barStart[bar + 1] - c.barStart[bar])) * 4;
   }
 
-  private drawStrip(shown: number) {
-    const S = this.L.strip;
-    const g = this.stripG;
+  private drawLane(shown: number, now: number, pulse: number) {
+    const LN = this.L.lane;
+    const S = LN.track;
+    const hitX = LN.hitX;
+    const laneY = this.laneY;
+    const r = LN.r;
+    const g = this.notesG;
     const compiled = this.compiled;
-    const now = this.beatPos(shown);
-    const xOfBeat = (beat: number) => S.hitX + (beat - now) * S.pxPerBeat;
+    const beatNow = this.beatPos(shown);
+    const xOfBeat = (beat: number) => hitX + (beat - beatNow) * LN.pxPerBeat;
     const xOf = (ms: number) => xOfBeat(this.beatPos(ms));
-    const left = S.x + 6;
-    const right = S.x + S.w - 6;
-    const top = S.y;
-    const laneY = S.y + S.h * 0.6;
+    const left = S.x + 10;
+    const right = S.x + S.w - 10;
     const assist = this.mode === "intro" || this.mode === "calibrating" || this.mode === "idle" ? this.bridge.assist.get() : this.assist;
     g.clear();
-    g.fillStyle(C.plum950, 1).fillRoundedRect(S.x, S.y, S.w, S.h, 28);
-    const firstBar = Math.max(0, Math.floor((now - (S.hitX - left) / S.pxPerBeat) / 4));
-    const lastBar = Math.min(compiled.bars - 1, Math.floor((now + (right - S.hitX) / S.pxPerBeat) / 4));
+    const firstBar = Math.max(0, Math.floor((beatNow - (hitX - left) / LN.pxPerBeat) / 4));
+    const lastBar = Math.min(compiled.bars - 1, Math.floor((beatNow + (right - hitX) / LN.pxPerBeat) / 4));
     let label = 0;
     const callBars = new Set(compiled.calls.map((c) => c.bar));
     const echoBars = new Set(compiled.notes.filter((n) => n.kind === "echo").map((n) => n.bar));
@@ -1021,111 +1177,116 @@ export class StageScene extends Phaser.Scene {
       if (x1 <= x0) continue;
       const tag = callBars.has(bar) ? "call" : echoBars.has(bar) ? "echo" : null;
       if (tag) {
-        g.fillStyle(tag === "call" ? C.plum700 : C.sun, tag === "call" ? 0.6 : 0.13).fillRect(x0, top + 8, x1 - x0, S.h - 16);
+        drawRegion(g, x0, x1, laneY, r, tag === "call" ? C.plum600 : C.sun, tag === "call" ? 0.75 : 0.24);
         const text = this.labels[label];
-        if (text && x1 - x0 > 60) {
+        if (text && x1 - x0 > 80) {
           label += 1;
-          text.setText(tag === "call" ? this.copy.milaTurn : this.copy.yourTurn).setColor(tag === "call" ? "#b9a6ef" : "#ffc83d").setOrigin(0, 0);
-          text.setPosition(Math.max(x0 + 14, Math.min(x1 - text.width - 10, xOfBeat(bar * 4) + 14)), top + 14).setVisible(true);
+          text.setText(tag === "call" ? this.copy.milaTurn : this.copy.yourTurn).setColor(tag === "call" ? "#b9a6ef" : "#ffc83d").setOrigin(0, 0.5);
+          text.setPosition(Math.max(x0 + 12, Math.min(x1 - text.width - 10, xOfBeat(bar * 4) + 12)), S.y + (laneY - ribbon(r) - S.y) / 2).setVisible(true);
         }
       }
       for (let beat = 0; beat < 4; beat += 1) {
         const x = xOfBeat(bar * 4 + beat);
-        if (x < left || x > right) continue;
-        g.fillStyle(C.plum500, beat === 0 ? 0.9 : 0.35).fillRect(x - (beat === 0 ? 2 : 1), top + (beat === 0 ? 10 : S.h * 0.35), beat === 0 ? 4 : 2, beat === 0 ? S.h - 20 : S.h * 0.5);
+        if (x < left + 8 || x > right - 8) continue;
+        drawBeatLine(g, x, laneY, r, beat === 0);
       }
     }
-    label = this.drawStatic(xOfBeat, now, left, right, label, assist);
-    const r = this.bridge.orientation === "portrait" ? 36 : 38;
+    label = this.drawStatic(xOfBeat, beatNow, left, right, label, assist);
     const verdict = this.verdict;
+    const edgeFade = (x: number) => Math.max(0, Math.min(1, (right - x) / (r * 1.6)));
     for (const call of compiled.calls) {
       const x = xOf(call.at);
       if (x < left - r || x > right + r) continue;
-      const alpha = x < S.hitX ? Math.max(0, 1 - (S.hitX - x) / 160) : 1;
-      if (alpha <= 0) continue;
-      const pts = [new Phaser.Math.Vector2(x, laneY - r * 0.9), new Phaser.Math.Vector2(x + r * 0.75, laneY), new Phaser.Math.Vector2(x, laneY + r * 0.9), new Phaser.Math.Vector2(x - r * 0.75, laneY)];
-      g.fillStyle(C.plum300, alpha).fillPoints(pts, true);
-      g.lineStyle(5, C.ink, alpha).strokePoints(pts, true);
+      const alpha = x < hitX ? Math.max(0, 1 - (hitX - x) / 160) : edgeFade(x);
+      drawCall(g, x, laneY, r, alpha);
     }
+    let holding = false;
     for (const note of compiled.notes) {
       const x = xOf(note.at);
       const xEnd = note.kind === "hold" ? xOf(note.end) : x;
-      if (xEnd < left - r || x > right + r) continue;
+      if (xEnd < left - r * 2 || x > right + r) continue;
       const grade = verdict?.grades[note.index] ?? null;
       const tail = verdict?.tails[note.index] ?? null;
       const signal = compiled.signal[note.bar];
       if (signal === "lost" && grade === null && !assist) continue;
-      const signalAlpha = signal === "weak" ? (assist ? 0.6 : 0.3) : signal === "lost" ? 0.5 : 1;
+      const signalAlpha = (signal === "weak" ? (assist ? 0.6 : 0.3) : signal === "lost" ? 0.5 : 1) * edgeFade(x);
       const color = MEMBER_COLOR[compiled.song.segments[compiled.segmentOfBar[note.bar]].featured];
-      const fade = (px: number) => Math.max(0, 1 - Math.max(0, S.hitX - px) / 200);
+      const fade = (px: number) => Math.max(0, 1 - Math.max(0, hitX - px) / 200);
+      const missed = this.missAt.get(note.index);
+      const fall = missed !== undefined ? (now - missed) / MISS_FALL_MS : null;
       if (note.kind === "echo") {
         if (grade === null) {
-          if (assist) g.lineStyle(5, C.sun, 0.55).strokeCircle(x, laneY, r * 0.7);
+          if (assist) drawEcho(g, x, laneY, r, 0.6 * edgeFade(x));
           continue;
         }
-        const c = grade === "miss" ? C.gray : MARK_TINT[grade];
-        if (fade(x) > 0) g.lineStyle(6, c, fade(x)).strokeCircle(x, laneY, r * 0.55);
+        if (grade === "miss") this.drawMissed(g, x, laneY, r, fall, fade(x));
         continue;
       }
       if (note.kind === "hold") {
-        const holding = grade !== null && grade !== "miss" && tail === null;
+        const held = grade !== null && grade !== "miss" && tail === null;
         if (grade === null) {
-          this.drawTail(g, x, xEnd, laneY, r, color, 0.55 * signalAlpha, left, right);
+          drawTail(g, x, xEnd, laneY, r, color, 0.6 * signalAlpha, left, right);
+          drawNote(g, x, laneY, r, color, signalAlpha, false);
         } else if (grade === "miss") {
-          this.drawTail(g, x, xEnd, laneY, r, C.gray, 0.6 * fade(xEnd), left, right);
-          if (fade(x) > 0) g.fillStyle(C.gray, 0.8 * fade(x)).fillCircle(x, laneY, r * 0.8);
-          continue;
-        } else if (holding) {
-          if (xEnd > S.hitX) this.drawTail(g, S.hitX, xEnd, laneY, r, color, 0.85, left, right);
-          g.fillStyle(color, 1).fillCircle(S.hitX, laneY, r);
-          g.lineStyle(5, C.ink, 1).strokeCircle(S.hitX, laneY, r);
-          g.lineStyle(6, C.sun, 0.8).strokeCircle(S.hitX, laneY, r + 4);
-          continue;
-        } else {
-          if (tail === "dropped") {
-            const release = verdict?.releases[note.index];
-            const from = release !== null && release !== undefined ? xOf(release) : x;
-            this.drawTail(g, from, xEnd, laneY, r, C.gray, 0.6 * fade(xEnd), left, right);
-          }
-          continue;
+          drawTail(g, x, xEnd, laneY, r, C.gray, 0.55 * fade(xEnd), left, right);
+          this.drawMissed(g, x, laneY, r, fall, fade(x));
+        } else if (held) {
+          holding = true;
+          if (xEnd > hitX) drawTail(g, hitX, xEnd, laneY, r, color, 0.95, left, right);
+          drawNote(g, hitX, laneY, r, color, 1, false);
+        } else if (tail === "dropped") {
+          const release = verdict?.releases[note.index];
+          const from = release !== null && release !== undefined ? xOf(release) : x;
+          drawTail(g, from, xEnd, laneY, r, C.gray, 0.6 * fade(xEnd), left, right);
         }
-      } else if (grade === "miss") {
-        if (fade(x) > 0) g.fillStyle(C.gray, 0.8 * fade(x)).fillCircle(x, laneY, r * 0.8);
-        continue;
-      } else if (grade !== null) {
         continue;
       }
-      if (x < left - r || x > right + r) continue;
-      g.fillStyle(C.ink, signalAlpha).fillCircle(x, laneY + 5, r);
-      g.fillStyle(color, signalAlpha).fillCircle(x, laneY, r);
-      g.lineStyle(5, C.ink, signalAlpha).strokeCircle(x, laneY, r);
-      g.fillStyle(C.cream, 0.55 * signalAlpha).fillCircle(x - r * 0.3, laneY - r * 0.3, r * 0.25);
-    }
-    g.lineStyle(7, C.ink, 1).strokeRoundedRect(S.x, S.y, S.w, S.h, 28);
-    const hg = this.hitG;
-    hg.clear();
-    const t = performance.now();
-    hg.lineStyle(8, C.cream, 0.9).strokeCircle(S.hitX, laneY, r + 10);
-    hg.lineStyle(3, C.ink, 1).strokeCircle(S.hitX, laneY, r + 16);
-    this.bursts = this.bursts.filter((b) => t - b.born < 260);
-    for (const b of this.bursts) {
-      const k = (t - b.born) / 260;
-      hg.lineStyle(10 * (1 - k), b.color, 1 - k).strokeCircle(S.hitX, laneY, r + 10 + k * 40);
+      if (grade === "miss") {
+        this.drawMissed(g, x, laneY, r, fall, fade(x));
+        continue;
+      }
+      if (grade !== null) continue;
+      drawNote(g, x, laneY, r, color, signalAlpha);
     }
     for (let i = label; i < this.labels.length; i += 1) this.labels[i].setVisible(false);
+    const base = this.ringBaseG;
+    const front = this.ringFrontG;
+    base.clear();
+    front.clear();
+    const flashK = Math.max(0, 1 - (now - this.flash.born) / 260);
+    const shakeK = Math.max(0, (this.shakeUntil - now) / 240);
+    const shake = this.bridge.reducedMotion ? 0 : Math.sin(now * 0.09) * 8 * shakeK;
+    const beatIndex = Math.floor(beatNow);
+    const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.bridge.reducedMotion ? 0 : -beatIndex, shake, holding };
+    const moving = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
+    this.chase.forEach((b, i) => {
+      const on = moving && !this.bridge.reducedMotion ? (Math.floor(i / 2) + beatIndex) % 4 === 0 : Math.floor(i / 2) % 4 === 0;
+      if (on) base.fillStyle(C.sunPale, 1).fillCircle(b.x, b.y, 5.5);
+    });
+    drawRingBase(base, hitX, laneY, r, ring);
+    drawRingFront(front, hitX, laneY, r, ring);
+    this.bursts = this.bursts.filter((b) => now - b.born < 280);
+    for (const b of this.bursts) drawBurst(front, hitX + shake, laneY, r, b.color, (now - b.born) / 280);
+    this.sparks = this.sparks.filter((s) => now - s.born < SPARK_MS);
+    drawSparks(front, hitX, laneY, r, this.sparks, now, SPARK_MS);
   }
 
-  private drawTail(g: Phaser.GameObjects.Graphics, x0: number, x1: number, y: number, r: number, color: number, alpha: number, left: number, right: number) {
-    const a = Math.max(left, x0);
-    const b = Math.min(right, x1);
-    if (b <= a || alpha <= 0) return;
-    const h = r * 0.9;
-    g.fillStyle(color, alpha).fillRoundedRect(a, y - h / 2, b - a, h, h / 2);
-    g.lineStyle(4, C.ink, alpha).strokeRoundedRect(a, y - h / 2, b - a, h, h / 2);
+  private drawMissed(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, fall: number | null, fade: number) {
+    if (fall === null) {
+      if (fade > 0) g.fillStyle(C.gray, 0.8 * fade).fillCircle(x, y, r * 0.8);
+      return;
+    }
+    if (fall >= 1) return;
+    const dy = this.bridge.reducedMotion ? 0 : fall * fall * 120;
+    const alpha = 1 - fall;
+    g.fillStyle(C.gray, alpha).fillCircle(x, y + dy, r * 0.85);
+    g.lineStyle(4, C.ink, alpha).strokeCircle(x, y + dy, r * 0.85);
+    g.lineStyle(7, C.tomato, alpha).lineBetween(x - r * 0.4, y + dy - r * 0.4, x + r * 0.4, y + dy + r * 0.4).lineBetween(x + r * 0.4, y + dy - r * 0.4, x - r * 0.4, y + dy + r * 0.4);
   }
 
   private drawStatic(xOfBeat: (beat: number) => number, now: number, left: number, right: number, labelStart: number, assist: boolean) {
-    const S = this.L.strip;
+    const S = this.L.lane.track;
+    const half = ribbon(this.L.lane.r) - 3;
     this.lostMask.clear();
     this.weakMask.clear();
     let anyLost = false;
@@ -1141,14 +1302,14 @@ export class StageScene extends Phaser.Scene {
         const x0 = Math.max(left, xOfBeat(bar * 4));
         const x1 = Math.min(right, xOfBeat((end + 1) * 4));
         if (x1 > x0) {
-          (kind === "lost" ? this.lostMask : this.weakMask).fillStyle(0xffffff, 1).fillRect(x0, S.y + 8, x1 - x0, S.h - 16);
+          (kind === "lost" ? this.lostMask : this.weakMask).fillStyle(0xffffff, 1).fillRect(x0, this.laneY - half, x1 - x0, half * 2);
           if (kind === "lost") anyLost = true;
           else anyWeak = true;
           const text = this.labels[label];
-          if (text && x1 - x0 > 120) {
+          if (text && x1 - x0 > 140) {
             label += 1;
             text.setText(kind === "lost" ? this.copy.noSignal : this.copy.weakSignal).setColor("#f7ecd4").setOrigin(0.5, 0.5);
-            text.setPosition((x0 + x1) / 2, S.y + 30).setVisible(true);
+            text.setPosition((x0 + x1) / 2, S.y + (this.laneY - half - S.y) / 2).setVisible(true);
           }
         }
       }
@@ -1156,7 +1317,7 @@ export class StageScene extends Phaser.Scene {
     }
     const drift = this.bridge.reducedMotion ? 0 : performance.now() * 0.004;
     for (const tile of [this.lostTile, this.weakTile]) {
-      tile.tilePositionX = (now * S.pxPerBeat) / 5;
+      tile.tilePositionX = (now * this.L.lane.pxPerBeat) / 5;
       tile.tilePositionY = drift;
     }
     this.lostTile.setVisible(anyLost).setAlpha(assist ? 0.5 : 1);

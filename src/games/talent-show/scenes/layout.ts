@@ -6,68 +6,100 @@ export const CANVAS: Record<Orientation, { W: number; H: number }> = {
 };
 
 export type Box = { x: number; y: number; w: number; h: number };
+export type Spot = { x: number; y: number; scale: number };
 
 export type Layout = {
   W: number;
   H: number;
   title: { x: number; y: number; size: number };
   live: { x: number; y: number; size: number };
-  meter: Box;
-  jury: { xs: number[]; y: number; scale: number };
-  host: { x: number; y: number; scale: number };
-  band: { xs: number[]; y: number; scale: number };
+  valance: number;
+  truss: { y: number; xs: number[] } | null;
+  spots: { x: number; y: number }[];
+  sign: { cx: number; cy: number; w: number; h: number } | null;
+  riser: { x0: number; x1: number; top: number; front: number; tall: boolean };
   stage: { top: number; front: number };
-  sign: { cx: number; cy: number; w: number; h: number };
-  lamps: { y: number; xs: number[] };
+  jury: { xs: number[]; deskTop: number; deskBottom: number; x0: number; x1: number; scale: number };
+  host: Spot;
+  performer: Spot & { podium: number };
+  backline: { xs: number[]; y: number; scale: number };
+  nameTag: { y: number };
   crowd: { y: number; scale: number; count: number; gap: number }[];
-  strip: Box & { hitX: number; pxPerBeat: number };
-  panel: Box;
-  hint: { x: number; y: number; size: number };
-  text: { mark: number; label: number; bubble: number; panelTitle: number; panelBody: number };
+  lane: { housing: Box; track: Box; hitX: number; pxPerBeat: number; r: number; popupX: number };
+  meter: Box;
+  streak: { x: number; y: number };
+  progress: Box;
+  card: { cx: number; top: number; w: number; maxH: number };
+  text: { mark: number; label: number; bubble: number; cardTitle: number; cardBody: number; cardSmall: number; tag: number };
 };
+
+export const DESK_LIP = 34;
 
 export function layoutFor(orientation: Orientation): Layout {
   if (orientation === "portrait") {
     const { W, H } = CANVAS.portrait;
+    const housing = { x: 20, y: 968, w: W - 40, h: 330 };
+    const track = { x: housing.x + 18, y: housing.y + 18, w: housing.w - 36, h: housing.h - 36 };
     return {
       W,
       H,
-      title: { x: 40, y: 64, size: 44 },
-      live: { x: W - 40, y: 64, size: 34 },
-      meter: { x: 220, y: 140, w: 800, h: 40 },
-      jury: { xs: [190, 540, 890], y: 520, scale: 0.85 },
-      host: { x: 150, y: 990, scale: 0.78 },
-      band: { xs: [370, 560, 750, 935], y: 990, scale: 0.6 },
-      stage: { top: 960, front: 1060 },
-      sign: { cx: 650, cy: 700, w: 320, h: 130 },
-      lamps: { y: 214, xs: [100, 980] },
-      crowd: [
-        { y: 1178, scale: 0.78, count: 9, gap: 118 },
-        { y: 1300, scale: 1, count: 8, gap: 136 },
+      title: { x: 40, y: 92, size: 44 },
+      live: { x: W - 40, y: 92, size: 30 },
+      valance: 52,
+      truss: null,
+      spots: [
+        { x: 60, y: 150 },
+        { x: W - 60, y: 150 },
       ],
-      strip: { x: 24, y: 1290, w: W - 48, h: 230, hitX: 200, pxPerBeat: 250 },
-      panel: { x: 50, y: 530, w: W - 100, h: 600 },
-      hint: { x: W / 2, y: 1590, size: 34 },
-      text: { mark: 54, label: 26, bubble: 34, panelTitle: 62, panelBody: 36 },
+      sign: null,
+      riser: { x0: 96, x1: W - 96, top: 560, front: 846, tall: true },
+      stage: { top: 846, front: 946 },
+      jury: { xs: [272, 540, 808], deskTop: 436, deskBottom: 556, x0: 128, x1: W - 128, scale: 0.84 },
+      host: { x: 104, y: 932, scale: 0.6 },
+      performer: { x: 560, y: 918, scale: 0.72, podium: 132 },
+      backline: { xs: [300, 420, 712, 840], y: 876, scale: 0.44 },
+      nameTag: { y: 950 },
+      crowd: [
+        { y: 1480, scale: 1, count: 9, gap: 122 },
+        { y: 1610, scale: 1.12, count: 8, gap: 140 },
+        { y: 1736, scale: 1.26, count: 7, gap: 160 },
+      ],
+      lane: { housing, track, hitX: 196, pxPerBeat: 272, r: 56, popupX: 316 },
+      meter: { x: W - 470, y: housing.y + housing.h - 18, w: 430, h: 42 },
+      streak: { x: 44, y: housing.y + housing.h },
+      progress: { x: track.x + 40, y: track.y + track.h - 20, w: track.w - 80, h: 10 },
+      card: { cx: W / 2, top: 196, w: W - 56, maxH: 712 },
+      text: { mark: 58, label: 28, bubble: 36, cardTitle: 64, cardBody: 33, cardSmall: 28, tag: 30 },
     };
   }
   const { W, H } = CANVAS.landscape;
+  const housing = { x: 28, y: 734, w: W - 56, h: 244 };
+  const track = { x: housing.x + 18, y: housing.y + 18, w: housing.w - 36, h: housing.h - 36 };
   return {
     W,
     H,
-    title: { x: 56, y: 56, size: 46 },
-    live: { x: W - 56, y: 56, size: 34 },
-    meter: { x: 760, y: 36, w: 440, h: 40 },
-    jury: { xs: [1350, 1570, 1790], y: 400, scale: 0.85 },
-    host: { x: 210, y: 690, scale: 0.92 },
-    band: { xs: [520, 735, 950, 1165], y: 690, scale: 0.66 },
-    stage: { top: 670, front: 760 },
-    sign: { cx: 840, cy: 250, w: 430, h: 190 },
-    lamps: { y: 108, xs: [300, 520, 1180, 1420, 1640] },
-    crowd: [{ y: 826, scale: 0.82, count: 16, gap: 118 }],
-    strip: { x: 48, y: 790, w: W - 96, h: 210, hitX: 330, pxPerBeat: 340 },
-    panel: { x: 330, y: 120, w: 900, h: 620 },
-    hint: { x: W / 2, y: 1045, size: 28 },
-    text: { mark: 50, label: 24, bubble: 32, panelTitle: 60, panelBody: 32 },
+    title: { x: 56, y: 74, size: 46 },
+    live: { x: W - 56, y: 74, size: 30 },
+    valance: 44,
+    truss: { y: 134, xs: [330, 560, 990, 1380, 1560, 1740] },
+    spots: [
+      { x: 560, y: 196 },
+      { x: 990, y: 196 },
+    ],
+    sign: { cx: 775, cy: 246, w: 360, h: 124 },
+    riser: { x0: 352, x1: 1836, top: 544, front: 626, tall: false },
+    stage: { top: 626, front: 718 },
+    jury: { xs: [1366, 1544, 1722], deskTop: 406, deskBottom: 540, x0: 1262, x1: 1824, scale: 0.72 },
+    host: { x: 168, y: 702, scale: 0.9 },
+    performer: { x: 775, y: 694, scale: 0.84, podium: 168 },
+    backline: { xs: [468, 610, 940, 1082], y: 540, scale: 0.46 },
+    nameTag: { y: 722 },
+    crowd: [{ y: 1104, scale: 0.88, count: 17, gap: 114 }],
+    lane: { housing, track, hitX: 300, pxPerBeat: 340, r: 46, popupX: 400 },
+    meter: { x: W - 500, y: housing.y - 22, w: 440, h: 42 },
+    streak: { x: 52, y: housing.y },
+    progress: { x: track.x + 40, y: track.y + track.h - 18, w: track.w - 80, h: 10 },
+    card: { cx: W / 2, top: 112, w: 1000, maxH: 600 },
+    text: { mark: 54, label: 26, bubble: 34, cardTitle: 64, cardBody: 31, cardSmall: 25, tag: 28 },
   };
 }
