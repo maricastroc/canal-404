@@ -6,12 +6,13 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
-import { ArrowLeftIcon, CloseIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
+import { ArrowLeftIcon, CloseIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RatingStar, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
+import { KeyText } from "@/components/ui/KeyText";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
 import type { GameResult, IntroProgress, ResultFact, ResultStanding } from "@/games/types";
@@ -230,8 +231,12 @@ export function ControlsList({ game }: { game: GameMeta }) {
       <dl className="space-y-1.5 rounded-xl border-2 border-ink bg-cream-2 p-3">
         {controls?.map((c) => (
           <div key={c.input} className="flex flex-col">
-            <dt className="font-display text-xs uppercase tracking-wider text-ink">{c.input}</dt>
-            <dd className="text-sm leading-snug text-ink-soft">{c.action}</dd>
+            <dt className="font-display text-xs uppercase tracking-wider text-ink">
+              <KeyText text={c.input} />
+            </dt>
+            <dd className="text-sm leading-snug text-ink-soft">
+              <KeyText text={c.action} />
+            </dd>
           </div>
         ))}
       </dl>
@@ -285,9 +290,7 @@ function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
   return (
     <span role="img" aria-label={copy.stars(count, total)} className="inline-flex gap-0.5">
       {Array.from({ length: total }, (_, i) => (
-        <span key={i} aria-hidden className={`text-xl leading-none ${i < count ? "text-sun" : "text-cream-3"}`} style={{ textShadow: "1.5px 2px 0 #1d1830" }}>
-          ★
-        </span>
+        <RatingStar key={i} on={i < count} className="size-5" />
       ))}
     </span>
   );

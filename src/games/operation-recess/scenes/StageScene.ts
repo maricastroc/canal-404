@@ -273,7 +273,7 @@ export class StageScene extends Phaser.Scene {
     this.vignette = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setScrollFactor(0).setDepth(50).setAlpha(vignette);
     this.hud = new RecessHud(this, this.ctx.fonts, this.text.title, this.levelIndex, LEVELS.length, reduced, this.ctx.locale, (a) => this.onPad(a));
     this.deck = new TouchDeck(this, this.ctx.fonts, this.copy.deck, this.level.theme, this.hud.touch, (a) => this.onPad(a), reduced);
-    this.markers = new EdgeMarkers(this, this.ctx.fonts, reduced);
+    this.markers = new EdgeMarkers(this, reduced);
     this.buildingHud = false;
     this.hud.setHearts(this.hearts);
     this.hud.setScore(this.score);

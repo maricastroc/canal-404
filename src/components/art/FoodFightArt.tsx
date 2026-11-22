@@ -1,3 +1,4 @@
+import { ArrowBigDown } from "lucide-react";
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
@@ -157,9 +158,7 @@ function DuckButton({ held, locale }: { held: boolean; locale: Locale }) {
     <g>
       <circle cx={c.x + 6} cy={c.y + (held ? 6 : 12)} r={74} fill={P.ink} />
       <circle cx={c.x} cy={c.y + (held ? 4 : 0)} r={74} fill={held ? P.mint : P.sun} {...ink} strokeWidth={10} />
-      <g transform={`translate(${c.x} ${c.y + (held ? 4 : 0) - 14})`} fill="none" {...ink} strokeWidth={13}>
-        <path d="M0 -30 L0 26 M-24 4 L0 28 L24 4" />
-      </g>
+      <ArrowBigDown x={c.x - 38} y={c.y + (held ? 4 : 0) - 53} width={76} height={76} fill={P.cream} stroke={P.ink} strokeWidth={2.6} />
       <text x={c.x} y={c.y + (held ? 4 : 0) + 46} textAnchor="middle" fontSize={26} fill={P.ink} style={display}>
         {held ? DUCK[locale].held : DUCK[locale].idle}
       </text>

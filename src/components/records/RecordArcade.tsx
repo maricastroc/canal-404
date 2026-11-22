@@ -3,7 +3,7 @@
 import Link from "@/i18n/Link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CardIcon, OfflineIcon, PlayIcon, RestartIcon, TrophyIcon, VerifiedIcon } from "@/components/art/Icons";
+import { CardIcon, EllipsisIcon, OfflineIcon, PlayIcon, RestartIcon, TrophyIcon, VerifiedIcon } from "@/components/art/Icons";
 import { IntentLink } from "@/components/ui/IntentLink";
 import { InkButton, InkLink, inkStyle, toneBg } from "@/components/ui/Primitives";
 import { getGame, type GameMeta } from "@/games/registry";
@@ -247,8 +247,8 @@ function BoardTable({ game, data, caption }: { game: GameSlug; data: Leaderboard
         {outside && data.you ? (
           <>
             <tr aria-hidden>
-              <td colSpan={meta.metrics.length + 2} className="py-0.5 text-center font-display tracking-[0.5em] text-plum-300">
-                ···
+              <td colSpan={meta.metrics.length + 2} className="py-0.5 text-plum-300">
+                <EllipsisIcon className="mx-auto size-5" />
               </td>
             </tr>
             <Row

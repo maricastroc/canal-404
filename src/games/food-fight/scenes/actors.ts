@@ -22,7 +22,7 @@ export class Rival {
   private poseTimer?: Phaser.Time.TimerEvent;
   private fidget?: Phaser.Tweens.Tween;
   private alert: Phaser.GameObjects.Text;
-  private dizzy: Phaser.GameObjects.Text;
+  private dizzy: Phaser.GameObjects.Container;
   state: RivalState = "hidden";
   def: RivalDef = RIVALS.cap;
   look = 1;
@@ -63,8 +63,8 @@ export class Rival {
       .setOrigin(0.5)
       .setDepth(16)
       .setVisible(false);
-    this.dizzy = cartoonText(scene, 0, 0, "★ ★", { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18, shadow: false })
-      .setOrigin(0.5)
+    this.dizzy = scene.add
+      .container(0, 0, [scene.add.image(-18, 3, "icon-dizzy-star"), scene.add.image(18, 3, "icon-dizzy-star")])
       .setDepth(15)
       .setVisible(false);
   }

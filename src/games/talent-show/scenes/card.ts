@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, fitText, paper } from "@/games/kit/ui";
 import type { TalentCopy } from "../copy";
 import type { BandMember, SongId } from "../song/notation";
-import { C, MEMBER_COLOR, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTrack, ribbon, type Spark } from "./lane";
+import { C, IconPool, MEMBER_COLOR, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTrack, ribbon, type Spark } from "./lane";
 
 export type CardButtonId = "primary" | "assist" | "calibrate";
 export type DemoKind = "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
@@ -71,6 +71,7 @@ type Geometry = { w: number; h: number; hitX: number; laneY: number; r: number; 
 class DemoLane {
   readonly root: Phaser.GameObjects.Container;
   private g: Phaser.GameObjects.Graphics;
+  private icons: IconPool;
   private front: Phaser.GameObjects.Graphics;
   private hand: Phaser.GameObjects.Image;
   private popup: Phaser.GameObjects.Text;
@@ -98,6 +99,11 @@ class DemoLane {
     this.popup = cartoonText(scene, 0, 0, "", { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.22, shadow: false }).setOrigin(0.5);
     for (let i = 0; i < 3; i += 1) this.tags.push(cartoonText(scene, 0, 0, "", { size: 20, color: "#f7ecd4", font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(0, 0.5).setVisible(false));
     this.root = scene.add.container(0, 0, [this.g, this.noise, this.front, ...this.tags, this.popup, this.hand]);
+    this.icons = new IconPool(() => {
+      const icon = scene.add.image(0, 0, "icon-note");
+      this.root.addAt(icon, this.root.getIndex(this.noise));
+      return icon;
+    });
   }
 
   setup(kind: DemoKind, w: number, h: number) {
@@ -119,6 +125,7 @@ class DemoLane {
     const f = this.front;
     g.clear();
     f.clear();
+    this.icons.begin();
     g.fillStyle(INK_HEX, 1).fillRoundedRect(4, 6, w, h, 22);
     g.fillStyle(C.plum700, 1).fillRoundedRect(0, 0, w, h, 22);
     g.lineStyle(5, INK_HEX, 1).strokeRoundedRect(0, 0, w, h, 22);
@@ -168,10 +175,10 @@ class DemoLane {
           if (at <= beat && end > beat) {
             holding = true;
             drawTail(g, hitX, xEnd, laneY, r, color, 0.9, left, right);
-            drawNote(g, hitX, laneY, r, color, 1, false);
+            drawNote(g, this.icons, hitX, laneY, r, color, 1, false);
           } else if (at > beat) {
             drawTail(g, x, xEnd, laneY, r, color, 0.75 * edge(x), left, right);
-            if (x < right) drawNote(g, x, laneY, r, color, edge(x), false);
+            if (x < right) drawNote(g, this.icons, x, laneY, r, color, edge(x), false);
           }
           continue;
         }
@@ -185,9 +192,10 @@ class DemoLane {
         const hidden = staticSpan !== null && x >= staticSpan[0] - r * 0.4 && x <= staticSpan[1] + r * 0.4;
         if (hidden) continue;
         if (item.kind === "echo") drawEcho(g, x, laneY, r, edge(x));
-        else drawNote(g, x, laneY, r, color, edge(x));
+        else drawNote(g, this.icons, x, laneY, r, color, edge(x));
       }
     }
+    this.icons.end();
     if (staticSpan) {
       const [x0, x1] = staticSpan;
       const half = ribbon(r) - 3;
@@ -264,11 +272,12 @@ export class ShowCard {
   private footer: Phaser.GameObjects.Text;
   private footerIcon: Phaser.GameObjects.Image;
   private demo: DemoLane;
-  readonly art: Phaser.GameObjects.Graphics;
+  private readonly art: Phaser.GameObjects.Graphics;
+  private readonly checks: IconPool;
   private buttons: Button[] = [];
   private buttonLayer: Phaser.GameObjects.Container;
   private demoOn = false;
-  artBox = { x: 0, y: 0, w: 0, h: 0 };
+  private artBox = { x: 0, y: 0, w: 0, h: 0 };
   private w: number;
   private x0: number;
   private top: number;
@@ -302,6 +311,11 @@ export class ShowCard {
       .container(this.x0, this.top, [this.bg, this.kickerBg, this.kicker, this.title, this.face, this.lead, this.demo.root, this.art, this.how, this.note, this.buttonLayer, this.footerIcon, this.footer])
       .setDepth(30)
       .setVisible(false);
+    this.checks = new IconPool(() => {
+      const icon = scene.add.image(0, 0, "icon-check");
+      this.root.addAt(icon, this.root.getIndex(this.art) + 1);
+      return icon;
+    });
   }
 
   get visible() {
@@ -334,6 +348,8 @@ export class ShowCard {
       y += this.lead.height + 18;
     }
     this.art.clear();
+    this.checks.begin();
+    this.checks.end();
     this.demoOn = c.demo !== null;
     const demoH = this.stacked ? 184 : 156;
     if (c.demo) {
@@ -454,26 +470,23 @@ export class ShowCard {
   get howText() {
     return this.how.text;
   }
-}
 
-export function cardDots(g: Phaser.GameObjects.Graphics, box: { x: number; y: number; w: number; h: number }, states: ("waiting" | "now" | "hit")[]) {
-  g.clear();
-  const n = states.length;
-  const gap = Math.min(104, box.w / n);
-  const r = Math.min(30, gap * 0.32);
-  const cy = box.y + box.h / 2;
-  states.forEach((state, i) => {
-    const cx = box.x + box.w / 2 + (i - (n - 1) / 2) * gap;
-    g.fillStyle(INK_HEX, 1).fillCircle(cx + 3, cy + 5, r);
-    g.fillStyle(state === "hit" ? C.mint : state === "now" ? C.sun : C.cream2, 1).fillCircle(cx, cy, r);
-    g.lineStyle(5, INK_HEX, 1).strokeCircle(cx, cy, r);
-    if (state === "hit") {
-      g.lineStyle(6, INK_HEX, 1);
-      g.beginPath();
-      g.moveTo(cx - r * 0.42, cy + r * 0.02);
-      g.lineTo(cx - r * 0.08, cy + r * 0.36);
-      g.lineTo(cx + r * 0.46, cy - r * 0.32);
-      g.strokePath();
-    }
-  });
+  dots(states: ("waiting" | "now" | "hit")[]) {
+    const g = this.art;
+    const box = this.artBox;
+    g.clear();
+    this.checks.begin();
+    const n = states.length;
+    const gap = Math.min(104, box.w / n);
+    const r = Math.min(30, gap * 0.32);
+    const cy = box.y + box.h / 2;
+    states.forEach((state, i) => {
+      const cx = box.x + box.w / 2 + (i - (n - 1) / 2) * gap;
+      g.fillStyle(INK_HEX, 1).fillCircle(cx + 3, cy + 5, r);
+      g.fillStyle(state === "hit" ? C.mint : state === "now" ? C.sun : C.cream2, 1).fillCircle(cx, cy, r);
+      g.lineStyle(5, INK_HEX, 1).strokeCircle(cx, cy, r);
+      if (state === "hit") this.checks.place(cx + r * 0.02, cy + r * 0.05, r * 1.32, 1);
+    });
+    this.checks.end();
+  }
 }

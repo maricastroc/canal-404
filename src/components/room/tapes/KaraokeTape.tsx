@@ -2,6 +2,7 @@
 
 import "./karaoke.css";
 import { Fragment, useId, useLayoutEffect, useRef, type CSSProperties, type RefObject } from "react";
+import { MusicIcon } from "@/components/art/Icons";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized, type Localized } from "@/i18n/copy";
@@ -69,9 +70,9 @@ const COPY = localized({
     score: "4,04",
     roll: ["0,00", "9,87", "3,21", "7,65", "1,09", "8,88", "5,43", "9,99"],
     sings: "404 canta",
-    titleTop: "♪ Balada do",
-    titleBottom: "Chuvisco ♪",
-    header: "♪ Balada do Chuvisco ♪",
+    titleTop: "Balada do",
+    titleBottom: "Chuvisco",
+    header: "Balada do Chuvisco",
     scoreLabel: "Nota",
     noEncore: "Ninguém pediu bis.",
   },
@@ -79,9 +80,9 @@ const COPY = localized({
     score: "4.04",
     roll: ["0.00", "9.87", "3.21", "7.65", "1.09", "8.88", "5.43", "9.99"],
     sings: "404 sings",
-    titleTop: "♪ The Static",
-    titleBottom: "Ballad ♪",
-    header: "♪ The Static Ballad ♪",
+    titleTop: "The Static",
+    titleBottom: "Ballad",
+    header: "The Static Ballad",
     scoreLabel: "Score",
     noEncore: "Nobody asked for an encore.",
   },
@@ -581,11 +582,13 @@ function TitleCard({ beat, offset }: { beat: Beat; offset: number }) {
       style={{ animation: leaving ? `karaoke-fade-out 300ms ease-in ${-offset}ms both` : beat.kind === "title" ? `pop-in 0.35s ease-out ${-offset}ms both` : undefined }}
     >
       <p className="rounded-full border-[0.5cqw] border-ink bg-sun px-[0.6em] py-[0.15em] font-display text-[max(7px,4.6cqw)] uppercase leading-none tracking-wide text-ink">{copy.sings}</p>
-      <p className="mt-[3%] font-display text-[max(8px,7.4cqw)] uppercase leading-none text-cream" style={OUTLINE}>
+      <p className="mt-[3%] flex items-center gap-[0.25em] font-display text-[max(8px,7.4cqw)] uppercase leading-none text-cream" style={OUTLINE}>
+        <Note />
         {copy.titleTop}
       </p>
-      <p className="mt-[1%] font-display text-[max(10px,11.5cqw)] uppercase leading-none text-sun" style={OUTLINE}>
+      <p className="mt-[1%] flex items-center gap-[0.2em] font-display text-[max(10px,11.5cqw)] uppercase leading-none text-sun" style={OUTLINE}>
         {copy.titleBottom}
+        <Note />
       </p>
     </div>
   );
@@ -607,12 +610,18 @@ function CountIn({ beat, phase, offset }: { beat: Beat; phase: number; offset: n
   );
 }
 
+function Note() {
+  return <MusicIcon className="size-[0.85em] [filter:drop-shadow(0.06em_0_0_#1d1830)_drop-shadow(-0.06em_0_0_#1d1830)_drop-shadow(0_0.06em_0_#1d1830)_drop-shadow(0_-0.06em_0_#1d1830)]" />;
+}
+
 function Header({ beat }: { beat: Beat }) {
   const copy = useCopy(COPY);
   if (beat.kind === "title" || beat.kind === "count") return null;
   return (
-    <p className="pointer-events-none absolute inset-x-0 top-[1.4%] z-[4] text-center font-display text-[max(7px,4.3cqw)] uppercase leading-none tracking-wide text-sun" style={OUTLINE}>
+    <p className="pointer-events-none absolute inset-x-0 top-[1.4%] z-[4] flex items-center justify-center gap-[0.35em] font-display text-[max(7px,4.3cqw)] uppercase leading-none tracking-wide text-sun" style={OUTLINE}>
+      <Note />
       {copy.header}
+      <Note />
     </p>
   );
 }

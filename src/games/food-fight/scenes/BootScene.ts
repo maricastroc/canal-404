@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowBigDown, Ban, Pointer } from "lucide";
+import { ArrowBigDown, Ban, Pointer, Star } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { RIVAL_KINDS, RIVAL_LOOKS } from "../config";
@@ -61,6 +61,7 @@ export class BootScene extends Phaser.Scene {
       { key: "icon-tap-outline", icon: Pointer, size: 160, color: "#1d1830", strokeWidth: 4 },
       { key: "icon-tap", icon: Pointer, size: 160, color: "#fbf5e6", strokeWidth: 1.8 },
       { key: "icon-ban", icon: Ban, size: 64, color: "#ef4f43", fill: "#fbf5e6", strokeWidth: 3.2 },
+      { key: "icon-dizzy-star", icon: Star, size: 36, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
     ]);
   }
 

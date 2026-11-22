@@ -4,6 +4,7 @@ import { formatNumber, ordinal } from "@/i18n/format";
 import type { RaceCopy } from "../copy";
 import { H, W } from "../layout";
 import { INK } from "./cart";
+import { keyArrows } from "../../kit/keyArrows";
 
 export { H, W };
 const SPX = 1774;
@@ -22,6 +23,8 @@ const HEADLINE_Y = 296;
 const ROWS = 4;
 const PANEL_H = 226;
 const LEAVE = 0.08;
+const TREND_ICON = 44;
+const EDGE_ICON = 34;
 
 export type Marker = { x: number; color: number; letter: string; you?: boolean; ghost?: boolean };
 
@@ -93,6 +96,8 @@ export class Hud implements RaceHud {
   private readonly rowHeads: Phaser.GameObjects.Image[] = [];
   private readonly markerTexts: Phaser.GameObjects.Text[] = [];
   private readonly edgeTexts: Phaser.GameObjects.Text[] = [];
+  private readonly edgeIcons: Phaser.GameObjects.Image[] = [];
+  private readonly trendIcons: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
   private readonly speedText: Phaser.GameObjects.Text;
   private readonly unitText: Phaser.GameObjects.Text;
   private readonly tierText: Phaser.GameObjects.Text;
@@ -102,6 +107,7 @@ export class Hud implements RaceHud {
   private readonly countText: Phaser.GameObjects.Text;
   private readonly touchG: Phaser.GameObjects.Graphics;
   private readonly touchLabels: Phaser.GameObjects.Text[] = [];
+  private readonly touchIcons: Phaser.GameObjects.Image[] = [];
   private lineup: Phaser.GameObjects.Container | null = null;
   private lineupAlpha = 0;
   private headline: Callout | null = null;
@@ -172,7 +178,10 @@ export class Hud implements RaceHud {
       const t = this.add(scene.add.text(0, 0, "", display(19, "#1d1830")));
       t.setOrigin(0.5, 0.5).setVisible(false);
       this.edgeTexts.push(t);
+      this.edgeIcons.push(this.add(scene.add.image(0, 0, "dd-ico-edge-right").setDisplaySize(EDGE_ICON, EDGE_ICON).setVisible(false)));
     }
+    this.trendIcons = [this.add(scene.add.image(SPX + 92, 78, "dd-ico-trend-up")), this.add(scene.add.image(SPX + 92, 82, "dd-ico-trend-down"))];
+    for (const icon of this.trendIcons) icon.setDisplaySize(TREND_ICON, TREND_ICON).setVisible(false);
     this.speedText = this.add(scene.add.text(SPX, 78, "0", display(48)));
     this.speedText.setOrigin(0.5, 0.5);
     this.unitText = this.add(scene.add.text(SPX, 112, copy.kmh, body(17, "#cfc8e8")));
@@ -182,9 +191,9 @@ export class Hud implements RaceHud {
     this.deltaText = this.add(scene.add.text(SPX, 198, "", { fontFamily: fonts.display, fontSize: "32px", color: "#7fe0c4", stroke: "#1d1830", strokeThickness: 8 }));
     this.deltaText.setOrigin(0.5, 0.5).setAlpha(0);
     this.hintBg = this.add(scene.add.graphics());
-    this.hintText = this.add(scene.add.text(W / 2, 1030, "", body(23, "#1d1830")));
+    this.hintText = keyArrows(this.add(scene.add.text(W / 2, 1030, "", body(23, "#1d1830"))));
     this.hintText.setOrigin(0.5, 0.5);
-    this.tipText = this.add(scene.add.text(W / 2, 1030, "", body(23, "#1d1830")));
+    this.tipText = keyArrows(this.add(scene.add.text(W / 2, 1030, "", body(23, "#1d1830"))));
     this.tipText.setOrigin(0.5, 0.5).setAlpha(0);
     this.countText = this.add(scene.add.text(W / 2, 420, "", { fontFamily: fonts.display, fontSize: "170px", color: "#ffcf3f", stroke: "#1d1830", strokeThickness: 20 }));
     this.countText.setOrigin(0.5);
@@ -249,6 +258,8 @@ export class Hud implements RaceHud {
   private buildTouch() {
     for (const t of this.touchLabels) t.destroy();
     this.touchLabels.length = 0;
+    for (const icon of this.touchIcons) icon.destroy();
+    this.touchIcons.length = 0;
     this.buttons = [];
     if (!this.touchOn) {
       this.touchG.clear();
@@ -259,6 +270,10 @@ export class Hud implements RaceHud {
     this.buttons.push({ id: "crouch", x: 1500, y: 940, r: 104, label: this.copy.touch.crouch });
     this.buttons.push({ id: "jump", x: 1770, y: 800, r: 112, label: this.copy.touch.jump });
     for (const b of this.buttons) {
+      if (b.icon) {
+        const size = (b.r * 0.46 * 24) / 9;
+        this.touchIcons.push(this.add(this.scene.add.image(b.x, b.y, b.icon === "cw" ? "dd-ico-cw-light" : "dd-ico-ccw-light").setDisplaySize(size, size).setAlpha(0.9)));
+      }
       if (!b.label) continue;
       const t = this.add(this.scene.add.text(b.x, b.y, b.label, { fontFamily: this.fonts.display, fontSize: `${b.r > 80 ? 32 : 30}px`, color: "#fbf5e6" }));
       t.setOrigin(0.5);
@@ -299,22 +314,6 @@ export class Hud implements RaceHud {
       g.fillCircle(b.x, b.y, b.r);
       g.lineStyle(6, on ? 0xffcf3f : 0xfbf5e6, on ? 0.95 : 0.55);
       g.strokeCircle(b.x, b.y, b.r);
-      if (b.icon) {
-        const cw = b.icon === "cw";
-        const r = b.r * 0.46;
-        const start = cw ? -2.6 : -0.54;
-        const end = cw ? 0.5 : 2.64;
-        g.lineStyle(10, 0xfbf5e6, 0.9);
-        g.beginPath();
-        g.arc(b.x, b.y, r, start, end, !cw);
-        g.strokePath();
-        const ex = b.x + Math.cos(end) * r;
-        const ey = b.y + Math.sin(end) * r;
-        const tx = cw ? -Math.sin(end) : Math.sin(end);
-        const ty = cw ? Math.cos(end) : -Math.cos(end);
-        g.fillStyle(0xfbf5e6, 0.9);
-        g.fillTriangle(ex + tx * 22, ey + ty * 22, ex - ty * 16, ey + tx * 16, ex + ty * 16, ey - tx * 16);
-      }
     }
   }
 
@@ -379,14 +378,10 @@ export class Hud implements RaceHud {
     g.beginPath();
     g.arc(cx, cy, 56, Math.PI * 0.8, Math.PI * 0.8 + Math.PI * 1.4 * frac, false);
     g.strokePath();
-    if (Math.abs(data.trend) > 0.04) {
-      const up = data.trend > 0;
-      g.fillStyle(up ? 0x7fe0c4 : 0xff7a4a, Math.min(1, Math.abs(data.trend) * 2));
-      const tx = SPX + 92;
-      const ty = 80;
-      if (up) g.fillTriangle(tx - 14, ty + 10, tx + 14, ty + 10, tx, ty - 14);
-      else g.fillTriangle(tx - 14, ty - 10, tx + 14, ty - 10, tx, ty + 14);
-    }
+    const trending = Math.abs(data.trend) > 0.04;
+    this.trendIcons[0].setVisible(trending && data.trend > 0);
+    this.trendIcons[1].setVisible(trending && data.trend < 0);
+    for (const icon of this.trendIcons) icon.setAlpha(Math.min(1, Math.abs(data.trend) * 2));
     const bx = BAR_X;
     const bw = BAR_W;
     const by = 46;
@@ -426,7 +421,9 @@ export class Hud implements RaceHud {
     for (let i = 0; i < this.edgeTexts.length; i += 1) {
       const e = data.edges[i];
       const t = this.edgeTexts[i];
+      const icon = this.edgeIcons[i];
       t.setVisible(!!e);
+      icon.setVisible(!!e);
       if (!e) continue;
       t.setText(e.text);
       const w = t.width + 52;
@@ -436,9 +433,7 @@ export class Hud implements RaceHud {
       g.fillRoundedRect(x - w / 2 - 3, e.y - 22, w + 6, 44, 20);
       g.fillStyle(e.color, 1);
       g.fillRoundedRect(x - w / 2, e.y - 19, w, 38, 17);
-      g.fillStyle(INK, 1);
-      if (e.side === "right") g.fillTriangle(x + w / 2 - 24, e.y - 10, x + w / 2 - 24, e.y + 10, x + w / 2 - 10, e.y);
-      else g.fillTriangle(x - w / 2 + 24, e.y - 10, x - w / 2 + 24, e.y + 10, x - w / 2 + 10, e.y);
+      icon.setTexture(e.side === "right" ? "dd-ico-edge-right" : "dd-ico-edge-left").setPosition(e.side === "right" ? x + w / 2 - 17 : x - w / 2 + 17, e.y);
     }
     const target = data.showHint ? 1 : 0;
     if (target === 0 && this.hintAlpha > 0) this.hintAlpha = Math.max(0, this.hintAlpha - dt * 0.8);

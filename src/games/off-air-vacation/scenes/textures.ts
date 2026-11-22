@@ -149,14 +149,6 @@ export function makeTextures(scene: Phaser.Scene) {
     g.fillStyle(0xffffff, 1);
     g.fillRect(0, 0, 18, 10);
   });
-  gfx("arrow", 120, 80, (g) => {
-    g.fillStyle(0x1d1830, 0.35);
-    g.fillTriangle(110, 40, 60, 6, 60, 74);
-    g.fillRect(10, 26, 54, 28);
-    g.fillStyle(0xfbf5e6, 0.85);
-    g.fillTriangle(104, 40, 64, 14, 64, 66);
-    g.fillRect(16, 32, 50, 16);
-  });
   const INK = 0x1d1830;
   gfx("footprint", 28, 40, (g) => {
     g.fillStyle(0xffffff, 1);

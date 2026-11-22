@@ -6,7 +6,7 @@ import { COPY, type StreetCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import type { PhaseDef } from "../phases";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, glyphOffset, type Fonts } from "../../kit/ui";
-import type { StreetHud } from "./ui";
+import { targetArrow, type StreetHud } from "./ui";
 
 export type Speaker = "deco" | "lina" | "arlindo";
 
@@ -132,7 +132,7 @@ export class DockHud implements StreetHud {
   private navigating = false;
   private trayParts: Phaser.GameObjects.GameObject[] = [];
   private navText: string | null = null;
-  private marks: Phaser.GameObjects.Graphics | null = null;
+  private marks: Phaser.GameObjects.Container[] = [];
   private inset: { x: number; y: number; w: number; h: number } | null = null;
   private insetRing: Phaser.GameObjects.Graphics | null = null;
   private holdTimer?: Phaser.Time.TimerEvent;
@@ -232,8 +232,8 @@ export class DockHud implements StreetHud {
     this.pins.clear();
     this.navPill?.destroy();
     this.navPill = null;
-    this.marks?.destroy();
-    this.marks = null;
+    for (const mark of this.marks) mark.destroy();
+    this.marks = [];
     this.insetRing?.destroy();
     this.insetRing = null;
     this.inset = null;
@@ -538,7 +538,7 @@ export class DockHud implements StreetHud {
     }
     const to = this.iconPoint(index);
     const k = this.k;
-    const token = this.add(this.scene.add.image(from.x, from.y, "star").setDepth(DEPTH.token), false);
+    const token = this.add(this.scene.add.image(from.x, from.y, "icon-star").setDepth(DEPTH.token), false);
     token.setDisplaySize(34 * k, 34 * k);
     const end = 18 * k;
     this.scene.tweens.add({ targets: token, angle: 220, duration: 600, delay: 120 });
@@ -902,26 +902,16 @@ export class DockHud implements StreetHud {
   }
 
   setMarks(points: Vec[]) {
-    if (!points.length) {
-      this.marks?.clear();
-      return;
-    }
-    if (!this.marks) this.marks = this.add(this.scene.add.graphics().setDepth(DEPTH.pin), false);
-    const g = this.marks;
     const k = this.k;
     const st = this.frame.stage;
     const bob = this.setup.reduced ? 0 : Math.sin(this.scene.time.now / 170) * 3 * k;
-    g.clear();
-    for (const p of points) {
-      if (p.x < st.x || p.x > st.x + st.w || p.y < st.y + 20 * k || p.y > st.y + st.h) continue;
-      const y = p.y - 6 * k + bob;
-      g.fillStyle(INK_HEX, 1);
-      g.fillTriangle(p.x - 12 * k + 2 * k, y - 18 * k + 2.5 * k, p.x + 12 * k + 2 * k, y - 18 * k + 2.5 * k, p.x + 2 * k, y + 2.5 * k);
-      g.fillStyle(YELLOW, 1);
-      g.fillTriangle(p.x - 12 * k, y - 18 * k, p.x + 12 * k, y - 18 * k, p.x, y);
-      g.lineStyle(2.5 * k, INK_HEX, 1);
-      g.strokeTriangle(p.x - 12 * k, y - 18 * k, p.x + 12 * k, y - 18 * k, p.x, y);
-    }
+    const shown = points.filter((p) => p.x >= st.x && p.x <= st.x + st.w && p.y >= st.y + 20 * k && p.y <= st.y + st.h);
+    while (this.marks.length < shown.length) this.marks.push(this.add(targetArrow(this.scene, 30 * k).setDepth(DEPTH.pin), false));
+    this.marks.forEach((mark, i) => {
+      const p = shown[i];
+      mark.setVisible(Boolean(p));
+      if (p) mark.setPosition(p.x, p.y - 6 * k + bob);
+    });
   }
 
   private pill(text: string, fill: number, depth: number) {

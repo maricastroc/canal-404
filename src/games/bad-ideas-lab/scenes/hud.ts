@@ -107,6 +107,8 @@ const MIN_FIT = 0.85;
 const TOOL_H = 66;
 const RUN_GAP = 30;
 const BTN = { hint: 124, clear: 150, run: 228 };
+export const WIN_STAR = 76;
+export const WIN_STAR_POP = 122;
 
 export function drawButtonBg(g: Phaser.GameObjects.Graphics, w: number, h: number, fill: number) {
   g.clear();
@@ -183,7 +185,7 @@ export class DeskHud implements LabHudView {
     this.parText = scene.add.text(-pw + 128, 104, "", { fontFamily: fonts.hand, fontSize: "22px", color: "#f7ecd4", padding: { x: 2, y: 2 } }).setOrigin(0, 0.5);
     const children: Phaser.GameObjects.GameObject[] = [pg, plabel, this.usedText, this.parText];
     for (let i = 0; i < 3; i += 1) {
-      const s = scene.add.image(-pw + 150 + i * 52, 56, "star").setScale(1.25);
+      const s = addIcon(scene, -pw + 150 + i * 52, 56, "star", 45);
       this.stars.push(s);
       children.push(s);
     }
@@ -522,7 +524,7 @@ export class DeskHud implements LabHudView {
     plate.fillRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
     plate.lineStyle(5, INK_HEX, 1);
     plate.strokeRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
-    const icons = [0, 1, 2].map((i) => scene.add.image((i - 1) * 96, 0, "star").setScale(2.1).setTint(0x5a4d8a).setAlpha(0.55));
+    const icons = [0, 1, 2].map((i) => addIcon(scene, (i - 1) * 96, 0, "star", WIN_STAR).setTint(0x5a4d8a).setAlpha(0.55));
     const group = scene.add.container(W / 2, 196 + 122 * s, [plate, ...icons]).setDepth(26).setScale(s);
     this.celebration = [title, group];
     const reveal = (i: number) => {
@@ -533,8 +535,8 @@ export class DeskHud implements LabHudView {
       if (!lit) return;
       icon.clearTint().setAlpha(1);
       if (this.reduced) return;
-      icon.setScale(3.4).setAngle(-30);
-      scene.tweens.add({ targets: icon, scale: 2.1, angle: 0, duration: 260, ease: "Back.easeOut" });
+      icon.setDisplaySize(WIN_STAR_POP, WIN_STAR_POP).setAngle(-30);
+      scene.tweens.add({ targets: icon, displayWidth: WIN_STAR, displayHeight: WIN_STAR, angle: 0, duration: 260, ease: "Back.easeOut" });
     };
     scene.tweens.add({ targets: [title, group], alpha: 0, delay: 1750, duration: 240 });
     if (this.reduced) {

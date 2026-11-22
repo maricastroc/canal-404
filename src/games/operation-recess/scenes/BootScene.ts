@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowBigUp, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Flag, Heart, Sword } from "lucide";
+import { ArrowBigUp, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Flag, Heart, Sword, TriangleAlert, Waves } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { HERO_TEX } from "../config";
@@ -158,6 +158,8 @@ export class BootScene extends Phaser.Scene {
       { key: "deck-attack", icon: Sword, size: 128, strokeWidth: 2.6 },
       { key: "hud-heart-on", icon: Heart, size: 64, color: "#1d1830", fill: "#ef4f43", strokeWidth: 2.4 },
       { key: "hud-heart-off", icon: Heart, size: 64, color: "#9a8fbf", strokeWidth: 2.4 },
+      { key: "mark-alert", icon: TriangleAlert, size: 88, color: "#1d1830", strokeWidth: 2.6 },
+      { key: "mark-shot", icon: Waves, size: 88, color: "#1d1830", strokeWidth: 2.6 },
     ]);
   }
 

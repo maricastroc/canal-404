@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
-import type { Fonts } from "@/games/kit/ui";
+import { glyphOffset, type Fonts } from "@/games/kit/ui";
 import { isWall, type Grid } from "../sim/grid";
+import { iconKey } from "./icons";
 import type { Layout } from "./layout";
 
 const INK = 0x1d1830;
@@ -90,8 +91,14 @@ export function drawExit(scene: Phaser.Scene, grid: Grid, layout: Layout, fonts:
     }
   }
   const size = Math.round(Math.max(20, s * 0.2, layout.small));
-  const text = scene.add.text(0, 0, side === "w" ? `← ${label}` : side === "n" ? `↑ ${label}` : `${label} →`, { fontFamily: fonts.hand, fontSize: `${size}px`, color: "#fbf5e6", padding: { x: 2, y: 2 } }).setOrigin(0.5);
-  const pw = text.width + size * 0.9;
+  const text = scene.add.text(0, 0, label, { fontFamily: fonts.hand, fontSize: `${size}px`, color: "#fbf5e6", padding: { x: 2, y: 2 } }).setOrigin(0.5);
+  const lead = side === "w" || side === "n";
+  const arrow = scene.add.image(0, -glyphOffset(text), iconKey(side === "w" ? "exitLeft" : side === "n" ? "exitUp" : "exitRight")).setDisplaySize(size * 0.9, size * 0.9);
+  const gap = size * 0.12;
+  const span = arrow.displayWidth + gap + text.width;
+  arrow.setX((lead ? -span + arrow.displayWidth : span - arrow.displayWidth) / 2);
+  text.setX((lead ? span - text.width : -span + text.width) / 2);
+  const pw = span + size * 0.9;
   const ph = size * 1.5;
   const board = scene.add.graphics();
   board.lineStyle(2, INK, 1);
@@ -110,7 +117,7 @@ export function drawExit(scene: Phaser.Scene, grid: Grid, layout: Layout, fonts:
   board.lineBetween(-pw / 2 + 6, -ph / 2 + 5, pw / 2 - 6, -ph / 2 + 5);
   const sx = side === "e" ? gx + s - pw / 2 - s * 0.04 : side === "w" ? gx + pw / 2 + s * 0.04 : gx + s / 2;
   const sy = side === "n" ? gy + s * 0.32 : gy - s * 0.02;
-  const sign = scene.add.container(sx, sy, [board, text]).setDepth(21).setAngle(side === "w" ? 3 : -3);
+  const sign = scene.add.container(sx, sy, [board, arrow, text]).setDepth(21).setAngle(side === "w" ? 3 : -3);
   scene.tweens.add({ targets: sign, angle: side === "w" ? -1 : 1, duration: 1800, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   return { light, frame, sign };
 }

@@ -5,6 +5,7 @@ import type { ResortSfx } from "../sounds";
 import type { Mood } from "../story";
 import type { VacationText } from "../text/pt-BR";
 import type { Fonts } from "../../kit/ui";
+import { liveTag, type VhsMode } from "../ui/hud";
 import { splashAt, type CritterDef, type ResidentDef } from "./life";
 import type { Npc, NpcOpts } from "./npc";
 
@@ -88,13 +89,14 @@ export type Builder = {
   hero(): { x: number; y: number; speed: number; busy: boolean } | null;
   npcOf(who: FolkKey): Npc | null;
   fx: {
-    vhs(label: string, ms: number): Promise<void>;
+    vhs(mode: VhsMode, ms: number): Promise<void>;
     flash(alpha?: number): void;
     shake(ms?: number, i?: number): void;
     sfx(name: ResortSfx, v?: number, pitch?: number): void;
     wait(ms: number): Promise<void>;
     gull(x: number, y: number, i: number): void;
     word(text: string, x: number, y: number, color?: string): void;
+    icon(key: string, x: number, y: number): void;
   };
 };
 
@@ -907,7 +909,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       b.fx.sfx("bars", 0.35, 1.4);
       for (let i = 0; i < 6; i += 1) {
         if (!b.reduced) radio.setAngle(i % 2 ? 4 : -4);
-        if (i === 2) b.fx.word("♪", 2130, 680, "#ffe39a");
+        if (i === 2) b.fx.icon("ui-music", 2130, 680);
         await b.fx.wait(110);
       }
       radio.setAngle(0);
@@ -980,7 +982,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       if (!clique) return;
       b.vars.seaFrozen = true;
       b.fx.sfx("pause", 1);
-      const vhs = b.vars.seaPaused ? b.fx.wait(2200) : b.fx.vhs(b.text.hud.pause, 2200);
+      const vhs = b.vars.seaPaused ? b.fx.wait(2200) : b.fx.vhs("pause", 2200);
       await b.fx.wait(500);
       clique.playSeq(["shoot", "shoot", "shoot", "happy"], 220, b.world.time.now);
       await b.fx.wait(500);
@@ -1552,10 +1554,10 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const k = Math.min(138 / (src.height - 21), 250 / src.width);
       const face = b.world.add.image(0, 84, "deco-idle-f").setOrigin(0.5, 1 - 11 / src.height).setScale(k);
       const tag = b.world.add.text(-136, -78, b.text.world.here, { fontFamily: b.fonts.display, fontSize: "20px", color: "#1d1830" });
-      const live = b.world.add.text(136, -78, b.text.world.live, { fontFamily: b.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
+      const [dot, live] = liveTag(b.world, b.fonts.display, b.text.world.live, 136, -78);
       const scan = b.world.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
       const noise = b.world.add.tileSprite(0, 0, 292, 168, "static").setAlpha(0);
-      const cont = b.world.add.container(cx, 403, [bg, face, tag, live, scan, noise]).setDepth(2.45).setAlpha(0);
+      const cont = b.world.add.container(cx, 403, [bg, face, tag, dot, live, scan, noise]).setDepth(2.45).setAlpha(0);
       return { cont, face, noise, cx, on: false, until: 0 };
     });
     b.onUpdate((t) => {

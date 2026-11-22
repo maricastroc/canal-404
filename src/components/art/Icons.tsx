@@ -1,16 +1,24 @@
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   BadgeCheck,
   CassetteTape,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
   CircleCheckBig,
   CircleHelp,
   Dices,
   Download,
   Eject,
+  Ellipsis,
   IdCard,
   Gamepad2,
   Gift,
+  Heart,
   House,
   Images,
   KeyRound,
@@ -18,6 +26,8 @@ import {
   LayoutGrid,
   Lock,
   Menu,
+  Music,
+  Music2,
   Pause,
   PencilLine,
   Play,
@@ -60,6 +70,9 @@ export const PhoneIcon = make(Smartphone);
 export const GiftIcon = make(Gift);
 export const TowerIcon = make(RadioTower);
 export const ArrowLeftIcon = make(ArrowLeft);
+export const ArrowRightIcon = make(ArrowRight);
+export const ArrowUpIcon = make(ArrowUp);
+export const ArrowDownIcon = make(ArrowDown);
 export const PlayIcon = make(Play, true);
 export const LockIcon = make(Lock);
 export const PauseIcon = make(Pause, true);
@@ -88,6 +101,27 @@ export const TapeIcon = make(CassetteTape);
 export const DoneIcon = make(CircleCheckBig);
 export const CheckIcon = make(Check);
 export const LevelsIcon = make(LayoutGrid);
+export const ChevronLeftIcon = make(ChevronLeft);
+export const ChevronRightIcon = make(ChevronRight);
+export const ChevronUpIcon = make(ChevronUp);
+export const EllipsisIcon = make(Ellipsis);
+export const MusicIcon = make(Music);
+export const Music2Icon = make(Music2);
+export const HeartIcon = make(Heart, true);
+export const SolidStarIcon = make(Star, true);
+
+export function RatingStar({ className, on = true }: IconProps & { on?: boolean }) {
+  return (
+    <Star
+      aria-hidden
+      focusable={false}
+      className={`shrink-0 drop-shadow-[1.5px_2px_0_#1d1830] ${className ?? ""}`}
+      strokeWidth={2.25}
+      stroke="var(--color-ink)"
+      fill={on ? "var(--color-sun)" : "var(--color-cream-3)"}
+    />
+  );
+}
 
 const MenuOpen = make(X);
 const MenuClosed = make(Menu);

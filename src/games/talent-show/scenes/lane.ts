@@ -33,6 +33,31 @@ export type Spark = { born: number; color: number; seed: number };
 
 export const RING_GAP = 16;
 
+export class IconPool {
+  private readonly items: Phaser.GameObjects.Image[] = [];
+  private used = 0;
+
+  constructor(private readonly create: () => Phaser.GameObjects.Image) {}
+
+  begin() {
+    this.used = 0;
+  }
+
+  place(x: number, y: number, size: number, alpha: number) {
+    let icon = this.items[this.used];
+    if (!icon) {
+      icon = this.create();
+      this.items.push(icon);
+    }
+    this.used += 1;
+    icon.setPosition(x, y).setDisplaySize(size, size).setAlpha(alpha).setVisible(true);
+  }
+
+  end() {
+    for (let i = this.used; i < this.items.length; i += 1) this.items[i].setVisible(false);
+  }
+}
+
 export function ribbon(r: number) {
   return r * 1.3;
 }
@@ -57,7 +82,7 @@ export function drawRegion(g: G, x0: number, x1: number, laneY: number, r: numbe
   g.fillStyle(color, alpha).fillRect(x0, laneY - half, x1 - x0, half * 2);
 }
 
-export function drawNote(g: G, x: number, y: number, r: number, color: number, alpha = 1, streaks = true) {
+export function drawNote(g: G, icons: IconPool, x: number, y: number, r: number, color: number, alpha = 1, streaks = true) {
   if (alpha <= 0) return;
   if (streaks) {
     for (let i = 0; i < 3; i += 1) {
@@ -70,11 +95,7 @@ export function drawNote(g: G, x: number, y: number, r: number, color: number, a
   g.fillStyle(color, alpha).fillCircle(x, y, r);
   g.lineStyle(5, C.ink, alpha).strokeCircle(x, y, r);
   g.fillStyle(C.paper, 0.55 * alpha).fillCircle(x - r * 0.42, y - r * 0.42, r * 0.18);
-  const hx = x - r * 0.12;
-  const hy = y + r * 0.3;
-  g.fillStyle(C.ink, alpha).fillEllipse(hx, hy, r * 0.56, r * 0.4);
-  g.fillRect(hx + r * 0.17, hy - r * 0.78, r * 0.11, r * 0.78);
-  g.fillTriangle(hx + r * 0.27, hy - r * 0.78, hx + r * 0.27, hy - r * 0.46, hx + r * 0.62, hy - r * 0.34);
+  icons.place(x, y, r * 1.2, alpha);
 }
 
 export function drawTail(g: G, x0: number, x1: number, y: number, r: number, color: number, alpha: number, left: number, right: number) {

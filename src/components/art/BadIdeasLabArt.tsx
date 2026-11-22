@@ -1,3 +1,4 @@
+import { Lightbulb, Play, RotateCw, X } from "lucide-react";
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
@@ -300,14 +301,11 @@ function Tray({ count, pressed = false, slotLit = false, label }: { count: numbe
         </text>
       </g>
       <rect x={95} y={107} width={13} height={16} rx={2.6} fill={P.plum300} {...ink} strokeWidth={LINE.mid} />
-      <g transform="translate(101.5 114.2)" {...ink} strokeWidth={0.9}>
-        <path d="M-2.6 0 Q-2.6 -3.6 0 -3.6 Q2.6 -3.6 2.6 0 Q2.6 1.4 1.2 2.4 L-1.2 2.4 Q-2.6 1.4 -2.6 0 Z" fill={P.sun} />
-        <path d="M-1.2 3.6 L1.2 3.6" />
-      </g>
+      <Lightbulb x={96.9} y={110.4} width={9.2} height={9.2} fill={P.sun} stroke={P.ink} strokeWidth={2.4} />
       <g transform={pressed ? `translate(0 1)` : undefined}>
         {!pressed && <rect x={RUN.x} y={RUN.y + 1.6} width={RUN.w} height={RUN.h} rx={2.8} fill={P.ink} />}
         <rect x={RUN.x} y={RUN.y} width={RUN.w} height={RUN.h} rx={2.8} fill={P.lime} {...ink} strokeWidth={LINE.mid} />
-        <path d={`M${RUN.x + 4.4} ${RUN.y + 4.6} L${RUN.x + 9.4} ${RUN.y + 8} L${RUN.x + 4.4} ${RUN.y + 11.4} Z`} fill={P.white} {...ink} strokeWidth={0.9} />
+        <Play x={RUN.x + 2.4} y={RUN.y + 3.6} width={8.8} height={8.8} fill={P.white} stroke={P.ink} strokeWidth={2.4} />
         <text x={RUN.x + 22.4} y={RUN.y + 10.8} textAnchor="middle" fontSize={7} fill={P.ink} style={display}>
           {label}
         </text>
@@ -337,12 +335,9 @@ function RoundButton({ x, y, kind }: Pt & { kind: "rotate" | "remove" }) {
       <circle cx={0.6} cy={1.2} r={r} fill={P.ink} />
       <circle cx={0} cy={0} r={r} fill={kind === "rotate" ? P.sun : P.tomato} {...ink} strokeWidth={LINE.mid} />
       {kind === "rotate" ? (
-        <g {...ink} fill="none" strokeWidth={1.2}>
-          <path d="M2.4 -1.6 A2.8 2.8 0 1 0 2.6 1.4" />
-          <path d="M3.2 -3.6 L2.6 -1.2 L0.2 -1.8" />
-        </g>
+        <RotateCw x={-3.5} y={-3.5} width={7} height={7} stroke={P.ink} strokeWidth={3.2} />
       ) : (
-        <path d="M-2 -2 L2 2 M2 -2 L-2 2" stroke={P.white} strokeWidth={1.5} strokeLinecap="round" />
+        <X x={-3.4} y={-3.4} width={6.8} height={6.8} stroke={P.white} strokeWidth={4} />
       )}
     </g>
   );

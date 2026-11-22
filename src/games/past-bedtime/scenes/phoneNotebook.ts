@@ -2,9 +2,9 @@ import * as Phaser from "phaser";
 import type { Fonts } from "@/games/kit/ui";
 import type { NightCopy } from "../copy";
 import type { Action, Dir } from "../sim/types";
-import { iconKey, type NightIcon } from "./icons";
+import { iconKey, PAD_ICONS, STAR_ORIGIN_Y, STAR_SPAN, type NightIcon } from "./icons";
 import { wobble, type Hud, type Layout, type Rect } from "./layout";
-import { ARROWS, COLORS, drawLegendIcon, runsOf, star, wobblyLine, type ButtonId, type LegendItem, type NoteKind, type NotebookMode, type NotebookView, type PageKind } from "./notebook";
+import { COLORS, legendIcon, moveIcon, runsOf, starIcon, wobblyLine, type ButtonId, type LegendItem, type NoteKind, type NotebookMode, type NotebookView, type PageKind } from "./notebook";
 
 const INK = 0x1d1830;
 const PENCIL = "#2f2944";
@@ -65,6 +65,7 @@ export class PhoneNotebook implements NotebookView {
   private compact: boolean;
   private texts!: { act: Phaser.GameObjects.Text; heading: Phaser.GameObjects.Text; moves: Phaser.GameObjects.Text; par: Phaser.GameObjects.Text };
   private stripInk!: Phaser.GameObjects.Graphics;
+  private headerStars: Phaser.GameObjects.Image[] = [];
   private card!: Phaser.GameObjects.Container;
   private cardBg!: Phaser.GameObjects.Graphics;
   private cardText!: Phaser.GameObjects.Text;
@@ -74,6 +75,7 @@ export class PhoneNotebook implements NotebookView {
   private stamp: Phaser.GameObjects.Container | null = null;
   private winInk: Phaser.GameObjects.GameObject[] = [];
   private padG!: Phaser.GameObjects.Graphics;
+  private padArrows: Phaser.GameObjects.Image[] = [];
   private padBox!: { cx: number; cy: number; size: number };
   private padOwner: number | null = null;
   private padDir: Dir | null = null;
@@ -243,6 +245,7 @@ export class PhoneNotebook implements NotebookView {
     const moves = this.keep(this.text(0, st.y, "", this.band ? 15 : this.compact ? 15 : 16.5, PENCIL, "round", "700"));
     const par = this.keep(this.text(0, st.y, "", this.compact ? 11.5 : 12.5, PENCIL_SOFT));
     this.texts = { act, heading, moves, par };
+    this.headerStars = [0, 1, 2].map(() => this.keep(this.scene.add.image(0, 0, iconKey("starEmpty")).setOrigin(0.5, STAR_ORIGIN_Y)));
     this.stripInk = this.keep(this.scene.add.graphics());
     const hit = this.keep(this.scene.add.zone(0, 0, 10, 10).setOrigin(0).setInteractive({ useHandCursor: true }));
     hit.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
@@ -323,14 +326,10 @@ export class PhoneNotebook implements NotebookView {
     const capped = this.hints > 0;
     for (let i = 0; i < 3; i += 1) {
       const cx = x + i * r * 2;
-      const pts: { x: number; y: number }[] = [];
-      for (let k = 0; k < 10; k += 1) {
-        const a = -Math.PI / 2 + (k * Math.PI) / 5;
-        const rr = k % 2 ? r * 0.45 : r;
-        pts.push({ x: cx + Math.cos(a) * rr, y: y + Math.sin(a) * rr });
-      }
-      g.lineStyle(this.px(1.2), INK, capped && i === 2 ? 0.2 : 0.55);
-      g.strokePoints(pts, true);
+      this.headerStars[i]
+        .setPosition(cx, y)
+        .setDisplaySize(r * STAR_SPAN, r * STAR_SPAN)
+        .setAlpha(capped && i === 2 ? 0.2 : 0.55);
       if (capped && i === 2) {
         g.lineStyle(this.px(1.4), 0xc4352c, 0.8);
         g.lineBetween(cx - r, y + r * 0.8, cx + r, y - r * 0.8);
@@ -418,6 +417,7 @@ export class PhoneNotebook implements NotebookView {
     const r = this.hud.pad;
     this.padBox = { cx: r.x + r.w / 2, cy: r.y + r.h / 2, size: r.w };
     this.padG = this.keep(this.scene.add.graphics());
+    this.padArrows = PAD_ICONS.map((icon) => this.keep(this.scene.add.image(0, 0, iconKey(icon))));
     const margin = this.px(12);
     const zone = this.keep(this.scene.add.zone(r.x - margin, r.y - margin, r.w + margin * 2, r.h + margin * 2).setOrigin(0).setInteractive());
     zone.on("pointerdown", (p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
@@ -483,19 +483,11 @@ export class PhoneNotebook implements NotebookView {
         if (dx !== 0) g.fillRoundedRect(dx > 0 ? cx + a / 2 : cx - half + inset, cy - a / 2 + inset, a - inset, a - inset * 2, { tl: dx > 0 ? 0 : r, bl: dx > 0 ? 0 : r, tr: dx > 0 ? r : 0, br: dx > 0 ? r : 0 });
         else g.fillRoundedRect(cx - a / 2 + inset, dy > 0 ? cy + a / 2 : cy - half + inset, a - inset * 2, a - inset, { tl: dy > 0 ? 0 : r, tr: dy > 0 ? 0 : r, bl: dy > 0 ? r : 0, br: dy > 0 ? r : 0 });
       }
-      const k = a * 0.2 * (pressed ? 1.12 : 1);
-      const tip = { x: ax + dx * k, y: ay + dy * k };
-      const b1 = { x: ax - dx * k * 0.75 + dy * k, y: ay - dy * k * 0.75 + dx * k };
-      const b2 = { x: ax - dx * k * 0.75 - dy * k, y: ay - dy * k * 0.75 - dx * k };
-      if (live && this.open[d]) {
-        g.fillStyle(INK, 1);
-        g.fillTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
-        continue;
-      }
-      g.fillStyle(INK, 0.1);
-      g.fillTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
-      g.lineStyle(this.px(1.6), INK, 0.42);
-      g.strokeTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
+      const span = a * 0.8 * (pressed ? 1.12 : 1);
+      this.padArrows[d]
+        .setPosition(ax, ay)
+        .setDisplaySize(span, span)
+        .setAlpha(live && this.open[d] ? 1 : 0.3);
     }
     const dimple = a * 0.17;
     g.fillStyle(0xeee4ca, 1);
@@ -800,7 +792,6 @@ export class PhoneNotebook implements NotebookView {
     const { w, h } = this.cardBox;
     const title = this.text(0, 0, this.copy.wonTitle, this.band ? 17 : 19, "#23794b", "display").setOrigin(this.band ? 0.5 : 0, 0.5);
     const moves = this.text(0, 0, this.copy.wonMoves(turns, par), this.band ? 13.5 : 14.5, PENCIL).setOrigin(this.band ? 0.5 : 0, 0.5);
-    const g = this.scene.add.graphics();
     const r = this.px(this.band ? 11 : 12);
     if (this.band) {
       title.setPosition(0, -h / 2 + this.px(22));
@@ -811,13 +802,14 @@ export class PhoneNotebook implements NotebookView {
     }
     const sx = this.band ? -r * 2.4 : w / 2 - this.px(18) - r * 5;
     const sy = this.band ? title.y + this.px(26) : 0;
-    this.card.add([g, title, moves]);
-    this.winInk.push(g, title, moves);
-    for (let i = 0; i < 3; i += 1) {
+    const earned = [0, 1, 2].map((i) => starIcon(this.scene, sx + i * r * 2.4, sy, r, i < stars).setVisible(false));
+    this.card.add([...earned, title, moves]);
+    this.winInk.push(...earned, title, moves);
+    earned.forEach((img, i) => {
       this.scene.time.delayedCall(200 + i * 240, () => {
-        if (g.active) star(g, sx + i * r * 2.4, sy, r, i < stars);
+        if (img.active) img.setVisible(true);
       });
-    }
+    });
     this.setButton("wait", { dim: true });
     this.setButton("undo", { dim: true });
     this.drawPad();
@@ -958,10 +950,8 @@ export class PhoneNotebook implements NotebookView {
     };
     add(this.text(x, 0, this.title, 16, PENCIL).setWordWrapWidth(w), 0);
     add(this.text(x, 0, `${this.copy.touch.goal}: ${this.goal}`, 14.5, PENCIL).setWordWrapWidth(w), 4);
-    const stars = this.scene.add.graphics();
     const r = this.px(6);
-    for (let i = 0; i < 3; i += 1) star(stars, x + r + i * r * 2.3, y + this.px(11), r, false);
-    content.add(stars);
+    for (let i = 0; i < 3; i += 1) content.add(starIcon(this.scene, x + r + i * r * 2.3, y + this.px(11), r, false));
     const starsText = this.text(x + r * 7.4, 0, this.hints > 0 ? this.copy.starsCapped : this.copy.starsAt(this.par), 13, PENCIL_SOFT).setWordWrapWidth(w - r * 7.4);
     add(starsText, 14);
     add(this.text(x, 0, this.copy.pages.rulesTitle, 14, PENCIL_SOFT, "display"), 6);
@@ -970,8 +960,7 @@ export class PhoneNotebook implements NotebookView {
     add(this.text(x, 0, this.copy.legendTitle, 14, PENCIL_SOFT, "display"), 8);
     const k = this.px(0.72);
     for (const item of this.legend) {
-      const ig = this.scene.add.graphics().setScale(k);
-      drawLegendIcon(ig, item, 0, 0);
+      const ig = legendIcon(this.scene, item).setScale(k);
       const t = this.text(x + this.px(34), 0, this.copy.legend[item], 14, PENCIL).setWordWrapWidth(w - this.px(34));
       t.setY(y);
       ig.setPosition(x + this.px(12), y + Math.max(this.px(11), t.height / 2));
@@ -992,13 +981,14 @@ export class PhoneNotebook implements NotebookView {
       return y + this.px(30);
     }
     for (const r of runs) {
-      const arrow = this.text(0, 0, r.action === "wait" ? "·" : ARROWS[r.action], 26, PENCIL, "hand");
+      const size = this.px(r.action === "wait" ? 19 : 22);
+      const arrow = this.scene.add.image(this.px(11), this.px(17), iconKey(moveIcon(r.action))).setDisplaySize(size, size);
       const cell: Phaser.GameObjects.GameObject[] = [arrow];
-      let w = Math.max(this.px(18), arrow.width);
+      let w = this.px(22);
       if (r.count > 1) {
-        const n = this.text(arrow.width - 2, this.px(12), String(r.count), 15, "#a85d08", "hand");
+        const n = this.text(w - this.px(0.5), this.px(12), String(r.count), 15, "#a85d08", "hand");
         cell.push(n);
-        w += n.width - 2;
+        w += n.width - this.px(1);
       }
       if (x + w > right) {
         x = left;

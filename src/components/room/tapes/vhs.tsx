@@ -1,4 +1,5 @@
 import type { ComponentType, CSSProperties, ReactNode } from "react";
+import { PlayIcon } from "@/components/art/Icons";
 import type { MascotExpression } from "@/components/mascot/Mascot404";
 import type { Localized } from "@/i18n/copy";
 import type { SfxName } from "@/lib/audio/sfx";
@@ -26,12 +27,13 @@ export const chroma: CSSProperties = { textShadow: "0.04em 0 rgba(239,79,67,.8),
 export const washed: CSSProperties = { filter: "saturate(.78) contrast(1.06) sepia(.08)" };
 export const inkOutline: CSSProperties = { textShadow: "0.06em 0.06em 0 #1d1830, -0.06em 0.06em 0 #1d1830" };
 
-export function VhsOverlay({ counter, label = "▶ PLAY" }: { counter: string; label?: string }) {
+export function VhsOverlay({ counter }: { counter: string }) {
   return (
     <>
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-[9%] bg-white/30 mix-blend-overlay" style={{ animation: "vhs-track 3.4s linear infinite" }} />
-      <p className="absolute left-[6%] top-[6%] z-[5] font-display text-[max(7px,6.1cqw)] leading-none text-cream" style={chroma}>
-        {label}
+      <p className="absolute left-[6%] top-[6%] z-[5] flex items-center gap-[0.3em] font-display text-[max(7px,6.1cqw)] leading-none text-cream" style={chroma}>
+        <PlayIcon className="size-[0.9em] drop-shadow-[0.04em_0_rgba(239,79,67,.8)]" />
+        PLAY
       </p>
       <p className="absolute right-[6%] top-[6%] z-[5] font-display text-[max(7px,6.1cqw)] leading-none text-cream" style={chroma}>
         {counter}

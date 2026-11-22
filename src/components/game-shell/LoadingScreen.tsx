@@ -1,10 +1,12 @@
 "use client";
 
 import { Sparkle } from "@/components/art/Badges";
+import { CheckIcon } from "@/components/art/Icons";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { useCopy } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
+import { KeyText } from "@/components/ui/KeyText";
 
 export const LOADING_STEPS = localized({
   "pt-BR": [
@@ -99,7 +101,7 @@ export function LoadingScreen({
                   <span
                     className={`grid size-6 shrink-0 place-items-center rounded-md border-[2.5px] border-ink text-sm font-bold ${done ? "bg-mint" : "bg-cream"}`}
                   >
-                    {done ? "✓" : ""}
+                    {done ? <CheckIcon className="size-4" /> : null}
                   </span>
                   {step.text}
                 </li>
@@ -108,7 +110,9 @@ export function LoadingScreen({
           </ul>
           <div className="mt-5 -rotate-2 rounded-xl border-[3px] border-ink bg-sun px-4 py-2 shadow-[var(--shadow-ink)]">
             <p className="font-display text-sm uppercase tracking-wider text-ink">{copy.tip}</p>
-            <p className="font-hand text-lg leading-snug text-ink">{tip}</p>
+            <p className="font-hand text-lg leading-snug text-ink">
+              <KeyText text={tip} />
+            </p>
           </div>
         </div>
       </div>

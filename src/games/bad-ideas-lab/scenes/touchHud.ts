@@ -5,7 +5,7 @@ import type { Vec } from "../geometry";
 import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 import { addIcon, setIcon, type IconName } from "../icons";
-import { centerGlyphs, type HudHandlers, type HudSetup, type LabHudView, type Mood, type StarReveal, type ToolbarAnchor, type ViewState } from "./hud";
+import { WIN_STAR, WIN_STAR_POP, centerGlyphs, type HudHandlers, type HudSetup, type LabHudView, type Mood, type StarReveal, type ToolbarAnchor, type ViewState } from "./hud";
 
 export const PANEL_FILL = 0x2b2150;
 const BOX_FILL = 0x63d6c1;
@@ -117,7 +117,7 @@ export abstract class TouchHud implements LabHudView {
     this.boxLabel = this.fix(cartoonText(scene, 0, 0, copy.hud.putAway, { size: 14, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5));
     this.box = this.fix(scene.add.container(0, 0, [this.boxBg, this.boxLabel]).setDepth(DEPTH.box).setVisible(false));
 
-    for (let i = 0; i < 3; i += 1) this.stars.push(this.fix(scene.add.image(0, 0, "star").setDepth(DEPTH.rail)));
+    for (let i = 0; i < 3; i += 1) this.stars.push(this.fix(addIcon(scene, 0, 0, "star").setDepth(DEPTH.rail)));
     this.usedText = this.fix(cartoonText(scene, 0, 0, "", { size: 12, color: "#f7ecd4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5).setDepth(DEPTH.rail));
 
     this.hintBtn = this.makeButton(copy.hud.hint, 0xb9a6ef, "hint", () => this.handlers.onHint());
@@ -610,7 +610,7 @@ export abstract class TouchHud implements LabHudView {
     plate.fillRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
     plate.lineStyle(5, INK_HEX, 1);
     plate.strokeRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
-    const icons = [0, 1, 2].map((i) => this.fix(scene.add.image((i - 1) * 96, 0, "star").setScale(2.1).setTint(0x5a4d8a).setAlpha(0.55)));
+    const icons = [0, 1, 2].map((i) => this.fix(addIcon(scene, (i - 1) * 96, 0, "star", WIN_STAR).setTint(0x5a4d8a).setAlpha(0.55)));
     const s = 0.42 * k;
     const group = this.fix(scene.add.container(cx, ty + 58 * k, [plate, ...icons]).setDepth(DEPTH.banner).setScale(s));
     const reveal = (i: number) => {
@@ -621,8 +621,8 @@ export abstract class TouchHud implements LabHudView {
       if (!lit) return;
       icon.clearTint().setAlpha(1);
       if (this.reduced) return;
-      icon.setScale(3.4).setAngle(-30);
-      scene.tweens.add({ targets: icon, scale: 2.1, angle: 0, duration: 260, ease: "Back.easeOut" });
+      icon.setDisplaySize(WIN_STAR_POP, WIN_STAR_POP).setAngle(-30);
+      scene.tweens.add({ targets: icon, displayWidth: WIN_STAR, displayHeight: WIN_STAR, angle: 0, duration: 260, ease: "Back.easeOut" });
     };
     scene.tweens.add({ targets: [title, group], alpha: 0, delay: 1750, duration: 240 });
     if (this.reduced) {

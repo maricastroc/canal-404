@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { Fonts } from "@/games/kit/ui";
 import { BrunoView } from "./actors";
+import { iconKey } from "./icons";
 import type { Layout } from "./layout";
 
 const INK = 0x1d1830;
@@ -11,7 +12,7 @@ export class StoryBox {
   private root: Phaser.GameObjects.Container;
   private panel: Phaser.GameObjects.Graphics;
   private text: Phaser.GameObjects.Text;
-  private more: Phaser.GameObjects.Text;
+  private more: Phaser.GameObjects.Image;
   private nameTag: Phaser.GameObjects.Container;
   private portrait: Phaser.GameObjects.Container;
   private maskShape: Phaser.GameObjects.Graphics;
@@ -36,7 +37,7 @@ export class StoryBox {
     const size = layout.kind === "full" ? Math.round(Math.min(36, Math.max(26, layout.tile * 0.3))) : Math.round(15.5 * layout.unit);
     this.panel = scene.add.graphics();
     this.text = scene.add.text(0, 0, "", { fontFamily: round, fontSize: `${size}px`, fontStyle: "600", color: "#1d1830", lineSpacing: 10 * k, padding: { x: 2, y: 4 } });
-    this.more = scene.add.text(0, 0, "▼", { fontFamily: round, fontSize: `${Math.round(28 * k)}px`, fontStyle: "700", color: "#c94785" }).setOrigin(0.5);
+    this.more = scene.add.image(0, 0, iconKey("more")).setDisplaySize(32 * k, 32 * k);
     const tagText = scene.add.text(20 * k, -3 * k, name.toUpperCase(), { fontFamily: fonts.display, fontSize: `${Math.round(26 * k)}px`, color: "#1d1830", padding: { x: 4, y: 4 } }).setOrigin(0, 0.5);
     const tagW = tagText.width + 40 * k;
     const tagBg = scene.add.graphics();

@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
+import { ChevronRightIcon, HeartIcon, Music2Icon, MusicIcon, SolidStarIcon } from "@/components/art/Icons";
 import { Mascot404, type MascotExpression } from "@/components/mascot/Mascot404";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 import { useLocale, useLocaleRouter } from "@/i18n/client";
@@ -158,7 +159,7 @@ const COPY = localized({
     radioOffHint: "Clica pra desligar o rádio.",
     radioOnHint: "Liga o rádio! A trilha do canal toca aqui.",
     stationLabel: "Trocar a estação do rádio",
-    stationButton: "Estação ▸",
+    stationButton: "Estação",
     lavaLabel: "Lâmpada de lava: trocar de cor",
     lavaHint: "Lâmpada de lava. Hipnotizante. Não olhe por mais de 3 horas.",
     lavaLine: "Nova cor! Essa lâmpada muda de humor mais do que eu.",
@@ -282,7 +283,7 @@ const COPY = localized({
     radioOffHint: "Click to turn off the radio.",
     radioOnHint: "Turn on the radio! The channel's soundtrack plays here.",
     stationLabel: "Change the radio station",
-    stationButton: "Station ▸",
+    stationButton: "Station",
     lavaLabel: "Lava lamp: change color",
     lavaHint: "Lava lamp. Hypnotic. Don't stare for more than 3 hours.",
     lavaLine: "New color! This lamp changes moods more than I do.",
@@ -1142,13 +1143,13 @@ export function BroadcastRoom() {
               ))}
             </div>
             <div aria-hidden className="pointer-events-none absolute z-[17]" style={spotStyle({ x: SPOTS.radio.x + 20, y: SPOTS.radio.y - 30, w: 60, h: 60 })}>
-              {["♪", "♫", "♪"].map((n, i) => (
+              {[MusicIcon, Music2Icon, MusicIcon].map((Note, i) => (
                 <span
                   key={i}
-                  className="absolute bottom-0 font-display text-[clamp(14px,1.6vw,26px)] text-sun"
-                  style={{ left: `${i * 30}%`, animation: `note-float 2.4s ease-out ${i * 0.8}s infinite`, textShadow: "2px 2px 0 #1d1830" }}
+                  className="absolute bottom-0 text-sun"
+                  style={{ left: `${i * 30}%`, animation: `note-float 2.4s ease-out ${i * 0.8}s infinite` }}
                 >
-                  {n}
+                  <Note className="size-[clamp(14px,1.6vw,26px)] drop-shadow-[2px_2px_0_#1d1830]" />
                 </span>
               ))}
             </div>
@@ -1157,13 +1158,14 @@ export function BroadcastRoom() {
               onClick={nextStation}
               onPointerEnter={(e) => e.pointerType === "mouse" && hover()}
               aria-label={copy.stationLabel}
-              className="press absolute z-[18] -rotate-6 whitespace-nowrap rounded-lg border-[3px] border-ink bg-sun px-[0.6em] py-[0.2em] font-display text-[clamp(10px,0.85vw,14px)] leading-tight text-ink shadow-[var(--shadow-ink-sm)]"
+              className="press absolute z-[18] flex -rotate-6 items-center gap-[0.2em] whitespace-nowrap rounded-lg border-[3px] border-ink bg-sun px-[0.6em] py-[0.2em] font-display text-[clamp(10px,0.85vw,14px)] leading-tight text-ink shadow-[var(--shadow-ink-sm)]"
               style={{
                 left: `${((SPOTS.radio.x - 6) / SCENE.w) * 100}%`,
                 top: `${((SPOTS.radio.y - 4) / SCENE.h) * 100}%`,
               }}
             >
               {copy.stationButton}
+              <ChevronRightIcon className="size-[1.1em]" />
             </button>
           </>
         )}
@@ -1315,10 +1317,10 @@ export function BroadcastRoom() {
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
-                className="absolute bottom-0 text-[clamp(12px,1.4vw,24px)] text-tomato"
-                style={{ left: `${i * 34}%`, animation: `heart-up 1.6s ease-out ${i * 0.4}s infinite`, textShadow: "2px 2px 0 #1d1830" }}
+                className="absolute bottom-0 text-tomato"
+                style={{ left: `${i * 34}%`, animation: `heart-up 1.6s ease-out ${i * 0.4}s infinite` }}
               >
-                ♥
+                <HeartIcon className="size-[clamp(12px,1.4vw,24px)] drop-shadow-[2px_2px_0_#1d1830]" />
               </span>
             ))}
           </div>
@@ -1439,10 +1441,10 @@ export function BroadcastRoom() {
             ].map(([x, y]) => (
               <span
                 key={`${x}-${y}`}
-                className="absolute text-[clamp(10px,1.2vw,20px)] text-[#b7ff8a]"
-                style={{ left: `${(x / SCENE.w) * 100}%`, top: `${(y / SCENE.h) * 100}%`, textShadow: "0 0 8px rgba(183,255,138,.9)" }}
+                className="absolute text-[#b7ff8a]"
+                style={{ left: `${(x / SCENE.w) * 100}%`, top: `${(y / SCENE.h) * 100}%` }}
               >
-                ★
+                <SolidStarIcon className="size-[clamp(10px,1.2vw,20px)] drop-shadow-[0_0_8px_rgba(183,255,138,.9)]" />
               </span>
             ))}
           </div>

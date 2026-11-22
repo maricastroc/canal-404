@@ -1,5 +1,5 @@
 import type * as Phaser from "phaser";
-import { ArrowBigDown, Crosshair, Info, Lightbulb, Maximize2, Minimize2, Play, RotateCcw, RotateCw, Square, Trash, Undo2, X } from "lucide";
+import { ArrowBigDown, Crosshair, Info, Lightbulb, Maximize2, Minimize2, Play, RotateCcw, RotateCw, Square, Star, Trash, Undo2, X } from "lucide";
 import type { IconSpec } from "../kit/icons";
 
 const INK = "#1d1830";
@@ -21,6 +21,7 @@ const ICONS = {
   remove: { icon: X, size: 56, strokeWidth: 3.4 },
   "remove-inner": { icon: X, size: 56, strokeWidth: 1.3, color: CREAM },
   "arrow-down": { icon: ArrowBigDown, size: 84, strokeWidth: 2, fill: "#ffc83d" },
+  star: { icon: Star, size: 76, strokeWidth: 2.4, fill: "#ffc83d" },
 } satisfies Record<string, Omit<IconSpec, "key">>;
 
 export type IconName = keyof typeof ICONS;

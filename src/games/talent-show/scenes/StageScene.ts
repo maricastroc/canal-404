@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowRight, Play, Pointer, Volume2 } from "lucide";
+import { ArrowRight, Check, Heart, Music2, Play, Pointer, Volume2, X, type IconNode } from "lucide";
 import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
 import { cartoonText } from "@/games/kit/ui";
@@ -11,10 +11,12 @@ import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from 
 import { barAt, beatMsAt, type BandMember, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
-import { DEMO_OF, ShowCard, cardDots, type CardButtonId, type CardContent } from "./card";
+import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART } from "./figure";
-import { C, MEMBER_COLOR, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTrack, ribbon, type Spark } from "./lane";
+import { C, IconPool, MEMBER_COLOR, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTrack, ribbon, type Spark } from "./lane";
 import { DESK_LIP, layoutFor, type Layout, type Orientation, type Spot } from "./layout";
+
+const NOTE_GLYPH: IconNode = Music2.map(([tag, attrs]): IconNode[number] => [tag, tag === "circle" ? { ...attrs, fill: "#1d1830" } : attrs]);
 
 export type RunReport = { song: SongId; verdict: Verdict; replayed: Verdict | null; matches: boolean; log: TapLog };
 
@@ -54,7 +56,7 @@ const SPARK_MS = 380;
 
 type Popup = { text: Phaser.GameObjects.Text; born: number };
 type Burst = { born: number; color: number };
-type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; heart: Phaser.GameObjects.Graphics; mood: Mood; moodUntil: number; heartUntil: number };
+type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; heart: Phaser.GameObjects.Image; mood: Mood; moodUntil: number; heartUntil: number };
 type KidView = { root: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; head: Phaser.GameObjects.Image; pose: Pose; poseUntil: number; face: KidFace; flash: KidFace; faceUntil: number; base: KidFace; spot: Spot };
 type Fan = { img: Phaser.GameObjects.Image; variant: number; leave: number; phase: number; y: number };
 type Floater = { img: Phaser.GameObjects.Image; born: number; x: number; y: number; drift: number };
@@ -91,6 +93,8 @@ export class StageScene extends Phaser.Scene {
   private notice = "";
 
   private notesG!: Phaser.GameObjects.Graphics;
+  private noteIcons!: IconPool;
+  private missIcons!: IconPool;
   private ringBaseG!: Phaser.GameObjects.Graphics;
   private ringFrontG!: Phaser.GameObjects.Graphics;
   private meterG!: Phaser.GameObjects.Graphics;
@@ -151,6 +155,10 @@ export class StageScene extends Phaser.Scene {
       { key: "icon-play", icon: Play, size: 64, color: "#1d1830", fill: "#1d1830", strokeWidth: 2.4 },
       { key: "icon-next", icon: ArrowRight, size: 64, color: "#1d1830", strokeWidth: 3.2 },
       { key: "icon-sound", icon: Volume2, size: 40, color: "#7b62c4", strokeWidth: 2.6 },
+      { key: "icon-heart", icon: Heart, size: 116, color: "#1d1830", fill: "#f06ba8", strokeWidth: 1.8 },
+      { key: "icon-note", icon: NOTE_GLYPH, size: 96, color: "#1d1830", strokeWidth: 2.6 },
+      { key: "icon-miss", icon: X, size: 128, color: "#ef4f43", strokeWidth: 2.4 },
+      { key: "icon-check", icon: Check, size: 96, color: "#1d1830", strokeWidth: 3.4 },
     ]);
   }
 
@@ -357,10 +365,7 @@ export class StageScene extends Phaser.Scene {
       const plateImg = this.add.image(0, 0, "plate").setOrigin(0.5, 1).setScale(0.4);
       const plateText = this.add.text(0, -116 * 0.8, "", this.font("display", 62, "#1d1830")).setOrigin(0.5);
       const plate = this.add.container(art.plateX, top + 18, [plateImg, plateText]).setVisible(false);
-      const heart = this.add.graphics();
-      heart.fillStyle(C.bubblegum, 1).fillCircle(-11, 0, 13).fillCircle(11, 0, 13).fillTriangle(-23, 5, 23, 5, 0, 32);
-      heart.lineStyle(4, C.ink, 1).strokeCircle(-11, 0, 13).strokeCircle(11, 0, 13);
-      heart.setPosition(art.plateX * 0.6, top - 10).setVisible(false);
+      const heart = this.add.image(art.plateX * 0.6, top - 3, "icon-heart").setDisplaySize(58, 58).setVisible(false);
       this.add.container(J.xs[i], J.deskTop + 16, [img, plate, heart]).setScale(J.scale).setDepth(5);
       const name = this.add.text(J.xs[i], plateY, this.copy.jury[id], this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5).setDepth(6.5);
       if (name.width > 146) name.setScale(146 / name.width);
@@ -478,6 +483,8 @@ export class StageScene extends Phaser.Scene {
     for (const b of this.chase) g.fillStyle(C.plum600, 1).fillCircle(b.x, b.y, 4.5);
     this.ringBaseG = this.add.graphics().setDepth(10.5);
     this.notesG = this.add.graphics().setDepth(11);
+    this.noteIcons = new IconPool(() => this.add.image(0, 0, "icon-note").setDepth(11.2));
+    this.missIcons = new IconPool(() => this.add.image(0, 0, "icon-miss").setDepth(11.2));
     this.lostMask = this.make.graphics({ x: 0, y: 0 }, false);
     this.weakMask = this.make.graphics({ x: 0, y: 0 }, false);
     this.lostTile = this.add.tileSprite(track.x, track.y, track.w, track.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11.5);
@@ -883,11 +890,7 @@ export class StageScene extends Phaser.Scene {
     if (this.mode === "calibrating") {
       const heard = this.clock ? this.clock.at(now) : 0;
       if (heard >= this.calibClicks[0] - 0.05 && this.card.howText === this.copy.calibListen) this.card.setHow(this.copy.calibGo);
-      cardDots(
-        this.card.art,
-        this.card.artBox,
-        this.calibClicks.map((t, i) => (this.calibErrors[i] !== null ? "hit" : heard >= t - 0.02 ? "now" : "waiting")),
-      );
+      this.card.dots(this.calibClicks.map((t, i) => (this.calibErrors[i] !== null ? "hit" : heard >= t - 0.02 ? "now" : "waiting")));
       if (heard > this.calibEnd) this.finishCalibration();
     }
     let shown: number;
@@ -1166,6 +1169,8 @@ export class StageScene extends Phaser.Scene {
     const right = S.x + S.w - 10;
     const assist = this.mode === "intro" || this.mode === "calibrating" || this.mode === "idle" ? this.bridge.assist.get() : this.assist;
     g.clear();
+    this.noteIcons.begin();
+    this.missIcons.begin();
     const firstBar = Math.max(0, Math.floor((beatNow - (hitX - left) / LN.pxPerBeat) / 4));
     const lastBar = Math.min(compiled.bars - 1, Math.floor((beatNow + (right - hitX) / LN.pxPerBeat) / 4));
     let label = 0;
@@ -1226,14 +1231,14 @@ export class StageScene extends Phaser.Scene {
         const held = grade !== null && grade !== "miss" && tail === null;
         if (grade === null) {
           drawTail(g, x, xEnd, laneY, r, color, 0.6 * signalAlpha, left, right);
-          drawNote(g, x, laneY, r, color, signalAlpha, false);
+          drawNote(g, this.noteIcons, x, laneY, r, color, signalAlpha, false);
         } else if (grade === "miss") {
           drawTail(g, x, xEnd, laneY, r, C.gray, 0.55 * fade(xEnd), left, right);
           this.drawMissed(g, x, laneY, r, fall, fade(x));
         } else if (held) {
           holding = true;
           if (xEnd > hitX) drawTail(g, hitX, xEnd, laneY, r, color, 0.95, left, right);
-          drawNote(g, hitX, laneY, r, color, 1, false);
+          drawNote(g, this.noteIcons, hitX, laneY, r, color, 1, false);
         } else if (tail === "dropped") {
           const release = verdict?.releases[note.index];
           const from = release !== null && release !== undefined ? xOf(release) : x;
@@ -1246,8 +1251,10 @@ export class StageScene extends Phaser.Scene {
         continue;
       }
       if (grade !== null) continue;
-      drawNote(g, x, laneY, r, color, signalAlpha);
+      drawNote(g, this.noteIcons, x, laneY, r, color, signalAlpha);
     }
+    this.noteIcons.end();
+    this.missIcons.end();
     for (let i = label; i < this.labels.length; i += 1) this.labels[i].setVisible(false);
     const base = this.ringBaseG;
     const front = this.ringFrontG;
@@ -1281,7 +1288,7 @@ export class StageScene extends Phaser.Scene {
     const alpha = 1 - fall;
     g.fillStyle(C.gray, alpha).fillCircle(x, y + dy, r * 0.85);
     g.lineStyle(4, C.ink, alpha).strokeCircle(x, y + dy, r * 0.85);
-    g.lineStyle(7, C.tomato, alpha).lineBetween(x - r * 0.4, y + dy - r * 0.4, x + r * 0.4, y + dy + r * 0.4).lineBetween(x + r * 0.4, y + dy - r * 0.4, x - r * 0.4, y + dy + r * 0.4);
+    this.missIcons.place(x, y + dy, r * 1.6, alpha);
   }
 
   private drawStatic(xOfBeat: (beat: number) => number, now: number, left: number, right: number, labelStart: number, assist: boolean) {

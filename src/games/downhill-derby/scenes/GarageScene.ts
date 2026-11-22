@@ -9,6 +9,7 @@ import type { Frame } from "../layout";
 import { CartView, INK } from "./cart";
 import { currentFrame, watchFrame } from "./frame";
 import { H, W } from "./hud";
+import { keyArrows } from "../../kit/keyArrows";
 
 export type GarageHost = {
   locale: Locale;
@@ -140,7 +141,7 @@ export class GarageScene extends Phaser.Scene {
       this.chipG = this.add.graphics().setDepth(5);
       this.chipText = this.add.text(CHIP.x + 26, CHIP.y + CHIP.h / 2, "", body(24)).setOrigin(0, 0.5).setDepth(6);
       const touch = window.matchMedia?.("(pointer: coarse)").matches === true;
-      const hint = this.add.text(W / 2, 1036, touch ? this.copy.garage.touch : this.copy.garage.keys, body(26)).setOrigin(0.5).setDepth(6);
+      const hint = keyArrows(this.add.text(W / 2, 1036, touch ? this.copy.garage.touch : this.copy.garage.keys, body(26)).setOrigin(0.5).setDepth(6));
       const hb = this.add.graphics().setDepth(5);
       hb.fillStyle(CREAM, 0.92);
       hb.fillRoundedRect(W / 2 - hint.width / 2 - 24, 1036 - 26, hint.width + 48, 52, 26);

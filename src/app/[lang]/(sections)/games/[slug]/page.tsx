@@ -6,13 +6,14 @@ import { GuestBust, guestCardClass } from "@/components/art/GameCast";
 import { GameCover } from "@/components/art/Covers";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { GameHowToPanel } from "@/components/art/GameHowTo";
-import { ArrowLeftIcon, PlayIcon } from "@/components/art/Icons";
+import { ArrowLeftIcon, ChevronRightIcon, PlayIcon } from "@/components/art/Icons";
 import { GameStats } from "@/components/catalog/GameStats";
 import { ChampionTicker } from "@/components/records/ChampionTicker";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkLink, inkStyle, PaperPanel, Tag } from "@/components/ui/Primitives";
 import { IntentLink } from "@/components/ui/IntentLink";
+import { KeyText } from "@/components/ui/KeyText";
 import { SpeechBubble } from "@/components/ui/SpeechBubble";
 import { CATEGORY_LABELS, GAMES, getGame, type ControlHint } from "@/games/registry";
 import { localized } from "@/i18n/copy";
@@ -28,8 +29,12 @@ function ControlCards({ items }: { items: ControlHint[] }) {
     <dl className="grid gap-2 sm:grid-cols-2">
       {items.map((c) => (
         <div key={c.input} className="flex flex-col rounded-lg border-2 border-ink bg-cream-2 px-3 py-2">
-          <dt className="font-display text-sm uppercase tracking-wide text-ink">{c.input}</dt>
-          <dd className="leading-snug text-ink-soft">{c.action}</dd>
+          <dt className="font-display text-sm uppercase tracking-wide text-ink">
+            <KeyText text={c.input} />
+          </dt>
+          <dd className="leading-snug text-ink-soft">
+            <KeyText text={c.action} />
+          </dd>
         </div>
       ))}
     </dl>
@@ -40,7 +45,7 @@ function MoreControls({ label, items }: { label: string; items: ControlHint[] })
   return (
     <details className="group mt-3">
       <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 font-display text-sm uppercase tracking-wide text-ink underline decoration-2 underline-offset-4 [&::-webkit-details-marker]:hidden">
-        <span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span>
+        <ChevronRightIcon className="size-4 transition-transform group-open:rotate-90" />
         {label}
       </summary>
       <div className="mt-2">

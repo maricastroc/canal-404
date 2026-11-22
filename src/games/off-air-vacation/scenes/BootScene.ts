@@ -1,12 +1,32 @@
 import * as Phaser from "phaser";
-import { BookOpen, CircleDot, Hand, Lightbulb, Map as MapIcon, MapPin, Star, Target, Users, X } from "lucide";
+import { ArrowBigRight, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, Hand, Lightbulb, Map as MapIcon, MapPin, Music2, Pause, Play, Rewind, Star, Target, Users, X, type IconNode } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { CHAR_RES } from "../config";
 import type { VacationText } from "../text/pt-BR";
 import { paintSigns } from "./signs";
+import { loadKeyArrows } from "../../kit/keyArrows";
 
 const BASE = "/assets/off-air-vacation/";
+const INK = "#1d1830";
+const CREAM = "#fbf5e6";
+
+function paint(icon: IconNode, attrs: Record<string, string | number>, solid: boolean): IconNode {
+  return icon.map(([tag, own]): IconNode[number] => [tag, { ...own, ...attrs, fill: solid || tag !== "path" ? attrs.stroke : "none" }]);
+}
+
+function sticker(icon: IconNode, color: string): IconNode {
+  const fit = (dx: number, dy: number) => `translate(${2.88 + dx} ${2.88 + dy}) scale(0.76)`;
+  return [
+    ...paint(icon, { stroke: INK, "stroke-width": 7, transform: fit(1.2, 1.6) }, false),
+    ...paint(icon, { stroke: INK, "stroke-width": 7, transform: fit(0, 0) }, false),
+    ...paint(icon, { stroke: color, "stroke-width": 2.4, transform: fit(0, 0) }, false),
+  ];
+}
+
+function haloed(icon: IconNode): IconNode {
+  return [...paint(icon, { stroke: INK, "stroke-width": 4.7, opacity: 0.35 }, true), ...paint(icon, { stroke: CREAM, "stroke-width": 2, opacity: 0.85 }, true)];
+}
 
 const DECO = [
   "idle-f",
@@ -79,6 +99,7 @@ export class BootScene extends Phaser.Scene {
     for (const [id, frames] of Object.entries(FOLK_FRAMES)) for (const f of frames) svg(`${id}-${f}`, CHAR_RES);
     for (const key of FACES) svg(key);
     for (const key of PROPS) svg(key, ART_SCALE[key] ?? 1);
+    loadKeyArrows(this);
     loadIcons(this, [
       { key: "ui-journal", icon: BookOpen, size: 52, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
       { key: "ui-map", icon: MapIcon, size: 52, color: "#1d1830", fill: "#93cf4c", strokeWidth: 2.4 },
@@ -99,6 +120,16 @@ export class BootScene extends Phaser.Scene {
       { key: "ui-target-l", icon: Target, size: 80, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
       { key: "ui-bulb-l", icon: Lightbulb, size: 80, color: "#1d1830", fill: "#9df0dc", strokeWidth: 2.4 },
       { key: "ui-people-l", icon: Users, size: 80, color: "#1d1830", fill: "#f06ba8", strokeWidth: 2.4 },
+      { key: "ui-vhs-pause", icon: Pause, size: 112, color: "#ffffff", fill: "#ffffff", strokeWidth: 2 },
+      { key: "ui-vhs-play", icon: Play, size: 112, color: "#ffffff", fill: "#ffffff", strokeWidth: 2 },
+      { key: "ui-vhs-rewind", icon: Rewind, size: 112, color: "#ffffff", fill: "#ffffff", strokeWidth: 2 },
+      { key: "ui-live", icon: Circle, size: 48, color: INK, fill: CREAM, strokeWidth: 3.3 },
+      { key: "ui-chev-up", icon: ChevronUp, size: 96, color: "#ffffff", strokeWidth: 3.4 },
+      { key: "ui-chev-right", icon: ChevronRight, size: 96, color: "#ffffff", strokeWidth: 3.4 },
+      { key: "ui-chev-down", icon: ChevronDown, size: 96, color: "#ffffff", strokeWidth: 3.4 },
+      { key: "ui-chev-left", icon: ChevronLeft, size: 96, color: "#ffffff", strokeWidth: 3.4 },
+      { key: "ui-music", icon: sticker(Music2, "#ffe39a"), size: 128 },
+      { key: "ui-exit", icon: haloed(ArrowBigRight), size: 192 },
     ]);
   }
 

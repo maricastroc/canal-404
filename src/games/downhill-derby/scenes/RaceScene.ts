@@ -184,7 +184,9 @@ export class RaceScene extends Phaser.Scene {
   private jumpedThisRun = false;
   private spunThisFlight = false;
   private alignLessons = 0;
-  private spinKey!: Phaser.GameObjects.Text;
+  private spinKey!: Phaser.GameObjects.Container;
+  private spinKeyIcon!: Phaser.GameObjects.Image;
+  private chargeIcon!: Phaser.GameObjects.Image;
   private ghostLabel!: Phaser.GameObjects.Text;
   private flightTip = false;
   private chargedFor = 0;
@@ -276,8 +278,11 @@ export class RaceScene extends Phaser.Scene {
     this.overlay = this.add.graphics();
     this.overlay.setDepth(9);
     this.worldLayer.add(this.overlay);
-    this.spinKey = this.add.text(0, 0, "", { fontFamily: this.bridge.fonts.display, fontSize: "40px", color: "#1d1830", backgroundColor: "#fbf5e6", padding: { x: 12, y: 2 } });
-    this.spinKey.setOrigin(0.5).setDepth(9.1).setVisible(false);
+    this.chargeIcon = this.add.image(0, 0, "dd-ico-charged").setDisplaySize(26, 26).setAlpha(0.9).setDepth(9.05).setVisible(false);
+    this.worldLayer.add(this.chargeIcon);
+    this.spinKeyIcon = this.add.image(0, 0, "dd-ico-key-right").setDisplaySize(42, 42);
+    this.spinKey = this.add.container(0, 0, [this.add.rectangle(0, 0, 70, 48, 0xfbf5e6), this.spinKeyIcon]);
+    this.spinKey.setDepth(9.1).setVisible(false);
     this.worldLayer.add(this.spinKey);
     this.fx = new WorldFx(this, this.worldLayer);
     this.touchActive = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
@@ -1614,6 +1619,7 @@ export class RaceScene extends Phaser.Scene {
     const g = this.overlay;
     g.clear();
     this.spinKey.setVisible(false);
+    this.chargeIcon.setVisible(false);
     const sim = this.sim;
     const p = this.bridge.params;
     if (sim.mode === "ground" && sim.crouch && sim.chargeRatio >= 1) this.chargedFor += this.game.loop.delta / 1000;
@@ -1630,10 +1636,7 @@ export class RaceScene extends Phaser.Scene {
       g.beginPath();
       g.arc(cx, cy, 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, r), false);
       g.strokePath();
-      if (r >= 1) {
-        g.fillStyle(0xff7a1a, 0.9);
-        g.fillTriangle(cx - 9, cy + 6, cx + 9, cy + 6, cx, cy - 10);
-      }
+      if (r >= 1) this.chargeIcon.setPosition(cx, cy).setVisible(true);
     }
     if (sim.rules.jumpLine && sim.mode === "ground" && sim.crouch && !sim.finished && this.phase === "race") {
       if (!this.jumpLineTip) {
@@ -1775,14 +1778,14 @@ export class RaceScene extends Phaser.Scene {
       g.fillStyle(color, 1);
       g.fillTriangle(ex + tx * 26, ey + ty * 26, ex - ty * 15, ey + tx * 15, ex + ty * 15, ey - tx * 15);
       if (this.alignLessons < 3 && !this.touchActive) {
-        const key = dir < 0 ? "←" : "→";
         const z = this.cam.zoom;
         const tall = this.frame.kind === "tall";
         const sx = (ex + tx * 70 / z - this.cam.x) * z + this.vw / 2;
         const sy = (ey + ty * 70 / z - this.cam.y - this.cam.dip) * z + this.vh / 2;
         const kx = tall ? Math.max(40 * this.frame.unit, Math.min(this.vw - 40 * this.frame.unit, sx)) : Math.max(440, Math.min(W - 300, sx));
         const ky = tall ? Math.max((this.phoneHud?.hudBottom ?? 0) + 30 * this.frame.unit, Math.min(this.vh - 30 * this.frame.unit, sy)) : Math.max(130, Math.min(H - 140, sy));
-        this.spinKey.setText(key).setVisible(true).setScale((tall ? this.frame.unit * 0.55 : 1) / z);
+        this.spinKeyIcon.setTexture(dir < 0 ? "dd-ico-key-left" : "dd-ico-key-right");
+        this.spinKey.setVisible(true).setScale((tall ? this.frame.unit * 0.55 : 1) / z);
         this.spinKey.setPosition(this.cam.x + (kx - this.vw / 2) / z, this.cam.y + this.cam.dip + (ky - this.vh / 2) / z);
       }
     }

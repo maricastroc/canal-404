@@ -4,6 +4,7 @@ import type { Frame } from "../layout";
 import type { ResortSfx } from "../sounds";
 import type { VacationText } from "../text/pt-BR";
 import { pinUi } from "./journal";
+import { keyArrows } from "../../kit/keyArrows";
 
 const FIELD = { x: 560, y: 250, w: 800, h: 520 };
 const CABINET = { x: FIELD.x - 70, y: FIELD.y - 140, w: FIELD.w + 140, h: FIELD.h + 230 };
@@ -54,7 +55,7 @@ export class ArcadeGame {
     g.strokeRoundedRect(FIELD.x - 14, FIELD.y - 14, FIELD.w + 28, FIELD.h + 28, 24);
     const title = scene.add.text(960, FIELD.y - 76, text.title, { fontFamily: fonts.display, fontSize: "46px", color: "#1d1830" }).setOrigin(0.5);
     this.scoreText = scene.add.text(FIELD.x + 20, FIELD.y + 16, "", { fontFamily: "Courier New, monospace", fontSize: "34px", fontStyle: "bold", color: "#7dffb2" });
-    this.hint = scene.add.text(960, FIELD.y + FIELD.h + 52, "", { fontFamily: fonts.display, fontSize: "30px", color: "#fbf5e6" }).setOrigin(0.5);
+    this.hint = keyArrows(scene.add.text(960, FIELD.y + FIELD.h + 52, "", { fontFamily: fonts.display, fontSize: "30px", color: "#fbf5e6" }).setOrigin(0.5));
     this.catcher = scene.add.image(960, FIELD.y + FIELD.h - 46, "arc-catcher");
     const scan = scene.add.tileSprite(FIELD.x, FIELD.y, FIELD.w, FIELD.h, "scanlines").setOrigin(0, 0).setAlpha(0.25);
     this.flash = scene.add.rectangle(FIELD.x, FIELD.y, FIELD.w, FIELD.h, 0xffffff, 0).setOrigin(0, 0);

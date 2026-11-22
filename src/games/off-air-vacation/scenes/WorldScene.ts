@@ -9,7 +9,7 @@ import type { VacationText } from "../text/pt-BR";
 import { ArcadeGame } from "../ui/arcade";
 import { DeckHud } from "../ui/deck";
 import { DialogBox } from "../ui/dialog";
-import { ResortHud } from "../ui/hud";
+import { ResortHud, liveTag, type VhsMode } from "../ui/hud";
 import { Journal, pinUi, type Tab } from "../ui/journal";
 import { PhoneJournal } from "../ui/phoneJournal";
 import { cartoonText, fitText } from "../../kit/ui";
@@ -116,8 +116,8 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private surfaces: ((x: number, y: number) => Surface | null)[] = [];
   private stepSide = 1;
   fx = {
-    vhs: (label: string, ms: number) => {
-      this.hud.vhsOn(true, label);
+    vhs: (mode: VhsMode, ms: number) => {
+      this.hud.vhsOn(true, mode);
       return this.wait(ms).then(() => this.hud.vhsOn(false));
     },
     flash: (alpha = 0.6) => {
@@ -133,6 +133,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     wait: (ms: number) => this.wait(ms),
     gull: (x: number, y: number, i: number) => this.flyGull(x, y, i),
     word: (text: string, x: number, y: number, color = "#fbf5e6") => this.word(text, x, y, color),
+    icon: (key: string, x: number, y: number) => this.wordIcon(key, x, y),
   };
   private tall: { img: Phaser.GameObjects.Image; x0: number; x1: number; y0: number; y1: number; alpha: number }[] = [];
 
@@ -207,7 +208,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     if (tall) this.placeMain();
     else this.cameras.main.setBounds(0, 0, this.w, this.h);
 
-    this.hud = tall ? new DeckHud(this, this.ctx.fonts, this.reduced, { ...this.text.touch, pause: this.text.hud.pause }, this.screen) : new ResortHud(this, this.ctx.fonts, this.reduced, this.text.hud.pause);
+    this.hud = tall ? new DeckHud(this, this.ctx.fonts, this.reduced, { ...this.text.touch, vhs: this.text.hud }, this.screen) : new ResortHud(this, this.ctx.fonts, this.reduced, this.text.hud);
     this.hud.enableTouch(TOUCH_UI);
     this.dialog = new DialogBox(this, this.ctx.fonts, this.reduced, () => this.sfx("select", 0.6), this.screen);
     this.journal = tall ? new PhoneJournal(this, this.ctx.fonts, this.reduced, this.text, this.screen) : new Journal(this, this.ctx.fonts, this.reduced, this.text);
@@ -236,7 +237,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.lastObjective = mainObjective(this.s, this.text).text;
       this.syncDeck(false);
       this.emitScore();
-      if (this.area === "beach" && this.s.flags.seaPaused && !this.s.flags.gotOrder) this.hud.vhsOn(true, this.text.hud.pause);
+      if (this.area === "beach" && this.s.flags.seaPaused && !this.s.flags.gotOrder) this.hud.vhsOn(true, "pause");
     }
     this.refresh();
     this.setupInput();
@@ -484,7 +485,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   }
 
   arrow(x: number, y: number, angle: number) {
-    const img = this.add.image(x, y, "arrow").setAngle(angle).setDepth(1.9).setScale(0.75).setAlpha(0);
+    const img = this.add.image(x, y, "ui-exit").setAngle(angle).setDepth(1.9).setDisplaySize(80, 80).setAlpha(0);
     this.arrows.push({ img, x, y, angle });
   }
 
@@ -981,7 +982,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       case "rewind": {
         this.sfx("pause", 0.8, 0.7);
-        this.hud.vhsOn(true, this.text.hud.rewind);
+        this.hud.vhsOn(true, "rewind");
         if (!this.reduced) this.cameras.main.shake(700, 0.002);
         await this.wait(1000);
         this.hud.vhsOn(false);
@@ -1003,7 +1004,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       case "pauseSea": {
         this.sfx("pause", 1);
         this.vars.seaPaused = true;
-        this.hud.vhsOn(true, this.text.hud.pause);
+        this.hud.vhsOn(true, "pause");
         (this.vars.paintNotch as (on: boolean) => void)?.(true);
         if (!this.reduced) this.cameras.main.shake(200, 0.003);
         this.s.flags.seaPaused = true;
@@ -1016,7 +1017,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
         const p = this.player;
         if (p && p.y < 700 && p.x > 1040 && p.x < 1460) await this.autoWalk(p.x, 740);
         this.sfx("play", 1);
-        this.hud.vhsOn(true, this.text.hud.play);
+        this.hud.vhsOn(true, "play");
         await this.wait(800);
         this.hud.vhsOn(false);
         this.vars.seaPaused = false;
@@ -1028,7 +1029,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       case "pauseFall": {
         this.sfx("pause", 1);
-        this.hud.vhsOn(true, this.text.hud.pause);
+        this.hud.vhsOn(true, "pause");
         const fall = this.vars.fall as Phaser.GameObjects.TileSprite;
         const scan = this.vars.fallScan as Phaser.GameObjects.TileSprite;
         this.s.flags.fallPaused = true;
@@ -1245,9 +1246,9 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const k = Math.min(138 / (src.height - padB - padT), 250 / src.width);
       const face = this.add.image(0, 84, key).setOrigin(0.5, 1 - padB / src.height).setScale(k);
       const tag = this.add.text(-136, -78, label, { fontFamily: this.ctx.fonts.display, fontSize: "20px", color: "#1d1830" });
-      const live = this.add.text(136, -78, this.text.world.live, { fontFamily: this.ctx.fonts.display, fontSize: "18px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 5 }).setOrigin(1, 0);
+      const [dot, live] = liveTag(this, this.ctx.fonts.display, this.text.world.live, 136, -78);
       const scan = this.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
-      const cont = this.add.container(x, y, [bg, face, tag, live, scan]).setDepth(2.5);
+      const cont = this.add.container(x, y, [bg, face, tag, dot, live, scan]).setDepth(2.5);
       cont.setData("id", id);
       cont.setData("live", live);
       if (!this.reduced) cont.setAlpha(0);
@@ -1258,13 +1259,21 @@ export class WorldScene extends Phaser.Scene implements Builder {
   }
 
   private word(text: string, x: number, y: number, color: string) {
-    const t = cartoonText(this, x, y, text, { size: 44, color, font: this.ctx.fonts.display, stroke: 0.22 }).setOrigin(0.5).setDepth(5900);
+    this.pop(cartoonText(this, x, y, text, { size: 44, color, font: this.ctx.fonts.display, stroke: 0.22 }).setOrigin(0.5).setDepth(5900), y);
+  }
+
+  private wordIcon(key: string, x: number, y: number) {
+    this.pop(this.add.image(x, y, key).setDepth(5900).setDisplaySize(54, 54), y);
+  }
+
+  private pop(t: Phaser.GameObjects.Text | Phaser.GameObjects.Image, y: number) {
     if (this.reduced) {
       this.time.delayedCall(800, () => t.destroy());
       return;
     }
-    t.setScale(0.3);
-    this.tweens.add({ targets: t, scale: 1, duration: 180, ease: "Back.easeOut" });
+    const k = t.scale;
+    t.setScale(0.3 * k);
+    this.tweens.add({ targets: t, scale: k, duration: 180, ease: "Back.easeOut" });
     this.tweens.add({ targets: t, y: y - 50, alpha: 0, delay: 700, duration: 400, onComplete: () => t.destroy() });
   }
 

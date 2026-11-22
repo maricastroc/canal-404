@@ -222,8 +222,8 @@ export const NIGHT_COPY = localized<NightCopy>({
     hintsUsed: (n) => (n === 1 ? "1 dica usada" : `${n} dicas usadas`),
     speaker: "Bruno",
     names: { dad: "Pai", grandma: "Vó", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
-    view: { house: "👁 Ver a casa toda (V)", back: "↩ Voltar para o Bruno (V)" },
-    touch: { house: "👁 Ver a casa", back: "↩ Voltar ao Bruno", rules: "Regras", plan: "Plano", goal: "Objetivo" },
+    view: { house: "Ver a casa toda (V)", back: "Voltar para o Bruno (V)" },
+    touch: { house: "Ver a casa", back: "Voltar ao Bruno", rules: "Regras", plan: "Plano", goal: "Objetivo" },
     status: {
       toss: (n) => (n === 1 ? "vai virar!" : `vira em ${n}`),
       sleepsIn: (n) => `dorme em ${n}`,
@@ -464,8 +464,8 @@ export const NIGHT_COPY = localized<NightCopy>({
     hintsUsed: (n) => (n === 1 ? "1 hint used" : `${n} hints used`),
     speaker: "Bruno",
     names: { dad: "Dad", grandma: "Grandma", dog: "Pipoca", cat: "Pixel", bruno: "Bruno" },
-    view: { house: "👁 See the whole house (V)", back: "↩ Back to Bruno (V)" },
-    touch: { house: "👁 See the house", back: "↩ Back to Bruno", rules: "Rules", plan: "Plan", goal: "Goal" },
+    view: { house: "See the whole house (V)", back: "Back to Bruno (V)" },
+    touch: { house: "See the house", back: "Back to Bruno", rules: "Rules", plan: "Plan", goal: "Goal" },
     status: {
       toss: (n) => (n === 1 ? "rolling over!" : `rolls in ${n}`),
       sleepsIn: (n) => `asleep in ${n}`,
