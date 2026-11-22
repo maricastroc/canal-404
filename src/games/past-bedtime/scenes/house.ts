@@ -46,9 +46,10 @@ export function hideStyleFor(levelId: string): HideStyle {
   return levelId === "sofa" ? "plant" : "curtain";
 }
 
-export function drawHides(back: Phaser.GameObjects.Graphics, front: Phaser.GameObjects.Graphics, grid: Grid, layout: Layout, style: HideStyle) {
+export function drawHides(back: Phaser.GameObjects.Graphics, front: Phaser.GameObjects.Graphics, grid: Grid, layout: Layout, style: HideStyle, row?: number) {
   const s = layout.tile;
   for (let y = 0; y < grid.h; y += 1) {
+    if (row !== undefined && y !== row) continue;
     for (let x = 0; x < grid.w; x += 1) {
       if (grid.tiles[y * grid.w + x] !== "h") continue;
       const px = layout.ox + x * s;

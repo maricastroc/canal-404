@@ -206,8 +206,11 @@ export class NightScene extends Phaser.Scene {
     this.artHides = false;
     const charArt = this.bridge.art === "final";
     const props = this.useArt ? this.buildArtHouse(decor, theme) : this.buildDraftHouse(decor, theme);
-    const hideFront = this.add.graphics().setDepth(35);
-    if (!this.artHides) drawHides(props, hideFront, grid, L, hideStyleFor(level.id));
+    if (!this.artHides) {
+      const rows = new Set<number>();
+      for (let i = 0; i < grid.tiles.length; i += 1) if (grid.tiles[i] === "h") rows.add(Math.floor(i / grid.w));
+      for (const row of rows) drawHides(props, this.add.graphics().setDepth(this.hideDepth(row)), grid, L, hideStyleFor(level.id), row);
+    }
     this.lighting = new NightLighting(this, L, decor.lights, decor.darkness, decor.lamps);
     const marks = this.add.graphics().setDepth(7);
     drawCreakMarks(marks, grid, L);
@@ -359,7 +362,7 @@ export class NightScene extends Phaser.Scene {
         for (let x = 0; x < grid.w; x += 1) {
           if (grid.tiles[y * grid.w + x] !== "h") continue;
           placeArt(this, `hide-${hide}-back`, L, x, y, 3);
-          placeArt(this, `hide-${hide}-front`, L, x, y, 35);
+          placeArt(this, `hide-${hide}-front`, L, x, y, this.hideDepth(y));
         }
       }
       this.artHides = true;
@@ -1434,8 +1437,9 @@ export class NightScene extends Phaser.Scene {
       g.fillStyle(NIGHT.ink, 1);
     };
     if (a === "wait") {
-      this.notebook.note(this.copy.notes.hintWait, "info");
-      this.fleeting = this.copy.notes.hintWait;
+      const text = this.copy.notes.hintWait(this.waitsAhead(st, solution.turns));
+      this.notebook.note(text, "info");
+      this.fleeting = text;
       const cx = c.x + s * 0.46;
       const cy = c.y - s * 0.62;
       badge(cx, cy);
@@ -1457,6 +1461,18 @@ export class NightScene extends Phaser.Scene {
       y: cy + (px * Math.sin(ang) + py * Math.cos(ang)) * r,
     }));
     g.fillPoints(shape, true);
+  }
+
+  private waitsAhead(st: State, best: number) {
+    let waits = 0;
+    let cur = st;
+    for (let left = best; left > 1; left -= 1) {
+      const next = step(this.sim, cur, "wait");
+      if (!next || next.state.status !== "playing" || (solve(this.sim, next.state)?.turns ?? Infinity) + 1 !== left) break;
+      waits += 1;
+      cur = next.state;
+    }
+    return Math.max(waits, 1);
   }
 
   private calmestStep(st: State, best: number): Action | null {
@@ -1720,11 +1736,18 @@ export class NightScene extends Phaser.Scene {
     return { x: cam.x + (b.x - v.x) * cam.zoom, y: cam.y + (b.y - v.y) * cam.zoom, w: b.w * cam.zoom, h: b.h * cam.zoom };
   }
 
-  private sortActors() {
+  private depthAt(y: number) {
     const b = this.layout.board;
-    const depthAt = (y: number) => 31 + 2.9 * Phaser.Math.Clamp((y - b.y) / b.h, 0, 1);
-    for (const a of this.agents) a.view.container.setDepth(depthAt(a.view.container.y + (a.lift ?? 0)));
-    this.bruno.container.setDepth(depthAt(this.bruno.container.y) + 0.01);
+    return 31 + 2.9 * Phaser.Math.Clamp((y - b.y) / b.h, 0, 1);
+  }
+
+  private hideDepth(row: number) {
+    return this.depthAt(tileCenter(this.layout, 0, row).y + this.layout.tile * 0.5) - 0.005;
+  }
+
+  private sortActors() {
+    for (const a of this.agents) a.view.container.setDepth(this.depthAt(a.view.container.y + (a.lift ?? 0)));
+    this.bruno.container.setDepth(this.depthAt(this.bruno.container.y) + 0.01);
   }
 
   update() {
