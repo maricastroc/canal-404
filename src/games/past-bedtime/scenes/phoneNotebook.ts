@@ -344,8 +344,8 @@ export class PhoneNotebook implements NotebookView {
     this.cardBox = { w, h };
     this.cardBg = this.scene.add.graphics();
     const pad = this.px(12);
-    this.cardText = this.text(pad - w / 2, 0, "", 16, PENCIL, "hand").setWordWrapWidth(w - pad * 2).setLineSpacing(-this.px(1));
-    this.cardSub = this.text(pad - w / 2, 0, "", 13.5, PENCIL_SOFT, "hand").setWordWrapWidth(w - pad * 2);
+    this.cardText = this.text(pad - w / 2, 0, "", 14.5, PENCIL).setWordWrapWidth(w - pad * 2).setLineSpacing(-this.px(1));
+    this.cardSub = this.text(pad - w / 2, 0, "", 12.5, PENCIL_SOFT).setWordWrapWidth(w - pad * 2);
     this.card = this.keep(this.scene.add.container(n.x + w / 2, n.y + h / 2, [this.cardBg, this.cardText, this.cardSub]).setAngle(this.band ? -1.2 : -0.7));
     this.paintCard(NOTE);
   }
@@ -390,9 +390,9 @@ export class PhoneNotebook implements NotebookView {
     this.cardSub.setWordWrapWidth(wrap).setText(sub);
     const padY = this.px(this.compact ? 5 : 6);
     const room = this.band ? h - this.px(14) : this.hud.note.h - padY * 2;
-    for (let size = this.band ? 16 : 16.5; size >= 12.5; size -= 0.5) {
+    for (let size = this.band ? 14 : 14.5; size >= 11.5; size -= 0.5) {
       this.cardText.setFontSize(Math.round(this.px(size)));
-      this.cardSub.setFontSize(Math.round(this.px(Math.max(12, size - 2.5))));
+      this.cardSub.setFontSize(Math.round(this.px(Math.max(11, size - 2))));
       if (this.cardText.height + (sub ? this.cardSub.height : 0) <= room) break;
     }
     const total = this.cardText.height + (sub ? this.cardSub.height : 0);
