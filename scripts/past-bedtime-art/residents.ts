@@ -148,7 +148,7 @@ function dogHead(x: number, y: number, pose: DogPose) {
     ${tongue}${eye}${ear}`;
 }
 
-const DOG_VB = "-58 -86 120 92";
+const DOG_VB = "-58 -100 140 110";
 
 function dogSide(pose: Exclude<DogPose, "sleep">) {
   const tilt = pose === "happy" ? -14 : pose === "sniff" ? 6 : 0;
