@@ -13,6 +13,8 @@ export type ObstacleView = { obstacle: Obstacle; index: number; lane: number; vi
 
 export type LipView = { x: number; surface: number; glow: Phaser.GameObjects.Graphics };
 
+export type SignView = { x: number; y: number; label: Phaser.GameObjects.Text; board: Phaser.GameObjects.Graphics };
+
 export type { Zone, ZoneKey } from "../sim/course";
 
 export const STREET = 132;
@@ -347,6 +349,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
   for (const zone of zones) decorateZone(b, zone, r, copy, track);
   drawBleachers(b);
 
+  const signs: SignView[] = [];
   for (const sign of track.signs) {
     const c = chunkFor(sign.x);
     const y = baseAt(sign.x) + 84;
@@ -362,6 +365,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
     g.fillRoundedRect(sign.x - w / 2 - 5, y - h / 2 - 5, w + 10, h + 10, 10);
     g.fillStyle(0xffe9a8, 1);
     g.fillRoundedRect(sign.x - w / 2, y - h / 2, w, h, 8);
+    signs.push({ x: sign.x, y, label, board: g });
   }
 
   drawStart(b, track, copy);
@@ -394,7 +398,7 @@ export function buildTerrain(scene: Phaser.Scene, layer: Phaser.GameObjects.Laye
     }
   });
 
-  return { chunks, obstacles, lips, zones, builder: b };
+  return { chunks, obstacles, lips, signs, zones, builder: b };
 }
 
 function drawStart(b: Builder, track: Course, copy: RaceCopy) {

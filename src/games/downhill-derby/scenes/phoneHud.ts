@@ -5,24 +5,30 @@ import type { RaceCopy } from "../copy";
 import type { Frame } from "../layout";
 import { INK } from "./cart";
 import type { PhoneDeck } from "./deck";
-import { formatTime, type HudButton, type HudData, type LineupEntry, type Pin, type RaceHud, type ShoutOptions, type ShowMeter } from "./hud";
+import { formatTime, type HudButton, type HudData, type LineupEntry, type Pin, type RaceHud, type ShoutOptions, type ShowMeter, type StandingRow } from "./hud";
 
 type Callout = { key: string; text: Phaser.GameObjects.Text; sub: Phaser.GameObjects.Text | null; life: number; max: number; priority: number; fade: number; rise: number };
 
 type PinView = { g: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; y: number; alpha: number };
 
+type Badge = { letter: Phaser.GameObjects.Text; gap: Phaser.GameObjects.Text };
+
 const F = 64;
-const ROW = { top: 8, h: 42, gap: 6, chip: 24, margin: 8, place: 84, time: 100 };
+const ROW = { top: 8, h: 42, gap: 6, sub: 21, margin: 8, place: 84, time: 100 };
+const DOCK = { margin: 8, pad: 8, text: 13.5, gap: 8 };
 const LEAVE = 0.08;
+const TAG_LIFE = 0.85;
 const CREAM = 0xfbf5e6;
 const PLUM = 0x2b2150;
 const PIN_COLORS: Record<Pin["kind"], number> = { jump: 0xffc83d, duck: 0x63d6c1, ramp: 0x93cf4c };
 const PIN_ICONS: Record<Pin["kind"], string> = { jump: "dd-ico-jump", duck: "dd-ico-crouch", ramp: "dd-ico-ramp" };
+const ON_CREAM: Record<string, string> = { "#7fe0c4": "#1d7a58", "#ff9a72": "#c2452d", "#ffcf3f": "#9a6a06", "#fbf5e6": "#3d3554" };
+const QUIET_TAGS = new Set(["lip", "near"]);
 
-function plate(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, fill: number, u: number, alpha = 1) {
+function plate(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, fill: number, u: number, alpha = 1, shadow = 1) {
   const r = Math.min(h / 2, 12 * u);
   g.fillStyle(INK, alpha);
-  g.fillRoundedRect(x + 2.4 * u, y + 3 * u, w, h, r);
+  g.fillRoundedRect(x + 2.4 * u * shadow, y + 3 * u * shadow, w, h, r);
   g.fillStyle(fill, alpha);
   g.fillRoundedRect(x, y, w, h, r);
   g.lineStyle(Math.max(3, 1.8 * u), INK, alpha);
@@ -41,37 +47,39 @@ export class PhoneHud implements RaceHud {
   private readonly timeLabel: Phaser.GameObjects.Text;
   private readonly timeText: Phaser.GameObjects.Text;
   private readonly markerTexts: Phaser.GameObjects.Text[] = [];
-  private readonly gapText: Phaser.GameObjects.Text;
-  private readonly gapLetter: Phaser.GameObjects.Text;
+  private readonly badges: Badge[] = [];
   private readonly showLabel: Phaser.GameObjects.Text;
   private readonly showTotal: Phaser.GameObjects.Text;
   private readonly showSeq: Phaser.GameObjects.Text;
   private readonly showTrick: Phaser.GameObjects.Text;
   private readonly splitName: Phaser.GameObjects.Text;
   private readonly splitDelta: Phaser.GameObjects.Text;
-  private readonly edgeTexts: Phaser.GameObjects.Text[] = [];
-  private readonly boxBg: Phaser.GameObjects.Graphics;
+  private readonly dockBg: Phaser.GameObjects.Graphics;
   private readonly hintText: Phaser.GameObjects.Text;
   private readonly tipText: Phaser.GameObjects.Text;
   private readonly countText: Phaser.GameObjects.Text;
   private readonly pins: PinView[] = [];
   private frame!: Frame;
   private u = 1;
+  private k = 1;
   private placeBox = new Phaser.Geom.Rectangle();
   private timeBox = new Phaser.Geom.Rectangle();
   private trackBox = new Phaser.Geom.Rectangle();
-  private chipY = 0;
+  private headRect = new Phaser.Geom.Rectangle();
+  private subY = 0;
   private bottom = 0;
   private lineup: Phaser.GameObjects.Container | null = null;
   private lineupEntries: LineupEntry[] | null = null;
   private lineupAlpha = 0;
+  private lineupH = 0;
   private headline: Callout | null = null;
   private leaving: Callout[] = [];
   private tags: Callout[] = [];
   private anchor = { x: 0, y: 0 };
   private tipLife = 0;
   private hintAlpha = 1;
-  private touchOn = false;
+  private dockH = 0;
+  private inset = 0;
   private streakSeed = 7;
   private streakList: { x: number; y: number; len: number; speed: number }[] = [];
   private shownPlace = 0;
@@ -80,6 +88,7 @@ export class PhoneHud implements RaceHud {
   private shownWho = "";
   private shownMood = "";
   private splitLife = 0;
+  private splitColor = "#3d3554";
   private shownTotal = -1;
   private shownSeq = "";
   private seqAlpha = 0;
@@ -90,6 +99,7 @@ export class PhoneHud implements RaceHud {
   private meterActive = false;
   private meterTimer = 0;
   private started = false;
+  private rivalFlash = new Map<string, number>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -100,32 +110,30 @@ export class PhoneHud implements RaceHud {
     frame: Frame,
     private readonly deck: PhoneDeck,
   ) {
-    const display = (size: number, color = "#fbf5e6", stroke = 0) => ({ fontFamily: fonts.display, fontSize: `${size}px`, color, ...(stroke ? { stroke: "#1d1830", strokeThickness: stroke } : {}) });
-    const body = (size: number, color = "#1d1830") => ({ fontFamily: fonts.body, fontSize: `${size}px`, color, fontStyle: "700" });
+    const display = (color = "#fbf5e6", stroke = 0) => ({ fontFamily: fonts.display, fontSize: `${F}px`, color, ...(stroke ? { stroke: "#1d1830", strokeThickness: stroke } : {}) });
+    const body = (color = "#1d1830") => ({ fontFamily: fonts.body, fontSize: `${F}px`, color, fontStyle: "700" });
     this.streaks = this.add(scene.add.graphics());
     this.plates = this.add(scene.add.graphics());
     this.dynamic = this.add(scene.add.graphics());
     this.chips = this.add(scene.add.graphics());
     this.head = this.add(scene.add.image(0, 0, "deco-head-normal").setOrigin(0.5, 0.62));
-    this.placeText = this.add(scene.add.text(0, 0, "", display(F, "#1d1830")).setOrigin(0, 0.5));
-    this.ofText = this.add(scene.add.text(0, 0, "", body(F, "#6a6385")).setOrigin(0, 0.5));
-    this.timeLabel = this.add(scene.add.text(0, 0, copy.time.toUpperCase(), display(F, "#e8742a")).setOrigin(0.5, 0));
-    this.timeText = this.add(scene.add.text(0, 0, "0:00,00", display(F, "#1d1830")).setOrigin(0.5, 0.5));
-    for (let i = 0; i < 4; i += 1) this.markerTexts.push(this.add(scene.add.text(0, 0, "", display(F, "#1d1830")).setOrigin(0.5, 0.5)));
-    this.gapLetter = this.add(scene.add.text(0, 0, "", display(F, "#1d1830")).setOrigin(0.5, 0.5));
-    this.gapText = this.add(scene.add.text(0, 0, "", display(F, "#1d1830")).setOrigin(0, 0.5));
-    this.showLabel = this.add(scene.add.text(0, 0, copy.show.label.toUpperCase(), display(F, "#ffcf3f")).setOrigin(0, 0.5));
-    this.showTotal = this.add(scene.add.text(0, 0, "0", display(F)).setOrigin(1, 0.5));
-    this.showSeq = this.add(scene.add.text(0, 0, "", display(F, "#7fe0c4", 16)).setOrigin(1, 0).setAlpha(0));
-    this.showTrick = this.add(scene.add.text(0, 0, "", display(F, "#fbf5e6", 16)).setOrigin(1, 0).setAlpha(0));
-    this.splitName = this.add(scene.add.text(0, 0, "", body(F, "#cfc8e8")).setOrigin(1, 0.5).setAlpha(0));
-    this.splitDelta = this.add(scene.add.text(0, 0, "", display(F)).setOrigin(0, 0.5).setAlpha(0));
-    for (let i = 0; i < 3; i += 1) this.edgeTexts.push(this.add(scene.add.text(0, 0, "", display(F, "#1d1830")).setOrigin(0.5, 0.5).setVisible(false)));
+    this.placeText = this.add(scene.add.text(0, 0, "", display("#1d1830")).setOrigin(0, 0.5));
+    this.ofText = this.add(scene.add.text(0, 0, "", body("#6a6385")).setOrigin(0, 0.5));
+    this.timeLabel = this.add(scene.add.text(0, 0, copy.time.toUpperCase(), display("#e8742a")).setOrigin(0.5, 0));
+    this.timeText = this.add(scene.add.text(0, 0, "0:00,00", display("#1d1830")).setOrigin(0.5, 0.5));
+    this.splitName = this.add(scene.add.text(0, 0, "", body("#6a6385")).setOrigin(0, 0).setVisible(false));
+    this.splitDelta = this.add(scene.add.text(0, 0, "", display("#1d1830")).setOrigin(0, 0).setVisible(false));
+    for (let i = 0; i < 4; i += 1) this.markerTexts.push(this.add(scene.add.text(0, 0, "", display("#1d1830")).setOrigin(0.5, 0.5)));
+    for (let i = 0; i < 3; i += 1) this.badges.push({ letter: this.add(scene.add.text(0, 0, "", display("#1d1830")).setOrigin(0.5, 0.5)), gap: this.add(scene.add.text(0, 0, "", display()).setOrigin(0, 0.5)) });
+    this.showLabel = this.add(scene.add.text(0, 0, copy.show.label.toUpperCase(), display("#ffcf3f")).setOrigin(0, 0.5));
+    this.showTotal = this.add(scene.add.text(0, 0, "0", display()).setOrigin(1, 0.5));
+    this.showSeq = this.add(scene.add.text(0, 0, "", display("#7fe0c4", 16)).setOrigin(1, 0).setAlpha(0));
+    this.showTrick = this.add(scene.add.text(0, 0, "", display("#fbf5e6", 16)).setOrigin(1, 0).setAlpha(0));
     for (let i = 0; i < 2; i += 1) this.pins.push({ g: this.add(scene.add.graphics()), icon: this.add(scene.add.image(0, 0, "dd-ico-jump").setVisible(false)), y: 0, alpha: 0 });
-    this.boxBg = this.add(scene.add.graphics());
-    this.hintText = this.add(scene.add.text(0, 0, "", { ...body(F), align: "center" }).setOrigin(0.5, 0.5));
-    this.tipText = this.add(scene.add.text(0, 0, "", { ...body(F), align: "center" }).setOrigin(0.5, 0.5).setAlpha(0));
-    this.countText = this.add(scene.add.text(0, 0, "", display(170, "#ffcf3f", 20)).setOrigin(0.5));
+    this.dockBg = this.add(scene.add.graphics());
+    this.hintText = this.add(scene.add.text(0, 0, "", { ...body(), align: "center", lineSpacing: 6 }).setOrigin(0.5, 0.5));
+    this.tipText = this.add(scene.add.text(0, 0, "", { ...body(), align: "center", lineSpacing: 6 }).setOrigin(0.5, 0.5).setAlpha(0));
+    this.countText = this.add(scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: "170px", color: "#ffcf3f", stroke: "#1d1830", strokeThickness: 20 }).setOrigin(0.5));
     this.countText.setVisible(false);
     this.layout(frame);
   }
@@ -152,6 +160,14 @@ export class PhoneHud implements RaceHud {
     return this.bottom;
   }
 
+  get bottomInset() {
+    return this.inset;
+  }
+
+  private s(size: number) {
+    return (size * this.u * this.k) / F;
+  }
+
   layout(frame: Frame) {
     this.frame = frame;
     const u = frame.unit;
@@ -160,6 +176,7 @@ export class PhoneHud implements RaceHud {
     const right = frame.width - frame.safe.right - ROW.margin * u;
     const room = (right - left) / u;
     const k = Phaser.Math.Clamp(room / 374, 0.86, 1.12);
+    this.k = k;
     const top = frame.safe.top + ROW.top * u;
     const h = ROW.h * u * k;
     const placeW = ROW.place * u * k;
@@ -168,27 +185,27 @@ export class PhoneHud implements RaceHud {
     this.placeBox.setTo(left, top, placeW, h);
     this.timeBox.setTo(right - timeW, top, timeW, h);
     this.trackBox.setTo(left + placeW + gap, top, right - timeW - gap - (left + placeW + gap), h);
-    this.chipY = top + h + gap;
-    this.bottom = this.chipY + ROW.chip * u * k + gap;
-    const s = (size: number) => (size * u * k) / F;
+    this.subY = top + h + gap;
+    this.bottom = this.subY + ROW.sub * u * k + gap;
+    const s = (size: number) => this.s(size);
     this.head.setScale((34 * u * k) / 190).setPosition(left + 21 * u * k, top + h / 2 + 3 * u * k);
     this.placeText.setScale(s(25)).setData("base", s(25)).setPosition(left + 40 * u * k, top + h / 2 + 2 * u * k);
     this.ofText.setScale(s(11));
     this.timeLabel.setScale(s(9.5)).setPosition(this.timeBox.centerX, top + 4 * u * k);
     this.timeText.setScale(s(19)).setPosition(this.timeBox.centerX, top + h * 0.62);
+    this.splitDelta.setScale(s(10.5));
     for (const t of this.markerTexts) t.setScale(s(9));
-    this.gapLetter.setScale(s(10));
-    this.gapText.setScale(s(12.5));
-    this.showLabel.setScale(s(10));
-    this.showTotal.setScale(s(13.5));
-    this.showSeq.setScale(s(13));
-    this.showTrick.setScale(s(13.5));
-    this.splitName.setScale(s(11));
-    this.splitDelta.setScale(s(14));
-    for (const t of this.edgeTexts) t.setScale(s(11));
-    const wrap = (frame.view.w - 52 * u) / s(13);
-    this.hintText.setScale(s(13)).setWordWrapWidth(wrap);
-    this.tipText.setScale(s(13)).setWordWrapWidth(wrap);
+    for (const b of this.badges) {
+      b.letter.setScale(s(8.5));
+      b.gap.setScale(s(10.5));
+    }
+    this.showLabel.setScale(s(9));
+    this.showTotal.setScale(s(11.5)).setData("base", s(11.5));
+    this.showSeq.setScale(s(11.5));
+    this.showTrick.setScale(s(11.5));
+    const wrap = (frame.view.w - (DOCK.margin * 2 + DOCK.pad * 2 + 8) * u) / s(DOCK.text);
+    this.hintText.setScale(s(DOCK.text)).setWordWrapWidth(wrap);
+    this.tipText.setScale(s(DOCK.text)).setWordWrapWidth(wrap);
     this.countText.setScale(s(84) / (170 / F)).setData("base", s(84) / (170 / F));
     this.drawPlates();
     if (this.lineupEntries) this.showLineup(this.lineupEntries, this.lineupAlpha);
@@ -204,7 +221,6 @@ export class PhoneHud implements RaceHud {
   }
 
   setTouch(touch: boolean) {
-    this.touchOn = touch;
     this.hintText.setText(touch ? this.copy.hintTouch : this.copy.hint);
     this.hintAlpha = 1;
   }
@@ -227,7 +243,6 @@ export class PhoneHud implements RaceHud {
 
   update(dt: number, data: HudData) {
     const u = this.u;
-    const f = this.frame;
     this.started = data.started ?? true;
     this.timeText.setText(formatTime(data.time, this.locale));
     this.deck.setSpeed(dt, data.speed, data.tier, data.trend);
@@ -247,9 +262,7 @@ export class PhoneHud implements RaceHud {
     }
     this.placeFlash = Math.max(0, this.placeFlash - dt * 1.6);
     const pop = this.placeFlash > 0.75 ? 1 + (this.placeFlash - 0.75) * 1.2 : 1;
-    const base = this.placeText.getData("base") as number | undefined;
-    const ps = base ?? this.placeText.scaleX;
-    if (base === undefined) this.placeText.setData("base", ps);
+    const ps = this.placeText.getData("base") as number;
     this.placeText.setScale(ps * pop);
     this.ofText.setPosition(this.placeText.x + this.placeText.width * ps + 3 * u, this.placeBox.centerY + 4 * u).setVisible(this.placeText.x + this.placeText.width * ps + this.ofText.width * this.ofText.scaleX + 6 * u < this.placeBox.right);
     if (this.placeFlash > 0) {
@@ -264,13 +277,15 @@ export class PhoneHud implements RaceHud {
         this.head.setTexture(`${you.who}-head-${mood}`);
       }
     }
-    this.drawTrack(data);
-    this.drawGapChip(data, mine);
-    this.drawEdges(data);
-    this.drawPins(dt, data.pins ?? []);
-    this.updateBox(dt, data.showHint);
-    this.anchor = { x: Phaser.Math.Clamp(data.anchor.x, 70 * u, f.view.w - 70 * u), y: Phaser.Math.Clamp(data.anchor.y, this.bottom + 40 * u, f.view.h - 40 * u) };
     this.splitLife = Math.max(0, this.splitLife - dt);
+    this.drawTrack(data);
+    this.drawTimeLabel();
+    this.chips.clear();
+    this.drawRivals(dt, data.rows);
+    this.drawShow();
+    this.updateDock(dt, data.showHint);
+    this.drawPins(dt, data.pins ?? []);
+    this.anchor = { x: data.anchor.x, y: data.anchor.y };
     this.drawStreaks(dt, data.speed, data.reduced);
     this.updateCallouts(dt);
   }
@@ -322,96 +337,113 @@ export class PhoneHud implements RaceHud {
     }
   }
 
-  private drawGapChip(data: HudData, mine: number) {
-    const g = this.chips;
+  private drawTimeLabel() {
     const u = this.u;
-    g.clear();
-    const show = this.started && mine >= 0 && data.rows.length > 1;
-    const other = !show ? null : mine > 0 ? data.rows[mine - 1] : data.rows[1];
-    this.gapText.setVisible(!!other && !!other.gap);
-    this.gapLetter.setVisible(!!other && !!other.gap);
-    if (other && other.gap) {
-      const ahead = mine > 0;
-      this.gapText.setText(`${other.name.toUpperCase()} ${other.gap}`).setColor(ahead ? "#1d1830" : "#1d6b4f");
-      const h = ROW.chip * u * (this.placeBox.height / (ROW.h * u));
-      const x = this.placeBox.x;
-      const y = this.chipY;
-      const dot = h * 0.38;
-      const w = Math.min(this.trackBox.right - x, dot * 2 + 12 * u + this.gapText.width * this.gapText.scaleX + 10 * u);
-      plate(g, x, y, w, h, ahead ? 0xffe1cc : 0xd5f5ea, u);
-      g.fillStyle(INK, 1);
-      g.fillCircle(x + 6 * u + dot, y + h / 2, dot + 1.5 * u);
-      g.fillStyle(other.color, 1);
-      g.fillCircle(x + 6 * u + dot, y + h / 2, dot);
-      this.gapLetter.setText(other.name.charAt(0).toUpperCase()).setPosition(x + 6 * u + dot, y + h / 2 + 0.5 * u);
-      this.gapText.setPosition(x + 6 * u + dot * 2 + 6 * u, y + h / 2 + 1 * u);
-    }
-    if (this.splitLife > 0) {
-      const a = Math.min(1, this.splitLife * 2.5);
-      const h = ROW.chip * u * 0.9;
-      const w = this.splitName.width * this.splitName.scaleX + this.splitDelta.width * this.splitDelta.scaleX + 26 * u;
-      const cx = this.trackBox.centerX + (show ? 18 * u : 0);
-      const x = Phaser.Math.Clamp(cx - w / 2, this.trackBox.x, this.timeBox.right - w);
-      const y = this.chipY + 1 * u;
-      g.fillStyle(INK, 0.88 * a);
-      g.fillRoundedRect(x, y, w, h, h / 2);
-      this.splitName.setPosition(x + 10 * u + this.splitName.width * this.splitName.scaleX, y + h / 2).setAlpha(a);
-      this.splitDelta.setPosition(x + 16 * u + this.splitName.width * this.splitName.scaleX, y + h / 2 + 1 * u).setAlpha(a);
-    } else {
-      this.splitName.setAlpha(0);
-      this.splitDelta.setAlpha(0);
-    }
-    this.drawShow(g);
+    const box = this.timeBox;
+    const on = this.splitLife > 0;
+    this.timeLabel.setVisible(!on);
+    this.splitName.setVisible(on);
+    this.splitDelta.setVisible(on);
+    if (!on) return;
+    const room = box.width - 12 * u;
+    const name = this.splitName;
+    const delta = this.splitDelta;
+    const dw = delta.width * delta.scaleX;
+    name.setScale(this.s(8.5));
+    const nameRoom = room - dw - 4 * u;
+    if (name.width * name.scaleX > nameRoom) name.setScale(Math.max(this.s(6.5), nameRoom / Math.max(1, name.width)));
+    const nw = Math.min(name.width * name.scaleX, Math.max(0, nameRoom));
+    name.setCrop(0, 0, nw / name.scaleX, name.height);
+    const total = nw + (nw > 0 ? 4 * u : 0) + dw;
+    const x = box.centerX - total / 2;
+    const top = box.y + 3.5 * u * this.k;
+    const pop = this.splitLife > 2.75 ? 1.12 : 1;
+    delta.setPosition(x + nw + (nw > 0 ? 4 * u : 0), top).setScale(this.s(10.5) * pop).setColor(this.splitColor);
+    name.setPosition(x, top + (delta.height * this.s(10.5) - name.height * name.scaleY) / 2);
+    const a = Math.min(1, this.splitLife * 2.5);
+    name.setAlpha(a);
+    delta.setAlpha(a);
   }
 
-  private drawShow(g: Phaser.GameObjects.Graphics) {
+  private drawRivals(dt: number, rows: StandingRow[]) {
+    const g = this.chips;
     const u = this.u;
-    const on = this.shownTotal > 0 || this.meterActive;
-    this.showOn += ((on ? 1 : 0) - this.showOn) * 0.2;
+    const k = this.k;
+    const list = rows.filter((r) => !r.you);
+    const show = this.started && list.length > 0;
+    const h = ROW.sub * u * k;
+    const y = this.subY;
+    const pad = 4 * u * k;
+    const dot = 7.5 * u * k;
+    let x = this.placeBox.x + pad;
+    const items: { row: StandingRow; x: number; w: number }[] = [];
+    this.badges.forEach((b, i) => {
+      const row = list[i];
+      const on = show && !!row;
+      b.letter.setVisible(on);
+      b.gap.setVisible(on);
+      if (!on || !row) return;
+      const gap = row.gap.replace(/\s*s$/, "");
+      b.gap.setText(gap || "·").setColor(gap.startsWith("−") ? "#ffc29a" : "#8ff0d2");
+      const w = dot * 2 + 3 * u * k + b.gap.width * b.gap.scaleX + 6 * u * k;
+      items.push({ row, x, w });
+      x += w + 2 * u * k;
+    });
+    if (!items.length) return;
+    const last = items[items.length - 1];
+    const plateW = last.x + last.w + pad - this.placeBox.x;
+    plate(g, this.placeBox.x, y, plateW, h, PLUM, u, 0.92, 0.6);
+    items.forEach((it, i) => {
+      const b = this.badges[i];
+      const cy = y + h / 2;
+      const prev = this.rivalFlash.get(it.row.who) ?? 0;
+      const flash = Math.max(prev - dt * 1.5, it.row.flash);
+      this.rivalFlash.set(it.row.who, flash);
+      if (flash > 0) {
+        g.fillStyle(it.row.color, 0.45 * flash);
+        g.fillRoundedRect(it.x - 1 * u, y + 2 * u, it.w + 2 * u, h - 4 * u, (h - 4 * u) / 2);
+      }
+      const dx = it.x + 2 * u * k + dot;
+      g.fillStyle(INK, 1);
+      g.fillCircle(dx, cy, dot + 1.4 * u);
+      g.fillStyle(it.row.color, 1);
+      g.fillCircle(dx, cy, dot);
+      b.letter.setText(it.row.name.charAt(0).toUpperCase()).setPosition(dx, cy + 0.5 * u);
+      b.gap.setPosition(dx + dot + 3 * u * k, cy + 1 * u);
+    });
+  }
+
+  private drawShow() {
+    const g = this.chips;
+    const u = this.u;
+    const k = this.k;
+    const chip = this.shownTotal > 0;
+    this.showOn += ((chip ? 1 : 0) - this.showOn) * 0.2;
     const a = this.showOn;
     this.showLabel.setAlpha(a);
     this.showTotal.setAlpha(a);
-    if (a < 0.02) return;
-    const h = ROW.chip * u * (this.placeBox.height / (ROW.h * u));
-    const w = Math.max(this.timeBox.width, this.showLabel.width * this.showLabel.scaleX + this.showTotal.width * this.showTotal.scaleX + 22 * u);
-    const x = this.timeBox.right - w;
-    const y = this.chipY;
-    plate(g, x, y, w, h, PLUM, u, a);
-    this.showLabel.setPosition(x + 8 * u, y + h / 2 + 1 * u);
-    this.showTotal.setPosition(x + w - 8 * u, y + h / 2 + 1 * u);
-    if (this.seqAlpha > 0.02 && this.meterActive) {
-      const bw = w - 16 * u;
-      g.fillStyle(0x3a3358, this.seqAlpha);
-      g.fillRoundedRect(x + 8 * u, y + h - 6 * u, bw, 3 * u, 1.5 * u);
-      g.fillStyle(this.meterTimer > 0.3 ? 0x7fe0c4 : 0xffcf3f, this.seqAlpha);
-      g.fillRoundedRect(x + 8 * u, y + h - 6 * u, Math.max(3 * u, bw * Math.min(1, this.meterTimer)), 3 * u, 1.5 * u);
+    const h = ROW.sub * u * k;
+    const y = this.subY;
+    const right = this.timeBox.right;
+    let lineY = y + h / 2 - this.showSeq.height * this.showSeq.scaleY * 0.5;
+    if (a > 0.02) {
+      const w = Math.max(this.timeBox.width * 0.82, this.showLabel.width * this.showLabel.scaleX + this.showTotal.width * this.showTotal.scaleX + 18 * u);
+      const x = right - w;
+      plate(g, x, y, w, h, PLUM, u, 0.92 * a, 0.6);
+      this.showLabel.setPosition(x + 7 * u, y + h / 2 + 1 * u);
+      this.showTotal.setPosition(x + w - 7 * u, y + h / 2 + 1 * u);
+      lineY = y + h * a + 3 * u;
     }
-    this.showSeq.setPosition(this.timeBox.right - 2 * u + (this.seqDrop > 0 ? Math.sin(this.seqDrop * 60) * 3 * u : 0), y + h + 3 * u);
-    this.showTrick.setPosition(this.timeBox.right - 2 * u, y + h + 3 * u);
-  }
-
-  private drawEdges(data: HudData) {
-    const g = this.chips;
-    const u = this.u;
-    const f = this.frame;
-    for (let i = 0; i < this.edgeTexts.length; i += 1) {
-      const e = data.edges[i];
-      const t = this.edgeTexts[i];
-      t.setVisible(!!e);
-      if (!e) continue;
-      t.setText(e.text);
-      const w = t.width * t.scaleX + 26 * u;
-      const h = 22 * u;
-      const x = e.side === "right" ? f.view.w - 6 * u - w / 2 : 6 * u + w / 2;
-      t.setPosition(x + (e.side === "right" ? -4 * u : 4 * u), e.y + 0.5 * u);
-      g.fillStyle(INK, 0.9);
-      g.fillRoundedRect(x - w / 2 - 2 * u, e.y - h / 2 - 2 * u, w + 4 * u, h + 4 * u, h / 2 + 2 * u);
-      g.fillStyle(e.color, 1);
-      g.fillRoundedRect(x - w / 2, e.y - h / 2, w, h, h / 2);
-      g.fillStyle(INK, 1);
-      const s = 5 * u;
-      if (e.side === "right") g.fillTriangle(x + w / 2 - 12 * u, e.y - s, x + w / 2 - 12 * u, e.y + s, x + w / 2 - 5 * u, e.y);
-      else g.fillTriangle(x - w / 2 + 12 * u, e.y - s, x - w / 2 + 12 * u, e.y + s, x - w / 2 + 5 * u, e.y);
+    const seqY = lineY;
+    this.showSeq.setPosition(right - 2 * u + (this.seqDrop > 0 ? Math.sin(this.seqDrop * 60) * 3 * u : 0), seqY);
+    this.showTrick.setPosition(right - 2 * u, seqY);
+    if (this.seqAlpha > 0.02 && this.meterActive && this.trickLife <= 0) {
+      const bw = Math.max(40 * u, this.showSeq.width * this.showSeq.scaleX);
+      const by = seqY + this.showSeq.height * this.showSeq.scaleY - 2 * u;
+      g.fillStyle(0x1d1830, 0.7 * this.seqAlpha);
+      g.fillRoundedRect(right - 2 * u - bw, by, bw, 4 * u, 2 * u);
+      g.fillStyle(this.meterTimer > 0.3 ? 0x7fe0c4 : 0xffcf3f, this.seqAlpha);
+      g.fillRoundedRect(right - 2 * u - bw, by, Math.max(4 * u, bw * Math.min(1, this.meterTimer)), 4 * u, 2 * u);
     }
   }
 
@@ -431,7 +463,7 @@ export class PhoneHud implements RaceHud {
       const r = 15 * u;
       const slide = (1 - Math.min(1, view.alpha * 1.4)) * 30 * u;
       const x = f.view.w - 8 * u - r + slide;
-      const y = Phaser.Math.Clamp(view.y, this.bottom + r + 4 * u, f.view.h - r - 8 * u);
+      const y = Phaser.Math.Clamp(view.y, this.bottom + r + 4 * u, f.view.h - this.inset - r - 8 * u);
       const kind = pin?.kind ?? "jump";
       const color = PIN_COLORS[kind];
       const near = pin?.near ?? 1;
@@ -449,7 +481,7 @@ export class PhoneHud implements RaceHud {
     });
   }
 
-  private updateBox(dt: number, showHint: boolean) {
+  private updateDock(dt: number, showHint: boolean) {
     const u = this.u;
     const f = this.frame;
     if (!showHint && this.hintAlpha > 0) this.hintAlpha = Math.max(0, this.hintAlpha - dt * 0.8);
@@ -460,17 +492,27 @@ export class PhoneHud implements RaceHud {
     this.tipText.setAlpha(tipAlpha);
     const box = tipAlpha > 0 ? this.tipText : this.hintText;
     const alpha = Math.max(tipAlpha, hintAlpha);
-    const bg = this.boxBg;
+    const bg = this.dockBg;
     bg.clear();
+    const textH = box.height * box.scaleY;
+    const target = alpha > 0.01 ? textH + DOCK.pad * 2 * u : 0;
+    this.dockH += (target - this.dockH) * Math.min(1, dt * 12);
+    const lineupInset = this.lineup ? (this.lineupH + 10 * u) * this.lineupAlpha : 0;
+    const dockInset = alpha > 0.01 ? (target + DOCK.gap * u) * alpha : 0;
+    this.inset = Math.max(lineupInset, dockInset);
     if (alpha <= 0.01) return;
-    const w = Math.min(f.view.w - 20 * u, box.width * box.scaleX + 28 * u);
-    const h = box.height * box.scaleY + 14 * u;
-    const y = f.view.h - 10 * u - h;
-    box.setPosition(f.view.w / 2, y + h / 2);
-    bg.fillStyle(CREAM, 0.94 * alpha);
-    bg.fillRoundedRect(f.view.w / 2 - w / 2, y, w, h, Math.min(h / 2, 14 * u));
+    const h = target;
+    const w = f.view.w - DOCK.margin * 2 * u;
+    const x = DOCK.margin * u;
+    const y = f.view.h - DOCK.margin * u - h;
+    box.setPosition(f.view.w / 2, y + h / 2 + 1 * u);
+    const r = Math.min(h / 2, 14 * u);
+    bg.fillStyle(INK, 0.9 * alpha);
+    bg.fillRoundedRect(x + 2 * u, y + 2.5 * u, w, h, r);
+    bg.fillStyle(CREAM, 0.97 * alpha);
+    bg.fillRoundedRect(x, y, w, h, r);
     bg.lineStyle(Math.max(2, 1.6 * u), INK, alpha);
-    bg.strokeRoundedRect(f.view.w / 2 - w / 2, y, w, h, Math.min(h / 2, 14 * u));
+    bg.strokeRoundedRect(x, y, w, h, r);
   }
 
   showMeter(dt: number, m: ShowMeter) {
@@ -483,7 +525,7 @@ export class PhoneHud implements RaceHud {
     this.meterActive = m.active;
     this.meterTimer = m.timer;
     this.totalPop = Math.max(0, this.totalPop - dt * 2.4);
-    const base = (13.5 * this.u * (this.placeBox.height / (ROW.h * this.u))) / F;
+    const base = this.showTotal.getData("base") as number;
     this.showTotal.setScale(base * (1 + this.totalPop * 0.3)).setColor(this.totalPop > 0.05 ? "#ffcf3f" : "#fbf5e6");
     const seqText = m.active ? `+${formatNumber(Math.round(m.seq), this.locale)} ×${m.mult}` : this.shownSeq;
     if (m.active && seqText !== this.shownSeq) {
@@ -501,12 +543,15 @@ export class PhoneHud implements RaceHud {
 
   split(name: string, value: string, color: string) {
     this.splitName.setText(name.toUpperCase());
-    this.splitDelta.setText(value).setColor(color);
+    this.splitDelta.setText(value);
+    this.splitColor = ON_CREAM[color] ?? "#3d3554";
     this.splitLife = 3;
   }
 
   showTrickText(text: string, color = "#fbf5e6") {
     this.showTrick.setText(text).setColor(color);
+    const room = this.frame.view.w * 0.62;
+    this.showTrick.setScale(Math.min(this.s(11.5), room / Math.max(1, this.showTrick.width)));
     this.trickLife = 1.1;
   }
 
@@ -520,13 +565,19 @@ export class PhoneHud implements RaceHud {
     this.showTrickText(text, "#ff9a72");
   }
 
+  private usableBottom() {
+    return this.frame.view.h - this.inset;
+  }
+
   private headlineY() {
-    return this.bottom + (this.frame.view.h - this.bottom) * 0.2;
+    return this.bottom + (this.usableBottom() - this.bottom) * 0.2;
   }
 
   private updateCallouts(dt: number) {
     const u = this.u;
+    const f = this.frame;
     const h = this.headline;
+    this.headRect.setEmpty();
     if (h) {
       h.life -= dt;
       const k = 1 - h.life / h.max;
@@ -535,9 +586,14 @@ export class PhoneHud implements RaceHud {
       const base = h.text.getData("base") as number;
       h.text.setScale(base * pop).setAlpha(alpha);
       h.sub?.setAlpha(alpha);
+      const hw = (h.text.width * base) / 2;
+      const top = h.text.y - (h.text.height * base) / 2;
+      const bottom = h.sub ? h.sub.y + h.sub.height * h.sub.scaleY : h.text.y + (h.text.height * base) / 2;
+      this.headRect.setTo(f.view.w / 2 - hw, top, hw * 2, bottom - top);
       if (h.life <= 0) {
         this.drop(h);
         this.headline = null;
+        this.headRect.setEmpty();
       }
     }
     for (let i = this.leaving.length - 1; i >= 0; i -= 1) {
@@ -564,11 +620,20 @@ export class PhoneHud implements RaceHud {
         this.tags.splice(i, 1);
         continue;
       }
-      t.rise += dt * 20 * u;
+      t.rise += dt * 18 * u;
       const k = 1 - t.life / t.max;
       const base = t.text.getData("base") as number;
-      t.text.setScale(base * (k < 0.1 ? 0.6 + k * 4 : 1)).setAlpha(Math.min(1, t.life / 0.25));
-      t.text.setPosition(this.anchor.x, this.anchor.y - i * 20 * u - t.rise);
+      const scale = base * (k < 0.1 ? 0.6 + k * 4 : 1);
+      t.text.setScale(scale).setAlpha(Math.min(1, t.life / 0.22));
+      const half = (t.text.width * base) / 2 + 6 * u;
+      const th = t.text.height * base;
+      const x = Phaser.Math.Clamp(this.anchor.x, half, f.view.w - half);
+      let y = Phaser.Math.Clamp(this.anchor.y - t.rise, this.bottom + th + 4 * u, this.usableBottom() - 6 * u);
+      if (!this.headRect.isEmpty() && x + half > this.headRect.x && x - half < this.headRect.right && y > this.headRect.y - 4 * u && y - th < this.headRect.bottom + 4 * u) {
+        const below = this.headRect.bottom + th + 6 * u;
+        y = below <= this.usableBottom() - 6 * u ? below : this.headRect.y - 6 * u;
+      }
+      t.text.setPosition(x, y);
     }
   }
 
@@ -595,6 +660,7 @@ export class PhoneHud implements RaceHud {
       cur.fade = LEAVE;
       this.leaving.push(cur);
     }
+    for (const t of this.tags) t.life = Math.min(t.life, 0.2);
     const size = opts.size ?? 60;
     const u = this.u;
     const f = this.frame;
@@ -604,8 +670,9 @@ export class PhoneHud implements RaceHud {
     this.fitHeadline(text0, size);
     let sub: Phaser.GameObjects.Text | null = null;
     if (opts.sub) {
-      sub = this.scene.add.text(f.view.w / 2, y + (size * 0.5 * u) * 0.55 + 12 * u, opts.sub, { fontFamily: this.fonts.body, fontSize: `${F}px`, color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 16, fontStyle: "700", align: "center", wordWrap: { width: (f.view.w - 40 * u) / ((14 * u) / F) } }).setOrigin(0.5, 0);
-      sub.setScale((14 * u) / F);
+      const subScale = this.s(14);
+      sub = this.scene.add.text(f.view.w / 2, y + (size * 0.5 * u) * 0.55 + 10 * u, opts.sub, { fontFamily: this.fonts.body, fontSize: `${F}px`, color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 16, fontStyle: "700", align: "center", wordWrap: { width: (f.view.w - 40 * u) / subScale } }).setOrigin(0.5, 0);
+      sub.setScale(subScale);
       this.layer.add(sub);
     }
     const life = opts.life ?? 1.15;
@@ -621,6 +688,7 @@ export class PhoneHud implements RaceHud {
   }
 
   tag(key: string, text: string, color: string) {
+    if (QUIET_TAGS.has(key)) return;
     const same = this.tags.find((q) => q.key === key);
     if (same) {
       same.text.setText(text);
@@ -628,16 +696,14 @@ export class PhoneHud implements RaceHud {
       same.rise = 0;
       return;
     }
+    for (const old of this.tags) this.drop(old);
+    this.tags = [];
     const u = this.u;
     const t = this.scene.add.text(this.anchor.x, this.anchor.y, text, { fontFamily: this.fonts.display, fontSize: `${F}px`, color, stroke: "#1d1830", strokeThickness: 15 }).setOrigin(0.5, 1);
-    const base = Math.min((16 * u) / F, (this.frame.view.w - 24 * u) / Math.max(1, t.width));
+    const base = Math.min(this.s(16), (this.frame.view.w - 24 * u) / Math.max(1, t.width));
     t.setData("base", base).setScale(base);
     this.layer.add(t);
-    this.tags.unshift({ key, text: t, sub: null, life: 0.95, max: 0.95, priority: 0, fade: 0, rise: 0 });
-    while (this.tags.length > 2) {
-      const last = this.tags.pop();
-      if (last) this.drop(last);
-    }
+    this.tags.push({ key, text: t, sub: null, life: TAG_LIFE, max: TAG_LIFE, priority: 0, fade: 0, rise: 0 });
   }
 
   tip(text: string, life = 2.8) {
@@ -682,7 +748,7 @@ export class PhoneHud implements RaceHud {
     this.countText.setVisible(text !== null);
     if (!text) return;
     const base = this.countText.getData("base") as number;
-    this.countText.setText(text).setPosition(this.frame.view.w / 2, this.bottom + (this.frame.view.h - this.bottom) * 0.26);
+    this.countText.setText(text).setPosition(this.frame.view.w / 2, this.bottom + (this.usableBottom() - this.bottom) * 0.3);
     const fit = Math.min(base, (this.frame.view.w - 30 * this.u) / Math.max(1, this.countText.width));
     this.countText.setScale(fit * 1.25);
     this.scene.tweens.killTweensOf(this.countText);
@@ -700,7 +766,9 @@ export class PhoneHud implements RaceHud {
     const cols = 2;
     const cw = (f.view.w - 16 * u - gap) / cols;
     const ch = 46 * u;
-    const y0 = f.view.h - 10 * u - ch * 2 - gap;
+    const rows = Math.ceil(entries.length / cols);
+    this.lineupH = rows * ch + (rows - 1) * gap;
+    const y0 = f.view.h - 10 * u - this.lineupH;
     entries.forEach((e, i) => {
       const x = 8 * u + (i % cols) * (cw + gap);
       const y = y0 + Math.floor(i / cols) * (ch + gap);
@@ -742,8 +810,6 @@ export class PhoneHud implements RaceHud {
     this.tags = [];
     this.tipLife = 0;
     this.splitLife = 0;
-    this.splitName.setAlpha(0);
-    this.splitDelta.setAlpha(0);
     this.trickLife = 0;
     this.showTrick.setAlpha(0);
     this.shownSeq = "";
@@ -751,5 +817,6 @@ export class PhoneHud implements RaceHud {
     this.showSeq.setAlpha(0);
     this.shownPlace = 0;
     this.placeFlash = 0;
+    this.rivalFlash.clear();
   }
 }
