@@ -28,6 +28,7 @@ import { PhoneHud } from "./phoneHud";
 import { portraitClamp, portraitSnap, portraitTarget, type PortraitHost } from "./portrait";
 import { Ambient } from "./ambient";
 import { ANTENA_FILES } from "./antena";
+import { paintSky, paintSun, SKIES } from "./sky";
 import { FEIRA_FILES } from "./feira";
 import { dressGaps } from "./props";
 import { SAMPLE_RES } from "./sample";
@@ -441,29 +442,11 @@ export class RaceScene extends Phaser.Scene {
       g.fillStyle(0x7d6bb8, 1);
       for (let x = 0; x < 1600; x += 400) g.fillCircle(x + 330, 210, 70);
     });
-    const dusk = this.track.id === "antena";
-    if (dusk) {
-      const sky = this.add.graphics();
-      const top = Phaser.Display.Color.ValueToColor(0x8f7ad8);
-      const bottom = Phaser.Display.Color.ValueToColor(0xffb48a);
-      for (let k = 0; k < 16; k += 1) {
-        const c = Phaser.Display.Color.Interpolate.ColorWithColor(top, bottom, 15, k);
-        sky.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1);
-        sky.fillRect(0, (k * H) / 16, W, H / 16 + 2);
-      }
-      this.bgLayer.add(sky);
-    }
-    const sun = this.add.graphics();
-    sun.fillStyle(dusk ? 0xff9a5c : 0xfff1a8, 1);
-    if (dusk) {
-      sun.fillStyle(0xffd2a0, 0.45);
-      sun.fillCircle(1380, 560, 170);
-      sun.fillStyle(0xff8a52, 1);
-      sun.fillCircle(1380, 560, 116);
-    } else if (this.track.id === "feira") sun.fillCircle(1120, 120, 96);
-    else sun.fillCircle(1500, 230, 90);
-    this.bgLayer.add(sun);
-    this.sun = sun;
+    const sky = SKIES[this.track.id];
+    const backdrop = paintSky(this, sky);
+    if (backdrop) this.bgLayer.add(backdrop);
+    this.sun = paintSun(this, sky.sun);
+    this.bgLayer.add(this.sun);
     const sample = true;
     this.sampleFadeX = Infinity;
     const layers: [string, number, number, number, number, number][] = [
@@ -478,7 +461,8 @@ export class RaceScene extends Phaser.Scene {
       if (fade === 1 && !sample) continue;
       const sprite = this.add.tileSprite(0, y, W, h, key).setOrigin(0, 0);
       if (key.startsWith("s-")) sprite.setTileScale(1 / SAMPLE_RES);
-      if (dusk) sprite.setTint(key === "dd-clouds" ? 0xffc6c0 : 0xffc9a8);
+      const tint = key === "dd-clouds" ? sky.clouds : sky.layers;
+      if (tint !== undefined) sprite.setTint(tint);
       this.bgLayer.add(sprite);
       this.parallax.push({ sprite, factor, y, drift, fade });
       if (key === "dd-mid") this.buildLandmarks();
@@ -618,9 +602,10 @@ export class RaceScene extends Phaser.Scene {
     const posts = this.add.tileSprite(0, H - 300, W, 300, "dd-fg-posts").setOrigin(0, 0).setAlpha(0.3);
     const grass = this.add.tileSprite(0, H - 96, W, 110, "dd-fg-grass").setOrigin(0, 0);
     this.fgLayer.add([posts, grass]);
-    if (this.track.id === "antena") {
-      grass.setTint(0xffd6b0);
-      this.fgTint = this.add.rectangle(0, 0, W, H, 0xff7a3d, 0.08).setOrigin(0, 0);
+    const sky = SKIES[this.track.id];
+    if (sky.grass !== undefined) grass.setTint(sky.grass);
+    if (sky.wash) {
+      this.fgTint = this.add.rectangle(0, 0, W, H, sky.wash.color, sky.wash.alpha).setOrigin(0, 0);
       this.fgLayer.add(this.fgTint);
     }
     this.fg.push({ sprite: posts, factor: 1.9 }, { sprite: grass, factor: 1.45 });
