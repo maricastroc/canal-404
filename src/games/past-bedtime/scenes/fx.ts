@@ -141,7 +141,8 @@ export function say(scene: Phaser.Scene, layout: Layout, fonts: Fonts, x: number
   else g.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
   if (tail) {
     g.fillStyle(fill, 1);
-    g.fillRect(Math.min(baseA.x, baseB.x) + 3, sideTail ? baseA.y + 2 : edgeY - (edgeY > 0 ? lw + 1 : -1), Math.abs(baseB.x - baseA.x) - 6 + (sideTail ? lw + 2 : 0), sideTail ? baseB.y - baseA.y - 4 : lw + 1);
+    if (sideTail) g.fillRect(Math.sign(tipX) * (w / 2) - lw / 2 - 1, baseA.y + 2, lw + 2, baseB.y - baseA.y - 4);
+    else g.fillRect(Math.min(baseA.x, baseB.x) + 3, edgeY - (edgeY > 0 ? lw + 1 : lw / 2 + 1), Math.abs(baseB.x - baseA.x) - 6, lw * 1.5 + 2);
     g.lineBetween(baseA.x, baseA.y, tip.x, tip.y);
     g.lineBetween(baseB.x, baseB.y, tip.x, tip.y);
   }

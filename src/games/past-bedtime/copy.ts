@@ -55,7 +55,7 @@ export type NightCopy = {
     knockSoon: string;
     knocked: string;
     hint: string;
-    hintWait: string;
+    hintWait: (turns: number) => string;
     noHint: string;
     undone: string;
     restarted: string;
@@ -283,7 +283,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       knockSoon: "O Pixel está de olho no próximo copo…",
       knocked: "Lá se foi mais um copo.",
       hint: "Dica: a próxima jogada está marcada em amarelo.",
-      hintWait: "Dica: espere uma jogada aqui.",
+      hintWait: (n) => (n === 1 ? "Dica: espere uma jogada aqui." : `Dica: espere ${n} jogadas aqui.`),
       noHint: "Sem saída por aqui. Melhor desfazer.",
       undone: "Risquei a última jogada.",
       restarted: "Folha nova, plano novo.",
@@ -524,7 +524,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       knockSoon: "Pixel is eyeing the next cup…",
       knocked: "And there goes another cup.",
       hint: "Hint: the next move is marked in yellow.",
-      hintWait: "Hint: wait one move right here.",
+      hintWait: (n) => (n === 1 ? "Hint: wait one move right here." : `Hint: wait ${n} moves right here.`),
       noHint: "No way out from here. Better undo.",
       undone: "Crossed out the last move.",
       restarted: "New page, new plan.",
