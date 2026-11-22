@@ -8,7 +8,7 @@ import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from 
 import { barAt, beatMsAt, type BandMember, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf } from "../song/songs";
 import { ART_FILES } from "./artManifest";
-import { FIGURE, FEET, JURY_ART } from "./figure";
+import { FIGURE, FEET, HOST_BOX, JURY_ART } from "./figure";
 import { layoutFor, type Layout, type Orientation } from "./layout";
 
 export type RunReport = { song: SongId; verdict: Verdict; replayed: Verdict | null; matches: boolean; log: TapLog };
@@ -215,7 +215,7 @@ export class StageScene extends Phaser.Scene {
 
   private buildHost() {
     const { x, y, scale } = this.L.host;
-    this.host = this.add.image(x, y, "host-wave").setOrigin(0.5, 298 / 304).setScale(scale / 2).setDepth(5);
+    this.host = this.add.image(x, y, "host-wave").setOrigin((100 - HOST_BOX.x) / HOST_BOX.w, (HOST_BOX.feet - HOST_BOX.y) / HOST_BOX.h).setScale(scale / 2).setDepth(5);
     this.bubbleBg = this.add.graphics();
     this.bubbleText = this.add.text(0, 0, "", this.font("display", this.L.text.bubble, "#1d1830")).setOrigin(0, 0.5);
     this.bubble = this.add.container(x + 70 * scale, y - 300 * scale, [this.bubbleBg, this.bubbleText]).setDepth(15).setVisible(false);
