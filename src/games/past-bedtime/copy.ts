@@ -36,11 +36,11 @@ export type NightCopy = {
     backToSleep: string;
     holdBreath: (who: Sleeper) => string;
     stirred: (who: Sleeper) => string;
-    stirCatch: (who: Sleeper) => string;
     seen: string;
     stripes: string;
     calm: string;
     clear: string;
+    trapped: string;
     tossed: string;
     tossSoon: string;
     peekSoon: string;
@@ -122,7 +122,7 @@ export const NIGHT_COPY = localized<NightCopy>({
           "O corredor está cheio de tábuas soltas, e o cuco canta a cada 3 jogadas.",
           "Nas tábuas ao seu lado: ♪ o cuco abafa, ~ o pai não ouve, ! o pai acorda.",
           "A plaquinha “vira em…” avisa quando o pai vai se virar e espiar a frente da porta.",
-          "Use Esperar para acertar o ritmo do cuco. Cada espera conta como jogada.",
+          "Esperar acerta o ritmo do cuco, mas gasta uma jogada.",
         ],
         story: "Esse corredor range que nem navio velho. E de vez em quando o pai vira na cama…",
       },
@@ -130,7 +130,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "A escada",
         goal: "Descer e chegar à porta da cozinha.",
         target: "cozinha",
-        intro: ["A Vó faz a ronda no pé da escada, indo e voltando.", "As pegadas mostram os próximos passos dela.", "A lanterna só ilumina para a frente. Ande quando a Vó estiver de costas."],
+        intro: ["A Vó faz a ronda no pé da escada, indo e voltando.", "As pegadas mostram os próximos passos dela.", "A lanterna só ilumina a frente. Vá pelas costas da Vó."],
         story: "A Vó levantou pra fazer chá. Justo no pé da escada.",
       },
       kitchen: {
@@ -140,7 +140,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "A Vó dá voltas na mesa, mas não faz sempre o mesmo caminho.",
           "Numa volta, ela confere o lado esquerdo da cozinha. Na outra, o direito.",
-          "O olho com “olha em…” mostra onde a Vó vai olhar e quantas jogadas faltam.",
+          "O olho “olha em…”: onde e quando a Vó vai olhar.",
         ],
         story: "A Vó tá fazendo ronda na cozinha. E toda volta ela confere um canto diferente.",
       },
@@ -151,7 +151,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "O corredor é estreito: não dá para passar pela Vó.",
           "A cortina esconde você da lanterna enquanto ela passa.",
-          "Olho vermelho? A Vó vai espiar atrás da cortina. Saia de lá antes.",
+          "Olho vermelho? A Vó vai espiar atrás da cortina. Saia!",
         ],
         story: "Corredor apertado, Vó vindo… e ela adora conferir a despensa.",
       },
@@ -163,7 +163,7 @@ export const NIGHT_COPY = localized<NightCopy>({
           "A Pipoca dorme bem na passagem. Duas esperas ao lado dela e ela acorda.",
           "Qualquer barulho faz a Pipoca correr até lá, farejar e voltar para a caminha.",
           "Acordada, ela te acha se vocês ficarem lado a lado.",
-          "Atraia a Pipoca com um barulho e passe enquanto ela fareja.",
+          "Atraia a Pipoca com barulho e passe enquanto ela fareja.",
         ],
         story: "A Pipoca dormiu na porta. Se me vir, vai querer brincar. Às três da manhã.",
       },
@@ -186,7 +186,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Quando o Pixel derruba alguma coisa, o pai acorda e olha para o barulho.",
           "A plaquinha “dorme em…” mostra quantas jogadas faltam para ele dormir de novo.",
-          "Quando o pai acordar, fique atrás das plantas: ali ele não te vê.",
+          "O pai acordou? Fique atrás das plantas: ali ele não te vê.",
         ],
         story: "O pai cochilou no sofá vendo o jogo. E o Pixel está em cima do rack.",
       },
@@ -263,12 +263,12 @@ export const NIGHT_COPY = localized<NightCopy>({
       stillAwake: (n) => (n === 1 ? "O pai dorme de novo na próxima jogada." : `O pai dorme de novo em ${n} jogadas.`),
       backToSleep: "O pai dormiu de novo. Ufa.",
       holdBreath: (who) => (who === "dog" ? "Ao lado da Pipoca: duas esperas e ela acorda." : "Ao lado do pai: duas esperas e ele acorda."),
-      stirred: (who) => (who === "dog" ? "A Pipoca se mexeu! Mais uma espera e ela acorda." : "O pai se mexeu! Mais uma espera e ele acorda."),
-      stirCatch: (who) => (who === "dog" ? "A Pipoca se mexeu! Se eu esperar, ela acorda e me acha." : "O pai se mexeu! Se eu esperar, ele acorda e me vê."),
-      seen: "Se eu esperar aqui, vão me ver!",
+      stirred: (who) => (who === "dog" ? "Mais uma espera e a Pipoca acorda!" : "Mais uma espera e o pai acorda!"),
+      seen: "A lanterna vem pra cá! Preciso sair daqui.",
       stripes: "Listras: onde vai ter luz na próxima jogada.",
       calm: "Saí de perto. Aqui posso esperar.",
       clear: "Saí do caminho da luz. Aqui posso esperar.",
+      trapped: "Não tem saída! Melhor desfazer.",
       tossed: "O pai se virou! Fique fora da luz.",
       tossSoon: "Na próxima jogada, o pai se vira.",
       peekSoon: "A Vó vai espiar o esconderijo!",
@@ -344,14 +344,14 @@ export const NIGHT_COPY = localized<NightCopy>({
     level: (n, total) => `Part ${n} of ${total}`,
     levels: {
       doorway: {
-        title: "Past Mom and Dad's door",
+        title: "Mom and Dad's door",
         goal: "Get past the bedroom door without waking Dad.",
         target: "hallway",
         intro: [
           "The creaky board makes noise when someone steps on it.",
           "The number on the cuckoo clock shows how many moves until it sings.",
           "Two waits next to the bed wake Dad up. Stepping away resets the count.",
-          "Cuckoo at 1? Step on the board: the song drowns out the creak.",
+          "Cuckoo at 1? Step on the board: the song drowns it out.",
         ],
         story: "First door: my parents'. Dad sleeps lighter than a bird…",
       },
@@ -363,7 +363,7 @@ export const NIGHT_COPY = localized<NightCopy>({
           "The hallway is full of creaky boards, and the cuckoo sings every 3 moves.",
           "On boards next to you: ♪ the cuckoo covers it, ~ Dad won't hear, ! Dad wakes up.",
           "The “rolls in…” tag tells you when Dad will roll over and peek out his door.",
-          "Use Wait to match the cuckoo's rhythm. Every wait counts as a move.",
+          "Waiting matches the cuckoo's rhythm, but costs a move.",
         ],
         story: "This hallway creaks like an old ship. And every so often Dad rolls over…",
       },
@@ -371,7 +371,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         title: "The stairs",
         goal: "Get down to the kitchen door.",
         target: "kitchen",
-        intro: ["Grandma paces back and forth at the foot of the stairs.", "The footprints show her next steps.", "The flashlight only lights what's ahead. Move while Grandma's back is turned."],
+        intro: ["Grandma paces back and forth at the foot of the stairs.", "The footprints show her next steps.", "Grandma's light only points ahead. Go behind her back."],
         story: "Grandma got up to make tea. Right at the foot of the stairs.",
       },
       kitchen: {
@@ -381,7 +381,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Grandma circles the table, but not the same way every time.",
           "One lap she checks the left side of the kitchen, the next lap the right.",
-          "The eye with “looks in…” shows where Grandma will look and how many moves away.",
+          "The “looks in…” eye: where and when Grandma will look.",
         ],
         story: "Grandma is doing her rounds in the kitchen. And every lap she checks a different corner.",
       },
@@ -392,7 +392,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "The aisle is narrow: there's no getting past Grandma.",
           "The curtain hides you from the flashlight while she walks by.",
-          "Red eye? Grandma's going to peek behind the curtain. Get out first.",
+          "Red eye? Grandma will peek behind the curtain. Get out!",
         ],
         story: "Narrow aisle, Grandma coming… and she loves checking the pantry.",
       },
@@ -427,7 +427,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Whenever Pixel knocks something over, Dad wakes up and looks toward the noise.",
           "The “asleep in…” tag shows how many moves until he dozes off again.",
-          "When Dad wakes up, get behind the plants: he can't see you there.",
+          "Dad woke up? Get behind the plants: he can't see you there.",
         ],
         story: "Dad dozed off on the sofa watching the game. And Pixel is up on the TV stand.",
       },
@@ -504,12 +504,12 @@ export const NIGHT_COPY = localized<NightCopy>({
       stillAwake: (n) => (n === 1 ? "Dad dozes off again after the next move." : `Dad dozes off again in ${n} moves.`),
       backToSleep: "Dad's asleep again. Phew.",
       holdBreath: (who) => (who === "dog" ? "Right by Pipoca: two waits and she wakes up." : "Right by Dad: two waits and he wakes up."),
-      stirred: (who) => (who === "dog" ? "Pipoca stirred! One more wait and she's up." : "Dad stirred! One more wait and he's up."),
-      stirCatch: (who) => (who === "dog" ? "Pipoca stirred! If I wait, she wakes up and finds me." : "Dad stirred! If I wait, he wakes up and sees me."),
-      seen: "If I wait here, they'll see me!",
+      stirred: (who) => (who === "dog" ? "One more wait and Pipoca wakes up!" : "One more wait and Dad wakes up!"),
+      seen: "The flashlight's coming this way! I need to get out of here.",
       stripes: "Stripes: where the light will be next move.",
       calm: "Stepped away. I can wait here.",
       clear: "Out of the light's way. I can wait here.",
+      trapped: "No way out! Better undo.",
       tossed: "Dad rolled over! Stay out of the light.",
       tossSoon: "Dad rolls over on the next move.",
       peekSoon: "Grandma's about to peek into the hiding spot!",
