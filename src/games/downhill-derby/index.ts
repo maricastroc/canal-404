@@ -16,7 +16,7 @@ import { loadRivals, type RivalDef } from "./sim/tapes";
 const RACE_KEYS = new Set(["Space", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "KeyS", "KeyA", "KeyD", "KeyW"]);
 
 function newForm(): RaceForm {
-  return { best: Infinity, last: Infinity, runs: 0, ghost: null };
+  return { best: Infinity, recent: [], runs: 0, ghost: null };
 }
 
 function mount(ctx: GameHostContext): GameInstance {

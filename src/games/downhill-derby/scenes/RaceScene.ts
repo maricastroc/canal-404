@@ -7,6 +7,7 @@ import type { CameraTuning, InputState } from "../input";
 import type { TrackRecord } from "../save";
 import { DEFAULT_PARAMS, cloneParams, type Params } from "../sim/params";
 import { placeOf, RACE_SLOTS, slotDef } from "../sim/score";
+import { FORM_RUNS, formPace, pickFitas } from "../sim/pick";
 import { FRAME_AIR, FRAME_CRASH, FRAME_CROUCH, FRAME_PADDLE, InputRecorder, simulateLog, timeAtX, type RunFrames } from "../sim/replay";
 import { RaceWorld, type WorldEvent } from "../sim/race";
 import { CART_RULES, type CartId } from "../sim/carts";
@@ -34,7 +35,7 @@ import { LANE_OFFSETS, LANES, buildTerrain, zonesOf, type Chunk, type LipView, t
 
 export type Ghost = { frames: RunFrames; time: number };
 
-export type RaceForm = { best: number; last: number; runs: number; ghost: Ghost | null };
+export type RaceForm = { best: number; recent: number[]; runs: number; ghost: Ghost | null };
 
 export type RaceFinish = {
   course: CourseId;
@@ -356,18 +357,15 @@ export class RaceScene extends Phaser.Scene {
 
   private pickRivals() {
     const form = this.bridge.form;
-    const pace = form.runs > 0 ? (form.best + form.last) / 2 : null;
+    const pace = form.recent.length > 0 ? formPace(form.recent) : null;
+    const lina = this.rivals.find((r) => r.slot === "lina");
+    const bruno = this.rivals.find((r) => r.slot === "bruno");
+    const mila = this.rivals.find((r) => r.slot === "mila");
+    if (!lina || !bruno || !mila) return;
+    const target = (slot: Slot) => (pace === null ? FIRST_RACE[this.track.id][slot] : pace + PACE[slot]);
+    const picks = pickFitas(this.track.id, this.player, { lina: lina.def.fitas, bruno: bruno.def.fitas, mila: mila.def.fitas }, { lina: target("lina"), bruno: target("bruno"), mila: target("mila") });
     for (const r of this.rivals) {
-      const target = pace === null ? FIRST_RACE[this.track.id][r.slot] : pace + PACE[r.slot];
-      let index = 0;
-      let gap = Infinity;
-      r.def.fitas.forEach((f, i) => {
-        const d = Math.abs(f.time - target);
-        if (d < gap) {
-          gap = d;
-          index = i;
-        }
-      });
+      const index = picks[r.slot];
       if (index !== r.fita) {
         r.fita = index;
         r.frames = this.framesFor(r.def, index);
@@ -1281,7 +1279,8 @@ export class RaceScene extends Phaser.Scene {
     const form = this.bridge.form;
     const time = this.sim.finishTime;
     form.runs += 1;
-    form.last = time;
+    form.recent.push(time);
+    if (form.recent.length > FORM_RUNS) form.recent.shift();
     if (time < form.best) {
       form.best = time;
       const f = this.liveFrames;
