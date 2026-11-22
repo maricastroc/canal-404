@@ -429,6 +429,10 @@ export class Notebook {
     this.renderCard(true);
   }
 
+  showing(text: string) {
+    return this.mode === "play" && this.tip?.text === text;
+  }
+
   intro(lines: string[]) {
     this.rules = lines;
     this.tip = lines.length ? { text: lines[lines.length - 1], kind: "info" } : null;
