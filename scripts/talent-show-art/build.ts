@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Sheet } from "../past-bedtime-art/kit";
 import { HOST_BOX } from "../../src/games/talent-show/scenes/figure";
-import { band } from "./band";
+import { BUST_INSET, band } from "./band";
 import { studioSheet } from "./studio";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -30,6 +30,22 @@ const OPEN_SHOULDERS = 'd="M16 240 L18 222 Q22 184 64 174 L136 174 Q178 184 182 
 for (const name of Object.keys(sources).filter((n) => n.startsWith("head-"))) {
   if (!sources[name].svg.includes(SHOULDERS)) throw new Error(`${name}: bust shoulders not found`);
   sources[name] = { svg: sources[name].svg.replace(SHOULDERS, OPEN_SHOULDERS) };
+}
+
+for (const [kid, s] of Object.entries(BUST_INSET)) {
+  const swaps: [string, string][] = [
+    [OPEN_SHOULDERS, `d="M${16 + s} 240 L${18 + s} 222 Q${22 + s} 184 ${64 + s * 0.4} 174 L${136 - s * 0.4} 174 Q${178 - s} 184 ${182 - s} 222 L${184 - s} 240 Z"`],
+    ['d="M150 182 Q176 192 178 222 L150 222 Z"', `d="M${150 - s * 0.6} 182 Q${176 - s} 192 ${178 - s} 222 L${150 - s * 0.6} 222 Z"`],
+    ['d="M22 206 Q100 196 178 206"', `d="M${22 + s} 206 Q100 196 ${178 - s} 206"`],
+  ];
+  for (const name of Object.keys(sources).filter((n) => n.startsWith(`head-${kid}-`))) {
+    let svg = sources[name].svg;
+    for (const [from, to] of swaps) {
+      if (!svg.includes(from)) throw new Error(`${name}: bust path not found`);
+      svg = svg.replace(from, to);
+    }
+    sources[name] = { svg };
+  }
 }
 
 const sheet: Sheet = { ...sources, ...band(), ...studioSheet() };
