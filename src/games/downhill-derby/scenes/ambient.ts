@@ -28,6 +28,9 @@ function heightOf(scene: Phaser.Scene, key: string) {
 
 export class Ambient {
   bubbleMin = 0;
+  bubbleTop = -Infinity;
+  avoid: Phaser.Geom.Rectangle[] = [];
+  private bubbles: { text: Phaser.GameObjects.Text; x: number }[] = [];
   private readonly b: Builder;
   private readonly layer: Phaser.GameObjects.Layer;
   private readonly copy: RaceCopy;
@@ -502,6 +505,7 @@ export class Ambient {
     const t = this.add(this.b.scene.add.text(x, y, text, { fontFamily: this.b.fonts.display, fontSize: `${size}px`, color: "#1d1830", backgroundColor: "#fbf5e6", padding: { x: 10, y: 4 } }));
     const scale = this.bubbleMin > size ? this.bubbleMin / size : 1;
     t.setOrigin(0.5, 1).setDepth(-1).setScale(scale);
+    if (this.bubbleMin > 0) this.bubbles.push({ text: t, x });
     this.b.scene.tweens.add({ targets: t, y: y - 40 * scale, alpha: 0, duration: 800, delay: 300, onComplete: () => t.destroy() });
   }
 
@@ -1084,6 +1088,16 @@ export class Ambient {
   }
 
   update(dt: number, t: number, px: number, speed: number, camX: number, halfW: number) {
+    if (this.bubbles.length) {
+      this.bubbles = this.bubbles.filter((b) => b.text.active);
+      for (const b of this.bubbles) {
+        const half = (b.text.width * b.text.scaleX) / 2 + this.bubbleMin * 0.5;
+        const h = b.text.height * b.text.scaleY;
+        b.text.x = Phaser.Math.Clamp(b.x, camX - halfW + half, Math.max(camX - halfW + half, camX + halfW - half));
+        if (b.text.y - h < this.bubbleTop) b.text.y = this.bubbleTop + h;
+        if (this.avoid.some((a) => b.text.x + half > a.x && b.text.x - half < a.right && b.text.y > a.y && b.text.y - h < a.bottom)) b.text.setAlpha(Math.min(b.text.alpha, 0.2));
+      }
+    }
     for (const a of this.actors) {
       const on = Math.abs(a.x - camX) < halfW + 2600;
       a.root.setVisible(on);

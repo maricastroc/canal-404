@@ -18,6 +18,8 @@ export const PORTRAIT = {
   road: 0.6,
   head: 250,
   foot: 40,
+  signShift: 0.3,
+  signReach: 520,
 };
 
 export type PortraitHost = {
@@ -33,6 +35,7 @@ export type PortraitHost = {
   awning: boolean;
   rivals: number[];
   groundBelow: (x: number) => number;
+  signBottom: (x0: number, x1: number) => number | null;
   interest: (x: number, reach: number) => number | null;
 };
 
@@ -49,15 +52,22 @@ export function zoomFor(frame: Frame, cartCss: number) {
   return clamp(z, frame.view.w / PORTRAIT.maxView, frame.view.w / PORTRAIT.minView);
 }
 
-function placeVertical(h: PortraitHost, y: number, zoom: number, aheadX: number) {
+function placeVertical(h: PortraitHost, y: number, zoom: number, aheadX: number, fromX?: number) {
   const f = h.frame;
   const view = f.view.h / zoom;
   const top = h.hudBottom / zoom;
   const usable = view - top;
   let viewTop = y - top - PORTRAIT.road * usable;
-  const ahead = h.groundBelow(aheadX);
+  const span = f.view.w / zoom;
+  let ahead = -Infinity;
+  for (let i = 0; i < 4; i += 1) ahead = Math.max(ahead, h.groundBelow(aheadX - span * 0.15 * i));
   const floor = viewTop + view - 0.08 * view - h.bottomInset / zoom;
   if (ahead > floor) viewTop += ahead - floor;
+  const sign = fromX === undefined ? null : h.signBottom(fromX, aheadX + PORTRAIT.signReach);
+  if (sign !== null) {
+    const room = viewTop + view - (h.bottomInset + 6 * f.unit) / zoom;
+    if (sign > room) viewTop += Math.min(sign - room, PORTRAIT.signShift * view);
+  }
   const cap = y - PORTRAIT.head - top - 0.04 * view;
   if (viewTop > cap) viewTop = cap;
   return viewTop + view / 2;
@@ -69,7 +79,7 @@ export function portraitSnap(h: PortraitHost, x: number, y: number) {
   const hi = Math.max(h.grid.max + 280, x + 300);
   const zoom = Math.min(zoomFor(f, PORTRAIT.slow), Math.max(zoomFor(f, PORTRAIT.grid), f.view.w / (hi - lo)));
   const cx = (lo + hi) / 2;
-  return { x: cx, y: placeVertical(h, y, zoom, cx + f.view.w / zoom / 2), zoom };
+  return { x: cx, y: placeVertical(h, y, zoom, cx + f.view.w / zoom / 2, x - 60), zoom };
 }
 
 export function portraitTarget(h: PortraitHost, x: number, y: number, land: Landing) {
@@ -82,9 +92,15 @@ export function portraitTarget(h: PortraitHost, x: number, y: number, land: Land
   let zoom = zoomFor(f, PORTRAIT.slow + (PORTRAIT.fast - PORTRAIT.slow) * k);
   const lf = PORTRAIT.lead.slow + (PORTRAIT.lead.fast - PORTRAIT.lead.slow) * smooth(clamp(forward / 1700, 0, 1));
   const floorZoom = zoomFor(f, PORTRAIT.ground);
+  const onRoad = sim.mode !== "air" && sim.surface === 0;
   if (h.phase === "race") {
     const it = h.interest(x, Math.max(700, forward * 0.95));
     if (it !== null) zoom = Math.min(zoom, Math.max(floorZoom, f.view.w / ((it - x + 160) / (1 - lf))));
+    if (onRoad) {
+      const sign = h.signBottom(x - 60, x + (f.view.w / zoom) * (1 - lf) + PORTRAIT.signReach);
+      const extent = sign === null ? 0 : sign - (y - PORTRAIT.head) + 24;
+      if (extent > 0) zoom = Math.min(zoom, Math.max(floorZoom, (f.view.h - h.hudBottom - h.bottomInset - 10 * f.unit) / extent));
+    }
     for (const rx of h.rivals) {
       const d = rx - x;
       if (d < -420 || d > 560) continue;
@@ -94,7 +110,7 @@ export function portraitTarget(h: PortraitHost, x: number, y: number, land: Land
   }
   let span = f.view.w / zoom;
   let fx = x + (0.5 - lf) * span;
-  let fy = placeVertical(h, y, zoom, fx + span / 2 - 40);
+  let fy = placeVertical(h, y, zoom, fx + span / 2 - 40, onRoad ? x - 60 : undefined);
   if (h.awning && land) {
     fy = placeVertical(h, land.y + 60, zoom, fx + span / 2 - 40);
   } else if (land && h.predictedAir > 0.55) {
@@ -102,7 +118,8 @@ export function portraitTarget(h: PortraitHost, x: number, y: number, land: Land
     const minX = Math.min(x, land.x) - 220;
     const maxX = Math.max(x, land.x) + 280;
     const top = Math.min(apex, y) - PORTRAIT.head - 20;
-    const bottom = Math.max(land.y, y) + 90;
+    const sign = land.surface === 0 ? h.signBottom(x, maxX + 120) : null;
+    const bottom = Math.max(Math.max(land.y, y) + 90, sign === null ? -Infinity : sign + 12);
     const fitW = f.view.w / (maxX - minX);
     const fitH = (f.view.h - h.hudBottom - h.bottomInset - 12 * f.unit) / (bottom - top);
     zoom = Math.max(zoomFor(f, PORTRAIT.air), Math.min(zoom, fitW, fitH));
