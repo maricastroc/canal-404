@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "nod
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Sheet } from "../past-bedtime-art/kit";
+import { HOST_BOX } from "../../src/games/talent-show/scenes/figure";
 import { band } from "./band";
 import { studioSheet } from "./studio";
 
@@ -21,7 +22,15 @@ const VIEWBOX: Record<string, string> = {
   "jury-lunch-neutral": "0 0 220 476",
   "jury-lunch-angry": "0 0 220 476",
 };
+for (const name of Object.keys(sources).filter((n) => n.startsWith("host-"))) VIEWBOX[name] = `${HOST_BOX.x} ${HOST_BOX.y} ${HOST_BOX.w} ${HOST_BOX.h}`;
 for (const [name, box] of Object.entries(VIEWBOX)) if (sources[name]) sources[name] = { svg: sources[name].svg.replace(/viewBox="[^"]*"/, `viewBox="${box}"`) };
+
+const SHOULDERS = 'd="M18 222 Q22 184 64 174 L136 174 Q178 184 182 222 Z"';
+const OPEN_SHOULDERS = 'd="M16 240 L18 222 Q22 184 64 174 L136 174 Q178 184 182 222 L184 240 Z"';
+for (const name of Object.keys(sources).filter((n) => n.startsWith("head-"))) {
+  if (!sources[name].svg.includes(SHOULDERS)) throw new Error(`${name}: bust shoulders not found`);
+  sources[name] = { svg: sources[name].svg.replace(SHOULDERS, OPEN_SHOULDERS) };
+}
 
 const sheet: Sheet = { ...sources, ...band(), ...studioSheet() };
 

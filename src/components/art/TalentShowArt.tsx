@@ -3,6 +3,7 @@ import { useId } from "react";
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
+import { HOST_BOX } from "@/games/talent-show/scenes/figure";
 
 const ART = "/assets/talent-show";
 const display = { fontFamily: "var(--font-luckiest)" };
@@ -32,7 +33,7 @@ function Kid({ who, x, feet, s, face = "normal", pose = "ready" }: { who: KidId;
 }
 
 function Host({ x, feet, s, mood }: { x: number; feet: number; s: number; mood: HostMood }) {
-  return <image href={`${ART}/host-${mood}.svg`} x={r1(x - 100 * s)} y={r1(feet - 298 * s)} width={r1(200 * s)} height={r1(304 * s)} />;
+  return <image href={`${ART}/host-${mood}.svg`} x={r1(x - (100 - HOST_BOX.x) * s)} y={r1(feet - (HOST_BOX.feet - HOST_BOX.y) * s)} width={r1(HOST_BOX.w * s)} height={r1(HOST_BOX.h * s)} />;
 }
 
 function Judge({ art, x, base, s }: { art: JudgeArt; x: number; base: number; s: number }) {
