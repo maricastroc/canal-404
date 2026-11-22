@@ -46,7 +46,7 @@ export type NightBridge = {
 
 export type Command = "up" | "right" | "down" | "left" | "wait" | "undo" | "restart" | "hint" | "next" | "rules" | "view";
 
-type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView } | { kind: "cat"; view: CatView }) & { status: StatusIcon };
+type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView } | { kind: "cat"; view: CatView }) & { status: StatusIcon; lift?: number };
 
 type Note = { text: string; kind: NoteKind; fleeting?: boolean };
 
@@ -238,8 +238,9 @@ export class NightScene extends Phaser.Scene {
       } else if (def.kind === "cat") {
         const view = new CatView(this, s, charArt);
         const perch = level.props.find((p) => p.x <= def.x && def.x < p.x + (p.w ?? 1) && p.y <= def.y && def.y < p.y + (p.h ?? 1));
-        view.container.setPosition(c.x, c.y - s * (perch?.kind === "cabinet" ? 0.98 : 0.32)).setScale(CHAR_SCALE);
-        this.agents.push({ kind: "cat", view, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize * 0.9, -s * 0.62) });
+        const lift = s * (perch?.kind === "cabinet" ? 0.98 : 0.32);
+        view.container.setPosition(c.x, c.y - lift).setScale(CHAR_SCALE);
+        this.agents.push({ kind: "cat", view, lift, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize * 0.9, -s * 0.62) });
       } else {
         const view = new DogView(this, s, charArt);
         view.container.setPosition(c.x, c.y).setScale(CHAR_SCALE);
@@ -1719,7 +1720,15 @@ export class NightScene extends Phaser.Scene {
     return { x: cam.x + (b.x - v.x) * cam.zoom, y: cam.y + (b.y - v.y) * cam.zoom, w: b.w * cam.zoom, h: b.h * cam.zoom };
   }
 
+  private sortActors() {
+    const b = this.layout.board;
+    const depthAt = (y: number) => 31 + 2.9 * Phaser.Math.Clamp((y - b.y) / b.h, 0, 1);
+    for (const a of this.agents) a.view.container.setDepth(depthAt(a.view.container.y + (a.lift ?? 0)));
+    this.bruno.container.setDepth(depthAt(this.bruno.container.y) + 0.01);
+  }
+
   update() {
+    if (this.layout && this.bruno) this.sortActors();
     if (!this.layout?.scroll || !this.bruno) return;
     const cam = this.cameras.main;
     const L = this.layout;
