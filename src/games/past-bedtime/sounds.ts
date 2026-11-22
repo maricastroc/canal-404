@@ -19,12 +19,13 @@ export const NIGHT_SFX = {
       { kind: "tone", wave: "sine", from: 698, to: 698, duration: 0.24, delay: 0.2, gain: 0.09 },
     ],
   },
-  tick: {
+  wait: {
     layers: [
-      { kind: "tone", wave: "triangle", from: 1320, to: 1100, duration: 0.045, gain: 0.07 },
-      { kind: "noise", duration: 0.03, gain: 0.05, filter: { type: "bandpass", from: 3200, q: 4 } },
-      { kind: "tone", wave: "triangle", from: 990, to: 820, duration: 0.05, delay: 0.17, gain: 0.065 },
-      { kind: "noise", duration: 0.03, delay: 0.17, gain: 0.045, filter: { type: "bandpass", from: 2400, q: 4 } },
+      { kind: "tone", wave: "triangle", from: 1180, to: 990, duration: 0.09, gain: 0.17 },
+      { kind: "noise", duration: 0.045, gain: 0.12, filter: { type: "bandpass", from: 3000, q: 3 } },
+      { kind: "tone", wave: "triangle", from: 880, to: 740, duration: 0.1, delay: 0.2, gain: 0.16 },
+      { kind: "noise", duration: 0.045, delay: 0.2, gain: 0.1, filter: { type: "bandpass", from: 2300, q: 3 } },
+      { kind: "noise", duration: 0.5, delay: 0.05, gain: 0.03, attack: 0.15, filter: { type: "bandpass", from: 5200, to: 3800, q: 0.8 } },
     ],
   },
   wake: {

@@ -298,9 +298,9 @@ export class Notebook implements NotebookView {
     return this.fonts.round ?? this.fonts.body;
   }
 
-  private raw(x: number, y: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" | "hand" = "round") {
+  private raw(x: number, y: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" = "round") {
     const t = this.scene.add.text(x, y, value, {
-      fontFamily: family === "display" ? this.fonts.display : family === "hand" ? this.fonts.hand : this.round,
+      fontFamily: family === "display" ? this.fonts.display : this.round,
       fontStyle: family === "round" ? "600" : "normal",
       fontSize: `${family === "round" ? Math.round(size * 0.88) : size}px`,
       color,
@@ -311,7 +311,7 @@ export class Notebook implements NotebookView {
     return t;
   }
 
-  private onLine(x: number, line: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" | "hand" = "round") {
+  private onLine(x: number, line: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" = "round") {
     const t = this.raw(x, 0, value || "Ág", size, color, wrap, family);
     const metrics = t.style.getTextMetrics();
     t.setLineSpacing(STEP - (metrics.ascent + metrics.descent));
@@ -493,7 +493,7 @@ export class Notebook implements NotebookView {
         const cell: Phaser.GameObjects.GameObject[] = [arrow];
         let w = 30;
         if (r.count > 1) {
-          const n = this.scene.add.text(w - 1, 18, String(r.count), { fontFamily: this.fonts.hand, fontSize: "22px", color: "#a85d08", padding: { x: 2, y: 3 } });
+          const n = this.scene.add.text(w - 1, 18, String(r.count), { fontFamily: this.round, fontStyle: "700", fontSize: "20px", color: "#a85d08", padding: { x: 2, y: 3 } });
           cell.push(n);
           w += n.width - 3;
         }
@@ -637,7 +637,7 @@ export class Notebook implements NotebookView {
     const extra = turns - par;
     const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? (stars < 3 ? this.copy.wonWithHint : this.copy.wonPerfect) : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
     const verdictLines = Math.max(1, verdict.getWrappedText().length);
-    const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w, "hand");
+    const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w);
     this.stampObjects.push(title, ...earned, moves, verdict, quote);
     if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 5 + verdictLines, this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
     this.buildButtons([]);

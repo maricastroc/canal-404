@@ -91,7 +91,7 @@ export function drawExit(scene: Phaser.Scene, grid: Grid, layout: Layout, fonts:
     }
   }
   const size = Math.round(Math.max(20, s * 0.2, layout.small));
-  const text = scene.add.text(0, 0, label, { fontFamily: fonts.hand, fontSize: `${size}px`, color: "#fbf5e6", padding: { x: 2, y: 2 } }).setOrigin(0.5);
+  const text = scene.add.text(0, 0, label, { fontFamily: fonts.round ?? fonts.body, fontStyle: "700", fontSize: `${Math.round(size * 0.86)}px`, color: "#fbf5e6", padding: { x: 2, y: 2 } }).setOrigin(0.5);
   const lead = side === "w" || side === "n";
   const arrow = scene.add.image(0, -glyphOffset(text), iconKey(side === "w" ? "exitLeft" : side === "n" ? "exitUp" : "exitRight")).setDisplaySize(size * 0.9, size * 0.9);
   const gap = size * 0.12;
