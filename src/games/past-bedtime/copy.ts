@@ -187,6 +187,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Quando o Pixel derruba alguma coisa, o pai acorda e olha para o barulho.",
           "A plaquinha “dorme em…” mostra quantas jogadas faltam para ele dormir de novo.",
+          "E de vez em quando ele se vira para o lado da TV. Fique de olho no “vira em…”.",
           "O pai acordou? Fique atrás das plantas: ali ele não te vê.",
         ],
         story: "O pai cochilou no sofá vendo o jogo. E o Pixel está em cima do rack.",
@@ -429,6 +430,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Whenever Pixel knocks something over, Dad wakes up and looks toward the noise.",
           "The “asleep in…” tag shows how many moves until he dozes off again.",
+          "And every so often he rolls over toward the TV. Watch the “rolls in…” tag.",
           "Dad woke up? Get behind the plants: he can't see you there.",
         ],
         story: "Dad dozed off on the sofa watching the game. And Pixel is up on the TV stand.",
