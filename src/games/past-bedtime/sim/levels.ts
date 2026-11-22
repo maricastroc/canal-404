@@ -161,14 +161,14 @@ export const PANTRY: LevelDef = {
     "############",
   ],
   loud: 3,
-  agents: [{ kind: "patrol", id: "grandma", path: [...run(2, 2, 10), ...run(2, 9, 3), ...run(2, 2, 10), ...run(2, 9, 6), peek(5, 2, 0), ...run(2, 4, 3)], start: 6, range: 3, cone: "narrow", hear: 0, alert: 2 }],
+  agents: [{ kind: "patrol", id: "grandma", path: [...run(2, 3, 9), ...run(2, 8, 4), ...run(2, 5, 10), ...run(2, 9, 6), peek(5, 2, 0), ...run(2, 4, 3)], start: 14, range: 4, cone: "narrow", hear: 0, alert: 2 }],
   props: [
     { kind: "pantry", x: 1, y: 1 },
     { kind: "pantry", x: 3, y: 1 },
     { kind: "pantry", x: 7, y: 1 },
     { kind: "pantry", x: 9, y: 1 },
   ],
-  par: 13,
+  par: 14,
 };
 
 export const LAUNDRY: LevelDef = {
