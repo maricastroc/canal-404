@@ -2,6 +2,7 @@ import type { Locale } from "./locales";
 
 const numberFormats = new Map<string, Intl.NumberFormat>();
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
+const listFormats = new Map<Locale, Intl.ListFormat>();
 const englishOrdinals = new Intl.PluralRules("en", { type: "ordinal" });
 const ENGLISH_SUFFIX: Partial<Record<Intl.LDMLPluralRule, string>> = { one: "st", two: "nd", few: "rd" };
 
@@ -36,4 +37,13 @@ export function pick(value: number, forms: readonly [one: string, many: string])
 
 export function countOf(value: number, forms: readonly [one: string, many: string], locale: Locale) {
   return `${formatNumber(value, locale)} ${pick(value, forms)}`.trim();
+}
+
+export function listOf(items: readonly string[], locale: Locale) {
+  let format = listFormats.get(locale);
+  if (!format) {
+    format = new Intl.ListFormat(locale, { type: "conjunction" });
+    listFormats.set(locale, format);
+  }
+  return format.format(items);
 }

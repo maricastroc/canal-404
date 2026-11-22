@@ -70,9 +70,9 @@ const BASE = {
   },
 } satisfies Record<string, GameBase>;
 
-type Slug = keyof typeof BASE;
+export type GameSlug = keyof typeof BASE;
 
-function gameText<T extends Record<Slug, GameText>>(text: { "pt-BR": T; en: NoInfer<T> }): Record<Locale, Record<Slug, GameText>> {
+function gameText<T extends Record<GameSlug, GameText>>(text: { "pt-BR": T; en: NoInfer<T> }): Record<Locale, Record<GameSlug, GameText>> {
   return text;
 }
 
@@ -939,7 +939,7 @@ const TEXT = gameText({
 });
 
 function build(locale: Locale): GameMeta[] {
-  return (Object.entries(BASE) as [Slug, GameBase][]).map(([slug, { levelIds, guestIds, ...base }]) => {
+  return (Object.entries(BASE) as [GameSlug, GameBase][]).map(([slug, { levelIds, guestIds, ...base }]) => {
     const { levels, guests, ...text } = TEXT[locale][slug];
     return {
       slug,

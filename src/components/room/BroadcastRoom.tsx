@@ -24,6 +24,7 @@ import {
   HiddenCartArt,
   LAVA_PALETTES,
   LavaArt,
+  LooseTapeArt,
   OnAirSign,
   PizzaArt,
   PlaneArt,
@@ -42,7 +43,7 @@ import { Tv, type TvBadge } from "./objects/Tv";
 import { channelOrder, CHANNELS, isRegularChannel, MISSION_CHANNEL, type ChannelId } from "./objects/TvChannels";
 import { MissionOnAirProvider, type MissionOnAir } from "./MissionOnAir";
 import { LAST_HOUR_MINUTES, missionChannelLine, missionGreeting, missionSignLine, newMissionLine, type MissionMoment } from "./missionLines";
-import { isTape, tapeById, type TapeId } from "./objects/tapes";
+import { isTape, TAPES, tapeById, tapeUnlocked, type TapeId } from "./objects/tapes";
 import { TapeFlights, type Flight } from "./TapeFlights";
 import { TapeShelf } from "./TapeShelf";
 import { TvZoom } from "./TvZoom";
@@ -53,7 +54,7 @@ import { useSchedule } from "@/components/catalog/useSchedule";
 import { missionPlace } from "@/components/missions/parts";
 import { useMissionToday } from "@/lib/missions/hooks";
 import { missionText } from "@/lib/missions/text";
-import { PLAYABLE, playableIn, type GameMeta } from "@/games/registry";
+import { PLAYABLE, playableIn, type GameMeta, type GameSlug } from "@/games/registry";
 import { bestRecord, plays, unplayedGames } from "@/lib/schedule";
 import { RoomBackdrop } from "./RoomBackdrop";
 import { RoomButton, RoomLink } from "./RoomObject";
@@ -90,8 +91,7 @@ const COPY = localized({
       "off-air-vacation": "Cartucho FÉR: Férias Fora do Ar. Veio com areia dentro.",
       "downhill-derby": "Cartucho LAD: Ladeira Abaixo. A etiqueta tem marca de pneu.",
       "past-bedtime": "Cartucho MAD: Madrugada. Alguém escreveu NÃO APAGAR na etiqueta, bem baixinho.",
-    } as Record<string, string>,
-    cartridgeOf: (title: string) => `Cartucho de ${title}.`,
+    } satisfies Record<GameSlug, string>,
     cartridgeUnplayed: (line: string) => `${line} Você ainda não jogou esse!`,
     mysteryWarm: "Cartucho ???: tá quentinho. Acho que ele esquenta quando alguém joga tudo do canal...",
     mysteryCold: "Cartucho ???: esse não tem nome. Às vezes ele esquenta sozinho.",
@@ -168,6 +168,8 @@ const COPY = localized({
     vcrEmptyLabel: "Videocassete vazio: abrir a estante de fitas",
     vcrEjectHint: "Aperta pra ejetar a fita.",
     vcrEmptyHint: "O videocassete tá vazio. As fitas ficam na estante do lado.",
+    looseTapeLabel: (label: string) => `Fita do Bruno em cima do videocassete, ${label}: colocar pra tocar`,
+    looseTapeHint: "Uma fita que nunca chegou na estante. O Bruno deixou em cima do vídeo.",
     mascotLabel: "404, o mascote do canal",
     hiddenLabel: "Cantinho escuro perto do pufe",
     hiddenLine: "Um cartucho dourado escondido! Escrito '404'. Eu nem sabia que eu tinha um jogo!",
@@ -183,7 +185,7 @@ const COPY = localized({
     cartridgesHint: "Cartuchos! Cada um é um jogo do canal.",
     skateLabel: "Skate do Déco",
     skateHint: "O skate do Déco. Tem mais adesivo que rodinha.",
-    skateLine: "Esse skate já desceu a Rua Sem Saída 47 vezes. Subiu 0.",
+    skateLines: ["Esse skate já desceu a Rua Sem Saída 47 vezes. Subiu 0.", "Tá aposentado desde que o Déco montou o Relâmpago de Madeira."],
     booksLabel: "Pilha de livros: Manual de Engenhocas",
     booksHint: "Manual de Engenhocas, vol. 3. Cheio de dicas pro jogo.",
     wall: "O CANAL NUNCA SAIU DO AR",
@@ -213,7 +215,6 @@ const COPY = localized({
       "downhill-derby": "Cartridge DRB: Downhill Derby. There's a tire mark on the label.",
       "past-bedtime": "Cartridge PBT: Past Bedtime. Someone wrote DO NOT ERASE on the label, very quietly.",
     },
-    cartridgeOf: (title: string) => `${title} cartridge.`,
     cartridgeUnplayed: (line: string) => `${line} You haven't played this one yet!`,
     mysteryWarm: "Cartridge ???: it's warm. I think it heats up when someone plays everything on the channel...",
     mysteryCold: "Cartridge ???: this one has no name. Sometimes it heats up on its own.",
@@ -290,6 +291,8 @@ const COPY = localized({
     vcrEmptyLabel: "Empty VCR: open the tape shelf",
     vcrEjectHint: "Press to eject the tape.",
     vcrEmptyHint: "The VCR is empty. The tapes are on the shelf next to it.",
+    looseTapeLabel: (label: string) => `Bruno's tape on top of the VCR, ${label}: play it`,
+    looseTapeHint: "A tape that never made it to the shelf. Bruno left it on the VCR.",
     mascotLabel: "404, the channel's mascot",
     hiddenLabel: "Dark corner by the beanbag",
     hiddenLine: "A hidden golden cartridge! It says '404'. I didn't even know I had a game!",
@@ -305,7 +308,7 @@ const COPY = localized({
     cartridgesHint: "Cartridges! Each one is a game from the channel.",
     skateLabel: "Déco's skateboard",
     skateHint: "Déco's skateboard. More stickers than wheels.",
-    skateLine: "This skateboard has gone down Dead End Street 47 times. And up it 0 times.",
+    skateLines: ["This skateboard has gone down Dead End Street 47 times. And up it 0 times.", "It's been retired ever since Déco built the Wooden Lightning."],
     booksLabel: "Stack of books: Gadget Manual",
     booksHint: "Gadget Manual, vol. 3. Full of tips for the game.",
     wall: "THE CHANNEL NEVER WENT OFF THE AIR",
@@ -400,7 +403,7 @@ export function BroadcastRoom() {
   const [cartsShuffle, setCartsShuffle] = useState(0);
   const [hiddenFound, setHiddenFound] = useState(false);
   const [skating, setSkating] = useState(0);
-  const counters = useRef({ joke: 0, book: 0, cart: 0 });
+  const counters = useRef({ joke: 0, book: 0, cart: 0, skate: 0 });
   const [period, setPeriod] = useState<SkyPeriod>("afternoon");
   const greeted = useRef(false);
 
@@ -642,7 +645,7 @@ export function BroadcastRoom() {
       return playedCarts[2] ? copy.mysteryWarm : copy.mysteryCold;
     }
     const game = games[index];
-    const line = copy.cartridges[game.slug] ?? copy.cartridgeOf(game.title);
+    const line = copy.cartridges[game.slug as GameSlug];
     return hydrated && plays(progress, game.slug) === 0 ? copy.cartridgeUnplayed(line) : line;
   }, [copy, hydrated, locale, playedCarts, progress]);
 
@@ -952,6 +955,8 @@ export function BroadcastRoom() {
   const broadcast = useMemo<Broadcast>(() => ({ since, take, zoomed, replay }), [since, take, zoomed, replay]);
   const away = useMemo(() => flights.map((f) => f.tape), [flights]);
   const vcrTape = playing && !flights.some((f) => f.tape === playing && f.to === "shelf") ? playing : null;
+  const shelfTapes = useMemo(() => TAPES[locale].filter((tape) => tapeUnlocked(tape.id, progress)), [locale, progress]);
+  const looseTape = hydrated ? (shelfTapes.find((tape) => tape.loose && tape.id !== playing && !away.includes(tape.id)) ?? null) : null;
 
   const say2 = useCallback(
     (text: string, expression: Parameters<typeof say>[0]["expression"] = "happy", sound: Parameters<typeof play>[0] = "click") => {
@@ -1232,6 +1237,20 @@ export function BroadcastRoom() {
           </span>
         </RoomButton>
 
+        {looseTape && (
+          <RoomButton
+            spot={SPOTS.looseTape}
+            label={copy.looseTapeLabel(looseTape.label)}
+            hint={copy.looseTapeHint}
+            onHint={onHint}
+            onHoverSound={hover}
+            onActivate={() => insertTape(looseTape.id)}
+            z={12}
+          >
+            <LooseTapeArt tape={looseTape} />
+          </RoomButton>
+        )}
+
         <RoomButton
           spot={SPOTS.mascot}
           label={copy.mascotLabel}
@@ -1358,7 +1377,7 @@ export function BroadcastRoom() {
           onHoverSound={hover}
           onActivate={() => {
             setSkating((n) => n + 1);
-            say2(copy.skateLine, "wink", "whoosh");
+            say2(copy.skateLines[counters.current.skate++ % copy.skateLines.length], "wink", "whoosh");
           }}
           z={21}
         >
@@ -1486,6 +1505,7 @@ export function BroadcastRoom() {
 
       <TapeShelf
         open={shelfOpen}
+        tapes={shelfTapes}
         inserted={playing}
         away={away}
         origin={shelfOrigin}

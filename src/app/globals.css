@@ -348,6 +348,20 @@ body {
   }
 }
 
+@keyframes antenna-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  56%,
+  94% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 @keyframes blink-caret {
   0% {
     opacity: 1;

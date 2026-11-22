@@ -1,10 +1,10 @@
 # CANAL 404
 
-![Canal 404: six games in one channel](docs/screenshots/banner.webp)
+![Canal 404: a channel full of games](docs/screenshots/banner.webp)
 
 A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and eight complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama**, **Férias Fora do Ar**, **Ladeira Abaixo** and **Madrugada**.
 
-The code, file names and ids are in English. The portal and all six games are in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
+The code, file names and ids are in English. The portal and every game are in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
 
 ## Screenshots
 

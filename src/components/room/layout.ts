@@ -14,6 +14,7 @@ export const SPOTS = {
   mascot: { x: 742, y: 90, w: 196, h: 196 },
   vhs: { x: 856, y: 670, w: 236, h: 124 },
   vcr: { x: 598, y: 694, w: 228, h: 86 },
+  looseTape: { x: 608, y: 674, w: 116, h: 30 },
   arcade: { x: 1150, y: 196, w: 280, h: 664 },
   posterChaos: { x: 366, y: 150, w: 150, h: 190 },
   posterDream: { x: 1448, y: 56, w: 140, h: 320 },

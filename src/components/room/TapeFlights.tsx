@@ -12,10 +12,13 @@ export type Flight = { id: number; tape: TapeId; to: "vcr" | "shelf"; delay: num
 const VCR_SLOT = { x: 676, y: 718 };
 const SIZE = { w: 74, h: 44 };
 
+const LOOSE_SLOT = { x: 666, y: 692, angle: -3, flat: true };
+
 export function shelfSlot(tape: TapeId) {
-  const index = TAPES[DEFAULT_LOCALE].filter((t) => !t.torn).findIndex((t) => t.id === tape);
-  if (index >= 0) return { x: 856 + 6 + index * 34 + 15, y: 738 };
-  return { x: 1019, y: 736 };
+  if (tapeById(tape, DEFAULT_LOCALE).loose) return LOOSE_SLOT;
+  const index = TAPES[DEFAULT_LOCALE].filter((t) => !t.torn && !t.loose).findIndex((t) => t.id === tape);
+  if (index >= 0) return { x: 856 + 6 + index * 34 + 15, y: 738, angle: -90, flat: false };
+  return { x: 1019, y: 736, angle: -90, flat: false };
 }
 
 const x = (value: number) => `${(value / SCENE.w) * 100}%`;
@@ -47,17 +50,17 @@ export function TapeFlights({ flights, onLand }: { flights: Flight[]; onLand: (f
       ? {
           left: [x(shelf.x), x(apexX), x(VCR_SLOT.x), x(VCR_SLOT.x)],
           top: [y(shelf.y - 30), y(apexY), y(VCR_SLOT.y - 34), y(VCR_SLOT.y)],
-          rotate: [-90, -30, 0, 0],
+          rotate: [shelf.angle, -30, 0, 0],
           scale: [0.95, 1.3, 1, 0.82],
-          scaleY: [1, 1, 1, 0.2],
+          scaleY: [shelf.flat ? 0.4 : 1, 1, 1, 0.2],
           opacity: [1, 1, 1, 0],
         }
       : {
           left: [x(VCR_SLOT.x), x(VCR_SLOT.x), x(apexX), x(shelf.x)],
           top: [y(VCR_SLOT.y), y(VCR_SLOT.y - 46), y(apexY), y(shelf.y)],
-          rotate: [0, -8, -40, -90],
+          rotate: [0, -8, -40, shelf.angle],
           scale: [0.82, 1.15, 1.3, 0.95],
-          scaleY: [0.2, 1, 1, 1],
+          scaleY: [0.2, 1, 1, shelf.flat ? 0.4 : 1],
           opacity: [0, 1, 1, 1],
         };
     return (

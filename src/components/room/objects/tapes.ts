@@ -1,8 +1,9 @@
 import { localized, type Localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
+import type { ProgressState } from "@/lib/progress/store";
 import { P } from "@/lib/palette";
 
-export type TapeId = "tape-cartoon" | "tape-street" | "tape-resort" | "tape-karaoke" | "tape";
+export type TapeId = "tape-cartoon" | "tape-street" | "tape-resort" | "tape-karaoke" | "tape" | "tape-static";
 
 export type Tape = {
   id: TapeId;
@@ -13,16 +14,18 @@ export type Tape = {
   insertLine: string;
   ejectLine: string;
   torn?: string;
+  loose?: boolean;
 };
 
-type TapeText = Omit<Tape, "id" | "sticker">;
+type TapeText = Omit<Tape, "id" | "sticker" | "loose">;
 
-const STICKERS: { id: TapeId; sticker: string }[] = [
+const STICKERS: { id: TapeId; sticker: string; loose?: boolean }[] = [
   { id: "tape-cartoon", sticker: P.cream },
   { id: "tape-street", sticker: P.sky },
   { id: "tape-resort", sticker: P.lime },
   { id: "tape-karaoke", sticker: P.bubblegum },
   { id: "tape", sticker: P.tomato },
+  { id: "tape-static", sticker: P.plum300, loose: true },
 ];
 
 const EJECT = localized({
@@ -68,6 +71,13 @@ const TEXT = localized<Record<TapeId, TapeText>>({
       ejectLine: "Fita ejetada. Vamos fingir que nada aconteceu.",
       torn: "Não assis",
     },
+    "tape-static": {
+      label: "Sessão Chiado",
+      note: "gravei 3h!",
+      name: "Fita do Bruno: Sessão Chiado",
+      insertLine: "A fita que o Bruno gravou de madrugada! Ele trouxe pra provar que ganhou a aposta do Déco.",
+      ejectLine: "De volta pra cima do vídeo, que é onde o Bruno deixou.",
+    },
   },
   en: {
     "tape-cartoon": {
@@ -106,11 +116,18 @@ const TEXT = localized<Record<TapeId, TapeText>>({
       ejectLine: "Tape ejected. Let's pretend nothing happened.",
       torn: "Do not wat",
     },
+    "tape-static": {
+      label: "Static Show",
+      note: "taped it 3am!",
+      name: "Bruno's tape: the Static Show",
+      insertLine: "The tape Bruno made in the middle of the night! He brought it to prove he won his bet with Déco.",
+      ejectLine: "Back on top of the VCR, right where Bruno left it.",
+    },
   },
 });
 
 function build(locale: Locale): Tape[] {
-  return STICKERS.map(({ id, sticker }) => ({ id, sticker, ...TEXT[locale][id] }));
+  return STICKERS.map((entry) => ({ ...entry, ...TEXT[locale][entry.id] }));
 }
 
 export const TAPES: Localized<Tape[]> = { "pt-BR": build("pt-BR"), en: build("en") };
@@ -126,4 +143,9 @@ export function isTape(id: string): id is TapeId {
 
 export function tapeById(id: TapeId, locale: Locale) {
   return BY_ID[locale].get(id)!;
+}
+
+export function tapeUnlocked(id: TapeId, progress: ProgressState) {
+  if (id !== "tape-static") return true;
+  return (progress.games["past-bedtime"]?.levels?.return?.stars ?? 0) > 0;
 }

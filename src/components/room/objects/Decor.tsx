@@ -3,7 +3,7 @@ import { CHAOS_POSTER, PosterTexts } from "@/components/extras/posterArt";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { P } from "@/lib/palette";
-import { TAPES, tapeById, type TapeId } from "./tapes";
+import { TAPES, tapeById, type Tape, type TapeId } from "./tapes";
 
 const COPY = localized({
   "pt-BR": {
@@ -181,6 +181,31 @@ const SKIES: Record<SkyPeriod, { top: string; bottom: string; light: string }> =
   night: { top: "#1f1839", bottom: "#3f3170", light: P.sunPale },
 };
 
+const HILLS: Record<SkyPeriod, string> = {
+  morning: "#8cc98f",
+  afternoon: "#79b97e",
+  dusk: "#6b4f93",
+  night: P.plum800,
+};
+
+function AntennaHill({ period }: { period: SkyPeriod }) {
+  const night = period === "night";
+  const metal = night ? P.plum500 : P.steel;
+  return (
+    <g>
+      <path d="M170 182 C204 150 238 126 272 126 C292 126 306 136 318 150 L318 330 L170 330 Z" fill={HILLS[period]} stroke={P.ink} strokeWidth="3.5" strokeLinejoin="round" />
+      <path d="M264 127 L270 98 L274 98 L280 127" fill="none" stroke={P.ink} strokeWidth="5" strokeLinejoin="round" />
+      <path d="M264 127 L270 98 L274 98 L280 127" fill="none" stroke={metal} strokeWidth="2" strokeLinejoin="round" />
+      <path d="M266 118 L278 118 M268 108 L276 108 M266 118 L276 108 M278 118 L268 108" stroke={P.ink} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M272 98 L272 90" stroke={P.ink} strokeWidth="2.5" strokeLinecap="round" />
+      <g style={night ? { animation: "antenna-blink 2.4s linear infinite" } : undefined}>
+        {night && <circle cx="272" cy="88" r="9" fill={P.tomato} opacity="0.35" />}
+        <circle cx="272" cy="88" r="3.6" fill={P.tomato} stroke={P.ink} strokeWidth="1.8" />
+      </g>
+    </g>
+  );
+}
+
 export function WindowArt({ period }: { period: SkyPeriod }) {
   const sky = SKIES[period];
   const night = period === "night";
@@ -207,7 +232,7 @@ export function WindowArt({ period }: { period: SkyPeriod }) {
                 [90, 60],
                 [140, 100],
                 [180, 50],
-                [270, 140],
+                [198, 124],
                 [110, 150],
               ].map(([x, y]) => (
                 <path key={`${x}${y}`} d={`M${x} ${y - 6} L${x + 2} ${y - 2} L${x + 6} ${y} L${x + 2} ${y + 2} L${x} ${y + 6} L${x - 2} ${y + 2} L${x - 6} ${y} L${x - 2} ${y - 2} Z`} fill={P.sunPale} />
@@ -219,6 +244,7 @@ export function WindowArt({ period }: { period: SkyPeriod }) {
               <path d="M80 92 Q78 78 94 78 Q100 64 116 70 Q130 62 138 76 Q154 76 150 92 Z" fill={P.white} stroke={P.ink} strokeWidth="3" strokeLinejoin="round" style={{ animation: "float 7s ease-in-out infinite" }} />
             </g>
           )}
+          <AntennaHill period={period} />
           <path d="M40 250 L110 190 L180 250 Z" fill={night ? P.plum700 : P.tomato} stroke={P.ink} strokeWidth="4" strokeLinejoin="round" />
           <rect x="58" y="248" width="104" height="80" fill={night ? P.plum600 : P.cream} stroke={P.ink} strokeWidth="4" />
           <rect x="94" y="262" width="30" height="28" fill={night ? P.sun : P.sky} stroke={P.ink} strokeWidth="3.5" />
@@ -435,7 +461,7 @@ export function VhsArt({ missing }: { missing: TapeId[] }) {
   const clip = useId();
   const locale = useLocale();
   const copy = COPY[locale];
-  const upright = TAPES[locale].filter((tape) => !tape.torn);
+  const upright = TAPES[locale].filter((tape) => !tape.torn && !tape.loose);
   const torn = TAPES[locale].find((tape) => tape.torn)!;
   return (
     <svg viewBox="0 0 236 124" className="h-full w-full" overflow="visible" aria-hidden>
@@ -471,6 +497,20 @@ export function VhsArt({ missing }: { missing: TapeId[] }) {
           </g>
         )}
         <rect x="194" y="70" width="34" height="48" rx="3" fill={P.plum600} stroke={P.ink} strokeWidth="3" transform="rotate(6 211 94)" />
+      </g>
+    </svg>
+  );
+}
+
+export function LooseTapeArt({ tape }: { tape: Tape }) {
+  return (
+    <svg viewBox="608 674 116 30" className="h-full w-full" overflow="visible" aria-hidden>
+      <g transform="rotate(-3 666 692)">
+        <rect x="616" y="683" width="100" height="17" rx="2.5" fill={P.inkSoft} stroke={P.ink} strokeWidth="3.5" />
+        <rect x="627" y="686.5" width="78" height="10" rx="1.5" fill={tape.sticker} stroke={P.ink} strokeWidth="1.5" />
+        <text x="666" y="694.8" textAnchor="middle" fontSize="8.5" fill={P.ink} style={hand}>
+          {tape.label.toUpperCase()}
+        </text>
       </g>
     </svg>
   );
