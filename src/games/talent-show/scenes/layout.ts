@@ -16,6 +16,10 @@ export type Layout = {
   jury: { xs: number[]; y: number; scale: number };
   host: { x: number; y: number; scale: number };
   band: { xs: number[]; y: number; scale: number };
+  stage: { top: number; front: number };
+  sign: { cx: number; cy: number; w: number; h: number };
+  lamps: { y: number; xs: number[] };
+  crowd: { y: number; scale: number; count: number; gap: number }[];
   strip: Box & { hitX: number; pxPerBeat: number };
   panel: Box;
   hint: { x: number; y: number; size: number };
@@ -31,12 +35,19 @@ export function layoutFor(orientation: Orientation): Layout {
       title: { x: 40, y: 64, size: 44 },
       live: { x: W - 40, y: 64, size: 34 },
       meter: { x: 220, y: 140, w: 800, h: 40 },
-      jury: { xs: [190, 540, 890], y: 420, scale: 1 },
-      host: { x: 170, y: 720, scale: 0.95 },
-      band: { xs: [360, 560, 760, 950], y: 980, scale: 1 },
-      strip: { x: 24, y: 1150, w: W - 48, h: 240, hitX: 200, pxPerBeat: 250 },
+      jury: { xs: [190, 540, 890], y: 520, scale: 0.85 },
+      host: { x: 150, y: 990, scale: 0.78 },
+      band: { xs: [370, 560, 750, 935], y: 990, scale: 0.6 },
+      stage: { top: 960, front: 1060 },
+      sign: { cx: 650, cy: 700, w: 320, h: 130 },
+      lamps: { y: 214, xs: [100, 980] },
+      crowd: [
+        { y: 1178, scale: 0.78, count: 9, gap: 118 },
+        { y: 1300, scale: 1, count: 8, gap: 136 },
+      ],
+      strip: { x: 24, y: 1290, w: W - 48, h: 230, hitX: 200, pxPerBeat: 250 },
       panel: { x: 50, y: 530, w: W - 100, h: 600 },
-      hint: { x: W / 2, y: 1520, size: 34 },
+      hint: { x: W / 2, y: 1590, size: 34 },
       text: { mark: 54, label: 26, bubble: 34, panelTitle: 62, panelBody: 36 },
     };
   }
@@ -47,9 +58,13 @@ export function layoutFor(orientation: Orientation): Layout {
     title: { x: 56, y: 56, size: 46 },
     live: { x: W - 56, y: 56, size: 34 },
     meter: { x: 760, y: 36, w: 440, h: 40 },
-    jury: { xs: [1340, 1565, 1790], y: 300, scale: 0.95 },
-    host: { x: 190, y: 430, scale: 1 },
-    band: { xs: [520, 730, 940, 1150], y: 690, scale: 1 },
+    jury: { xs: [1350, 1570, 1790], y: 400, scale: 0.85 },
+    host: { x: 210, y: 690, scale: 0.92 },
+    band: { xs: [520, 735, 950, 1165], y: 690, scale: 0.66 },
+    stage: { top: 670, front: 760 },
+    sign: { cx: 840, cy: 250, w: 430, h: 190 },
+    lamps: { y: 108, xs: [300, 520, 1180, 1420, 1640] },
+    crowd: [{ y: 826, scale: 0.82, count: 16, gap: 118 }],
     strip: { x: 48, y: 790, w: W - 96, h: 210, hitX: 330, pxPerBeat: 340 },
     panel: { x: 330, y: 120, w: 900, h: 620 },
     hint: { x: W / 2, y: 1045, size: 28 },

@@ -8,6 +8,8 @@ import { TALENT_COPY, type JuryId, type TalentCopy } from "../copy";
 import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
+import { ART_FILES } from "./artManifest";
+import { FIGURE, FEET, JURY_ART } from "./figure";
 import { layoutFor, type Layout, type Orientation } from "./layout";
 
 export type RunReport = { song: SongId; verdict: Verdict; replayed: Verdict | null; matches: boolean; log: TapLog };
@@ -27,7 +29,10 @@ export type TalentBridge = {
 };
 
 type Mode = "intro" | "calibrating" | "calibrated" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
-type Mood = "neutral" | "happy" | "angry";
+type Mood = "neutral" | "happy" | "angry" | "shock";
+type HostMood = "neutral" | "happy" | "excited" | "surprised" | "sad" | "static" | "wave";
+type Pose = "ready" | "hit";
+type KidFace = "normal" | "happy" | "wow";
 
 const C = {
   ink: 0x1d1830,
@@ -40,6 +45,7 @@ const C = {
   plum500: 0x7b62c4,
   plum300: 0xb9a6ef,
   sun: 0xffc83d,
+  sunPale: 0xffe39a,
   tangerine: 0xff8a3d,
   tomato: 0xef4f43,
   bubblegum: 0xf06ba8,
@@ -52,7 +58,6 @@ const BAND: BandMember[] = ["deco", "lina", "bruno", "mila"];
 const JURY: JuryId[] = ["inspector", "arlindo", "lunch"];
 const JURY_BIAS: Record<JuryId, number> = { inspector: -1, arlindo: 0, lunch: 1 };
 const MEMBER_COLOR: Record<BandMember, number> = { deco: C.tangerine, lina: C.bubblegum, bruno: C.mint, mila: C.plum300, "404": C.sun };
-const JURY_COLOR: Record<JuryId, number> = { inspector: 0x8fa9c4, arlindo: 0xd7a77a, lunch: 0xf3a5c8 };
 const MARK_COLOR: Record<Mark, string> = { perfect: "#ffc83d", good: "#63d6c1", near: "#f7ecd4", miss: "#ef4f43", held: "#ffc83d", dropped: "#ef4f43", noise: "#ef4f43" };
 const MARK_TINT: Record<Mark, number> = { perfect: C.sun, good: C.mint, near: C.cream, miss: C.tomato, held: C.sun, dropped: C.tomato, noise: C.tomato };
 const CUT_STING = [69, 72, 76, 74, 72, 69];
@@ -62,7 +67,9 @@ const CALIBRATION_TAPS = 8;
 
 type Popup = { text: Phaser.GameObjects.Text; born: number };
 type Burst = { born: number; color: number };
-type JuryView = { head: Phaser.GameObjects.Graphics; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; mood: Mood; moodUntil: number };
+type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; heart: Phaser.GameObjects.Graphics; mood: Mood; moodUntil: number; heartUntil: number };
+type KidView = { root: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; head: Phaser.GameObjects.Image; pose: Pose; poseUntil: number; face: KidFace; flash: KidFace; faceUntil: number; base: KidFace };
+type Fan = { img: Phaser.GameObjects.Image; variant: number; leave: number; phase: number; y: number };
 
 export class StageScene extends Phaser.Scene {
   private bridge!: TalentBridge;
@@ -102,16 +109,18 @@ export class StageScene extends Phaser.Scene {
   private weakTile!: Phaser.GameObjects.TileSprite;
   private lostMask!: Phaser.GameObjects.Graphics;
   private weakMask!: Phaser.GameObjects.Graphics;
-  private hostScreenTile!: Phaser.GameObjects.TileSprite;
-  private hostEyes!: Phaser.GameObjects.Graphics;
+  private host!: Phaser.GameObjects.Image;
+  private hostMood: HostMood = "wave";
+  private hostOverride: HostMood | null = null;
+  private hostUntil = 0;
+  private fans: Fan[] = [];
   private bubble!: Phaser.GameObjects.Container;
   private bubbleBg!: Phaser.GameObjects.Graphics;
   private bubbleText!: Phaser.GameObjects.Text;
   private bubbleUntil = 0;
   private shh!: Phaser.GameObjects.Text;
   private shhUntil = 0;
-  private kids = new Map<BandMember, Phaser.GameObjects.Container>();
-  private kidBump = new Map<BandMember, number>();
+  private kids = new Map<BandMember, KidView>();
   private jury = new Map<JuryId, JuryView>();
   private titleText!: Phaser.GameObjects.Text;
   private subtitleText!: Phaser.GameObjects.Text;
@@ -130,6 +139,12 @@ export class StageScene extends Phaser.Scene {
     super("stage");
   }
 
+  preload() {
+    for (const [name, [, , w, h, res]] of Object.entries(ART_FILES)) {
+      if (!this.textures.exists(name)) this.load.svg(name, `/assets/talent-show/${name}.svg`, { width: Math.round(w * res), height: Math.round(h * res) });
+    }
+  }
+
   create() {
     this.bridge = this.registry.get("bridge") as TalentBridge;
     this.copy = TALENT_COPY[this.bridge.locale];
@@ -142,6 +157,7 @@ export class StageScene extends Phaser.Scene {
     this.buildHost();
     this.buildJury();
     this.buildBand();
+    this.buildCrowd();
     this.buildStrip();
     this.buildPanel();
     this.setSong(this.bridge.song, false);
@@ -173,44 +189,28 @@ export class StageScene extends Phaser.Scene {
     tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
 
+  private outlined(kind: "display" | "body", size: number, color = "#f7ecd4", thickness = 8): Phaser.Types.GameObjects.Text.TextStyle {
+    return { ...this.font(kind, size, color), stroke: "#1d1830", strokeThickness: thickness };
+  }
+
   private buildBackdrop() {
-    const { W, H } = this.L;
-    const g = this.add.graphics().setDepth(0);
-    g.fillStyle(C.plum900, 1).fillRect(0, 0, W, H);
-    const stripeW = 80;
-    for (let x = 0; x < W; x += stripeW * 2) g.fillStyle(C.plum800, 1).fillRect(x, 0, stripeW, this.L.strip.y - 40);
-    const floorY = this.L.band.y - 20;
-    g.fillStyle(C.plum700, 1).fillRect(0, floorY, W, this.L.strip.y - floorY - 20);
-    g.lineStyle(6, C.ink, 1).lineBetween(0, floorY, W, floorY);
+    this.add.image(0, 0, `studio-${this.bridge.orientation}`).setOrigin(0, 0).setDepth(0);
     this.spotG = this.add.graphics().setDepth(1);
-    this.titleText = this.add.text(this.L.title.x, this.L.title.y, "", this.font("display", this.L.title.size)).setOrigin(0, 0.5).setDepth(20);
-    this.subtitleText = this.add.text(this.L.title.x, this.L.title.y + this.L.title.size * 0.95, "", this.font("body", this.L.text.label + 4, "#b9a6ef")).setOrigin(0, 0.5).setDepth(20);
-    this.add.text(this.L.live.x, this.L.live.y, `● ${this.copy.live}`, this.font("display", this.L.live.size, "#ef4f43")).setOrigin(1, 0.5).setDepth(20);
+    this.titleText = this.add.text(this.L.title.x, this.L.title.y, "", this.outlined("display", this.L.title.size)).setOrigin(0, 0.5).setDepth(20);
+    this.subtitleText = this.add.text(this.L.title.x, this.L.title.y + this.L.title.size * 0.95, "", this.outlined("body", this.L.text.label + 4, "#b9a6ef", 6)).setOrigin(0, 0.5).setDepth(20);
+    this.add.text(this.L.live.x, this.L.live.y, `● ${this.copy.live}`, this.outlined("display", this.L.live.size, "#ef4f43")).setOrigin(1, 0.5).setDepth(20);
     const m = this.L.meter;
-    this.add.text(m.x - 16, m.y + m.h / 2, this.copy.crowd, this.font("display", this.L.text.label + 4)).setOrigin(1, 0.5).setDepth(20);
+    this.add.text(m.x - 16, m.y + m.h / 2, this.copy.crowd, this.outlined("display", this.L.text.label + 4)).setOrigin(1, 0.5).setDepth(20);
     this.meterG = this.add.graphics().setDepth(20);
     this.hintText = this.add.text(this.L.hint.x, this.L.hint.y, "", this.font("body", this.L.hint.size, "#b9a6ef")).setOrigin(0.5).setDepth(20);
   }
 
   private buildHost() {
     const { x, y, scale } = this.L.host;
-    const body = this.add.graphics();
-    body.lineStyle(6, C.ink, 1);
-    body.lineBetween(-30, -80, -70, -140).lineBetween(30, -80, 70, -140);
-    body.fillStyle(C.ink, 1).fillCircle(-70, -140, 8).fillCircle(70, -140, 8);
-    body.fillStyle(C.ink, 1).fillRect(-70, 70, 16, 50).fillRect(54, 70, 16, 50);
-    body.fillStyle(C.sun, 1).fillRoundedRect(-110, -85, 220, 165, 26);
-    body.lineStyle(6, C.ink, 1).strokeRoundedRect(-110, -85, 220, 165, 26);
-    body.fillStyle(C.plum950, 1).fillRoundedRect(-85, -62, 170, 118, 16);
-    this.hostScreenTile = this.add.tileSprite(-85, -62, 170, 118, "talent-static").setOrigin(0, 0).setTileScale(4).setVisible(false);
-    this.hostEyes = this.add.graphics();
-    this.hostEyes.fillStyle(C.cream, 1).fillCircle(-32, -8, 22).fillCircle(32, -8, 22);
-    this.hostEyes.fillStyle(C.ink, 1).fillCircle(-28, -4, 10).fillCircle(36, -4, 10);
-    this.hostEyes.lineStyle(5, C.cream, 1).beginPath().arc(0, 22, 20, 0.2, Math.PI - 0.2).strokePath();
-    this.add.container(x, y, [body, this.hostScreenTile, this.hostEyes]).setScale(scale).setDepth(5);
+    this.host = this.add.image(x, y, "host-wave").setOrigin(0.5, 298 / 304).setScale(scale / 2).setDepth(5);
     this.bubbleBg = this.add.graphics();
     this.bubbleText = this.add.text(0, 0, "", this.font("display", this.L.text.bubble, "#1d1830")).setOrigin(0, 0.5);
-    this.bubble = this.add.container(x + 100 * scale, y - 140 * scale, [this.bubbleBg, this.bubbleText]).setDepth(15).setVisible(false);
+    this.bubble = this.add.container(x + 70 * scale, y - 300 * scale, [this.bubbleBg, this.bubbleText]).setDepth(15).setVisible(false);
   }
 
   private say(text: string, ms = 1400) {
@@ -226,87 +226,116 @@ export class StageScene extends Phaser.Scene {
     this.bubbleUntil = performance.now() + ms;
   }
 
+  private hostFlash(mood: HostMood, ms: number) {
+    this.hostOverride = mood;
+    this.hostUntil = performance.now() + ms;
+  }
+
+  private updateHost(now: number, signal: Signal) {
+    const live = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
+    let mood: HostMood;
+    if (live && signal === "lost") mood = "static";
+    else if (this.hostOverride && now < this.hostUntil) mood = this.hostOverride;
+    else if (this.mode === "intro" || this.mode === "calibrating" || this.mode === "calibrated") mood = "wave";
+    else if (this.mode === "countin" || this.mode === "resuming") mood = "excited";
+    else if (this.mode === "cut") mood = "sad";
+    else if (this.mode === "results") mood = (this.verdict?.stars ?? 0) >= 2 ? "happy" : (this.verdict?.stars ?? 0) === 1 ? "neutral" : "sad";
+    else mood = "neutral";
+    if (mood !== this.hostMood) {
+      this.hostMood = mood;
+      this.host.setTexture(`host-${mood}`);
+    }
+  }
+
+  private juryTexture(id: JuryId, mood: Mood) {
+    if (id === "inspector") return mood === "angry" ? "jury-inspector-angry" : mood === "shock" ? "jury-inspector-shock" : "jury-inspector-neutral";
+    return mood === "angry" || mood === "shock" ? `jury-${id}-angry` : `jury-${id}-neutral`;
+  }
+
   private buildJury() {
     const { xs, y, scale } = this.L.jury;
     JURY.forEach((id, i) => {
-      const desk = this.add.graphics();
-      desk.fillStyle(C.cream2, 1).fillRoundedRect(-100, 20, 200, 74, 12);
-      desk.lineStyle(5, C.ink, 1).strokeRoundedRect(-100, 20, 200, 74, 12);
-      const name = this.add.text(0, 57, this.copy.jury[id], this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5);
-      const head = this.add.graphics();
-      const plateBg = this.add.graphics();
-      plateBg.lineStyle(6, C.ink, 1).lineBetween(0, 0, 0, 30);
-      plateBg.fillStyle(C.cream, 1).fillRoundedRect(-58, -86, 116, 92, 12);
-      plateBg.lineStyle(5, C.ink, 1).strokeRoundedRect(-58, -86, 116, 92, 12);
-      const plateText = this.add.text(0, -40, "", this.font("display", 64, "#1d1830")).setOrigin(0.5);
-      const plate = this.add.container(0, -110, [plateBg, plateText]).setVisible(false);
-      this.add.container(xs[i], y, [head, desk, name, plate]).setScale(scale).setDepth(6);
-      this.jury.set(id, { head, plate, plateText, mood: "neutral", moodUntil: 0 });
-      this.drawJuryHead(id, "neutral");
+      const art = JURY_ART[id];
+      const img = this.add.image(0, 0, this.juryTexture(id, "neutral")).setOrigin(art.originX, art.crop / art.h).setScale(art.scale / 2);
+      img.setCrop(0, 0, art.w * 2, art.crop * 2);
+      const desk = this.add.image(0, -14, "desk").setOrigin(0.5, 0).setScale(0.5);
+      const name = this.add.text(0, -14 + 77, this.copy.jury[id], this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5);
+      if (name.width > 140) name.setScale(140 / name.width);
+      const top = -art.crop * art.scale;
+      const plateImg = this.add.image(0, 0, "plate").setOrigin(0.5, 1).setScale(0.4);
+      const plateText = this.add.text(0, -116 * 0.8, "", this.font("display", 62, "#1d1830")).setOrigin(0.5);
+      const plate = this.add.container(art.plateX, top + 18, [plateImg, plateText]).setVisible(false);
+      const heart = this.add.graphics();
+      heart.fillStyle(C.bubblegum, 1).fillCircle(-11, 0, 13).fillCircle(11, 0, 13).fillTriangle(-23, 5, 23, 5, 0, 32);
+      heart.lineStyle(4, C.ink, 1).strokeCircle(-11, 0, 13).strokeCircle(11, 0, 13);
+      heart.setPosition(art.plateX * 0.6, top - 10).setVisible(false);
+      this.add.container(xs[i], y, [img, desk, name, plate, heart]).setScale(scale).setDepth(6);
+      this.jury.set(id, { img, plate, plateText, heart, mood: "neutral", moodUntil: 0, heartUntil: 0 });
     });
-    this.shh = this.add.text(this.L.jury.xs[0] + 70, this.L.jury.y - 120, this.copy.host.shh, this.font("display", this.L.text.bubble, "#ef4f43")).setOrigin(0, 0.5).setDepth(16).setVisible(false);
-  }
-
-  private drawJuryHead(id: JuryId, mood: Mood) {
-    const view = this.jury.get(id);
-    if (!view) return;
-    view.mood = mood;
-    const g = view.head;
-    g.clear();
-    g.fillStyle(JURY_COLOR[id], 1).fillCircle(0, -36, 50);
-    g.lineStyle(5, C.ink, 1).strokeCircle(0, -36, 50);
-    if (id === "inspector") g.fillStyle(C.ink, 1).fillRect(-46, -84, 92, 18);
-    if (id === "arlindo") g.fillStyle(C.cream, 1).fillEllipse(0, -6, 60, 18);
-    if (id === "lunch") g.fillStyle(C.cream, 1).fillEllipse(0, -84, 96, 26);
-    g.fillStyle(C.ink, 1).fillCircle(-18, -42, 6).fillCircle(18, -42, 6);
-    g.lineStyle(5, C.ink, 1);
-    if (mood === "angry") {
-      g.lineBetween(-30, -62, -8, -54).lineBetween(30, -62, 8, -54);
-      g.lineBetween(-14, -16, 14, -16);
-    } else if (mood === "happy") {
-      g.beginPath().arc(0, -26, 18, 0.2, Math.PI - 0.2).strokePath();
-    } else {
-      g.lineBetween(-10, -18, 10, -18);
-    }
+    const inspector = JURY_ART.inspector;
+    this.shh = this.add.text(this.L.jury.xs[0] - 40 * scale, y - inspector.crop * inspector.scale * scale - 10, this.copy.host.shh, this.outlined("display", this.L.text.bubble, "#ef4f43"))
+      .setOrigin(1, 0.5)
+      .setDepth(16)
+      .setVisible(false);
   }
 
   private juryMood(id: JuryId, mood: Mood, ms = 900) {
     const view = this.jury.get(id);
     if (!view) return;
-    view.moodUntil = performance.now() + ms;
-    if (view.mood !== mood) this.drawJuryHead(id, mood);
+    const now = performance.now();
+    view.moodUntil = now + ms;
+    if (mood === "happy") {
+      view.heart.setVisible(true);
+      view.heartUntil = now + ms;
+    }
+    const texture = this.juryTexture(id, mood);
+    if (view.img.texture.key !== texture) {
+      const art = JURY_ART[id];
+      view.img.setTexture(texture).setCrop(0, 0, art.w * 2, art.crop * 2);
+    }
+    view.mood = mood;
   }
 
   private buildBand() {
     const { xs, y, scale } = this.L.band;
     BAND.forEach((id, i) => {
-      const g = this.add.graphics();
-      const color = MEMBER_COLOR[id];
-      g.fillStyle(C.ink, 0.25).fillEllipse(0, 4, 150, 26);
-      g.fillStyle(color, 1).fillRoundedRect(-55, -150, 110, 150, 34);
-      g.lineStyle(6, C.ink, 1).strokeRoundedRect(-55, -150, 110, 150, 34);
-      g.fillStyle(color, 1).fillCircle(0, -205, 58);
-      g.lineStyle(6, C.ink, 1).strokeCircle(0, -205, 58);
-      g.fillStyle(C.ink, 1).fillCircle(-20, -212, 7).fillCircle(20, -212, 7);
-      g.lineStyle(5, C.ink, 1).beginPath().arc(0, -196, 16, 0.3, Math.PI - 0.3).strokePath();
-      if (id === "deco") {
-        g.fillStyle(0x9aa3b5, 1).fillRect(-46, -60, 92, 60);
-        g.lineStyle(5, C.ink, 1).strokeRect(-46, -60, 92, 60);
-      } else if (id === "lina") {
-        g.fillStyle(C.cream, 1).fillRect(-70, -92, 140, 34);
-        g.lineStyle(5, C.ink, 1).strokeRect(-70, -92, 140, 34);
-        for (let k = -50; k <= 50; k += 20) g.lineBetween(k, -92, k, -70);
-      } else if (id === "bruno") {
-        g.fillStyle(C.tomato, 1).fillRoundedRect(36, -120, 34, 56, 8);
-        g.lineStyle(5, C.ink, 1).strokeRoundedRect(36, -120, 34, 56, 8);
-      } else {
-        g.fillStyle(0x3b3b4a, 1).fillRoundedRect(-46, -104, 92, 54, 8);
-        g.fillStyle(C.cream, 1).fillCircle(-20, -77, 12).fillCircle(20, -77, 12);
-        g.lineStyle(5, C.ink, 1).strokeRoundedRect(-46, -104, 92, 54, 8);
-      }
-      const name = this.add.text(0, 34, this.copy.band[id], this.font("display", this.L.text.label + 2)).setOrigin(0.5);
-      this.kids.set(id, this.add.container(xs[i], y, [g, name]).setScale(scale).setDepth(7));
+      const body = this.add.image(0, 0, `body-${id}-ready`).setOrigin((100 - FIGURE.x) / FIGURE.w, FEET / FIGURE.h).setScale(0.5);
+      const head = this.add.image(0, -FEET, `head-${id}-normal`).setOrigin(0.5, 0).setScale(0.5);
+      const root = this.add.container(xs[i], y, [body, head]).setScale(scale).setDepth(7);
+      this.add.text(xs[i], y + 22, this.copy.band[id], this.outlined("display", this.L.text.label + 2, "#f7ecd4", 7)).setOrigin(0.5, 0).setDepth(9.5);
+      this.kids.set(id, { root, body, head, pose: "ready", poseUntil: 0, face: "normal", flash: "wow", faceUntil: 0, base: "normal" });
     });
+  }
+
+  private buildCrowd() {
+    let index = 0;
+    this.L.crowd.forEach((row, r) => {
+      for (let i = 0; i < row.count; i += 1) {
+        const x = this.L.W / 2 + (i - (row.count - 1) / 2) * row.gap;
+        const variant = (i * 7 + r * 5) % 3;
+        const img = this.add.image(x, row.y, `crowd-${variant}`).setOrigin(0.5, 1).setScale(row.scale / 2).setDepth(9 + r * 0.1);
+        this.fans.push({ img, variant, leave: (index * 7919) % 97, phase: (index * 0.37) % 1, y: row.y });
+        index += 1;
+      }
+    });
+    const order = [...this.fans].sort((a, b) => a.leave - b.leave);
+    order.forEach((fan, rank) => (fan.leave = rank));
+  }
+
+  private animateCrowd(shown: number) {
+    const total = this.fans.length;
+    const level = this.mode === "cut" ? 0 : Math.max(0, Math.min(100, this.displayCrowd)) / 100;
+    const present = Math.round(total * Math.min(1, level * 1.25));
+    const live = this.mode === "playing" || this.mode === "countin";
+    const beat = this.beatPos(shown);
+    for (const fan of this.fans) {
+      fan.img.setVisible(fan.leave < present);
+      const cheer = live && level > 0.85 && fan.leave % 3 === 0;
+      const key = `crowd-${cheer ? 3 : fan.variant}`;
+      if (fan.img.texture.key !== key) fan.img.setTexture(key);
+      const bounce = live && !this.bridge.reducedMotion ? Math.max(0, Math.sin((beat + fan.phase) * Math.PI)) * 8 * level : 0;
+      fan.img.y = fan.y - bounce;
+    }
   }
 
   private buildStrip() {
@@ -406,10 +435,12 @@ export class StageScene extends Phaser.Scene {
   private drawSpotlight() {
     const featured = this.featured();
     this.spotG.clear();
-    const target = featured === "404" ? { x: this.L.host.x, y: this.L.host.y + 120 } : { x: this.L.band.xs[BAND.indexOf(featured)], y: this.L.band.y };
-    this.spotG.fillStyle(C.sun, 0.14).fillTriangle(target.x - 40, 0, target.x + 40, 0, target.x + 170, target.y + 10);
-    this.spotG.fillTriangle(target.x - 40, 0, target.x - 170, target.y + 10, target.x + 170, target.y + 10);
-    this.spotG.fillStyle(C.sun, 0.2).fillEllipse(target.x, target.y + 6, 340, 50);
+    const target = featured === "404" ? { x: this.L.host.x, y: this.L.host.y } : { x: this.L.band.xs[BAND.indexOf(featured)], y: this.L.band.y };
+    const top = this.L.lamps.y + 62;
+    const lamp = this.L.lamps.xs.reduce((a, b) => (Math.abs(b - target.x) < Math.abs(a - target.x) ? b : a), this.L.lamps.xs[0]);
+    this.spotG.fillStyle(C.sunPale, 0.13).fillTriangle(lamp - 16, top, lamp + 16, top, target.x + 150, target.y + 8);
+    this.spotG.fillTriangle(lamp - 16, top, target.x - 150, target.y + 8, target.x + 150, target.y + 8);
+    this.spotG.fillStyle(C.sunPale, 0.22).fillEllipse(target.x, target.y + 4, 300, 44);
   }
 
   private setMode(mode: Mode) {
@@ -421,6 +452,7 @@ export class StageScene extends Phaser.Scene {
     const idle = mode === "intro" || mode === "calibrated" || mode === "cut" || mode === "results";
     this.hintText.setText(!this.bridge.touch && idle ? copy.keysHint : "");
     if (mode === "intro") {
+      this.setKidFaces("normal");
       const lines = [song.how];
       if (!this.hasCalibration) lines.push("", copy.firstCalibration);
       if (this.notice) lines.unshift(this.notice, "");
@@ -597,8 +629,10 @@ export class StageScene extends Phaser.Scene {
     }
     this.jury.forEach((view, id) => {
       view.plate.setVisible(false);
-      this.drawJuryHead(id, "neutral");
+      this.juryMood(id, "neutral", 0);
     });
+    this.setKidFaces("normal");
+    this.hostOverride = null;
     this.setMode("countin");
   }
 
@@ -655,8 +689,7 @@ export class StageScene extends Phaser.Scene {
     const freq = segment.tap === "keys" ? keysFreq(near ? this.compiled.tones[near.step] : null) : near ? callFreq(near.step) : 440;
     this.player.press(segment.tap, freq);
     this.bursts.push({ born: performance.now(), color: C.cream });
-    const featured = segment.featured;
-    this.kidBump.set(featured === "404" ? "deco" : featured, performance.now());
+    this.kidHit(segment.featured);
   }
 
   private registerUp(timeStamp: number, id: string) {
@@ -698,6 +731,7 @@ export class StageScene extends Phaser.Scene {
     if (verdict.stars === 0) lines.push(copy.noStar);
     if (this.assist) lines.push(copy.assistOn);
     this.showPanel(copy.resultsTitle, lines.join("\n"), copy.again, verdict.stars);
+    this.setKidFaces(verdict.stars >= 2 ? "happy" : verdict.stars === 0 ? "wow" : "normal");
     const base = Math.round((10 * Math.max(0, verdict.points)) / Math.max(1, verdict.maxPoints));
     JURY.forEach((id) => this.raisePlate(id, base, 4000));
   }
@@ -708,7 +742,7 @@ export class StageScene extends Phaser.Scene {
     this.player?.sting(CUT_STING, 0.16);
     this.setMode("cut");
     this.showPanel(this.copy.cutTitle, this.copy.cutText, this.copy.retry, 0);
-    this.say(this.copy.cutTitle, 2500);
+    this.setKidFaces("wow");
   }
 
   private raisePlate(id: JuryId, base: number, ms: number) {
@@ -752,6 +786,8 @@ export class StageScene extends Phaser.Scene {
     this.drawStrip(shown);
     this.drawMeter();
     this.animateBand(shown, now);
+    const live = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
+    this.updateHost(now, live && shown >= 0 ? this.compiled.signal[barAt(this.compiled, shown)] ?? "clear" : "clear");
   }
 
   private updateSong(songMs: number, shown: number) {
@@ -791,9 +827,6 @@ export class StageScene extends Phaser.Scene {
       else if (this.lastSignal === "lost") this.say(copy.host.back, 1200);
       this.lastSignal = signal;
     }
-    this.hostScreenTile.setVisible(signal === "lost");
-    this.hostEyes.setVisible(signal !== "lost");
-    if (signal === "lost" && !this.bridge.reducedMotion) this.hostScreenTile.tilePositionY += 0.6;
     this.streakText.setText(verdict.streak >= 5 ? copy.streak(verdict.streak) : "");
     if (verdict.cutAt !== null) this.cut();
     else if (shown >= this.compiled.endMs) this.endSong();
@@ -814,18 +847,20 @@ export class StageScene extends Phaser.Scene {
       }
     } else if (mark === "miss" || mark === "dropped") {
       this.juryMood("arlindo", "angry", 900);
+      this.kidFlash(this.featured(), "wow", 600);
+      this.hostFlash("surprised", 600);
     } else if (mark === "held" || (streak > 0 && streak % 8 === 0)) {
       this.juryMood("lunch", "happy", 1000);
+      if (streak >= 16) this.hostFlash("excited", 700);
     }
-    const featured = this.featured();
-    if (mark === "perfect" || mark === "good" || mark === "held") this.kidBump.set(featured === "404" ? "deco" : featured, now);
   }
 
   private updateTransient(now: number) {
     if (this.bubble.visible && now > this.bubbleUntil) this.bubble.setVisible(false);
     if (this.shh.visible && now > this.shhUntil) this.shh.setVisible(false);
     this.jury.forEach((view, id) => {
-      if (view.mood !== "neutral" && now > view.moodUntil) this.drawJuryHead(id, "neutral");
+      if (view.mood !== "neutral" && now > view.moodUntil) this.juryMood(id, "neutral", 0);
+      if (view.heart.visible && now > view.heartUntil) view.heart.setVisible(false);
       const until = view.plate.getData("until") as number | undefined;
       if (view.plate.visible && until !== undefined && now > until) view.plate.setVisible(false);
     });
@@ -851,30 +886,49 @@ export class StageScene extends Phaser.Scene {
     g.lineStyle(5, C.ink, 1).strokeRoundedRect(m.x, m.y, m.w, m.h, m.h / 2);
   }
 
+  private kidFlash(id: BandMember, face: KidFace, ms: number) {
+    const view = this.kids.get(id === "404" ? "deco" : id);
+    if (!view) return;
+    view.flash = face;
+    view.faceUntil = performance.now() + ms;
+  }
+
+  private kidHit(id: BandMember, ms = 120) {
+    const view = this.kids.get(id === "404" ? "deco" : id);
+    if (view) view.poseUntil = performance.now() + ms;
+  }
+
+  private setKidFaces(face: KidFace) {
+    this.kids.forEach((view) => {
+      view.base = face;
+      view.faceUntil = 0;
+    });
+  }
+
   private animateBand(shown: number, now: number) {
     const featured = this.featured();
     const moving = this.mode === "playing" || this.mode === "countin";
-    this.kids.forEach((kid, id) => {
-      const base = this.L.band.scale * (id === featured ? 1.15 : 0.92);
-      let sx = base;
-      let sy = base;
-      if (!this.bridge.reducedMotion) {
-        if (moving) {
-          const phase = ((this.beatPos(shown) % 1) + 1) % 1;
-          const squish = Math.max(0, 1 - phase * 5) * 0.05;
-          sy = base * (1 - squish);
-          sx = base * (1 + squish * 0.6);
-        }
-        const bump = this.kidBump.get(id);
-        if (bump !== undefined && now - bump < 140) {
-          const k = 1 - (now - bump) / 140;
-          sy *= 1 + 0.08 * k;
-          sx *= 1 - 0.03 * k;
-        }
+    const phase = ((this.beatPos(shown) % 1) + 1) % 1;
+    const bob = moving && !this.bridge.reducedMotion ? Math.max(0, 1 - phase * 4) * 8 : 0;
+    const streak = this.verdict?.streak ?? 0;
+    this.kids.forEach((view, id) => {
+      const lead = id === featured || (featured === "404" && id === "deco");
+      view.root.setScale(this.L.band.scale * (lead ? 1.12 : 0.94));
+      view.head.y = -FEET + bob * (lead ? 1 : 0.6);
+      const pose: Pose = now < view.poseUntil ? "hit" : "ready";
+      if (pose !== view.pose) {
+        view.pose = pose;
+        view.body.setTexture(`body-${id}-${pose}`);
       }
-      kid.setScale(sx, sy);
+      const base: KidFace = moving && lead && streak >= 10 ? "happy" : view.base;
+      const face = now < view.faceUntil ? view.flash : base;
+      if (face !== view.face) {
+        view.face = face;
+        view.head.setTexture(`head-${id}-${face}`);
+      }
     });
-    if (this.mode === "playing" && this.compiled.calls.some((c) => Math.abs(c.at - shown) < 30)) this.kidBump.set("mila", now);
+    if (this.mode === "playing" && this.compiled.calls.some((c) => Math.abs(c.at - shown) < 30)) this.kidHit("mila", 140);
+    this.animateCrowd(shown);
   }
 
   private beatPos(ms: number) {
