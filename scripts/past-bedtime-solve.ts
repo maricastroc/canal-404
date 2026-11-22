@@ -51,7 +51,10 @@ const PROOFS: Record<string, Proof> = {
   doorway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
   hallway: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
   kitchen: { label: "slower than an empty kitchen, so Grandma's round has to be waited out", holds: (_l, turns, empty) => empty !== null && turns > empty },
-  stairs: { label: "slower than an empty hall, so Grandma's back has to be waited for", holds: (_l, turns, empty) => empty !== null && turns > empty },
+  stairs: {
+    label: "slower than an empty hall, and unsolvable if her flashlight also lit her sides, so Bruno has to slip past her blind side",
+    holds: (l, turns, empty) => empty !== null && turns > empty && unsolvable({ ...l, agents: l.agents.map((a) => (a.kind === "patrol" ? { ...a, cone: "wide" } : a)) }),
+  },
   pantry: { label: "without the hiding spot the target is out of reach", holds: (l) => (solve(createSim({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }))?.turns ?? Infinity) > l.par + 3 },
   laundry: { label: "unsolvable with only one of the two boards, so Pipoca has to be lured twice", holds: (l) => onlyBoards(l).length > 1 && onlyBoards(l).every((map) => unsolvable({ ...l, map })) },
   dining: { label: "unsolvable without Pixel knocking things over, or without the long way around the table", holds: (l) => unsolvable({ ...l, agents: l.agents.filter((a) => a.kind !== "cat") }) && unsolvable({ ...l, map: farSideClosed(l) }) },

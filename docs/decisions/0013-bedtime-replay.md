@@ -1,5 +1,7 @@
 # 0013: Replaying Madrugada on the server
 
+> Rules version 2 (2026-11-22): in part 3 ("A escada") Grandma walks a loop, out along the bottom row and back along Bruno's row, instead of pacing back and forth, so following her is no longer enough. The par stays 16 and the move log stays `bedtime-moves` version 1. The bump starts new boards for all ten parts.
+
 ## Context
 
 Madrugada (EN "Past Bedtime") is a turn-based stealth puzzle in ten parts. Bruno moves one tile or waits per turn, and the house (Dad, Grandma, Pipoca, Pixel, the cuckoo clock) answers each turn the same way every time. The rules already live outside Phaser in `src/games/past-bedtime/sim/`: `step()` is a pure function of the level, the state and one action, with no randomness and no clock. Joining the catalog needs a board per part that a modified client can't fill with invented move counts.

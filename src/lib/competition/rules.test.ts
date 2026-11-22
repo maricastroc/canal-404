@@ -485,7 +485,7 @@ describe("Madrugada", () => {
     }
     const v = ok(judgeRun("past-bedtime", "return", night("return")));
     expect(metricValues("past-bedtime", v.rank)).toEqual([23, 2, 2]);
-    expect(boardId("past-bedtime", "return")).toBe("past-bedtime/return/v1");
+    expect(boardId("past-bedtime", "return")).toBe("past-bedtime/return/v2");
   });
 
   it("caps a hinted run at 2 stars and keeps it off the board", () => {
