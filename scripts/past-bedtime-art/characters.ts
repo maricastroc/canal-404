@@ -88,7 +88,7 @@ function headFront(face: Face, blink: boolean) {
     ${face === "tense" || face === "scared" || face === "caught" ? sweat(160, 70, 1.4) : ""}
     ${face === "caught" ? sweat(40, 86, 1.2) : ""}
     ${face === "relief" ? sweat(158, 100, 1.1) : ""}
-    ${face === "scared" ? `<path d="M70 30 L66 14 M100 24 L100 6 M130 30 L134 14" fill="none" ${ink(4)}/>` : ""}
+    ${face === "scared" ? `<path d="M70 36 L66 20 M100 30 L100 12 M130 36 L134 20" fill="none" ${ink(4)}/>` : ""}
   </g>`;
 }
 
@@ -162,7 +162,7 @@ function side(face: Face, source: string) {
     ${limb("M76 126 Q86 146 101 148", P.sky)}
     <circle cx="102" cy="149" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
     <g transform="translate(78 114) scale(0.72) translate(-103 -180)">${inner}</g>
-    ${face === "relief" ? `<path d="M122 66 Q134 60 138 68 Q146 66 148 74 Q142 82 130 78 Q122 80 120 74 Z" fill="#e9f2f6" ${ink(2.5)}/>` : ""}
+    ${face === "relief" ? `<path d="M117 66 Q129 60 133 68 Q141 66 143 74 Q137 82 125 78 Q117 80 115 74 Z" fill="#e9f2f6" ${ink(2.5)}/>` : ""}
     ${face === "scared" ? `<path d="M60 4 L54 -10 M80 0 L80 -16 M100 4 L106 -10" fill="none" ${ink(4)}/>` : ""}`);
 }
 

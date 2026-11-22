@@ -54,6 +54,7 @@ function torch(x: number, y: number, angle: number) {
 const granSlippers = `<ellipse cx="-13" cy="-4" rx="12" ry="6" fill="${GRAN.slipper}" ${ink(3)}/><ellipse cx="13" cy="-4" rx="12" ry="6" fill="${GRAN.slipper}" ${ink(3)}/><circle cx="-13" cy="-8" r="3.5" fill="${P.white}" ${ink(1.5)}/><circle cx="13" cy="-8" r="3.5" fill="${P.white}" ${ink(1.5)}/>`;
 
 const GRAN_VB = "-50 -158 104 164";
+const GRAN_SHOCK_VB = "-56 -172 116 178";
 
 function grandmaFront(mood: GranMood) {
   const hy = -100;
@@ -61,7 +62,7 @@ function grandmaFront(mood: GranMood) {
   const arms = up
     ? `${limb("M-24 -76 Q-40 -96 -34 -118", GRAN.robe, 14)}<circle cx="-34" cy="-120" r="7" fill="${P.skinLight}" ${ink(2.5)}/>${limb("M24 -76 Q40 -96 34 -118", GRAN.robe, 14)}<circle cx="34" cy="-120" r="7" fill="${P.skinLight}" ${ink(2.5)}/>${torch(34, -128, -90)}`
     : `${limb("M-24 -76 Q-30 -56 -8 -52", GRAN.robe, 14)}${limb("M24 -76 Q30 -56 8 -52", GRAN.robe, 14)}${torch(0, -50, 90)}<circle cx="-6" cy="-52" r="7" fill="${P.skinLight}" ${ink(2.5)}/><circle cx="6" cy="-52" r="7" fill="${P.skinLight}" ${ink(2.5)}/>`;
-  return svg(GRAN_VB, `
+  return svg(mood === "shock" ? GRAN_SHOCK_VB : GRAN_VB, `
     ${granSlippers}
     ${granRobe(-28, 28, -80, -8, false)}
     ${arms}
@@ -104,7 +105,7 @@ function grandmaSide(mood: GranMood) {
     mood === "shock"
       ? `${limb("M8 -72 Q34 -84 40 -108", GRAN.robe, 14)}<circle cx="40" cy="-110" r="7" fill="${P.skinLight}" ${ink(2.5)}/>${torch(42, -118, -70)}`
       : `${limb("M0 -74 Q8 -56 24 -56", GRAN.robe, 14)}${torch(30, -56, 0)}<circle cx="26" cy="-56" r="7" fill="${P.skinLight}" ${ink(2.5)}/>`;
-  return svg(GRAN_VB, `
+  return svg(mood === "shock" ? GRAN_SHOCK_VB : GRAN_VB, `
     <ellipse cx="${mood === "walk" ? 10 : 4}" cy="-4" rx="13" ry="6" fill="${GRAN.slipper}" ${ink(3)}/><ellipse cx="${mood === "walk" ? -10 : -4}" cy="-4" rx="13" ry="6" fill="#8a74c0" ${ink(3)}/>
     <path d="M-20 -80 Q-2 -86 16 -80 L22 -8 Q0 -2 -26 -8 Z" fill="${GRAN.robe}" ${ink(3.5)}/>
     <circle cx="-8" cy="-60" r="2.6" fill="${GRAN.dots}"/><circle cx="6" cy="-40" r="2.6" fill="${GRAN.dots}"/><circle cx="-14" cy="-28" r="2.6" fill="${GRAN.dots}"/><circle cx="10" cy="-20" r="2.6" fill="${GRAN.dots}"/>
