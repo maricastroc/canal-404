@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
-import { HouseIcon, MissionIcon, PlayIcon, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
+import { ArrowLeftIcon, CloseIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
@@ -74,6 +74,7 @@ const COPY = localized({
     play: "Jogar",
     showLevels: (word: LevelWord) => `Ver ${word}s`,
     hideHelp: "Esconder instruções",
+    closeHelp: "Fechar ajuda",
     record: (value: string) => `Recorde: ${value}`,
     pausedLabel: "Jogo pausado",
     paused: "Pausa",
@@ -136,6 +137,7 @@ const COPY = localized({
     play: "Play",
     showLevels: (word: LevelWord) => `See ${LEVEL[word]}s`,
     hideHelp: "Hide instructions",
+    closeHelp: "Close help",
     record: (value: string) => `Record: ${value}`,
     pausedLabel: "Game paused",
     paused: "Paused",
@@ -713,6 +715,46 @@ export function PausePanel({
 }) {
   const resumeRef = useAutoFocus<HTMLButtonElement>();
   const copy = useCopy(COPY);
+  const narrow = useNarrowScreen();
+  if (narrow) {
+    return (
+      <OverlayFrame label={copy.pausedLabel} className="p-5">
+        <div className="flex items-center gap-3">
+          <Mascot404 expression="sleepy" className={`shrink-0 -rotate-3 ${showHelp ? "w-12" : "w-[4.5rem] max-[359px]:w-16"}`} />
+          <div className="min-w-0">
+            <h2 className={`font-display uppercase leading-none tracking-wide text-ink ${showHelp ? "text-3xl" : "text-4xl"}`}>{copy.paused}</h2>
+            {showHelp ? null : <p className="mt-1 text-pretty font-hand text-lg leading-snug text-ink-soft">{copy.napping}</p>}
+          </div>
+        </div>
+        {showHelp ? (
+          <div id="pause-help" className="mt-4 border-t-[3px] border-dashed border-ink/30 pt-3">
+            <div className="mb-3">
+              <PickHeader title={copy.howTo} />
+            </div>
+            <ControlsList game={game} />
+          </div>
+        ) : null}
+        <div className="sticky -bottom-3 z-10 -mx-5 -mb-5 mt-4 flex flex-col gap-2 rounded-b-[inherit] border-t-[3px] border-ink px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 paper [&>button]:min-h-14 [&>button]:py-2">
+          <InkButton ref={resumeRef} tone="sun" size="lg" onClick={onResume} className="w-full">
+            <PlayIcon className="size-7 text-ink" /> {copy.resume}
+          </InkButton>
+          <div className="grid grid-cols-2 gap-2 [&>button]:min-h-11 [&>button]:px-2 [&>button]:text-base [&>button]:leading-tight [&>button]:tracking-normal [&>button]:[text-wrap:balance] max-[380px]:[&>button]:gap-1.5 max-[380px]:[&>button]:text-[15px]">
+            {onRestart ? (
+              <InkButton tone="mint" onClick={onRestart}>
+                <RestartIcon className="size-5" /> {copy.restart}
+              </InkButton>
+            ) : null}
+            <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="pause-help" className={onRestart ? "" : "col-span-2"}>
+              {showHelp ? <CloseIcon className="size-5" /> : <QuestionIcon className="size-5" />} {showHelp ? copy.closeHelp : copy.howTo}
+            </InkButton>
+          </div>
+          <Link href={`/games/${game.slug}`} className={`${TERTIARY} self-center`}>
+            <ArrowLeftIcon className="size-4" /> {copy.quit}
+          </Link>
+        </div>
+      </OverlayFrame>
+    );
+  }
   return (
     <OverlayFrame label={copy.pausedLabel} className="max-w-2xl p-5 sm:p-7">
       <div className="flex items-center gap-4">
