@@ -420,6 +420,10 @@ const TEXT = gameText({
         { input: "AGACHAR", action: "Segure para ganhar velocidade nas descidas. Para pular, é só deslizar o dedo até PULAR.", on: "touch" },
         { input: "PULAR", action: "Toque para pular. Segure no ar para fazer uma pose.", on: "touch" },
         { input: "Setas de girar", action: "No ar, gire o carrinho para acertar o pouso. No chão, empine e equilibre para ganhar pontos.", on: "touch" },
+        {
+          input: "Fantasma",
+          action: "Corra contra você mesmo! O fantasma reproduz sua melhor corrida nesta sessão, usando o mesmo carrinho e a mesma pista. Ele aparece na pista e na barra de progresso para você comparar seu desempenho em tempo real. O fantasma fica disponível depois da sua primeira corrida e é atualizado sempre que você melhora seu tempo. Ao sair do jogo, ele desaparece.",
+        },
       ],
       howTo: [
         { title: "Embale", text: "Agache para ganhar velocidade nas descidas. Quando chegar a uma rampa, pule bem na pontinha para voar mais longe!" },
@@ -847,6 +851,10 @@ const TEXT = gameText({
         { input: "CROUCH", action: "Hold to build speed on the way down. To jump, just slide your thumb over to JUMP.", on: "touch" },
         { input: "JUMP", action: "Tap to jump. Hold in the air to strike a pose.", on: "touch" },
         { input: "Spin arrows", action: "In the air, spin the cart to land straight. On the ground, pop a wheelie and balance it for points.", on: "touch" },
+        {
+          input: "Ghost",
+          action: "Race against yourself! The ghost replays your best run of this session, with the same cart on the same track. It shows on the track and on the progress bar so you can compare your run in real time. The ghost shows up after your first race and updates every time you beat your time. When you leave the game, it's gone.",
+        },
       ],
       howTo: [
         { title: "Build speed", text: "Crouch to build speed on the way down. When you reach a ramp, jump right at the edge to fly farther!" },
