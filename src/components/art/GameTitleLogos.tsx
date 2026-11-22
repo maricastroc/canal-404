@@ -5,6 +5,7 @@ import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import { P } from "@/lib/palette";
 import { Feather, Pillow } from "./PajamaWarProps";
+import { Marquee } from "./TalentShowArt";
 
 const display = { fontFamily: "var(--font-luckiest)" };
 
@@ -372,6 +373,41 @@ function PastBedtimeLogoArt({ className, locale }: { className?: string; locale:
       </g>
     </svg>
   );
+}
+
+const TALENT_SHOW = localized({
+  "pt-BR": { label: "Ao Vivo no 404", first: "AO VIVO", firstSize: 74, tag: "no", shine: "M52 54 q8 -8 18 -6" },
+  en: { label: "Live on 404", first: "LIVE", firstSize: 96, tag: "on", shine: "M98 42 q8 -8 18 -6" },
+});
+
+function TalentShowLogoArt({ className, locale }: { className?: string; locale: Locale }) {
+  const t = TALENT_SHOW[locale];
+  return (
+    <svg viewBox="-10 -8 380 232" className={className} role="img" aria-label={t.label}>
+      <g style={display}>
+        <g transform="rotate(-4 180 70)">
+          <text x="186" y="96" textAnchor="middle" fontSize={t.firstSize} fill={P.ink} letterSpacing="2">
+            {t.first}
+          </text>
+          <text x="180" y="90" textAnchor="middle" fontSize={t.firstSize} fill={P.tomato} stroke={P.ink} strokeWidth="11" paintOrder="stroke" strokeLinejoin="round" letterSpacing="2">
+            {t.first}
+          </text>
+          <path d={t.shine} stroke={P.white} strokeWidth="6" fill="none" strokeLinecap="round" opacity="0.8" />
+        </g>
+        <Marquee x={218} y={166} s={0.5} edge={10} />
+        <g transform="rotate(-10 50 160)">
+          <rect x="18" y="140" width="64" height="40" rx="10" fill={P.sun} stroke={P.ink} strokeWidth="5" />
+          <text x="50" y="171" textAnchor="middle" fontSize="30" fill={P.ink}>
+            {t.tag}
+          </text>
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+export function TalentShowLogo({ className }: { className?: string }) {
+  return <TalentShowLogoArt className={className} locale={useLocale()} />;
 }
 
 export function PastBedtimeLogo({ className }: { className?: string }) {

@@ -36,7 +36,8 @@ export type AchievementId =
   | "pajama-trio"
   | "offair-mystery"
   | "offair-posters"
-  | "offair-room";
+  | "offair-room"
+  | "talent-finale";
 
 export type ProgressText = {
   title: string;
@@ -90,6 +91,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "offair-mystery", color: "mint" },
   { id: "offair-posters", color: "tangerine" },
   { id: "offair-room", color: "sky" },
+  { id: "talent-finale", color: "bubblegum" },
 ];
 
 export const SECRET_TEXT = localized<Record<SecretId, ProgressText>>({
@@ -306,6 +308,11 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
       description: "Você abriu o quarto 404 e conheceu quem dorme lá.",
       hint: "Um hóspede bem lento guarda uma chave.",
     },
+    "talent-finale": {
+      title: "Bis!",
+      description: "Você terminou o Pot-pourri do 404 com pelo menos uma estrela.",
+      hint: "A final do show de calouros ainda espera pela banda.",
+    },
   },
   en: {
     "first-visit": {
@@ -432,6 +439,11 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
       title: "Guest of 404",
       description: "You opened Room 404 and met whoever sleeps there.",
       hint: "A very slow guest is keeping a key.",
+    },
+    "talent-finale": {
+      title: "Encore!",
+      description: "You finished the 404 Medley with at least one star.",
+      hint: "The talent show final is still waiting for the band.",
     },
   },
 });

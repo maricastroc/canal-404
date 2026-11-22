@@ -16,6 +16,7 @@ class AudioEngine {
   private master: GainNode | null = null;
   private sfxBus: GainNode | null = null;
   private musicBus: GainNode | null = null;
+  private stageBus: GainNode | null = null;
   private musicFilter: BiquadFilterNode | null = null;
   private analyser: AnalyserNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
@@ -95,6 +96,16 @@ class AudioEngine {
       this.unlocked = true;
       this.emit();
     }
+  }
+
+  stage() {
+    this.unlock();
+    if (!this.ctx || !this.master || !this.noiseBuffer) return null;
+    if (!this.stageBus) {
+      this.stageBus = this.ctx.createGain();
+      this.stageBus.connect(this.master);
+    }
+    return { ctx: this.ctx, out: this.stageBus, noise: this.noiseBuffer, pulse: this.pulseWave };
   }
 
   setSfxEnabled(enabled: boolean) {

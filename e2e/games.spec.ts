@@ -1,7 +1,7 @@
 import { PLAYABLE } from "../src/games/registry";
 import { expect, openGame, stage, test } from "./fixtures";
 
-const START = /^(Jogar( fase 1| arena 1| pista 1| parte 1)?|Começar aventura)$/;
+const START = /^(Jogar( fase 1| arena 1| pista 1| parte 1| música 1)?|Começar aventura)$/;
 
 test.describe.configure({ mode: "parallel" });
 

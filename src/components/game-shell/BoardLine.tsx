@@ -23,8 +23,8 @@ type Line = { headline?: string; text: string; rival?: string; href?: string; li
 
 const COPY = localized({
   "pt-BR": {
-    label: { fase: "Placar da fase", arena: "Placar da arena", pista: "Placar da pista", parte: "Placar da parte", game: "Placar do jogo" },
-    here: { fase: "desta fase", arena: "desta arena", pista: "desta pista", parte: "desta parte", game: "deste jogo" },
+    label: { fase: "Placar da fase", arena: "Placar da arena", pista: "Placar da pista", parte: "Placar da parte", música: "Placar da música", game: "Placar do jogo" },
+    here: { fase: "desta fase", arena: "desta arena", pista: "desta pista", parte: "desta parte", música: "desta música", game: "deste jogo" },
     queued: "Placar fora do ar. Guardamos o resultado e enviamos quando o sinal voltar.",
     rejectedTitle: "O placar não aceitou",
     rejected: "O placar não aceitou este resultado.",
@@ -36,6 +36,8 @@ const COPY = localized({
     practice: "Este foi só o aquecimento! A fase de treino não vale pontos no placar global.",
     resumed: "Partidas retomadas do sino não entram no placar. Jogue a fase inteira para competir.",
     hinted: "Partidas com dica não entram no placar. Tente a parte de novo sem espiar o caderno para competir.",
+    assisted: "Partidas no modo assistido não entram no placar. Desligue o modo assistido para competir.",
+    inhuman: "Esses toques ficaram precisos demais para uma pessoa e não entraram no placar.",
     noPoints: "Sem pontos, sem placar. Fica para a próxima!",
     place: (position: string, total: number) => `${position} de ${formatNumber(total, "pt-BR")}`,
     rival: (name: string, best: string) => `Recorde do canal: ${name} · ${best}.`,
@@ -65,8 +67,8 @@ const COPY = localized({
     arcade: "Ver o fliperama de recordes",
   },
   en: {
-    label: { fase: "Level board", arena: "Arena board", pista: "Track board", parte: "Part board", game: "Game board" },
-    here: { fase: "for this level", arena: "for this arena", pista: "for this track", parte: "for this part", game: "for this game" },
+    label: { fase: "Level board", arena: "Arena board", pista: "Track board", parte: "Part board", música: "Song board", game: "Game board" },
+    here: { fase: "for this level", arena: "for this arena", pista: "for this track", parte: "for this part", música: "for this song", game: "for this game" },
     queued: "The board is off the air. We saved your result and will send it when the signal comes back.",
     rejectedTitle: "The board didn't accept it",
     rejected: "The board didn't accept this result.",
@@ -78,6 +80,8 @@ const COPY = localized({
     practice: "That was just the warm-up! The practice level doesn't count on the global board.",
     resumed: "Runs resumed from a bell don't go on the board. Play the whole level to compete.",
     hinted: "Runs with a hint don't go on the board. Play the part again without peeking to compete.",
+    assisted: "Runs in assist mode don't go on the board. Turn assist mode off to compete.",
+    inhuman: "These taps were too precise for a person, so they didn't go on the board.",
     noPoints: "No points, no board. Better luck next time!",
     place: (position: string, total: number) => `${position} of ${formatNumber(total, "en")}`,
     rival: (name: string, best: string) => `Channel record: ${name} · ${best}.`,
@@ -139,6 +143,8 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Lo
       if (!board) return { text: copy.practice };
       if (run.ineligible === "resumed") return { text: copy.resumed };
       if (run.ineligible === "hinted") return { text: copy.hinted };
+      if (run.ineligible === "assisted") return { text: copy.assisted };
+      if (run.ineligible === "inhuman") return { text: copy.inhuman };
       if (run.ineligible === "no_points") return { text: copy.noPoints };
       const slug = isGameSlug(game.slug) ? game.slug : null;
       const best = board.best && slug ? formatBest(slug, board.best.metrics, locale) : "";

@@ -4,7 +4,7 @@ import { chromium } from "@playwright/test";
 const BASE = process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 4404}`;
 const OUT = new URL("../public/og/", import.meta.url);
 const SIZE = { width: 1200, height: 630 };
-const SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation", "downhill-derby", "past-bedtime"];
+const SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation", "downhill-derby", "past-bedtime", "talent-show"];
 
 const returningVisitor = {
   version: 1,

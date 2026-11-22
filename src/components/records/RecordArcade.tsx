@@ -35,8 +35,8 @@ const PLACE_COLOR = ["text-sun", "text-cream", "text-tangerine"];
 
 const COPY = localized({
   "pt-BR": {
-    word: { fase: "Fase", arena: "Arena", pista: "Pista", parte: "Parte" },
-    words: { fase: "Fases", arena: "Arenas", pista: "Pistas", parte: "Partes" },
+    word: { fase: "Fase", arena: "Arena", pista: "Pista", parte: "Parte", música: "Música" },
+    words: { fase: "Fases", arena: "Arenas", pista: "Pistas", parte: "Partes", música: "Músicas" },
     games: "Jogos do fliperama",
     cartridge: (n: number) => `Cartucho ${n}`,
     you: "Você",
@@ -66,12 +66,12 @@ const COPY = localized({
     rules: "Regras da casa",
     tie: "Empate em tudo? Fica na frente quem chegou primeiro.",
     check: "Como o canal confere",
-    where: { fase: "desta fase", arena: "desta arena", pista: "desta pista", parte: "desta parte", game: "deste jogo" },
+    where: { fase: "desta fase", arena: "desta arena", pista: "desta pista", parte: "desta parte", música: "desta música", game: "deste jogo" },
     caption: (game: string, level: string | null) => `Melhores do canal em ${game}${level ? `, ${level}` : ""}`,
   },
   en: {
-    word: { fase: "Level", arena: "Arena", pista: "Track", parte: "Part" },
-    words: { fase: "Levels", arena: "Arenas", pista: "Tracks", parte: "Parts" },
+    word: { fase: "Level", arena: "Arena", pista: "Track", parte: "Part", música: "Song" },
+    words: { fase: "Levels", arena: "Arenas", pista: "Tracks", parte: "Parts", música: "Songs" },
     games: "Arcade games",
     cartridge: (n: number) => `Cartridge ${n}`,
     you: "You",
@@ -101,12 +101,12 @@ const COPY = localized({
     rules: "House rules",
     tie: "Tied on everything? Whoever got there first stays ahead.",
     check: "How the channel checks",
-    where: { fase: "on this level", arena: "in this arena", pista: "on this track", parte: "in this part", game: "in this game" },
+    where: { fase: "on this level", arena: "in this arena", pista: "on this track", parte: "in this part", música: "in this song", game: "in this game" },
     caption: (game: string, level: string | null) => `Channel's best in ${game}${level ? `, ${level}` : ""}`,
   },
 });
 
-function levelName(game: GameMeta, level: BoardLevel | null, word: Record<"fase" | "arena" | "pista" | "parte", string>) {
+function levelName(game: GameMeta, level: BoardLevel | null, word: Record<"fase" | "arena" | "pista" | "parte" | "música", string>) {
   if (!level) return null;
   return `${word[game.levelWord ?? "fase"]} ${level.number}: ${level.title}`;
 }

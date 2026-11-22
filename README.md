@@ -2,7 +2,7 @@
 
 ![Canal 404: a channel full of games](docs/screenshots/banner.webp)
 
-A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and eight complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama**, **Férias Fora do Ar**, **Ladeira Abaixo** and **Madrugada**.
+A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and nine complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama**, **Férias Fora do Ar**, **Ladeira Abaixo**, **Madrugada** and **Ao Vivo no 404**.
 
 The code, file names and ids are in English. The portal and every game are in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
 
@@ -55,10 +55,12 @@ The code, file names and ids are in English. The portal and every game are in Br
   <tr>
     <td width="33%"><img src="docs/screenshots/downhill-derby.webp" alt="Ladeira Abaixo: Déco in the air on Seu Arlindo's hill, with the landing outline ahead"></td>
     <td width="33%"><img src="docs/screenshots/past-bedtime.webp" alt="Madrugada: Bruno sneaks past Grandma's flashlight in the kitchen, with Bruno's notebook beside the house"></td>
+    <td width="33%"><img src="docs/screenshots/talent-show.webp" alt="Ao Vivo no 404: the band plays the Canal 404 theme on stage, Déco on the bucket in the spotlight, while the jury watches and notes slide toward the circle"></td>
   </tr>
   <tr>
     <td align="center"><b>Ladeira Abaixo</b></td>
     <td align="center"><b>Madrugada</b></td>
+    <td align="center"><b>Ao Vivo no 404</b></td>
   </tr>
 </table>
 
@@ -140,7 +142,7 @@ With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests
 
 Every page also exists in English under `/en` (`/en/games`, `/en/play/food-fight`...). Unprefixed URLs are pt-BR, `/pt-BR/...` redirects to them, and the switch in the navigation reloads the same page in the other language.
 
-Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama), `off-air-vacation` (Férias Fora do Ar), `downhill-derby` (Ladeira Abaixo) and `past-bedtime` (Madrugada).
+Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama), `off-air-vacation` (Férias Fora do Ar), `downhill-derby` (Ladeira Abaixo), `past-bedtime` (Madrugada) and `talent-show` (Ao Vivo no 404).
 
 ## Structure
 
@@ -170,6 +172,7 @@ src/
     pajama-war/          three-way pillow fight (arenas, fighters, AI, pillows, sounds)
     downhill-derby/      soapbox race (simulation and judge shared with the server, rival tapes, tracks, garage, sounds)
     past-bedtime/        turn-based stealth puzzle (simulation, solver and judge shared with the server, house, notebook, sounds)
+    talent-show/         one-button rhythm game (songs and charts, judge shared with the server, audio clock, stage)
     competition/         nickname form and the scoreboard membership card
     records/             record arcade and the champion strip on game pages
   lib/
@@ -268,6 +271,14 @@ A turn-based stealth puzzle. Bruno sneaks down through the house at three in the
 Arrows or WASD move, Space waits, Z undoes (even after being caught), R restarts, H asks Bruno's notebook for a hint, L opens the rules and V shows the whole house; phones swipe or tap next to Bruno. The notebook shows the goal, the move count and target, the plan so far, and what each resident is about to do. Stars are 3 at the part's target, 2 within three moves of it and 1 after that, and a hint caps the part at 2. The landscape and upright layouts are separate canvases; turning the phone rebuilds the house and replays the moves so far.
 
 The rules live in `sim/`, outside Phaser, and `npm run solve:bedtime` checks that every part is solvable at its target, needs its own strategy and has no dead ends. Each result carries the moves; the server replays them before the part's board ranks fewest moves, then fewer wake-ups, then fewer creaks, and runs with a hint stay off the board ([decision 0013](docs/decisions/0013-bedtime-replay.md)). Stars and best scores per part live in the portal's progress save, like the Laboratório's levels.
+
+## Ao Vivo no 404 (`talent-show`)
+
+A one-button rhythm game. Déco signed the band up for Canal 404's live talent show: Déco on an upside-down bucket, Lina on a toy keyboard, Bruno on a chocolate milk can and Mila on her tape recorder, with 404 hosting and the Silence Inspector, Mr. Arlindo and the lunch lady on the jury. Six songs from the channel's soundtrack in three rounds: the Canal 404 Theme (tap) and Sign-Off (hold) in the qualifier, the Commercial Break Jingle (Mila plays a phrase, the player repeats it by ear) and Dead End Street (notes between the beats, rests to leave alone) in the semifinal, and the Static Ballad (the note strip drops into static and the player keeps the beat) and a medley that changes tempo in the final.
+
+Any key or a tap anywhere plays, and holding sustains long notes. Notes slide along a karaoke-style strip measured in beats, so tempo changes stay smooth. A timing check on first play measures the device's delay. Misses and stray taps empty the crowd, which cuts the show to commercials. Stars need a finished song at 50%, 80% and 92% accuracy. Assist mode widens the timing, shows hidden notes and never cuts, and it stays off the board.
+
+Each song is one step grid in `song/`: the voices use the radio tracks' note notation and the chart sits on the same grid, so the music and the notes can't drift apart. The player schedules every sound on the audio clock, and taps are mapped to that clock from the browser event's timestamp. The judge in `sim/judge.ts` is shared with the server, which replays each run's taps and ranks most points, then more bullseye notes, then less noise ([decision 0014](docs/decisions/0014-talent-show-judge.md)). The game's art is generated with `npm run art:talent` from the portal's own character art.
 
 ## Accessibility
 

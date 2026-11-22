@@ -10,8 +10,8 @@ import { useCountdown } from "@/lib/missions/hooks";
 import type { MissionState, MissionView } from "@/lib/missions/types";
 
 const PLACE = localized({
-  "pt-BR": { fase: "Fase", arena: "Arena", pista: "Pista", parte: "Parte" },
-  en: { fase: "Level", arena: "Arena", pista: "Track", parte: "Part" },
+  "pt-BR": { fase: "Fase", arena: "Arena", pista: "Pista", parte: "Parte", música: "Música" },
+  en: { fase: "Level", arena: "Arena", pista: "Track", parte: "Part", música: "Song" },
 });
 
 export function missionHref(mission: Pick<MissionView, "game" | "day">) {

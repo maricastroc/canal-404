@@ -9,6 +9,7 @@ import { OffAirVacationResult } from "./OffAirVacationArt";
 import { OperationRecessCast } from "./OperationRecessArt";
 import { PajamaWarCast } from "./PajamaWarArt";
 import { PastBedtimeCast } from "./PastBedtimeArt";
+import { TalentShowCast } from "./TalentShowArt";
 import { PajamaBust, type PajamaKidId } from "@/components/characters/PajamaKids";
 import { FOLK_INFO, FolkBust, type FolkId } from "@/components/characters/ResortFolks";
 
@@ -62,6 +63,10 @@ function NightCast({ mood }: { mood: CastMood }) {
   return <PastBedtimeCast mood={mood} className={mood === "intro" ? "w-56 md:w-72" : "w-40 sm:w-48 sm:shorter:w-40"} />;
 }
 
+function ShowCast({ mood }: { mood: CastMood }) {
+  return <TalentShowCast mood={mood} className={mood === "intro" ? "w-56 md:w-72" : "w-40 sm:w-48 sm:shorter:w-40"} />;
+}
+
 function CanteenCast({ mood }: { mood: CastMood }) {
   return <FoodFightCast mood={mood} className={mood === "intro" ? "w-56 md:w-64" : "w-44 sm:w-52 sm:shorter:w-40"} />;
 }
@@ -75,6 +80,7 @@ export const GAME_CAST: Record<string, (props: { mood: CastMood; featured?: stri
   "off-air-vacation": ResortCast,
   "downhill-derby": DerbyCast,
   "past-bedtime": NightCast,
+  "talent-show": ShowCast,
 };
 
 const GUEST_CARD: Record<PajamaKidId, string> = { lia: "bg-sun", nico: "bg-plum-300", bia: "bg-bubblegum" };

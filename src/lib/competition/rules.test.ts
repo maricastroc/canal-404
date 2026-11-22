@@ -16,6 +16,9 @@ import { partScore, partStars } from "@/games/past-bedtime/sim/score";
 import { canMove, createSim } from "@/games/past-bedtime/sim/sim";
 import { solve } from "@/games/past-bedtime/sim/solver";
 import type { Dir } from "@/games/past-bedtime/sim/types";
+import { replay as replayTalent, runScore, runStats, type TapLog } from "@/games/talent-show/sim/judge";
+import type { SongId } from "@/games/talent-show/song/notation";
+import { compiledSong, SONG_ORDER } from "@/games/talent-show/song/songs";
 import { boardId, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
 
 const RECESS_MONITORS = Object.fromEntries(RECESS_LEVELS.map((l) => [l.id, l.enemies.length]));
@@ -516,5 +519,70 @@ describe("Madrugada", () => {
   it("needs one of the ten parts", () => {
     expect(judgeRun("past-bedtime", null, night("doorway"))).toMatchObject({ ok: false, reason: "unknown_level" });
     expect(judgeRun("past-bedtime", "attic", night("doorway"))).toMatchObject({ ok: false, reason: "unknown_level" });
+  });
+});
+
+describe("Ao Vivo no 404", () => {
+  function taps(song: SongId, jitter: (i: number) => number, extra: Partial<TapLog> = {}): TapLog {
+    const notes = compiledSong(song).notes;
+    const down = notes.map((n, i) => Math.round(n.at + jitter(i)));
+    const ups = notes.map((n, i) => (n.kind === "hold" ? Math.round(n.end - 20) : down[i] + 40));
+    return { kind: "talent-taps", version: 2, song, offset: 0, assist: false, taps: down, ups, ...extra };
+  }
+
+  const human = (i: number) => ((i * 37) % 41) - 18;
+
+  function claimFor(log: TapLog, claim: Partial<RunClaim> = {}): RunClaim {
+    const verdict = replayTalent(compiledSong(log.song), log);
+    if (!verdict) throw new Error("bad log");
+    return { won: verdict.stars > 0, score: runScore(verdict), stars: verdict.stars, stats: runStats(verdict), replay: log, ...claim };
+  }
+
+  it("replays a human run on every song and ranks points, then bullseye notes, then less noise", () => {
+    for (const song of SONG_ORDER) {
+      const v = ok(judgeRun("talent-show", song, claimFor(taps(song, human))));
+      expect(v).toMatchObject({ won: true, stars: 3, eligible: true, verification: "replayed", flags: [] });
+      expect(v.minElapsedMs).toBe(Math.round(compiledSong(song).endMs));
+    }
+    const v = ok(judgeRun("talent-show", "theme", claimFor(taps("theme", human))));
+    expect(metricValues("talent-show", v.rank)).toEqual([v.score, compiledSong("theme").notes.length, 0]);
+    expect(boardId("talent-show", "theme")).toBe("talent-show/theme/v1");
+  });
+
+  it("keeps assist mode and inhumanly precise taps off the board", () => {
+    expect(ok(judgeRun("talent-show", "recess", claimFor(taps("recess", human, { assist: true }))))).toMatchObject({ eligible: false, ineligible: "assisted" });
+    const exact = ok(judgeRun("talent-show", "recess", claimFor(taps("recess", () => 0))));
+    expect(exact).toMatchObject({ stars: 3, eligible: false, ineligible: "inhuman" });
+    expect(exact.flags).toContain("inhuman");
+  });
+
+  it("scores the replayed taps, not the claimed numbers", () => {
+    const log = taps("street", human);
+    expect(judgeRun("talent-show", "street", claimFor(log, { score: 99999 }))).toMatchObject({ ok: false, reason: "score_mismatch" });
+    const claim = claimFor(log);
+    expect(ok(judgeRun("talent-show", "street", { ...claim, stats: { ...claim.stats, perfect: 1 } })).flags).toEqual(["stats_mismatch"]);
+  });
+
+  it("refuses logs that don't fit the song", () => {
+    const log = taps("static", human);
+    expect(judgeRun("talent-show", "theme", claimFor(log))).toMatchObject({ ok: false, reason: "bad_taps" });
+    expect(judgeRun("talent-show", "static", { ...claimFor(log), replay: { ...log, taps: [...log.taps].reverse() } })).toMatchObject({ ok: false, reason: "bad_taps" });
+    expect(judgeRun("talent-show", "static", { ...claimFor(log), replay: { ...log, offset: 400 } })).toMatchObject({ ok: false, reason: "bad_taps" });
+    expect(judgeRun("talent-show", "encore", claimFor(log))).toMatchObject({ ok: false, reason: "unknown_level" });
+  });
+
+  it("counts a run cut to commercials as a loss that ends when the crowd left", () => {
+    const silent: TapLog = { kind: "talent-taps", version: 2, song: "theme", offset: 0, assist: false, taps: [], ups: [] };
+    const v = ok(judgeRun("talent-show", "theme", claimFor(silent)));
+    expect(v).toMatchObject({ won: false, stars: 0, score: 0, eligible: false, ineligible: "not_won" });
+    expect(v.minElapsedMs).toBeLessThan(compiledSong("theme").endMs);
+  });
+
+  it("drops held notes released too early", () => {
+    const log = taps("signoff", human);
+    const early = { ...log, ups: log.ups.map((up, i) => (compiledSong("signoff").notes[i].kind === "hold" ? log.taps[i] + 100 : up)) };
+    const v = ok(judgeRun("talent-show", "signoff", claimFor(early)));
+    expect(v.stars).toBeLessThan(3);
+    expect(v.score).toBeLessThan(ok(judgeRun("talent-show", "signoff", claimFor(log))).score);
   });
 });

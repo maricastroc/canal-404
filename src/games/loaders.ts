@@ -9,4 +9,5 @@ export const GAME_LOADERS: Record<string, () => Promise<GameModule>> = {
   "off-air-vacation": () => import("./off-air-vacation").then((m) => m.default),
   "downhill-derby": () => import("./downhill-derby").then((m) => m.default),
   "past-bedtime": () => import("./past-bedtime").then((m) => m.default),
+  "talent-show": () => import("./talent-show").then((m) => m.default),
 };
