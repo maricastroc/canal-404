@@ -27,6 +27,7 @@ function heightOf(scene: Phaser.Scene, key: string) {
 }
 
 export class Ambient {
+  bubbleMin = 0;
   private readonly b: Builder;
   private readonly layer: Phaser.GameObjects.Layer;
   private readonly copy: RaceCopy;
@@ -499,8 +500,9 @@ export class Ambient {
 
   bubble(text: string, x: number, y: number, size = 34) {
     const t = this.add(this.b.scene.add.text(x, y, text, { fontFamily: this.b.fonts.display, fontSize: `${size}px`, color: "#1d1830", backgroundColor: "#fbf5e6", padding: { x: 10, y: 4 } }));
-    t.setOrigin(0.5, 1).setDepth(-1);
-    this.b.scene.tweens.add({ targets: t, y: y - 40, alpha: 0, duration: 800, delay: 300, onComplete: () => t.destroy() });
+    const scale = this.bubbleMin > size ? this.bubbleMin / size : 1;
+    t.setOrigin(0.5, 1).setDepth(-1).setScale(scale);
+    this.b.scene.tweens.add({ targets: t, y: y - 40 * scale, alpha: 0, duration: 800, delay: 300, onComplete: () => t.destroy() });
   }
 
   private dog(x0: number) {

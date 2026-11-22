@@ -30,7 +30,7 @@ import { ANTENA_FILES } from "./antena";
 import { FEIRA_FILES } from "./feira";
 import { dressGaps } from "./props";
 import { SAMPLE_RES } from "./sample";
-import { LANE_OFFSETS, LANES, buildTerrain, zonesOf, type Chunk, type LipView, type ObstacleView } from "./terrain";
+import { LANE_OFFSETS, LANES, buildTerrain, zonesOf, type Chunk, type LipView, type ObstacleView, type SignView } from "./terrain";
 
 export type Ghost = { frames: RunFrames; time: number };
 
@@ -131,6 +131,8 @@ export class RaceScene extends Phaser.Scene {
   private visibleChunks = "";
   private obstacles: ObstacleView[] = [];
   private lipViews: LipView[] = [];
+  private signs: SignView[] = [];
+  private signsScaled = false;
   private cart!: CartView;
   private player: CartId = "deco";
   private gridSpan = { min: 0, max: 0 };
@@ -237,6 +239,7 @@ export class RaceScene extends Phaser.Scene {
     const rolling = new Set<Phaser.GameObjects.GameObject>(this.obstacles.filter((o) => o.obstacle.roll).map((o) => o.view));
     for (const c of this.chunks) c.objects = c.objects.filter((obj) => !rolling.has(obj));
     this.lipViews = terrain.lips;
+    this.signs = terrain.signs;
     this.ambient = new Ambient(terrain.builder, this.worldLayer, this.track, terrain.zones, this.copy);
     this.ambient.waiting(dressGaps(terrain.builder, terrain.zones, this.track));
     this.trailG = this.add.graphics();
@@ -763,6 +766,7 @@ export class RaceScene extends Phaser.Scene {
     return {
       frame: this.frame,
       hudBottom: this.phoneHud?.hudBottom ?? 0,
+      bottomInset: this.phoneHud?.bottomInset ?? 0,
       phase: this.phase,
       sim: this.sim,
       gravity: this.bridge.params.gravity,
@@ -1413,8 +1417,9 @@ export class RaceScene extends Phaser.Scene {
         labels[j] = o;
       }
       l.y = ly;
-      l.r.label.setPosition(l.x, ly).setScale(ls);
-      l.r.label.setAlpha(this.phase === "countdown" ? 0 : Math.abs(l.x - x) > 120 ? 1 : 0.85);
+      const lx = this.labelX(l.x, l.r.label, ls);
+      l.r.label.setPosition(lx ?? l.x, ly).setScale(ls);
+      l.r.label.setAlpha(this.phase === "countdown" || lx === null ? 0 : Math.abs(l.x - x) > 120 ? 1 : 0.85);
     }
     const ghost = this.bridge.form.ghost;
     const showGhost = !!ghost && this.bridge.ghost;
@@ -1451,7 +1456,9 @@ export class RaceScene extends Phaser.Scene {
     this.ambient.step = this.sim.step;
     this.ambient.lead = this.phase !== "countdown" ? Math.max(...this.world.rivals.map((t) => this.world.sample(t, "x"))) : -Infinity;
     this.ambient.racers = [x, ...this.world.rivals.map((t) => this.world.sample(t, "x"))];
+    this.ambient.bubbleMin = this.frame.kind === "tall" ? (11.5 * this.frame.unit) / this.cam.zoom : 0;
     this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, this.vw / (2 * this.cam.zoom));
+    this.updateSigns(x);
     this.drawTrail(dt, x, y, angle, speed);
     this.drawLips(x, speed);
     this.drawOverlay(x, y, land);
@@ -1459,6 +1466,38 @@ export class RaceScene extends Phaser.Scene {
     this.updateCamera(dt, x, y, land);
     this.updateHud(dt, x, y);
     this.updateSound(dt);
+  }
+
+  private labelX(x: number, label: Phaser.GameObjects.Text, scale: number): number | null {
+    if (this.frame.kind !== "tall") return x;
+    const z = this.cam.zoom;
+    const half = (label.width * scale) / 2 + (8 * this.frame.unit) / z;
+    const left = this.cam.x - this.vw / (2 * z);
+    const right = this.cam.x + this.vw / (2 * z);
+    if (x < left - 60 || x > right + 60) return null;
+    return Phaser.Math.Clamp(x, left + half, right - half);
+  }
+
+  private updateSigns(x: number) {
+    if (this.frame.kind !== "tall") {
+      if (!this.signsScaled) return;
+      this.signsScaled = false;
+      for (const s of this.signs) {
+        s.label.setScale(1).setAlpha(1);
+        s.board.setScale(1).setPosition(0, 0).setAlpha(1);
+      }
+      return;
+    }
+    this.signsScaled = true;
+    const z = this.cam.zoom;
+    const scale = Math.min(1.8, Math.max(1, (10.5 * this.frame.unit) / (26 * z)));
+    const reach = this.vw / (2 * z) + 700;
+    for (const s of this.signs) {
+      if (Math.abs(s.x - this.cam.x) > reach) continue;
+      const a = Math.max(0, Math.min(1, (s.x - (x - 160)) / 220));
+      s.label.setScale(scale).setAlpha(a);
+      s.board.setScale(scale).setPosition(s.x - s.x * scale, s.y - s.y * scale).setAlpha(a);
+    }
   }
 
   private updateRolling(alpha: number) {
@@ -1917,11 +1956,8 @@ export class RaceScene extends Phaser.Scene {
             }
           } else r.pending = 0;
           const sp = this.toScreen(rx, ry - 120);
-          const edgeIn = tall ? 6 * u : 30;
-          if (tall && sp.x > this.vw - edgeIn && Number.isFinite(gap)) {
-            const secs = formatSeconds(Math.abs(gap), this.bridge.locale);
-            edges.push({ side: "right", y: rx, color: r.color, text: `${r.name.toUpperCase()} ${secs} s` });
-          } else if (!tall && (sp.x > W - edgeIn || sp.x < edgeIn) && Number.isFinite(gap)) {
+          const edgeIn = 30;
+          if (!tall && (sp.x > W - edgeIn || sp.x < edgeIn) && Number.isFinite(gap)) {
             const secs = formatSeconds(Math.abs(gap), this.bridge.locale);
             const side = sp.x > W - edgeIn ? "right" : "left";
             let ty = Math.max(330, Math.min(860, sp.y));
@@ -1942,10 +1978,6 @@ export class RaceScene extends Phaser.Scene {
       else if (this.phase !== "countdown" && Number.isFinite(e.gap)) gap = `${e.gap < 0 ? "−" : "+"}${formatSeconds(Math.abs(e.gap), this.bridge.locale)} s`;
       return { name: e.name, color: e.color, you: e.you, gap, flash: e.flash, who: e.who };
     });
-    if (tall) {
-      edges.sort((a, b) => a.y - b.y);
-      edges.forEach((e, i) => (e.y = hudBottom + 34 * u + i * 27 * u));
-    }
     const showHint = this.phase !== "done" && time < (this.bridge.form.runs < 2 ? 14 : 6) && !(this.jumpedThisRun && time > 5);
     const pins = tall && this.phase === "race" && !sim.finished ? this.hazardPins(x) : undefined;
     this.hud.update(dt, { time, rows, speed, tier, trend: this.trend, markers, edges, finishX: this.track.finish, startX: this.track.start, reduced: this.bridge.reducedMotion, showHint, anchor, pins, started: this.phase !== "countdown" });

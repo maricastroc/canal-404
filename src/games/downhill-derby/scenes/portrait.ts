@@ -14,7 +14,7 @@ export const PORTRAIT = {
   grid: 46,
   minView: 860,
   maxView: 2300,
-  lead: { slow: 0.4, fast: 0.18 },
+  lead: { slow: 0.4, fast: 0.16 },
   road: 0.6,
   head: 250,
   foot: 40,
@@ -23,6 +23,7 @@ export const PORTRAIT = {
 export type PortraitHost = {
   frame: Frame;
   hudBottom: number;
+  bottomInset: number;
   phase: "countdown" | "race" | "done";
   sim: DownhillSim;
   gravity: number;
@@ -55,7 +56,7 @@ function placeVertical(h: PortraitHost, y: number, zoom: number, aheadX: number)
   const usable = view - top;
   let viewTop = y - top - PORTRAIT.road * usable;
   const ahead = h.groundBelow(aheadX);
-  const floor = viewTop + view - 0.08 * view;
+  const floor = viewTop + view - 0.08 * view - h.bottomInset / zoom;
   if (ahead > floor) viewTop += ahead - floor;
   const cap = y - PORTRAIT.head - top - 0.04 * view;
   if (viewTop > cap) viewTop = cap;
@@ -103,13 +104,13 @@ export function portraitTarget(h: PortraitHost, x: number, y: number, land: Land
     const top = Math.min(apex, y) - PORTRAIT.head - 20;
     const bottom = Math.max(land.y, y) + 90;
     const fitW = f.view.w / (maxX - minX);
-    const fitH = (f.view.h - h.hudBottom - 12 * f.unit) / (bottom - top);
+    const fitH = (f.view.h - h.hudBottom - h.bottomInset - 12 * f.unit) / (bottom - top);
     zoom = Math.max(zoomFor(f, PORTRAIT.air), Math.min(zoom, fitW, fitH));
     span = f.view.w / zoom;
     fx = Math.min(Math.max(fx, (minX + maxX) / 2), x + 0.38 * span);
     const view = f.view.h / zoom;
     const hud = h.hudBottom / zoom;
-    fy = (top + bottom) / 2 - hud / 2;
+    fy = (top + bottom) / 2 - hud / 2 + h.bottomInset / zoom / 2;
     const cap = y - PORTRAIT.head - hud + view / 2 - 0.03 * view;
     if (fy > cap) fy = cap;
   }
@@ -125,7 +126,8 @@ export function portraitClamp(h: PortraitHost, cam: Cam, x: number, y: number) {
   const air = h.sim.mode === "air";
   const head = PORTRAIT.head + (air ? 30 : 0);
   if (y - head < cam.y - halfH + hud) cam.y = y - head + halfH - hud;
-  if (y + PORTRAIT.foot > cam.y + halfH) cam.y = y + PORTRAIT.foot - halfH;
+  const floor = cam.y + halfH - h.bottomInset / z;
+  if (y + PORTRAIT.foot > floor) cam.y += y + PORTRAIT.foot - floor;
   const minX = cam.x - halfW + (air ? 0.1 : 0.13) * halfW * 2;
   const maxX = cam.x - halfW + 0.6 * halfW * 2;
   if (x < minX) cam.x += x - minX;

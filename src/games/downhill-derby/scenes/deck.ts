@@ -17,7 +17,7 @@ type Round = { id: Pad; x: number; y: number; r: number; color: number; gfx: Pha
 
 export const DECK_THEME: Record<CourseId, number> = { arlindo: 0xff9a3d, feira: 0x93cf4c, antena: 0xa98bef };
 
-const SIZE = { square: 60, gap: 8, crouch: 31, jump: 36, padGap: 12, margin: 12, lip: 8, label: 12, labelGap: 6, reach: 26, slack: 10, gauge: 38 };
+const SIZE = { square: 64, gap: 9, crouch: 31, jump: 36, padGap: 12, margin: 12, lip: 8, label: 12, labelGap: 6, reach: 32, slack: 10, gauge: 32 };
 const F = 64;
 const TIER_COLORS = [0x7fe0c4, 0x7fe0c4, 0xffcf3f, 0xff7a4a];
 const CREAM = 0xfbf5e6;
@@ -88,6 +88,8 @@ export class PhoneDeck {
   private deltaColor = 0x7fe0c4;
   private speedShown = -1;
   private labelScale = 1;
+  private tierRoom = 0;
+  private tierBase = 1;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -188,10 +190,14 @@ export class PhoneDeck {
     this.split = this.gaugeX;
     const showGauge = this.gaugeR >= 20 * u;
     const gs = this.gaugeR / (SIZE.gauge * u);
-    this.speedText.setVisible(showGauge).setScale((21 * gs * u) / F).setPosition(this.gaugeX, this.gaugeY - 3 * gs * u);
-    this.unitText.setVisible(showGauge).setScale((9.5 * gs * u) / F).setPosition(this.gaugeX, this.gaugeY + 14 * gs * u);
-    this.tierText.setVisible(showGauge && this.gaugeR >= 30 * u).setPosition(this.gaugeX, labelY + labelH / 2).setScale(labelScale * 0.92);
-    this.deltaText.setScale((15 * u) / F).setPosition(this.gaugeX, deck.y - 6 * u);
+    this.speedText.setVisible(showGauge).setScale((18 * gs * u) / F).setPosition(this.gaugeX, this.gaugeY - 3 * gs * u);
+    this.unitText.setVisible(showGauge).setScale((8.5 * gs * u) / F).setPosition(this.gaugeX, this.gaugeY + 12 * gs * u);
+    const spinRight = this.box.centerX + (this.spinLabel.width * labelScale) / 2;
+    const crouchLeft = crouch.x - (crouch.label.width * labelScale) / 2;
+    this.tierRoom = 2 * Math.min(this.gaugeX - spinRight, crouchLeft - this.gaugeX) - 8 * u;
+    this.fitTier();
+    this.tierText.setVisible(showGauge && this.gaugeR >= 24 * u && this.tierRoom > 24 * u).setPosition(this.gaugeX, labelY + labelH / 2).setScale(this.tierBase);
+    this.deltaText.setScale((12 * u) / F).setPosition(this.gaugeX, this.gaugeY - this.gaugeR - 1 * u);
     this.drawBg();
     this.redraw();
   }
@@ -302,6 +308,10 @@ export class PhoneDeck {
     this.deltaLife = 1.3;
   }
 
+  private fitTier() {
+    this.tierBase = Math.min(this.labelScale * 0.92, this.tierRoom / Math.max(1, this.tierText.width));
+  }
+
   setSpeed(dt: number, speed: number, tier: number, trend: number) {
     const kmh = Math.round(speed * 0.036);
     if (kmh !== this.speedShown) {
@@ -312,10 +322,11 @@ export class PhoneDeck {
       if (tier > this.shownTier && this.shownTier >= 0) this.tierPop = 1;
       this.shownTier = tier;
       this.tierText.setText(this.copy.tiers[tier].toUpperCase()).setColor(["#cfc8e8", "#7fe0c4", "#ffcf3f", "#ff7a4a"][tier]);
+      this.fitTier();
     }
     this.tierPop = Math.max(0, this.tierPop - dt * 2.5);
     this.deltaLife = Math.max(0, this.deltaLife - dt);
-    this.deltaText.setAlpha(Math.min(1, this.deltaLife * 2)).setY(this.top - 6 * this.u - (1.3 - this.deltaLife) * 10 * this.u);
+    this.deltaText.setAlpha(Math.min(1, this.deltaLife * 2)).setY(this.gaugeY - this.gaugeR - 1 * this.u - (1.3 - this.deltaLife) * 4 * this.u);
     const u = this.u;
     const r = this.gaugeR;
     const g = this.gauge;
@@ -352,7 +363,7 @@ export class PhoneDeck {
       if (up) g.fillTriangle(x - s, ty + s * 0.7, x + s, ty + s * 0.7, x, ty - s);
       else g.fillTriangle(x - s, ty - s * 0.7, x + s, ty - s * 0.7, x, ty + s);
     }
-    this.tierText.setScale(this.labelScale * 0.92 * (1 + this.tierPop * 0.3));
+    this.tierText.setScale(this.tierBase * (1 + this.tierPop * 0.2));
   }
 
   private redraw() {
