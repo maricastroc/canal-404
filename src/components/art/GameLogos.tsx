@@ -1,4 +1,4 @@
-import { BadIdeasLabLogo, DeadEndStreetLogo, DownhillDerbyLogo, FoodFightLogo, OffAirVacationLogo, OperationRecessLogo, PajamaWarLogo } from "./GameTitleLogos";
+import { BadIdeasLabLogo, DeadEndStreetLogo, DownhillDerbyLogo, FoodFightLogo, OffAirVacationLogo, OperationRecessLogo, PajamaWarLogo, PastBedtimeLogo } from "./GameTitleLogos";
 
 export const GAME_LOGOS: Record<string, (props: { className?: string; bare?: boolean }) => React.JSX.Element> = {
   "dead-end-street": DeadEndStreetLogo,
@@ -8,4 +8,5 @@ export const GAME_LOGOS: Record<string, (props: { className?: string; bare?: boo
   "pajama-war": PajamaWarLogo,
   "off-air-vacation": OffAirVacationLogo,
   "downhill-derby": DownhillDerbyLogo,
+  "past-bedtime": PastBedtimeLogo,
 };

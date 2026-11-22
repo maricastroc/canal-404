@@ -13,7 +13,7 @@ const STEP = 38;
 
 export type NoteKind = keyof typeof COLORS;
 
-export type ButtonId = "wait" | "undo" | "restart" | "hint" | "next" | "again" | "undoCaught";
+export type ButtonId = "wait" | "undo" | "restart" | "hint" | "undoCaught";
 
 export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "dog" | "goal" | "hide" | "cat" | "route" | "toss" | "near";
 
@@ -151,7 +151,6 @@ export class Notebook {
     private fonts: Fonts,
     private copy: NightCopy,
     private onButton: (id: ButtonId) => void,
-    private onTab: (index: number) => void,
   ) {
     this.spots = spotsFor(layout);
     const { x, y } = layout.notebook;
@@ -523,7 +522,7 @@ export class Notebook {
     const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w, "hand");
     this.stampObjects.push(title, g, moves, verdict, quote);
     if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 5 + verdictLines, this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
-    this.buildButtons(isLast ? ["again"] : ["next", "again"]);
+    this.buildButtons([]);
   }
 
   clearWin() {
@@ -574,12 +573,6 @@ export class Notebook {
       }
       const label = this.scene.add.text(0, -1, String(i + 1), { fontFamily: this.round, fontStyle: "700", fontSize: `${Math.round(rr * 1.05)}px`, color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
       const c = this.scene.add.container(x, rowY + (on ? -2 : 0), [g, label]).setAngle((wobble(i * 3) - 0.5) * 6);
-      const zone = this.scene.add.zone(0, 0, cell, cell).setInteractive({ useHandCursor: true });
-      zone.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
-        ev.stopPropagation();
-        this.onTab(i);
-      });
-      c.add(zone);
       this.container.add(c);
       this.tabs.push(c);
       x += cell;
@@ -709,6 +702,7 @@ export class Notebook {
   private buildButtons(ids: ButtonId[]) {
     for (const b of this.buttons) b.destroy();
     this.buttons = [];
+    if (ids.length === 0) return;
     const sp = this.spots.buttons;
     const gap = 12;
     const grid = sp.h > 120 && ids.length >= 4;
@@ -722,11 +716,9 @@ export class Notebook {
       undo: this.copy.buttons.undo,
       restart: this.copy.buttons.restart,
       hint: this.copy.buttons.hint,
-      next: this.copy.buttons.next,
-      again: this.copy.buttons.again,
       undoCaught: this.copy.buttons.undoCaught,
     };
-    const fills: Partial<Record<ButtonId, number>> = { undoCaught: 0xffe39a, next: 0x9df0dc, undo: 0xf9e0b0 };
+    const fills: Partial<Record<ButtonId, number>> = { undoCaught: 0xffe39a, undo: 0xf9e0b0 };
     const padX = 22;
     const avail = bw - padX * 2;
     const fit = (label: string) => {

@@ -26,6 +26,8 @@ export const REJECTION_TEXT: Record<string, string> = {
   launches_failed: "O canal refez seus lançamentos e a partida não aconteceu desse jeito.",
   bad_run: "Os comandos enviados não cabem numa descida do Ladeira Abaixo.",
   run_failed: "O canal refez sua descida e ela não terminou desse jeito.",
+  bad_moves: "As jogadas enviadas não cabem numa parte da Madrugada.",
+  moves_failed: "O canal refez suas jogadas e o Bruno não chegou lá desse jeito.",
   too_fast: "Essa partida terminou rápido demais para ser verdade.",
 };
 

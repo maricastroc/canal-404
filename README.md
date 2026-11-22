@@ -2,7 +2,7 @@
 
 ![Canal 404: six games in one channel](docs/screenshots/banner.webp)
 
-A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and seven complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama**, **Férias Fora do Ar** and **Ladeira Abaixo**.
+A fictional game portal inspired by the feel of 2000s cartoon-channel websites. The channel went off the air, but the portal still works: an illustrated, interactive broadcast room, original characters, hidden secrets and eight complete games: **Rua Sem Saída**, **Laboratório de Péssimas Ideias**, **Guerra de Lanche**, **Operação: Recreio**, **Guerra do Pijama**, **Férias Fora do Ar**, **Ladeira Abaixo** and **Madrugada**.
 
 The code, file names and ids are in English. The portal and all six games are in Brazilian Portuguese at `/` and in English at `/en` ([decision 0008](docs/decisions/0008-english-version.md)).
 
@@ -54,9 +54,11 @@ The code, file names and ids are in English. The portal and all six games are in
   </tr>
   <tr>
     <td width="33%"><img src="docs/screenshots/downhill-derby.webp" alt="Ladeira Abaixo: Déco in the air on Seu Arlindo's hill, with the landing outline ahead"></td>
+    <td width="33%"><img src="docs/screenshots/past-bedtime.webp" alt="Madrugada: Bruno sneaks past Grandma's flashlight in the kitchen, with Bruno's notebook beside the house"></td>
   </tr>
   <tr>
     <td align="center"><b>Ladeira Abaixo</b></td>
+    <td align="center"><b>Madrugada</b></td>
   </tr>
 </table>
 
@@ -138,7 +140,7 @@ With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests
 
 Every page also exists in English under `/en` (`/en/games`, `/en/play/food-fight`...). Unprefixed URLs are pt-BR, `/pt-BR/...` redirects to them, and the switch in the navigation reloads the same page in the other language.
 
-Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama), `off-air-vacation` (Férias Fora do Ar) and `downhill-derby` (Ladeira Abaixo).
+Game slugs: `dead-end-street` (Rua Sem Saída), `bad-ideas-lab` (Laboratório de Péssimas Ideias), `food-fight` (Guerra de Lanche), `operation-recess` (Operação: Recreio), `pajama-war` (Guerra do Pijama), `off-air-vacation` (Férias Fora do Ar), `downhill-derby` (Ladeira Abaixo) and `past-bedtime` (Madrugada).
 
 ## Structure
 
@@ -167,6 +169,7 @@ src/
     operation-recess/    side-scrolling action platformer (phases, hero, enemies, boss, sounds)
     pajama-war/          three-way pillow fight (arenas, fighters, AI, pillows, sounds)
     downhill-derby/      soapbox race (simulation and judge shared with the server, rival tapes, tracks, garage, sounds)
+    past-bedtime/        turn-based stealth puzzle (simulation, solver and judge shared with the server, house, notebook, sounds)
     competition/         nickname form and the scoreboard membership card
     records/             record arcade and the champion strip on game pages
   lib/
@@ -257,6 +260,14 @@ A side-view soapbox race down three neighborhood hills, each a little harder: La
 Before each track the garage picks the cart: Déco's Relâmpago de Madeira (gets up faster after a wipeout), Bruno's Plano B (shows where the jump lands, forgiving landings, slower), Lina's Turbina da Vovó (a fan that pushes uphill, heavy, slow spins; unlocked by finishing ahead of Lina on Dia de Feira) and Mila's Banheira (light, fast spins, speeds up in puddles, picky landings; unlocked by finishing ahead of Mila on Morro da Antena). Racing in a friend's cart leaves their spot to Déco. The three rivals are recorded runs that adapt to the player's pace during the visit, Mila shows the shortcuts, and the garage can turn on the ghost of the visit's best run. Tricks, poses, wheelies, grinds and near misses earn show points with a multiplier up to ×5; the HUD shows split times against the track record.
 
 Places give stars (1st, 2nd and 3rd), and a podium unlocks the next track. The simulation lives in `sim/`, outside Phaser, at a fixed 1/120 s. Each result carries the race's inputs and the server replays them before the time enters that track's board ([decision 0012](docs/decisions/0012-downhill-replay.md)). Track records, unlocked carts, the last cart and the ghost setting are saved in `canal404:downhill-derby:v1`.
+
+## Madrugada (`past-bedtime`)
+
+A turn-based stealth puzzle. Bruno sneaks down through the house at three in the morning to tape the Sessão Chiado on the VCR, because Déco bet he wouldn't dare, and then has to get back to bed. Ten parts in four acts: upstairs past Dad's door and the creaky hallway, Grandma awake on the stairs, in the kitchen and in the pantry, Pipoca the dog and Pixel the cat in the laundry, dining, sofa and TV rooms, and the walk back with the tape. Every step or wait is a move, and the house answers each one the same way every time: light cones see Bruno, creaky boards wake whoever is close unless the cuckoo is singing, waiting next to a sleeper stirs them, Grandma follows routines that change from lap to lap, Pipoca runs toward noises and Pixel knocks things over on a timer. Curtains and plants hide Bruno from the light but not from Pipoca's nose.
+
+Arrows or WASD move, Space waits, Z undoes (even after being caught), R restarts, H asks Bruno's notebook for a hint, L opens the rules and V shows the whole house; phones swipe or tap next to Bruno. The notebook shows the goal, the move count and target, the plan so far, and what each resident is about to do. Stars are 3 at the part's target, 2 within three moves of it and 1 after that, and a hint caps the part at 2. The landscape and upright layouts are separate canvases; turning the phone rebuilds the house and replays the moves so far.
+
+The rules live in `sim/`, outside Phaser, and `npm run solve:bedtime` checks that every part is solvable at its target, needs its own strategy and has no dead ends. Each result carries the moves; the server replays them before the part's board ranks fewest moves, then fewer wake-ups, then fewer creaks, and runs with a hint stay off the board ([decision 0013](docs/decisions/0013-bedtime-replay.md)). Stars and best scores per part live in the portal's progress save, like the Laboratório's levels.
 
 ## Accessibility
 

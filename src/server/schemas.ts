@@ -4,6 +4,7 @@ import { MAX_AMMO } from "@/games/dead-end-street/phases";
 import { ANGLE_STEPS, MAX_STEPS, POWER_STEPS } from "@/games/dead-end-street/sim";
 import { CART_IDS } from "@/games/downhill-derby/sim/carts";
 import { TAPE_MAX, TAPE_PATTERN } from "@/games/downhill-derby/sim/judge";
+import { MOVES_MAX, MOVES_PATTERN } from "@/games/past-bedtime/sim/judge";
 import { GAME_SLUGS } from "@/lib/competition/rules";
 import { isDayKey } from "@/lib/missions/calendar";
 
@@ -17,7 +18,7 @@ export const statsSchema = z
   .record(statKey, z.number().int().min(-INT).max(INT))
   .refine((stats) => Object.keys(stats).length <= 24, "estatísticas demais");
 
-const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2, "downhill-run": 1 } as const;
+const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2, "downhill-run": 1, "bedtime-moves": 1 } as const;
 
 export function outdatedReplay(body: unknown) {
   const replay = (body as { result?: { replay?: { kind?: unknown; version?: unknown } } } | null)?.result?.replay;
@@ -73,7 +74,15 @@ const downhillReplaySchema = z
   })
   .strict();
 
-export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema, downhillReplaySchema]);
+const bedtimeReplaySchema = z
+  .object({
+    kind: z.literal("bedtime-moves"),
+    version: z.literal(REPLAY_VERSIONS["bedtime-moves"]),
+    moves: z.string().max(MOVES_MAX).regex(MOVES_PATTERN),
+  })
+  .strict();
+
+export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema, downhillReplaySchema, bedtimeReplaySchema]);
 
 export const submitSchema = z
   .object({
