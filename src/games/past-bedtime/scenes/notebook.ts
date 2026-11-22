@@ -7,7 +7,7 @@ import { wobble, type Layout } from "./layout";
 const INK = 0x1d1830;
 const PENCIL = "#2f2944";
 const PENCIL_SOFT = "#776f93";
-const COLORS = { info: "#2f2944", good: "#23794b", warn: "#a85d08", bad: "#c4352c" } as const;
+export const COLORS = { info: "#2f2944", good: "#23794b", warn: "#a85d08", bad: "#c4352c" } as const;
 const LINE0 = 136;
 const STEP = 38;
 
@@ -17,7 +17,30 @@ export type ButtonId = "wait" | "undo" | "restart" | "hint" | "undoCaught";
 
 export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "dog" | "goal" | "hide" | "cat" | "route" | "toss" | "near";
 
-type PageKind = "rules" | "moves";
+export type PageKind = "rules" | "moves";
+
+export type NotebookMode = "play" | "caught" | "won";
+
+export interface NotebookView {
+  setLevel(index: number, total: number, title: string, goal: string, par: number, progress: number[], legend: LegendItem[], acts?: number[], actLabel?: string): void;
+  setStats(turns: number, hints: number): void;
+  intro(lines: string[]): void;
+  note(text: string, kind?: NoteKind): void;
+  showing(text: string): boolean;
+  clearNotes(): void;
+  setPlan(actions: readonly Action[]): void;
+  strikeLast(done: () => void): void;
+  showCaught(reason: string): void;
+  clearCaught(): void;
+  showWin(turns: number, par: number, stars: number, isLast: boolean, line: string): void;
+  clearWin(): void;
+  getMode(): NotebookMode;
+  togglePage(kind: PageKind): void;
+  closePage(): void;
+  pageOpen(): boolean;
+  nudgeUndo(): void;
+  setDirs(open: readonly boolean[]): void;
+}
 
 type Col = { x: number; w: number };
 type Area = { x: number; y: number; w: number; h: number };
@@ -36,54 +59,32 @@ type Spots = {
   page: Area;
   buttons: Col & { y: number; h: number };
   lastLine: number;
-  divider: number | null;
 };
 
 const lineY = (k: number) => LINE0 + STEP * k;
 
 function spotsFor(layout: Layout): Spots {
   const { w, h } = layout.notebook;
-  const buttons = layout.orientation === "landscape" ? { x: 72, w: w - 98, y: h - 168, h: 146 } : { x: 72, w: w - 102, y: h - 100, h: 80 };
-  if (layout.orientation === "landscape") {
-    const col = { x: 74, w: w - 100 };
-    return {
-      title: { x: 74, y: 22 },
-      mission: { x: 76, y: 84 },
-      tabs: { x: 72, w: w - 98, y: 140, rows: 2 },
-      act: { ...col, line: 4 },
-      heading: { ...col, line: 5 },
-      goal: { ...col, line: 6 },
-      stats: { ...col, line: 9 },
-      card: { x: 64, y: lineY(10) + 22, w: w - 90, h: lineY(14) - lineY(10) - 14 },
-      links: { ...col, y: lineY(15) + 14 },
-      win: { ...col, line: 11 },
-      page: { x: 16, y: 118, w: w - 32, h: buttons.y - 132 },
-      buttons,
-      lastLine: 21,
-      divider: null,
-    };
-  }
-  const left = { x: 74, w: 440 };
-  const right = { x: 556, w: w - 586 };
+  const buttons = { x: 72, w: w - 98, y: h - 168, h: 146 };
+  const col = { x: 74, w: w - 100 };
   return {
     title: { x: 74, y: 22 },
     mission: { x: 76, y: 84 },
-    tabs: { ...right, y: 28, rows: 1 },
-    act: { ...left, line: 1 },
-    heading: { ...left, line: 2 },
-    goal: { ...left, line: 3 },
-    stats: { ...left, line: 6 },
-    card: { x: right.x - 6, y: lineY(1) - 20, w: right.w + 6, h: lineY(7) - lineY(1) },
-    links: { ...right, y: lineY(8) + 8 },
-    win: { ...right, line: 2 },
+    tabs: { x: 72, w: w - 98, y: 140, rows: 2 },
+    act: { ...col, line: 4 },
+    heading: { ...col, line: 5 },
+    goal: { ...col, line: 6 },
+    stats: { ...col, line: 9 },
+    card: { x: 64, y: lineY(10) + 22, w: w - 90, h: lineY(14) - lineY(10) - 14 },
+    links: { ...col, y: lineY(15) + 14 },
+    win: { ...col, line: 11 },
     page: { x: 16, y: 118, w: w - 32, h: buttons.y - 132 },
     buttons,
-    lastLine: 16,
-    divider: 534,
+    lastLine: 21,
   };
 }
 
-function star(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, filled: boolean) {
+export function star(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, filled: boolean) {
   const pts: { x: number; y: number }[] = [];
   for (let i = 0; i < 10; i += 1) {
     const a = -Math.PI / 2 + (i * Math.PI) / 5;
@@ -98,7 +99,7 @@ function star(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, f
   g.strokePoints(pts, true);
 }
 
-function wobblyLine(g: Phaser.GameObjects.Graphics, x0: number, y0: number, x1: number, color: number, width: number, seed: number) {
+export function wobblyLine(g: Phaser.GameObjects.Graphics, x0: number, y0: number, x1: number, color: number, width: number, seed: number) {
   g.lineStyle(width, color, 1);
   g.beginPath();
   g.moveTo(x0, y0);
@@ -107,11 +108,11 @@ function wobblyLine(g: Phaser.GameObjects.Graphics, x0: number, y0: number, x1: 
   g.strokePath();
 }
 
-const ARROWS = ["↑", "→", "↓", "←"];
+export const ARROWS = ["↑", "→", "↓", "←"];
 
-type Run = { action: Action; count: number };
+export type Run = { action: Action; count: number };
 
-function runsOf(actions: readonly Action[]): Run[] {
+export function runsOf(actions: readonly Action[]): Run[] {
   const runs: Run[] = [];
   for (const a of actions) {
     const last = runs[runs.length - 1];
@@ -121,7 +122,117 @@ function runsOf(actions: readonly Action[]): Run[] {
   return runs;
 }
 
-export class Notebook {
+export function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: number, y: number) {
+  g.lineStyle(2.5, INK, 1);
+  switch (item) {
+    case "creak":
+      g.fillStyle(0xe9c993, 1);
+      g.fillRect(x - 15, y - 5, 30, 12);
+      g.strokeRect(x - 15, y - 5, 30, 12);
+      g.lineStyle(2.5, 0x7a62c4, 1);
+      g.lineBetween(x - 11, y - 9, x - 7, y - 14);
+      g.lineBetween(x - 7, y - 14, x - 3, y - 9);
+      g.lineBetween(x + 3, y - 9, x + 7, y - 14);
+      g.lineBetween(x + 7, y - 14, x + 11, y - 9);
+      break;
+    case "clock":
+      g.fillStyle(0xb06c3f, 1);
+      g.fillRect(x - 11, y - 7, 22, 20);
+      g.strokeRect(x - 11, y - 7, 22, 20);
+      g.fillTriangle(x - 15, y - 7, x + 15, y - 7, x, y - 17);
+      g.strokeTriangle(x - 15, y - 7, x + 15, y - 7, x, y - 17);
+      break;
+    case "marks":
+      g.fillStyle(0x9df0dc, 1);
+      g.fillCircle(x - 8, y, 10);
+      g.strokeCircle(x - 8, y, 10);
+      g.fillStyle(0xff6b5a, 1);
+      g.fillCircle(x + 9, y, 10);
+      g.strokeCircle(x + 9, y, 10);
+      g.fillStyle(INK, 1);
+      g.fillRoundedRect(x + 7.5, y - 6, 3, 8, 1);
+      g.fillCircle(x + 9, y + 5, 1.8);
+      g.fillCircle(x - 10, y + 3, 2.6);
+      g.fillRect(x - 8, y - 6, 1.8, 9);
+      break;
+    case "light":
+      g.fillStyle(0xffd66b, 0.95);
+      g.fillRoundedRect(x - 14, y - 13, 28, 26, 5);
+      g.lineStyle(3, 0xffb43d, 1);
+      g.strokeRoundedRect(x - 14, y - 13, 28, 26, 5);
+      g.fillStyle(0xfffbe8, 1);
+      g.fillEllipse(x - 4, y - 4, 12, 7);
+      g.fillStyle(INK, 1);
+      g.fillCircle(x - 4, y - 4, 2);
+      break;
+    case "next":
+      g.fillStyle(0xffe39a, 0.5);
+      g.fillRect(x - 14, y - 13, 28, 26);
+      g.lineStyle(2, 0xd99a1e, 1);
+      for (let k = -2; k <= 2; k += 1) g.lineBetween(x - 14 + Math.max(0, k * 7), y + 13 - Math.max(0, -k * 7), x + 14 + Math.min(0, k * 7), y - 13 - Math.min(0, -k * 7));
+      g.strokeRect(x - 14, y - 13, 28, 26);
+      break;
+    case "dog":
+      g.fillStyle(0xd89a4e, 1);
+      g.fillCircle(x, y + 4, 8);
+      g.strokeCircle(x, y + 4, 8);
+      for (let k = -1; k <= 1; k += 1) {
+        g.fillCircle(x + k * 8, y - 8 - (k === 0 ? 3 : 0), 4);
+        g.strokeCircle(x + k * 8, y - 8 - (k === 0 ? 3 : 0), 4);
+      }
+      break;
+    case "hide":
+      g.fillStyle(0xd9838f, 1);
+      g.fillRect(x - 13, y - 13, 26, 26);
+      g.lineStyle(2.5, INK, 1);
+      g.strokeRect(x - 13, y - 13, 26, 26);
+      g.lineBetween(x - 4, y - 13, x - 4, y + 13);
+      g.lineBetween(x + 5, y - 13, x + 5, y + 13);
+      break;
+    case "cat":
+      g.fillStyle(0x2a2342, 1);
+      g.fillCircle(x, y + 2, 10);
+      g.fillTriangle(x - 10, y - 2, x - 3, y - 8, x - 9, y - 14);
+      g.fillTriangle(x + 10, y - 2, x + 3, y - 8, x + 9, y - 14);
+      g.fillStyle(0xc8f07a, 1);
+      g.fillCircle(x - 4, y, 2.5);
+      g.fillCircle(x + 4, y, 2.5);
+      break;
+    case "route":
+      for (const [dx, dy] of [[-9, 6], [-1, -2], [7, -10]]) {
+        g.fillStyle(0xff8fc8, 1);
+        g.fillEllipse(x + dx, y + dy, 10, 7);
+        g.lineStyle(1.5, INK, 1);
+        g.strokeEllipse(x + dx, y + dy, 10, 7);
+      }
+      break;
+    case "toss":
+      g.fillStyle(0xd9ccff, 1);
+      g.fillRoundedRect(x - 15, y - 12, 30, 24, 8);
+      g.strokeRoundedRect(x - 15, y - 12, 30, 24, 8);
+      g.lineStyle(2.5, INK, 1);
+      g.beginPath();
+      g.arc(x, y, 6, -2.4, 1.6);
+      g.strokePath();
+      g.fillStyle(INK, 1);
+      g.fillTriangle(x + 7, y + 3, x + 1, y + 7, x + 4, y + 1);
+      break;
+    case "near":
+      g.fillStyle(0xff9d8a, 1);
+      g.fillCircle(x, y, 13);
+      g.strokeCircle(x, y, 13);
+      g.lineStyle(3, INK, 1);
+      g.lineBetween(x - 6, y - 6, x + 6, y + 6);
+      g.lineBetween(x + 6, y - 6, x - 6, y + 6);
+      break;
+    case "goal":
+      g.lineStyle(3, 0x2fa996, 1);
+      g.strokeRect(x - 14, y - 13, 28, 26);
+      break;
+  }
+}
+
+export class Notebook implements NotebookView {
   readonly container: Phaser.GameObjects.Container;
   private spots: Spots;
   private paper: Phaser.GameObjects.Graphics;
@@ -143,7 +254,7 @@ export class Notebook {
   private page: Phaser.GameObjects.Container | null = null;
   private pageKind: PageKind | null = null;
   private writeTimer?: Phaser.Time.TimerEvent;
-  private mode: "play" | "caught" | "won" = "play";
+  private mode: NotebookMode = "play";
 
   constructor(
     private scene: Phaser.Scene,
@@ -228,7 +339,6 @@ export class Notebook {
     for (let k = 0; k <= sp.lastLine; k += 1) g.lineBetween(14, lineY(k), w - 14, lineY(k));
     g.lineStyle(2.5, 0xef8a8a, 0.9);
     g.lineBetween(58, 12, 58, h - 12);
-    if (sp.divider !== null) g.lineBetween(sp.divider, 120, sp.divider, lineY(sp.lastLine) + 10);
     for (let i = 0; i < Math.floor((w - 20) / 56); i += 1) {
       const rx = 36 + i * 56;
       g.fillStyle(0x2b2150, 1);
@@ -370,7 +480,7 @@ export class Notebook {
       y += 46;
       for (const item of this.legend) {
         const ig = this.scene.add.graphics();
-        this.drawLegendIcon(ig, item, 76, y + 16);
+        drawLegendIcon(ig, item, 76, y + 16);
         const t = this.scene.add.text(104, y, this.copy.legend[item], { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 3 } });
         parts.push(ig, t);
         y += 40;
@@ -542,6 +652,16 @@ export class Notebook {
     return this.mode;
   }
 
+  pageOpen() {
+    return this.pageKind !== null;
+  }
+
+  nudgeUndo() {
+    this.scene.tweens.add({ targets: this.container, x: this.container.x + 6, duration: 50, yoyo: true, repeat: 3 });
+  }
+
+  setDirs() {}
+
   private buildTabs(active: number, total: number, progress: number[], acts: number[]) {
     for (const t of this.tabs) t.destroy();
     this.tabs = [];
@@ -591,116 +711,6 @@ export class Notebook {
       fn();
     });
     c.add(zone);
-  }
-
-  private drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: number, y: number) {
-    g.lineStyle(2.5, INK, 1);
-    switch (item) {
-      case "creak":
-        g.fillStyle(0xe9c993, 1);
-        g.fillRect(x - 15, y - 5, 30, 12);
-        g.strokeRect(x - 15, y - 5, 30, 12);
-        g.lineStyle(2.5, 0x7a62c4, 1);
-        g.lineBetween(x - 11, y - 9, x - 7, y - 14);
-        g.lineBetween(x - 7, y - 14, x - 3, y - 9);
-        g.lineBetween(x + 3, y - 9, x + 7, y - 14);
-        g.lineBetween(x + 7, y - 14, x + 11, y - 9);
-        break;
-      case "clock":
-        g.fillStyle(0xb06c3f, 1);
-        g.fillRect(x - 11, y - 7, 22, 20);
-        g.strokeRect(x - 11, y - 7, 22, 20);
-        g.fillTriangle(x - 15, y - 7, x + 15, y - 7, x, y - 17);
-        g.strokeTriangle(x - 15, y - 7, x + 15, y - 7, x, y - 17);
-        break;
-      case "marks":
-        g.fillStyle(0x9df0dc, 1);
-        g.fillCircle(x - 8, y, 10);
-        g.strokeCircle(x - 8, y, 10);
-        g.fillStyle(0xff6b5a, 1);
-        g.fillCircle(x + 9, y, 10);
-        g.strokeCircle(x + 9, y, 10);
-        g.fillStyle(INK, 1);
-        g.fillRoundedRect(x + 7.5, y - 6, 3, 8, 1);
-        g.fillCircle(x + 9, y + 5, 1.8);
-        g.fillCircle(x - 10, y + 3, 2.6);
-        g.fillRect(x - 8, y - 6, 1.8, 9);
-        break;
-      case "light":
-        g.fillStyle(0xffd66b, 0.95);
-        g.fillRoundedRect(x - 14, y - 13, 28, 26, 5);
-        g.lineStyle(3, 0xffb43d, 1);
-        g.strokeRoundedRect(x - 14, y - 13, 28, 26, 5);
-        g.fillStyle(0xfffbe8, 1);
-        g.fillEllipse(x - 4, y - 4, 12, 7);
-        g.fillStyle(INK, 1);
-        g.fillCircle(x - 4, y - 4, 2);
-        break;
-      case "next":
-        g.fillStyle(0xffe39a, 0.5);
-        g.fillRect(x - 14, y - 13, 28, 26);
-        g.lineStyle(2, 0xd99a1e, 1);
-        for (let k = -2; k <= 2; k += 1) g.lineBetween(x - 14 + Math.max(0, k * 7), y + 13 - Math.max(0, -k * 7), x + 14 + Math.min(0, k * 7), y - 13 - Math.min(0, -k * 7));
-        g.strokeRect(x - 14, y - 13, 28, 26);
-        break;
-      case "dog":
-        g.fillStyle(0xd89a4e, 1);
-        g.fillCircle(x, y + 4, 8);
-        g.strokeCircle(x, y + 4, 8);
-        for (let k = -1; k <= 1; k += 1) {
-          g.fillCircle(x + k * 8, y - 8 - (k === 0 ? 3 : 0), 4);
-          g.strokeCircle(x + k * 8, y - 8 - (k === 0 ? 3 : 0), 4);
-        }
-        break;
-      case "hide":
-        g.fillStyle(0xd9838f, 1);
-        g.fillRect(x - 13, y - 13, 26, 26);
-        g.lineStyle(2.5, INK, 1);
-        g.strokeRect(x - 13, y - 13, 26, 26);
-        g.lineBetween(x - 4, y - 13, x - 4, y + 13);
-        g.lineBetween(x + 5, y - 13, x + 5, y + 13);
-        break;
-      case "cat":
-        g.fillStyle(0x2a2342, 1);
-        g.fillCircle(x, y + 2, 10);
-        g.fillTriangle(x - 10, y - 2, x - 3, y - 8, x - 9, y - 14);
-        g.fillTriangle(x + 10, y - 2, x + 3, y - 8, x + 9, y - 14);
-        g.fillStyle(0xc8f07a, 1);
-        g.fillCircle(x - 4, y, 2.5);
-        g.fillCircle(x + 4, y, 2.5);
-        break;
-      case "route":
-        for (const [dx, dy] of [[-9, 6], [-1, -2], [7, -10]]) {
-          g.fillStyle(0xff8fc8, 1);
-          g.fillEllipse(x + dx, y + dy, 10, 7);
-          g.lineStyle(1.5, INK, 1);
-          g.strokeEllipse(x + dx, y + dy, 10, 7);
-        }
-        break;
-      case "toss":
-        g.fillStyle(0xd9ccff, 1);
-        g.fillRoundedRect(x - 15, y - 12, 30, 24, 8);
-        g.strokeRoundedRect(x - 15, y - 12, 30, 24, 8);
-        g.lineStyle(2.5, INK, 1);
-        g.beginPath();
-        g.arc(x, y, 6, -2.4, 1.6);
-        g.strokePath();
-        g.fillStyle(INK, 1);
-        g.fillTriangle(x + 7, y + 3, x + 1, y + 7, x + 4, y + 1);
-        break;
-      case "near":
-        g.fillStyle(0xff9d8a, 1);
-        g.fillCircle(x, y, 13);
-        g.strokeCircle(x, y, 13);
-        g.lineStyle(3, INK, 1);
-        g.lineBetween(x - 6, y - 6, x + 6, y + 6);
-        g.lineBetween(x + 6, y - 6, x - 6, y + 6);
-        break;
-      case "goal":
-        g.lineStyle(3, 0x2fa996, 1);
-        g.strokeRect(x - 14, y - 13, 28, 26);
-        break;
-    }
   }
 
   private buildButtons(ids: ButtonId[]) {

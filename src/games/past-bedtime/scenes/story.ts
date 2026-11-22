@@ -19,6 +19,7 @@ export class StoryBox {
   private full = "";
   private shown = 0;
   private timer?: Phaser.Time.TimerEvent;
+  private k: number;
   open = false;
 
   constructor(
@@ -30,19 +31,21 @@ export class StoryBox {
     private onClose: () => void = () => undefined,
   ) {
     const round = fonts.round ?? fonts.body;
-    const size = Math.round(Math.min(36, Math.max(26, layout.tile * 0.3)));
+    const k = layout.ui;
+    this.k = k;
+    const size = layout.kind === "full" ? Math.round(Math.min(36, Math.max(26, layout.tile * 0.3))) : Math.round(15.5 * layout.unit);
     this.panel = scene.add.graphics();
-    this.text = scene.add.text(0, 0, "", { fontFamily: round, fontSize: `${size}px`, fontStyle: "600", color: "#1d1830", lineSpacing: 10, padding: { x: 2, y: 4 } });
-    this.more = scene.add.text(0, 0, "▼", { fontFamily: round, fontSize: "28px", fontStyle: "700", color: "#c94785" }).setOrigin(0.5);
-    const tagText = scene.add.text(20, -3, name.toUpperCase(), { fontFamily: fonts.display, fontSize: "26px", color: "#1d1830", padding: { x: 4, y: 4 } }).setOrigin(0, 0.5);
-    const tagW = tagText.width + 40;
+    this.text = scene.add.text(0, 0, "", { fontFamily: round, fontSize: `${size}px`, fontStyle: "600", color: "#1d1830", lineSpacing: 10 * k, padding: { x: 2, y: 4 } });
+    this.more = scene.add.text(0, 0, "▼", { fontFamily: round, fontSize: `${Math.round(28 * k)}px`, fontStyle: "700", color: "#c94785" }).setOrigin(0.5);
+    const tagText = scene.add.text(20 * k, -3 * k, name.toUpperCase(), { fontFamily: fonts.display, fontSize: `${Math.round(26 * k)}px`, color: "#1d1830", padding: { x: 4, y: 4 } }).setOrigin(0, 0.5);
+    const tagW = tagText.width + 40 * k;
     const tagBg = scene.add.graphics();
     tagBg.fillStyle(INK, 1);
-    tagBg.fillRoundedRect(4, -22, tagW, 44, 12);
+    tagBg.fillRoundedRect(4 * k, -22 * k, tagW, 44 * k, 12 * k);
     tagBg.fillStyle(SKY, 1);
-    tagBg.fillRoundedRect(0, -26, tagW, 44, 12);
-    tagBg.lineStyle(4, INK, 1);
-    tagBg.strokeRoundedRect(0, -26, tagW, 44, 12);
+    tagBg.fillRoundedRect(0, -26 * k, tagW, 44 * k, 12 * k);
+    tagBg.lineStyle(4 * k, INK, 1);
+    tagBg.strokeRoundedRect(0, -26 * k, tagW, 44 * k, 12 * k);
     this.nameTag = scene.add.container(0, 0, [tagBg, tagText]);
     this.bruno = new BrunoView(scene, 150, art);
     this.bruno.setFacing(2);
@@ -55,14 +58,18 @@ export class StoryBox {
   }
 
   show(line: string, avoid: { x: number; y: number; w: number; h: number }[] = []) {
-    const b = this.layout.frame;
-    const portraitR = 60;
-    const left = portraitR * 2 + 56;
-    const w = Math.min(b.w - 48, 880);
-    this.text.setWordWrapWidth(w - left - 70).setText(line);
-    const h = Math.max(portraitR * 2 + 44, this.text.height + 80);
-    const xs = [b.x + (b.w - w) / 2, b.x + 24, b.x + b.w - w - 24];
-    const ys = [b.y + b.h - h - 22, b.y + 30];
+    const k = this.k;
+    const b = this.layout.kind === "full" ? this.layout.frame : this.layout.map;
+    const phone = this.layout.kind !== "full";
+    const w = Math.min(b.w - 48 * k, 880 * k);
+    const portraitR = phone ? Math.min(60 * k, w * 0.12) : 60 * k;
+    const pk = portraitR / 60;
+    const left = portraitR * 2 + 56 * k;
+    const right = phone ? 44 * k : 70 * k;
+    this.text.setWordWrapWidth(w - left - right).setText(line);
+    const h = Math.max(portraitR * 2 + 44 * k, this.text.height + 80 * k);
+    const xs = [b.x + (b.w - w) / 2, b.x + 24 * k, b.x + b.w - w - 24 * k];
+    const ys = [b.y + b.h - h - 22 * k, b.y + 30 * k];
     let best = { x: xs[0], y: ys[0] };
     let bestScore = Infinity;
     ys.forEach((cy, j) => {
@@ -84,41 +91,41 @@ export class StoryBox {
     const g = this.panel;
     g.clear();
     g.fillStyle(INK, 0.9);
-    g.fillRoundedRect(x + 8, y + 10, w, h, 28);
+    g.fillRoundedRect(x + 8 * k, y + 10 * k, w, h, 28 * k);
     g.fillStyle(CREAM, 1);
-    g.fillRoundedRect(x, y, w, h, 28);
-    g.lineStyle(6, INK, 1);
-    g.strokeRoundedRect(x, y, w, h, 28);
+    g.fillRoundedRect(x, y, w, h, 28 * k);
+    g.lineStyle(6 * k, INK, 1);
+    g.strokeRoundedRect(x, y, w, h, 28 * k);
     const lines = Math.max(1, this.text.getWrappedText().length);
     const m = this.text.style.getTextMetrics();
-    const lineH = m.fontSize + 10;
-    const top = y + Math.round((h - (lines * lineH - 10)) / 2) - 4;
+    const lineH = m.fontSize + 10 * k;
+    const top = y + Math.round((h - (lines * lineH - 10 * k)) / 2) - 4 * k;
     g.fillStyle(0xe2cc9f, 0.75);
-    for (let i = 0; i < lines; i += 1) g.fillRect(x + left - 6, Math.round(top + 4 + m.ascent + i * lineH + 6), w - left - 50, 3);
-    const cx = x + 30 + portraitR;
+    for (let i = 0; i < lines; i += 1) g.fillRect(x + left - 6 * k, Math.round(top + 4 * k + m.ascent + i * lineH + 6 * k), w - left - (right - 20 * k), 3 * k);
+    const cx = x + 30 * k + portraitR;
     const cy = y + h / 2;
     g.fillStyle(INK, 1);
-    g.fillCircle(cx + 6, cy + 8, portraitR + 4);
+    g.fillCircle(cx + 6 * k, cy + 8 * k, portraitR + 4 * k);
     g.fillStyle(SKY, 1);
     g.fillCircle(cx, cy, portraitR);
     this.maskShape.clear();
     this.maskShape.fillStyle(0xffffff, 1);
-    this.maskShape.fillCircle(cx, cy, portraitR - 3);
-    if (this.art) this.bruno.container.setPosition(cx, cy + 128).setScale(1.25);
-    else this.bruno.container.setPosition(cx, cy + 34).setScale(1.55);
+    this.maskShape.fillCircle(cx, cy, portraitR - 3 * k);
+    if (this.art) this.bruno.container.setPosition(cx, cy + 128 * pk).setScale(1.25 * pk);
+    else this.bruno.container.setPosition(cx, cy + 34 * pk).setScale(1.55 * pk);
     const ring = this.scene.add.graphics();
-    ring.lineStyle(6, INK, 1);
+    ring.lineStyle(6 * k, INK, 1);
     ring.strokeCircle(cx, cy, portraitR);
     this.root.addAt(ring, 2);
-    this.nameTag.setPosition(x + left - 10, y - 2);
+    this.nameTag.setPosition(x + left - 10 * k, y - 2 * k);
     this.text.setPosition(x + left, top).setText("");
-    this.more.setPosition(x + w - 40, y + h - 34).setVisible(false);
+    this.more.setPosition(x + w - (right - 30 * k), y + h - 34 * k).setVisible(false);
     this.scene.tweens.killTweensOf(this.more);
-    this.scene.tweens.add({ targets: this.more, y: y + h - 28, duration: 420, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.scene.tweens.add({ targets: this.more, y: y + h - 28 * k, duration: 420, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     this.full = line;
     this.shown = 0;
     this.open = true;
-    this.root.setVisible(true).setAlpha(0).setY(24);
+    this.root.setVisible(true).setAlpha(0).setY(24 * k);
     this.scene.tweens.add({ targets: this.root, alpha: 1, y: 0, duration: 180, ease: "Quad.easeOut" });
     this.timer?.remove();
     this.timer = this.scene.time.addEvent({
@@ -155,6 +162,6 @@ export class StoryBox {
     this.onClose();
     this.timer?.remove();
     this.timer = undefined;
-    this.scene.tweens.add({ targets: this.root, alpha: 0, y: 16, duration: 160, onComplete: () => this.root.setVisible(false) });
+    this.scene.tweens.add({ targets: this.root, alpha: 0, y: 16 * this.k, duration: 160, onComplete: () => this.root.setVisible(false) });
   }
 }

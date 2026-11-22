@@ -1,7 +1,8 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, LevelRecord, StartOptions } from "@/games/types";
+import { insetsOf } from "../kit/insets";
 import { partResult } from "./result";
-import { CANVAS, type Orientation } from "./scenes/layout";
+import { frameFor, sameFrame, type Frame } from "./scenes/layout";
 import { NightScene, type Carry, type Command, type NightBridge } from "./scenes/NightScene";
 import { NightUiScene } from "./scenes/NightUi";
 import { LEVELS } from "./sim/levels";
@@ -31,9 +32,11 @@ const ONCE = new Set<Command>(["undo", "restart", "hint", "rules", "view"]);
 
 const WIN_HOLD_MS = 1700;
 
-function orientationOf(parent: HTMLElement): Orientation {
+const touchScreen = () => window.matchMedia?.("(pointer: coarse)").matches ?? false;
+
+function measure(parent: HTMLElement): Frame {
   const { width, height } = parent.getBoundingClientRect();
-  return height > width * 1.15 && width < 900 ? "portrait" : "landscape";
+  return frameFor(width, height, insetsOf(parent), touchScreen());
 }
 
 function mount(ctx: GameHostContext): GameInstance {
@@ -44,11 +47,17 @@ function mount(ctx: GameHostContext): GameInstance {
   let ready = false;
   let pendingWin: number | null = null;
   let game: Phaser.Game | null = null;
-  let orientation = orientationOf(ctx.parent);
+  let frame = measure(ctx.parent);
 
-  const touch = () => window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  const scene = () => (game && (game.scene.isActive("night") || game.scene.isPaused("night")) ? (game.scene.getScene("night") as NightScene) : null);
 
-  const scene = () => (game && game.scene.isActive("night") ? (game.scene.getScene("night") as NightScene) : null);
+  const holdScenes = () => {
+    for (const key of ["night", "night-ui"]) if (game?.scene.isActive(key)) game.scene.pause(key);
+  };
+
+  const releaseScenes = () => {
+    for (const key of ["night", "night-ui"]) if (game?.scene.isPaused(key)) game.scene.resume(key);
+  };
 
   const clearWin = () => {
     if (pendingWin !== null) window.clearTimeout(pendingWin);
@@ -56,13 +65,12 @@ function mount(ctx: GameHostContext): GameInstance {
   };
 
   const boot = (carry: Carry | null) => {
-    const size = CANVAS[orientation];
     const bridge: NightBridge = {
       locale: ctx.locale,
       fonts: { display: ctx.fonts.display, body: ctx.fonts.body, hand: ctx.fonts.hand, round: ctx.fonts.round },
       reducedMotion: ctx.reducedMotion,
-      orientation,
-      touch: touch(),
+      frame,
+      touch: touchScreen(),
       art: "final",
       level,
       carry,
@@ -71,6 +79,7 @@ function mount(ctx: GameHostContext): GameInstance {
         if (!ready) ctx.onProgress(value, "art");
       },
       onReady: () => {
+        if (paused) window.setTimeout(holdScenes, 0);
         if (ready) return;
         ready = true;
         ctx.onProgress(1, "scene");
@@ -97,8 +106,8 @@ function mount(ctx: GameHostContext): GameInstance {
     game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: ctx.parent,
-      width: size.W,
-      height: size.H,
+      width: frame.W,
+      height: frame.H,
       backgroundColor: "#0d0a1c",
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
       render: { antialias: true, roundPixels: false },
@@ -139,10 +148,19 @@ function mount(ctx: GameHostContext): GameInstance {
 
   const observer = new ResizeObserver(() => {
     if (!game) return;
-    const next = orientationOf(ctx.parent);
-    if (next !== orientation && ready) {
-      const carry = scene()?.carry() ?? null;
-      orientation = next;
+    const next = measure(ctx.parent);
+    if (ready && !sameFrame(next, frame)) {
+      const night = scene();
+      if (next.kind === frame.kind && next.kind !== "full" && night) {
+        frame = next;
+        game.scale.resize(next.W, next.H);
+        night.relayout(next);
+        game.scale.getParentBounds();
+        game.scale.refresh();
+        return;
+      }
+      const carry = night?.carry() ?? null;
+      frame = next;
       game.destroy(true);
       boot(carry);
       return;
@@ -158,21 +176,23 @@ function mount(ctx: GameHostContext): GameInstance {
     start(options?: StartOptions) {
       clearWin();
       paused = false;
+      releaseScenes();
       if (options?.records) records = options.records;
       level = Math.max(0, Math.min(LEVELS.length - 1, options?.level ?? 0));
       scene()?.loadPart(level);
     },
     pause() {
       paused = true;
-      for (const key of ["night", "night-ui"]) if (game?.scene.isActive(key)) game.scene.pause(key);
+      holdScenes();
     },
     resume() {
       paused = false;
-      for (const key of ["night", "night-ui"]) if (game?.scene.isPaused(key)) game.scene.resume(key);
+      releaseScenes();
     },
     restart() {
       clearWin();
       paused = false;
+      releaseScenes();
       scene()?.loadPart(level);
     },
     setHighScore() {},

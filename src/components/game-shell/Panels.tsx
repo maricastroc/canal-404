@@ -295,9 +295,9 @@ function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
 
 function PickHeader({ title, meta }: { title: string; meta?: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
       <h2 className="font-display text-xl uppercase tracking-wide text-ink">{title}</h2>
-      {meta ? <p className="font-display text-sm uppercase tracking-wide text-ink-soft">{meta}</p> : null}
+      {meta ? <p className="whitespace-nowrap font-display text-sm uppercase tracking-wide text-ink-soft">{meta}</p> : null}
     </div>
   );
 }
@@ -718,12 +718,12 @@ export function PausePanel({
   const narrow = useNarrowScreen();
   if (narrow) {
     return (
-      <OverlayFrame label={copy.pausedLabel} className="p-5">
+      <OverlayFrame label={copy.pausedLabel} className="p-5 [@media(max-height:420px)]:py-3">
         <div className="flex items-center gap-3">
-          <Mascot404 expression="sleepy" className={`shrink-0 -rotate-3 ${showHelp ? "w-12" : "w-[4.5rem] max-[359px]:w-16"}`} />
-          <div className="min-w-0">
-            <h2 className={`font-display uppercase leading-none tracking-wide text-ink ${showHelp ? "text-3xl" : "text-4xl"}`}>{copy.paused}</h2>
-            {showHelp ? null : <p className="mt-1 text-pretty font-hand text-lg leading-snug text-ink-soft">{copy.napping}</p>}
+          <Mascot404 expression="sleepy" className={`shrink-0 -rotate-3 ${showHelp ? "w-12" : "w-[4.5rem] max-[359px]:w-16"} [@media(max-height:420px)]:w-11`} />
+          <div className="min-w-0 [@media(max-height:420px)]:flex [@media(max-height:420px)]:items-baseline [@media(max-height:420px)]:gap-3">
+            <h2 className={`font-display uppercase leading-none tracking-wide text-ink ${showHelp ? "text-3xl" : "text-4xl"} [@media(max-height:420px)]:text-3xl`}>{copy.paused}</h2>
+            {showHelp ? null : <p className="mt-1 text-pretty font-hand text-lg leading-snug text-ink-soft [@media(max-height:420px)]:mt-0">{copy.napping}</p>}
           </div>
         </div>
         {showHelp ? (
@@ -734,7 +734,7 @@ export function PausePanel({
             <ControlsList game={game} />
           </div>
         ) : null}
-        <div className="sticky -bottom-3 z-10 -mx-5 -mb-5 mt-4 flex flex-col gap-2 rounded-b-[inherit] border-t-[3px] border-ink px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 paper [&>button]:min-h-14 [&>button]:py-2">
+        <div className="sticky -bottom-3 z-10 -mx-5 -mb-5 mt-4 flex flex-col gap-2 rounded-b-[inherit] border-t-[3px] border-ink px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 paper [&>button]:min-h-14 [&>button]:py-2 [@media(max-height:420px)]:-mb-3 [@media(max-height:420px)]:mt-3 [@media(max-height:420px)]:grid [@media(max-height:420px)]:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] [@media(max-height:420px)]:pt-2 [@media(max-height:420px)]:[&>button]:min-h-11">
           <InkButton ref={resumeRef} tone="sun" size="lg" onClick={onResume} className="w-full">
             <PlayIcon className="size-7 text-ink" /> {copy.resume}
           </InkButton>
@@ -748,7 +748,7 @@ export function PausePanel({
               {showHelp ? <CloseIcon className="size-5" /> : <QuestionIcon className="size-5" />} {showHelp ? copy.closeHelp : copy.howTo}
             </InkButton>
           </div>
-          <Link href={`/games/${game.slug}`} className={`${TERTIARY} self-center`}>
+          <Link href={`/games/${game.slug}`} className={`${TERTIARY} self-center [@media(max-height:420px)]:col-span-2 [@media(max-height:420px)]:justify-self-center [@media(max-height:420px)]:py-0`}>
             <ArrowLeftIcon className="size-4" /> {copy.quit}
           </Link>
         </div>

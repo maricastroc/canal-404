@@ -20,9 +20,11 @@ import { floatZ, noiseRing, pop, say, sightLine, soundLine, squiggle, type Bubbl
 import { drawExit } from "./exit";
 import { StoryBox } from "./story";
 import { drawCreakMarks, drawCreaks, drawFloor, drawHides, drawProps, drawWalls, faceMap, hideStyleFor, NIGHT, themeFor } from "./house";
-import { computeLayout, tileCenter, wobble, type Layout, type Orientation } from "./layout";
-import { Notebook, type ButtonId, type LegendItem, type NoteKind } from "./notebook";
+import { loadNightIcons } from "./icons";
+import { computeLayout, tileCenter, wobble, type Frame, type Layout } from "./layout";
+import { Notebook, type ButtonId, type LegendItem, type NoteKind, type NotebookView } from "./notebook";
 import type { NightUiScene } from "./NightUi";
+import { PhoneNotebook } from "./phoneNotebook";
 
 export type WinReport = { level: string; index: number; turns: number; par: number; stars: number; hints: number; moves: string; wakes: number; creaks: number; covered: number };
 
@@ -32,7 +34,7 @@ export type NightBridge = {
   locale: Locale;
   fonts: Fonts;
   reducedMotion: boolean;
-  orientation: Orientation;
+  frame: Frame;
   touch: boolean;
   art: ArtMode;
   level: number;
@@ -46,6 +48,8 @@ export type NightBridge = {
 
 export type Command = "up" | "right" | "down" | "left" | "wait" | "undo" | "restart" | "hint" | "next" | "rules" | "view";
 
+export type CommandSource = "key" | "touch";
+
 type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView } | { kind: "cat"; view: CatView }) & { status: StatusIcon; lift?: number };
 
 type Note = { text: string; kind: NoteKind; fleeting?: boolean };
@@ -57,6 +61,7 @@ type Ahead = { result: NonNullable<ReturnType<typeof step>>; striped: Set<number
 const CHAR_SCALE = 1.14;
 
 const MOVE_MS = 190;
+const TOUCH_QUEUE = 3;
 const ROUTE_PREVIEW = 4;
 const SPEAKER_COLORS = { bruno: 0x5cb9f0, dad: 0x9db7ff, grandma: 0xff9ccf, dog: 0xffc89a, cat: 0xd9ccff } as const;
 const DIRS: Record<"up" | "right" | "down" | "left", Dir> = { up: 0, right: 1, down: 2, left: 3 };
@@ -72,11 +77,12 @@ export class NightScene extends Phaser.Scene {
   private state!: State;
   private hints = 0;
   private busy = false;
-  private queued: Command | null = null;
+  private queued: Command[] = [];
+  private turnTimer?: Phaser.Time.TimerEvent;
   private bruno!: BrunoView;
   private agents: AgentView[] = [];
   private clock: ClockView | null = null;
-  private notebook!: Notebook;
+  private notebook!: NotebookView;
   private lightGfx!: Phaser.GameObjects.Graphics;
   private forecast!: Phaser.GameObjects.Graphics;
   private routeMarks!: Phaser.GameObjects.Graphics;
@@ -105,6 +111,7 @@ export class NightScene extends Phaser.Scene {
   private overviewOn = false;
   private following = false;
   private viewChip: { box: Box; label: Phaser.GameObjects.Text; bg: Phaser.GameObjects.Graphics } | null = null;
+  private chipRight = false;
   private indicators: { target: () => { x: number; y: number }; root: Phaser.GameObjects.Container; arrow: Phaser.GameObjects.Graphics }[] = [];
 
   constructor() {
@@ -115,6 +122,7 @@ export class NightScene extends Phaser.Scene {
     const bridge = this.registry.get("bridge") as NightBridge;
     this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => bridge.onLoad(value));
     if (bridge.art === "final") loadArt(this);
+    if (bridge.frame.kind !== "full") loadNightIcons(this);
   }
 
   create() {
@@ -144,6 +152,15 @@ export class NightScene extends Phaser.Scene {
     return { actions: [...this.actions], hints: this.hints };
   }
 
+  relayout(frame: Frame) {
+    const carry = this.carry();
+    const overview = this.overviewOn;
+    this.bridge.frame = frame;
+    this.loadLevel(this.levelIndex, false);
+    this.restore(carry);
+    if (!overview && this.layout.scroll) this.focusBruno();
+  }
+
   private restore(carry: Carry) {
     this.story?.close();
     this.hints = carry.hints;
@@ -170,12 +187,12 @@ export class NightScene extends Phaser.Scene {
     getAudio().play(recipe, { volume });
   }
 
-  private loadLevel(index: number) {
+  private loadLevel(index: number, story = true) {
     this.levelIndex = index;
     this.bridge.onLevel(index);
     const level = LEVELS[index];
     this.sim = createSim(level);
-    this.layout = computeLayout(this.bridge.orientation, this.sim.grid);
+    this.layout = computeLayout(this.bridge.frame, this.sim.grid);
     this.ambient?.remove();
     this.tweens.killAll();
     this.time.removeAllEvents();
@@ -184,6 +201,7 @@ export class NightScene extends Phaser.Scene {
     this.bubbles = [];
     this.indicators = [];
     this.viewChip = null;
+    this.chipRight = false;
     this.agents = [];
     this.clock = null;
     this.badges = [];
@@ -191,7 +209,8 @@ export class NightScene extends Phaser.Scene {
     this.actions = [];
     this.hints = 0;
     this.busy = false;
-    this.queued = null;
+    this.queued = [];
+    this.turnTimer = undefined;
     this.state = this.sim.initial;
     this.wasBreathing = false;
     this.pinned = null;
@@ -222,11 +241,11 @@ export class NightScene extends Phaser.Scene {
     this.forecast = this.add.graphics().setDepth(12);
     this.routeMarks = this.add.graphics().setDepth(36);
     this.hover = this.add.graphics().setDepth(13);
-    this.hintLayer = this.add.graphics().setDepth(38);
+    this.hintLayer = this.add.graphics().setDepth(39.5);
     this.tweens.add({ targets: this.hintLayer, y: -s * 0.06, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     this.drawFrame();
     this.lightsOn = this.add.rectangle(L.board.x, L.board.y, L.board.w, L.board.h, 0xffe8a0, 0).setOrigin(0).setDepth(45);
-    const iconSize = Math.max(30, s * 0.34);
+    const iconSize = Math.max(30, s * 0.34, L.small * 1.65);
     level.agents.forEach((def, i) => {
       const c = tileCenter(L, ...this.xy(agentPos(grid, i, this.state.agents[i])));
       if (def.kind === "sleeper") {
@@ -259,13 +278,14 @@ export class NightScene extends Phaser.Scene {
     this.bruno.container.setScale(CHAR_SCALE);
     const b = tileCenter(L, this.state.x, this.state.y);
     this.bruno.place(b.x, b.y);
-    this.notebook = new Notebook(
-      this.ui,
-      L,
-      this.bridge.fonts,
-      this.copy,
-      (id) => this.onButton(id),
-    );
+    this.notebook =
+      L.kind === "full"
+        ? new Notebook(this.ui, L, this.bridge.fonts, this.copy, (id) => this.onButton(id))
+        : new PhoneNotebook(this.ui, L, this.bridge.fonts, this.copy, {
+            button: (id) => this.onButton(id, "touch"),
+            move: (dir) => this.command((["up", "right", "down", "left"] as const)[dir], "touch"),
+            preview: (dir) => this.previewMove(dir),
+          });
     const progress = this.bridge.stars();
     const text = this.copy.levels[level.id];
     const actOf = LEVELS.map((_l, i) => Math.max(0, ACTS.findIndex((a) => i >= a.first && i <= a.last)));
@@ -275,7 +295,7 @@ export class NightScene extends Phaser.Scene {
     this.notebook.intro(text.intro);
     this.story = new StoryBox(this.ui, L, this.bridge.fonts, charArt, this.copy.speaker, () => this.focusBruno());
     this.setupCamera();
-    this.time.delayedCall(350, () => this.history.length === 0 && this.state.status === "playing" && this.story?.show(text.story, [...this.avoidBoxes().map((b) => this.toScreen(b)), ...(this.viewChip ? [this.viewChip.box] : [])]));
+    if (story) this.time.delayedCall(350, () => this.history.length === 0 && this.state.status === "playing" && this.story?.show(text.story, [...this.avoidBoxes().map((b) => this.toScreen(b)), ...(this.viewChip ? [this.viewChip.box] : [])]));
     this.syncViews(false);
     this.refreshOverlays();
     this.ambient = this.time.addEvent({ delay: 1400, loop: true, callback: () => this.ambientTick() });
@@ -373,18 +393,30 @@ export class NightScene extends Phaser.Scene {
   private drawFrame() {
     const L = this.layout;
     const b = L.frame;
+    const k = L.ui;
     const g = this.ui.add.graphics().setDepth(22);
     g.fillStyle(NIGHT.void, 1);
     g.fillRect(0, 0, L.W, b.y);
     g.fillRect(0, b.y + b.h, L.W, L.H - b.y - b.h);
     g.fillRect(0, b.y, b.x, b.h);
     g.fillRect(b.x + b.w, b.y, L.W - b.x - b.w, b.h);
+    if (L.kind !== "full") {
+      const m = L.map;
+      const step = 18 * L.unit;
+      g.fillStyle(0x8f7fd0, 0.09);
+      for (let y = m.y + step / 2; y < m.y + m.h; y += step) {
+        for (let x = m.x + step / 2; x < m.x + m.w; x += step) {
+          if (x > b.x - step && x < b.x + b.w + step && y > b.y - step && y < b.y + b.h + step) continue;
+          g.fillCircle(x, y, 1.3 * L.unit);
+        }
+      }
+    }
     g.fillStyle(0x000000, 0.5);
-    g.fillRoundedRect(b.x + 7, b.y + b.h - 4, b.w, 12, 6);
-    g.lineStyle(7, NIGHT.ink, 1);
-    g.strokeRoundedRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6, 14);
-    g.lineStyle(2, 0x5a4a8a, 0.9);
-    g.strokeRoundedRect(b.x - 9, b.y - 9, b.w + 18, b.h + 18, 18);
+    g.fillRoundedRect(b.x + 7 * k, b.y + b.h - 4 * k, b.w, 12 * k, 6 * k);
+    g.lineStyle(7 * k, NIGHT.ink, 1);
+    g.strokeRoundedRect(b.x - 3 * k, b.y - 3 * k, b.w + 6 * k, b.h + 6 * k, 14 * k);
+    g.lineStyle(2 * k, 0x5a4a8a, 0.9);
+    g.strokeRoundedRect(b.x - 9 * k, b.y - 9 * k, b.w + 18 * k, b.h + 18 * k, 18 * k);
     const v = this.ui.add.graphics().setDepth(21.5);
     const edge = L.tile * 0.5;
     for (let i = 0; i < 6; i += 1) {
@@ -423,7 +455,7 @@ export class NightScene extends Phaser.Scene {
     return items;
   }
 
-  command(cmd: Command) {
+  command(cmd: Command, from: CommandSource = "key") {
     this.lastInput = this.time.now;
     if (cmd === "rules") {
       this.notebook.togglePage("rules");
@@ -445,7 +477,8 @@ export class NightScene extends Phaser.Scene {
       if (cmd === "undo" || cmd === "restart") {
         this.busy = false;
       } else {
-        this.queued = cmd;
+        if (from === "key") this.queued = [cmd];
+        else if (this.queued.length < TOUCH_QUEUE) this.queued.push(cmd);
         return;
       }
     }
@@ -469,9 +502,9 @@ export class NightScene extends Phaser.Scene {
     }
   }
 
-  private onButton(id: ButtonId) {
-    if (id === "undoCaught") this.command("undo");
-    else this.command(id);
+  private onButton(id: ButtonId, from: CommandSource = "key") {
+    if (id === "undoCaught") this.command("undo", from);
+    else this.command(id, from);
   }
 
   private act(action: Action) {
@@ -499,11 +532,17 @@ export class NightScene extends Phaser.Scene {
     this.playEvents(prev, result.events);
     this.notebook.setPlan(this.actions);
     this.notebook.setStats(this.state.turn, this.hints);
-    this.time.delayedCall(MOVE_MS + 30, () => this.afterTurn(prev, result.events));
+    this.turnTimer = this.time.delayedCall(MOVE_MS + 30, () => this.afterTurn(prev, result.events));
   }
 
   private flashUndo() {
-    this.ui.tweens.add({ targets: this.notebook.container, x: this.notebook.container.x + 6, duration: 50, yoyo: true, repeat: 3 });
+    this.notebook.nudgeUndo();
+  }
+
+  private dropPending() {
+    this.turnTimer?.remove();
+    this.turnTimer = undefined;
+    this.queued = [];
   }
 
   private playEvents(prev: State, events: SimEvent[]) {
@@ -722,14 +761,17 @@ export class NightScene extends Phaser.Scene {
   }
 
   private afterTurn(prev: State, events: SimEvent[]) {
+    this.turnTimer = undefined;
     this.busy = false;
     this.syncViews(true);
     this.refreshOverlays();
     if (this.state.status === "caught") {
+      this.queued = [];
       this.playCaught(events);
       return;
     }
     if (this.state.status === "won") {
+      this.queued = [];
       this.playWin();
       return;
     }
@@ -742,9 +784,8 @@ export class NightScene extends Phaser.Scene {
       this.bruno.setMood("relief");
       this.time.delayedCall(800, () => this.state.status === "playing" && this.bruno.setMood(this.moodFor(this.state)));
     }
-    const next = this.queued;
-    this.queued = null;
-    if (next) this.command(next);
+    const next = this.queued.shift();
+    if (next) this.command(next, "touch");
   }
 
   private turnNote(prev: State, events: SimEvent[]) {
@@ -964,6 +1005,8 @@ export class NightScene extends Phaser.Scene {
   private refreshOverlays() {
     this.drawLights();
     this.drawForecast();
+    const st = this.state;
+    this.notebook.setDirs(([0, 1, 2, 3] as Dir[]).map((d) => st.status === "playing" && canMove(this.sim, st, d)));
   }
 
   private tileRect(g: Phaser.GameObjects.Graphics, idx: number, inset = 0) {
@@ -1195,7 +1238,7 @@ export class NightScene extends Phaser.Scene {
 
   private lookTag(x: number, y: number, text: string, fill: number, alpha: number) {
     const s = this.layout.tile;
-    const label = this.add.text(0, 0, text, { fontFamily: this.bridge.fonts.round ?? this.bridge.fonts.body, fontStyle: "700", fontSize: `${Math.round(Math.max(16, s * 0.15))}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
+    const label = this.add.text(0, 0, text, { fontFamily: this.bridge.fonts.round ?? this.bridge.fonts.body, fontStyle: "700", fontSize: `${Math.round(Math.max(16, s * 0.15, this.layout.small))}px`, color: "#1d1830", padding: { x: 2, y: 2 } }).setOrigin(0.5);
     const w = label.width + s * 0.16;
     const h = label.height + 2;
     const g = this.add.graphics();
@@ -1358,6 +1401,7 @@ export class NightScene extends Phaser.Scene {
 
   private undo() {
     if (this.history.length === 0) return;
+    this.dropPending();
     this.hintLayer.clear();
     this.sfx(NIGHT_SFX.erase);
     const wasCaught = this.state.status === "caught";
@@ -1387,11 +1431,11 @@ export class NightScene extends Phaser.Scene {
     if (this.history.length === 0 && this.state.status === "playing") return;
     this.sfx(NIGHT_SFX.erase);
     this.hush();
+    this.dropPending();
     this.state = this.sim.initial;
     this.history = [];
     this.actions = [];
     this.busy = false;
-    this.queued = null;
     this.hintLayer.clear();
     this.tweens.killTweensOf(this.lightsOn);
     this.lightsOn.setFillStyle(0xffe8a0, 0);
@@ -1451,7 +1495,8 @@ export class NightScene extends Phaser.Scene {
     this.fleeting = this.copy.notes.hint;
     const t = tileCenter(this.layout, st.x + DX[a], st.y + DY[a]);
     const cx = t.x;
-    const cy = t.y - (a === 0 ? s * 0.16 : s * 0.04);
+    const marked = isCreaky(this.sim.grid, st.x + DX[a], st.y + DY[a]);
+    const cy = t.y - (marked ? s * 0.42 : a === 0 ? s * 0.16 : s * 0.04);
     g.fillStyle(0x000000, 0.3);
     g.fillEllipse(t.x, t.y + s * 0.3, r * 1.6, r * 0.5);
     badge(cx, cy);
@@ -1546,8 +1591,14 @@ export class NightScene extends Phaser.Scene {
     const dx = t.x - st.x;
     const dy = t.y - st.y;
     if (Math.abs(dx) + Math.abs(dy) !== 1) return;
-    const dir: Dir = dx === 1 ? 1 : dx === -1 ? 3 : dy === 1 ? 2 : 0;
-    if (!canMove(this.sim, st, dir)) return;
+    this.previewMove(dx === 1 ? 1 : dx === -1 ? 3 : dy === 1 ? 2 : 0);
+  }
+
+  private previewMove(dir: Dir | null) {
+    this.hover.clear();
+    const st = this.state;
+    if (dir === null || !this.sim || st.status !== "playing" || !canMove(this.sim, st, dir)) return;
+    const t = { x: st.x + DX[dir], y: st.y + DY[dir] };
     const L = this.layout;
     const g = this.hover;
     g.lineStyle(4, 0xe9e2ff, 0.9);
@@ -1664,7 +1715,7 @@ export class NightScene extends Phaser.Scene {
 
   private buildViewChip() {
     const L = this.layout;
-    const size = L.orientation === "landscape" ? 26 : 30;
+    const size = L.kind === "full" ? 26 : Math.round(14 * L.unit);
     const label = this.ui.add.text(0, 0, "", { fontFamily: this.bridge.fonts.hand, fontSize: `${size}px`, color: "#1d1830", padding: { x: 2, y: 3 } }).setOrigin(0, 0.5).setDepth(26);
     const bg = this.ui.add.graphics().setDepth(25);
     this.viewChip = { box: { x: 0, y: 0, w: 0, h: 0 }, label, bg };
@@ -1678,21 +1729,25 @@ export class NightScene extends Phaser.Scene {
     const chip = this.viewChip;
     if (!chip) return;
     const L = this.layout;
-    const text = this.overviewOn ? this.copy.view.back : this.copy.view.house;
+    const view = this.bridge.touch ? this.copy.touch : this.copy.view;
+    const text = this.overviewOn ? view.back : view.house;
     chip.label.setText(text);
-    const h = L.orientation === "landscape" ? 52 : 60;
-    const w = chip.label.width + 40;
-    const x = L.frame.x + 18;
-    const y = L.frame.y + L.frame.h - h - 18;
+    const full = L.kind === "full";
+    const k = full ? 1 : L.unit;
+    const h = full ? 52 : 38 * k;
+    const w = chip.label.width + (full ? 40 : 24 * k);
+    const x = full ? L.frame.x + 18 : this.chipRight ? L.frame.x + L.frame.w - w - 8 * k : L.frame.x + 8 * k;
+    const y = full ? L.frame.y + L.frame.h - h - 18 : L.frame.y + 8 * k;
+    const r = full ? 14 : 10 * k;
     chip.box = { x, y, w, h };
     chip.bg.clear();
     chip.bg.fillStyle(0x05030f, 0.55);
-    chip.bg.fillRoundedRect(x + 4, y + 5, w, h, 14);
+    chip.bg.fillRoundedRect(x + (full ? 4 : 2.5 * k), y + (full ? 5 : 3.5 * k), w, h, r);
     chip.bg.fillStyle(this.overviewOn ? 0xffe39a : 0xfbf5e6, 0.96);
-    chip.bg.fillRoundedRect(x, y, w, h, 14);
-    chip.bg.lineStyle(3, NIGHT.ink, 1);
-    chip.bg.strokeRoundedRect(x, y, w, h, 14);
-    chip.label.setPosition(x + 20, y + h / 2);
+    chip.bg.fillRoundedRect(x, y, w, h, r);
+    chip.bg.lineStyle(full ? 3 : 2 * k, NIGHT.ink, 1);
+    chip.bg.strokeRoundedRect(x, y, w, h, r);
+    chip.label.setPosition(x + (full ? 20 : 12 * k), y + h / 2);
     const hit = chip.label.getData("hit") as Phaser.GameObjects.Zone;
     hit.setPosition(x, y).setSize(w, h);
     hit.input?.hitArea.setTo(0, 0, w, h);
@@ -1701,18 +1756,19 @@ export class NightScene extends Phaser.Scene {
   private buildIndicators() {
     const L = this.layout;
     const grid = this.sim.grid;
-    const size = L.orientation === "landscape" ? 24 : 28;
+    const k = L.ui;
+    const size = L.kind === "full" ? 24 : Math.round(12.5 * L.unit);
     const make = (name: string, color: number, target: () => { x: number; y: number }) => {
       const arrow = this.ui.add.graphics();
       const text = this.ui.add.text(0, 0, name, { fontFamily: this.bridge.fonts.display, fontSize: `${size}px`, color: "#1d1830", padding: { x: 3, y: 3 } }).setOrigin(0.5);
-      const w = text.width + 26;
-      const h = text.height + 8;
+      const w = text.width + 26 * k;
+      const h = text.height + 8 * k;
       const bg = this.ui.add.graphics();
       bg.fillStyle(0x05030f, 0.5);
-      bg.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, h / 2);
+      bg.fillRoundedRect(-w / 2 + 3 * k, -h / 2 + 4 * k, w, h, h / 2);
       bg.fillStyle(color, 1);
       bg.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
-      bg.lineStyle(3, NIGHT.ink, 1);
+      bg.lineStyle(3 * k, NIGHT.ink, 1);
       bg.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
       arrow.setData("color", color);
       const root = this.ui.add.container(0, 0, [arrow, bg, text]).setDepth(24).setVisible(false);
@@ -1750,9 +1806,25 @@ export class NightScene extends Phaser.Scene {
     this.bruno.container.setDepth(this.depthAt(this.bruno.container.y) + 0.01);
   }
 
+  private dodgeChip() {
+    const chip = this.viewChip;
+    if (!chip || this.layout.kind === "full") return;
+    const s = this.layout.tile;
+    const b = this.bruno.container;
+    const bruno = this.toScreen({ x: b.x - s * 0.5, y: b.y - s * 1.15, w: s, h: s * 1.5 });
+    const covers = (c: Box) => c.x < bruno.x + bruno.w && c.x + c.w > bruno.x && c.y < bruno.y + bruno.h && c.y + c.h > bruno.y;
+    if (!covers(chip.box)) return;
+    const f = this.layout.frame;
+    const other = { ...chip.box, x: this.chipRight ? f.x + 8 * this.layout.unit : f.x + f.w - chip.box.w - 8 * this.layout.unit };
+    if (covers(other)) return;
+    this.chipRight = !this.chipRight;
+    this.refreshViewChip();
+  }
+
   update() {
     if (this.layout && this.bruno) this.sortActors();
     if (!this.layout?.scroll || !this.bruno) return;
+    this.dodgeChip();
     const cam = this.cameras.main;
     const L = this.layout;
     if (this.following && !this.overviewOn) {
@@ -1764,7 +1836,8 @@ export class NightScene extends Phaser.Scene {
     }
     const v = cam.worldView;
     const f = L.frame;
-    const inset = 30;
+    const ui = L.ui;
+    const inset = 30 * ui;
     const cx = f.x + f.w / 2;
     const cy = f.y + f.h / 2;
     for (const ind of this.indicators) {
@@ -1777,8 +1850,8 @@ export class NightScene extends Phaser.Scene {
       const sy = cam.y + (p.y - v.y) * cam.zoom;
       const dx = sx - cx;
       const dy = sy - cy;
-      const iw = (ind.root.getData("w") as number) / 2 + inset + 16;
-      const ih = (ind.root.getData("h") as number) / 2 + inset + 16;
+      const iw = (ind.root.getData("w") as number) / 2 + inset + 16 * ui;
+      const ih = (ind.root.getData("h") as number) / 2 + inset + 16 * ui;
       const kx = dx === 0 ? Infinity : (f.w / 2 - iw) / Math.abs(dx);
       const ky = dy === 0 ? Infinity : (f.h / 2 - ih) / Math.abs(dy);
       const k = Math.min(kx, ky, 1);
@@ -1786,19 +1859,19 @@ export class NightScene extends Phaser.Scene {
       const ang = Math.atan2(dy, dx);
       const w = ind.root.getData("w") as number;
       const h = ind.root.getData("h") as number;
-      const r = Math.min(w, h * 2.2) / 2 + 6;
+      const r = Math.min(w, h * 2.2) / 2 + 6 * ui;
       const a = ind.arrow;
       a.clear();
       a.fillStyle(NIGHT.ink, 0.6);
-      const tip = { x: Math.cos(ang) * (r + 30), y: Math.sin(ang) * (h / 2 + 30) };
+      const tip = { x: Math.cos(ang) * (r + 30 * ui), y: Math.sin(ang) * (h / 2 + 30 * ui) };
       const side = 0.42;
-      const base = (k: number, grow: number) => ({ x: Math.cos(ang + k * side) * (r - 4), y: Math.sin(ang + k * side) * (h / 2 + grow) });
-      const b1 = base(-1, 6);
-      const b2 = base(1, 6);
-      a.fillTriangle(tip.x + 2, tip.y + 3, b1.x + 2, b1.y + 3, b2.x + 2, b2.y + 3);
+      const base = (sign: number, grow: number) => ({ x: Math.cos(ang + sign * side) * (r - 4 * ui), y: Math.sin(ang + sign * side) * (h / 2 + grow) });
+      const b1 = base(-1, 6 * ui);
+      const b2 = base(1, 6 * ui);
+      a.fillTriangle(tip.x + 2 * ui, tip.y + 3 * ui, b1.x + 2 * ui, b1.y + 3 * ui, b2.x + 2 * ui, b2.y + 3 * ui);
       a.fillStyle(ind.arrow.getData("color") as number, 1);
       a.fillTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
-      a.lineStyle(3, NIGHT.ink, 1);
+      a.lineStyle(3 * ui, NIGHT.ink, 1);
       a.strokeTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
     }
   }
