@@ -12,6 +12,7 @@ export const POINTS: Record<Mark, number> = { perfect: 3, good: 2, near: 1, miss
 export const CROWD = { start: 70, max: 100, perfect: 4, good: 2, near: 0, miss: -8, held: 2, dropped: -6, noise: -4 } as const;
 export const STARS = { one: 5000, two: 8000, three: 9200 } as const;
 export const MAX_OFFSET = 250;
+export const TAPS_MAX = 2000;
 export const INHUMAN_SPREAD = 4;
 export const INHUMAN_MIN_HITS = 30;
 
@@ -215,4 +216,16 @@ export function isTapLog(value: unknown, compiled: CompiledSong): value is TapLo
 export function replay(compiled: CompiledSong, value: unknown): Verdict | null {
   if (!isTapLog(value, compiled)) return null;
   return judge(compiled, { taps: value.taps, ups: value.ups, offset: value.offset, assist: value.assist });
+}
+
+export const SCORE_PER_POINT = 10;
+export const RUN_STATS = ["perfect", "good", "near", "miss", "held", "dropped", "noise", "streak", "precision"] as const;
+
+export function runScore(verdict: Verdict) {
+  return Math.max(0, verdict.points) * SCORE_PER_POINT;
+}
+
+export function runStats(verdict: Verdict): Record<(typeof RUN_STATS)[number], number> {
+  const { perfect, good, near, miss, held, dropped, noise } = verdict.counts;
+  return { perfect, good, near, miss, held, dropped, noise, streak: verdict.bestStreak, precision: verdict.precision };
 }

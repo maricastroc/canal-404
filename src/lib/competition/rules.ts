@@ -6,6 +6,9 @@ import { isCart, isRaceCourse, replayDownhill } from "@/games/downhill-derby/sim
 import { isNightLevel, replayNight } from "@/games/past-bedtime/sim/judge";
 import { LEVELS as NIGHT_LEVELS } from "@/games/past-bedtime/sim/levels";
 import { MIN_TURN_MS, partScore, partStars } from "@/games/past-bedtime/sim/score";
+import { replay as replayTalent, RUN_STATS, runScore, runStats } from "@/games/talent-show/sim/judge";
+import type { SongId } from "@/games/talent-show/song/notation";
+import { compiledSong, SONG_ORDER } from "@/games/talent-show/song/songs";
 import { STEP_MS as STREET_STEP_MS } from "@/games/dead-end-street/config";
 import { ammoTotal, PHASE_IDS, phaseById } from "@/games/dead-end-street/phases";
 import { replayStreet } from "@/games/dead-end-street/sim";
@@ -25,11 +28,11 @@ export { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type 
 
 export type RunClaim = { won: boolean; score: number; stars: number; stats: GameStats; replay?: GameReplay };
 
-export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed" | "bad_run" | "run_failed" | "bad_moves" | "moves_failed";
+export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed" | "bad_run" | "run_failed" | "bad_moves" | "moves_failed" | "bad_taps";
 
 export type Verification = "checked" | "replayed";
 
-export type IneligibleReason = "practice" | "not_won" | "resumed" | "no_points" | "hinted";
+export type IneligibleReason = "practice" | "not_won" | "resumed" | "no_points" | "hinted" | "assisted" | "inhuman";
 
 export type Verdict =
   | {
@@ -494,6 +497,39 @@ const pastBedtime: GameRule = {
   },
 };
 
+const TALENT_RANGE = [0, 5000] as const;
+
+const talentShow: GameRule = {
+  game: "talent-show",
+  version: 1,
+  levels: SONG_ORDER,
+  stats: RUN_STATS,
+  judge(level, claim) {
+    if (!level || !(SONG_ORDER as string[]).includes(level)) return reject("unknown_level", "música desconhecida");
+    const compiled = compiledSong(level as SongId);
+    const r = read(claim.stats, { perfect: TALENT_RANGE, good: TALENT_RANGE, near: TALENT_RANGE, miss: TALENT_RANGE, held: TALENT_RANGE, dropped: TALENT_RANGE, noise: TALENT_RANGE, streak: TALENT_RANGE, precision: [0, 10000] });
+    if (!r.ok) return reject("bad_stats", r.detail);
+    const log = claim.replay;
+    if (!log || log.kind !== "talent-taps") return reject("bad_taps", "toques ausentes");
+    if (log.song !== level) return reject("bad_taps", "toques de outra música");
+    const verdict = replayTalent(compiled, log);
+    if (!verdict) return reject("bad_taps", "toques fora das regras");
+    const stats = runStats(verdict);
+    const flags = RUN_STATS.every((key) => r.values[key] === stats[key]) ? [] : ["stats_mismatch"];
+    const inhuman = verdict.flags.includes("inhuman");
+    if (inhuman) flags.push("inhuman");
+    const won = verdict.stars > 0;
+    const score = runScore(verdict);
+    const ineligible = log.assist ? "assisted" : inhuman ? "inhuman" : !won ? "not_won" : undefined;
+    return settle(
+      claim,
+      { won, score, stars: verdict.stars, rank: [score, verdict.counts.perfect, -verdict.counts.noise], minElapsedMs: verdict.cutAt ?? compiled.endMs },
+      ineligible,
+      { verification: "replayed", flags },
+    );
+  },
+};
+
 export const RULES: Record<GameSlug, GameRule> = {
   "dead-end-street": deadEndStreet,
   "bad-ideas-lab": badIdeasLab,
@@ -503,6 +539,7 @@ export const RULES: Record<GameSlug, GameRule> = {
   "off-air-vacation": offAirVacation,
   "downhill-derby": downhillDerby,
   "past-bedtime": pastBedtime,
+  "talent-show": talentShow,
 };
 
 export function hasLevel(game: GameSlug, level: string | null) {

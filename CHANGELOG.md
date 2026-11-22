@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404 entra no catálogo
+- **A ninth game: Ao Vivo no 404** (EN "Live on 404", `/play/talent-show`). A one-button rhythm game: the kids' improvised band plays Canal 404's live talent show for a jury made of the Silence Inspector, Mr. Arlindo and the lunch lady. Six songs from the channel's own soundtrack in three rounds, each teaching a new way to play: tap with Déco's bucket, hold with Lina's toy keyboard, repeat Mila's phrases by ear, play between the beats with Bruno's shaker, keep the beat when the signal drops into static, and a medley that changes tempo. Played with any key or by tapping anywhere, upright or sideways.
+- **Timing, stars and the crowd.** A timing check on first play measures the device's delay, and every judgment uses it. Stars need a finished song at 50%, 80% and 92% accuracy. Misses and taps with no note empty the crowd, and if it leaves, the channel cuts to commercials. Assist mode widens the timing, shows hidden notes, never cuts and stays off the board. Pausing resumes from the same point after a count-in.
+- **A board per song, replayed by the channel.** Each result carries the taps; the server judges them with the game's own chart and ranks most points, then more bullseye notes, then less noise. Assisted runs and logs too precise for a person don't go on the board ([decision 0014](docs/decisions/0014-talent-show-judge.md)). No daily missions yet.
+- **Bis!** Finishing the medley with a star unlocks an achievement and the band's live recording on the broadcast room's radio. The portal can word levels as "música".
+- Catalog art: cover, logo, how-to panels, result cast, a cartridge line in the broadcast room and share images. The game's own art is generated with `npm run art:talent` from the portal's character art.
+
 ### Madrugada: a Vó dá a volta na escada
 - **Part 3 is harder.** Grandma no longer just paces the bottom row: she walks out along it and comes back along the top row, toward the stairs. Following her is not enough anymore; Bruno has to slip past her side, where the flashlight can't reach. The map and the target (16 moves) stay the same, and the part's notes explain the loop and the blind side.
 - **New boards.** The change bumps Madrugada's rules to version 2, so all ten parts start fresh boards ([decision 0013](docs/decisions/0013-bedtime-replay.md)).

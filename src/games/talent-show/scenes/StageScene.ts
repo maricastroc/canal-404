@@ -1,5 +1,4 @@
 import * as Phaser from "phaser";
-import { formatNumber } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
 import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, callFreq, keysFreq } from "../audio/player";
@@ -7,7 +6,7 @@ import { click, type Stage } from "../audio/voices";
 import { TALENT_COPY, type JuryId, type TalentCopy } from "../copy";
 import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type CompiledSong, type Signal, type SongId } from "../song/notation";
-import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
+import { compiledSong, roundOf } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { FIGURE, FEET, JURY_ART } from "./figure";
 import { layoutFor, type Layout, type Orientation } from "./layout";
@@ -20,15 +19,18 @@ export type TalentBridge = {
   orientation: Orientation;
   touch: boolean;
   reducedMotion: boolean;
-  song: SongId;
-  assist: () => boolean;
+  assist: { get: () => boolean; set: (on: boolean) => void };
   calibration: { load: () => number | null; save: (ms: number) => void };
-  onSong: (id: SongId) => void;
+  onLoad: (value: number) => void;
+  onReady: () => void;
   onRun: (report: RunReport) => void;
-  onCalibration: (ms: number) => void;
+  onPauseRequest: () => void;
 };
 
-type Mode = "intro" | "calibrating" | "calibrated" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
+type ButtonId = "assist" | "calibrate";
+type PanelButton = { id: ButtonId; box: Phaser.Geom.Rectangle; root: Phaser.GameObjects.Container; bg: Phaser.GameObjects.Graphics; text: Phaser.GameObjects.Text };
+
+type Mode = "idle" | "intro" | "calibrating" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
 type Mood = "neutral" | "happy" | "angry" | "shock";
 type HostMood = "neutral" | "happy" | "excited" | "surprised" | "sad" | "static" | "wave";
 type Pose = "ready" | "hit";
@@ -77,7 +79,7 @@ export class StageScene extends Phaser.Scene {
   private L!: Layout;
   private songId: SongId = "theme";
   private compiled!: CompiledSong;
-  private mode: Mode = "intro";
+  private mode: Mode = "idle";
   private modeSince = 0;
   private stage: Stage | null = null;
   private clock: AudibleClock | null = null;
@@ -134,12 +136,16 @@ export class StageScene extends Phaser.Scene {
   private panelBody!: Phaser.GameObjects.Text;
   private panelHint!: Phaser.GameObjects.Text;
   private panelArt!: Phaser.GameObjects.Graphics;
+  private buttons: PanelButton[] = [];
+  private pressedButton: ButtonId | null = null;
 
   constructor() {
     super("stage");
   }
 
   preload() {
+    const bridge = this.registry.get("bridge") as TalentBridge;
+    this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => bridge.onLoad(value));
     for (const [name, [, , w, h, res]] of Object.entries(ART_FILES)) {
       if (!this.textures.exists(name)) this.load.svg(name, `/assets/talent-show/${name}.svg`, { width: Math.round(w * res), height: Math.round(h * res) });
     }
@@ -160,8 +166,10 @@ export class StageScene extends Phaser.Scene {
     this.buildCrowd();
     this.buildStrip();
     this.buildPanel();
-    this.setSong(this.bridge.song, false);
-    this.setMode("intro");
+    this.buildButtons();
+    this.setSong("theme");
+    this.setMode("idle");
+    this.bridge.onReady();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.player?.dispose());
   }
 
@@ -236,7 +244,7 @@ export class StageScene extends Phaser.Scene {
     let mood: HostMood;
     if (live && signal === "lost") mood = "static";
     else if (this.hostOverride && now < this.hostUntil) mood = this.hostOverride;
-    else if (this.mode === "intro" || this.mode === "calibrating" || this.mode === "calibrated") mood = "wave";
+    else if (this.mode === "idle" || this.mode === "intro" || this.mode === "calibrating") mood = "wave";
     else if (this.mode === "countin" || this.mode === "resuming") mood = "excited";
     else if (this.mode === "cut") mood = "sad";
     else if (this.mode === "results") mood = (this.verdict?.stars ?? 0) >= 2 ? "happy" : (this.verdict?.stars ?? 0) === 1 ? "neutral" : "sad";
@@ -413,7 +421,7 @@ export class StageScene extends Phaser.Scene {
     });
   }
 
-  private setSong(id: SongId, announce = true) {
+  private setSong(id: SongId) {
     this.songId = id;
     this.compiled = compiledSong(id);
     const text = this.copy.songs[id];
@@ -425,7 +433,6 @@ export class StageScene extends Phaser.Scene {
     this.segment = 0;
     this.lastSongMs = -this.compiled.barStart[1];
     this.drawSpotlight();
-    if (announce) this.bridge.onSong(id);
   }
 
   private featured(): BandMember {
@@ -448,24 +455,77 @@ export class StageScene extends Phaser.Scene {
     this.modeSince = performance.now();
     const copy = this.copy;
     const song = copy.songs[this.songId];
-    const start = this.bridge.touch ? copy.startTouch : copy.startKeys;
-    const idle = mode === "intro" || mode === "calibrated" || mode === "cut" || mode === "results";
-    this.hintText.setText(!this.bridge.touch && idle ? copy.keysHint : "");
+    this.hintText.setText("");
+    this.showButtons(false);
     if (mode === "intro") {
       this.setKidFaces("normal");
       const lines = [song.how];
-      if (!this.hasCalibration) lines.push("", copy.firstCalibration);
       if (this.notice) lines.unshift(this.notice, "");
-      if (this.bridge.assist()) lines.push("", copy.assistOn);
+      if (!this.hasCalibration) lines.push("", copy.firstCalibration);
+      else if (this.bridge.assist.get()) lines.push("", copy.assistOn);
       lines.push("", copy.soundNote);
-      this.showPanel(`${song.idea}: ${song.title}`, lines.join("\n"), this.hasCalibration ? start : copy.calibContinue);
+      const start = !this.hasCalibration ? copy.calibContinue : this.bridge.touch ? copy.startTouch : copy.startKeys;
+      this.showPanel(`${song.idea}: ${song.title}`, lines.join("\n"), start);
+      this.showButtons(this.hasCalibration);
+      if (!this.bridge.touch && this.hasCalibration) this.hintText.setText(copy.keysHint);
       this.notice = "";
     } else if (mode === "calibrating") {
       this.showPanel(copy.calibTitle, `${copy.calibHow}\n\n${copy.calibListen}`, "");
-    } else if (mode === "paused") {
-      this.showPanel(copy.pausedTitle, copy.pausedText, this.bridge.touch ? copy.pausedHintTouch : copy.pausedHintKeys);
-    } else if (mode === "countin" || mode === "playing" || mode === "resuming") {
+    } else {
       this.panel.setVisible(false);
+    }
+  }
+
+  private buildButtons() {
+    const P = this.L.panel;
+    const gap = 30;
+    const w = (P.w - 100 - gap) / 2;
+    const h = this.bridge.orientation === "portrait" ? 78 : 66;
+    const y = P.h - 132 - h;
+    (["assist", "calibrate"] as ButtonId[]).forEach((id, i) => {
+      const x = 50 + i * (w + gap);
+      const bg = this.add.graphics();
+      const text = this.add
+        .text(w / 2, h / 2, "", { ...this.font("body", this.L.text.panelBody - 6, "#1d1830"), align: "center", wordWrap: { width: w - 24 } })
+        .setOrigin(0.5);
+      const root = this.add.container(x, y, [bg, text]);
+      this.panel.add(root);
+      this.buttons.push({ id, box: new Phaser.Geom.Rectangle(P.x + x, P.y + y, w, h), root, bg, text });
+    });
+    this.refreshButtons();
+  }
+
+  private refreshButtons() {
+    const on = this.bridge.assist.get();
+    for (const b of this.buttons) {
+      const active = b.id === "assist" && on;
+      b.bg.clear();
+      b.bg.fillStyle(C.ink, 0.3).fillRoundedRect(4, 6, b.box.width, b.box.height, 16);
+      b.bg.fillStyle(active ? C.sun : C.cream2, 1).fillRoundedRect(0, 0, b.box.width, b.box.height, 16);
+      b.bg.lineStyle(5, C.ink, 1).strokeRoundedRect(0, 0, b.box.width, b.box.height, 16);
+      b.text.setText(b.id === "assist" ? this.copy.assistButton(on) : this.copy.calibrateButton);
+    }
+  }
+
+  private showButtons(visible: boolean) {
+    for (const b of this.buttons) b.root.setVisible(visible);
+    if (!visible) this.pressedButton = null;
+  }
+
+  private buttonAt(pageX: number, pageY: number): ButtonId | null {
+    if (this.mode !== "intro" || !this.panel.visible) return null;
+    const x = this.scale.transformX(pageX);
+    const y = this.scale.transformY(pageY);
+    return this.buttons.find((b) => b.root.visible && b.box.contains(x, y))?.id ?? null;
+  }
+
+  private pressButton(id: ButtonId) {
+    if (id === "assist") {
+      this.bridge.assist.set(!this.bridge.assist.get());
+      this.refreshButtons();
+      this.setMode("intro");
+    } else {
+      this.startCalibration();
     }
   }
 
@@ -473,80 +533,88 @@ export class StageScene extends Phaser.Scene {
     return this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
   }
 
-  press(timeStamp: number, id: string) {
+  press(timeStamp: number, id: string, pageX = -1, pageY = -1) {
     if (this.mode === "playing" || this.mode === "countin") this.registerDown(timeStamp, id);
     else if (this.mode === "calibrating") this.calibrationTap(timeStamp);
+    else if (this.mode === "intro") this.pressedButton = this.buttonAt(pageX, pageY);
   }
 
-  release(timeStamp: number, id: string) {
-    if (this.mode === "playing" || this.mode === "countin") this.registerUp(timeStamp, id);
-    else if (this.mode === "paused") this.resume();
-    else if (!this.busy()) this.advance();
+  release(timeStamp: number, id: string, pageX = -1, pageY = -1) {
+    if (this.mode === "playing" || this.mode === "countin") {
+      this.registerUp(timeStamp, id);
+      return;
+    }
+    if (this.mode !== "intro") return;
+    const pressed = this.pressedButton;
+    this.pressedButton = null;
+    if (pressed) {
+      if (this.buttonAt(pageX, pageY) === pressed) this.pressButton(pressed);
+      return;
+    }
+    this.advance();
   }
 
   key(code: string, timeStamp: number) {
-    if (this.mode === "paused") {
-      if (code === "Escape") this.quit();
-      else this.resume();
-      return;
-    }
+    const pauseKey = code === "Escape" || code === "KeyP";
     if (this.busy()) {
-      if (code === "Escape" || code === "KeyP") this.pause();
+      if (pauseKey) this.bridge.onPauseRequest();
       else if (this.mode !== "resuming") this.press(timeStamp, `k${code}`);
       return;
     }
     if (this.mode === "calibrating") {
-      if (code === "Escape") this.setMode("intro");
+      if (pauseKey) this.bridge.onPauseRequest();
       else this.press(timeStamp, `k${code}`);
       return;
     }
-    if (code === "BracketLeft" || code === "BracketRight" || code === "Enter" || code === "NumpadEnter") {
-      const i = SONG_ORDER.indexOf(this.songId);
-      const step = code === "BracketLeft" ? SONG_ORDER.length - 1 : 1;
-      this.selectSong(SONG_ORDER[(i + step) % SONG_ORDER.length]);
-      return;
-    }
-    if (code === "KeyC") {
-      this.startCalibration();
-      return;
-    }
-    if (code !== "Escape") this.advance();
+    if (this.mode !== "intro") return;
+    if (pauseKey) this.bridge.onPauseRequest();
+    else if (code === "KeyA" && this.hasCalibration) this.pressButton("assist");
+    else if (code === "KeyC") this.pressButton("calibrate");
+    else this.advance();
   }
 
   keyUp(code: string, timeStamp: number) {
     if (this.mode === "playing" || this.mode === "countin") this.registerUp(timeStamp, `k${code}`);
   }
 
-  selectSong(id: SongId) {
+  prepare(id: SongId) {
     this.stopPlayer();
+    this.ensureStage();
     this.setSong(id);
+    this.modeSince = 0;
     this.setMode("intro");
+    this.modeSince = performance.now() - 450;
   }
 
-  calibrate() {
+  restartSong() {
     this.stopPlayer();
-    this.startCalibration();
+    if (this.hasCalibration) this.startSong();
+    else this.setMode("intro");
   }
 
-  hidden() {
-    if (this.mode === "playing" || this.mode === "countin" || this.mode === "resuming") this.pause();
+  pause() {
+    if (this.busy()) this.pauseSong();
     else if (this.mode === "calibrating") this.setMode("intro");
+  }
+
+  resume() {
+    if (this.mode === "paused") this.resumeSong();
   }
 
   quit() {
     this.stopPlayer();
-    this.notice = this.copy.stopped;
-    this.setMode("intro");
+    this.setMode("idle");
+  }
+
+  live() {
+    return this.busy() || this.mode === "paused" || this.mode === "calibrating";
   }
 
   private advance() {
     if (performance.now() - this.modeSince < 600) return;
-    if (this.mode === "intro") {
-      if (this.hasCalibration) this.startSong();
-      else this.startCalibration();
-    } else if (this.mode === "calibrated" || this.mode === "results" || this.mode === "cut") {
-      this.startSong();
-    }
+    if (this.mode !== "intro") return;
+    if (this.hasCalibration) this.startSong();
+    else this.startCalibration();
   }
 
   private ensureStage() {
@@ -591,9 +659,8 @@ export class StageScene extends Phaser.Scene {
   private finishCalibration() {
     const errors = this.calibErrors.filter((e): e is number => e !== null).sort((a, b) => a - b);
     if (errors.length < 5) {
-      this.hasCalibration = false;
+      this.notice = this.copy.calibFail;
       this.setMode("intro");
-      this.showPanel(this.copy.calibTitle, this.copy.calibFail, this.copy.calibRetry);
       return;
     }
     const middle = errors.length / 2;
@@ -601,17 +668,17 @@ export class StageScene extends Phaser.Scene {
     this.offset = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, Math.round(median)));
     this.hasCalibration = true;
     this.bridge.calibration.save(this.offset);
-    this.bridge.onCalibration(this.offset);
-    this.setMode("calibrated");
-    this.showPanel(this.copy.calibTitle, this.copy.calibResult(this.offset), this.bridge.touch ? this.copy.startTouch : this.copy.startKeys);
+    this.notice = this.copy.calibResult(this.offset);
+    this.setMode("intro");
   }
 
   private startSong() {
+    this.panel.setVisible(false);
     const stage = this.ensureStage();
     if (!stage) return;
     getAudio().stopMusic();
     this.stopPlayer();
-    this.assist = this.bridge.assist();
+    this.assist = this.bridge.assist.get();
     this.player = new SongPlayer(stage, this.compiled);
     this.t0 = this.player.start(0);
     this.clock?.sample();
@@ -636,7 +703,7 @@ export class StageScene extends Phaser.Scene {
     this.setMode("countin");
   }
 
-  private pause() {
+  private pauseSong() {
     if (!this.player) return;
     const songMs = Math.max(0, Math.round(this.songNow()));
     const now = performance.now();
@@ -647,8 +714,7 @@ export class StageScene extends Phaser.Scene {
     this.setMode("paused");
   }
 
-  private resume() {
-    if (performance.now() - this.modeSince < 400) return;
+  private resumeSong() {
     const stage = this.ensureStage();
     if (!stage) return;
     this.player = new SongPlayer(stage, this.compiled);
@@ -723,14 +789,6 @@ export class StageScene extends Phaser.Scene {
     const verdict = this.finish();
     this.player?.stop(0.4);
     this.setMode("results");
-    const copy = this.copy;
-    const pct = formatNumber(verdict.precision / 10000, this.bridge.locale, { style: "percent", maximumFractionDigits: 1 });
-    const marks: Mark[] = this.compiled.notes.some((n) => n.kind === "hold") ? ["perfect", "good", "near", "miss", "held", "dropped", "noise"] : ["perfect", "good", "near", "miss", "noise"];
-    const counts = marks.map((m) => `${copy.markNames[m]} ${verdict.counts[m]}`).join(" · ");
-    const lines = [`${copy.precision}: ${pct}`, counts, `${copy.bestStreak}: ${verdict.bestStreak}`, copy.timing(verdict.timing.mean)];
-    if (verdict.stars === 0) lines.push(copy.noStar);
-    if (this.assist) lines.push(copy.assistOn);
-    this.showPanel(copy.resultsTitle, lines.join("\n"), copy.again, verdict.stars);
     this.setKidFaces(verdict.stars >= 2 ? "happy" : verdict.stars === 0 ? "wow" : "normal");
     const base = Math.round((10 * Math.max(0, verdict.points)) / Math.max(1, verdict.maxPoints));
     JURY.forEach((id) => this.raisePlate(id, base, 4000));
@@ -741,7 +799,6 @@ export class StageScene extends Phaser.Scene {
     this.player?.stop(0.25);
     this.player?.sting(CUT_STING, 0.16);
     this.setMode("cut");
-    this.showPanel(this.copy.cutTitle, this.copy.cutText, this.copy.retry, 0);
     this.setKidFaces("wow");
   }
 
@@ -950,7 +1007,7 @@ export class StageScene extends Phaser.Scene {
     const right = S.x + S.w - 6;
     const top = S.y;
     const laneY = S.y + S.h * 0.6;
-    const assist = this.mode === "intro" || this.mode === "calibrating" || this.mode === "calibrated" ? this.bridge.assist() : this.assist;
+    const assist = this.mode === "intro" || this.mode === "calibrating" || this.mode === "idle" ? this.bridge.assist.get() : this.assist;
     g.clear();
     g.fillStyle(C.plum950, 1).fillRoundedRect(S.x, S.y, S.w, S.h, 28);
     const firstBar = Math.max(0, Math.floor((now - (S.hitX - left) / S.pxPerBeat) / 4));

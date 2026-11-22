@@ -63,7 +63,9 @@ export const TALENT_COPY = localized({
     bestStreak: "Maior sequência",
     timing: (mean: number) => (Math.abs(mean) < 5 ? "Em média você tocou no tempo." : `Em média você tocou ${Math.round(Math.abs(mean))} ms ${mean > 0 ? "atrasado" : "adiantado"}.`),
     again: "Toque para tocar de novo",
-    keysHint: "[ e ] trocam de música · Enter vai para a próxima · Esc pausa · C refaz o acerto de tempo",
+    keysHint: "A liga o modo assistido · C refaz o acerto de tempo · Esc pausa",
+    assistButton: (on: boolean): string => (on ? "Modo assistido: ligado" : "Modo assistido: desligado"),
+    calibrateButton: "Refazer acerto de tempo",
   },
   en: {
     title: "Live on 404",
@@ -122,7 +124,9 @@ export const TALENT_COPY = localized({
     bestStreak: "Best streak",
     timing: (mean: number) => (Math.abs(mean) < 5 ? "On average you were right on time." : `On average you were ${Math.round(Math.abs(mean))} ms ${mean > 0 ? "late" : "early"}.`),
     again: "Tap to play again",
-    keysHint: "[ and ] switch songs · Enter goes to the next one · Esc pauses · C redoes the timing check",
+    keysHint: "A turns on assist mode · C redoes the timing check · Esc pauses",
+    assistButton: (on: boolean): string => (on ? "Assist mode: on" : "Assist mode: off"),
+    calibrateButton: "Redo the timing check",
   },
 });
 

@@ -47,6 +47,7 @@ const categoryTone: Record<GameMeta["category"], Tone> = {
   puzzle: "plum",
   adventure: "mint",
   strategy: "sky",
+  music: "bubblegum",
 };
 
 export function GameCard({ game, index }: { game: GameMeta; index: number }) {

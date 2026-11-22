@@ -1,7 +1,7 @@
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 
-export const GAME_SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation", "downhill-derby", "past-bedtime"] as const;
+export const GAME_SLUGS = ["dead-end-street", "bad-ideas-lab", "food-fight", "operation-recess", "pajama-war", "off-air-vacation", "downhill-derby", "past-bedtime", "talent-show"] as const;
 
 export type GameSlug = (typeof GAME_SLUGS)[number];
 
@@ -87,6 +87,15 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
       { label: "Rangidos", unit: "count", lowerIsBetter: true, noun: ["rangido", "rangidos"] },
     ],
   },
+  "talent-show": {
+    explain: "Cada música tem seu placar. Mais pontos vence. Empate: mais notas na mosca; depois, menos barulho. Partidas no modo assistido não entram.",
+    check: "replayed",
+    metrics: [
+      { label: "Pontos", unit: "points", lowerIsBetter: false },
+      { label: "Na mosca", unit: "count", lowerIsBetter: false, noun: ["nota na mosca", "notas na mosca"] },
+      { label: "Barulho", unit: "count", lowerIsBetter: true, noun: ["toque fora de hora", "toques fora de hora"] },
+    ],
+  },
 };
 
 type BoardText = { explain: string; metrics: { label: string; noun?: readonly [string, string] }[] };
@@ -123,6 +132,10 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
   "past-bedtime": {
     explain: "Each part has its own board. Fewest moves wins. Tiebreak: fewer people woken, then fewer creaks outside the cuckoo. Runs with a hint don't go on the board.",
     metrics: [{ label: "Moves", noun: ["move", "moves"] }, { label: "Wake-ups", noun: ["wake-up", "wake-ups"] }, { label: "Creaks", noun: ["creak", "creaks"] }],
+  },
+  "talent-show": {
+    explain: "Each song has its own board. Most points wins. Tiebreak: more bullseye notes, then less noise. Runs in assist mode don't go on the board.",
+    metrics: [{ label: "Points" }, { label: "Bullseye", noun: ["bullseye note", "bullseye notes"] }, { label: "Noise", noun: ["stray tap", "stray taps"] }],
   },
 };
 
@@ -167,6 +180,10 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
       explain: "O canal refaz suas jogadas no servidor, com as mesmas regras da casa, e só aceita o resultado se o Bruno chegar lá sem ser pego.",
       verified: "Jogadas refeitas pelo canal",
     },
+    "talent-show": {
+      explain: "O canal refaz seus toques no servidor, com a mesma partitura do jogo, e só aceita o resultado se a pontuação bater. Toques precisos demais para uma pessoa ficam fora do placar.",
+      verified: "Toques refeitos pelo canal",
+    },
   },
   en: {
     "bad-ideas-lab": {
@@ -184,6 +201,10 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
     "past-bedtime": {
       explain: "The channel replays your moves on the server with the house's own rules and only accepts the result if Bruno gets there without being caught.",
       verified: "Moves replayed by the channel",
+    },
+    "talent-show": {
+      explain: "The channel replays your taps on the server against the game's own chart and only accepts the result if the score matches. Taps too precise for a person stay off the board.",
+      verified: "Taps replayed by the channel",
     },
   },
 });

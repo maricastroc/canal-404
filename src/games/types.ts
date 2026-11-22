@@ -11,7 +11,9 @@ export type DownhillReplay = { kind: "downhill-run"; version: 1; cart: string; t
 
 export type BedtimeReplay = { kind: "bedtime-moves"; version: 1; moves: string };
 
-export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 2; launches: LaunchReplay[] } | DownhillReplay | BedtimeReplay;
+export type TalentReplay = { kind: "talent-taps"; version: 2; song: string; offset: number; assist: boolean; taps: number[]; ups: (number | null)[] };
+
+export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 2; launches: LaunchReplay[] } | DownhillReplay | BedtimeReplay | TalentReplay;
 
 export type ResultStanding = { name: string; value: string; detail?: string; you?: boolean; avatar?: string; color?: string };
 

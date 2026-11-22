@@ -22,6 +22,7 @@ const FILTER_TONES: Record<Filter, string> = {
   puzzle: "bg-plum-300",
   adventure: "bg-mint",
   strategy: "bg-sky",
+  music: "bg-bubblegum",
 };
 
 export function GameCatalog() {

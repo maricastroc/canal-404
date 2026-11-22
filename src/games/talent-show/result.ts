@@ -1,0 +1,87 @@
+import type { GameResult } from "@/games/types";
+import { localized } from "@/i18n/copy";
+import { formatNumber } from "@/i18n/format";
+import type { Locale } from "@/i18n/locales";
+import { TALENT_COPY } from "./copy";
+import type { RunReport } from "./scenes/StageScene";
+import { POINTS, runScore, runStats, SCORE_PER_POINT, type Mark } from "./sim/judge";
+import { SONG_ORDER } from "./song/songs";
+
+export const REPLAY_KIND = "talent-taps";
+
+const COPY = localized({
+  "pt-BR": {
+    again: "Tocar de novo",
+    timing: "Tempo médio",
+    onTime: "no tempo",
+    off: (ms: number, late: boolean) => `${ms} ms ${late ? "atrasado" : "adiantado"}`,
+    assist: "Modo assistido",
+    offBoard: "fora do placar",
+    lines: {
+      3: "O júri inteiro levantou nota alta e a plateia pediu bis.",
+      2: "Boa apresentação. O Seu Arlindo quase sorriu.",
+      1: "Passou. O Inspetor anotou cada barulho.",
+    } as Record<1 | 2 | 3, string>,
+    hints: {
+      0: "Termine com pelo menos 50% de precisão para ganhar a primeira estrela.",
+      1: "Chegue a 80% de precisão para a segunda estrela.",
+      2: "Chegue a 92% de precisão para a terceira estrela.",
+    } as Record<0 | 1 | 2, string>,
+    cutHint: "Erros e barulho esvaziam a plateia. Segure o ritmo até o fim para ganhar a primeira estrela.",
+  },
+  en: {
+    again: "Play again",
+    timing: "Average timing",
+    onTime: "on time",
+    off: (ms: number, late: boolean) => `${ms} ms ${late ? "late" : "early"}`,
+    assist: "Assist mode",
+    offBoard: "off the scoreboard",
+    lines: {
+      3: "The whole jury raised high scores and the crowd asked for an encore.",
+      2: "Good show. Mr. Arlindo almost smiled.",
+      1: "You made it through. The Inspector wrote down every noise.",
+    } as Record<1 | 2 | 3, string>,
+    hints: {
+      0: "Finish with at least 50% accuracy to earn the first star.",
+      1: "Reach 80% accuracy for the second star.",
+      2: "Reach 92% accuracy for the third star.",
+    } as Record<0 | 1 | 2, string>,
+    cutHint: "Misses and noise empty the crowd. Keep the beat to the end to earn the first star.",
+  },
+});
+
+export function songResult(report: RunReport, locale: Locale): GameResult {
+  const copy = COPY[locale];
+  const game = TALENT_COPY[locale];
+  const v = report.verdict;
+  const index = SONG_ORDER.indexOf(report.song);
+  const pct = formatNumber(v.precision / 10000, locale, { style: "percent", maximumFractionDigits: 1 });
+  const holds = v.counts.held + v.counts.dropped > 0;
+  const parts: Mark[] = holds ? ["perfect", "good", "near", "held"] : ["perfect", "good", "near"];
+  const breakdown = parts.map((mark) => ({ label: game.markNames[mark], value: v.counts[mark] * POINTS[mark] * SCORE_PER_POINT }));
+  if (v.counts.noise > 0) breakdown.push({ label: game.markNames.noise, value: v.counts.noise * POINTS.noise * SCORE_PER_POINT });
+  const late = v.timing.mean > 0;
+  const timing = Math.abs(v.timing.mean) < 5 ? copy.onTime : copy.off(Math.round(Math.abs(v.timing.mean)), late);
+  const facts = [
+    { label: game.precision, value: pct },
+    { label: game.bestStreak, value: String(v.bestStreak) },
+    { label: copy.timing, value: timing },
+  ];
+  if (report.log.assist) facts.push({ label: copy.assist, value: copy.offBoard });
+  const cut = v.cutAt !== null;
+  const text = cut ? { title: game.cutTitle, text: game.cutText } : v.stars === 0 ? { title: game.resultsTitle, text: game.noStar } : { title: game.resultsTitle, text: copy.lines[v.stars as 1 | 2 | 3] };
+  return {
+    won: v.stars > 0,
+    score: runScore(v),
+    stars: v.stars,
+    breakdown,
+    stats: runStats(v),
+    replay: report.log,
+    level: { index, id: report.song, title: game.songs[report.song].title, total: SONG_ORDER.length },
+    copy: text,
+    summary: `${game.precision}: ${pct}`,
+    starHint: cut ? copy.cutHint : v.stars < 3 ? copy.hints[v.stars as 0 | 1 | 2] : undefined,
+    restartLabel: copy.again,
+    facts,
+  };
+}

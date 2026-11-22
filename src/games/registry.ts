@@ -1,6 +1,6 @@
 import type { Locale } from "@/i18n/locales";
 
-export type GameCategory = "action" | "puzzle" | "adventure" | "strategy";
+export type GameCategory = "action" | "puzzle" | "adventure" | "strategy" | "music";
 
 export type GameStatus = "available" | "coming-soon";
 
@@ -26,7 +26,7 @@ export type GameMeta = {
   objective?: string;
   howToIntro?: string;
   levels?: LevelMeta[];
-  levelWord?: "fase" | "arena" | "pista" | "parte";
+  levelWord?: "fase" | "arena" | "pista" | "parte" | "música";
   guests?: { id: string; name: string; role: string }[];
   tips?: string[];
   keyTips?: string[];
@@ -68,6 +68,15 @@ const BASE = {
     levelWord: "parte",
     orientation: "any",
   },
+  "talent-show": {
+    category: "music",
+    status: "available",
+    accent: "sun",
+    cast: ["deco", "lina", "bruno", "mila", "404"],
+    levelIds: ["theme", "signoff", "recess", "street", "static", "medley"],
+    levelWord: "música",
+    orientation: "any",
+  },
 } satisfies Record<string, GameBase>;
 
 export type GameSlug = keyof typeof BASE;
@@ -77,8 +86,8 @@ function gameText<T extends Record<GameSlug, GameText>>(text: { "pt-BR": T; en: 
 }
 
 export const CATEGORY_LABELS: Record<Locale, Record<GameCategory, string>> = {
-  "pt-BR": { action: "Ação", puzzle: "Puzzle", adventure: "Aventura", strategy: "Estratégia" },
-  en: { action: "Action", puzzle: "Puzzle", adventure: "Adventure", strategy: "Strategy" },
+  "pt-BR": { action: "Ação", puzzle: "Puzzle", adventure: "Aventura", strategy: "Estratégia", music: "Música" },
+  en: { action: "Action", puzzle: "Puzzle", adventure: "Adventure", strategy: "Strategy", music: "Music" },
 };
 
 const TEXT = gameText({
@@ -513,6 +522,52 @@ const TEXT = gameText({
         loseText: "Desfaça a última jogada e tente de novo.",
       },
     },
+    "talent-show": {
+      title: "Ao Vivo no 404",
+      tagline: "A banda da turma toca ao vivo no show de calouros do canal.",
+      description: "O Déco inscreveu a turma no show de calouros do Canal 404 sem perguntar a ninguém. A Lina montou os instrumentos com o que achou em casa: um balde, um teclado de brinquedo, uma lata de achocolatado e o gravador da Mila. Agora a banda tem três rodadas para convencer o júri: o Inspetor do Silêncio, o Seu Arlindo e a tia da cantina. Toque no ritmo, segure as notas, repita de ouvido e não deixe a plateia ir embora.",
+      tags: ["Música", "Ritmo", "Um botão"],
+      objective: "Seis músicas em três rodadas: eliminatória, semifinal e final. Cada música ensina um jeito novo de tocar. Termine com pelo menos 50% de precisão para ganhar a primeira estrela; 80% dão a segunda e 92%, a terceira.",
+      howToIntro: "Um botão só: toque em qualquer lugar da tela, ou aperte qualquer tecla, quando a nota chegar ao círculo.",
+      levels: [
+        { title: "Tema do Canal 404", goal: "Eliminatória. Toque junto com o Déco no balde." },
+        { title: "Fim de Transmissão", goal: "Eliminatória. Segure as notas compridas com a Lina." },
+        { title: "Vinheta de Intervalo", goal: "Semifinal. Repita de ouvido as frases da Mila." },
+        { title: "Rua Sem Saída (Tema)", goal: "Semifinal. Toque entre as batidas com o Bruno." },
+        { title: "Balada do Chuvisco", goal: "Final. Siga no ritmo quando o sinal cair." },
+        { title: "Pot-pourri do 404", goal: "Final. Tudo junto, com o andamento mudando." },
+      ],
+      controls: [
+        { input: "Qualquer tecla", action: "Toque quando a nota chegar ao círculo. Nas notas compridas, segure a tecla.", on: "keys" },
+        { input: "A", action: "Ligue ou desligue o modo assistido antes da música.", on: "keys" },
+        { input: "C", action: "Refaça o acerto de tempo antes da música.", on: "keys" },
+        { input: "Esc ou P", action: "Pause. A música volta com uma contagem.", on: "keys" },
+        { input: "Tocar na tela", action: "Toque quando a nota chegar ao círculo. Nas notas compridas, segure o dedo.", on: "touch" },
+        { input: "Botões antes da música", action: "Ligue o modo assistido ou refaça o acerto de tempo.", on: "touch" },
+      ],
+      howTo: [
+        { title: "Toque na hora", text: "Toque em qualquer lugar quando a nota chegar ao círculo. Quanto mais perto, mais pontos." },
+        { title: "Segure e escute", text: "Nas notas compridas, segure até o fim do rastro. Quando a Mila tocar uma frase, escute e repita de ouvido." },
+        { title: "Não perca o ritmo", text: "Se o sinal cair, continue tocando no tempo. Toque sem nota vira barulho, e o Inspetor odeia barulho." },
+      ],
+      tips: [
+        "Na primeira vez, o jogo mede o atraso do seu aparelho. Trocou de fone ou de aparelho? Refaça o acerto de tempo.",
+        "Erros e barulho esvaziam a plateia. Se ela for embora, o canal corta para os comerciais.",
+        "No Eco, só toque depois da Mila. Tocar junto com ela conta como barulho.",
+        "Na Rua Sem Saída, as notas caem entre as batidas. Conte a batida e toque no meio.",
+        "Quando o sinal cai, as notas continuam no lugar. A música ajuda a manter o tempo.",
+        "O modo assistido dá mais margem, mostra as notas escondidas e não deixa a plateia ir embora. Ele fica fora do placar.",
+      ],
+      keyTips: ["Qualquer tecla toca. Nas notas compridas, segure a tecla.", "Aperte A antes da música para ligar o modo assistido."],
+      touchTips: ["Toque em qualquer lugar da tela. Nas notas compridas, segure o dedo.", "No iPhone, tire do silencioso para ouvir a música."],
+      controlsSummary: "Ao Vivo no 404. Qualquer tecla toca e, segurada, sustenta as notas compridas. Esc pausa. Antes de cada música, A liga o modo assistido e C refaz o acerto de tempo.",
+      copy: {
+        winTitle: "Que apresentação!",
+        winText: "O júri levantou as placas e a plateia pediu bis.",
+        loseTitle: "Intervalo!",
+        loseText: "A plateia dispersou e o canal cortou para os comerciais.",
+      },
+    },
   },
   en: {
     "dead-end-street": {
@@ -943,6 +998,52 @@ const TEXT = gameText({
         winText: "Nobody woke up. Well, almost nobody.",
         loseTitle: "Caught red-handed!",
         loseText: "Undo the last move and try again.",
+      },
+    },
+    "talent-show": {
+      title: "Live on 404",
+      tagline: "The kids' band plays live on the channel's talent show.",
+      description: "Déco signed the gang up for Canal 404's talent show without asking anyone. Lina built the instruments from whatever she found at home: a bucket, a toy keyboard, a chocolate milk can and Mila's tape recorder. Now the band has three rounds to win over the jury: the Silence Inspector, Mr. Arlindo and the lunch lady. Play on the beat, hold the notes, repeat by ear and don't let the crowd leave.",
+      tags: ["Music", "Rhythm", "One button"],
+      objective: "Six songs in three rounds: qualifier, semifinal and final. Each song teaches a new way to play. Finish with at least 50% accuracy for the first star; 80% gives the second and 92% the third.",
+      howToIntro: "One button: tap anywhere on the screen, or press any key, when the note reaches the circle.",
+      levels: [
+        { title: "Canal 404 Theme", goal: "Qualifier. Tap along with Déco on the bucket." },
+        { title: "Sign-Off", goal: "Qualifier. Hold the long notes with Lina." },
+        { title: "Commercial Break Jingle", goal: "Semifinal. Repeat Mila's phrases by ear." },
+        { title: "Dead End Street (Theme)", goal: "Semifinal. Tap between the beats with Bruno." },
+        { title: "The Static Ballad", goal: "Final. Keep the beat when the signal drops." },
+        { title: "404 Medley", goal: "Final. Everything at once, with the tempo changing." },
+      ],
+      controls: [
+        { input: "Any key", action: "Tap when the note reaches the circle. On long notes, hold the key.", on: "keys" },
+        { input: "A", action: "Turn assist mode on or off before the song.", on: "keys" },
+        { input: "C", action: "Redo the timing check before the song.", on: "keys" },
+        { input: "Esc or P", action: "Pause. The song comes back with a count-in.", on: "keys" },
+        { input: "Tap the screen", action: "Tap when the note reaches the circle. On long notes, hold your finger down.", on: "touch" },
+        { input: "Buttons before the song", action: "Turn on assist mode or redo the timing check.", on: "touch" },
+      ],
+      howTo: [
+        { title: "Tap on time", text: "Tap anywhere when the note reaches the circle. The closer you are, the more points." },
+        { title: "Hold and listen", text: "On long notes, hold until the trail ends. When Mila plays a phrase, listen and repeat it by ear." },
+        { title: "Keep the beat", text: "If the signal drops, keep playing on time. A tap with no note is noise, and the Inspector hates noise." },
+      ],
+      tips: [
+        "The first time, the game measures your device's delay. New headphones or a new device? Redo the timing check.",
+        "Misses and noise empty the crowd. If they leave, the channel cuts to commercials.",
+        "In Echo, only play after Mila. Playing along with her counts as noise.",
+        "In Dead End Street, the notes fall between the beats. Count the beat and play in between.",
+        "When the signal drops, the notes stay where they were. The music helps you keep time.",
+        "Assist mode gives you more room, shows the hidden notes and keeps the crowd from leaving. It stays off the scoreboard.",
+      ],
+      keyTips: ["Any key plays. On long notes, hold the key.", "Press A before the song to turn on assist mode."],
+      touchTips: ["Tap anywhere on the screen. On long notes, hold your finger down.", "On iPhone, turn off silent mode to hear the music."],
+      controlsSummary: "Live on 404. Any key plays and, held down, sustains long notes. Esc pauses. Before each song, A turns on assist mode and C redoes the timing check.",
+      copy: {
+        winTitle: "What a show!",
+        winText: "The jury raised their paddles and the crowd asked for an encore.",
+        loseTitle: "Commercial break!",
+        loseText: "The crowd lost interest and the channel cut to commercials.",
       },
     },
   },

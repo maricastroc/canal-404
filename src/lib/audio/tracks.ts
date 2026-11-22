@@ -2,7 +2,7 @@ import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import type { Wave } from "./types";
 
-export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke";
+export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live";
 
 export type TrackUnlock =
   | { type: "default" }
@@ -42,6 +42,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       mood: "A fita do karaokê do 404. Ninguém pediu bis.",
       unlock: "",
     },
+    live: {
+      title: "Ao Vivo no 404 (Gravação)",
+      mood: "A banda da turma ao vivo no show de calouros. Dá para ouvir o balde.",
+      unlock: "Termine o Pot-pourri do 404 em Ao Vivo no 404.",
+    },
   },
   en: {
     theme: {
@@ -68,6 +73,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       title: "The Static Ballad",
       mood: "404's karaoke tape. Nobody asked for an encore.",
       unlock: "",
+    },
+    live: {
+      title: "Live on 404 (Recording)",
+      mood: "The kids' band live on the talent show. You can hear the bucket.",
+      unlock: "Finish the 404 Medley in Live on 404.",
     },
   },
 });
@@ -257,6 +267,46 @@ export const TRACKS: Track[] = [
       hat: "....x.......x...",
     },
     unlock: { type: "secrets", count: 5 },
+  },
+  {
+    id: "live",
+    station: "FM 404.4",
+    bpm: 132,
+    lead: {
+      wave: "square",
+      gain: 0.08,
+      notes: bars(
+        "E5 - G5 - C6 - B5 A5 G5 - - - E5 - . .",
+        "A5 - . A5 G5 - E5 - C5 - D5 - E5 - . .",
+        "F5 - A5 - C6 - A5 - G5 - F5 - E5 - D5 -",
+        "D5 - G5 - B5 - D6 - - - B5 - G5 - . .",
+        "E5 - G5 - C6 - B5 A5 G5 - - - E5 - G5 -",
+        "A5 - C6 - E6 - D6 C6 B5 - A5 - G5 - . .",
+        "F5 - E5 - D5 - F5 - A5 - G5 - F5 - E5 -",
+        "D5 - - - G5 - - - C6 - - - - - . .",
+      ),
+    },
+    bass: {
+      wave: "triangle",
+      gain: 0.22,
+      notes: bars(
+        "C3 . C3 C4 . C3 C3 . C3 . C4 . G2 . B2 .",
+        "A2 . A2 A3 . A2 A2 . A2 . A3 . E3 . G3 .",
+        "F2 . F2 F3 . F2 F2 . F2 . F3 . A2 . C3 .",
+        "G2 . G2 G3 . G2 G2 . B2 . B3 . D3 . G2 .",
+        "C3 . C3 C4 . C3 C3 . C3 . C4 . G2 . B2 .",
+        "A2 . A2 A3 . A2 A2 . A2 . A3 . E3 . G3 .",
+        "F2 . F2 F3 . F2 F2 . G2 . G3 . G2 . G3 .",
+        "C3 . C4 . G2 . G3 . C3 . . . C3 . . .",
+      ),
+    },
+    drums: {
+      gain: 0.5,
+      kick: "x..x..x.x..x..x.",
+      snare: "....x.......x...",
+      hat: "x.x.x.x.x.x.x.x.",
+    },
+    unlock: { type: "achievement", id: "talent-finale" },
   },
 ];
 

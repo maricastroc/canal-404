@@ -5,6 +5,8 @@ import { ANGLE_STEPS, MAX_STEPS, POWER_STEPS } from "@/games/dead-end-street/sim
 import { CART_IDS } from "@/games/downhill-derby/sim/carts";
 import { TAPE_MAX, TAPE_PATTERN } from "@/games/downhill-derby/sim/judge";
 import { MOVES_MAX, MOVES_PATTERN } from "@/games/past-bedtime/sim/judge";
+import { MAX_OFFSET, TAPS_MAX } from "@/games/talent-show/sim/judge";
+import { SONG_ORDER } from "@/games/talent-show/song/songs";
 import { GAME_SLUGS } from "@/lib/competition/rules";
 import { isDayKey } from "@/lib/missions/calendar";
 
@@ -18,7 +20,7 @@ export const statsSchema = z
   .record(statKey, z.number().int().min(-INT).max(INT))
   .refine((stats) => Object.keys(stats).length <= 24, "estatísticas demais");
 
-const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2, "downhill-run": 1, "bedtime-moves": 1 } as const;
+const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2, "downhill-run": 1, "bedtime-moves": 1, "talent-taps": 2 } as const;
 
 export function outdatedReplay(body: unknown) {
   const replay = (body as { result?: { replay?: { kind?: unknown; version?: unknown } } } | null)?.result?.replay;
@@ -82,7 +84,19 @@ const bedtimeReplaySchema = z
   })
   .strict();
 
-export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema, downhillReplaySchema, bedtimeReplaySchema]);
+const talentReplaySchema = z
+  .object({
+    kind: z.literal("talent-taps"),
+    version: z.literal(REPLAY_VERSIONS["talent-taps"]),
+    song: z.enum(SONG_ORDER as [string, ...string[]]),
+    offset: z.number().int().min(-MAX_OFFSET).max(MAX_OFFSET),
+    assist: z.boolean(),
+    taps: z.array(z.number().int().min(-10_000).max(600_000)).max(TAPS_MAX),
+    ups: z.array(z.number().int().min(-10_000).max(700_000).nullable()).max(TAPS_MAX),
+  })
+  .strict();
+
+export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema, downhillReplaySchema, bedtimeReplaySchema, talentReplaySchema]);
 
 export const submitSchema = z
   .object({
