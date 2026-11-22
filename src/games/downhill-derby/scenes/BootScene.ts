@@ -1,5 +1,7 @@
 import * as Phaser from "phaser";
+import { ArrowBigDown, ArrowBigUp, RotateCcw, RotateCw, TrendingUp } from "lucide";
 import type { GameHostContext } from "@/games/types";
+import { loadIcons } from "../../kit/icons";
 import { artFiles } from "./cart";
 import { CAST_FILES } from "./cast";
 import { PROP_FILES } from "./props";
@@ -31,6 +33,13 @@ export class BootScene extends Phaser.Scene {
     for (const f of ["dog-a", "dog-b", "dog-sit", "chicken-a", "chicken-b", "mascot-wave", "mascot-cheer"]) this.load.svg(f, `${base}/${f}.svg`, { scale: 1 });
     for (const [key, file] of [...BORROWED, ...CAST_FILES, ...PROP_FILES]) this.load.svg(key, `/assets/${file}.svg`, { scale: 1 });
     for (const [key, file] of SAMPLE_FILES) this.load.svg(key, `${base}/sample/${file}.svg`, { scale: SAMPLE_RES });
+    loadIcons(this, [
+      { key: "dd-ico-ccw", icon: RotateCcw, size: 128, strokeWidth: 3.2 },
+      { key: "dd-ico-cw", icon: RotateCw, size: 128, strokeWidth: 3.2 },
+      { key: "dd-ico-crouch", icon: ArrowBigDown, size: 128, strokeWidth: 2.4 },
+      { key: "dd-ico-jump", icon: ArrowBigUp, size: 128, strokeWidth: 2.4 },
+      { key: "dd-ico-ramp", icon: TrendingUp, size: 128, strokeWidth: 3.2 },
+    ]);
   }
 
   create() {

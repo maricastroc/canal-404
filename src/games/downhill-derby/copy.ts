@@ -94,6 +94,7 @@ export type RaceCopy = {
     unlocked: (cart: string) => string;
     wonBy: Record<CartId, (seconds: string) => string>;
     behind: Record<CartId, (seconds: string) => string>;
+    facts: { perfect: string; crashes: string; combo: string; hits: string };
   };
   garage: {
     title: string;
@@ -105,7 +106,7 @@ export type RaceCopy = {
     keys: string;
     touch: string;
   };
-  touch: { crouch: string; jump: string };
+  touch: { crouch: string; jump: string; spin: string };
   rivalNames: Record<CartId, string>;
   carts: Record<CartId, string>;
   youAre: (name: string) => string;
@@ -121,7 +122,7 @@ export const RACE_COPY = localized<RaceCopy>({
     best: "Melhor",
     noBest: "Sem tempo ainda",
     hint: "↓ agacha · ESPAÇO pula (segure no ar para fazer pose) · ← → giram no ar e empinam no chão",
-    hintTouch: "Segure AGACHAR · toque PULAR (segure no ar para fazer pose) · as setas giram no ar e empinam no chão",
+    hintTouch: "Segure AGACHAR · deslize ou toque em PULAR (segure no ar para fazer pose) · as setas giram no ar e empinam no chão",
     tiers: ["Rolando", "Embalado", "Voando baixo", "Sem freio"],
     kmh: "km/h",
     passed: { deco: "Você passou o Déco!", lina: "Você passou a Lina!", bruno: "Você passou o Bruno!", mila: "Você passou a Mila!" },
@@ -254,6 +255,7 @@ export const RACE_COPY = localized<RaceCopy>({
       show: "Pontos de show",
       headline: { win: "Você venceu!", close: "Quase!", second: "Dá pra buscar!", third: "Terceiro, mas inteiro!", fourth: "Quarto. Próxima é sua!" },
       record: (time) => `Recorde: ${time}`,
+      facts: { perfect: "Pousos perfeitos", crashes: "Capotadas", combo: "Melhor combo", hits: "Trombadas" },
       newRecord: "Novo recorde da pista!",
       again: "Correr de novo",
       alt: "Trocar carrinho",
@@ -276,7 +278,7 @@ export const RACE_COPY = localized<RaceCopy>({
       keys: "← → Trocar de carrinho · Enter ou Espaço: correr · G: mostrar/ocultar fantasma",
       touch: "Toque num carrinho e depois em CORRER!",
     },
-    touch: { crouch: "AGACHAR", jump: "PULAR" },
+    touch: { crouch: "AGACHAR", jump: "PULAR", spin: "GIRAR" },
     rivalNames: { deco: "Déco", lina: "Lina", bruno: "Bruno", mila: "Mila" },
     carts: { deco: "Relâmpago de Madeira", lina: "Turbina da Vovó", bruno: "Plano B", mila: "Banheira" },
     youAre: (name) => `${name} (você)`,
@@ -290,7 +292,7 @@ export const RACE_COPY = localized<RaceCopy>({
     best: "Best",
     noBest: "No time yet",
     hint: "↓ crouches · SPACE jumps (hold in the air to strike a pose) · ← → spin in the air and pop wheelies on the ground",
-    hintTouch: "Hold CROUCH · tap JUMP (hold in the air to strike a pose) · the arrows spin in the air and pop wheelies on the ground",
+    hintTouch: "Hold CROUCH · slide or tap to JUMP (hold in the air to strike a pose) · the arrows spin in the air and pop wheelies on the ground",
     tiers: ["Rolling", "Picking up", "Flying low", "No brakes"],
     kmh: "km/h",
     passed: { deco: "You passed Déco!", lina: "You passed Lina!", bruno: "You passed Bruno!", mila: "You passed Mila!" },
@@ -424,6 +426,7 @@ export const RACE_COPY = localized<RaceCopy>({
       headline: { win: "You won!", close: "So close!", second: "You can catch them!", third: "Third, but in one piece!", fourth: "Fourth. Next one's yours!" },
       record: (time) => `Best: ${time}`,
       newRecord: "New track record!",
+      facts: { perfect: "Perfect landings", crashes: "Crashes", combo: "Best combo", hits: "Bumps" },
       again: "Race again",
       alt: "Change cart",
       unlocked: (cart) => `${cart} unlocked in the garage!`,
@@ -445,7 +448,7 @@ export const RACE_COPY = localized<RaceCopy>({
       keys: "← → Switch cart · Enter or Space: race · G: show/hide ghost",
       touch: "Tap a cart, then RACE!",
     },
-    touch: { crouch: "CROUCH", jump: "JUMP" },
+    touch: { crouch: "CROUCH", jump: "JUMP", spin: "SPIN" },
     rivalNames: { deco: "Déco", lina: "Lina", bruno: "Bruno", mila: "Mila" },
     carts: { deco: "Wooden Lightning", lina: "Grandma's Turbo", bruno: "Plan B", mila: "The Tub" },
     youAre: (name) => `${name} (you)`,

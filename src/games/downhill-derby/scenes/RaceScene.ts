@@ -19,7 +19,12 @@ import { boing, DOWNHILL_SFX, PADDLE, rollGrain, windGrain } from "../sounds";
 import { CartView, INK } from "./cart";
 import { WorldFx } from "./fx";
 import { formatNumber } from "@/i18n/format";
-import { H, Hud, W, formatSeconds, type EdgeTag, type HudButton, type Marker, type StandingRow, type TouchButton } from "./hud";
+import { H, Hud, W, formatSeconds, type EdgeTag, type HudButton, type Marker, type Pin, type RaceHud, type StandingRow, type TouchButton } from "./hud";
+import { FULL_FRAME, type Frame } from "../layout";
+import { DECK_THEME, PhoneDeck, type DeckState } from "./deck";
+import { currentFrame, watchFrame } from "./frame";
+import { PhoneHud } from "./phoneHud";
+import { portraitClamp, portraitSnap, portraitTarget, type PortraitHost } from "./portrait";
 import { Ambient } from "./ambient";
 import { ANTENA_FILES } from "./antena";
 import { FEIRA_FILES } from "./feira";
@@ -133,7 +138,18 @@ export class RaceScene extends Phaser.Scene {
   private ghostView!: CartView;
   private rivals: Rival[] = [];
   private fx!: WorldFx;
-  private hud!: Hud;
+  private hud!: RaceHud;
+  private phoneHud: PhoneHud | null = null;
+  private deck: PhoneDeck | null = null;
+  private frame: Frame = FULL_FRAME;
+  private vw = W;
+  private vh = H;
+  private bgZoom = 1;
+  private bgCam!: Phaser.Cameras.Scene2D.Camera;
+  private uiCam!: Phaser.Cameras.Scene2D.Camera;
+  private fgTint: Phaser.GameObjects.Rectangle | null = null;
+  private latched = new Set<number>();
+  private camOff = 0;
   private overlay!: Phaser.GameObjects.Graphics;
   private trailG!: Phaser.GameObjects.Graphics;
   private trail: { x: number; y: number; a: number }[] = [];
@@ -204,12 +220,15 @@ export class RaceScene extends Phaser.Scene {
     this.fgLayer = this.add.layer();
     this.hudLayer = this.add.layer();
     const bgCam = this.cameras.main;
+    this.bgCam = bgCam;
     bgCam.setBackgroundColor("#8fd4f7");
     this.worldCam = this.cameras.add(0, 0, W, H);
     const uiCam = this.cameras.add(0, 0, W, H);
+    this.uiCam = uiCam;
     bgCam.ignore([this.worldLayer, this.fgLayer, this.hudLayer]);
     this.worldCam.ignore([this.bgLayer, this.fgLayer, this.hudLayer]);
     uiCam.ignore([this.bgLayer, this.worldLayer]);
+    this.frame = currentFrame(this);
     this.buildBackground();
     this.buildForeground();
     const terrain = buildTerrain(this, this.worldLayer, this.track, this.copy, this.bridge.fonts, true);
@@ -256,14 +275,69 @@ export class RaceScene extends Phaser.Scene {
     this.spinKey.setOrigin(0.5).setDepth(9.1).setVisible(false);
     this.worldLayer.add(this.spinKey);
     this.fx = new WorldFx(this, this.worldLayer);
-    this.hud = new Hud(this, this.hudLayer, this.copy, this.bridge.locale, this.bridge.fonts);
     this.touchActive = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
-    this.hud.setTouch(this.touchActive);
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => this.pointerDown(p));
+    this.input.on("pointermove", (p: Phaser.Input.Pointer) => this.pointerMove(p));
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.pointerUp(p));
     this.input.on("pointerupoutside", (p: Phaser.Input.Pointer) => this.pointerUp(p));
     this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => this.input.removeAllListeners());
+    this.events.on(Phaser.Scenes.Events.RESUME, () => this.releaseInput());
+    watchFrame(this, (frame) => this.applyFrame(frame));
     this.restartRace();
+  }
+
+  private buildHud() {
+    this.hud?.destroy();
+    this.deck?.destroy();
+    this.phoneHud = null;
+    this.deck = null;
+    this.pressed.clear();
+    this.pointerButtons.clear();
+    this.latched.clear();
+    const input = this.bridge.input;
+    input.releaseSource("touch");
+    if (this.frame.kind === "tall") {
+      const c = this.copy;
+      this.deck = new PhoneDeck(this, this.hudLayer, this.frame, { spin: c.touch.spin, crouch: c.touch.crouch, jump: c.touch.jump, kmh: c.kmh, tiers: c.tiers }, this.bridge.fonts, this.bridge.locale, DECK_THEME[this.track.id], (s: DeckState) => {
+        input.setLeft(s.left, "touch");
+        input.setRight(s.right, "touch");
+        input.setDown(s.crouch, "touch");
+        input.setSpace(s.jump, "touch");
+      });
+      this.phoneHud = new PhoneHud(this, this.hudLayer, this.copy, this.bridge.locale, this.bridge.fonts, this.frame, this.deck);
+      this.hud = this.phoneHud;
+    } else this.hud = new Hud(this, this.hudLayer, this.copy, this.bridge.locale, this.bridge.fonts);
+    this.hud.setTouch(this.touchActive);
+  }
+
+  private applyFrame(frame: Frame) {
+    const kind = this.hud ? this.frame.kind : null;
+    this.frame = frame;
+    this.vw = frame.view.w;
+    this.vh = frame.view.h;
+    const tall = frame.kind === "tall";
+    this.bgZoom = tall ? this.vh / H : 1;
+    this.bgCam.setViewport(0, 0, this.vw, this.vh).setZoom(this.bgZoom).centerOn(W / 2, H / 2);
+    this.worldCam.setViewport(0, 0, this.vw, this.vh);
+    this.uiCam.setViewport(0, 0, frame.width, frame.height);
+    const zb = this.bgZoom;
+    const [posts, grass] = this.fg;
+    posts.sprite.setScale(zb).setSize(this.vw / zb, 300).setPosition(0, this.vh - 300 * zb);
+    grass.sprite.setScale(zb).setSize(this.vw / zb, 110).setPosition(0, this.vh - 96 * zb);
+    this.fgTint?.setSize(this.vw, this.vh);
+    if (kind !== frame.kind || !this.hud) {
+      const lineup = this.phase === "countdown" && !!this.hud;
+      this.buildHud();
+      if (lineup) this.showLineup();
+      if (this.phase === "countdown" && this.countdownShown > 0) this.hud.countdown(String(this.countdownShown));
+    } else {
+      this.deck?.layout(frame);
+      this.phoneHud?.layout(frame);
+    }
+    if (this.sim) {
+      if (this.phase === "countdown") this.snapCamera();
+      else this.applyCamera();
+    }
   }
 
   private framesFor(def: RivalDef, index: number) {
@@ -539,7 +613,8 @@ export class RaceScene extends Phaser.Scene {
     this.fgLayer.add([posts, grass]);
     if (this.track.id === "antena") {
       grass.setTint(0xffd6b0);
-      this.fgLayer.add(this.add.rectangle(0, 0, W, H, 0xff7a3d, 0.08).setOrigin(0, 0));
+      this.fgTint = this.add.rectangle(0, 0, W, H, 0xff7a3d, 0.08).setOrigin(0, 0);
+      this.fgLayer.add(this.fgTint);
     }
     this.fg.push({ sprite: posts, factor: 1.9 }, { sprite: grass, factor: 1.45 });
   }
@@ -564,9 +639,7 @@ export class RaceScene extends Phaser.Scene {
     this.surfaceTips.clear();
     this.rollCycle.clear();
     this.ambient.reset();
-    const lineup = [{ who: this.player as string, name: this.copy.youAre(this.copy.rivalNames[this.player]), cart: this.copy.carts[this.player], color: PLAYER_COLOR }];
-    for (const r of this.rivals) lineup.push({ who: r.id, name: this.copy.rivalNames[r.id], cart: this.copy.carts[r.id], color: r.color });
-    this.hud.showLineup(lineup);
+    this.showLineup();
     this.recorder = new InputRecorder();
     this.record = this.bridge.records.load(this.track.id);
     this.sectionMarks = [];
@@ -619,6 +692,12 @@ export class RaceScene extends Phaser.Scene {
     this.snapCamera();
   }
 
+  private showLineup() {
+    const lineup = [{ who: this.player as string, name: this.copy.youAre(this.copy.rivalNames[this.player]), cart: this.copy.carts[this.player], color: PLAYER_COLOR }];
+    for (const r of this.rivals) lineup.push({ who: r.id, name: this.copy.rivalNames[r.id], cart: this.copy.carts[r.id], color: r.color });
+    this.hud.showLineup(lineup);
+  }
+
   matches(course: CourseId, cart: CartId) {
     return this.track?.id === course && this.player === cart;
   }
@@ -627,7 +706,9 @@ export class RaceScene extends Phaser.Scene {
     this.bridge.input.releaseAll();
     this.pressed.clear();
     this.pointerButtons.clear();
+    this.latched.clear();
     this.hud.setPressed(this.pressed);
+    this.deck?.release();
   }
 
   private pointerDown(p: Phaser.Input.Pointer) {
@@ -640,27 +721,74 @@ export class RaceScene extends Phaser.Scene {
     this.pressButton(id, true, p.id);
   }
 
+  private pointerMove(p: Phaser.Input.Pointer) {
+    const id = this.pointerButtons.get(p.id);
+    if (!id || !p.isDown || (id !== "crouch" && id !== "jump")) return;
+    const over = this.hud.hitTest(p.x, p.y);
+    if ((over !== "crouch" && over !== "jump") || over === id) return;
+    if (id === "crouch") this.latched.add(p.id);
+    this.pointerButtons.set(p.id, over);
+    this.syncPointers();
+  }
+
   private pointerUp(p: Phaser.Input.Pointer) {
     const id = this.pointerButtons.get(p.id);
     if (!id) return;
     this.pointerButtons.delete(p.id);
+    this.latched.delete(p.id);
     this.pressButton(id, false, p.id);
   }
 
-  private pressButton(id: HudButton, on: boolean, pointer: number) {
+  private syncPointers() {
     const input = this.bridge.input;
-    if (on) this.pointerButtons.set(pointer, id);
-    if (on) this.pressed.add(id);
-    else this.pressed.delete(id);
+    const held = new Set<HudButton>(this.pointerButtons.values());
+    const crouch = held.has("crouch") || this.latched.size > 0;
+    this.pressed = new Set([...held].filter((b) => b !== "crouch"));
+    if (crouch) this.pressed.add("crouch");
     this.hud.setPressed(this.pressed);
-    if (id === "left") input.setLeft(on, "touch");
-    else if (id === "right") input.setRight(on, "touch");
-    else if (id === "jump") input.setSpace(on, "touch");
-    else if (id === "crouch") input.setDown(on, "touch");
+    input.setLeft(held.has("left"), "touch");
+    input.setRight(held.has("right"), "touch");
+    input.setDown(crouch, "touch");
+    input.setSpace(held.has("jump"), "touch");
+  }
+
+  private pressButton(id: HudButton, on: boolean, pointer: number) {
+    if (on) this.pointerButtons.set(pointer, id);
+    if (on && id === "crouch") this.latched.add(pointer);
+    this.syncPointers();
   }
 
 
+  private portraitHost(land: ReturnType<DownhillSim["predictLanding"]> = null): PortraitHost {
+    return {
+      frame: this.frame,
+      hudBottom: this.phoneHud?.hudBottom ?? 0,
+      phase: this.phase,
+      sim: this.sim,
+      gravity: this.bridge.params.gravity,
+      camSpeed: this.camSpeed,
+      predictedAir: this.predictedAir,
+      grid: this.gridSpan,
+      awning: !!land && this.track.surfaces[land.surface].kind === "awning",
+      rivals: this.phase === "race" ? this.world.rivals.map((t) => this.world.sample(t, "x")) : [],
+      groundBelow: (x) => this.groundBelow(x),
+      interest: (x, reach) => this.nextInterest(x, reach),
+    };
+  }
+
   private snapCamera() {
+    if (this.frame.kind === "tall") {
+      this.camSpeed = 0;
+      const t = portraitSnap(this.portraitHost(), this.sim.x, this.sim.y);
+      this.cam.x = t.x;
+      this.camOff = t.x - this.sim.x;
+      this.cam.y = t.y;
+      this.cam.zoom = t.zoom;
+      this.cam.dip = 0;
+      this.cam.dipVel = 0;
+      this.applyCamera();
+      return;
+    }
     this.camSpeed = 0;
     this.cam.zoom = Math.min(this.bridge.camera.zoomSlow, W / (this.gridSpan.max - this.gridSpan.min + 680));
     this.cam.x = (this.gridSpan.max + 260 + this.gridSpan.min - 220) / 2;
@@ -861,7 +989,7 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private toScreen(x: number, y: number) {
-    return { x: (x - this.cam.x) * this.cam.zoom + W / 2, y: (y - this.cam.y - this.cam.dip) * this.cam.zoom + H / 2 };
+    return { x: (x - this.cam.x) * this.cam.zoom + this.vw / 2, y: (y - this.cam.y - this.cam.dip) * this.cam.zoom + this.vh / 2 };
   }
 
   private sfx(recipe: SoundRecipe, volume = 1, pitch = 1) {
@@ -1275,16 +1403,17 @@ export class RaceScene extends Phaser.Scene {
       else r.label.setAlpha(0);
     });
     labels.sort((p, q) => p.x - q.x);
+    const ls = this.frame.kind === "tall" ? Math.max(1, (12.5 * this.frame.unit) / (30 * this.cam.zoom)) : 1;
     for (let i = 0; i < labels.length; i += 1) {
       const l = labels[i];
       let ly = l.y;
       for (let j = 0; j < i; j += 1) {
         const o = labels[j];
-        if (Math.abs(o.x - l.x) < 190 && Math.abs(o.y - ly) < 46) ly = o.y - 48;
+        if (Math.abs(o.x - l.x) < 190 * ls && Math.abs(o.y - ly) < 46 * ls) ly = o.y - 48 * ls;
         labels[j] = o;
       }
       l.y = ly;
-      l.r.label.setPosition(l.x, ly);
+      l.r.label.setPosition(l.x, ly).setScale(ls);
       l.r.label.setAlpha(this.phase === "countdown" ? 0 : Math.abs(l.x - x) > 120 ? 1 : 0.85);
     }
     const ghost = this.bridge.form.ghost;
@@ -1293,7 +1422,7 @@ export class RaceScene extends Phaser.Scene {
     this.ghostLabel.setVisible(showGhost && this.phase === "race");
     if (ghost && showGhost) {
       const f = this.frameAt(ghost.frames, step, a);
-      this.ghostLabel.setPosition(f.x, f.y - 210);
+      this.ghostLabel.setPosition(f.x, f.y - 210).setScale(this.frame.kind === "tall" ? Math.max(1, (11 * this.frame.unit) / (24 * this.cam.zoom)) : 1);
       this.ghostView.update({ x: f.x, y: f.y, angle: f.angle, speed: f.speed, crouch: (f.flags & FRAME_CROUCH) !== 0, charge: 0, air: (f.flags & FRAME_AIR) !== 0, spin: 0, accel: 0, bigAir: false, brace: false, paddling: false, distance: f.x, crash: f.flags & FRAME_CRASH ? 0.5 : 0, time: this.elapsed }, dt);
     }
     if (dt > 0 && sim.mode === "ground" && this.track.surfaces[sim.surface]?.kind === "rail" && speed > 200) for (let i = 0; i < 3; i += 1) this.fx.sparks(x - 30 + i * 30, y, speed);
@@ -1322,7 +1451,7 @@ export class RaceScene extends Phaser.Scene {
     this.ambient.step = this.sim.step;
     this.ambient.lead = this.phase !== "countdown" ? Math.max(...this.world.rivals.map((t) => this.world.sample(t, "x"))) : -Infinity;
     this.ambient.racers = [x, ...this.world.rivals.map((t) => this.world.sample(t, "x"))];
-    this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, W / (2 * this.cam.zoom));
+    this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, this.vw / (2 * this.cam.zoom));
     this.drawTrail(dt, x, y, angle, speed);
     this.drawLips(x, speed);
     this.drawOverlay(x, y, land);
@@ -1335,7 +1464,7 @@ export class RaceScene extends Phaser.Scene {
   private updateRolling(alpha: number) {
     const road = this.track.surfaces[0];
     const fs = this.phase === "countdown" ? 0 : this.sim.step - 1 + alpha;
-    const halfW = W / (2 * this.cam.zoom) + 400;
+    const halfW = this.vw / (2 * this.cam.zoom) + 400;
     for (const o of this.obstacles) {
       const roll = o.obstacle.roll;
       if (!roll) continue;
@@ -1563,12 +1692,13 @@ export class RaceScene extends Phaser.Scene {
       if (this.alignLessons < 3 && !this.touchActive) {
         const key = dir < 0 ? "←" : "→";
         const z = this.cam.zoom;
-        const sx = (ex + tx * 70 / z - this.cam.x) * z + W / 2;
-        const sy = (ey + ty * 70 / z - this.cam.y - this.cam.dip) * z + H / 2;
-        const kx = Math.max(440, Math.min(W - 300, sx));
-        const ky = Math.max(130, Math.min(H - 140, sy));
-        this.spinKey.setText(key).setVisible(true).setScale(1 / z);
-        this.spinKey.setPosition(this.cam.x + (kx - W / 2) / z, this.cam.y + this.cam.dip + (ky - H / 2) / z);
+        const tall = this.frame.kind === "tall";
+        const sx = (ex + tx * 70 / z - this.cam.x) * z + this.vw / 2;
+        const sy = (ey + ty * 70 / z - this.cam.y - this.cam.dip) * z + this.vh / 2;
+        const kx = tall ? Math.max(40 * this.frame.unit, Math.min(this.vw - 40 * this.frame.unit, sx)) : Math.max(440, Math.min(W - 300, sx));
+        const ky = tall ? Math.max((this.phoneHud?.hudBottom ?? 0) + 30 * this.frame.unit, Math.min(this.vh - 30 * this.frame.unit, sy)) : Math.max(130, Math.min(H - 140, sy));
+        this.spinKey.setText(key).setVisible(true).setScale((tall ? this.frame.unit * 0.55 : 1) / z);
+        this.spinKey.setPosition(this.cam.x + (kx - this.vw / 2) / z, this.cam.y + this.cam.dip + (ky - this.vh / 2) / z);
       }
     }
   }
@@ -1591,6 +1721,10 @@ export class RaceScene extends Phaser.Scene {
     const tune = this.bridge.camera;
     const air = sim.mode === "air";
     if (dt > 0) this.camSpeed += (sim.speed - this.camSpeed) * damp(air ? 0.6 : 1.4, dt);
+    if (this.frame.kind === "tall") {
+      this.updatePortraitCamera(dt, x, y, land);
+      return;
+    }
     const forward = Math.max(0, air ? sim.vx : sim.v * Math.cos(sim.angle));
     const k = Math.max(0, Math.min(1, (this.camSpeed - 600) / 1600));
     let zoom = tune.zoomSlow + (tune.zoomFast - tune.zoomSlow) * k * k * (3 - 2 * k);
@@ -1665,6 +1799,25 @@ export class RaceScene extends Phaser.Scene {
     this.applyCamera();
   }
 
+  private updatePortraitCamera(dt: number, x: number, y: number, land: ReturnType<DownhillSim["predictLanding"]>) {
+    const host = this.portraitHost(land);
+    const t = portraitTarget(host, x, y, land);
+    const bigAir = this.sim.mode === "air" && this.predictedAir > 0.9;
+    const air = this.sim.mode === "air";
+    if (dt > 0) {
+      this.camOff += (t.x - x - this.camOff) * damp(5, dt);
+      this.cam.x = x + this.camOff;
+      this.cam.y += (t.y - this.cam.y) * damp(bigAir ? 3.4 : air ? 2.6 : 3.6, dt);
+      this.cam.zoom += (t.zoom - this.cam.zoom) * damp(t.zoom < this.cam.zoom ? (bigAir ? 3.2 : 2.2) : 0.9, dt);
+      this.cam.shake = Math.max(0, this.cam.shake - dt);
+      this.cam.dipVel += (-this.cam.dip * 120 - this.cam.dipVel * 13) * dt;
+      this.cam.dip += this.cam.dipVel * dt;
+    }
+    portraitClamp(host, this.cam, x, y);
+    this.camOff = this.cam.x - x;
+    this.applyCamera();
+  }
+
   private applyCamera() {
     const shake = this.cam.shake > 0 && !this.bridge.reducedMotion ? this.cam.shake * 26 : 0;
     const sx = shake ? (Math.random() - 0.5) * shake : 0;
@@ -1672,7 +1825,7 @@ export class RaceScene extends Phaser.Scene {
     const z = this.cam.zoom;
     this.worldCam.setZoom(z);
     this.worldCam.centerOn(this.cam.x + sx, this.cam.y + this.cam.dip + sy);
-    const roadScreen = (this.groundBelow(this.cam.x) - (this.cam.y + this.cam.dip)) * z + H / 2;
+    const roadScreen = ((this.groundBelow(this.cam.x) - (this.cam.y + this.cam.dip)) * z + this.vh / 2) / this.bgZoom;
     const delta = Math.max(-500, Math.min(1400, roadScreen - this.bridge.camera.roadLine * H));
     const f = Math.max(0, Math.min(1, (this.sampleFadeX + 300 - this.cam.x) / 1800));
     for (const l of this.parallax) {
@@ -1691,8 +1844,8 @@ export class RaceScene extends Phaser.Scene {
       }
     }
     this.sun.y = delta * 0.1;
-    for (const f of this.fg) f.sprite.tilePositionX = this.cam.x * z * f.factor;
-    const halfW = W / (2 * z) + 400;
+    for (const f of this.fg) f.sprite.tilePositionX = (this.cam.x * z * f.factor) / this.bgZoom;
+    const halfW = this.vw / (2 * z) + 400;
     const i0 = Math.floor((this.cam.x - halfW) / 1800);
     const i1 = Math.floor((this.cam.x + halfW) / 1800);
     const key = `${i0}:${i1}`;
@@ -1713,8 +1866,11 @@ export class RaceScene extends Phaser.Scene {
 
   private updateHud(dt: number, x: number, y: number) {
     const sim = this.sim;
+    const tall = this.frame.kind === "tall";
+    const u = this.frame.unit;
+    const hudBottom = this.phoneHud?.hudBottom ?? 0;
     const above = this.toScreen(x + 30, y - 300);
-    const anchor = above.y >= 410 ? above : this.toScreen(x - 120, y + 170);
+    const anchor = tall ? (above.y >= hudBottom + 60 * u ? above : this.toScreen(x - 60, y + 130)) : above.y >= 410 ? above : this.toScreen(x - 120, y + 170);
     const speed = this.phase === "countdown" ? 0 : sim.speed;
     const tier = tierOf(speed);
     if (tier > this.lastTier && tier >= 2 && this.phase === "race") this.sfx(DOWNHILL_SFX.tier, 0.5 + tier * 0.2);
@@ -1761,9 +1917,13 @@ export class RaceScene extends Phaser.Scene {
             }
           } else r.pending = 0;
           const sp = this.toScreen(rx, ry - 120);
-          if ((sp.x > W - 30 || sp.x < 30) && Number.isFinite(gap)) {
+          const edgeIn = tall ? 6 * u : 30;
+          if (tall && sp.x > this.vw - edgeIn && Number.isFinite(gap)) {
             const secs = formatSeconds(Math.abs(gap), this.bridge.locale);
-            const side = sp.x > W - 30 ? "right" : "left";
+            edges.push({ side: "right", y: rx, color: r.color, text: `${r.name.toUpperCase()} ${secs} s` });
+          } else if (!tall && (sp.x > W - edgeIn || sp.x < edgeIn) && Number.isFinite(gap)) {
+            const secs = formatSeconds(Math.abs(gap), this.bridge.locale);
+            const side = sp.x > W - edgeIn ? "right" : "left";
             let ty = Math.max(330, Math.min(860, sp.y));
             if (side === "left" && ty > anchor.y - 40) ty = Math.max(250, anchor.y - 40);
             for (const other of edges) if (other.side === side && Math.abs(other.y - ty) < 64) ty = other.y + (ty >= other.y ? 64 : -64);
@@ -1782,10 +1942,39 @@ export class RaceScene extends Phaser.Scene {
       else if (this.phase !== "countdown" && Number.isFinite(e.gap)) gap = `${e.gap < 0 ? "−" : "+"}${formatSeconds(Math.abs(e.gap), this.bridge.locale)} s`;
       return { name: e.name, color: e.color, you: e.you, gap, flash: e.flash, who: e.who };
     });
+    if (tall) {
+      edges.sort((a, b) => a.y - b.y);
+      edges.forEach((e, i) => (e.y = hudBottom + 34 * u + i * 27 * u));
+    }
     const showHint = this.phase !== "done" && time < (this.bridge.form.runs < 2 ? 14 : 6) && !(this.jumpedThisRun && time > 5);
-    this.hud.update(dt, { time, rows, speed, tier, trend: this.trend, markers, edges, finishX: this.track.finish, startX: this.track.start, reduced: this.bridge.reducedMotion, showHint, anchor });
+    const pins = tall && this.phase === "race" && !sim.finished ? this.hazardPins(x) : undefined;
+    this.hud.update(dt, { time, rows, speed, tier, trend: this.trend, markers, edges, finishX: this.track.finish, startX: this.track.start, reduced: this.bridge.reducedMotion, showHint, anchor, pins, started: this.phase !== "countdown" });
     const sh = sim.show;
     this.hud.showMeter(dt, { total: sh.total, seq: sh.seq + (sim.posing ? sim.posePending : 0), mult: sh.mult, timer: sh.timer / 300, active: sh.tricks > 0 || sim.posing });
+  }
+
+  private hazardPins(x: number): Pin[] {
+    const sim = this.sim;
+    const speed = Math.max(700, sim.speed);
+    const right = this.cam.x + this.vw / (2 * this.cam.zoom) - 30;
+    const reach = speed * 1.35;
+    const found: { x: number; y: number; kind: Pin["kind"] }[] = [];
+    const surface = sim.mode === "ground" ? sim.surface : 0;
+    for (const o of this.obstacles) {
+      const ob = o.obstacle;
+      if (o.lane !== 0 || o.hit || ob.roll || ob.kind === "gold" || ob.x <= right || ob.x - x > reach) continue;
+      if (ob.surface !== surface) continue;
+      const ground = heightAt(this.track.surfaces[ob.surface], ob.x);
+      const duck = ob.low > 40;
+      found.push({ x: ob.x, y: ground - (duck ? ob.low + 30 : Math.max(50, ob.high * 0.6)), kind: duck ? "duck" : "jump" });
+    }
+    for (const lip of this.track.lips) {
+      if (lip.surface !== surface || lip.x <= right || lip.x - x > reach) continue;
+      found.push({ x: lip.x, y: heightAt(this.track.surfaces[lip.surface], lip.x - 1) - 40, kind: "ramp" });
+    }
+    found.sort((a, b) => a.x - b.x);
+    const edge = right - x;
+    return found.slice(0, 2).map((f) => ({ y: this.toScreen(f.x, f.y).y, kind: f.kind, near: Math.max(0, Math.min(1, 1 - (f.x - x - edge) / Math.max(1, reach - edge))) }));
   }
 
   private updateSound(dt: number) {
