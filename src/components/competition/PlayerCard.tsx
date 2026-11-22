@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CardIcon, OfflineIcon, PencilIcon, TrashIcon, TrophyIcon } from "@/components/art/Icons";
+import { CardIcon, KeyIcon, OfflineIcon, PencilIcon, TrashIcon, TrophyIcon } from "@/components/art/Icons";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import { useCopy, useLocale } from "@/i18n/client";
@@ -10,8 +10,12 @@ import { dateFormat } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
 import { useSound } from "@/lib/audio/hooks";
 import { join, leave, rename } from "@/lib/competition/client";
-import { useCompetition } from "@/lib/competition/hooks";
+import { scheduleCloudCopy } from "@/lib/competition/cloud-copy";
+import { useCloudCopyOnLeave, useCompetition } from "@/lib/competition/hooks";
+import { CloudCopyOffer } from "./CloudCopyOffer";
 import { NicknameForm } from "./NicknameForm";
+import { RecoverForm } from "./RecoverForm";
+import { RecoveryCodePanel } from "./RecoveryCodePanel";
 
 const COPY = localized({
   "pt-BR": {
@@ -29,9 +33,11 @@ const COPY = localized({
     records: "Ver recordes",
     rename: "Trocar apelido",
     leave: "Sair do placar",
+    move: "Levar para outro aparelho",
+    haveCard: "Já tenho carteirinha",
     save: "Salvar",
     leaveTitle: "Sair do placar?",
-    leaveText: "Seu apelido e seus resultados saem do placar. O progresso neste navegador continua.",
+    leaveText: "Seu apelido, seus resultados e a cópia do progresso saem do placar. O progresso neste navegador continua.",
     confirm: "Sim, apagar",
     cancel: "Cancelar",
     getCard: "Tirar carteirinha",
@@ -41,8 +47,9 @@ const COPY = localized({
       "O apelido que você escolher e um número de quatro dígitos para diferenciar apelidos iguais.",
       "Um código secreto guardado neste navegador, que funciona como sua carteirinha. Sem e-mail, sem senha, sem nome.",
       "Os resultados que você enviar para o placar.",
+      "Uma cópia do progresso deste navegador (fases, estrelas, conquistas, segredos e aventuras salvas), para você levar a outro aparelho com um código de recuperação.",
     ],
-    clear: "Se você limpar os dados do navegador, a carteirinha se perde. Ao sair do placar, apagamos tudo o que está no servidor na hora.",
+    clear: "Se você limpar os dados do navegador, a carteirinha só volta com o código de recuperação. Ao sair do placar, apagamos tudo o que está no servidor na hora, inclusive a cópia do progresso.",
   },
   en: {
     leaveError: "Couldn't reach the board right now. Try again in a little while.",
@@ -59,9 +66,11 @@ const COPY = localized({
     records: "See records",
     rename: "Change nickname",
     leave: "Leave the board",
+    move: "Take it to another device",
+    haveCard: "I already have a card",
     save: "Save",
     leaveTitle: "Leave the board?",
-    leaveText: "Your nickname and your results come off the board. Your progress in this browser stays.",
+    leaveText: "Your nickname, your results and the copy of your progress come off the board. Your progress in this browser stays.",
     confirm: "Yes, delete",
     cancel: "Cancel",
     getCard: "Get your card",
@@ -71,8 +80,9 @@ const COPY = localized({
       "The nickname you pick and a four-digit number to tell identical nicknames apart.",
       "A secret code saved in this browser that works as your membership card. No email, no password, no name.",
       "The results you send to the board.",
+      "A copy of this browser's progress (levels, stars, achievements, secrets and saved adventures), so you can take it to another device with a recovery code.",
     ],
-    clear: "If you clear your browser data, the membership card is lost. When you leave the board, we delete everything on the server right away.",
+    clear: "If you clear your browser data, the membership card only comes back with the recovery code. When you leave the board, we delete everything on the server right away, including the copy of your progress.",
   },
 });
 
@@ -82,11 +92,18 @@ function memberSince(iso: string, locale: Locale) {
 
 export function PlayerCard() {
   const { status, player } = useCompetition();
-  const [mode, setMode] = useState<"view" | "rename" | "leave">("view");
+  const [mode, setMode] = useState<"view" | "rename" | "leave" | "code" | "recover">("view");
   const [leaveError, setLeaveError] = useState("");
   const { play } = useSound();
   const copy = useCopy(COPY);
   const locale = useLocale();
+  useCloudCopyOnLeave();
+
+  const joinCard = async (nickname: string) => {
+    const outcome = await join(nickname);
+    if (outcome.ok) scheduleCloudCopy();
+    return outcome;
+  };
 
   const confirmLeave = async () => {
     const ok = await leave();
@@ -149,6 +166,9 @@ export function PlayerCard() {
               <InkButton tone="mint" size="sm" onClick={() => setMode("rename")} disabled={status !== "online"}>
                 <PencilIcon className="size-5" /> {copy.rename}
               </InkButton>
+              <InkButton tone="sky" size="sm" onClick={() => setMode("code")} disabled={status !== "online"}>
+                <KeyIcon className="size-5" /> {copy.move}
+              </InkButton>
               <InkButton tone="cream" size="sm" onClick={() => setMode("leave")} disabled={status !== "online"}>
                 <TrashIcon className="size-5" /> {copy.leave}
               </InkButton>
@@ -186,7 +206,21 @@ export function PlayerCard() {
               ) : null}
             </div>
           ) : null}
-          {!player && status === "online" ? <NicknameForm submitLabel={copy.getCard} onSubmit={join} /> : null}
+          {player && mode === "code" ? <RecoveryCodePanel recoveryAt={player.recoveryAt} onClose={() => setMode("view")} /> : null}
+          {player && status === "online" && mode === "view" ? <CloudCopyOffer playerId={player.id} /> : null}
+          {!player && status === "online" && mode === "recover" ? <RecoverForm onCancel={() => setMode("view")} onDone={() => setMode("view")} /> : null}
+          {!player && status === "online" && mode !== "recover" ? (
+            <>
+              <NicknameForm submitLabel={copy.getCard} onSubmit={joinCard} />
+              <button
+                type="button"
+                onClick={() => setMode("recover")}
+                className="mt-3 inline-flex items-center gap-1.5 font-display text-sm uppercase tracking-wider text-plum-600 underline decoration-2 underline-offset-4"
+              >
+                <KeyIcon className="size-4" /> {copy.haveCard}
+              </button>
+            </>
+          ) : null}
           {!player && status !== "online" ? <p className="copy-sm text-ink-soft">{copy.later}</p> : null}
         </div>
       </div>

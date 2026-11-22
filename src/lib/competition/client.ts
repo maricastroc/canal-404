@@ -48,7 +48,7 @@ export function getServerCompetition() {
   return SERVER_STATE;
 }
 
-export async function apiCall<T>(path: string, init: { method?: string; body?: unknown } = {}, timeout = TIMEOUT_MS): Promise<Call<T>> {
+export async function apiCall<T>(path: string, init: { method?: string; body?: unknown; keepalive?: boolean } = {}, timeout = TIMEOUT_MS): Promise<Call<T>> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeout);
   try {
@@ -58,6 +58,7 @@ export async function apiCall<T>(path: string, init: { method?: string; body?: u
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       credentials: "same-origin",
       cache: "no-store",
+      keepalive: init.keepalive,
       signal: controller.signal,
     });
     const data = (await response.json().catch(() => null)) as unknown;
@@ -238,6 +239,12 @@ export function join(nickname: string) {
 
 export function rename(nickname: string) {
   return identity("PATCH", nickname);
+}
+
+export function adoptPlayer(player: PublicPlayer) {
+  checkedAt = Date.now();
+  emit({ status: "online", player });
+  void flushOutbox();
 }
 
 export async function leave(): Promise<boolean> {

@@ -4,7 +4,7 @@ import type { IneligibleReason } from "./rules";
 
 export type CompetitionStatus = "online" | "offline" | "unconfigured";
 
-export type PublicPlayer = { id: string; nickname: string; tag: string; createdAt: string };
+export type PublicPlayer = { id: string; nickname: string; tag: string; createdAt: string; recoveryAt: string | null };
 
 export type BestView = { score: number; stars: number; metrics: number[]; achievedAt: string };
 

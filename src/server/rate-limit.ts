@@ -13,6 +13,10 @@ export const LIMITS = {
   rejected: { name: "rejected", max: 8, windowMs: 60 * 60 * 1000 },
   board: { name: "board", max: 3000, windowMs: 60 * 60 * 1000 },
   mission: { name: "mission", max: 2400, windowMs: 60 * 60 * 1000 },
+  recoveryCode: { name: "recovery-code", max: 6, windowMs: 60 * 60 * 1000 },
+  recover: { name: "recover", max: 20, windowMs: 60 * 60 * 1000 },
+  recoverDaily: { name: "recover-day", max: 60, windowMs: 24 * 60 * 60 * 1000 },
+  cloudCopy: { name: "cloud-copy", max: 120, windowMs: 60 * 60 * 1000 },
 } satisfies Record<string, Limit>;
 
 export async function consume(db: Db, limit: Limit, subject: string, now = new Date()) {

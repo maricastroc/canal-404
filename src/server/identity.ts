@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import type { Player } from "@/generated/prisma/client";
+import type { Player, PlayerSave } from "@/generated/prisma/client";
 import { NICKNAME_PROBLEMS } from "@/lib/competition/nickname";
+import { RECOVERY_ALPHABET, RECOVERY_LENGTH, type CloudCopy, type Snapshot } from "@/lib/competition/recovery";
 import type { PublicPlayer } from "@/lib/competition/types";
 import { isUniqueViolation, type Db } from "./db";
 import { HttpError } from "./http";
@@ -82,8 +83,20 @@ export function clearedPlayerCookie() {
   return `${PLAYER_COOKIE}=; Path=/api; Max-Age=0; HttpOnly; SameSite=Lax${secureFlag()}`;
 }
 
-export function publicPlayer(player: Pick<Player, "id" | "nickname" | "tag" | "createdAt">): PublicPlayer {
-  return { id: player.id, nickname: player.nickname, tag: player.tag, createdAt: player.createdAt.toISOString() };
+export function publicPlayer(player: Pick<Player, "id" | "nickname" | "tag" | "createdAt" | "recoveryAt">): PublicPlayer {
+  return { id: player.id, nickname: player.nickname, tag: player.tag, createdAt: player.createdAt.toISOString(), recoveryAt: player.recoveryAt?.toISOString() ?? null };
+}
+
+export function newRecoveryCode() {
+  return Array.from({ length: RECOVERY_LENGTH }, () => RECOVERY_ALPHABET[randomInt(0, RECOVERY_ALPHABET.length)]).join("");
+}
+
+export function tokenFromRecoveryCode(code: string) {
+  return createHash("sha256").update(`canal404:recovery:${code}`).digest("base64url");
+}
+
+export function cloudCopyView(save: Pick<PlayerSave, "data" | "savedAt"> | null): CloudCopy | null {
+  return save ? { savedAt: save.savedAt.toISOString(), snapshot: save.data as Snapshot } : null;
 }
 
 export async function currentPlayer(db: Db, request: Request, now = new Date()) {

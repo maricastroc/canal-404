@@ -15,6 +15,8 @@ import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber } from "@/i18n/format";
 import { connect, getCompetition, holdUntilJoined, join, pendingCount, requestTicket, submitResult, type SubmitOutcome, type TicketGrant } from "@/lib/competition/client";
+import { scheduleCloudCopy } from "@/lib/competition/cloud-copy";
+import { useCloudCopyOnLeave } from "@/lib/competition/hooks";
 import { isDayKey } from "@/lib/missions/calendar";
 import { loadMission } from "@/lib/missions/client";
 import { useMissionToday } from "@/lib/missions/hooks";
@@ -136,6 +138,7 @@ export function GameShell({ slug }: { slug: string }) {
   const locale = useLocale();
   const copy = COPY[locale];
   const game = getGame(slug, locale)!;
+  useCloudCopyOnLeave();
   const { play } = useSound();
   const stageRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -244,6 +247,7 @@ export function GameShell({ slug }: { slug: string }) {
         pendingRef.current = null;
         sendToBoard(pending);
       }
+      if (outcome.ok) scheduleCloudCopy();
       return outcome;
     },
     [sendToBoard],
@@ -384,6 +388,7 @@ export function GameShell({ slug }: { slug: string }) {
                   if (ACHIEVEMENTS.some((a) => a.id === id)) unlockAchievement(id as AchievementId);
                 });
                 sendToBoard({ ticket: run?.ticket ?? null, result: r });
+                scheduleCloudCopy();
                 setResult({ result: r, isRecord, note, mission: run?.mission ?? null });
                 const levelText = r.level ? text.levelPrefix(word, r.level.index + 1, r.level.title) : "";
                 announce(r.won ? text.announceWin(levelText, r.score, r.stars, isRecord) : text.announceLose(levelText, r.score));

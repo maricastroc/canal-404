@@ -1,6 +1,7 @@
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { attemptBonus } from "@/games/bad-ideas-lab/levels";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { CloudCopy } from "@/lib/competition/recovery";
 import type { ApiErrorBody, LeaderboardResponse, PublicPlayer } from "@/lib/competition/types";
 import { closeDb, type Db } from "@/server/db";
 import { LIMITS } from "@/server/rate-limit";
@@ -11,7 +12,10 @@ import { GET as cleanupGet } from "./cron/cleanup/route";
 import { GET as boardGet } from "./leaderboards/route";
 import { GET as missionHistoryGet } from "./missions/history/route";
 import { GET as missionTodayGet } from "./missions/today/route";
+import { GET as copyGet, PUT as copyPut } from "./players/me/copy/route";
+import { POST as recoveryPost } from "./players/me/recovery/route";
 import { DELETE as meDelete, GET as meGet, PATCH as mePatch } from "./players/me/route";
+import { POST as recoverPost } from "./players/recover/route";
 import { POST as join } from "./players/route";
 import { POST as submit } from "./runs/route";
 import { POST as ticket } from "./runs/tickets/route";
@@ -85,7 +89,7 @@ describe.skipIf(!hasTestDb)("competition API", () => {
   it("joins with a nickname and an httpOnly cookie, with no personal data", async () => {
     const { response, cookie, data } = await joinAs("  Déco   Turbo ");
     expect(response.status).toBe(201);
-    expect(data.player).toEqual({ id: expect.any(String), nickname: "Déco Turbo", tag: expect.stringMatching(/^\d{4}$/), createdAt: expect.any(String) });
+    expect(data.player).toEqual({ id: expect.any(String), nickname: "Déco Turbo", tag: expect.stringMatching(/^\d{4}$/), createdAt: expect.any(String), recoveryAt: null });
     const header = response.headers.get("set-cookie")!;
     expect(header).toMatch(/HttpOnly/);
     expect(header).toMatch(/SameSite=Lax/);
@@ -258,6 +262,69 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect((await boardGet(apiRequest("/api/leaderboards?game=strange-house"))).status).toBe(400);
     expect((await boardGet(apiRequest("/api/leaderboards?game=bad-ideas-lab"))).status).toBe(404);
     expect((await boardGet(apiRequest("/api/leaderboards?game=bad-ideas-lab&level=attic"))).status).toBe(404);
+  });
+
+  it("moves the card and the copy of the progress to another device with the recovery code", async () => {
+    const { cookie: original } = await joinAs();
+    const created = await recoveryPost(apiRequest("/api/players/me/recovery", { method: "POST", body: {}, cookie: original }));
+    expect(created.status).toBe(200);
+    const { code, player } = await body<{ code: string; player: PublicPlayer }>(created);
+    expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/);
+    expect(player.recoveryAt).toEqual(expect.any(String));
+    const device = cookieFrom(created);
+    expect(device).not.toBe(original);
+    expect(created.headers.get("set-cookie")).toMatch(/HttpOnly/);
+    expect(await body(await meGet(apiRequest("/api/players/me", { cookie: original })))).toEqual({ player: null });
+
+    const snapshot = { version: 1, keys: { "canal404:progress:v1": JSON.stringify({ version: 1, visits: 3 }), "canal404:pajama-war:v1": '{"version":1}' } };
+    expect((await copyPut(apiRequest("/api/players/me/copy", { method: "PUT", body: snapshot, cookie: device }))).status).toBe(200);
+
+    const typed = code.toLowerCase().replaceAll("-", " ").replaceAll("0", "o").replaceAll("1", "l");
+    const recovered = await recoverPost(apiRequest("/api/players/recover", { method: "POST", body: { code: typed } }));
+    expect(recovered.status).toBe(200);
+    const data = await body<{ player: PublicPlayer; copy: CloudCopy }>(recovered);
+    expect(data.player.id).toBe(player.id);
+    expect(data.copy.snapshot).toEqual(snapshot);
+    expect(cookieFrom(recovered)).toBe(device);
+    expect((await body<{ player: PublicPlayer }>(await meGet(apiRequest("/api/players/me", { cookie: device })))).player.id).toBe(player.id);
+
+    const renewed = await recoveryPost(apiRequest("/api/players/me/recovery", { method: "POST", body: {}, cookie: device }));
+    expect((await body<{ code: string }>(renewed)).code).not.toBe(code);
+    expect(await body(await meGet(apiRequest("/api/players/me", { cookie: device })))).toEqual({ player: null });
+    expect((await recoverPost(apiRequest("/api/players/recover", { method: "POST", body: { code } }))).status).toBe(404);
+  });
+
+  it("refuses wrong recovery codes, cross-site attempts and too many guesses from one address", async () => {
+    const guess = (code: string, address = "198.51.100.20", headers: Record<string, string> = {}) =>
+      recoverPost(apiRequest("/api/players/recover", { method: "POST", body: { code }, headers: { "x-forwarded-for": address, ...headers } }));
+    expect((await guess("0000-0000-0000-0000", "198.51.100.21", { origin: "https://evil.example" })).status).toBe(403);
+    const wrong = await guess("0000-0000-0000-0000");
+    expect(wrong.status).toBe(404);
+    expect(wrong.headers.get("set-cookie")).toBeNull();
+    expect((await guess("abc")).status).toBe(404);
+    for (let i = 2; i < LIMITS.recover.max; i += 1) await guess("0000-0000-0000-0000");
+    expect((await guess("0000-0000-0000-0000")).status).toBe(429);
+    expect((await guess("0000-0000-0000-0000", "198.51.100.22")).status).toBe(404);
+    expect((await recoveryPost(apiRequest("/api/players/me/recovery", { method: "POST", body: {} }))).status).toBe(401);
+  });
+
+  it("keeps the copy of the progress private, refuses the device's own keys and erases it with the player", async () => {
+    const put = (cookie: string | undefined, keys: Record<string, string>, headers: Record<string, string> = {}) =>
+      copyPut(apiRequest("/api/players/me/copy", { method: "PUT", body: { version: 1, keys }, cookie, headers }));
+    const progress = { "canal404:progress:v1": '{"version":1}' };
+    expect((await put(undefined, progress)).status).toBe(401);
+    const { cookie: owner } = await joinAs("Pato Veloz", "203.0.113.30");
+    const { cookie: other } = await joinAs("Lina Elétrica", "203.0.113.31");
+    expect((await put(owner, progress, { origin: "https://evil.example" })).status).toBe(403);
+    expect((await put(owner, { "canal404:outbox:v1": "{}" })).status).toBe(400);
+    expect((await put(owner, { "canal404:progress:v1:backup:v0:1": "{}" })).status).toBe(400);
+    expect((await put(owner, { "outro-site": "x" })).status).toBe(400);
+    expect((await put(owner, { "canal404:progress:v1": "x".repeat(60_000) })).status).toBe(413);
+    expect((await put(owner, progress)).status).toBe(200);
+    expect((await body<{ copy: CloudCopy | null }>(await copyGet(apiRequest("/api/players/me/copy", { cookie: other })))).copy).toBeNull();
+    expect((await body<{ copy: CloudCopy | null }>(await copyGet(apiRequest("/api/players/me/copy", { cookie: owner })))).copy?.snapshot.keys).toEqual(progress);
+    await meDelete(apiRequest("/api/players/me", { method: "DELETE", cookie: owner }));
+    expect(await db.playerSave.count()).toBe(0);
   });
 
   it("protects the cleanup job with the cron secret", async () => {
