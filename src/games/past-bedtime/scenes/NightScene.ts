@@ -8,7 +8,7 @@ import { isCreaky, isHiding, isWall, noiseDistances, pathTo } from "../sim/grid"
 import { ACTS, LEVELS } from "../sim/levels";
 import { encodeMoves } from "../sim/judge";
 import { partStars } from "../sim/score";
-import { agentPos, canMove, createSim, isCuckooTurn, isPeeking, step, turnsToCuckoo, turnsToKnock, turnsToToss, watchedTiles, type Sim } from "../sim/sim";
+import { agentPos, canMove, createSim, isCuckooTurn, isPeeking, nextTo, step, STIR_WAKE, turnsToCuckoo, turnsToKnock, turnsToToss, watchedTiles, type Sim } from "../sim/sim";
 import { solve } from "../sim/solver";
 import { DX, DY, type Action, type Dir, type SimEvent, type State } from "../sim/types";
 import { NIGHT_SFX } from "../sounds";
@@ -21,7 +21,7 @@ import { drawExit } from "./exit";
 import { StoryBox } from "./story";
 import { drawCreakMarks, drawCreaks, drawFloor, drawHides, drawProps, drawWalls, faceMap, hideStyleFor, NIGHT, themeFor } from "./house";
 import { computeLayout, tileCenter, wobble, type Layout, type Orientation } from "./layout";
-import { Notebook, type ButtonId, type LegendItem } from "./notebook";
+import { Notebook, type ButtonId, type LegendItem, type NoteKind } from "./notebook";
 import type { NightUiScene } from "./NightUi";
 
 export type WinReport = { level: string; index: number; turns: number; par: number; stars: number; hints: number; moves: string; wakes: number; creaks: number; covered: number };
@@ -47,6 +47,12 @@ export type NightBridge = {
 export type Command = "up" | "right" | "down" | "left" | "wait" | "undo" | "restart" | "hint" | "next" | "rules" | "view";
 
 type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView } | { kind: "cat"; view: CatView }) & { status: StatusIcon };
+
+type Note = { text: string; kind: NoteKind };
+
+type Danger = Note & { lapse: string; stripes: boolean };
+
+type Ahead = { result: NonNullable<ReturnType<typeof step>>; striped: Set<number> };
 
 const CHAR_SCALE = 1.14;
 
@@ -86,6 +92,9 @@ export class NightScene extends Phaser.Scene {
   private lastInput = 0;
   private pointerStart: { x: number; y: number } | null = null;
   private wasBreathing = false;
+  private ahead: Ahead | null = null;
+  private pinned: Danger | null = null;
+  private stripesTold = false;
   private flinch = false;
   private useArt = false;
   private artHides = false;
@@ -152,6 +161,7 @@ export class NightScene extends Phaser.Scene {
     this.refreshOverlays();
     this.notebook.setPlan(this.actions);
     this.notebook.setStats(this.state.turn, this.hints);
+    if (this.state.status === "playing") this.settleNotes();
     if (this.state.status === "won") this.notebook.showWin(this.state.turn, this.sim.grid.level.par, partStars(this.sim.grid.level.par, this.state.turn, this.hints), this.levelIndex === LEVELS.length - 1, this.copy.lines.brunoWin[this.sim.grid.level.id] ?? this.copy.notes.won);
   }
 
@@ -182,6 +192,9 @@ export class NightScene extends Phaser.Scene {
     this.busy = false;
     this.queued = null;
     this.state = this.sim.initial;
+    this.wasBreathing = false;
+    this.pinned = null;
+    this.stripesTold = false;
     const grid = this.sim.grid;
     const L = this.layout;
     const s = L.tile;
@@ -730,50 +743,51 @@ export class NightScene extends Phaser.Scene {
 
   private turnNote(prev: State, events: SimEvent[]) {
     const n = this.copy.notes;
-    const nb = this.notebook;
+    const picks: Note[] = [];
+    const note = (text: string, kind: NoteKind) => picks.push({ text, kind });
     const creak = events.find((e) => e.type === "creak");
     const heard = events.filter((e) => e.type === "heard");
     const level = this.sim.grid.level;
     if (creak && creak.type === "creak") {
-      if (creak.masked) nb.note(n.masked, "good");
-      else if (heard.length === 0) nb.note(n.unheard, "info");
+      if (creak.masked) note(n.masked, "good");
+      else if (heard.length === 0) note(n.unheard, "info");
     }
     for (const e of heard) {
       if (e.type !== "heard") continue;
       const kind = level.agents[e.agent].kind;
-      if (kind === "dog") nb.note(n.wokeDog, "warn");
-      else if (kind === "sleeper") nb.note(n.woke, "warn");
-      else nb.note(n.grandmaStopped, "warn");
+      if (kind === "dog") note(n.wokeDog, "warn");
+      else if (kind === "sleeper") note(n.woke, "warn");
+      else note(n.grandmaStopped, "warn");
     }
-    if (events.some((e) => e.type === "sleep")) nb.note(n.backToSleep, "good");
-    if (events.some((e) => e.type === "resume")) nb.note(n.grandmaBack, "info");
-    if (events.some((e) => e.type === "dogArrive")) nb.note(n.dogSniff, "good");
-    if (events.some((e) => e.type === "dogHome")) nb.note(n.dogHome, "info");
+    if (events.some((e) => e.type === "sleep")) note(n.backToSleep, "good");
+    if (events.some((e) => e.type === "resume")) note(n.grandmaBack, "info");
+    if (events.some((e) => e.type === "dogArrive")) note(n.dogSniff, "good");
+    if (events.some((e) => e.type === "dogHome")) note(n.dogHome, "info");
     this.state.agents.forEach((a, i) => {
       const before = prev.agents[i];
       if (a.kind === "dog" && before.kind === "dog") {
-        if (a.mode === "go" && before.mode === "go" && !heard.length) nb.note(n.dogGoing, "good");
-        if (a.mode === "back" && before.mode === "sniff") nb.note(n.dogBack, "warn");
+        if (a.mode === "go" && before.mode === "go" && !heard.length) note(n.dogGoing, "good");
+        if (a.mode === "back" && before.mode === "sniff") note(n.dogBack, "warn");
       }
-      if (a.kind === "sleeper" && a.awake > 0 && !heard.some((h) => h.type === "heard" && h.agent === i) && !events.some((e) => e.type === "toss")) nb.note(n.stillAwake(a.awake), "warn");
+      if (a.kind === "sleeper" && a.awake > 0 && !heard.some((h) => h.type === "heard" && h.agent === i) && !events.some((e) => e.type === "toss")) note(n.stillAwake(a.awake), "warn");
       const def = level.agents[i];
-      if (a.kind === "sleeper" && def.kind === "sleeper" && a.awake === 0 && turnsToToss(def, this.state.turn) === 1) nb.note(n.tossSoon, "warn");
-      if (a.kind === "patrol" && def.kind === "patrol" && a.alert === 0 && def.path[(a.idx + 1) % def.path.length].peek) nb.note(n.peekSoon, "warn");
+      if (a.kind === "sleeper" && def.kind === "sleeper" && a.awake === 0 && turnsToToss(def, this.state.turn) === 1) note(n.tossSoon, "warn");
+      if (a.kind === "patrol" && def.kind === "patrol" && a.alert === 0 && def.path[(a.idx + 1) % def.path.length].peek) note(n.peekSoon, "warn");
     });
     if (level.clock && turnsToCuckoo(this.sim.grid, this.state.turn) === 1) {
       const board = ([0, 1, 2, 3] as Dir[]).some((d) => canMove(this.sim, this.state, d) && isCreaky(this.sim.grid, this.state.x + DX[d], this.state.y + DY[d]));
-      nb.note(board ? n.stepNow : n.cuckooSoon, board ? "good" : "warn");
+      note(board ? n.stepNow : n.cuckooSoon, board ? "good" : "warn");
     }
     const grid = this.sim.grid;
-    if (events.some((e) => e.type === "knock")) nb.note(n.knocked, "warn");
+    if (events.some((e) => e.type === "knock")) note(n.knocked, "warn");
     level.agents.forEach((def) => {
-      if (def.kind === "cat" && turnsToKnock(def, this.state.turn) === 1) nb.note(n.knockSoon, "warn");
+      if (def.kind === "cat" && turnsToKnock(def, this.state.turn) === 1) note(n.knockSoon, "warn");
     });
     const hiddenNow = isHiding(grid, this.state.x, this.state.y);
-    if (hiddenNow && !isHiding(grid, prev.x, prev.y)) nb.note(n.hidden, "good");
+    if (hiddenNow && !isHiding(grid, prev.x, prev.y)) note(n.hidden, "good");
     if (hiddenNow) {
       const idx = this.state.y * grid.w + this.state.x;
-      if (this.state.agents.some((_a, i) => watchedTiles(grid, this.state.agents, i).includes(idx))) nb.note(n.hiddenSafe, "good");
+      if (this.state.agents.some((_a, i) => watchedTiles(grid, this.state.agents, i).includes(idx))) note(n.hiddenSafe, "good");
     }
     this.state.agents.forEach((_a, i) => {
       if (!isPeeking(grid, this.state.agents, i)) return;
@@ -784,12 +798,47 @@ export class NightScene extends Phaser.Scene {
     });
     const breathing = this.bruno.getMood() === "breath";
     if (breathing && !this.wasBreathing) {
-      nb.note(n.holdBreath, "info");
+      note(n.holdBreath, "info");
       this.mumbleNearby();
     }
     this.wasBreathing = breathing;
-    if (events.some((e) => e.type === "toss")) nb.note(n.tossed, "warn");
-    if (events.some((e) => e.type === "stir")) nb.note(n.stirred, "bad");
+    if (events.some((e) => e.type === "toss")) note(n.tossed, "warn");
+    const danger = this.danger();
+    const firstStripes = !this.stripesTold && !!this.ahead?.striped.size;
+    const pin = this.pinned;
+    const lapse: Note | null = pin && this.notebook.showing(pin.text) && this.ahead?.result.state.status !== "caught" ? { text: pin.lapse, kind: "good" } : null;
+    const shown = danger ?? (firstStripes ? { text: n.stripes, kind: "info" } : null) ?? picks[picks.length - 1] ?? lapse;
+    if (danger ? danger.stripes : firstStripes) this.stripesTold = true;
+    this.pinned = danger;
+    if (shown) this.notebook.note(shown.text, shown.kind);
+  }
+
+  private danger(): Danger | null {
+    const st = this.state;
+    const grid = this.sim.grid;
+    const n = this.copy.notes;
+    const ahead = this.ahead;
+    const end = ahead?.result.state;
+    if (ahead && end && end.status === "caught" && end.reason === "light" && ahead.striped.has(st.y * grid.w + st.x)) {
+      const stir = ahead.result.events.some((e) => e.type === "heard" && e.agent === end.caughtBy && e.source === -2);
+      return { text: stir ? n.seenStir : n.seen, kind: "bad", lapse: stir ? n.calm : n.clear, stripes: true };
+    }
+    const stirred = st.agents.some((a, i) => {
+      if (a.kind !== "sleeper" && a.kind !== "dog") return false;
+      const asleep = a.kind === "sleeper" ? a.awake === 0 : a.mode === "sleep";
+      const p = agentPos(grid, i, a);
+      return asleep && a.stir >= STIR_WAKE - 1 && nextTo(p.x, p.y, st.x, st.y);
+    });
+    return stirred ? { text: n.stirred, kind: "bad", lapse: n.calm, stripes: false } : null;
+  }
+
+  private settleNotes(fallback?: string) {
+    const danger = this.danger();
+    this.pinned = danger;
+    this.wasBreathing = this.moodFor(this.state) === "breath";
+    if (danger?.stripes) this.stripesTold = true;
+    if (danger) this.notebook.note(danger.text, danger.kind);
+    else if (fallback) this.notebook.note(fallback, "info");
   }
 
   private mumbleNearby() {
@@ -947,6 +996,7 @@ export class NightScene extends Phaser.Scene {
     this.watchSpots = [];
     for (const b of this.badges) b.destroy();
     this.badges = [];
+    this.ahead = null;
     const st = this.state;
     if (st.status !== "playing") return;
     const grid = this.sim.grid;
@@ -958,10 +1008,10 @@ export class NightScene extends Phaser.Scene {
     const predicted = step(this.sim, st, "wait");
     if (predicted) {
       const nextAgents = predicted.state.agents;
-      const next = new Set<number>();
-      nextAgents.forEach((_a, i) => watchedTiles(grid, nextAgents, i).forEach((t) => next.add(t)));
-      for (const idx of next) {
-        if (now.has(idx)) continue;
+      const striped = new Set<number>();
+      nextAgents.forEach((_a, i) => watchedTiles(grid, nextAgents, i).forEach((t) => !now.has(t) && striped.add(t)));
+      this.ahead = { result: predicted, striped };
+      for (const idx of striped) {
         const r = this.tileRect(g, idx, 6);
         g.fillStyle(0xffe39a, 0.07);
         g.fillRoundedRect(r.x, r.y, r.s, r.s, 8);
@@ -1298,7 +1348,7 @@ export class NightScene extends Phaser.Scene {
       this.refreshOverlays();
       this.notebook.setPlan(this.actions);
       this.notebook.setStats(this.state.turn, this.hints);
-      this.notebook.note(this.copy.notes.undone, "info");
+      this.settleNotes(this.copy.notes.undone);
     });
   }
 
@@ -1322,7 +1372,7 @@ export class NightScene extends Phaser.Scene {
     this.notebook.setPlan([]);
     this.notebook.setStats(0, this.hints);
     this.notebook.clearNotes();
-    this.notebook.note(this.copy.notes.restarted, "info");
+    this.settleNotes(this.copy.notes.restarted);
   }
 
   private hint() {

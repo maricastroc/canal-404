@@ -37,6 +37,11 @@ export type NightCopy = {
     backToSleep: string;
     holdBreath: string;
     stirred: string;
+    seen: string;
+    seenStir: string;
+    stripes: string;
+    calm: string;
+    clear: string;
     tossed: string;
     tossSoon: string;
     peekSoon: string;
@@ -244,8 +249,13 @@ export const NIGHT_COPY = localized<NightCopy>({
       wokeDog: "A Pipoca ouviu! Lá vem ela.",
       stillAwake: (n) => (n === 1 ? "Dorme de novo na próxima jogada." : `Dorme de novo em ${n} jogadas.`),
       backToSleep: "Dormiu de novo. Ufa.",
-      holdBreath: "Colado em quem dorme. Se eu parar aqui, acorda!",
-      stirred: "Se mexeu! Mais uma espera aqui e acorda.",
+      holdBreath: "Colado em quem dorme: se eu esperar duas vezes, acorda.",
+      stirred: "Se mexeu! Mais uma espera colado e acorda.",
+      seen: "Listrado: se eu esperar, me veem.",
+      seenStir: "O pai se mexeu! Listrado: se eu esperar, ele acorda e me vê.",
+      stripes: "Listrado: onde vão olhar se eu esperar.",
+      calm: "Saí de perto. Já posso esperar.",
+      clear: "Saí do listrado. Já posso esperar.",
       tossed: "Virou na cama e espiou! Fica fora da vista.",
       tossSoon: "O pai vai virar na próxima jogada.",
       peekSoon: "A Vó vai espiar o esconderijo!",
@@ -466,8 +476,13 @@ export const NIGHT_COPY = localized<NightCopy>({
       wokeDog: "Pipoca heard it! Here she comes.",
       stillAwake: (n) => (n === 1 ? "Back to sleep after the next move." : `Back to sleep in ${n} moves.`),
       backToSleep: "Back to sleep. Phew.",
-      holdBreath: "Right next to a sleeper. If I stop here, they'll wake!",
-      stirred: "They stirred! One more wait here and they're up.",
+      holdBreath: "Right next to a sleeper: if I wait twice, they wake up.",
+      stirred: "They stirred! One more wait next to them and they're up.",
+      seen: "Stripes: if I wait, they'll see me.",
+      seenStir: "Dad stirred! Stripes: if I wait, he wakes up and sees me.",
+      stripes: "Stripes: where they'll look if I wait.",
+      calm: "Stepped away. I can wait again.",
+      clear: "Off the stripes. I can wait again.",
       tossed: "He rolled over and peeked! Stay out of sight.",
       tossSoon: "Dad rolls over on the next move.",
       peekSoon: "Grandma's about to check the hiding spot!",
