@@ -288,8 +288,8 @@ export class Notebook implements NotebookView {
     cardBg.lineBetween(c.w - 34, c.h, c.w, c.h - 34);
     cardBg.fillStyle(0xffffff, 0.55);
     cardBg.fillRect(c.w / 2 - 44, -10, 88, 22);
-    this.cardText = scene.add.text(22, 26, "", { fontFamily: fonts.hand, fontSize: "31px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 }, lineSpacing: 2 });
-    this.cardSub = scene.add.text(22, 0, "", { fontFamily: fonts.hand, fontSize: "24px", color: PENCIL_SOFT, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 } });
+    this.cardText = scene.add.text(22, 26, "", { fontFamily: this.round, fontStyle: "600", fontSize: "27px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 }, lineSpacing: 2 });
+    this.cardSub = scene.add.text(22, 0, "", { fontFamily: this.round, fontStyle: "600", fontSize: "21px", color: PENCIL_SOFT, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 } });
     this.card = scene.add.container(c.x, c.y, [cardBg, this.cardText, this.cardSub]).setAngle(-1.2);
     this.container.add(this.card);
   }
@@ -516,7 +516,14 @@ export class Notebook implements NotebookView {
     const tip = this.tip;
     this.card.setVisible(this.mode !== "won");
     this.cardText.setText(tip ? tip.text : "").setColor(tip ? COLORS[tip.kind] : PENCIL);
-    this.cardSub.setText(sub).setY(this.cardText.y + this.cardText.height + 8);
+    this.cardSub.setText(sub);
+    const room = this.spots.card.h - this.cardText.y - 10;
+    for (let size = 27; size >= 21; size -= 1) {
+      this.cardText.setFontSize(size);
+      this.cardSub.setFontSize(size - 6);
+      if (this.cardText.height + (sub ? this.cardSub.height + 8 : 0) <= room) break;
+    }
+    this.cardSub.setY(this.cardText.y + this.cardText.height + 8);
     if (!animate || !tip) return;
     const full = tip.text;
     let shown = 1;

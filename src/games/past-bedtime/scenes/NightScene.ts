@@ -1714,8 +1714,8 @@ export class NightScene extends Phaser.Scene {
 
   private buildViewChip() {
     const L = this.layout;
-    const size = L.kind === "full" ? 26 : Math.round(14 * L.unit);
-    const label = this.ui.add.text(0, 0, "", { fontFamily: this.bridge.fonts.hand, fontSize: `${size}px`, color: "#1d1830", padding: { x: 2, y: 3 } }).setOrigin(0, 0.5).setDepth(26);
+    const size = L.kind === "full" ? 22 : Math.round(13 * L.unit);
+    const label = this.ui.add.text(0, 0, "", { fontFamily: this.bridge.fonts.round ?? this.bridge.fonts.body, fontStyle: "700", fontSize: `${size}px`, color: "#1d1830", padding: { x: 2, y: 3 } }).setOrigin(0, 0.5).setDepth(26);
     const icon = this.ui.add.image(0, 0, iconKey("view")).setDisplaySize(size, size).setDepth(26);
     const bg = this.ui.add.graphics().setDepth(25);
     this.viewChip = { box: { x: 0, y: 0, w: 0, h: 0 }, label, icon, size, bg };
