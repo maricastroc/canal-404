@@ -70,6 +70,7 @@ export class PhoneNotebook implements NotebookView {
   private cardText!: Phaser.GameObjects.Text;
   private cardSub!: Phaser.GameObjects.Text;
   private cardBox!: { w: number; h: number };
+  private cardFill = NOTE;
   private stamp: Phaser.GameObjects.Container | null = null;
   private winInk: Phaser.GameObjects.GameObject[] = [];
   private padG!: Phaser.GameObjects.Graphics;
@@ -103,7 +104,7 @@ export class PhoneNotebook implements NotebookView {
     this.u = layout.unit;
     this.hud = layout.hud!;
     this.band = layout.kind === "band";
-    this.compact = !this.band && this.hud.strip.h < 50 * this.u;
+    this.compact = this.hud.compact;
     this.buildBackdrop();
     this.buildStrip();
     this.buildCard();
@@ -171,7 +172,8 @@ export class PhoneNotebook implements NotebookView {
     for (const r of deckRects) {
       g.fillStyle(DECK, 1);
       g.fillRect(r.x, r.y, r.w, r.h);
-      for (let i = 0; i < 16; i += 1) {
+      const stars = Math.max(16, Math.round((r.w * r.h) / (4600 * this.u * this.u)));
+      for (let i = 0; i < stars; i += 1) {
         g.fillStyle(0xd9ccff, 0.08 + wobble(i * 7 + r.x) * 0.12);
         g.fillCircle(r.x + wobble(i * 3 + r.y) * r.w, r.y + wobble(i * 11 + r.x) * r.h, this.px(0.8 + wobble(i) * 1.1));
       }
@@ -349,7 +351,15 @@ export class PhoneNotebook implements NotebookView {
     this.paintCard(NOTE);
   }
 
+  private fitCard(h: number) {
+    if (this.band || Math.abs(h - this.cardBox.h) < 0.5) return;
+    this.cardBox.h = h;
+    this.card.y = this.hud.note.y + h / 2;
+    this.paintCard(this.cardFill);
+  }
+
   private paintCard(fill: number) {
+    this.cardFill = fill;
     const { w, h } = this.cardBox;
     const g = this.cardBg;
     const r = this.px(5);
@@ -379,14 +389,16 @@ export class PhoneNotebook implements NotebookView {
     const full = tip ? tip.text : "";
     this.cardText.setColor(tip ? COLORS[tip.kind] : PENCIL).setWordWrapWidth(wrap).setText(full);
     this.cardSub.setWordWrapWidth(wrap).setText(sub);
-    const room = h - this.px(this.band ? 14 : 10);
+    const padY = this.px(this.compact ? 5 : 6);
+    const room = this.band ? h - this.px(14) : this.hud.note.h - padY * 2;
     for (let size = this.band ? 16 : 16.5; size >= 12.5; size -= 0.5) {
       this.cardText.setFontSize(Math.round(this.px(size)));
       this.cardSub.setFontSize(Math.round(this.px(Math.max(12, size - 2.5))));
       if (this.cardText.height + (sub ? this.cardSub.height : 0) <= room) break;
     }
     const total = this.cardText.height + (sub ? this.cardSub.height : 0);
-    const top = this.band ? -h / 2 + this.px(10) : -total / 2;
+    if (!this.band) this.fitCard(Math.min(this.hud.note.h, Math.max(total, this.px(22)) + padY * 2));
+    const top = this.band ? -this.cardBox.h / 2 + this.px(10) : -total / 2;
     this.cardText.setPosition(-w / 2 + pad, top);
     this.cardSub.setPosition(-w / 2 + pad, top + this.cardText.height);
     if (!animate || !tip) return;
@@ -475,13 +487,23 @@ export class PhoneNotebook implements NotebookView {
       const tip = { x: ax + dx * k, y: ay + dy * k };
       const b1 = { x: ax - dx * k * 0.75 + dy * k, y: ay - dy * k * 0.75 + dx * k };
       const b2 = { x: ax - dx * k * 0.75 - dy * k, y: ay - dy * k * 0.75 - dx * k };
-      g.fillStyle(INK, live && this.open[d] ? 1 : 0.22);
+      if (live && this.open[d]) {
+        g.fillStyle(INK, 1);
+        g.fillTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
+        continue;
+      }
+      g.fillStyle(INK, 0.1);
       g.fillTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
+      g.lineStyle(this.px(1.6), INK, 0.42);
+      g.strokeTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
     }
-    g.fillStyle(0xe8dcc0, 1);
-    g.fillCircle(cx, cy, a * 0.26);
-    g.lineStyle(this.px(1.5), INK, 0.55);
-    g.strokeCircle(cx, cy, a * 0.26);
+    const dimple = a * 0.17;
+    g.fillStyle(0xeee4ca, 1);
+    g.fillCircle(cx, cy, dimple);
+    g.lineStyle(this.px(1.2), INK, 0.14);
+    g.beginPath();
+    g.arc(cx, cy, dimple, Math.PI * 1.1, Math.PI * 1.9);
+    g.strokePath();
   }
 
   private letGo() {
@@ -546,8 +568,8 @@ export class PhoneNotebook implements NotebookView {
 
   private buildActions() {
     const r = this.hud.actions;
-    const gap = this.px(8);
-    const smallH = this.px(this.band || this.compact ? 42 : 46);
+    const gap = this.px(7);
+    const smallH = this.px(this.band || this.compact ? 40 : 42);
     const bigH = (r.h - smallH - gap * 2) / 2;
     this.makeButton("wait", r.x, r.y, r.w, bigH, 0xffffff, "wait", this.copy.buttons.wait, false);
     this.makeButton("undo", r.x, r.y + bigH + gap, r.w, bigH, 0xf9e0b0, "undo", this.copy.buttons.undo, false);
@@ -762,6 +784,7 @@ export class PhoneNotebook implements NotebookView {
     this.renderCard(false);
     this.cardText.setVisible(false);
     this.cardSub.setVisible(false);
+    this.fitCard(this.hud.note.h);
     this.paintCard(0xd8f5c9);
     const { w, h } = this.cardBox;
     const title = this.text(0, 0, this.copy.wonTitle, this.band ? 17 : 19, "#23794b", "display").setOrigin(this.band ? 0.5 : 0, 0.5);
@@ -772,8 +795,8 @@ export class PhoneNotebook implements NotebookView {
       title.setPosition(0, -h / 2 + this.px(22));
       moves.setPosition(0, title.y + this.px(52));
     } else {
-      title.setPosition(-w / 2 + this.px(12), -this.px(10));
-      moves.setPosition(-w / 2 + this.px(12), this.px(13));
+      title.setPosition(-w / 2 + this.px(12), -h * 0.2);
+      moves.setPosition(-w / 2 + this.px(12), h * 0.27);
     }
     const sx = this.band ? -r * 2.4 : w / 2 - this.px(18) - r * 5;
     const sy = this.band ? title.y + this.px(26) : 0;
@@ -836,7 +859,7 @@ export class PhoneNotebook implements NotebookView {
     const keepScroll = this.page?.kind === kind ? this.page.content.y : null;
     this.closePage();
     const s = this.scene;
-    const a = this.layout.map;
+    const a = this.hud.sheet;
     const g = s.add.graphics();
     g.fillStyle(INK, 0.85);
     g.fillRoundedRect(a.x + this.px(3), a.y + this.px(5), a.w, a.h, this.px(12));
