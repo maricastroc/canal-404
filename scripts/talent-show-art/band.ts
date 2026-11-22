@@ -76,9 +76,24 @@ function arm(kid: Kid, side: 0 | 1, elbow: Point, to: Point) {
   return `${limb(path, k.skin)}<path d="${cap}" fill="none" stroke="${P.ink}" stroke-width="30" stroke-linecap="round"/><path d="${cap}" fill="none" stroke="${k.top}" stroke-width="20" stroke-linecap="round"/>`;
 }
 
+function hangingArm(kid: Kid, side: 0 | 1, elbow: Point, to: Point) {
+  const k = LOOK[kid];
+  const inset = BUST_INSET[kid] ?? 0;
+  const m = ([x, y]: Point): Point => (side === 0 ? [x, y] : [200 - x, y]);
+  const [sx, sy] = m([20 + inset, 230]);
+  const [bx, by] = m([elbow[0] + 1, (230 + elbow[1]) / 2]);
+  const [ex, ey] = m(elbow);
+  const [vx, vy] = m([17 + inset, 243]);
+  const [wx, wy] = m([16 + inset, 254]);
+  const [hx, hy] = m(to);
+  const upper = `${limb(`M${sx} ${sy} Q${bx} ${by} ${ex} ${ey}`, k.skin)}${limb(`M${sx} ${sy} Q${vx} ${vy} ${wx} ${wy}`, k.top, 40)}`;
+  const fore = limb(`M${ex} ${ey} L${hx} ${hy}`, k.skin);
+  return { upper, fore };
+}
+
 function bucket(pose: Pose) {
   const top = 296;
-  const lines = pose === "hit" ? `<path d="M48 ${top - 22} L36 ${top - 38} M100 ${top - 26} L100 ${top - 46} M152 ${top - 22} L164 ${top - 38}" ${ink(5)}/>` : "";
+  const lines = pose === "hit" ? `<path d="M40 ${top + 34} L20 ${top + 24} M38 ${top + 54} L16 ${top + 54} M160 ${top + 34} L180 ${top + 24} M162 ${top + 54} L184 ${top + 54}" ${ink(5)}/>` : "";
   return `<rect x="46" y="384" width="108" height="62" rx="6" fill="${P.wood}" ${ink(4.5)}/><path d="M46 404 L154 404 M46 424 L154 424" stroke="${P.woodDeep}" stroke-width="4"/><path d="M58 ${top} L142 ${top} L156 384 L44 384 Z" fill="#9aa6b8" ${ink(4.5)}/><path d="M120 ${top} L142 ${top} L156 384 L132 384 Z" fill="#6b7590"/><ellipse cx="100" cy="${top}" rx="44" ry="10" fill="#c3ccd9" ${ink(4.5)}/><path d="M50 330 L150 330" stroke="#6b7590" stroke-width="5"/>${lines}`;
 }
 
@@ -119,19 +134,14 @@ function figure(kid: Kid, pose: Pose) {
   let back = "";
   let front = "";
   if (kid === "deco") {
-    if (pose === "ready") {
-      const hands: [Point, Point] = [
-        [58, 290],
-        [142, 290],
-      ];
-      front = bucket(pose) + arm(kid, 0, [12, 306], hands[0]) + arm(kid, 1, [188, 306], hands[1]) + spoon(hands[0], -50) + spoon(hands[1], -130) + hand(hands[0], k.skin) + hand(hands[1], k.skin);
-    } else {
-      const hands: [Point, Point] = [
-        [56, 276],
-        [144, 276],
-      ];
-      front = bucket(pose) + arm(kid, 0, [16, 300], hands[0]) + arm(kid, 1, [184, 300], hands[1]) + spoon(hands[0], 26) + spoon(hands[1], 154) + hand(hands[0], k.skin) + hand(hands[1], k.skin);
-    }
+    const ready = pose === "ready";
+    const elbow: Point = ready ? [24, 310] : [26, 304];
+    const grip: Point = ready ? [60, 292] : [58, 280];
+    const hands: [Point, Point] = [grip, [200 - grip[0], grip[1]]];
+    const sticks = ready ? spoon(hands[0], -50) + spoon(hands[1], -130) : spoon(hands[0], 26) + spoon(hands[1], 154);
+    const arms = [hangingArm(kid, 0, elbow, grip), hangingArm(kid, 1, elbow, grip)];
+    back = arms[0].upper + arms[1].upper;
+    front = bucket(pose) + arms[0].fore + arms[1].fore + sticks + hand(hands[0], k.skin) + hand(hands[1], k.skin);
   } else if (kid === "lina") {
     const y = pose === "ready" ? 284 : 300;
     const hands: [Point, Point] = [
