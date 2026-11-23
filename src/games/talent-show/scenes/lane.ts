@@ -50,7 +50,10 @@ export class IconPool {
   private readonly items: Phaser.GameObjects.Image[] = [];
   private used = 0;
 
-  constructor(private readonly create: () => Phaser.GameObjects.Image) {}
+  constructor(
+    private readonly create: () => Phaser.GameObjects.Image,
+    private readonly map: ((x: number, y: number) => { x: number; y: number }) | null = null,
+  ) {}
 
   begin() {
     this.used = 0;
@@ -63,12 +66,21 @@ export class IconPool {
       this.items.push(icon);
     }
     this.used += 1;
-    icon.setPosition(x, y).setDisplaySize(size, size).setAlpha(alpha).setVisible(true);
+    const p = this.map ? this.map(x, y) : { x, y };
+    icon.setPosition(p.x, p.y).setDisplaySize(size, size).setAlpha(alpha).setVisible(true);
   }
 
   end() {
     for (let i = this.used; i < this.items.length; i += 1) this.items[i].setVisible(false);
   }
+}
+
+export function shade(g: G, dx: number, dy: number) {
+  const a = -(g.rotation + (g.parentContainer?.rotation ?? 0));
+  if (a === 0) return { x: dx, y: dy };
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return { x: dx * c - dy * s, y: dx * s + dy * c };
 }
 
 export function ribbon(r: number) {
@@ -134,10 +146,12 @@ export function drawNote(g: G, icons: IconPool, x: number, y: number, r: number,
       g.lineStyle(5, color, 0.35 * alpha).lineBetween(x + r + 10, y + dy, x + r + 10 + len, y + dy);
     }
   }
-  g.fillStyle(C.ink, 0.55 * alpha).fillCircle(x + 3, y + 6, r);
+  const drop = shade(g, 3, 6);
+  const shine = shade(g, -r * 0.42, -r * 0.42);
+  g.fillStyle(C.ink, 0.55 * alpha).fillCircle(x + drop.x, y + drop.y, r);
   g.fillStyle(color, alpha).fillCircle(x, y, r);
   g.lineStyle(5, C.ink, alpha).strokeCircle(x, y, r);
-  g.fillStyle(C.paper, 0.55 * alpha).fillCircle(x - r * 0.42, y - r * 0.42, r * 0.18);
+  g.fillStyle(C.paper, 0.55 * alpha).fillCircle(x + shine.x, y + shine.y, r * 0.18);
   icons.place(x, y, r * 1.2, alpha);
 }
 
@@ -146,7 +160,8 @@ export function drawTail(g: G, x0: number, x1: number, y: number, r: number, col
   const b = Math.min(right, x1);
   if (b <= a || alpha <= 0) return;
   const h = r * 0.95;
-  g.fillStyle(C.ink, 0.45 * alpha).fillRoundedRect(a + 3, y - h / 2 + 5, b - a, h, h / 2);
+  const drop = shade(g, 3, 5);
+  g.fillStyle(C.ink, 0.45 * alpha).fillRoundedRect(a + drop.x, y - h / 2 + drop.y, b - a, h, h / 2);
   g.fillStyle(color, alpha).fillRoundedRect(a, y - h / 2, b - a, h, h / 2);
   g.lineStyle(4, C.ink, alpha).strokeRoundedRect(a, y - h / 2, b - a, h, h / 2);
   g.fillStyle(C.paper, 0.35 * alpha).fillRoundedRect(a + 8, y - h / 2 + 6, Math.max(0, b - a - 16), h * 0.18, h * 0.09);
@@ -164,7 +179,8 @@ export function drawCall(g: G, x: number, y: number, r: number, alpha: number) {
     { x: x + dx, y: y + dy + r * 0.9 },
     { x: x + dx - r * 0.75, y: y + dy },
   ];
-  g.fillStyle(C.ink, 0.5 * alpha).fillPoints(pts(3, 6), true);
+  const drop = shade(g, 3, 6);
+  g.fillStyle(C.ink, 0.5 * alpha).fillPoints(pts(drop.x, drop.y), true);
   g.fillStyle(C.plum300, alpha).fillPoints(pts(0, 0), true);
   g.lineStyle(5, C.ink, alpha).strokePoints(pts(0, 0), true);
 }

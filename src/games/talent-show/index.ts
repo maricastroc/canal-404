@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { songResult } from "./result";
-import { CANVAS, type Orientation } from "./scenes/layout";
+import { sameShape, shapeFor, type Shape } from "./scenes/layout";
 import { StageScene, type TalentBridge } from "./scenes/StageScene";
 import { SONG_ORDER } from "./song/songs";
 
@@ -40,9 +40,17 @@ function tutorialSeen() {
   return read(TUTORIAL_KEY) === "1";
 }
 
-function orientationOf(parent: HTMLElement): Orientation {
+function coarse() {
+  return window.matchMedia?.("(pointer: coarse)").matches ?? false;
+}
+
+function shapeOf(parent: HTMLElement): Shape {
   const { width, height } = parent.getBoundingClientRect();
-  return height > width * 1.15 && width < 900 ? "portrait" : "landscape";
+  return shapeFor(width, height, coarse());
+}
+
+function inlineScore(parent: HTMLElement) {
+  return parent.getBoundingClientRect().width < 640;
 }
 
 function mount(ctx: GameHostContext): GameInstance {
@@ -52,7 +60,8 @@ function mount(ctx: GameHostContext): GameInstance {
   let level = 0;
   let started = false;
   let pending: number | null = null;
-  let orientation = orientationOf(ctx.parent);
+  let shape = shapeOf(ctx.parent);
+  let stale = false;
   const pointers = new Set<number>();
 
   const scene = () => (game && game.scene.isActive("stage") ? (game.scene.getScene("stage") as StageScene) : null);
@@ -63,12 +72,12 @@ function mount(ctx: GameHostContext): GameInstance {
   };
 
   const boot = () => {
-    const size = CANVAS[orientation];
     const bridge: TalentBridge = {
       locale: ctx.locale,
       fonts: { display: ctx.fonts.display, body: ctx.fonts.body },
-      orientation,
-      touch: window.matchMedia?.("(pointer: coarse)").matches ?? false,
+      shape,
+      touch: coarse(),
+      inlineScore: inlineScore(ctx.parent),
       reducedMotion: ctx.reducedMotion,
       assist: { get: () => read(ASSIST_KEY) === "1", set: (on) => write(ASSIST_KEY, on ? "1" : "0") },
       tutorial: { seen: tutorialSeen, done: () => write(TUTORIAL_KEY, "1") },
@@ -98,12 +107,13 @@ function mount(ctx: GameHostContext): GameInstance {
         );
       },
       onPauseRequest: () => ctx.onEvent({ type: "pause-request" }),
+      onScore: (score) => ctx.onEvent({ type: "score", score }),
     };
     game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: ctx.parent,
-      width: size.W,
-      height: size.H,
+      width: shape.W,
+      height: shape.H,
       backgroundColor: "#1f1839",
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
       render: { antialias: true, roundPixels: false },
@@ -124,6 +134,9 @@ function mount(ctx: GameHostContext): GameInstance {
     if (event.button > 0) return;
     event.preventDefault();
     pointers.add(event.pointerId);
+    try {
+      ctx.parent.setPointerCapture(event.pointerId);
+    } catch {}
     scene()?.press(event.timeStamp, `p${event.pointerId}`, event.pageX, event.pageY);
   };
 
@@ -151,15 +164,26 @@ function mount(ctx: GameHostContext): GameInstance {
   target.addEventListener("keydown", keydown);
   target.addEventListener("keyup", keyup);
 
-  const observer = new ResizeObserver(() => {
-    if (!game) return;
-    const next = orientationOf(ctx.parent);
-    if (next !== orientation && ready && !scene()?.live()) {
-      orientation = next;
-      game.destroy(true);
-      boot();
-      return;
+  const reshape = () => {
+    if (!game) return false;
+    const next = shapeOf(ctx.parent);
+    if (sameShape(next, shape)) {
+      stale = false;
+      return false;
     }
+    if (!ready || scene()?.live()) {
+      stale = true;
+      return false;
+    }
+    shape = next;
+    stale = false;
+    game.destroy(true);
+    boot();
+    return true;
+  };
+
+  const observer = new ResizeObserver(() => {
+    if (!game || reshape()) return;
     game.scale.getParentBounds();
     game.scale.refresh();
   });
@@ -172,6 +196,7 @@ function mount(ctx: GameHostContext): GameInstance {
       clearPending();
       started = true;
       level = Math.max(0, Math.min(SONG_ORDER.length - 1, options?.level ?? 0));
+      if (stale && reshape()) return;
       scene()?.prepare(SONG_ORDER[level]);
     },
     pause() {

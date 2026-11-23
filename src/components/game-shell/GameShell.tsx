@@ -620,7 +620,7 @@ export function GameShell({ slug }: { slug: string }) {
           }}
           disabled={!canControl}
           aria-label={copy.howTo}
-          className="press ml-auto grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-cream shadow-[var(--shadow-ink-sm)] disabled:opacity-40 sm:ml-0"
+          className={`press ml-auto grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-cream shadow-[var(--shadow-ink-sm)] disabled:opacity-40 sm:ml-0 ${game.leanPhoneHeader ? "max-sm:hidden" : ""}`}
         >
           <QuestionIcon className="size-6" />
         </button>
@@ -630,7 +630,7 @@ export function GameShell({ slug }: { slug: string }) {
             onClick={restart}
             disabled={!canControl}
             aria-label={copy.restart}
-            className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-mint shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
+            className={`press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-mint shadow-[var(--shadow-ink-sm)] disabled:opacity-40 ${game.leanPhoneHeader ? "max-sm:hidden" : ""}`}
           >
             <RestartIcon className="size-6" />
           </button>
@@ -640,7 +640,7 @@ export function GameShell({ slug }: { slug: string }) {
           onClick={stage === "paused" ? resume : pause}
           disabled={!canControl}
           aria-label={stage === "paused" ? copy.resume : copy.pause}
-          className="press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-sun text-ink shadow-[var(--shadow-ink-sm)] disabled:opacity-40"
+          className={`press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-sun text-ink shadow-[var(--shadow-ink-sm)] disabled:opacity-40 ${game.leanPhoneHeader ? "max-sm:ml-auto" : ""}`}
         >
           <PauseIcon className="size-6" />
         </button>
@@ -654,7 +654,7 @@ export function GameShell({ slug }: { slug: string }) {
           role="application"
           aria-roledescription={copy.game}
           aria-label={game.controlsSummary ?? game.title}
-          className="absolute inset-0 touch-none select-none outline-none focus-visible:outline-none [&:focus-visible_canvas]:outline-4 [&:focus-visible_canvas]:outline-offset-2 [&:focus-visible_canvas]:outline-sun"
+          className="absolute inset-0 touch-none select-none outline-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] focus-visible:outline-none [&:focus-visible_canvas]:outline-4 [&:focus-visible_canvas]:outline-offset-2 [&:focus-visible_canvas]:outline-sun"
         >
           <div ref={hostRef} className="flow-root h-full w-full [&_canvas]:rounded-xl [&_canvas]:border-[3px] [&_canvas]:border-ink" />
         </div>

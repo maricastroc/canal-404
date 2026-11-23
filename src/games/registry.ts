@@ -35,10 +35,11 @@ export type GameMeta = {
   controlsSummary?: string;
   resumable?: string;
   orientation?: "upright" | "any";
+  leanPhoneHeader?: boolean;
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
-type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "orientation"> & { levelIds?: string[]; guestIds?: string[] };
+type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "orientation" | "leanPhoneHeader"> & { levelIds?: string[]; guestIds?: string[] };
 
 type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "production" | "objective" | "starRule" | "howToIntro" | "controls" | "howTo" | "tips" | "keyTips" | "touchTips" | "controlsSummary" | "copy"> & {
   levels?: { title: string; goal: string }[];
@@ -77,6 +78,7 @@ const BASE = {
     levelIds: ["theme", "signoff", "recess", "street", "static", "medley"],
     levelWord: "música",
     orientation: "any",
+    leanPhoneHeader: true,
   },
 } satisfies Record<string, GameBase>;
 

@@ -4,6 +4,14 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404 no celular
+- **A lane that runs down the screen.** With the phone upright, the notes now come down a vertical lane from the stage to the circle, in the lower part of the screen, instead of crossing a thin strip. The canvas fills the whole screen height, so the notes are bigger and you see the next 3 to 4 beats coming, on small and tall phones alike. Notes still reach the circle exactly on the music: timing windows, charts, scoring and stars are unchanged.
+- **A compact stage on top.** The jury bench, the band, 404 and the curtains keep their places in a shorter stage that shrinks on short screens, and the audience now sits on both sides of the lane. Crowd lines stay beside the lane, the "Na mosca!" feedback appears next to the circle, and the score sits under "AO VIVO".
+- **Clear about tapping.** On touch screens, "Toque em qualquer lugar" shows under the circle until the first note, and the count-in also appears big inside the lane. A finger that slides off the game while holding a long note still lets go at the right moment, and long presses no longer open the browser's menu.
+- **Cards made for the phone.** Each song card shows its demo as an upright lane, with the instructions beside it, bigger text and the Começar button within reach. The how-to card says the notes come down the lane.
+- **Sideways and on the go.** Held sideways, the lane spans the full width with bigger notes. On phones, the header keeps only Voltar, pause and sound (Recomeçar and Como jogar are in the pause menu). The header score now counts up during the song on wider screens too.
+- **Pages around it.** On phones, the game page shows Jogar right after the title and the song list starts closer to the top. These shared changes reach every game: on phones held sideways the start card scrolls as a whole with the play button always in view, and three result stats share the full width instead of leaving a gap.
+
 ### Ao Vivo no 404: no chuvisco, veja antes e toque de memória
 - **Read ahead, play from memory.** In Balada do Chuvisco, the "SEM SINAL" bars used to hide their notes completely: 9 of the song's 24 bars, a third of its notes, including three bars in a row near the end. Their rhythm follows neither the melody nor the drums, so players had to guess, and a player who lost the beat there was usually cut by the crowd. Now those notes show up faint and flickering as they come in, then fade out and vanish in the last beat before the circle, so you can see the rhythm coming but hit it from memory and by ear. A first version that kept them visible all the way made the song too easy.
 - **Weak signal.** Under "SINAL FRACO" the notes stay visible all the way, dimmer and steady (they used to be almost invisible there too).

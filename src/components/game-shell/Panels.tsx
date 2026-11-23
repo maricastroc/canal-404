@@ -263,11 +263,11 @@ function CountUp({ value, delay = 0 }: { value: number; delay?: number }) {
   );
 }
 
-function GameTitle({ game }: { game: GameMeta }) {
+function GameTitle({ game, compact = false }: { game: GameMeta; compact?: boolean }) {
   const Logo = GAME_LOGOS[game.slug];
   return Logo ? (
     <h1>
-      <Logo className="w-full max-w-md shorter:max-w-xs max-sm:mx-auto max-sm:max-w-[16rem] [@media(max-height:540px)]:w-40 [@media(max-height:540px)]:max-w-none" bare />
+      <Logo className={`w-full max-w-md shorter:max-w-xs max-sm:mx-auto [@media(max-height:540px)]:w-40 [@media(max-height:540px)]:max-w-none ${compact ? "max-sm:max-w-[12.5rem]!" : "max-sm:max-w-[16rem]"}`} bare />
     </h1>
   ) : (
     <h1 className="font-display text-4xl uppercase text-ink">{game.title}</h1>
@@ -590,11 +590,11 @@ export function IntroPanel({
   return (
     <OverlayFrame
       label={copy.introLabel(game.title)}
-      className={`flex max-h-full max-w-3xl flex-col p-5 sm:p-7 shorter:py-4 max-sm:max-h-none max-sm:py-5 [@media(max-height:540px)]:p-4 ${adventure || howFirst ? "max-sm:min-h-full" : "max-sm:block"}`}
+      className={`flex max-h-full max-w-3xl flex-col p-5 sm:p-7 shorter:py-4 max-sm:max-h-none max-sm:py-5 flat:block flat:max-h-none [@media(max-height:540px)]:p-4 ${adventure || howFirst ? "max-sm:min-h-full" : "max-sm:block"}`}
     >
       <div className="grid shrink-0 items-center gap-4 sm:grid-cols-[1fr_auto]">
         <div className="[@media(max-height:540px)]:flex [@media(max-height:540px)]:items-center [@media(max-height:540px)]:gap-4">
-          <GameTitle game={game} />
+          <GameTitle game={game} compact={picking} />
           <div className="[@media(max-height:540px)]:min-w-0">
             <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base max-sm:mt-3 max-sm:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
             {game.starRule ? <StarRule rule={game.starRule} /> : null}
@@ -607,7 +607,7 @@ export function IntroPanel({
         tabIndex={showHelp ? 0 : undefined}
         role={showHelp ? "region" : undefined}
         aria-label={showHelp ? copy.howTo : undefined}
-        className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun max-sm:overflow-visible"
+        className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun max-sm:overflow-visible flat:overflow-visible"
       >
         {missionNotice ? (
           <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
@@ -712,7 +712,7 @@ export function IntroPanel({
         {showHelp && !sectioned && !howFirst ? help : null}
       </div>
       <ActionBar
-        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-[15px] max-[380px]:[&>button>svg]:hidden max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:leading-tight max-[380px]:[&>button]:[text-wrap:balance] max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
+        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 flat:sticky flat:-bottom-6 flat:z-10 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:rounded-b-[inherit] flat:border-t-[3px] flat:border-ink flat:px-4 flat:py-2.5 flat:paper max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-[15px] max-[380px]:[&>button>svg]:hidden max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:leading-tight max-[380px]:[&>button]:[text-wrap:balance] max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
         actions={introActions}
         note={
           !leveled && !mission && !adventure && !howFirst ? (
@@ -1008,11 +1008,11 @@ function Standings({ rows, label }: { rows: ResultStanding[]; label: string }) {
 
 function Facts({ facts, label }: { facts: ResultFact[]; label: string }) {
   return (
-    <dl aria-label={label} className="mt-2 grid grid-cols-4 gap-1.5">
+    <dl aria-label={label} className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(4, Math.max(3, facts.length))}, minmax(0, 1fr))` }}>
       {facts.map((fact, i) => (
         <motion.div key={fact.label} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 + i * 0.06 }} className="flex flex-col-reverse items-center rounded-lg border-2 border-dashed border-ink/25 px-1 py-1.5 text-center">
           <dt className="mt-0.5 text-[11px] font-bold leading-tight text-ink-soft sm:text-xs">{fact.label}</dt>
-          <dd className="font-display text-lg leading-none tabular-nums text-ink">{fact.value}</dd>
+          <dd className="text-balance font-display text-lg leading-none tabular-nums text-ink">{fact.value}</dd>
         </motion.div>
       ))}
     </dl>
