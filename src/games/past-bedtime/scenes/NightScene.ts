@@ -564,7 +564,7 @@ export class NightScene extends Phaser.Scene {
           break;
         }
         case "wait":
-          this.sfx(NIGHT_SFX.tick);
+          this.sfx(NIGHT_SFX.wait);
           break;
         case "cuckoo":
           this.clock?.sing();
@@ -1296,7 +1296,7 @@ export class NightScene extends Phaser.Scene {
     const L = this.layout;
     const c = tileCenter(L, p.x, p.y);
     const t = this.add
-      .text(c.x + L.tile * 0.42, c.y - L.tile * 0.46, text, { fontFamily: this.bridge.fonts.hand, fontSize: `${Math.round(L.tile * 0.3)}px`, color: "#1d1830", backgroundColor: "#ffe39a", padding: { x: 7, y: 1 } })
+      .text(c.x + L.tile * 0.42, c.y - L.tile * 0.46, text, { fontFamily: this.bridge.fonts.round ?? this.bridge.fonts.body, fontStyle: "700", fontSize: `${Math.round(L.tile * 0.26)}px`, color: "#1d1830", backgroundColor: "#ffe39a", padding: { x: 7, y: 2 } })
       .setOrigin(0.5)
       .setDepth(40);
     this.badges.push(t);

@@ -128,9 +128,9 @@ export class PhoneNotebook implements NotebookView {
     return obj;
   }
 
-  private text(x: number, y: number, value: string, css: number, color: string, family: "round" | "display" | "hand" = "round", weight = "600") {
+  private text(x: number, y: number, value: string, css: number, color: string, family: "round" | "display" = "round", weight = "600") {
     return this.scene.add.text(x, y, value, {
-      fontFamily: family === "display" ? this.fonts.display : family === "hand" ? this.fonts.hand : this.round,
+      fontFamily: family === "display" ? this.fonts.display : this.round,
       fontStyle: family === "round" ? weight : "normal",
       fontSize: `${Math.round(this.px(css))}px`,
       color,
@@ -986,7 +986,7 @@ export class PhoneNotebook implements NotebookView {
       const cell: Phaser.GameObjects.GameObject[] = [arrow];
       let w = this.px(22);
       if (r.count > 1) {
-        const n = this.text(w - this.px(0.5), this.px(12), String(r.count), 15, "#a85d08", "hand");
+        const n = this.text(w - this.px(0.5), this.px(12), String(r.count), 13.5, "#a85d08", "round", "700");
         cell.push(n);
         w += n.width - this.px(1);
       }

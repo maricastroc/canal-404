@@ -236,7 +236,7 @@ export function popIcon(scene: Phaser.Scene, x: number, y: number, keys: string[
 
 export function floatZ(scene: Phaser.Scene, fonts: Fonts, x: number, y: number, size: number, depth = 40) {
   const t = scene.add
-    .text(x, y, "z", { fontFamily: fonts.hand, fontSize: `${size}px`, color: "#d8d0ff", padding: { x: 2, y: 2 } })
+    .text(x, y, "z", { fontFamily: fonts.round ?? fonts.body, fontStyle: "700", fontSize: `${Math.round(size * 0.86)}px`, color: "#d8d0ff", padding: { x: 2, y: 2 } })
     .setOrigin(0.5)
     .setDepth(depth)
     .setAlpha(0);
