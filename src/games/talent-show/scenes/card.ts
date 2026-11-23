@@ -68,6 +68,38 @@ const DEMOS: Record<DemoKind, DemoSpec> = {
 const BEAT_MS = 540;
 const PRESS_MS = 150;
 
+function wrapLines(text: Phaser.GameObjects.Text, content: string, max: number) {
+  text.setWordWrapWidth(max);
+  const count = text.getWrappedText(content).length;
+  if (count < 2) return content;
+  const sentences = content.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) ?? [];
+  const widthOf = (line: string) => (text.getWrappedText(line).length === 1 ? text.setText(line).width : Infinity);
+  const found = { lines: null as string[] | null, width: Infinity };
+  const split = (from: number, left: number, lines: string[]) => {
+    if (left === 1) {
+      const all = [...lines, sentences.slice(from).join(" ")];
+      const widest = Math.max(...all.map(widthOf));
+      if (widest < found.width) Object.assign(found, { lines: all, width: widest });
+      return;
+    }
+    for (let end = from + 1; end <= sentences.length - left + 1; end += 1) split(end, left - 1, [...lines, sentences.slice(from, end).join(" ")]);
+  };
+  if (sentences.length >= count && sentences.join(" ") === content.trim()) split(0, count, []);
+  if (found.lines) return found.lines.join("\n");
+  let lo = max / 2;
+  let hi = max;
+  while (hi - lo > 4) {
+    const mid = (lo + hi) / 2;
+    text.setWordWrapWidth(mid);
+    if (text.getWrappedText(content).length > count) lo = mid;
+    else hi = mid;
+  }
+  text.setWordWrapWidth(hi);
+  const lines = text.getWrappedText(content);
+  text.setWordWrapWidth(max);
+  return lines.join("\n");
+}
+
 type Geometry = { w: number; h: number; hitX: number; laneY: number; r: number; ppb: number };
 
 class DemoLane {
@@ -346,7 +378,7 @@ export class ShowCard {
     fitText(this.title, inner, this.sizes.title, 36);
     this.title.setPosition(mid, y + this.title.height / 2);
     y += this.title.height + 6;
-    this.lead.setText(c.lead).setWordWrapWidth(inner - (c.face ? 90 : 0));
+    this.lead.setText(wrapLines(this.lead, c.lead, inner - (c.face ? 90 : 0)));
     if (c.face) {
       this.face.setTexture(c.face).setVisible(true);
       this.face.setScale(66 / this.face.height);
@@ -371,9 +403,9 @@ export class ShowCard {
     } else {
       this.demo.root.setVisible(false);
     }
-    this.how.setText(c.how).setWordWrapWidth(inner).setPosition(mid, y);
+    this.how.setText(wrapLines(this.how, c.how, inner)).setPosition(mid, y);
     y += c.how ? this.how.height + 10 : 0;
-    this.note.setText(c.note).setWordWrapWidth(inner).setPosition(mid, y);
+    this.note.setText(wrapLines(this.note, c.note, inner)).setPosition(mid, y);
     y += c.note ? this.note.height + 18 : 6;
     y = this.layoutButtons(c, y, pad, inner);
     this.footer.setText(c.footer).setWordWrapWidth(inner - 44).setVisible(c.footer !== "");
