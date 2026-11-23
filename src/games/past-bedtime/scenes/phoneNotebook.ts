@@ -578,22 +578,13 @@ export class PhoneNotebook implements NotebookView {
     const img = this.scene.add.image(0, 0, iconKey(icon)).setDisplaySize(this.px(iconCss), this.px(iconCss));
     const t = this.text(0, 0, label, small ? 11.5 : this.band ? 15 : 16.5, PENCIL, "round", "700").setOrigin(0.5);
     if (small) {
-      const room = this.px(6);
-      const maxW = w - room * 2;
-      for (let size = 11.5; t.width > maxW && size > 9; size -= 0.5) t.setFontSize(Math.round(this.px(size)));
-      const textH = t.height - Math.round(this.px(1.5)) * 2;
-      const block = img.displayHeight + this.px(1) + textH;
-      if (h - block >= room * 2) {
-        img.setPosition(w / 2, (h - block) / 2 + img.displayHeight / 2);
-        t.setPosition(w / 2, img.y + img.displayHeight / 2 + this.px(1) + textH / 2);
-      } else {
-        img.setVisible(false);
-        for (let size = 13.5; size > 9; size -= 0.5) {
-          t.setFontSize(Math.round(this.px(size)));
-          if (t.width <= maxW) break;
-        }
-        t.setPosition(w / 2, h / 2 + this.px(0.5));
+      const maxW = w - this.px(12);
+      img.setVisible(false);
+      for (let size = 13.5; size > 9; size -= 0.5) {
+        t.setFontSize(Math.round(this.px(size)));
+        if (t.width <= maxW) break;
       }
+      t.setPosition(w / 2, h / 2 + this.px(0.5));
     } else {
       const gap = this.px(8);
       const maxW = w - img.displayWidth - gap - this.px(20);
