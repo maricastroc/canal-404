@@ -1,8 +1,92 @@
 import type { SoundRecipe } from "@/lib/audio/types";
 
 export const NIGHT_SFX = {
-  step: {
-    layers: [{ kind: "noise", duration: 0.05, gain: 0.035, filter: { type: "bandpass", from: 1800, to: 1200, q: 2 } }],
+  stepWood: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 150, to: 80, duration: 0.08, gain: 0.13 },
+      { kind: "noise", duration: 0.07, gain: 0.07, filter: { type: "lowpass", from: 900, to: 260 } },
+      { kind: "noise", duration: 0.05, delay: 0.05, gain: 0.025, attack: 0.012, filter: { type: "bandpass", from: 1700, to: 1100, q: 1.4 } },
+    ],
+  },
+  stepParquet: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 170, to: 95, duration: 0.07, gain: 0.12 },
+      { kind: "noise", duration: 0.06, gain: 0.07, filter: { type: "lowpass", from: 1300, to: 400 } },
+      { kind: "tone", wave: "triangle", from: 420, to: 380, duration: 0.04, delay: 0.045, gain: 0.025 },
+      { kind: "noise", duration: 0.045, delay: 0.05, gain: 0.025, attack: 0.01, filter: { type: "bandpass", from: 2000, to: 1400, q: 1.4 } },
+    ],
+  },
+  stepTile: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 210, to: 130, duration: 0.05, gain: 0.09 },
+      { kind: "noise", duration: 0.04, gain: 0.08, filter: { type: "bandpass", from: 2600, to: 1800, q: 1.6 } },
+      { kind: "noise", duration: 0.03, delay: 0.045, gain: 0.04, filter: { type: "bandpass", from: 3200, to: 2400, q: 2 } },
+    ],
+  },
+  rustleCurtain: {
+    layers: [
+      { kind: "noise", duration: 0.26, gain: 0.07, attack: 0.06, filter: { type: "bandpass", from: 1400, to: 2600, q: 0.7 } },
+      { kind: "noise", duration: 0.2, delay: 0.14, gain: 0.045, attack: 0.05, filter: { type: "bandpass", from: 2400, to: 1300, q: 0.7 } },
+      { kind: "tone", wave: "sine", from: 140, to: 85, duration: 0.07, gain: 0.08 },
+    ],
+  },
+  rustlePlant: {
+    layers: [
+      { kind: "noise", duration: 0.05, gain: 0.05, filter: { type: "highpass", from: 3800 } },
+      { kind: "noise", duration: 0.05, delay: 0.07, gain: 0.045, filter: { type: "highpass", from: 4400 } },
+      { kind: "noise", duration: 0.06, delay: 0.15, gain: 0.04, filter: { type: "highpass", from: 3400 } },
+      { kind: "noise", duration: 0.24, gain: 0.03, attack: 0.05, filter: { type: "bandpass", from: 3000, to: 5000, q: 0.8 } },
+      { kind: "tone", wave: "sine", from: 140, to: 85, duration: 0.07, gain: 0.07 },
+    ],
+  },
+  slipper: {
+    layers: [
+      { kind: "noise", duration: 0.17, gain: 0.07, attack: 0.05, filter: { type: "bandpass", from: 700, to: 1100, q: 1 } },
+      { kind: "noise", duration: 0.15, delay: 0.2, gain: 0.06, attack: 0.05, filter: { type: "bandpass", from: 1000, to: 650, q: 1 } },
+      { kind: "tone", wave: "sine", from: 110, to: 70, duration: 0.06, delay: 0.03, gain: 0.05 },
+      { kind: "tone", wave: "sine", from: 105, to: 70, duration: 0.06, delay: 0.23, gain: 0.045 },
+    ],
+  },
+  paws: {
+    layers: [
+      { kind: "noise", duration: 0.018, gain: 0.06, filter: { type: "bandpass", from: 4600, q: 4 } },
+      { kind: "noise", duration: 0.018, delay: 0.045, gain: 0.05, filter: { type: "bandpass", from: 5200, q: 4 } },
+      { kind: "noise", duration: 0.018, delay: 0.1, gain: 0.06, filter: { type: "bandpass", from: 4800, q: 4 } },
+      { kind: "noise", duration: 0.018, delay: 0.145, gain: 0.05, filter: { type: "bandpass", from: 5400, q: 4 } },
+      { kind: "tone", wave: "sine", from: 190, to: 120, duration: 0.04, gain: 0.04 },
+      { kind: "tone", wave: "sine", from: 190, to: 120, duration: 0.04, delay: 0.1, gain: 0.04 },
+    ],
+  },
+  toss: {
+    layers: [
+      { kind: "noise", duration: 0.5, gain: 0.06, attack: 0.14, filter: { type: "bandpass", from: 900, to: 1800, q: 0.6 } },
+      { kind: "tone", wave: "triangle", from: 520, to: 610, duration: 0.18, delay: 0.12, gain: 0.03, vibrato: { rate: 26, depth: 40 } },
+      { kind: "tone", wave: "triangle", from: 600, to: 500, duration: 0.16, delay: 0.32, gain: 0.025, vibrato: { rate: 24, depth: 36 } },
+      { kind: "tone", wave: "sine", from: 160, to: 140, duration: 0.3, delay: 0.1, gain: 0.05, vibrato: { rate: 7, depth: 8 } },
+    ],
+  },
+  heartbeat: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 70, to: 44, duration: 0.12, gain: 0.2 },
+      { kind: "noise", duration: 0.06, gain: 0.05, filter: { type: "lowpass", from: 220 } },
+      { kind: "tone", wave: "sine", from: 62, to: 40, duration: 0.14, delay: 0.2, gain: 0.15 },
+    ],
+  },
+  cricket: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 4300, to: 4250, duration: 0.035, gain: 0.014 },
+      { kind: "tone", wave: "sine", from: 4300, to: 4250, duration: 0.035, delay: 0.06, gain: 0.016 },
+      { kind: "tone", wave: "sine", from: 4300, to: 4250, duration: 0.035, delay: 0.12, gain: 0.014 },
+      { kind: "tone", wave: "sine", from: 4300, to: 4250, duration: 0.035, delay: 0.42, gain: 0.012 },
+      { kind: "tone", wave: "sine", from: 4300, to: 4250, duration: 0.035, delay: 0.48, gain: 0.014 },
+      { kind: "tone", wave: "sine", from: 4300, to: 4250, duration: 0.035, delay: 0.54, gain: 0.012 },
+    ],
+  },
+  carPass: {
+    layers: [
+      { kind: "noise", duration: 2.6, gain: 0.028, attack: 1.3, filter: { type: "lowpass", from: 300, to: 700 } },
+      { kind: "tone", wave: "sine", from: 90, to: 70, duration: 2.4, delay: 0.2, gain: 0.02, attack: 1.1 },
+    ],
   },
   creak: {
     layers: [
