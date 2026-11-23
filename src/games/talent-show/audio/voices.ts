@@ -91,6 +91,37 @@ export function hat(stage: Stage, bus: AudioNode, time: number, level: number) {
   noiseHit(stage, bus, time, 0.035, 0.1 * level, "highpass", 7000, 0.7);
 }
 
+export function agogo(stage: Stage, bus: AudioNode, time: number, level: number, high: boolean) {
+  const { ctx } = stage;
+  const freq = high ? 1047 : 784;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(0.34 * level, time + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.22);
+  const ringGain = ctx.createGain();
+  ringGain.gain.setValueAtTime(0.3, time);
+  ringGain.gain.exponentialRampToValueAtTime(0.001, time + 0.07);
+  const filter = ctx.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 500;
+  const body = ctx.createOscillator();
+  body.type = "triangle";
+  body.frequency.value = freq;
+  const ring = ctx.createOscillator();
+  ring.type = "square";
+  ring.frequency.value = freq * 2.76;
+  body.connect(filter);
+  ring.connect(ringGain);
+  ringGain.connect(filter);
+  filter.connect(gain);
+  gain.connect(bus);
+  body.start(time);
+  ring.start(time);
+  body.stop(time + 0.24);
+  ring.stop(time + 0.24);
+  body.onended = release([gain, filter, ringGain]);
+}
+
 export function bucket(stage: Stage, bus: AudioNode, time: number, level = 1) {
   thump(stage, bus, time, 210, 70, 0.14, 0.5 * level);
   noiseHit(stage, bus, time, 0.05, 0.22 * level, "bandpass", 950, 1.4);

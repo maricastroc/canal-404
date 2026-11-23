@@ -1,6 +1,6 @@
 import { parseNotes } from "@/lib/audio/tracks";
 import { beatMsAt, STEPS_PER_BAR, timeOf, type CompiledSong, type Signal, type TapSound } from "../song/notation";
-import { bucket, click, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Stage } from "./voices";
+import { agogo, bucket, click, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Stage } from "./voices";
 
 const CALL_PITCHES = [69, 72, 76, 79];
 const LOOKAHEAD = 0.2;
@@ -73,6 +73,8 @@ export class SongPlayer {
         if (kit.kick[d] === "x") this.cues.push({ at, skippable: true, play: (t) => kick(stage, this.music, t, level) });
         if (kit.snare[d] === "x") this.cues.push({ at, skippable: true, play: (t) => snare(stage, this.music, t, level) });
         if (kit.hat[d] === "x") this.cues.push({ at, skippable: true, play: (t) => hat(stage, this.music, t, level) });
+        const bell = kit.bell?.[d];
+        if (bell === "h" || bell === "l") this.cues.push({ at, skippable: true, play: (t) => agogo(stage, this.music, t, level, bell === "h") });
       }
     }
     for (const call of this.compiled.calls) {
