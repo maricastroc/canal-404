@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: primeiro como jogar, depois a calibração
+- **Show first, then calibrate.** The first time you play, a "Como jogar" card ("Acerte a nota!") loops the real lane: one note at a time comes in from the right, the hand taps it right in the yellow circle and "Na mosca!" pops up. "Entendi! Continuar" leads to a separate "Ajuste o ritmo!" card that says why the game needs to sync with the device and what to do, with a silent preview of the calibration. The beats only start when you press "Começar calibração" (or Enter).
+- **A calibration you can follow.** While it runs, the card keeps one instruction ("Toque a cada batida!") and says where to tap. The circle turns lilac and shows the count 1–4, then turns gold with a hand for the eight beats. The eight marks are a progress row with a counter ("3 de 8"): a check for each counted tap, a larger ringed mark for the next beat, ✕ for a missed one, so it never depends on color alone. Each counted tap flashes the circle.
+- **A clear ending.** "Tudo pronto!" leads straight into the show with "Começar o show!", or offers "Calibrar de novo". If it didn't work, "Vamos de novo?" says what happened in plain words (missing taps, taps far from the beats, taps all over the place), marks the taps that didn't count and offers "Tentar de novo". No milliseconds anywhere in the flow.
+- **Calibrate again from any song.** The song card's button and the C key now open the "Ajuste o ritmo!" card instead of starting the beats at once; pausing mid-calibration goes back to it. The calibration math, the songs, the timing windows and the scoring are unchanged.
+
 ### Ao Vivo no 404: a plateia fala e a vez da Mila fica clara
 - **Listen, then repeat.** While Mila plays her phrase, the hit circle turns lilac with an ear in it and its lights go dark, so her notes no longer look like yours; each of her notes flashes the circle as it lands. When her phrase ends, "Sua vez!" pops up over the circle and it turns gold again.
 - **Count the notes.** The "Mila" and "Sua vez" labels on the lane carry one mark per note: Mila's diamonds fill as she plays them, your circles fill as you hit them (red on a miss). Your turn is a stronger gold with a dashed edge. The host says "Escute a Mila!" the first time, the song's hint says what the ear means, and the pre-show demo shows the same ear and marks. Echo notes stay hidden outside assist mode, and the chart, timing and scoring are unchanged.
