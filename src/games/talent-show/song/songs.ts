@@ -50,6 +50,7 @@ const THEME_KITS = {
   i: { kick: "x...x...x...x...", snare: QUIET, hat: "x.x.x.x.x.x.x.x." },
   a: { kick: "x.......x.x.....", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.xx" },
   b: { kick: "x..x..x.x..x..x.", snare: "....x.......x...", hat: "xxxxxxxxxxxxxxxx" },
+  c: { kick: "x..x..x.x..x..x.", snare: "....x.......x...", hat: "xxxxxxxxxxxxxxxx", bell: "l..h..h.l..h..h." },
   h: { kick: "x.......x.......", snare: "....x.......x...", hat: "x...x...x...x..." },
   e: { kick: "x...............", snare: QUIET, hat: QUIET },
 };
@@ -69,7 +70,7 @@ const THEME: Song = {
       notes: bars(THEME_BASS[0], ...THEME_BASS, ...THEME_BASS, ...pick(THEME_BASS, 1, 2, 3, 4, 1, 2, 3, 4), ...THEME_BASS, ...pick(THEME_BASS, 1, 2, 3, 4, 5, 6, 7, 8, 7, 8), "C3 - - - - - - - . . . . . . . ."),
     },
   ],
-  drums: { gain: 0.5, kits: THEME_KITS, bars: "i" + "a".repeat(16) + "bbbb" + "hhhh" + "b".repeat(12) + "aaaa" + "aa" + "e" },
+  drums: { gain: 0.5, kits: THEME_KITS, bars: "i" + "a".repeat(16) + "cccc" + "hhhh" + "b".repeat(8) + "cccc" + "aaaa" + "aa" + "e" },
   chart: bars(
     QUIET,
     ...times("x...x...x...x...", 4),
@@ -81,7 +82,7 @@ const THEME: Song = {
     "x...x.x.x...x.x.",
     "x.x.x.x.x.x.x...",
     ...THEME_MELODY_FULL,
-    ...times("x..x..x.x.x.x...", 4),
+    ...times("x..x..x.x..x..x.", 4),
     ...THEME_MELODY.slice(4),
     THEME_MELODY[6],
     THEME_MELODY[7],
