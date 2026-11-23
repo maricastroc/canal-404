@@ -264,7 +264,7 @@ export class NightScene extends Phaser.Scene {
       } else if (def.kind === "cat") {
         const view = new CatView(this, s, charArt);
         const perch = level.props.find((p) => p.x <= def.x && def.x < p.x + (p.w ?? 1) && p.y <= def.y && def.y < p.y + (p.h ?? 1));
-        const lift = s * (perch?.kind === "cabinet" ? 0.98 : 0.32);
+        const lift = s * (perch?.kind === "cabinet" ? 0.98 : perch?.kind === "aquarium" ? 0.7 : 0.32);
         view.container.setPosition(c.x, c.y - lift).setScale(CHAR_SCALE);
         this.agents.push({ kind: "cat", view, lift, status: new StatusIcon(this, view.container, this.bridge.fonts.round ?? this.bridge.fonts.body, iconSize * 0.9, -s * 0.62) });
       } else {
