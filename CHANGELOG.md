@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404 sem calibração
+- **Straight to the show.** The first time you play, the "Acerte a nota!" card shows how notes reach the yellow circle, and its button, now "Entendi! Começar o show", starts the song. The calibration step is gone: tapping along with clicks turned out to be hard to pass even on a laptop's own speakers, because waiting to hear each click lands the taps about a third of a second late, and the game already accounts for the delay the device reports.
+- **No stored adjustments.** A timing adjustment saved by an earlier calibration is dropped, since a wrong one shifted the whole lane. Players who had calibrated skip the how-to card.
+- The song card loses its "Calibrar de novo" button and the C key; assist mode stays. Songs, timing windows, scoring and boards are unchanged ([decision 0014](docs/decisions/0014-talent-show-judge.md)).
+
 ### Ao Vivo no 404: a calibração diz se você tocou cedo ou atrasado
 - **Each tap says how it landed.** During calibration, every counted tap flashes "Junto!", "Atrasado!" or "Cedo!" over the circle, and its mark shows it: a check for on the beat, orange » for late, blue « for early. The check used to appear for any counted tap, so a run of late taps looked perfect and then failed. The counter now counts only taps on the beat.
 - **Don't wait for the click.** The instructions now say to tap along with the beat without waiting to hear it, like clapping in time; waiting to react to each click lands taps about a third of a second late, which is what kept failing.
