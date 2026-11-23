@@ -1080,7 +1080,8 @@ export class NightScene extends Phaser.Scene {
     this.boardMarks(st);
     const predicted = step(this.sim, st, "wait");
     if (predicted) {
-      const nextAgents = predicted.state.agents;
+      const calm = step(this.sim, { ...st, agents: st.agents.map((a) => (a.kind === "sleeper" || a.kind === "dog" ? { ...a, stir: 0 } : a)) }, "wait") ?? predicted;
+      const nextAgents = calm.state.agents;
       const striped = new Set<number>();
       nextAgents.forEach((_a, i) => watchedTiles(grid, nextAgents, i).forEach((t) => !now.has(t) && striped.add(t)));
       this.ahead = { result: predicted, striped };
