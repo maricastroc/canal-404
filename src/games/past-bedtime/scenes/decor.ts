@@ -19,7 +19,7 @@ const TV = 0x7ff5e0;
 
 const DECOR: Record<string, Decor> = {
   doorway: {
-    darkness: 0.56,
+    darkness: 0.4,
     wall: [
       { kind: "door", x: 1.06, y: 1.16, w: 0.88, h: 1.7, v: "bruno" },
       { kind: "frame", x: 1.25, y: 0.3, w: 0.5, h: 0.6, v: 2 },
@@ -46,11 +46,12 @@ const DECOR: Record<string, Decor> = {
       { kind: "crack", x: 1.12, y: 3.02, w: 0.76, color: WARM },
       { kind: "glow", x: 1.5, y: 3.2, r: 0.9, color: WARM, strength: 0.35 },
       { kind: "glow", x: 7.6, y: 3.5, r: 1.4, color: MOON, strength: 0.35 },
+      { kind: "glow", x: 5.42, y: 0.68, r: 0.34, color: 0xff6b6b, strength: 0.75 },
     ],
     lamps: [{ owner: "dad", x: 3.3, y: 0.58 }],
   },
   hallway: {
-    darkness: 0.58,
+    darkness: 0.42,
     wall: [
       { kind: "door", x: 1.06, y: 2.16, w: 0.88, h: 1.7, v: "bruno" },
       { kind: "frame", x: 1.2, y: 1.3, w: 0.6, h: 0.65, v: 2 },
@@ -96,7 +97,7 @@ const DECOR: Record<string, Decor> = {
     lamps: [{ owner: "dad", x: 5.25, y: 0.62 }],
   },
   kitchen: {
-    darkness: 0.68,
+    darkness: 0.55,
     wall: [
       { kind: "plates", x: 1.04, y: 0.1 },
       { kind: "hood", x: 2.08, y: 0.2, w: 0.84, h: 0.42 },
@@ -136,7 +137,7 @@ const DECOR: Record<string, Decor> = {
     lamps: [],
   },
   living: {
-    darkness: 0.58,
+    darkness: 0.42,
     wall: [
       { kind: "window", x: 0.95, y: 0.24, w: 1.3, h: 0.56, v: "curtain" },
       { kind: "floorLamp", x: 2.5, y: 0.1 },
@@ -168,7 +169,7 @@ const DECOR: Record<string, Decor> = {
 };
 
 DECOR.stairs = {
-  darkness: 0.6,
+  darkness: 0.43,
   wall: [
     { kind: "hooks", x: 4.08, y: 1.2, w: 0.84, h: 1.6 },
     { kind: "window", x: 5.15, y: 1.3, w: 1.6, h: 0.9, v: "curtain" },
@@ -202,7 +203,7 @@ DECOR.stairs = {
 };
 
 DECOR.pantry = {
-  darkness: 0.66,
+  darkness: 0.48,
   wall: [
     { kind: "spices", x: 2.06, y: 0.3, w: 0.88, h: 0.42 },
     { kind: "garlic", x: 3.34, y: 0.04 },
@@ -224,7 +225,7 @@ DECOR.pantry = {
 };
 
 DECOR.laundry = {
-  darkness: 0.62,
+  darkness: 0.45,
   wall: [
     { kind: "clothesline", x: 1.05, y: 0.16, w: 3.9, h: 0.7 },
     { kind: "dogBowls", x: 4.7, y: 1.12 },
@@ -254,7 +255,7 @@ DECOR.laundry = {
 };
 
 DECOR.dining = {
-  darkness: 0.6,
+  darkness: 0.43,
   wall: [
     { kind: "frame", x: 1.2, y: 0.26, w: 1.3, h: 0.6, v: 4 },
     { kind: "catTree", x: 2.9, y: 1.14 },
@@ -283,6 +284,7 @@ DECOR.dining = {
     { kind: "shaft", top: [5.4, 7.2, 0.8], bottom: [5.9, 8.1, 3.95], color: MOON, strength: 0.45 },
     { kind: "glow", x: 9.9, y: 1.5, r: 1.2, color: TV, strength: 0.45, flicker: true },
     { kind: "glow", x: 2.5, y: 3.3, r: 1.2, color: 0x5ff0d8, strength: 0.5, flicker: true },
+    { kind: "glow", x: 2.5, y: 3.15, r: 0.5, color: 0x5ff0d8, strength: 0.85, flicker: true },
     { kind: "glow", x: 7.5, y: 0.55, r: 0.7, color: WARM, strength: 0.35 },
     { kind: "glow", x: 8.5, y: 0.55, r: 0.7, color: WARM, strength: 0.35 },
   ],
@@ -290,7 +292,7 @@ DECOR.dining = {
 };
 
 DECOR.sofa = {
-  darkness: 0.6,
+  darkness: 0.43,
   wall: [
     { kind: "window", x: 1.1, y: 0.24, w: 1.8, h: 0.56, v: "curtain" },
     { kind: "pennant", x: 3.1, y: 0.18 },
@@ -329,7 +331,7 @@ DECOR.sofa = {
 DECOR.return = { ...DECOR.hallway, lights: DECOR.hallway.lights.filter((l) => !(l.kind === "glow" && l.color === TV)).concat([{ kind: "glow", x: 12.5, y: 5.5, r: 1.1, color: MOON, strength: 0.3 }]) };
 
 export function decorFor(levelId: string): Decor {
-  return DECOR[levelId] ?? { wall: [], floor: [], top: [], lights: [], lamps: [], darkness: 0.55 };
+  return DECOR[levelId] ?? { wall: [], floor: [], top: [], lights: [], lamps: [], darkness: 0.4 };
 }
 
 function shade(g: Phaser.GameObjects.Graphics, x: number, y: number, top: number, bottom: number, h: number) {

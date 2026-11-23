@@ -6,7 +6,6 @@ import { wobble, type Layout } from "./layout";
 export const NIGHT = {
   void: 0x0d0a1c,
   cap: 0x2a2140,
-  capEdge: 0x45386a,
   ink: 0x1d1830,
   light: 0xffd66b,
   lightEdge: 0xffb43d,
@@ -188,6 +187,8 @@ export function drawFloor(g: Phaser.GameObjects.Graphics, grid: Grid, layout: La
 export function drawWalls(g: Phaser.GameObjects.Graphics, grid: Grid, layout: Layout, theme: Theme) {
   const s = layout.tile;
   const faces = faceMap(grid);
+  const capTop = shade(theme.wall, 0.62);
+  const capHi = shade(theme.wall, 0.86);
   for (let y = 0; y < grid.h; y += 1) {
     for (let x = 0; x < grid.w; x += 1) {
       const kind = faces[y * grid.w + x];
@@ -195,13 +196,17 @@ export function drawWalls(g: Phaser.GameObjects.Graphics, grid: Grid, layout: La
       const px = layout.ox + x * s;
       const py = layout.oy + y * s;
       if (kind === "cap") {
-        g.fillStyle(NIGHT.cap, 1);
+        const open = { l: !isWall(grid, x - 1, y) || faces[y * grid.w + x - 1] !== "cap", r: !isWall(grid, x + 1, y) || faces[y * grid.w + x + 1] !== "cap", b: !isWall(grid, x, y + 1) && y + 1 < grid.h, t: y > 0 && !isWall(grid, x, y - 1) };
+        g.fillStyle(capTop, 1);
         g.fillRect(px, py, s, s);
-        g.lineStyle(3, NIGHT.capEdge, 1);
-        if (!isWall(grid, x - 1, y) || faces[y * grid.w + x - 1] !== "cap") g.lineBetween(px + 1.5, py, px + 1.5, py + s);
-        if (!isWall(grid, x + 1, y) || faces[y * grid.w + x + 1] !== "cap") g.lineBetween(px + s - 1.5, py, px + s - 1.5, py + s);
-        if (!isWall(grid, x, y + 1) && y + 1 < grid.h) g.lineBetween(px, py + s - 1.5, px + s, py + s - 1.5);
-        if (y > 0 && !isWall(grid, x, y - 1)) g.lineBetween(px, py + 1.5, px + s, py + 1.5);
+        g.lineStyle(2.5, capHi, 0.8);
+        if (open.l) g.lineBetween(px + 6, py, px + 6, py + s);
+        if (open.t) g.lineBetween(px, py + 6, px + s, py + 6);
+        g.lineStyle(3.5, NIGHT.ink, 1);
+        if (open.l) g.lineBetween(px + 1.5, py, px + 1.5, py + s);
+        if (open.r) g.lineBetween(px + s - 1.5, py, px + s - 1.5, py + s);
+        if (open.b) g.lineBetween(px, py + s - 1.5, px + s, py + s - 1.5);
+        if (open.t) g.lineBetween(px, py + 1.5, px + s, py + 1.5);
         continue;
       }
       const topOfStack = y === 0 || faces[(y - 1) * grid.w + x] === "cap";

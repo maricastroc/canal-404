@@ -11,7 +11,8 @@ const hand = { fontFamily: "var(--font-patrick)" };
 const N = {
   night: "#241e45",
   nightDeep: "#16122c",
-  stripe: "#2d2656",
+  wall: "#3d4b6e",
+  stripe: "#46577c",
   floor: "#6b4a3a",
   floorDeep: "#553a2e",
   plank: "#4a3127",
@@ -61,7 +62,7 @@ function Room({ width, height, floorY, children }: { width: number; height: numb
   const planks = Array.from({ length: Math.ceil((height - floorY) / 12) }, (_, i) => floorY + 12 + i * 12);
   return (
     <g>
-      <rect width={width} height={height} fill={N.night} />
+      <rect width={width} height={height} fill={N.wall} />
       {stripes.map((x) => (
         <path key={x} d={`M${x} 0 L${x} ${floorY}`} stroke={N.stripe} strokeWidth={5} />
       ))}
@@ -87,7 +88,7 @@ function Dark({ width, height, cx, cy }: { width: number; height: number; cx: nu
       <defs>
         <radialGradient id={`dark${id}`} cx={cx / width} cy={cy / height} r={0.75}>
           <stop offset="0.45" stopColor={N.nightDeep} stopOpacity={0} />
-          <stop offset="1" stopColor={N.nightDeep} stopOpacity={0.7} />
+          <stop offset="1" stopColor={N.nightDeep} stopOpacity={0.6} />
         </radialGradient>
       </defs>
       <rect width={width} height={height} fill={`url(#dark${id})`} pointerEvents="none" />
@@ -176,14 +177,15 @@ export function PastBedtimeCoverArt() {
         <Sprite name="prop-tv-1x1" cx={284} base={152} w={54} />
         <Sprite name="cat-idle" cx={290} base={80} w={36} />
       </Room>
+      <Glow x={283} y={110} r={26} color={P.mint} />
       <Sprite name="prop-vcr-1x1" cx={286} base={204} w={46} />
-      <Glow x={296} y={176} r={16} color={P.tomato} />
-      <Beam points="72,166 196,186 190,238 76,176" spot={{ cx: 172, cy: 214, rx: 30, ry: 12 }} />
-      <Sprite name="gran-side-alert" cx={44} base={216} w={76} />
-      <Sprite name="dog-sleep" cx={240} base={234} w={58} />
-      <Zzz x={256} y={206} size={14} />
-      <path d="M190 176 Q194 168 200 172 M186 186 Q190 178 196 182" fill="none" stroke={P.sunPale} strokeWidth={2} strokeLinecap="round" />
-      <Sprite name="bruno-side-sneak" cx={216} base={200} w={50} />
+      <Glow x={296} y={176} r={18} color={P.tomato} />
+      <Beam points="75,161 196,184 190,238 79,172" spot={{ cx: 170, cy: 214, rx: 32, ry: 12 }} />
+      <Sprite name="gran-side-alert" cx={46} base={220} w={84} />
+      <Sprite name="dog-sleep" cx={244} base={236} w={60} />
+      <Zzz x={248} y={212} size={12} />
+      <path d="M178 172 Q182 164 188 168 M174 184 Q178 176 184 180" fill="none" stroke={P.sunPale} strokeWidth={2} strokeLinecap="round" />
+      <Sprite name="bruno-side-sneak" cx={214} base={204} w={62} />
       <Dark width={320} height={240} cx={180} cy={150} />
       <Twinkle x={142} y={42} r={3} />
       <Twinkle x={190} y={34} r={2.4} />
