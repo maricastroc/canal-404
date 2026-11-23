@@ -7,6 +7,7 @@ import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, callFreq, keysFreq } from "../audio/player";
 import { click, type Stage } from "../audio/voices";
 import { TALENT_COPY, type JuryId, type TalentCopy } from "../copy";
+import { calibrate, CALIBRATION_LATE, clickFor } from "../sim/calibration";
 import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
@@ -710,28 +711,21 @@ export class StageScene extends Phaser.Scene {
   private calibrationTap(timeStamp: number) {
     if (!this.clock) return;
     const heard = this.clock.at(timeStamp);
-    let best = -1;
-    let size = Infinity;
-    this.calibClicks.forEach((t, i) => {
-      const d = Math.abs(heard - t);
-      if (d < size && this.calibErrors[i] === null) {
-        best = i;
-        size = d;
-      }
-    });
-    if (best >= 0 && size <= 0.3) this.calibErrors[best] = (heard - this.calibClicks[best]) * 1000;
+    const click = clickFor(heard * 1000, this.calibClicks.map((t) => t * 1000));
+    if (click >= 0 && this.calibErrors[click] === null) this.calibErrors[click] = (heard - this.calibClicks[click]) * 1000;
   }
 
   private finishCalibration() {
-    const errors = this.calibErrors.filter((e): e is number => e !== null).sort((a, b) => a - b);
-    if (errors.length < 5) {
-      this.notice = this.copy.calibFail;
+    const result = calibrate(
+      this.calibErrors.filter((e): e is number => e !== null),
+      MAX_OFFSET,
+    );
+    if (!result.ok) {
+      this.notice = this.copy.calibFail[result.reason];
       this.setMode("intro");
       return;
     }
-    const middle = errors.length / 2;
-    const median = errors.length % 2 ? errors[Math.floor(middle)] : (errors[middle - 1] + errors[middle]) / 2;
-    this.offset = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, Math.round(median)));
+    this.offset = result.offset;
     this.hasCalibration = true;
     this.bridge.calibration.save(this.offset);
     this.notice = this.copy.calibResult(this.offset);
@@ -890,7 +884,8 @@ export class StageScene extends Phaser.Scene {
     if (this.mode === "calibrating") {
       const heard = this.clock ? this.clock.at(now) : 0;
       if (heard >= this.calibClicks[0] - 0.05 && this.card.howText === this.copy.calibListen) this.card.setHow(this.copy.calibGo);
-      this.card.dots(this.calibClicks.map((t, i) => (this.calibErrors[i] !== null ? "hit" : heard >= t - 0.02 ? "now" : "waiting")));
+      const next = this.calibClicks.findIndex((t, i) => this.calibErrors[i] === null && heard < t + CALIBRATION_LATE / 1000);
+      this.card.dots(this.calibClicks.map((_, i) => (this.calibErrors[i] !== null ? "hit" : i === next ? "now" : "waiting")));
       if (heard > this.calibEnd) this.finishCalibration();
     }
     let shown: number;

@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
+import { isPlausibleOffset } from "./sim/calibration";
 import { MAX_OFFSET } from "./sim/judge";
 import { songResult } from "./result";
 import { CANVAS, type Orientation } from "./scenes/layout";
@@ -30,7 +31,7 @@ function loadCalibration() {
   const raw = read(CALIBRATION_KEY);
   if (raw === null) return null;
   const n = Number(raw);
-  return Number.isInteger(n) && Math.abs(n) <= MAX_OFFSET ? n : null;
+  return isPlausibleOffset(n, MAX_OFFSET) ? n : null;
 }
 
 function orientationOf(parent: HTMLElement): Orientation {
