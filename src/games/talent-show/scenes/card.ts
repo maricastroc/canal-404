@@ -8,9 +8,9 @@ import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst
 
 export type CardButtonId = "primary" | "assist" | "calibrate";
 export type DemoKind = "learn" | "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
-export type BeatMark = "pending" | "now" | "done" | "missed";
+export type BeatMark = "pending" | "now" | "done" | "late" | "early" | "missed";
 export type PadPhase = "idle" | "count" | "taps" | "done" | "retry";
-export type PadState = { phase: PadPhase; count: number; beat: number; beatAt: number; hitAt: number; pressAt: number; marks: BeatMark[] };
+export type PadState = { phase: PadPhase; count: number; beat: number; beatAt: number; hitAt: number; pressAt: number; marks: BeatMark[]; hit: BeatMark | null };
 
 export type CardContent = {
   kicker: string;
@@ -298,6 +298,7 @@ class CalibPad {
   private number: Phaser.GameObjects.Text;
   private caption: Phaser.GameObjects.Text;
   private counter: Phaser.GameObjects.Text;
+  private verdict: Phaser.GameObjects.Text;
   private ear: Phaser.GameObjects.Container;
   private hand: Phaser.GameObjects.Image;
   private tick: Phaser.GameObjects.Image;
@@ -320,10 +321,11 @@ class CalibPad {
     this.number = cartoonText(scene, 0, 0, "", { size: 72, color: CREAM_TEXT, font: fonts.display, stroke: 0.16, shadow: false }).setOrigin(0.5);
     this.caption = cartoonText(scene, 0, 0, "", { size: sizes.body + 8, color: "#ffc83d", font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(0, 0.5);
     this.counter = cartoonText(scene, 0, 0, "", { size: sizes.body, color: CREAM_TEXT, font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(1, 0.5);
+    this.verdict = cartoonText(scene, 0, 0, "", { size: sizes.body + 4, color: "#63d6c1", font: fonts.display, stroke: 0.22, shadow: false }).setOrigin(0.5);
     this.ear = scene.add.container(0, 0, [scene.add.image(0, 0, "icon-ear-ink"), scene.add.image(0, 0, "icon-ear")]);
     this.hand = scene.add.image(0, 0, "icon-pointer").setOrigin(0.33, 0.06);
     this.tick = scene.add.image(0, 0, "icon-check");
-    this.root = scene.add.container(0, 0, [this.g, this.row, this.front, this.number, this.ear, this.tick, this.hand, this.caption, this.counter]);
+    this.root = scene.add.container(0, 0, [this.g, this.row, this.front, this.number, this.ear, this.tick, this.hand, this.caption, this.counter, this.verdict]);
     this.checks = new IconPool(() => {
       const icon = scene.add.image(0, 0, "icon-check");
       this.root.addAt(icon, this.root.getIndex(this.row) + 1);
@@ -352,7 +354,7 @@ class CalibPad {
     const done = phase === "taps" ? i - 5 + (b - i > 0.06 ? 1 : 0) : phase === "done" ? 8 : 0;
     const hitAt = phase === "taps" ? start + 0.06 * PAD_BEAT_MS : -Infinity;
     const marks: BeatMark[] = Array.from({ length: 8 }, (_, k) => (k < done ? "done" : phase === "taps" && k === done ? "now" : "pending"));
-    this.draw({ phase, count: phase === "count" ? i : 0, beat: i, beatAt: phase === "count" || phase === "taps" ? start : -Infinity, hitAt, pressAt: hitAt, marks }, now);
+    this.draw({ phase, count: phase === "count" ? i : 0, beat: i, beatAt: phase === "count" || phase === "taps" ? start : -Infinity, hitAt, pressAt: hitAt, marks, hit: phase === "taps" ? "done" : null }, now);
   }
 
   draw(state: PadState, now: number) {
@@ -371,14 +373,24 @@ class CalibPad {
     const pulse = this.reduced ? 0 : Math.max(0, 1 - (now - state.beatAt) / 260);
     const hitK = Math.max(0, 1 - (now - state.hitAt) / 280);
     const pressK = Math.max(0, 1 - (now - state.pressAt) / 200);
-    if (state.hitAt !== this.lastHit && now - state.hitAt < 100) this.sparks.push({ born: now, color: C.sun, seed: (now % 1000) / 160 });
+    if (state.hitAt !== this.lastHit && now - state.hitAt < 100 && state.hit === "done") this.sparks.push({ born: now, color: C.sun, seed: (now % 1000) / 160 });
     this.lastHit = state.hitAt;
-    const ring = { pulse, flash: Math.max(hitK, pressK * 0.4), flashColor: hitK > 0 ? C.sun : C.cream, lit: this.reduced ? 0 : -state.beat, shake: 0, holding: false, listen };
+    const onBeat = state.hit === "done";
+    const ring = { pulse, flash: Math.max(hitK, pressK * 0.4), flashColor: hitK > 0 ? (onBeat ? C.sun : C.tomato) : C.cream, lit: this.reduced ? 0 : -state.beat, shake: 0, holding: false, listen };
     drawRingBase(g, cx, cy, r, ring);
     const finished = state.phase === "done";
     if (finished) g.fillStyle(C.mint, 1).fillCircle(cx, cy, r);
     drawRingFront(f, cx, cy, r, ring);
-    if (hitK > 0) drawBurst(f, cx, cy, r, C.sun, 1 - hitK);
+    if (hitK > 0) drawBurst(f, cx, cy, r, onBeat ? C.sun : C.tomato, 1 - hitK);
+    const age = (now - state.hitAt) / 650;
+    const word = state.hit === "done" ? this.copy.padOn : state.hit === "late" ? this.copy.padLate : state.hit === "early" ? this.copy.padEarly : "";
+    if (word && age >= 0 && age < 1) {
+      this.verdict.setText(word.toUpperCase()).setColor(onBeat ? "#63d6c1" : CREAM_TEXT);
+      this.verdict
+        .setPosition(Math.max(cx, this.verdict.width / 2 + 10), cy - r * 0.15 - (this.reduced ? 0 : age * 26))
+        .setAlpha(1 - age * age)
+        .setVisible(true);
+    } else this.verdict.setVisible(false);
     this.sparks = this.sparks.filter((s) => now - s.born < PAD_SPARK_MS);
     drawSparks(f, cx, cy, r, this.sparks, now, PAD_SPARK_MS);
     this.number.setVisible(state.phase === "count" && state.count > 0).setText(String(state.count)).setPosition(cx, cy).setScale(1 + 0.25 * pulse);
@@ -412,6 +424,15 @@ class CalibPad {
         row.fillStyle(C.sun, 1).fillCircle(x, rowY, 19);
         row.lineStyle(5, INK_HEX, 1).strokeCircle(x, rowY, 19);
         row.fillStyle(INK_HEX, 1).fillCircle(x, rowY, 5);
+      } else if (mark === "late" || mark === "early") {
+        const dir = mark === "late" ? 1 : -1;
+        row.fillStyle(INK_HEX, 1).fillCircle(x + 2, rowY + 3, 15);
+        row.fillStyle(mark === "late" ? C.tangerine : C.sky, 1).fillCircle(x, rowY, 15);
+        row.lineStyle(4, INK_HEX, 1).strokeCircle(x, rowY, 15);
+        for (const dx of [-4, 3]) {
+          const tip = x + (dx + 3) * dir;
+          row.lineStyle(3.5, INK_HEX, 1).lineBetween(tip - 4 * dir, rowY - 6, tip, rowY).lineBetween(tip, rowY, tip - 4 * dir, rowY + 6);
+        }
       } else if (mark === "missed") {
         row.fillStyle(C.plum800, 1).fillCircle(x, rowY, 13);
         row.lineStyle(3, C.gray, 1).strokeCircle(x, rowY, 13);

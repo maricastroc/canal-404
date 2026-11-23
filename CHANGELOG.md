@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: a calibração diz se você tocou cedo ou atrasado
+- **Each tap says how it landed.** During calibration, every counted tap flashes "Junto!", "Atrasado!" or "Cedo!" over the circle, and its mark shows it: a check for on the beat, orange » for late, blue « for early. The check used to appear for any counted tap, so a run of late taps looked perfect and then failed. The counter now counts only taps on the beat.
+- **Don't wait for the click.** The instructions now say to tap along with the beat without waiting to hear it, like clapping in time; waiting to react to each click lands taps about a third of a second late, which is what kept failing.
+- **Clearer retries.** A failed calibration says whether the taps came after or before the beats, or, if you found the rhythm halfway, to play like that from the first beat. The calibration math is unchanged.
+
 ### Ao Vivo no 404: primeiro como jogar, depois a calibração
 - **Show first, then calibrate.** The first time you play, a "Como jogar" card ("Acerte a nota!") loops the real lane: one note at a time comes in from the right, the hand taps it right in the yellow circle and "Na mosca!" pops up. "Entendi! Continuar" leads to a separate "Ajuste o ritmo!" card that says why the game needs to sync with the device and what to do, with a silent preview of the calibration. The beats only start when you press "Começar calibração" (or Enter).
 - **A calibration you can follow.** While it runs, the card keeps one instruction ("Toque a cada batida!") and says where to tap. The circle turns lilac and shows the count 1–4, then turns gold with a hand for the eight beats. The eight marks are a progress row with a counter ("3 de 8"): a check for each counted tap, a larger ringed mark for the next beat, ✕ for a missed one, so it never depends on color alone. Each counted tap flashes the circle.
