@@ -2,18 +2,13 @@ import { parseNotes } from "@/lib/audio/tracks";
 import { beatMsAt, STEPS_PER_BAR, timeOf, type CompiledSong, type Signal, type TapSound } from "../song/notation";
 import { agogo, bucket, click, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Stage } from "./voices";
 
-const CALL_PITCHES = [69, 72, 76, 79];
 const LOOKAHEAD = 0.2;
 const SIGNAL_CUTOFF: Record<Signal, number> = { clear: 5200, weak: 2000, lost: 650 };
 const SIGNAL_HISS: Record<Signal, number> = { clear: 0, weak: 0.035, lost: 0.09 };
 
 type Cue = { at: number; play: (time: number) => void; skippable: boolean };
 
-export function callFreq(step: number) {
-  return midiToFreq(CALL_PITCHES[Math.floor((step % STEPS_PER_BAR) / 4)]);
-}
-
-export function keysFreq(midi: number | null) {
+export function toneFreq(midi: number | null) {
   let m = midi ?? 72;
   while (m < 64) m += 12;
   while (m > 84) m -= 12;
@@ -78,7 +73,7 @@ export class SongPlayer {
       }
     }
     for (const call of this.compiled.calls) {
-      const freq = callFreq(call.step);
+      const freq = toneFreq(this.compiled.tones[call.step]);
       this.cues.push({ at: call.at / 1000, skippable: true, play: (t) => fridge(stage, this.sfx, t, freq) });
     }
     this.compiled.signal.forEach((state, bar) => {

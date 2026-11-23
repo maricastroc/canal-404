@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: a Mila toca a vinheta
+- **Real phrases from Mila.** In Vinheta de Intervalo, every phrase Mila played climbed the same four notes whatever its rhythm, and two long stretches of call and echo, about 37 and 31 seconds, went by without the song's melody. Now she plays pieces of the jingle's own theme, each call and its echo sit over the same chord, and your taps sound her melody back. The call stretches last about 21 seconds at most and alternate with two refrains where you tap the theme with the notes on screen.
+- **Rhythms on the beat.** The phrases built on stray sixteenth notes, around 0:29, 0:55 and 1:05, are gone: every note falls on a beat or halfway between two, and each new phrase changes one thing from the one before. The two long calls work as question and answer, starting the same way and ending differently.
+- **Same length, new boards.** The song keeps its length and now has 110 notes (92 before, fewer of them by ear). The medley's echo stretch uses the two new closing phrases. The change bumps the game's rules to version 4, so all six songs start fresh boards ([decision 0014](docs/decisions/0014-talent-show-judge.md)).
+
 ### Ao Vivo no 404: os jurados seguram as plaquinhas
 - **Paddles in hand.** The jury's score paddles used to float above their heads with the stick ending in the air. Now Mr. Arlindo's stick goes into the fist he already raises, and the Inspector and the lunch lady raise an arm in their own sleeve and skin colors to hold theirs. The paddle pops out of the hand instead of sliding up, so it never comes loose, and the lunch lady's board stays in front of her bun and her angry steam.
 
