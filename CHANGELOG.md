@@ -4,6 +4,16 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: cada toque mostra o que você tocou
+- **The note you hit lights up where you hit it.** Each hit now pops the note itself at the exact spot it was when you tapped (on the circle for a "Na mosca!", a little above or below for early or late taps), with a ring in the grade's color: gold for Na mosca, mint for Boa, cream for Quase. Even with notes close together, you see which one counted. Missed notes still turn gray and fall with an ✕.
+- **Feedback beside the circle.** "Na mosca!", "Boa!", "Quase!", "Escapou!" and the rest now appear in a fixed spot right next to the circle instead of floating over the audience, and each new message replaces the last with a short pop, so fast passages never pile up. On phones it sits just above the circle's height, clear of the thumb.
+- **What you played.** Lina's keyboard and Mila's tape recorder play real pitches, so their notes show the note name on top of the grade (DÓ, RÉ, MI… and SOL♯; C, D, E… in English). Déco's bucket and Bruno's shaker have no pitch, so their hits show the instrument instead. While Mila plays her phrase, her notes appear as outlined lilac tags; on your turn they appear filled, with your grade, so her LÁ DÓ MI DÓ lines up with yours.
+- **Long notes.** The start shows the note and its grade, the circle fills up while you hold, and the end says "Segurou!" or "Soltou cedo!".
+- **A cleaner circle.** The dashed target and the chasing bulbs are gone. The circle keeps its gold ring and bulbs, which light up in the grade's color on a hit and in red on a miss, and it glows a little as a note gets close. Every tap gives the ring a short pulse.
+- **A livelier crowd.** The audience has new hairdos (pigtails, curly puffs) and small differences in size and posture, and only some of them move at a time: bouncing, swaying or nodding to the beat. Fans raise their arms or wave on great hits, held notes and every 10 in a combo, and the crowd goes quiet when the show is going badly. Crowd lines no longer hide behind the front rows.
+- **The sound follows the note that counted.** When two notes are close, the keyboard and the recorder now play the pitch of the note your tap was scored on, not just the nearest one. A tap right at the edge of the window now shows its grade even if the note had just been marked "Escapou!" a frame earlier.
+- Timing windows, charts, scoring and stars are unchanged.
+
 ### Ao Vivo no 404 no celular
 - **A lane that runs down the screen.** With the phone upright, the notes now come down a vertical lane from the stage to the circle, in the lower part of the screen, instead of crossing a thin strip. The canvas fills the whole screen height, so the notes are bigger and you see the next 3 to 4 beats coming, on small and tall phones alike. Notes still reach the circle exactly on the music: timing windows, charts, scoring and stars are unchanged.
 - **A compact stage on top.** The jury bench, the band, 404 and the curtains keep their places in a shorter stage that shrinks on short screens, and the audience now sits on both sides of the lane. Crowd lines stay beside the lane, the "Na mosca!" feedback appears next to the circle, and the score sits under "AO VIVO".

@@ -1,9 +1,11 @@
 import { localized } from "@/i18n/copy";
 import type { Mark } from "./sim/judge";
-import type { BandMember, RoundId, SongId } from "./song/notation";
+import type { BandMember, RoundId, SongId, TapSound } from "./song/notation";
 
 export type JuryId = "inspector" | "arlindo" | "lunch";
 type SongText = { title: string; idea: string; how: string; who: string };
+type Pitches = readonly [string, string, string, string, string, string, string, string, string, string, string, string];
+type Drums = Record<Exclude<TapSound, "keys" | "fridge">, string>;
 export type CrowdLine = { text: string; think: boolean };
 export type CrowdLines = { any: CrowdLine[]; hot: CrowdLine[]; cold: CrowdLine[]; songs: Record<SongId, CrowdLine[]> };
 
@@ -28,6 +30,8 @@ export const TALENT_COPY = localized({
     jury: { inspector: "Inspetor", arlindo: "Seu Arlindo", lunch: "Tia da cantina" } satisfies Record<JuryId, string>,
     marks: { perfect: "Na mosca!", good: "Boa!", near: "Quase!", miss: "Escapou!", held: "Segurou!", dropped: "Soltou cedo!", noise: "Barulho!" } satisfies Record<Mark, string>,
     markNames: { perfect: "Na mosca", good: "Boa", near: "Quase", miss: "Escapou", held: "Segurou", dropped: "Soltou cedo", noise: "Barulho" } satisfies Record<Mark, string>,
+    pitches: ["Dó", "Dó♯", "Ré", "Ré♯", "Mi", "Fá", "Fá♯", "Sol", "Sol♯", "Lá", "Lá♯", "Si"] satisfies Pitches,
+    drums: { bucket: "Balde", shaker: "Chocalho" } satisfies Drums,
     streak: (n: number) => `Combo ${n}`,
     tutorialKicker: "Como jogar",
     tutorialTitle: "Acerte a nota!",
@@ -93,6 +97,8 @@ export const TALENT_COPY = localized({
     jury: { inspector: "Inspector", arlindo: "Mr. Arlindo", lunch: "Lunch lady" } satisfies Record<JuryId, string>,
     marks: { perfect: "Bullseye!", good: "Nice!", near: "Almost!", miss: "Missed!", held: "Held it!", dropped: "Let go early!", noise: "Noise!" } satisfies Record<Mark, string>,
     markNames: { perfect: "Bullseye", good: "Nice", near: "Almost", miss: "Missed", held: "Held", dropped: "Let go early", noise: "Noise" } satisfies Record<Mark, string>,
+    pitches: ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"] satisfies Pitches,
+    drums: { bucket: "Bucket", shaker: "Shaker" } satisfies Drums,
     streak: (n: number) => `Combo ${n}`,
     tutorialKicker: "How to play",
     tutorialTitle: "Hit the note!",

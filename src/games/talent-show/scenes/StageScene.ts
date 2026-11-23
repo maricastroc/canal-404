@@ -5,16 +5,16 @@ import { loadIcons } from "@/games/kit/icons";
 import { cartoonText } from "@/games/kit/ui";
 import { formatNumber } from "@/i18n/format";
 import { getAudio } from "@/lib/audio/engine";
-import { AudibleClock, SongPlayer, toneFreq } from "../audio/player";
+import { AudibleClock, SongPlayer, pitched, toneFreq } from "../audio/player";
 import type { Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type JuryId, type TalentCopy } from "../copy";
-import { judge, replay, runScore, type Mark, type TapLog, type Verdict } from "../sim/judge";
+import { judge, replay, runScore, type JudgeEvent, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART, type PaddleHold } from "./figure";
-import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, shade, type Spark, type TallyState } from "./lane";
+import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawCall, drawEcho, drawNote, drawPop, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, shade, type PopStrength, type Spark, type TallyState } from "./lane";
 import { DESK_LIP, layoutFor, toWorld, type Layout, type Shape, type Spot } from "./layout";
 
 const NOTE_GLYPH: IconNode = Music2.map(([tag, attrs]): IconNode[number] => [tag, tag === "circle" ? { ...attrs, fill: "#1d1830" } : attrs]);
@@ -57,14 +57,28 @@ const MISS_FALL_MS = 480;
 const SPARK_MS = 380;
 const TALK_MS = 2600;
 const LISTEN_TAIL_MS = 150;
+const POP_MS = 260;
+const PRESS_MS = 110;
+const MISS_QUIET_MS = 220;
+const RECHECK_MS = 300;
+const READOUT_MS = 560;
+const READOUT_FADE_MS = 140;
+const HEADS = [0, 1, 2, 4, 5];
+const ARMS = 10;
 
-type Popup = { text: Phaser.GameObjects.Text; born: number };
-type Burst = { born: number; color: number };
+type Pop = { born: number; x: number; color: number; tint: number; strength: PopStrength };
+type Chip = { text: string; color: number; heard: boolean };
+type Reaction = "cheer" | "wave";
 type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; arm: Phaser.GameObjects.Graphics; heart: Phaser.GameObjects.Image; mood: Mood; moodUntil: number; heartUntil: number };
 type KidView = { root: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; head: Phaser.GameObjects.Image; pose: Pose; poseUntil: number; face: KidFace; flash: KidFace; faceUntil: number; base: KidFace; spot: Spot };
-type Fan = { img: Phaser.GameObjects.Image; variant: number; leave: number; phase: number; y: number };
+type Fan = { img: Phaser.GameObjects.Image; leave: number; phase: number; y: number; energy: number; style: number; tilt: number; react: Reaction | null; reactUntil: number; arms: Phaser.GameObjects.Image | null };
 type Floater = { img: Phaser.GameObjects.Image; born: number; x: number; y: number; drift: number };
 type ListenSpan = { from: number; to: number; echo: boolean };
+
+function jitter(seed: number, salt: number) {
+  const n = Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}
 
 function byBar(notes: ChartNote[]) {
   const map = new Map<number, ChartNote[]>();
@@ -90,7 +104,8 @@ export class StageScene extends Phaser.Scene {
   private presses: { down: number; up: number | null }[] = [];
   private active = new Map<string, { down: number; up: number | null }>();
   private verdict: Verdict | null = null;
-  private seen = 0;
+  private marked = new Map<string, number>();
+  private markedUntil = -Infinity;
   private platesShown = new Set<number>();
   private displayCrowd = 70;
   private lastSignal: Signal = "clear";
@@ -141,8 +156,20 @@ export class StageScene extends Phaser.Scene {
   private streakText!: Phaser.GameObjects.Text;
   private streakShown = 0;
   private labels: Phaser.GameObjects.Text[] = [];
-  private popups: Popup[] = [];
-  private bursts: Burst[] = [];
+  private readout!: Phaser.GameObjects.Container;
+  private chipBg!: Phaser.GameObjects.Graphics;
+  private chipText!: Phaser.GameObjects.Text;
+  private wordText!: Phaser.GameObjects.Text;
+  private readoutBorn = -Infinity;
+  private readoutUntil = -Infinity;
+  private readoutFit = 1;
+  private keepReadout = false;
+  private pops: Pop[] = [];
+  private popIcons!: IconPool;
+  private pressAt = -Infinity;
+  private actionAt = -Infinity;
+  private arms: Phaser.GameObjects.Image[] = [];
+  private crowdBeat = -Infinity;
   private sparks: Spark[] = [];
   private flash = { born: -Infinity, color: C.sun };
   private shakeUntil = 0;
@@ -562,21 +589,49 @@ export class StageScene extends Phaser.Scene {
     let index = 0;
     this.L.crowd.forEach((row, r) => {
       for (let i = 0; i < row.xs.length; i += 1) {
-        const x = row.xs[i];
-        const variant = (i * 7 + r * 5) % 3;
-        const img = this.add.image(x, row.y, `crowd-${variant}`).setOrigin(0.5, 1).setScale(row.scale / 2).setDepth(9 + r * 0.1);
-        this.fans.push({ img, variant, leave: (index * 7919) % 97, phase: (index * 0.37) % 1, y: row.y });
+        const head = HEADS[(i * 7 + r * 5) % HEADS.length];
+        const x = row.xs[i] + (jitter(index, 1) - 0.5) * 12 * row.scale;
+        const tilt = (jitter(index, 2) - 0.5) * 0.08;
+        const scale = row.scale * (0.94 + jitter(index, 3) * 0.12);
+        const img = this.add.image(x, row.y, `crowd-${head}`).setOrigin(0.5, 1).setScale(scale / 2).setRotation(tilt).setDepth(9 + r * 0.04);
+        this.fans.push({ img, leave: (index * 7919) % 97, phase: (jitter(index, 4) - 0.5) * 0.16, y: row.y, energy: jitter(index, 5), style: index % 3, tilt, react: null, reactUntil: 0, arms: null });
         index += 1;
       }
     });
     const order = [...this.fans].sort((a, b) => a.leave - b.leave);
     order.forEach((fan, rank) => (fan.leave = rank));
+    for (let i = 0; i < ARMS; i += 1) this.arms.push(this.add.image(0, 0, "crowd-arms-up").setVisible(false));
+  }
+
+  private react(count: number, pose: Reaction, ms: number) {
+    const now = performance.now();
+    const idle = this.fans.filter((f) => f.img.visible && f.react === null);
+    for (let n = 0; n < count && idle.length > 0; n += 1) {
+      const arms = this.arms.find((a) => !a.visible);
+      if (!arms) return;
+      const fan = idle.splice(Math.floor(Math.random() * idle.length), 1)[0];
+      fan.react = pose;
+      fan.reactUntil = now + ms;
+      fan.arms = arms;
+      arms
+        .setTexture(pose === "cheer" ? "crowd-arms-up" : "crowd-arm-wave")
+        .setOrigin(0.5, pose === "cheer" ? 1 : 0.87)
+        .setScale(fan.img.scaleX)
+        .setDepth(fan.img.depth - 0.001)
+        .setVisible(true);
+    }
+  }
+
+  private calm(fan: Fan) {
+    fan.arms?.setVisible(false);
+    fan.arms = null;
+    fan.react = null;
   }
 
   private buildTalk() {
     this.talkBg = this.add.graphics();
     this.talkText = this.add.text(0, 0, "", { ...this.font("body", this.L.text.label, "#1d1830"), align: "center" }).setOrigin(0.5);
-    this.talk = this.add.container(0, 0, [this.talkBg, this.talkText]).setDepth(9.5).setVisible(false);
+    this.talk = this.add.container(0, 0, [this.talkBg, this.talkText]).setDepth(9.8).setVisible(false);
   }
 
   private crowdLine(): CrowdLine {
@@ -669,19 +724,45 @@ export class StageScene extends Phaser.Scene {
     if (now >= this.talkNext) this.crowdSay(now);
   }
 
-  private animateCrowd(shown: number) {
+  private animateCrowd(shown: number, now: number) {
     const total = this.fans.length;
     const level = this.mode === "cut" ? 0 : Math.max(0, Math.min(100, this.displayCrowd)) / 100;
     const present = Math.round(total * Math.min(1, level * 1.25));
     const live = this.mode === "playing" || this.mode === "countin";
+    const still = this.bridge.reducedMotion;
     const beat = this.beatPos(shown);
+    const streak = this.verdict?.streak ?? 0;
+    const mood = live ? Math.max(0, Math.min(1, (level - 0.3) / 0.6)) * 0.7 + Math.min(0.3, streak / 50) : 0;
+    const share = live ? 0.04 + 0.12 * mood : 0;
+    const amp = 0.6 + 0.8 * mood;
     for (const fan of this.fans) {
-      fan.img.setVisible(fan.leave < present);
-      const cheer = live && level > 0.85 && fan.leave % 3 === 0;
-      const key = `crowd-${cheer ? 3 : fan.variant}`;
-      if (fan.img.texture.key !== key) fan.img.setTexture(key);
-      const bounce = live && !this.bridge.reducedMotion ? Math.max(0, Math.sin((beat + fan.phase) * Math.PI)) * 8 * level : 0;
-      fan.img.y = fan.y - bounce;
+      const visible = fan.leave < present;
+      fan.img.setVisible(visible);
+      if (fan.react && (!visible || !live || now > fan.reactUntil)) this.calm(fan);
+      let lift = 0;
+      let rotation = fan.tilt;
+      if (visible && !still && fan.energy < share) {
+        const t = beat + fan.phase;
+        if (fan.style === 0) lift = Math.abs(Math.sin(t * Math.PI)) * 9 * amp;
+        else if (fan.style === 1) rotation += Math.sin((t * Math.PI) / 2) * 0.07 * amp;
+        else lift = Math.max(0, 1 - (t - Math.floor(t)) * 4) * 6 * amp;
+      }
+      if (fan.react && !still) lift += fan.react === "cheer" ? Math.abs(Math.sin(now / 110)) * 12 : 4;
+      fan.img.setY(fan.y - lift).setRotation(rotation);
+      if (fan.arms) {
+        const img = fan.img;
+        if (fan.react === "cheer") fan.arms.setPosition(img.x, img.y).setRotation(rotation);
+        else {
+          const k = img.displayWidth / 120;
+          const wave = still ? 0.5 : 0.5 + 0.3 * Math.sin(now / 85);
+          fan.arms.setPosition(img.x + 38 * k, img.y - 34 * k).setRotation(rotation + wave);
+        }
+      }
+    }
+    const tick = Math.floor(beat);
+    if (live && tick !== this.crowdBeat) {
+      this.crowdBeat = tick;
+      if (mood > 0.75 && Math.random() < 0.4) this.react(1, "cheer", beatMsAt(this.compiled, Math.max(0, shown)) * 1.5);
     }
   }
 
@@ -736,13 +817,77 @@ export class StageScene extends Phaser.Scene {
     this.ghostG = this.framed(this.add.graphics().setDepth(11.6));
     this.ghostIcons = this.icons(11.7);
     this.ringFrontG = this.framed(this.add.graphics().setDepth(12));
+    this.popIcons = this.icons(12.05);
     const ear = this.at(this.L.lane.hitX, this.laneY);
     this.ear = this.add.container(ear.x, ear.y, [this.add.image(0, 0, "icon-ear-ink"), this.add.image(0, 0, "icon-ear")]).setDepth(12.1).setVisible(false);
     for (let i = 0; i < 8; i += 1) this.labels.push(cartoonText(this, 0, 0, "", { size: this.L.text.label, color: "#f7ecd4", font: this.bridge.fonts.display, stroke: 0.22, shadow: false }).setDepth(13).setVisible(false));
-    for (let i = 0; i < 6; i += 1) {
-      const text = cartoonText(this, this.L.popup.x, this.L.popup.y, "", { size: this.L.text.mark, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(14).setVisible(false);
-      this.popups.push({ text, born: -Infinity });
+    this.buildReadout();
+  }
+
+  private buildReadout() {
+    const L = this.L;
+    this.chipBg = this.add.graphics();
+    this.chipText = cartoonText(this, 0, 0, "", { size: Math.round(L.text.mark * 0.8), color: "#1d1830", font: this.bridge.fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+    this.wordText = cartoonText(this, 0, 0, "", { size: L.text.mark, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.2 }).setOrigin(0, 0.5);
+    this.readout = this.add.container(L.readout.x, L.readout.y, [this.chipBg, this.chipText, this.wordText]).setDepth(14).setVisible(false);
+  }
+
+  private showReadout(chip: Chip | null, word: string | null, color = "#ffc83d") {
+    const R = this.L.readout;
+    const size = Math.round(this.L.text.mark * 0.8);
+    const chipH = Math.round(size * 1.4);
+    const gap = 8;
+    let chipW = 0;
+    this.chipBg.clear();
+    this.chipText.setVisible(chip !== null);
+    this.wordText.setVisible(word !== null);
+    if (chip) {
+      this.chipText.setText(chip.text.toUpperCase()).setColor(chip.heard ? "#b9a6ef" : "#1d1830");
+      chipW = Math.round(this.chipText.width + size * 1.1);
     }
+    if (word !== null) this.wordText.setText(word).setColor(color);
+    const wordW = word !== null ? this.wordText.width : 0;
+    const wordH = word !== null ? this.wordText.height * 0.78 : 0;
+    let chipY = 0;
+    let wordY = 0;
+    if (chip && word !== null) {
+      const total = chipH + gap + wordH;
+      chipY = -total / 2 + chipH / 2;
+      wordY = total / 2 - wordH / 2;
+    }
+    if (chip) {
+      const g = this.chipBg;
+      const top = chipY - chipH / 2;
+      g.fillStyle(C.ink, 1).fillRoundedRect(4, top + 5, chipW, chipH, chipH / 2);
+      g.fillStyle(chip.heard ? C.plum950 : chip.color, 1).fillRoundedRect(0, top, chipW, chipH, chipH / 2);
+      g.lineStyle(4, chip.heard ? chip.color : C.ink, 1).strokeRoundedRect(0, top, chipW, chipH, chipH / 2);
+      this.chipText.setPosition(size * 0.55, chipY + 1);
+    }
+    this.wordText.setPosition(0, wordY);
+    const width = Math.max(chipW, wordW);
+    this.readoutFit = Math.min(1, R.max / Math.max(1, width));
+    this.readoutBorn = performance.now();
+    this.readoutUntil = this.readoutBorn + READOUT_MS;
+    this.readout.setVisible(true).setAlpha(1).setScale(this.readoutFit);
+  }
+
+  private updateReadout(now: number) {
+    if (!this.readout.visible) return;
+    if (this.keepReadout) this.readoutUntil = Math.max(this.readoutUntil, now + READOUT_FADE_MS + 40);
+    const left = this.readoutUntil - now;
+    if (left <= 0 || OFFSTAGE.includes(this.mode)) {
+      this.readout.setVisible(false);
+      return;
+    }
+    const punch = this.bridge.reducedMotion ? 0 : 0.18 * Math.max(0, 1 - (now - this.readoutBorn) / 120);
+    this.readout.setScale(this.readoutFit * (1 + punch)).setAlpha(Math.min(1, left / READOUT_FADE_MS));
+  }
+
+  private chipOf(note: ChartNote): Chip {
+    const segment = this.compiled.song.segments[this.compiled.segmentOfBar[note.bar]];
+    const tone = this.compiled.tones[note.step];
+    const text = pitched(segment.tap) ? this.copy.pitches[(tone ?? 72) % 12] : this.copy.drums[segment.tap];
+    return { text, color: MEMBER_COLOR[segment.featured], heard: note.kind === "call" };
   }
 
   private setSong(id: SongId) {
@@ -970,12 +1115,17 @@ export class StageScene extends Phaser.Scene {
     this.presses = [];
     this.active.clear();
     this.verdict = null;
-    this.seen = 0;
+    this.marked.clear();
+    this.markedUntil = -Infinity;
     this.platesShown.clear();
     this.displayCrowd = 70;
     this.lastSignal = "clear";
-    this.bursts = [];
+    this.pops = [];
     this.sparks = [];
+    this.pressAt = -Infinity;
+    this.actionAt = -Infinity;
+    this.readout.setVisible(false);
+    this.fans.forEach((fan) => this.calm(fan));
     this.missAt.clear();
     this.streakShown = 0;
     this.setScore(0);
@@ -1047,12 +1197,23 @@ export class StageScene extends Phaser.Scene {
     const previous = this.active.get(id);
     if (previous && previous.up === null) previous.up = Math.max(previous.down, raw);
     this.active.set(id, press);
-    const segment = this.compiled.song.segments[this.compiled.segmentOfBar[Math.max(0, Math.min(this.compiled.bars - 1, barAt(this.compiled, raw)))]];
-    const near = this.nearestNote(raw);
+    const claimed = this.claimed(raw);
+    const bar = claimed ? claimed.bar : Math.max(0, Math.min(this.compiled.bars - 1, barAt(this.compiled, raw)));
+    const segment = this.compiled.song.segments[this.compiled.segmentOfBar[bar]];
+    const near = claimed ?? this.nearestNote(raw);
     const freq = toneFreq(near ? this.compiled.tones[near.step] : null);
     this.player.press(segment.tap, freq);
-    this.bursts.push({ born: performance.now(), color: C.cream });
+    this.pressAt = performance.now();
     this.kidHit(segment.featured);
+  }
+
+  private claimed(raw: number) {
+    const events = judge(this.compiled, this.judgeInput(), raw).events;
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const e = events[i];
+      if (e.at === raw && e.error !== null && e.note !== null) return this.compiled.notes[e.note];
+    }
+    return null;
   }
 
   private registerUp(timeStamp: number, id: string) {
@@ -1178,8 +1339,7 @@ export class StageScene extends Phaser.Scene {
     const verdict = judge(this.compiled, this.judgeInput(), shown);
     this.verdict = verdict;
     this.setScore(runScore(verdict));
-    for (let i = this.seen; i < verdict.events.length; i += 1) this.onMark(verdict.events[i].mark, verdict.streak, verdict.events[i].note);
-    this.seen = verdict.events.length;
+    this.markNew(verdict);
     verdict.sections.forEach((s, i) => {
       if (!s.closed || this.platesShown.has(i) || s.max === 0) return;
       this.platesShown.add(i);
@@ -1210,11 +1370,27 @@ export class StageScene extends Phaser.Scene {
     else if (shown >= this.compiled.endMs) this.endSong();
   }
 
+  private markNew(verdict: Verdict) {
+    const events = verdict.events;
+    let i = events.length;
+    while (i > 0 && events[i - 1].at >= this.markedUntil - RECHECK_MS) i -= 1;
+    for (; i < events.length; i += 1) {
+      const e = events[i];
+      const key = `${e.mark}:${e.note}:${e.at}`;
+      if (this.marked.has(key)) continue;
+      this.marked.set(key, e.at);
+      this.markedUntil = Math.max(this.markedUntil, e.at);
+      this.onMark(e, verdict.streak);
+    }
+    if (this.marked.size > 48) for (const [key, at] of this.marked) if (at < this.markedUntil - RECHECK_MS * 2) this.marked.delete(key);
+  }
+
   private updateTurns(shown: number) {
     const calls = this.compiled.calls;
     while (this.callSeen < calls.length && calls[this.callSeen].at <= shown) {
       if (shown - calls[this.callSeen].at < 200) {
         this.flash = { born: performance.now(), color: C.plum300 };
+        this.showReadout(this.chipOf(calls[this.callSeen]), null);
         this.floatNote();
       }
       this.callSeen += 1;
@@ -1222,7 +1398,7 @@ export class StageScene extends Phaser.Scene {
     const spans = this.listenSpans;
     while (this.listenSeen < spans.length && shown >= spans[this.listenSeen].to) {
       const span = spans[this.listenSeen];
-      if (span.echo && shown - span.to < 400) this.popup(this.copy.yourTurnCue, "#ffc83d");
+      if (span.echo && shown - span.to < 400) this.showReadout(null, this.copy.yourTurnCue);
       this.listenSeen += 1;
     }
     const first = spans[0];
@@ -1239,17 +1415,6 @@ export class StageScene extends Phaser.Scene {
     if (milestone) this.talkStreak = streak;
     if (!this.talk.visible && ((cold && !this.talkCold) || milestone)) this.talkNext = Math.min(this.talkNext, now + 250);
     this.talkCold = cold;
-  }
-
-  private popup(text: string, color: string) {
-    const popup = this.popups.reduce((a, b) => (a.born < b.born ? a : b));
-    for (const p of this.popups) p.text.setVisible(false);
-    popup.born = performance.now();
-    popup.text.setText(text).setColor(color).setVisible(true).setAlpha(1).setScale(1);
-    const { min, max } = this.L.popup;
-    const fit = Math.min(1, (max - min) / popup.text.width);
-    popup.text.setData("fit", fit).setX(Math.max(min + (popup.text.width * fit) / 2, Math.min(max - (popup.text.width * fit) / 2, this.L.popup.x)));
-    popup.text.setScale(fit * (this.bridge.reducedMotion ? 1 : 1.3));
   }
 
   private setStreak(n: number) {
@@ -1272,19 +1437,28 @@ export class StageScene extends Phaser.Scene {
     if (!this.bridge.reducedMotion && n % 10 === 0) this.tweens.add({ targets: this.streak, scale: { from: 1.25, to: 1 }, duration: 260, ease: "Back.easeOut" });
   }
 
-  private onMark(mark: Mark, streak: number, note: number | null) {
+  private onMark(event: JudgeEvent, streak: number) {
+    const { mark, at } = event;
     const now = performance.now();
-    this.popup(this.copy.marks[mark], MARK_COLOR[mark]);
-    if (mark === "miss" || mark === "dropped" || mark === "noise") {
-      this.flash = { born: now, color: C.tomato };
-      if (mark === "miss" && note !== null) this.missAt.set(note, now);
-    } else {
-      this.bursts.push({ born: now, color: MARK_TINT[mark] });
+    const note = event.note === null ? null : this.compiled.notes[event.note];
+    const strength: PopStrength | null = mark === "perfect" || mark === "good" || mark === "near" || mark === "held" ? mark : null;
+    const hit = strength !== null && strength !== "held";
+    const quiet = mark === "miss" && now - this.actionAt < MISS_QUIET_MS;
+    if (mark !== "miss") this.actionAt = now;
+    if (!quiet) {
+      this.showReadout(note && strength ? this.chipOf(note) : null, this.copy.marks[mark], MARK_COLOR[mark]);
       this.flash = { born: now, color: MARK_TINT[mark] };
-      if (mark !== "near") {
-        this.sparks.push({ born: now, color: MARK_TINT[mark], seed: (now % 1000) / 160 });
-        this.floatNote();
-      }
+    }
+    if (mark === "miss" && note) this.missAt.set(note.index, now);
+    if (note && strength) {
+      const lane = this.L.lane;
+      const x = hit ? lane.hitX + (this.beatPos(note.at) - this.beatPos(at)) * lane.pxPerBeat : lane.hitX;
+      const color = MEMBER_COLOR[this.compiled.song.segments[this.compiled.segmentOfBar[note.bar]].featured];
+      this.pops.push({ born: now, x, color, tint: MARK_TINT[mark], strength });
+      if (mark === "perfect" || mark === "held") this.sparks.push({ born: now, color: MARK_TINT[mark], seed: (now % 1000) / 160, x });
+      if (mark !== "near") this.floatNote();
+      if (mark === "held") this.react(1, "cheer", 700);
+      else if (mark === "perfect" && Math.random() < 0.3) this.react(1, "wave", 650);
     }
     if (mark === "noise") {
       this.shakeUntil = now + 240;
@@ -1301,6 +1475,7 @@ export class StageScene extends Phaser.Scene {
       this.juryMood("lunch", "happy", 1000);
       if (streak >= 16) this.hostFlash("excited", 700);
     }
+    if (hit && streak > 0 && streak % 10 === 0) this.react(Math.min(6, 2 + streak / 10), "cheer", 900);
   }
 
   private floatNote() {
@@ -1329,17 +1504,7 @@ export class StageScene extends Phaser.Scene {
         view.arm.setVisible(false);
       }
     });
-    const rise = this.bridge.reducedMotion ? 0 : 44;
-    const baseY = this.L.popup.y;
-    for (const p of this.popups) {
-      if (!p.text.visible) continue;
-      const age = (now - p.born) / 620;
-      if (age >= 1) p.text.setVisible(false);
-      else {
-        p.text.setY(baseY - age * rise).setAlpha(1 - age * age);
-        if (!this.bridge.reducedMotion) p.text.setScale(((p.text.getData("fit") as number) ?? 1) * (1 + 0.3 * Math.max(0, 1 - age * 6)));
-      }
-    }
+    this.updateReadout(now);
     for (const f of this.floaters) {
       if (!f.img.visible) continue;
       const k = (now - f.born) / 900;
@@ -1429,7 +1594,7 @@ export class StageScene extends Phaser.Scene {
       }
     });
     if (this.mode === "playing" && this.compiled.calls.some((c) => Math.abs(c.at - shown) < 30)) this.kidHit("mila", 140);
-    this.animateCrowd(shown);
+    this.animateCrowd(shown, now);
   }
 
   private beatPos(ms: number) {
@@ -1505,6 +1670,8 @@ export class StageScene extends Phaser.Scene {
       drawCall(g, x, laneY, r, alpha);
     }
     let holding = false;
+    let progress = 0;
+    let near = 0;
     for (const note of compiled.notes) {
       const x = xOf(note.at);
       const xEnd = note.kind === "hold" ? xOf(note.end) : x;
@@ -1520,6 +1687,7 @@ export class StageScene extends Phaser.Scene {
       const fade = (px: number) => Math.max(0, 1 - Math.max(0, hitX - px) / 200);
       const missed = this.missAt.get(note.index);
       const fall = missed !== undefined ? (now - missed) / MISS_FALL_MS : null;
+      if (grade === null && (note.kind !== "echo" || assist) && (signal !== "lost" || assist)) near = Math.max(near, 1 - Math.abs(x - hitX) / (LN.pxPerBeat * 0.5));
       if (note.kind === "echo") {
         if (grade === null) {
           if (assist) drawEcho(g, x, laneY, r, 0.6 * edgeFade(x));
@@ -1538,6 +1706,7 @@ export class StageScene extends Phaser.Scene {
           this.drawMissed(g, x, laneY, r, fall, fade(x));
         } else if (held) {
           holding = true;
+          progress = Math.max(progress, (shown - note.at) / (note.end - note.at));
           if (xEnd > hitX) drawTail(g, hitX, xEnd, laneY, r, color, 0.95, left, right);
           drawNote(g, this.noteIcons, hitX, laneY, r, color, 1, false);
         } else if (tail === "dropped") {
@@ -1567,7 +1736,9 @@ export class StageScene extends Phaser.Scene {
     const shake = this.bridge.reducedMotion ? 0 : Math.sin(now * 0.09) * 8 * shakeK;
     const beatIndex = Math.floor(beatNow);
     const listen = this.listening(shown);
-    const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.bridge.reducedMotion ? 0 : -beatIndex, shake, holding, listen };
+    const press = Math.max(0, 1 - (now - this.pressAt) / PRESS_MS);
+    const ring = { pulse, flash: flashK, flashColor: this.flash.color, shake, holding, listen, press, near, progress };
+    this.keepReadout = holding;
     const earAt = this.at(hitX + shake, laneY);
     this.ear
       .setVisible(listen)
@@ -1580,8 +1751,10 @@ export class StageScene extends Phaser.Scene {
     });
     drawRingBase(base, hitX, laneY, r, ring);
     drawRingFront(front, hitX, laneY, r, ring);
-    this.bursts = this.bursts.filter((b) => now - b.born < 280);
-    for (const b of this.bursts) drawBurst(front, hitX + shake, laneY, r, b.color, (now - b.born) / 280);
+    this.popIcons.begin();
+    this.pops = this.pops.filter((p) => now - p.born < POP_MS);
+    for (const p of this.pops) drawPop(front, this.popIcons, p.x, laneY, r, p.color, p.tint, p.strength, (now - p.born) / POP_MS, this.bridge.reducedMotion);
+    this.popIcons.end();
     this.sparks = this.sparks.filter((s) => now - s.born < SPARK_MS);
     drawSparks(front, hitX, laneY, r, this.sparks, now, SPARK_MS);
   }
