@@ -4,7 +4,6 @@ const REST = ". . . . . . . . . . . . . . . .";
 const QUIET = "................";
 const pick = (list: string[], ...at: number[]) => at.map((i) => list[i - 1]);
 const times = (part: string, n: number) => Array.from({ length: n }, () => part);
-const echo = (call: string) => call.replaceAll("c", "e");
 
 const THEME_LEAD = [
   "E5 - G5 - C6 - B5 A5 G5 - - - E5 - . .",
@@ -123,38 +122,69 @@ const SIGNOFF: Song = {
 };
 
 const RECESS_LEAD = ["A4 - C5 - E5 - - - D5 - C5 - A4 - - -", "G4 - B4 - D5 - - - C5 - B4 - G4 - - -", "F4 - A4 - C5 - - - E5 - D5 - C5 - A4 -", "G4 - - - B4 - - - C5 - - - - - - -"];
-const RECESS_BASS = ["F2 - - - . . F2 . C3 - - - . . A2 .", "E2 - - - . . E2 . B2 - - - . . G2 .", "D2 - - - . . D2 . A2 - - - . . F2 .", "C2 - - - . . C2 . G2 - - - E2 - - -"];
-const RECESS_PAD = ["A3 - - - - - - - C4 - - - - - - -", "G3 - - - - - - - B3 - - - - - - -", "F3 - - - - - - - A3 - - - - - - -", "E3 - - - - - - - G3 - - - - - - -"];
-const CALLS = ["c...c...c...c...", "c.c.c...c.c.c...", "c...c.c.c...c...", "c.....c.....c...", "c.c...c.c.c.c...", "c..c..c...c.c...", "c.c.c.c.c...c.c."];
-const LONG_CALLS = [
-  ["c.c.c...c...c...", "c.c...c.c......."],
-  ["c..c..c.c..c..c.", "c...c...c.c.c..."],
-  ["c.c.c.c.c...c..c", "..c.c...c......."],
+const RECESS_ENDING = [RECESS_LEAD[0], "G4 - B4 - D5 - - - F5 - D5 - B4 - - -", "C5 - E5 - G5 - - - C6 - - - - - . ."];
+const RECESS_CHORDS = {
+  F: { bass: "F2 - - - . . F2 . C3 - - - . . A2 .", pad: "A3 - - - - - - - C4 - - - - - - -" },
+  E: { bass: "E2 - - - . . E2 . B2 - - - . . G2 .", pad: "G3 - - - - - - - B3 - - - - - - -" },
+  D: { bass: "D2 - - - . . D2 . A2 - - - . . F2 .", pad: "F3 - - - - - - - A3 - - - - - - -" },
+  C: { bass: "C2 - - - . . C2 . G2 - - - E2 - - -", pad: "E3 - - - - - - - G3 - - - - - - -" },
+  G: { bass: "G2 - - - . . G2 . D3 - - - . . B2 .", pad: "B3 - - - - - - - D4 - - - - - - -" },
+};
+const RECESS_LAST_CHORD = { bass: "C2 - - - - - - - - - - - . . . .", pad: "E3 - - - - - - - G3 - - - . . . ." };
+const MILA_CALLS = [
+  "A4 - - - C5 - - - E5 - - - C5 - - -",
+  "G4 - B4 - D5 - - - B4 - - - G4 - - -",
+  "F4 - A4 - C5 - - - D5 - C5 - A4 - - -",
+  "E5 - - - - - D5 - - - - - C5 - - -",
+  "F4 - A4 - C5 - E5 - D5 - - - A4 - - -",
+  "G4 - B4 - - - D5 - - - F5 - D5 - - -",
+];
+const MILA_LONG_CALLS = [
+  [RECESS_LEAD[0], "G4 - B4 - D5 - - - B4 - - - - - - -"],
+  [RECESS_LEAD[2], "G4 - B4 - D5 - - - C5 - - - - - - -"],
 ];
 const RECESS_KITS = {
   v: { kick: "x.....x...x.....", snare: "....x.......x...", hat: "..x...x...x...x." },
   e: { kick: "x...............", snare: QUIET, hat: QUIET },
 };
 
+type Stretch = { lead: string[]; guide: string[]; chart: string[] };
+const onsets = (notes: string, mark: string) =>
+  notes
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => (/^[A-G]/.test(token) ? mark : "."))
+    .join("");
+const tapAlong = (...lead: string[]): Stretch => ({ lead, guide: times(REST, lead.length), chart: lead.map((bar) => onsets(bar, "x")) });
+const callAndEcho = (...phrase: string[]): Stretch => ({
+  lead: times(REST, phrase.length * 2),
+  guide: [...phrase, ...phrase],
+  chart: [...phrase.map((bar) => onsets(bar, "c")), ...phrase.map((bar) => onsets(bar, "e"))],
+});
+const RECESS_STRETCHES: Stretch[] = [
+  { lead: [RECESS_LEAD[3]], guide: [REST], chart: [QUIET] },
+  ...MILA_CALLS.slice(0, 4).map((call) => callAndEcho(call)),
+  tapAlong(...RECESS_LEAD),
+  ...MILA_LONG_CALLS.map((pair) => callAndEcho(...pair)),
+  tapAlong(...RECESS_LEAD),
+  ...MILA_CALLS.slice(4).map((call) => callAndEcho(call)),
+  tapAlong(...RECESS_ENDING),
+];
+const RECESS_FORM = "C" + "FFEEDDCC" + "FEDC" + "FEFEDCDC" + "FEDC" + "DDGG" + "FG";
+const recessLine = (part: keyof Stretch) => bars(...RECESS_STRETCHES.flatMap((stretch) => stretch[part]));
+const recessChords = (part: "bass" | "pad", form: string) => [...form].map((chord) => RECESS_CHORDS[chord as keyof typeof RECESS_CHORDS][part]);
+
 const RECESS: Song = {
   id: "recess",
   segments: [{ from: 0, bpm: 92, swing: 0.18, featured: "mila", tap: "fridge" }],
   voices: [
-    { wave: "triangle", gain: 0.16, vibrato: 5, notes: bars(RECESS_LEAD[0], ...times(REST, 14), RECESS_LEAD[0], RECESS_LEAD[1], ...times(REST, 12), RECESS_LEAD[2], RECESS_LEAD[3], "A4 - C5 - E5 - - - A5 - - - - - . .") },
-    { wave: "sine", gain: 0.3, notes: bars(...times(RECESS_BASS.join(" "), 8)) },
-    { wave: "sine", gain: 0.05, notes: bars(...times(RECESS_PAD.join(" "), 8)) },
+    { wave: "sine", gain: 0, guide: true, notes: recessLine("guide") },
+    { wave: "triangle", gain: 0.16, vibrato: 5, notes: recessLine("lead") },
+    { wave: "sine", gain: 0.3, notes: bars(...recessChords("bass", RECESS_FORM), RECESS_LAST_CHORD.bass) },
+    { wave: "sine", gain: 0.05, notes: bars(...recessChords("pad", RECESS_FORM), RECESS_LAST_CHORD.pad) },
   ],
   drums: { gain: 0.38, kits: RECESS_KITS, bars: "v".repeat(31) + "e" },
-  chart: bars(
-    QUIET,
-    ...CALLS.flatMap((call) => [call, echo(call)]),
-    "x.x.x...x.x.x...",
-    "x.x.x...x.x.x...",
-    ...LONG_CALLS.flatMap((pair) => [...pair, ...pair.map(echo)]),
-    "x.x.x...x.x.x.x.",
-    "x...x...x.......",
-    "x.x.x...x.......",
-  ),
+  chart: recessLine("chart"),
   sections: [4, 8, 12, 16, 20, 24, 28, 31],
 };
 
@@ -300,6 +330,8 @@ const medley = (fill: Partial<Record<Part, string[]>>) =>
     }),
   );
 const medleyVoice = (voice: Omit<Voice, "notes">, fill: Partial<Record<Part, string[]>>): Voice => ({ ...voice, notes: medley(fill) });
+const MEDLEY_MILA = MILA_CALLS.slice(4).map((call) => callAndEcho(call));
+const MEDLEY_MILA_FORM = "FDDGG";
 const medleySignal = Array.from({ length: 35 }, (_, bar) => (bar === 24 || bar === 25 ? "#" : ".")).join("");
 
 const MEDLEY: Song = {
@@ -318,9 +350,10 @@ const MEDLEY: Song = {
     medleyVoice({ wave: "sine", gain: 0.17, vibrato: 6 }, { B: [REST, ...SIGNOFF_LEAD] }),
     medleyVoice({ wave: "triangle", gain: 0.24 }, { B: [SIGNOFF_BASS[0], ...SIGNOFF_BASS] }),
     medleyVoice({ wave: "triangle", gain: 0.045 }, { B: [SIGNOFF_PAD[0], ...SIGNOFF_PAD] }),
+    medleyVoice({ wave: "sine", gain: 0, guide: true }, { C: [REST, ...MEDLEY_MILA.flatMap((stretch) => stretch.guide)] }),
     medleyVoice({ wave: "triangle", gain: 0.16, vibrato: 5 }, { C: [RECESS_LEAD[0]] }),
-    medleyVoice({ wave: "sine", gain: 0.3 }, { C: [...RECESS_BASS, RECESS_BASS[0]] }),
-    medleyVoice({ wave: "sine", gain: 0.05 }, { C: [...RECESS_PAD, RECESS_PAD[0]] }),
+    medleyVoice({ wave: "sine", gain: 0.3 }, { C: recessChords("bass", MEDLEY_MILA_FORM) }),
+    medleyVoice({ wave: "sine", gain: 0.05 }, { C: recessChords("pad", MEDLEY_MILA_FORM) }),
     medleyVoice({ wave: "square", gain: 0.075 }, { D: [REST, ...STREET_LEAD.slice(0, 6)] }),
     medleyVoice({ wave: "sawtooth", gain: 0.07 }, { D: [STREET_BASS[0], ...STREET_BASS.slice(0, 6)] }),
     medleyVoice({ wave: "pulse", gain: 0.1, vibrato: 5 }, { E: pick(STATIC_LEAD, 1, 2, 3, 4, 5) }),
@@ -345,10 +378,7 @@ const MEDLEY: Song = {
     QUIET,
     ...SIGNOFF_FULL,
     QUIET,
-    CALLS[4],
-    echo(CALLS[4]),
-    CALLS[5],
-    echo(CALLS[5]),
+    ...MEDLEY_MILA.flatMap((stretch) => stretch.chart),
     QUIET,
     ...offbeats("ABDEFD"),
     QUIET,

@@ -4,7 +4,7 @@ import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
 import { cartoonText } from "@/games/kit/ui";
 import { getAudio } from "@/lib/audio/engine";
-import { AudibleClock, SongPlayer, callFreq, keysFreq } from "../audio/player";
+import { AudibleClock, SongPlayer, toneFreq } from "../audio/player";
 import type { Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type JuryId, type TalentCopy } from "../copy";
 import { judge, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
@@ -938,7 +938,7 @@ export class StageScene extends Phaser.Scene {
     this.active.set(id, press);
     const segment = this.compiled.song.segments[this.compiled.segmentOfBar[Math.max(0, Math.min(this.compiled.bars - 1, barAt(this.compiled, raw)))]];
     const near = this.nearestNote(raw);
-    const freq = segment.tap === "keys" ? keysFreq(near ? this.compiled.tones[near.step] : null) : near ? callFreq(near.step) : 440;
+    const freq = toneFreq(near ? this.compiled.tones[near.step] : null);
     this.player.press(segment.tap, freq);
     this.bursts.push({ born: performance.now(), color: C.cream });
     this.kidHit(segment.featured);
