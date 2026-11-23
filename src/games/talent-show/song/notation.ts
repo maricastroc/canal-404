@@ -9,7 +9,7 @@ export type Signal = "clear" | "weak" | "lost";
 export type NoteKind = "tap" | "hold" | "call" | "echo";
 
 export type Voice = { wave: Wave; gain: number; vibrato?: number; notes: string; guide?: boolean };
-export type DrumKit = { kick: string; snare: string; hat: string; gain?: number };
+export type DrumKit = { kick: string; snare: string; hat: string; bell?: string; gain?: number };
 export type Segment = { from: number; bpm: number; swing?: number; featured: BandMember; tap: TapSound; source?: SongId };
 
 export type Song = {

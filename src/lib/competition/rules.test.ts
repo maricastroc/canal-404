@@ -546,7 +546,7 @@ describe("Ao Vivo no 404", () => {
     }
     const v = ok(judgeRun("talent-show", "theme", claimFor(taps("theme", human))));
     expect(metricValues("talent-show", v.rank)).toEqual([v.score, compiledSong("theme").notes.length, 0]);
-    expect(boardId("talent-show", "theme")).toBe("talent-show/theme/v2");
+    expect(boardId("talent-show", "theme")).toBe("talent-show/theme/v3");
   });
 
   it("keeps assist mode and inhumanly precise taps off the board", () => {
