@@ -1,5 +1,5 @@
 import { P } from "../../src/lib/palette";
-import { DESK_LIP, layoutFor, type Layout, type Orientation } from "../../src/games/talent-show/scenes/layout";
+import { DESK_LIP, layoutFor, phoneStage, type Orientation, type StageLayout } from "../../src/games/talent-show/scenes/layout";
 import type { Sheet } from "../past-bedtime-art/kit";
 
 const ink = (w = 5) => `stroke="${P.ink}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
@@ -105,7 +105,7 @@ function sunburst(cx: number, cy: number, x0: number, x1: number, top: number, b
   return `<clipPath id="burst"><rect x="${x0}" y="${top}" width="${x1 - x0}" height="${bottom - top}"/></clipPath><g clip-path="url(#burst)"><rect x="${x0}" y="${top}" width="${x1 - x0}" height="${bottom - top}" fill="${P.plum800}"/>${body}<circle cx="${cx}" cy="${cy}" r="${(bottom - top) * 0.55}" fill="${P.plum600}" opacity="0.55"/></g>`;
 }
 
-function riser(L: Layout) {
+function riser(L: StageLayout) {
   const { x0, x1, top, front, tall } = L.riser;
   const w = x1 - x0;
   const lip = 16;
@@ -122,7 +122,7 @@ function riser(L: Layout) {
   return `${shadow}${panel}<rect x="${x0}" y="${top}" width="${w}" height="${front - top}" fill="none" ${ink(5)}/><path d="M${x0 + 6} ${top + 44} L${x1 - 6} ${top + 44}" stroke="${P.sun}" stroke-width="7" stroke-linecap="round"/>${bulbs}${surface}`;
 }
 
-function podium(L: Layout) {
+function podium(L: StageLayout) {
   const { x, y, podium: rx } = L.performer;
   const ry = rx * 0.16;
   const depth = 20;
@@ -135,12 +135,10 @@ function podium(L: Layout) {
   return `<ellipse cx="${x + 8}" cy="${y + depth + 6}" rx="${rx + 6}" ry="${ry + 6}" fill="${P.ink}" opacity="0.35"/><path d="M${x - rx} ${y} L${x - rx} ${y + depth} A${rx} ${ry} 0 0 0 ${x + rx} ${y + depth} L${x + rx} ${y} Z" fill="${P.tomato}" ${ink(5)}/>${bulbs}<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${P.cream3}" ${ink(5)}/><ellipse cx="${x}" cy="${y}" rx="${rx - 18}" ry="${ry - 5}" fill="none" stroke="${P.sun}" stroke-width="5"/>`;
 }
 
-function studio(o: Orientation) {
-  const L: Layout = layoutFor(o);
+function studio(L: StageLayout, curtainW: number) {
   const { W, H } = L;
   const floorTop = L.stage.top;
   const floorBottom = L.stage.front;
-  const curtainW = o === "landscape" ? 120 : 70;
   const panelTop = L.valance + 40;
   const wallPanels = Array.from({ length: Math.ceil(W / 160) }, (_, i) => `<rect x="${i * 160 + 18}" y="${panelTop}" width="124" height="${floorTop - panelTop - 20}" rx="10" fill="${P.plum800}" opacity="0.7"/>`).join("");
   const signArt = L.sign ? sign(L.sign.cx, L.sign.cy, L.sign.w, L.sign.h) : "";
@@ -151,6 +149,8 @@ function studio(o: Orientation) {
     `<rect width="${W}" height="${H}" fill="${P.plum900}"/>${wallPanels}${signArt}${riser(L)}${floor(W, floorTop, floorBottom)}<rect x="0" y="${floorBottom}" width="${W}" height="${H - floorBottom}" fill="${P.plum950}"/>${podium(L)}${curtain(0, 0, curtainW, floorTop, false)}${curtain(W - curtainW, 0, curtainW, floorTop, true)}${rig}${valance(W, L.valance)}`,
   );
 }
+
+const SIDE_VALANCE_W = 2640;
 
 function juryDesk(o: Orientation) {
   const L = layoutFor(o);
@@ -208,8 +208,11 @@ function crowd(variant: number) {
 
 export function studioSheet(): Sheet {
   return {
-    "studio-landscape": { svg: studio("landscape"), res: 1 },
-    "studio-portrait": { svg: studio("portrait"), res: 1 },
+    "studio-landscape": { svg: studio(layoutFor("landscape"), 120), res: 1 },
+    "studio-portrait": { svg: studio(layoutFor("portrait"), 70), res: 1 },
+    "studio-phone": { svg: studio(phoneStage(), 70), res: 1 },
+    "valance-wide": { svg: svg(SIDE_VALANCE_W, 96, valance(SIDE_VALANCE_W, 52)), res: 1 },
+    "curtain-side": { svg: svg(240, 800, curtain(0, 0, 240, 800, false)), res: 1 },
     "jury-desk-landscape": { svg: juryDesk("landscape") },
     "jury-desk-portrait": { svg: juryDesk("portrait") },
     plate: { svg: plate() },

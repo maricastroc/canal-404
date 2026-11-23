@@ -158,10 +158,10 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
               </span>
             )}
           </div>
-          <div className="paper rounded-2xl border-[3px] border-ink p-4 shadow-[var(--shadow-ink)] sm:p-6">
+          <div className="paper flex flex-col rounded-2xl border-[3px] border-ink p-4 shadow-[var(--shadow-ink)] sm:block sm:p-6">
             {Logo ? (
               <h1>
-                <Logo className="mx-auto w-full max-w-[17rem] sm:max-w-sm" />
+                <Logo className="mx-auto w-full max-w-[14rem] min-[400px]:max-w-[17rem] sm:max-w-sm" />
               </h1>
             ) : (
               <h1 className="font-display text-[clamp(2rem,5vw,3.4rem)] uppercase leading-[0.95] tracking-wide text-ink">
@@ -169,8 +169,8 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
               </h1>
             )}
             <p className="mt-3 text-lg font-semibold leading-snug text-ink">{game.tagline}</p>
-            <p className="mt-2 leading-relaxed text-ink-soft">{game.description}</p>
-            <div className="mt-4 flex flex-wrap gap-1.5">
+            <p className="mt-2 leading-relaxed text-ink-soft max-sm:order-2 max-sm:mt-5">{game.description}</p>
+            <div className="mt-4 flex flex-wrap gap-1.5 max-sm:order-3">
               <Tag tone="tangerine">{category}</Tag>
               {game.tags
                 .filter((t) => t !== category)
@@ -181,7 +181,7 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
                 ))}
             </div>
             {available ? (
-              <div className="mt-5 flex flex-col gap-4 sm:mt-6">
+              <div className="mt-5 flex flex-col gap-4 max-sm:order-1 max-sm:mt-4 sm:mt-6">
                 <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "lg", "self-stretch sm:self-start")}>
                   <PlayIcon className="size-7 text-ink" /> {copy.play}
                 </IntentLink>
@@ -189,7 +189,7 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
                 {isGameSlug(game.slug) ? <ChampionTicker slug={game.slug} levelWord={game.levelWord} /> : null}
               </div>
             ) : (
-              <div className="mt-5 rounded-xl border-[3px] border-dashed border-ink bg-cream-2 p-4">
+              <div className="mt-5 rounded-xl border-[3px] border-dashed border-ink bg-cream-2 p-4 max-sm:order-1">
                 <p className="font-display text-sm uppercase tracking-wider text-ink">{copy.diary}</p>
                 <p className="mt-1 font-hand text-xl leading-snug text-ink">{game.production}</p>
               </div>

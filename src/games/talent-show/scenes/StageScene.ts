@@ -3,18 +3,19 @@ import { ArrowRight, Check, Ear, Heart, Music2, Play, Pointer, Volume2, X, type 
 import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
 import { cartoonText } from "@/games/kit/ui";
+import { formatNumber } from "@/i18n/format";
 import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, toneFreq } from "../audio/player";
 import type { Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type JuryId, type TalentCopy } from "../copy";
-import { judge, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
+import { judge, replay, runScore, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART, type PaddleHold } from "./figure";
-import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, type Spark, type TallyState } from "./lane";
-import { DESK_LIP, layoutFor, type Layout, type Orientation, type Spot } from "./layout";
+import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, shade, type Spark, type TallyState } from "./lane";
+import { DESK_LIP, layoutFor, toWorld, type Layout, type Shape, type Spot } from "./layout";
 
 const NOTE_GLYPH: IconNode = Music2.map(([tag, attrs]): IconNode[number] => [tag, tag === "circle" ? { ...attrs, fill: "#1d1830" } : attrs]);
 
@@ -23,8 +24,9 @@ export type RunReport = { song: SongId; verdict: Verdict; replayed: Verdict | nu
 export type TalentBridge = {
   locale: Locale;
   fonts: { display: string; body: string };
-  orientation: Orientation;
+  shape: Shape;
   touch: boolean;
+  inlineScore: boolean;
   reducedMotion: boolean;
   assist: { get: () => boolean; set: (on: boolean) => void };
   tutorial: { seen: () => boolean; done: () => void };
@@ -32,6 +34,7 @@ export type TalentBridge = {
   onReady: () => void;
   onRun: (report: RunReport) => void;
   onPauseRequest: () => void;
+  onScore: (score: number) => void;
 };
 
 type Mode = "idle" | "intro" | "tutorial" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
@@ -125,6 +128,10 @@ export class StageScene extends Phaser.Scene {
   private kids = new Map<Kid, KidView>();
   private jury = new Map<JuryId, JuryView>();
   private titleText!: Phaser.GameObjects.Text;
+  private scoreText!: Phaser.GameObjects.Text;
+  private scoreShown = -1;
+  private hint!: Phaser.GameObjects.Container;
+  private countText!: Phaser.GameObjects.Text;
   private subtitleText!: Phaser.GameObjects.Text;
   private nameTag!: Phaser.GameObjects.Container;
   private nameTagBg!: Phaser.GameObjects.Graphics;
@@ -188,7 +195,8 @@ export class StageScene extends Phaser.Scene {
   create() {
     this.bridge = this.registry.get("bridge") as TalentBridge;
     this.copy = TALENT_COPY[this.bridge.locale];
-    this.L = layoutFor(this.bridge.orientation);
+    const shape = this.bridge.shape;
+    this.L = layoutFor(shape.kind, shape.W, shape.H);
     this.laneY = this.L.lane.track.y + this.L.lane.track.h / 2;
     this.tutorialSeen = this.bridge.tutorial.seen();
     this.makeStaticTexture();
@@ -201,14 +209,14 @@ export class StageScene extends Phaser.Scene {
     this.buildTalk();
     this.buildLane();
     this.buildHud();
-    const portrait = this.bridge.orientation === "portrait";
+    const kind = this.L.kind;
     this.card = new ShowCard(
       this,
       this.copy,
       this.bridge.fonts,
       this.L.card,
-      { title: this.L.text.cardTitle, body: this.L.text.cardBody, small: this.L.text.cardSmall },
-      portrait,
+      { title: this.L.text.cardTitle, body: this.L.text.cardBody, small: this.L.text.cardSmall, tag: this.L.text.demoTag },
+      kind === "phone" ? "phone" : kind === "portrait" ? "stacked" : "row",
       this.bridge.reducedMotion,
     );
     this.setSong("theme");
@@ -262,7 +270,23 @@ export class StageScene extends Phaser.Scene {
 
   private buildBackdrop() {
     const L = this.L;
-    this.add.image(0, 0, `studio-${this.bridge.orientation}`).setOrigin(0, 0).setDepth(0);
+    const art = L.art;
+    const back = this.add.graphics().setDepth(0);
+    if (L.kind === "phone" || L.kind === "wide") back.fillStyle(C.plum950, 1).fillRect(0, L.stage.front, L.W, L.H - L.stage.front);
+    if (art.sides > 0) {
+      const wood = 0xb06c3f;
+      back.fillStyle(wood, 1).fillRect(0, L.stage.top, art.sides + 4, L.stage.front - L.stage.top).fillRect(L.W - art.sides - 4, L.stage.top, art.sides + 4, L.stage.front - L.stage.top);
+      back.fillStyle(0x55301e, 1).fillRect(0, L.stage.front - 18 * art.k, L.W, 18 * art.k);
+      back.lineStyle(5, C.ink, 1).lineBetween(0, L.stage.top, L.W, L.stage.top).lineBetween(0, L.stage.front, L.W, L.stage.front);
+    }
+    this.add.image(art.x, art.y, art.key).setOrigin(0, 0).setScale(art.k).setDepth(0);
+    if (art.sides > 0) {
+      const h = L.stage.top + 6;
+      const w = art.sides + 24 * art.k;
+      this.add.image(0, 0, "curtain-side").setOrigin(0, 0).setDisplaySize(w, h).setDepth(0.5);
+      this.add.image(L.W, 0, "curtain-side").setOrigin(1, 0).setFlipX(true).setDisplaySize(w, h).setDepth(0.5);
+    }
+    if (art.valance) this.add.image(0, 0, "valance-wide").setOrigin(0, 0).setDepth(0.6);
     this.spotG = this.add.graphics().setDepth(1);
     const p = L.performer;
     for (const s of L.spots) {
@@ -309,6 +333,53 @@ export class StageScene extends Phaser.Scene {
     this.streakBg = this.add.graphics();
     this.streakText = cartoonText(this, 0, 0, "", { size: L.text.label + 2, color: "#1d1830", font: this.bridge.fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
     this.streak = this.add.container(L.streak.x, L.streak.y, [this.streakBg, this.streakText]).setDepth(15).setVisible(false);
+
+    this.scoreText = cartoonText(this, L.score.x, L.score.y, "", { size: L.score.size, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.2, shadow: false })
+      .setOrigin(1, 0.5)
+      .setDepth(20)
+      .setVisible(this.bridge.inlineScore);
+    this.setScore(0);
+
+    const lane = this.L.lane;
+    const countAt = this.at(lane.hitX + lane.pxPerBeat * 1.7, this.laneY);
+    this.countText = cartoonText(this, countAt.x, countAt.y, "", { size: 170, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.1 }).setOrigin(0.5).setDepth(14).setVisible(false);
+
+    this.hint = this.add.container(0, 0).setDepth(16).setVisible(false);
+    if (L.hint && this.bridge.touch) {
+      const size = L.text.label;
+      const text = cartoonText(this, 0, 0, this.copy.tapAnywhereShort.toUpperCase(), { size, color: "#1d1830", font: this.bridge.fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+      const icon = this.add.image(0, 0, "icon-pointer").setOrigin(0.5);
+      icon.setScale((size * 1.5) / icon.height);
+      const w = icon.displayWidth + 12 + text.width + 44;
+      const h = size * 1.8;
+      const g = this.add.graphics();
+      g.fillStyle(C.ink, 1).fillRoundedRect(-w / 2 + 4, -h / 2 + 5, w, h, h / 2);
+      g.fillStyle(C.sun, 1).fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+      g.lineStyle(4, C.ink, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+      icon.setPosition(-w / 2 + 22 + icon.displayWidth / 2, 0);
+      text.setPosition(icon.x + icon.displayWidth / 2 + 12, 0);
+      this.hint.add([g, icon, text]).setPosition(L.hint.x, L.hint.y);
+    }
+  }
+
+  private count(n: number | null) {
+    if (!this.L.lane.vertical) return;
+    if (n === null) {
+      if (this.countText.visible) this.countText.setVisible(false);
+      return;
+    }
+    if (this.countText.visible && this.countText.text === String(n)) return;
+    this.countText.setText(String(n)).setVisible(true).setAlpha(1);
+    this.tweens.killTweensOf(this.countText);
+    this.countText.setScale(1);
+    if (!this.bridge.reducedMotion) this.tweens.add({ targets: this.countText, scale: { from: 1.35, to: 1 }, alpha: { from: 1, to: 0.55 }, duration: 420, ease: "Cubic.easeOut" });
+  }
+
+  private setScore(score: number) {
+    if (score === this.scoreShown) return;
+    this.scoreShown = score;
+    this.scoreText.setText(this.copy.points(formatNumber(score, this.bridge.locale)));
+    this.bridge.onScore(score);
   }
 
   private setNameTag(text: string) {
@@ -377,8 +448,12 @@ export class StageScene extends Phaser.Scene {
 
   private buildJury() {
     const J = this.L.jury;
-    const plateY = J.deskTop - DESK_LIP + 97;
-    this.add.image(J.x0, J.deskTop - DESK_LIP, `jury-desk-${this.bridge.orientation}`).setOrigin(0, 0).setScale(0.5).setDepth(6);
+    const desk = this.add.image(J.x0, 0, this.L.art.desk).setOrigin(0, 0);
+    const s = (J.x1 - J.x0) / (desk.width / 2);
+    desk.setScale(s / 2).setY(J.deskTop - DESK_LIP * s).setDepth(6);
+    const plateY = J.deskTop + (97 - DESK_LIP) * s;
+    const landscape = this.L.kind === "landscape" || this.L.kind === "wide";
+    const nameSize = Math.round((landscape ? 26 : 28) * s);
     JURY.forEach((id, i) => {
       const art = JURY_ART[id];
       const img = this.add.image(0, 0, this.juryTexture(id, "neutral")).setOrigin(art.originX, art.crop / art.h).setScale(art.scale / 2);
@@ -393,8 +468,8 @@ export class StageScene extends Phaser.Scene {
       this.drawHold(arm, art.hold, local, art.scale);
       const heart = this.add.image(fist.x + side * 62, fist.y - 150, "icon-heart").setDisplaySize(58, 58).setVisible(false);
       this.add.container(J.xs[i], J.deskTop + 16, art.hold.front ? [img, plate, arm, heart] : [plate, img, arm, heart]).setScale(J.scale).setDepth(5);
-      const name = this.add.text(J.xs[i], plateY, this.copy.jury[id], this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5).setDepth(6.5);
-      if (name.width > 146) name.setScale(146 / name.width);
+      const name = this.add.text(J.xs[i], plateY, this.copy.jury[id], this.font("body", nameSize, "#1d1830")).setOrigin(0.5).setDepth(6.5);
+      if (name.width > 146 * s) name.setScale((146 * s) / name.width);
       this.jury.set(id, { img, plate, plateText, arm, heart, mood: "neutral", moodUntil: 0, heartUntil: 0 });
     });
     const inspector = JURY_ART.inspector;
@@ -486,8 +561,8 @@ export class StageScene extends Phaser.Scene {
   private buildCrowd() {
     let index = 0;
     this.L.crowd.forEach((row, r) => {
-      for (let i = 0; i < row.count; i += 1) {
-        const x = this.L.W / 2 + (i - (row.count - 1) / 2) * row.gap;
+      for (let i = 0; i < row.xs.length; i += 1) {
+        const x = row.xs[i];
         const variant = (i * 7 + r * 5) % 3;
         const img = this.add.image(x, row.y, `crowd-${variant}`).setOrigin(0.5, 1).setScale(row.scale / 2).setDepth(9 + r * 0.1);
         this.fans.push({ img, variant, leave: (index * 7919) % 97, phase: (index * 0.37) % 1, y: row.y });
@@ -500,7 +575,7 @@ export class StageScene extends Phaser.Scene {
 
   private buildTalk() {
     this.talkBg = this.add.graphics();
-    this.talkText = this.add.text(0, 0, "", this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5);
+    this.talkText = this.add.text(0, 0, "", { ...this.font("body", this.L.text.label, "#1d1830"), align: "center" }).setOrigin(0.5);
     this.talk = this.add.container(0, 0, [this.talkBg, this.talkText]).setDepth(9.5).setVisible(false);
   }
 
@@ -518,7 +593,9 @@ export class StageScene extends Phaser.Scene {
 
   private crowdSay(now: number) {
     const W = this.L.W;
-    const fans = this.fans.filter((f) => f.img.visible && f !== this.talkFan && f.img.x > W * 0.12 && f.img.x < W * 0.88);
+    const sided = this.L.talk.lanes !== null;
+    const head = (f: Fan) => f.y - f.img.displayHeight * 0.66;
+    const fans = this.fans.filter((f) => f.img.visible && f !== this.talkFan && (sided || (f.img.x > W * 0.12 && f.img.x < W * 0.88)) && head(f) > this.L.talk.top && head(f) < this.L.talk.bottom);
     if (fans.length === 0) {
       this.talkNext = now + 2000;
       return;
@@ -535,16 +612,18 @@ export class StageScene extends Phaser.Scene {
   private drawTalk(fan: Fan, line: CrowdLine) {
     const L = this.L;
     const size = L.text.label;
-    this.talkText.setText(line.text);
+    const lanes = L.talk.lanes;
+    const toRight = fan.img.x < L.W / 2;
+    const minX = lanes && !toRight ? lanes[1] : 16;
+    const maxX = lanes && toRight ? lanes[0] : L.W - 16;
+    this.talkText.setWordWrapWidth(lanes ? maxX - minX - 40 : null).setText(line.text);
     const w = this.talkText.width + 40;
-    const h = size * 1.8;
+    const h = Math.max(size * 1.8, this.talkText.height + size * 0.6);
     const headX = fan.img.x;
     const headY = fan.y - fan.img.displayHeight * 0.66;
     const headR = fan.img.displayWidth * 0.26;
-    const toRight = headX < L.W / 2;
-    const top = L.lane.housing.y + L.lane.housing.h + 10;
-    const y = Math.max(top + h / 2, Math.min(L.H - h / 2 - 8, headY - h * 0.35));
-    const x = Math.max(16, Math.min(L.W - 16 - w, toRight ? headX + headR + 24 : headX - headR - 24 - w));
+    const y = Math.max(L.talk.top + h / 2, Math.min(L.H - 8 - h / 2, headY - h * 0.35));
+    const x = Math.max(minX, Math.min(maxX - w, toRight ? headX + headR + 24 : headX - headR - 24 - w));
     const side = toRight ? 0 : w;
     const tx = headX + (toRight ? headR * 0.4 : -headR * 0.4) - x;
     const ty = headY - y;
@@ -606,10 +685,29 @@ export class StageScene extends Phaser.Scene {
     }
   }
 
+  private framed<T extends Phaser.GameObjects.Components.Transform>(item: T) {
+    const f = this.L.lane.frame;
+    item.setPosition(f.x, f.y).setRotation(f.rotation);
+    return item;
+  }
+
+  private at(x: number, y: number) {
+    return toWorld(this.L.lane.frame, x, y);
+  }
+
+  private icons(depth: number) {
+    return new IconPool(() => this.add.image(0, 0, "icon-note").setDepth(depth), (x, y) => this.at(x, y));
+  }
+
+  private placeLabel(text: Phaser.GameObjects.Text, x: number, y: number) {
+    const p = this.at(x, y);
+    text.setPosition(p.x, p.y).setRotation(this.L.lane.frame.rotation).setVisible(true);
+  }
+
   private buildLane() {
     const { housing: H, track } = this.L.lane;
     const r = this.L.lane.r;
-    const g = this.add.graphics().setDepth(10);
+    const g = this.framed(this.add.graphics().setDepth(10));
     g.fillStyle(C.ink, 0.6).fillRoundedRect(H.x + 8, H.y + 12, H.w, H.h, 34);
     g.fillStyle(C.plum700, 1).fillRoundedRect(H.x, H.y, H.w, H.h, 34);
     g.lineStyle(6, C.ink, 1).strokeRoundedRect(H.x, H.y, H.w, H.h, 34);
@@ -620,23 +718,29 @@ export class StageScene extends Phaser.Scene {
       this.chase.push({ x, y: H.y + 9 }, { x, y: H.y + H.h - 9 });
     }
     for (const b of this.chase) g.fillStyle(C.plum600, 1).fillCircle(b.x, b.y, 4.5);
-    this.ringBaseG = this.add.graphics().setDepth(10.5);
-    this.notesG = this.add.graphics().setDepth(11);
-    this.noteIcons = new IconPool(() => this.add.image(0, 0, "icon-note").setDepth(11.2));
-    this.missIcons = new IconPool(() => this.add.image(0, 0, "icon-miss").setDepth(11.2));
-    this.lostMask = this.make.graphics({ x: 0, y: 0 }, false);
-    this.weakMask = this.make.graphics({ x: 0, y: 0 }, false);
-    this.lostTile = this.add.tileSprite(track.x, track.y, track.w, track.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11.5);
-    this.weakTile = this.add.tileSprite(track.x, track.y, track.w, track.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11.5);
+    this.ringBaseG = this.framed(this.add.graphics().setDepth(10.5));
+    this.notesG = this.framed(this.add.graphics().setDepth(11));
+    this.noteIcons = this.icons(11.2);
+    this.missIcons = new IconPool(() => this.add.image(0, 0, "icon-miss").setDepth(11.2), (x, y) => this.at(x, y));
+    this.lostMask = this.framed(this.make.graphics({ x: 0, y: 0 }, false));
+    this.weakMask = this.framed(this.make.graphics({ x: 0, y: 0 }, false));
+    const tile = () => {
+      const t = this.add.tileSprite(0, 0, track.w, track.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11.5);
+      const p = this.at(track.x, track.y);
+      return t.setPosition(p.x, p.y).setRotation(this.L.lane.frame.rotation);
+    };
+    this.lostTile = tile();
+    this.weakTile = tile();
     this.lostTile.setMask(this.lostMask.createGeometryMask());
     this.weakTile.setMask(this.weakMask.createGeometryMask());
-    this.ghostG = this.add.graphics().setDepth(11.6);
-    this.ghostIcons = new IconPool(() => this.add.image(0, 0, "icon-note").setDepth(11.7));
-    this.ringFrontG = this.add.graphics().setDepth(12);
-    this.ear = this.add.container(this.L.lane.hitX, this.laneY, [this.add.image(0, 0, "icon-ear-ink"), this.add.image(0, 0, "icon-ear")]).setDepth(12.1).setVisible(false);
+    this.ghostG = this.framed(this.add.graphics().setDepth(11.6));
+    this.ghostIcons = this.icons(11.7);
+    this.ringFrontG = this.framed(this.add.graphics().setDepth(12));
+    const ear = this.at(this.L.lane.hitX, this.laneY);
+    this.ear = this.add.container(ear.x, ear.y, [this.add.image(0, 0, "icon-ear-ink"), this.add.image(0, 0, "icon-ear")]).setDepth(12.1).setVisible(false);
     for (let i = 0; i < 8; i += 1) this.labels.push(cartoonText(this, 0, 0, "", { size: this.L.text.label, color: "#f7ecd4", font: this.bridge.fonts.display, stroke: 0.22, shadow: false }).setDepth(13).setVisible(false));
     for (let i = 0; i < 6; i += 1) {
-      const text = cartoonText(this, this.L.lane.popupX, H.y - 40, "", { size: this.L.text.mark, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(14).setVisible(false);
+      const text = cartoonText(this, this.L.popup.x, this.L.popup.y, "", { size: this.L.text.mark, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(14).setVisible(false);
       this.popups.push({ text, born: -Infinity });
     }
   }
@@ -648,6 +752,7 @@ export class StageScene extends Phaser.Scene {
     this.titleText.setText(text.title);
     this.subtitleText.setText(`${this.copy.rounds[roundOf(id)]} · ${text.idea}`);
     this.verdict = null;
+    this.setScore(0);
     this.displayCrowd = 70;
     this.lastSignal = "clear";
     this.segment = 0;
@@ -712,7 +817,7 @@ export class StageScene extends Phaser.Scene {
     return {
       kicker: copy.tutorialKicker,
       title: copy.tutorialTitle,
-      lead: copy.tutorialLead,
+      lead: this.L.lane.vertical ? copy.tutorialLeadDown : copy.tutorialLead,
       face: null,
       demo: "learn",
       how: copy.tapAnywhere(this.bridge.touch),
@@ -725,6 +830,7 @@ export class StageScene extends Phaser.Scene {
 
   private setMode(mode: Mode) {
     this.mode = mode;
+    this.count(null);
     this.modeSince = performance.now();
     this.pressedButton = null;
     if (mode === "intro") {
@@ -872,6 +978,7 @@ export class StageScene extends Phaser.Scene {
     this.sparks = [];
     this.missAt.clear();
     this.streakShown = 0;
+    this.setScore(0);
     this.listenSeen = 0;
     this.callSeen = 0;
     this.coached = false;
@@ -1023,8 +1130,12 @@ export class StageScene extends Phaser.Scene {
       const count = Math.floor((songMs - (this.resumeAt - beat * 4)) / beat);
       if (songMs >= this.resumeAt) {
         this.mode = "playing";
+        this.count(null);
         this.say(this.copy.host.go, 900);
-      } else if (count >= 0 && count < 4 && this.bubbleText.text !== String(count + 1)) this.say(String(count + 1), 700);
+      } else if (count >= 0 && count < 4) {
+        this.count(count + 1);
+        if (this.bubbleText.text !== String(count + 1)) this.say(String(count + 1), 700);
+      }
     } else {
       shown = this.lastSongMs;
     }
@@ -1038,7 +1149,16 @@ export class StageScene extends Phaser.Scene {
     this.spotG.setAlpha(0.8 + 0.2 * pulse);
     this.liveDot.setAlpha(this.bridge.reducedMotion || Math.floor(now / 600) % 2 === 0 ? 1 : 0.25);
     const live = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
+    this.updateHint(shown);
     this.updateHost(now, live && shown >= 0 ? this.compiled.signal[barAt(this.compiled, shown)] ?? "clear" : "clear", pulse * 10);
+  }
+
+  private updateHint(shown: number) {
+    if (this.hint.length === 0) return;
+    const first = this.compiled.notes[0]?.at ?? 0;
+    const on = (this.mode === "countin" || this.mode === "playing" || this.mode === "resuming") && shown < first - 150 && (this.verdict?.events.length ?? 0) === 0;
+    if (on !== this.hint.visible) this.hint.setVisible(on);
+    if (on) this.hint.setAlpha(this.bridge.reducedMotion ? 1 : 0.75 + 0.25 * Math.abs(Math.sin(performance.now() / 260)));
   }
 
   private updateSong(songMs: number, shown: number) {
@@ -1048,11 +1168,16 @@ export class StageScene extends Phaser.Scene {
       const count = Math.floor((songMs + beat * 4) / beat);
       if (songMs >= 0) {
         this.mode = "playing";
+        this.count(null);
         this.say(copy.host.go, 1200);
-      } else if (count >= 0 && count < 4 && this.bubbleText.text !== String(count + 1)) this.say(String(count + 1), 700);
+      } else if (count >= 0 && count < 4) {
+        this.count(count + 1);
+        if (this.bubbleText.text !== String(count + 1)) this.say(String(count + 1), 700);
+      }
     }
     const verdict = judge(this.compiled, this.judgeInput(), shown);
     this.verdict = verdict;
+    this.setScore(runScore(verdict));
     for (let i = this.seen; i < verdict.events.length; i += 1) this.onMark(verdict.events[i].mark, verdict.streak, verdict.events[i].note);
     this.seen = verdict.events.length;
     verdict.sections.forEach((s, i) => {
@@ -1120,7 +1245,11 @@ export class StageScene extends Phaser.Scene {
     const popup = this.popups.reduce((a, b) => (a.born < b.born ? a : b));
     for (const p of this.popups) p.text.setVisible(false);
     popup.born = performance.now();
-    popup.text.setText(text).setColor(color).setVisible(true).setAlpha(1).setScale(this.bridge.reducedMotion ? 1 : 1.3);
+    popup.text.setText(text).setColor(color).setVisible(true).setAlpha(1).setScale(1);
+    const { min, max } = this.L.popup;
+    const fit = Math.min(1, (max - min) / popup.text.width);
+    popup.text.setData("fit", fit).setX(Math.max(min + (popup.text.width * fit) / 2, Math.min(max - (popup.text.width * fit) / 2, this.L.popup.x)));
+    popup.text.setScale(fit * (this.bridge.reducedMotion ? 1 : 1.3));
   }
 
   private setStreak(n: number) {
@@ -1201,14 +1330,14 @@ export class StageScene extends Phaser.Scene {
       }
     });
     const rise = this.bridge.reducedMotion ? 0 : 44;
-    const baseY = this.L.lane.housing.y - 46;
+    const baseY = this.L.popup.y;
     for (const p of this.popups) {
       if (!p.text.visible) continue;
       const age = (now - p.born) / 620;
       if (age >= 1) p.text.setVisible(false);
       else {
         p.text.setY(baseY - age * rise).setAlpha(1 - age * age);
-        if (!this.bridge.reducedMotion) p.text.setScale(1 + 0.3 * Math.max(0, 1 - age * 6));
+        if (!this.bridge.reducedMotion) p.text.setScale(((p.text.getData("fit") as number) ?? 1) * (1 + 0.3 * Math.max(0, 1 - age * 6)));
       }
     }
     for (const f of this.floaters) {
@@ -1352,9 +1481,10 @@ export class StageScene extends Phaser.Scene {
         const tx = text ? Math.min(x1 - text.width - tallyW - 10, Math.max(floor, start + 12)) : 0;
         if (text && tx >= floor - 1) {
           label += 1;
-          text.setColor(call ? "#b9a6ef" : "#ffc83d").setOrigin(0, 0.5).setPosition(tx, tallyY).setVisible(true);
+          text.setColor(call ? "#b9a6ef" : "#ffc83d").setOrigin(0, 0.5);
+          this.placeLabel(text, tx, tallyY);
           items.forEach((item, i) => {
-            const x = text.x + text.width + 8 + TALLY_GAP / 2 + i * TALLY_GAP;
+            const x = tx + text.width + 8 + TALLY_GAP / 2 + i * TALLY_GAP;
             if (x > left + 10 && x < x1 - 10) drawTally(g, x, tallyY, call ? "call" : "echo", call ? (item.at <= shown ? "done" : "waiting") : this.tallyOf(item));
           });
         }
@@ -1438,9 +1568,10 @@ export class StageScene extends Phaser.Scene {
     const beatIndex = Math.floor(beatNow);
     const listen = this.listening(shown);
     const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.bridge.reducedMotion ? 0 : -beatIndex, shake, holding, listen };
+    const earAt = this.at(hitX + shake, laneY);
     this.ear
       .setVisible(listen)
-      .setPosition(hitX + shake, laneY)
+      .setPosition(earAt.x, earAt.y)
       .setScale((r * (1.2 + 0.2 * flashK)) / 96);
     const moving = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
     this.chase.forEach((b, i) => {
@@ -1461,11 +1592,11 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     if (fall >= 1) return;
-    const dy = this.bridge.reducedMotion ? 0 : fall * fall * 120;
+    const d = shade(g, 0, this.bridge.reducedMotion ? 0 : fall * fall * 120);
     const alpha = 1 - fall;
-    g.fillStyle(C.gray, alpha).fillCircle(x, y + dy, r * 0.85);
-    g.lineStyle(4, C.ink, alpha).strokeCircle(x, y + dy, r * 0.85);
-    this.missIcons.place(x, y + dy, r * 1.6, alpha);
+    g.fillStyle(C.gray, alpha).fillCircle(x + d.x, y + d.y, r * 0.85);
+    g.lineStyle(4, C.ink, alpha).strokeCircle(x + d.x, y + d.y, r * 0.85);
+    this.missIcons.place(x + d.x, y + d.y, r * 1.6, alpha);
   }
 
   private drawStatic(xOfBeat: (beat: number) => number, now: number, left: number, right: number, labelStart: number, assist: boolean) {
@@ -1493,7 +1624,7 @@ export class StageScene extends Phaser.Scene {
           if (text && x1 - x0 > 140) {
             label += 1;
             text.setText(kind === "lost" ? this.copy.noSignal : this.copy.weakSignal).setColor("#f7ecd4").setOrigin(0.5, 0.5);
-            text.setPosition((x0 + x1) / 2, S.y + (this.laneY - half - S.y) / 2).setVisible(true);
+            this.placeLabel(text, (x0 + x1) / 2, S.y + (this.laneY - half - S.y) / 2);
           }
         }
       }

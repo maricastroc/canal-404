@@ -5,6 +5,7 @@ import type { BandMember, SongId } from "../song/notation";
 import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, type Spark } from "./lane";
 
 export type CardButtonId = "primary" | "assist";
+export type CardMode = "row" | "stacked" | "phone";
 export type DemoKind = "learn" | "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
 
 export type CardContent = {
@@ -128,33 +129,50 @@ class DemoLane {
     private copy: TalentCopy,
     private fonts: { display: string; body: string },
     private reduced: boolean,
+    private vertical: boolean,
+    tagSize: number,
   ) {
+    const upright = vertical ? Math.PI / 2 : 0;
     this.g = scene.add.graphics();
     this.noise = scene.add.tileSprite(0, 0, 10, 10, "talent-static").setOrigin(0, 0.5).setTileScale(3).setVisible(false);
     this.ghostG = scene.add.graphics();
     this.front = scene.add.graphics();
-    this.hand = scene.add.image(0, 0, "icon-pointer").setOrigin(0.5, 0);
-    this.ear = scene.add.container(0, 0, [scene.add.image(0, 0, "icon-ear-ink"), scene.add.image(0, 0, "icon-ear")]).setVisible(false);
-    this.popup = cartoonText(scene, 0, 0, "", { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.22, shadow: false }).setOrigin(0.5);
-    for (let i = 0; i < 3; i += 1) this.tags.push(cartoonText(scene, 0, 0, "", { size: 20, color: "#f7ecd4", font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(0, 0.5).setVisible(false));
-    this.root = scene.add.container(0, 0, [this.g, this.noise, this.ghostG, this.front, this.ear, ...this.tags, this.popup, this.hand]);
+    this.hand = scene.add.image(0, 0, "icon-pointer").setOrigin(0.5, 0).setRotation(upright);
+    this.ear = scene.add.container(0, 0, [scene.add.image(0, 0, "icon-ear-ink"), scene.add.image(0, 0, "icon-ear")]).setVisible(false).setRotation(upright);
+    this.popup = cartoonText(scene, 0, 0, "", { size: Math.round(tagSize * 1.5), color: "#ffc83d", font: fonts.display, stroke: 0.22, shadow: false }).setOrigin(0.5).setRotation(upright);
+    for (let i = 0; i < 3; i += 1) this.tags.push(cartoonText(scene, 0, 0, "", { size: tagSize, color: "#f7ecd4", font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(0, 0.5).setVisible(false));
+    this.root = scene.add.container(0, 0, [this.g, this.noise, this.ghostG, this.front, this.ear, ...this.tags, this.popup, this.hand]).setRotation(-upright);
     this.icons = new IconPool(() => {
-      const icon = scene.add.image(0, 0, "icon-note");
+      const icon = scene.add.image(0, 0, "icon-note").setRotation(upright);
       this.root.addAt(icon, this.root.getIndex(this.noise));
       return icon;
     });
     this.ghostIcons = new IconPool(() => {
-      const icon = scene.add.image(0, 0, "icon-note");
+      const icon = scene.add.image(0, 0, "icon-note").setRotation(upright);
       this.root.addAt(icon, this.root.getIndex(this.front));
       return icon;
     });
   }
 
+  hitFromEnd() {
+    return this.geo.hitX;
+  }
+
+  place(x: number, y: number, w: number, h: number) {
+    this.root.setVisible(true).setPosition(x, this.vertical ? y + h : y);
+  }
+
   setup(kind: DemoKind, w: number, h: number) {
     this.kind = kind;
-    const r = Math.round(Math.min(34, h * 0.19));
-    this.geo = { w, h, hitX: Math.round(r * 3.4), laneY: Math.round(h / 2), r, ppb: Math.round(Math.min(180, (w - r * 4) / 4.4)) };
-    this.hand.setOrigin(0.33, 0.06).setScale((r * 1.7) / this.hand.height);
+    if (this.vertical) {
+      const r = Math.round(Math.min(44, h * 0.19));
+      const hitX = Math.round(r * 3.4);
+      this.geo = { w, h, hitX, laneY: Math.round(h / 2), r, ppb: Math.round(Math.min(180, (w - hitX - 10) / 3.3)) };
+    } else {
+      const r = Math.round(Math.min(34, h * 0.19));
+      this.geo = { w, h, hitX: Math.round(r * 3.4), laneY: Math.round(h / 2), r, ppb: Math.round(Math.min(180, (w - r * 4) / 4.4)) };
+    }
+    this.hand.setOrigin(0.33, 0.06).setScale((this.geo.r * 1.7) / this.hand.height);
     this.t0 = performance.now() - BEAT_MS * 1.6;
     this.last = -Infinity;
     this.sparks = [];
@@ -289,10 +307,14 @@ class DemoLane {
     drawSparks(f, hitX, laneY, r, this.sparks, now, 380);
     const pressed = holding || now < this.pressUntil;
     const reach = pressed ? r * 0.2 : r * 0.62;
-    this.hand.setPosition(hitX + reach, laneY + reach).setAlpha(pressed ? 1 : 0.9);
+    this.hand.setPosition(this.vertical ? hitX - reach : hitX + reach, laneY + reach).setAlpha(pressed ? 1 : 0.9);
     const age = (now - this.popupBorn) / 620;
-    if (age >= 0 && age < 1) this.popup.setVisible(true).setPosition(hitX, -10 - (this.reduced ? 0 : age * 16)).setAlpha(1 - age * age);
-    else this.popup.setVisible(false);
+    const rise = this.reduced ? 0 : age * 16;
+    if (age >= 0 && age < 1) {
+      if (this.vertical) this.popup.setPosition(hitX - r * 0.4 + rise, h + 30 + this.popup.width / 2);
+      else this.popup.setPosition(hitX, -10 - rise);
+      this.popup.setVisible(true).setAlpha(1 - age * age);
+    } else this.popup.setVisible(false);
     this.last = beat;
   }
 
@@ -344,6 +366,7 @@ export class ShowCard {
   private buttons: Button[] = [];
   private buttonLayer: Phaser.GameObjects.Container;
   private demoOn = false;
+  private stacked: boolean;
   private w: number;
   private x0: number;
   private top: number;
@@ -353,10 +376,11 @@ export class ShowCard {
     private copy: TalentCopy,
     private fonts: { display: string; body: string },
     private box: { cx: number; top: number; w: number; maxH: number },
-    private sizes: { title: number; body: number; small: number },
-    private stacked: boolean,
+    private sizes: { title: number; body: number; small: number; tag: number },
+    private mode: CardMode,
     reduced: boolean,
   ) {
+    this.stacked = mode !== "row";
     this.w = box.w;
     this.x0 = box.cx - box.w / 2;
     this.top = box.top;
@@ -366,7 +390,7 @@ export class ShowCard {
     this.title = cartoonText(scene, 0, 0, "", { size: sizes.title, color: "#ffc83d", font: fonts.display, stroke: 0.18 }).setOrigin(0.5);
     this.lead = scene.add.text(0, 0, "", { fontFamily: fonts.body, fontStyle: "700", fontSize: `${sizes.body}px`, color: INK, align: "center", lineSpacing: 4 }).setOrigin(0, 0);
     this.face = scene.add.image(0, 0, "head-deco-happy").setOrigin(0.5).setVisible(false);
-    this.demo = new DemoLane(scene, copy, fonts, reduced);
+    this.demo = new DemoLane(scene, copy, fonts, reduced, mode === "phone", sizes.tag);
     this.how = scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: `${sizes.body + 2}px`, color: INK, align: "center", lineSpacing: 2 }).setOrigin(0.5, 0);
     this.note = scene.add.text(0, 0, "", { fontFamily: fonts.body, fontStyle: "700", fontSize: `${sizes.small + 1}px`, color: "#5a4790", align: "center" }).setOrigin(0.5, 0);
     this.buttonLayer = scene.add.container(0, 0);
@@ -392,8 +416,13 @@ export class ShowCard {
     fitText(this.title, inner, this.sizes.title, 36);
     this.title.setPosition(mid, y + this.title.height / 2);
     y += this.title.height + 6;
-    this.lead.setText(wrapLines(this.lead, c.lead, inner - (c.face ? 90 : 0)));
-    if (c.face) {
+    const column = this.mode === "phone" && c.demo !== null;
+    const demoW = 264;
+    const textW = inner - demoW - 34;
+    this.lead.setText(wrapLines(this.lead, c.lead, (column ? textW : inner) - (c.face ? 90 : 0)));
+    if (column) {
+      this.face.setVisible(false);
+    } else if (c.face) {
       this.face.setTexture(c.face).setVisible(true);
       this.face.setScale(66 / this.face.height);
       const groupW = this.face.displayWidth + 14 + this.lead.width;
@@ -408,19 +437,50 @@ export class ShowCard {
       y += this.lead.height + 18;
     }
     this.demoOn = c.demo !== null;
-    const demoH = this.stacked ? 184 : 156;
-    if (c.demo) {
-      y += 18;
-      this.demo.root.setVisible(true).setPosition(pad, y);
-      this.demo.setup(c.demo, inner, demoH);
-      y += demoH + 22;
+    if (column && c.demo) {
+      y += 8;
+      const textX = pad + demoW + 34 + textW / 2;
+      this.how.setText(wrapLines(this.how, c.how, textW));
+      this.note.setText(wrapLines(this.note, c.note, textW));
+      if (c.face) {
+        this.face.setTexture(c.face).setVisible(true);
+        this.face.setScale(76 / this.face.height);
+      }
+      const leadH = c.face ? Math.max(76, this.lead.height) : this.lead.height;
+      const textH = leadH + 26 + (c.how ? this.how.height : 0) + (c.note ? this.note.height + 16 : 0);
+      const demoH = Math.round(Math.max(textH + 40, Math.min(560, Math.max(460, this.box.maxH * 0.34))));
+      this.demo.place(pad, y, demoW, demoH);
+      this.demo.setup(c.demo, demoH, demoW);
+      const ringY = y + demoH - this.demo.hitFromEnd();
+      let ty = y + Math.max(0, Math.min((demoH - textH) / 2, (ringY - 70 - y - textH) / 2));
+      if (c.face) {
+        const groupW = this.face.displayWidth + 14 + this.lead.width;
+        const gx = textX - groupW / 2;
+        this.face.setPosition(gx + this.face.displayWidth / 2, ty + leadH / 2);
+        this.lead.setPosition(gx + this.face.displayWidth + 14, ty + leadH / 2 - this.lead.height / 2);
+      } else {
+        this.lead.setPosition(textX - this.lead.width / 2, ty);
+      }
+      ty += leadH + 26;
+      this.how.setPosition(textX, ty);
+      ty += c.how ? this.how.height + 16 : 0;
+      this.note.setPosition(textX, ty);
+      y += demoH + 30;
     } else {
-      this.demo.root.setVisible(false);
+      const demoH = this.stacked ? 184 : 156;
+      if (c.demo) {
+        y += 18;
+        this.demo.place(pad, y, inner, demoH);
+        this.demo.setup(c.demo, inner, demoH);
+        y += demoH + 22;
+      } else {
+        this.demo.root.setVisible(false);
+      }
+      this.how.setText(wrapLines(this.how, c.how, inner)).setPosition(mid, y);
+      y += c.how ? this.how.height + 10 : 0;
+      this.note.setText(wrapLines(this.note, c.note, inner)).setPosition(mid, y);
+      y += c.note ? this.note.height + 18 : 6;
     }
-    this.how.setText(wrapLines(this.how, c.how, inner)).setPosition(mid, y);
-    y += c.how ? this.how.height + 10 : 0;
-    this.note.setText(wrapLines(this.note, c.note, inner)).setPosition(mid, y);
-    y += c.note ? this.note.height + 18 : 6;
     y = this.layoutButtons(c, y, pad, inner);
     this.footer.setText(c.footer).setWordWrapWidth(inner - 44).setVisible(c.footer !== "");
     this.footerIcon.setTexture(c.footerIcon ?? "icon-sound").setVisible(c.footer !== "");
@@ -439,10 +499,11 @@ export class ShowCard {
     paper(this.bg, 0, 0, this.w, h, 34, CREAM_HEX, 10);
     this.bg.lineStyle(4, C.sun, 1).strokeRoundedRect(12, 12, this.w - 24, h - 24, 26);
     const kw = this.kicker.width + 40;
+    const kh = Math.max(44, Math.round(this.sizes.small * 1.45));
     this.kickerBg.clear();
-    this.kickerBg.fillStyle(INK_HEX, 1).fillRoundedRect(mid - kw / 2 + 4, -22 + 5, kw, 44, 14);
-    this.kickerBg.fillStyle(C.mint, 1).fillRoundedRect(mid - kw / 2, -22, kw, 44, 14);
-    this.kickerBg.lineStyle(4, INK_HEX, 1).strokeRoundedRect(mid - kw / 2, -22, kw, 44, 14);
+    this.kickerBg.fillStyle(INK_HEX, 1).fillRoundedRect(mid - kw / 2 + 4, -kh / 2 + 5, kw, kh, 14);
+    this.kickerBg.fillStyle(C.mint, 1).fillRoundedRect(mid - kw / 2, -kh / 2, kw, kh, 14);
+    this.kickerBg.lineStyle(4, INK_HEX, 1).strokeRoundedRect(mid - kw / 2, -kh / 2, kw, kh, 14);
     this.kicker.setPosition(mid, 0);
     const top = Math.max(16, this.box.top + (this.box.maxH - h) / 2);
     this.top = top;
@@ -454,8 +515,8 @@ export class ShowCard {
     this.buttonLayer.removeAll(true);
     this.buttons = [];
     const mid = this.w / 2;
-    const primaryH = this.stacked ? 86 : 76;
-    const smallH = this.stacked ? 68 : 62;
+    const primaryH = this.mode === "phone" ? 108 : this.stacked ? 86 : 76;
+    const smallH = this.mode === "phone" ? 82 : this.stacked ? 68 : 62;
     const make = (id: CardButtonId, label: string, x: number, cy: number, w: number, h: number, fill: number, icon: string | null, size: number) => {
       const g = this.scene.add.graphics();
       g.fillStyle(INK_HEX, 1).fillRoundedRect(-w / 2 + 5, -h / 2 + 7, w, h, 18);
@@ -480,7 +541,7 @@ export class ShowCard {
     if (!c.primary && small.length === 0) return y;
     if (this.stacked || small.length === 0) {
       if (c.primary) {
-        const w = Math.min(inner, 520);
+        const w = Math.min(inner, this.mode === "phone" ? 720 : 520);
         make("primary", c.primary.label, mid, y + primaryH / 2, w, primaryH, C.sun, c.primary.icon, this.sizes.body + 6);
         y += primaryH + 18;
       }
