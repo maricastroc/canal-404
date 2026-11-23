@@ -540,10 +540,10 @@ const TEXT = gameText({
       controls: [
         { input: "Qualquer tecla", action: "Toque quando a nota chegar ao círculo. Nas notas compridas, segure a tecla.", on: "keys" },
         { input: "A", action: "Ligue ou desligue o modo assistido antes da música.", on: "keys" },
-        { input: "C", action: "Refaça o acerto de tempo antes da música.", on: "keys" },
+        { input: "C", action: "Calibre o som de novo antes da música.", on: "keys" },
         { input: "Esc ou P", action: "Pause. A música volta com uma contagem.", on: "keys" },
         { input: "Tocar na tela", action: "Toque quando a nota chegar ao círculo. Nas notas compridas, segure o dedo.", on: "touch" },
-        { input: "Botões antes da música", action: "Ligue o modo assistido ou refaça o acerto de tempo.", on: "touch" },
+        { input: "Botões antes da música", action: "Ligue o modo assistido ou calibre o som de novo.", on: "touch" },
       ],
       howTo: [
         { title: "Toque na hora", text: "Toque em qualquer lugar quando a nota chegar ao círculo. Quanto mais perto, mais pontos." },
@@ -551,7 +551,7 @@ const TEXT = gameText({
         { title: "Não perca o ritmo", text: "Se o sinal cair, continue tocando no tempo. Toque sem nota vira barulho, e o Inspetor odeia barulho." },
       ],
       tips: [
-        "Na primeira vez, o jogo mede o atraso do seu aparelho. Trocou de fone ou de aparelho? Refaça o acerto de tempo.",
+        "Na primeira vez, o jogo mostra como tocar e calibra o som do seu aparelho: é só tocar junto com 8 batidas. Trocou de fone ou de aparelho? Calibre de novo.",
         "Erros e barulho esvaziam a plateia. Se ela for embora, o canal corta para os comerciais.",
         "No Eco, só toque depois da Mila. Tocar junto com ela conta como barulho.",
         "Na Rua Sem Saída, as notas caem entre as batidas. Conte a batida e toque no meio.",
@@ -560,7 +560,7 @@ const TEXT = gameText({
       ],
       keyTips: ["Qualquer tecla toca. Nas notas compridas, segure a tecla.", "Aperte A antes da música para ligar o modo assistido."],
       touchTips: ["Toque em qualquer lugar da tela. Nas notas compridas, segure o dedo.", "No iPhone, tire do silencioso para ouvir a música."],
-      controlsSummary: "Ao Vivo no 404. Qualquer tecla toca e, segurada, sustenta as notas compridas. Esc pausa. Antes de cada música, A liga o modo assistido e C refaz o acerto de tempo.",
+      controlsSummary: "Ao Vivo no 404. Qualquer tecla toca e, segurada, sustenta as notas compridas. Esc pausa. Antes de cada música, A liga o modo assistido e C calibra o som de novo.",
       copy: {
         winTitle: "Que apresentação!",
         winText: "O júri levantou as placas e a plateia pediu bis.",
@@ -1018,10 +1018,10 @@ const TEXT = gameText({
       controls: [
         { input: "Any key", action: "Tap when the note reaches the circle. On long notes, hold the key.", on: "keys" },
         { input: "A", action: "Turn assist mode on or off before the song.", on: "keys" },
-        { input: "C", action: "Redo the timing check before the song.", on: "keys" },
+        { input: "C", action: "Calibrate the sound again before the song.", on: "keys" },
         { input: "Esc or P", action: "Pause. The song comes back with a count-in.", on: "keys" },
         { input: "Tap the screen", action: "Tap when the note reaches the circle. On long notes, hold your finger down.", on: "touch" },
-        { input: "Buttons before the song", action: "Turn on assist mode or redo the timing check.", on: "touch" },
+        { input: "Buttons before the song", action: "Turn on assist mode or calibrate the sound again.", on: "touch" },
       ],
       howTo: [
         { title: "Tap on time", text: "Tap anywhere when the note reaches the circle. The closer you are, the more points." },
@@ -1029,7 +1029,7 @@ const TEXT = gameText({
         { title: "Keep the beat", text: "If the signal drops, keep playing on time. A tap with no note is noise, and the Inspector hates noise." },
       ],
       tips: [
-        "The first time, the game measures your device's delay. New headphones or a new device? Redo the timing check.",
+        "The first time, the game shows you how to play and calibrates your device's sound: just tap along with 8 beats. New headphones or a new device? Calibrate again.",
         "Misses and noise empty the crowd. If they leave, the channel cuts to commercials.",
         "In Echo, only play after Mila. Playing along with her counts as noise.",
         "In Dead End Street, the notes fall between the beats. Count the beat and play in between.",
@@ -1038,7 +1038,7 @@ const TEXT = gameText({
       ],
       keyTips: ["Any key plays. On long notes, hold the key.", "Press A before the song to turn on assist mode."],
       touchTips: ["Tap anywhere on the screen. On long notes, hold your finger down.", "On iPhone, turn off silent mode to hear the music."],
-      controlsSummary: "Live on 404. Any key plays and, held down, sustains long notes. Esc pauses. Before each song, A turns on assist mode and C redoes the timing check.",
+      controlsSummary: "Live on 404. Any key plays and, held down, sustains long notes. Esc pauses. Before each song, A turns on assist mode and C calibrates the sound again.",
       copy: {
         winTitle: "What a show!",
         winText: "The jury raised their paddles and the crowd asked for an encore.",

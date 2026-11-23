@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowRight, Check, Ear, Heart, Music2, Play, Pointer, Volume2, X, type IconNode } from "lucide";
+import { ArrowRight, Check, Ear, Heart, Music2, Play, Pointer, RotateCcw, Volume2, X, type IconNode } from "lucide";
 import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
 import { cartoonText } from "@/games/kit/ui";
@@ -7,12 +7,12 @@ import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, callFreq, keysFreq } from "../audio/player";
 import { click, type Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type JuryId, type TalentCopy } from "../copy";
-import { calibrate, CALIBRATION_LATE, clickFor } from "../sim/calibration";
+import { calibrate, CALIBRATION_LATE, CALIBRATION_SPREAD, clickFor, isPlausibleOffset, type Calibration } from "../sim/calibration";
 import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
-import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
+import { DEMO_OF, ShowCard, type BeatMark, type CardButtonId, type CardContent, type PadState } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART } from "./figure";
 import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ribbon, type Spark, type TallyState } from "./lane";
 import { DESK_LIP, layoutFor, type Layout, type Orientation, type Spot } from "./layout";
@@ -35,7 +35,7 @@ export type TalentBridge = {
   onPauseRequest: () => void;
 };
 
-type Mode = "idle" | "intro" | "calibrating" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
+type Mode = "idle" | "intro" | "tutorial" | "calibIntro" | "calibrating" | "calibDone" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
 type Mood = "neutral" | "happy" | "angry" | "shock";
 type HostMood = "neutral" | "happy" | "excited" | "surprised" | "sad" | "static" | "wave";
 type Pose = "ready" | "hit";
@@ -52,6 +52,9 @@ const CUT_STING = [69, 72, 76, 74, 72, 69];
 const CALIBRATION_BEAT = 0.6;
 const CALIBRATION_COUNT = 4;
 const CALIBRATION_TAPS = 8;
+const CALIBRATION_LEAD = 0.9;
+const CARD_MODES: Mode[] = ["intro", "tutorial", "calibIntro", "calibDone"];
+const OFFSTAGE: Mode[] = ["idle", "intro", "tutorial", "calibIntro", "calibrating", "calibDone"];
 const MISS_FALL_MS = 480;
 const SPARK_MS = 380;
 const TALK_MS = 2600;
@@ -98,9 +101,12 @@ export class StageScene extends Phaser.Scene {
   private lastSongMs = 0;
   private resumeAt = 0;
   private calibClicks: number[] = [];
+  private calibBeats: number[] = [];
   private calibErrors: (number | null)[] = [];
   private calibEnd = 0;
-  private notice = "";
+  private calibHitAt = -Infinity;
+  private calibPressAt = -Infinity;
+  private calibResult: Calibration | null = null;
 
   private notesG!: Phaser.GameObjects.Graphics;
   private noteIcons!: IconPool;
@@ -185,6 +191,7 @@ export class StageScene extends Phaser.Scene {
       { key: "icon-note", icon: NOTE_GLYPH, size: 96, color: "#1d1830", strokeWidth: 2.6 },
       { key: "icon-miss", icon: X, size: 128, color: "#ef4f43", strokeWidth: 2.4 },
       { key: "icon-check", icon: Check, size: 96, color: "#1d1830", strokeWidth: 3.4 },
+      { key: "icon-retry", icon: RotateCcw, size: 64, color: "#1d1830", strokeWidth: 3.2 },
       { key: "icon-ear", icon: Ear, size: 96, color: "#b9a6ef", strokeWidth: 2.6 },
       { key: "icon-ear-ink", icon: Ear, size: 96, color: "#1d1830", strokeWidth: 6 },
     ]);
@@ -365,7 +372,8 @@ export class StageScene extends Phaser.Scene {
     let mood: HostMood;
     if (live && signal === "lost") mood = "static";
     else if (this.hostOverride && now < this.hostUntil) mood = this.hostOverride;
-    else if (this.mode === "idle" || this.mode === "intro" || this.mode === "calibrating") mood = "wave";
+    else if (this.mode === "calibDone" && this.calibResult?.ok) mood = "happy";
+    else if (OFFSTAGE.includes(this.mode)) mood = "wave";
     else if (this.mode === "countin" || this.mode === "resuming") mood = "excited";
     else if (this.mode === "cut") mood = "sad";
     else if (this.mode === "results") mood = (this.verdict?.stars ?? 0) >= 2 ? "happy" : (this.verdict?.stars ?? 0) === 1 ? "neutral" : "sad";
@@ -672,43 +680,92 @@ export class StageScene extends Phaser.Scene {
   private introContent(): CardContent {
     const copy = this.copy;
     const song = copy.songs[this.songId];
-    const first = !this.hasCalibration;
     const assistOn = this.bridge.assist.get();
-    const notes = [this.notice, first ? copy.calibNext : assistOn ? copy.assistOn : ""].filter(Boolean);
     return {
       kicker: copy.kicker(copy.rounds[roundOf(this.songId)], SONG_ORDER.indexOf(this.songId) + 1, SONG_ORDER.length),
-      title: first ? copy.showTime : song.title,
-      lead: first ? copy.showLead : song.who,
-      face: first ? null : SONG_FACE[this.songId],
+      title: song.title,
+      lead: song.who,
+      face: SONG_FACE[this.songId],
       demo: DEMO_OF[this.songId],
-      dots: false,
+      pad: null,
       how: song.how,
-      note: notes.join("\n"),
-      primary: first ? { label: copy.proceed, icon: "icon-next" } : { label: copy.begin, icon: "icon-play" },
-      secondary: first
-        ? []
-        : [
-            { id: "assist", label: copy.assistButton(assistOn), on: assistOn },
-            { id: "calibrate", label: copy.calibrateButton, on: false },
-          ],
+      note: assistOn ? copy.assistOn : "",
+      primary: { label: copy.begin, icon: "icon-play" },
+      secondary: [
+        { id: "assist", label: copy.assistButton(assistOn), on: assistOn },
+        { id: "calibrate", label: copy.calibAgain, on: false },
+      ],
       footer: this.bridge.touch ? copy.soundNote : `${copy.soundNote}\n${copy.keysHint}`,
     };
   }
 
-  private calibrationContent(): CardContent {
+  private tutorialContent(): CardContent {
+    const copy = this.copy;
+    return {
+      kicker: copy.tutorialKicker,
+      title: copy.tutorialTitle,
+      lead: copy.tutorialLead,
+      face: null,
+      demo: "learn",
+      pad: null,
+      how: copy.tapAnywhere(this.bridge.touch),
+      note: "",
+      primary: { label: copy.tutorialGo, icon: "icon-next" },
+      secondary: [],
+      footer: "",
+    };
+  }
+
+  private calibIntroContent(): CardContent {
     const copy = this.copy;
     return {
       kicker: copy.calibKicker,
       title: copy.calibTitle,
-      lead: copy.calibHow,
+      lead: copy.calibLead,
       face: null,
       demo: null,
-      dots: true,
-      how: copy.calibListen,
+      pad: "preview",
+      how: copy.calibHow,
+      note: "",
+      primary: { label: copy.calibStart, icon: "icon-play" },
+      secondary: [],
+      footer: copy.soundNote,
+    };
+  }
+
+  private calibLiveContent(): CardContent {
+    const copy = this.copy;
+    return {
+      kicker: copy.calibLiveKicker,
+      title: copy.calibLiveTitle,
+      lead: copy.tapAnywhere(this.bridge.touch),
+      face: null,
+      demo: null,
+      pad: "live",
+      how: "",
       note: "",
       primary: null,
       secondary: [],
       footer: copy.soundNote,
+    };
+  }
+
+  private calibDoneContent(): CardContent {
+    const copy = this.copy;
+    const result = this.calibResult;
+    const ok = result?.ok === true;
+    return {
+      kicker: copy.calibLiveKicker,
+      title: ok ? copy.calibOkTitle : copy.calibFailTitle,
+      lead: ok ? copy.calibOkLead : result && !result.ok ? copy.calibFail[result.reason] : copy.calibFail.few,
+      face: null,
+      demo: null,
+      pad: "live",
+      how: "",
+      note: "",
+      primary: ok ? { label: copy.showStart, icon: "icon-play" } : { label: copy.calibRetry, icon: "icon-retry" },
+      secondary: ok ? [{ id: "calibrate", label: copy.calibAgain, on: false }] : [],
+      footer: "",
     };
   }
 
@@ -719,25 +776,41 @@ export class StageScene extends Phaser.Scene {
     if (mode === "intro") {
       this.setKidFaces("normal");
       this.card.show(this.introContent());
-      this.notice = "";
+    } else if (mode === "tutorial") {
+      this.setKidFaces("normal");
+      this.card.show(this.tutorialContent());
+    } else if (mode === "calibIntro") {
+      this.card.show(this.calibIntroContent());
     } else if (mode === "calibrating") {
-      this.card.show(this.calibrationContent());
+      this.card.show(this.calibLiveContent());
+    } else if (mode === "calibDone") {
+      this.card.show(this.calibDoneContent());
     } else {
       this.card.hide();
     }
   }
 
+  private carded() {
+    return CARD_MODES.includes(this.mode);
+  }
+
   private buttonAt(pageX: number, pageY: number): CardButtonId | null {
-    if (this.mode !== "intro" || !this.card.visible) return null;
+    if (!this.carded() || !this.card.visible) return null;
     return this.card.buttonAt(this.scale.transformX(pageX), this.scale.transformY(pageY));
   }
 
   private pressButton(id: CardButtonId) {
-    if (id === "primary") this.advance(true);
-    else if (id === "assist") {
+    if (id === "assist") {
       this.bridge.assist.set(!this.bridge.assist.get());
       this.setMode("intro");
-    } else this.startCalibration();
+    } else if (id === "calibrate") this.setMode("calibIntro");
+    else if (this.mode === "intro") this.advance(true);
+    else if (this.mode === "tutorial") this.setMode("calibIntro");
+    else if (this.mode === "calibIntro") this.startCalibration();
+    else if (this.mode === "calibDone") {
+      if (this.calibResult?.ok) this.startSong();
+      else this.startCalibration();
+    }
   }
 
   private busy() {
@@ -747,7 +820,7 @@ export class StageScene extends Phaser.Scene {
   press(timeStamp: number, id: string, pageX = -1, pageY = -1) {
     if (this.mode === "playing" || this.mode === "countin") this.registerDown(timeStamp, id);
     else if (this.mode === "calibrating") this.calibrationTap(timeStamp);
-    else if (this.mode === "intro") {
+    else if (this.carded()) {
       this.pressedButton = this.buttonAt(pageX, pageY);
       this.card.press(this.pressedButton);
     }
@@ -758,7 +831,7 @@ export class StageScene extends Phaser.Scene {
       this.registerUp(timeStamp, id);
       return;
     }
-    if (this.mode !== "intro") return;
+    if (!this.carded()) return;
     const pressed = this.pressedButton;
     this.pressedButton = null;
     this.card.press(null);
@@ -766,7 +839,7 @@ export class StageScene extends Phaser.Scene {
       if (this.buttonAt(pageX, pageY) === pressed) this.pressButton(pressed);
       return;
     }
-    this.advance(false);
+    if (this.mode === "intro" || this.mode === "tutorial") this.advance(false);
   }
 
   key(code: string, timeStamp: number) {
@@ -781,11 +854,13 @@ export class StageScene extends Phaser.Scene {
       else this.press(timeStamp, `k${code}`);
       return;
     }
-    if (this.mode !== "intro") return;
+    if (!this.carded()) return;
+    const confirm = code === "Enter" || code === "Space" || code === "NumpadEnter";
     if (pauseKey) this.bridge.onPauseRequest();
-    else if (code === "KeyA" && this.hasCalibration) this.pressButton("assist");
-    else if (code === "KeyC") this.pressButton("calibrate");
-    else this.advance(false);
+    else if (this.mode === "intro" && code === "KeyA") this.pressButton("assist");
+    else if ((this.mode === "intro" || (this.mode === "calibDone" && this.calibResult?.ok)) && code === "KeyC") this.pressButton("calibrate");
+    else if (this.mode === "intro" || this.mode === "tutorial") this.advance(false);
+    else if (confirm && performance.now() - this.modeSince >= 600) this.pressButton("primary");
   }
 
   keyUp(code: string, timeStamp: number) {
@@ -797,19 +872,19 @@ export class StageScene extends Phaser.Scene {
     this.ensureStage();
     this.setSong(id);
     this.modeSince = 0;
-    this.setMode("intro");
+    this.setMode(this.hasCalibration ? "intro" : "tutorial");
     this.modeSince = performance.now() - 450;
   }
 
   restartSong() {
     this.stopPlayer();
     if (this.hasCalibration) this.startSong();
-    else this.setMode("intro");
+    else this.setMode("tutorial");
   }
 
   pause() {
     if (this.busy()) this.pauseSong();
-    else if (this.mode === "calibrating") this.setMode("intro");
+    else if (this.mode === "calibrating") this.setMode("calibIntro");
   }
 
   resume() {
@@ -827,9 +902,10 @@ export class StageScene extends Phaser.Scene {
 
   private advance(fromButton: boolean) {
     if (!fromButton && performance.now() - this.modeSince < 600) return;
-    if (this.mode !== "intro") return;
-    if (this.hasCalibration) this.startSong();
-    else this.startCalibration();
+    if (this.mode === "tutorial") this.setMode("calibIntro");
+    else if (this.mode !== "intro") return;
+    else if (this.hasCalibration) this.startSong();
+    else this.setMode("tutorial");
   }
 
   private ensureStage() {
@@ -847,20 +923,58 @@ export class StageScene extends Phaser.Scene {
     const stage = this.ensureStage();
     if (!stage) return;
     getAudio().stopMusic();
-    const base = stage.ctx.currentTime + 0.5;
+    const base = stage.ctx.currentTime + CALIBRATION_LEAD;
     const total = CALIBRATION_COUNT + CALIBRATION_TAPS;
     for (let i = 0; i < total; i += 1) click(stage, stage.out, base + i * CALIBRATION_BEAT, i % 4 === 0);
-    this.calibClicks = Array.from({ length: CALIBRATION_TAPS }, (_, i) => base + (CALIBRATION_COUNT + i) * CALIBRATION_BEAT);
+    this.calibBeats = Array.from({ length: total }, (_, i) => base + i * CALIBRATION_BEAT);
+    this.calibClicks = this.calibBeats.slice(CALIBRATION_COUNT);
     this.calibErrors = this.calibClicks.map(() => null);
     this.calibEnd = base + total * CALIBRATION_BEAT + 0.2;
+    this.calibHitAt = -Infinity;
+    this.calibPressAt = -Infinity;
+    this.calibResult = null;
     this.setMode("calibrating");
   }
 
   private calibrationTap(timeStamp: number) {
     if (!this.clock) return;
+    this.calibPressAt = performance.now();
     const heard = this.clock.at(timeStamp);
     const click = clickFor(heard * 1000, this.calibClicks.map((t) => t * 1000));
-    if (click >= 0 && this.calibErrors[click] === null) this.calibErrors[click] = (heard - this.calibClicks[click]) * 1000;
+    if (click >= 0 && this.calibErrors[click] === null) {
+      this.calibErrors[click] = (heard - this.calibClicks[click]) * 1000;
+      this.calibHitAt = this.calibPressAt;
+    }
+  }
+
+  private calibMarks(heard: number): BeatMark[] {
+    const late = CALIBRATION_LATE / 1000;
+    const next = this.calibClicks.findIndex((t, i) => this.calibErrors[i] === null && heard < t + late);
+    return this.calibClicks.map((t, i) => (this.calibErrors[i] !== null ? "done" : heard >= t + late ? "missed" : i === next ? "now" : "pending"));
+  }
+
+  private calibState(now: number): PadState {
+    const heard = this.clock ? this.clock.at(now) : 0;
+    let beat = -1;
+    while (beat + 1 < this.calibBeats.length && this.calibBeats[beat + 1] <= heard) beat += 1;
+    const beatAt = beat >= 0 ? now - (heard - this.calibBeats[beat]) * 1000 : -Infinity;
+    const counting = heard < this.calibClicks[0] - CALIBRATION_BEAT / 2;
+    const phase = counting ? (beat >= 0 ? "count" : "idle") : "taps";
+    const marks = this.calibMarks(heard).map((m) => (counting && m === "now" ? "pending" : m));
+    return { phase, count: beat + 1, beat: beat + 1, beatAt, hitAt: this.calibHitAt, pressAt: this.calibPressAt, marks };
+  }
+
+  private calibOutcome(): PadState {
+    const result = this.calibResult;
+    const taken = this.calibErrors.filter((e): e is number => e !== null).sort((a, b) => a - b);
+    const median = taken.length > 0 ? taken[Math.floor(taken.length / 2)] : 0;
+    const marks = this.calibErrors.map((error): BeatMark => {
+      if (error === null) return "missed";
+      if (result && !result.ok && result.reason === "off" && !isPlausibleOffset(Math.round(error), MAX_OFFSET)) return "missed";
+      if (result && !result.ok && result.reason === "uneven" && Math.abs(error - median) > CALIBRATION_SPREAD / 2) return "missed";
+      return "done";
+    });
+    return { phase: result?.ok ? "done" : "retry", count: 0, beat: 0, beatAt: -Infinity, hitAt: -Infinity, pressAt: -Infinity, marks };
   }
 
   private finishCalibration() {
@@ -868,16 +982,13 @@ export class StageScene extends Phaser.Scene {
       this.calibErrors.filter((e): e is number => e !== null),
       MAX_OFFSET,
     );
-    if (!result.ok) {
-      this.notice = this.copy.calibFail[result.reason];
-      this.setMode("intro");
-      return;
+    this.calibResult = result;
+    if (result.ok) {
+      this.offset = result.offset;
+      this.hasCalibration = true;
+      this.bridge.calibration.save(this.offset);
     }
-    this.offset = result.offset;
-    this.hasCalibration = true;
-    this.bridge.calibration.save(this.offset);
-    this.notice = this.copy.calibResult(this.offset);
-    this.setMode("intro");
+    this.setMode("calibDone");
   }
 
   private startSong() {
@@ -1038,11 +1149,10 @@ export class StageScene extends Phaser.Scene {
     this.updateTransient(now);
     this.card.update(now);
     if (this.mode === "calibrating") {
-      const heard = this.clock ? this.clock.at(now) : 0;
-      if (heard >= this.calibClicks[0] - 0.05 && this.card.howText === this.copy.calibListen) this.card.setHow(this.copy.calibGo);
-      const next = this.calibClicks.findIndex((t, i) => this.calibErrors[i] === null && heard < t + CALIBRATION_LATE / 1000);
-      this.card.dots(this.calibClicks.map((_, i) => (this.calibErrors[i] !== null ? "hit" : i === next ? "now" : "waiting")));
-      if (heard > this.calibEnd) this.finishCalibration();
+      this.card.drawPad(this.calibState(now), now);
+      if (this.clock && this.clock.at(now) > this.calibEnd) this.finishCalibration();
+    } else if (this.mode === "calibDone") {
+      this.card.drawPad(this.calibOutcome(), now);
     }
     this.updateTalk(now);
     let shown: number;
@@ -1276,7 +1386,7 @@ export class StageScene extends Phaser.Scene {
     const P = this.L.progress;
     const g = this.progressG;
     g.clear();
-    if (this.mode === "idle" || this.mode === "intro" || this.mode === "calibrating") return;
+    if (OFFSTAGE.includes(this.mode)) return;
     const end = this.compiled.endMs;
     const k = Math.max(0, Math.min(1, shown / end));
     g.fillStyle(C.plum950, 1).fillRoundedRect(P.x, P.y - P.h / 2, P.w, P.h, P.h / 2);
@@ -1356,7 +1466,7 @@ export class StageScene extends Phaser.Scene {
     const xOf = (ms: number) => xOfBeat(this.beatPos(ms));
     const left = S.x + 10;
     const right = S.x + S.w - 10;
-    const assist = this.mode === "intro" || this.mode === "calibrating" || this.mode === "idle" ? this.bridge.assist.get() : this.assist;
+    const assist = OFFSTAGE.includes(this.mode) ? this.bridge.assist.get() : this.assist;
     g.clear();
     this.noteIcons.begin();
     this.missIcons.begin();

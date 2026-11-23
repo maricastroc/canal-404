@@ -1,11 +1,16 @@
 import * as Phaser from "phaser";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, fitText, paper } from "@/games/kit/ui";
+
+const CREAM_TEXT = "#f7ecd4";
 import type { TalentCopy } from "../copy";
 import type { BandMember, SongId } from "../song/notation";
 import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ribbon, type Spark } from "./lane";
 
 export type CardButtonId = "primary" | "assist" | "calibrate";
-export type DemoKind = "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
+export type DemoKind = "learn" | "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
+export type BeatMark = "pending" | "now" | "done" | "missed";
+export type PadPhase = "idle" | "count" | "taps" | "done" | "retry";
+export type PadState = { phase: PadPhase; count: number; beat: number; beatAt: number; hitAt: number; pressAt: number; marks: BeatMark[] };
 
 export type CardContent = {
   kicker: string;
@@ -13,20 +18,22 @@ export type CardContent = {
   lead: string;
   face: string | null;
   demo: DemoKind | null;
-  dots: boolean;
+  pad: "preview" | "live" | null;
   how: string;
   note: string;
   primary: { label: string; icon: string } | null;
   secondary: { id: Exclude<CardButtonId, "primary">; label: string; on: boolean }[];
   footer: string;
+  footerIcon?: string;
 };
 
 export const DEMO_OF: Record<SongId, DemoKind> = { theme: "tap", signoff: "hold", recess: "echo", street: "offbeat", static: "static", medley: "medley" };
 
 type DemoItem = { beat: number; kind: "tap" | "hold" | "call" | "echo"; end?: number; who: BandMember };
-type DemoSpec = { loop: number; items: DemoItem[]; regions?: { from: number; to: number; kind: "call" | "echo" | "static" }[]; strongBeats?: boolean; listen?: [number, number] };
+type DemoSpec = { loop: number; items: DemoItem[]; regions?: { from: number; to: number; kind: "call" | "echo" | "static" }[]; strongBeats?: boolean; listen?: [number, number]; tapHere?: boolean };
 
 const DEMOS: Record<DemoKind, DemoSpec> = {
+  learn: { loop: 2, items: [{ beat: 0, kind: "tap", who: "deco" }], tapHere: true },
   tap: { loop: 4, items: [0, 1, 2, 3].map((beat) => ({ beat, kind: "tap", who: "deco" })) },
   hold: {
     loop: 6,
@@ -223,6 +230,10 @@ class DemoLane {
     } else {
       this.noise.setVisible(false);
     }
+    if (spec.tapHere && this.tags[tag]) {
+      this.tags[tag].setText(this.copy.tapHere.toUpperCase()).setColor("#ffc83d").setPosition(hitX + r + RING_GAP + 28, track.y + 16).setVisible(true);
+      tag += 1;
+    }
     for (let i = tag; i < this.tags.length; i += 1) this.tags[i].setVisible(false);
     this.fireEvents(spec, beat, now);
     const flashK = Math.max(0, 1 - (now - this.flash.born) / 260);
@@ -275,6 +286,145 @@ class DemoLane {
   }
 }
 
+const PAD_BEAT_MS = 600;
+const PAD_LOOP = 16;
+const PAD_SPARK_MS = 380;
+
+class CalibPad {
+  readonly root: Phaser.GameObjects.Container;
+  private g: Phaser.GameObjects.Graphics;
+  private front: Phaser.GameObjects.Graphics;
+  private row: Phaser.GameObjects.Graphics;
+  private number: Phaser.GameObjects.Text;
+  private caption: Phaser.GameObjects.Text;
+  private counter: Phaser.GameObjects.Text;
+  private ear: Phaser.GameObjects.Container;
+  private hand: Phaser.GameObjects.Image;
+  private tick: Phaser.GameObjects.Image;
+  private checks: IconPool;
+  private sparks: Spark[] = [];
+  private lastHit = -Infinity;
+  private t0 = 0;
+  private geo = { w: 0, h: 0, cx: 0, cy: 0, r: 0, x0: 0, x1: 0, rowY: 0, capY: 0 };
+
+  constructor(
+    scene: Phaser.Scene,
+    private copy: TalentCopy,
+    fonts: { display: string; body: string },
+    private sizes: { title: number; body: number; small: number },
+    private reduced: boolean,
+  ) {
+    this.g = scene.add.graphics();
+    this.front = scene.add.graphics();
+    this.row = scene.add.graphics();
+    this.number = cartoonText(scene, 0, 0, "", { size: 72, color: CREAM_TEXT, font: fonts.display, stroke: 0.16, shadow: false }).setOrigin(0.5);
+    this.caption = cartoonText(scene, 0, 0, "", { size: sizes.body + 8, color: "#ffc83d", font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(0, 0.5);
+    this.counter = cartoonText(scene, 0, 0, "", { size: sizes.body, color: CREAM_TEXT, font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(1, 0.5);
+    this.ear = scene.add.container(0, 0, [scene.add.image(0, 0, "icon-ear-ink"), scene.add.image(0, 0, "icon-ear")]);
+    this.hand = scene.add.image(0, 0, "icon-pointer").setOrigin(0.33, 0.06);
+    this.tick = scene.add.image(0, 0, "icon-check");
+    this.root = scene.add.container(0, 0, [this.g, this.row, this.front, this.number, this.ear, this.tick, this.hand, this.caption, this.counter]);
+    this.checks = new IconPool(() => {
+      const icon = scene.add.image(0, 0, "icon-check");
+      this.root.addAt(icon, this.root.getIndex(this.row) + 1);
+      return icon;
+    });
+  }
+
+  setup(w: number, h: number) {
+    const r = Math.round(Math.min(44, h * 0.25));
+    const cx = r + RING_GAP + 40;
+    const x0 = cx + r + RING_GAP + 64;
+    this.geo = { w, h, cx, cy: h / 2, r, x0, x1: w - 30, rowY: h * 0.68, capY: h * 0.3 };
+    this.number.setFontSize(Math.round(r * 1.25));
+    this.hand.setScale((r * 1.5) / this.hand.height);
+    this.t0 = performance.now();
+    this.sparks = [];
+    this.lastHit = -Infinity;
+  }
+
+  preview(now: number) {
+    const beat = (now - this.t0) / PAD_BEAT_MS;
+    const b = beat % PAD_LOOP;
+    const i = Math.floor(b);
+    const start = now - (b - i) * PAD_BEAT_MS;
+    const phase: PadPhase = b < 1 ? "idle" : b < 5 ? "count" : b < 13 ? "taps" : "done";
+    const done = phase === "taps" ? i - 5 + (b - i > 0.06 ? 1 : 0) : phase === "done" ? 8 : 0;
+    const hitAt = phase === "taps" ? start + 0.06 * PAD_BEAT_MS : -Infinity;
+    const marks: BeatMark[] = Array.from({ length: 8 }, (_, k) => (k < done ? "done" : phase === "taps" && k === done ? "now" : "pending"));
+    this.draw({ phase, count: phase === "count" ? i : 0, beat: i, beatAt: phase === "count" || phase === "taps" ? start : -Infinity, hitAt, pressAt: hitAt, marks }, now);
+  }
+
+  draw(state: PadState, now: number) {
+    const { w, h, cx, cy, r, x0, x1, rowY, capY } = this.geo;
+    const g = this.g;
+    const f = this.front;
+    const row = this.row;
+    g.clear();
+    f.clear();
+    row.clear();
+    this.checks.begin();
+    g.fillStyle(INK_HEX, 1).fillRoundedRect(4, 6, w, h, 22);
+    g.fillStyle(C.plum700, 1).fillRoundedRect(0, 0, w, h, 22);
+    g.lineStyle(5, INK_HEX, 1).strokeRoundedRect(0, 0, w, h, 22);
+    const listen = state.phase === "idle" || state.phase === "count";
+    const pulse = this.reduced ? 0 : Math.max(0, 1 - (now - state.beatAt) / 260);
+    const hitK = Math.max(0, 1 - (now - state.hitAt) / 280);
+    const pressK = Math.max(0, 1 - (now - state.pressAt) / 200);
+    if (state.hitAt !== this.lastHit && now - state.hitAt < 100) this.sparks.push({ born: now, color: C.sun, seed: (now % 1000) / 160 });
+    this.lastHit = state.hitAt;
+    const ring = { pulse, flash: Math.max(hitK, pressK * 0.4), flashColor: hitK > 0 ? C.sun : C.cream, lit: this.reduced ? 0 : -state.beat, shake: 0, holding: false, listen };
+    drawRingBase(g, cx, cy, r, ring);
+    const finished = state.phase === "done";
+    if (finished) g.fillStyle(C.mint, 1).fillCircle(cx, cy, r);
+    drawRingFront(f, cx, cy, r, ring);
+    if (hitK > 0) drawBurst(f, cx, cy, r, C.sun, 1 - hitK);
+    this.sparks = this.sparks.filter((s) => now - s.born < PAD_SPARK_MS);
+    drawSparks(f, cx, cy, r, this.sparks, now, PAD_SPARK_MS);
+    this.number.setVisible(state.phase === "count" && state.count > 0).setText(String(state.count)).setPosition(cx, cy).setScale(1 + 0.25 * pulse);
+    this.ear.setVisible(state.phase === "idle").setPosition(cx, cy).setScale((r * 1.2) / 96);
+    this.tick.setVisible(finished).setPosition(cx, cy).setScale((r * 1.3) / this.tick.height);
+    const pressed = now - state.pressAt < 150;
+    const reach = pressed ? r * 0.15 : r * 0.55;
+    this.hand.setVisible(state.phase === "taps" || state.phase === "retry").setPosition(cx + reach, cy + reach).setAlpha(state.phase === "retry" ? 0.6 : 1);
+    const caption = { idle: this.copy.padListen, count: this.copy.padListen, taps: this.copy.padTap, done: this.copy.padDone, retry: this.copy.padRetry }[state.phase];
+    const color = { idle: "#b9a6ef", count: "#b9a6ef", taps: "#ffc83d", done: "#63d6c1", retry: CREAM_TEXT }[state.phase];
+    this.caption.setText(caption.toUpperCase()).setColor(color).setPosition(x0, capY);
+    const count = state.marks.filter((m) => m === "done").length;
+    this.counter.setText(this.copy.calibCount(count, state.marks.length).toUpperCase()).setPosition(x1, capY);
+    const n = state.marks.length;
+    const a = x0 + 20;
+    const b = x1 - 20;
+    const gap = (b - a) / Math.max(1, n - 1);
+    row.lineStyle(5, C.plum500, 1).lineBetween(a, rowY, b, rowY);
+    state.marks.forEach((mark, k) => {
+      const x = a + k * gap;
+      if (mark === "done") {
+        const pop = 1 + 0.35 * Math.max(0, 1 - (now - state.hitAt) / 220) * (k === count - 1 ? 1 : 0);
+        const rr = 17 * (this.reduced ? 1 : pop);
+        row.fillStyle(INK_HEX, 1).fillCircle(x + 2, rowY + 3, rr);
+        row.fillStyle(C.mint, 1).fillCircle(x, rowY, rr);
+        row.lineStyle(4, INK_HEX, 1).strokeCircle(x, rowY, rr);
+        this.checks.place(x, rowY + 1, rr * 1.35, 1);
+      } else if (mark === "now") {
+        const halo = 25 + 6 * pulse;
+        row.lineStyle(4, C.sunPale, 0.9).strokeCircle(x, rowY, halo);
+        row.fillStyle(C.sun, 1).fillCircle(x, rowY, 19);
+        row.lineStyle(5, INK_HEX, 1).strokeCircle(x, rowY, 19);
+        row.fillStyle(INK_HEX, 1).fillCircle(x, rowY, 5);
+      } else if (mark === "missed") {
+        row.fillStyle(C.plum800, 1).fillCircle(x, rowY, 13);
+        row.lineStyle(3, C.gray, 1).strokeCircle(x, rowY, 13);
+        row.lineStyle(4, C.cream3, 1).lineBetween(x - 6, rowY - 6, x + 6, rowY + 6).lineBetween(x - 6, rowY + 6, x + 6, rowY - 6);
+      } else {
+        row.fillStyle(C.plum950, 1).fillCircle(x, rowY, 13);
+        row.lineStyle(3, C.plum300, 1).strokeCircle(x, rowY, 13);
+      }
+    });
+    this.checks.end();
+  }
+}
+
 type Button = { id: CardButtonId; root: Phaser.GameObjects.Container; box: Phaser.Geom.Rectangle };
 
 export class ShowCard {
@@ -290,12 +440,11 @@ export class ShowCard {
   private footer: Phaser.GameObjects.Text;
   private footerIcon: Phaser.GameObjects.Image;
   private demo: DemoLane;
-  private readonly art: Phaser.GameObjects.Graphics;
-  private readonly checks: IconPool;
+  private pad: CalibPad;
   private buttons: Button[] = [];
   private buttonLayer: Phaser.GameObjects.Container;
   private demoOn = false;
-  private artBox = { x: 0, y: 0, w: 0, h: 0 };
+  private padMode: CardContent["pad"] = null;
   private w: number;
   private x0: number;
   private top: number;
@@ -319,21 +468,16 @@ export class ShowCard {
     this.lead = scene.add.text(0, 0, "", { fontFamily: fonts.body, fontStyle: "700", fontSize: `${sizes.body}px`, color: INK, align: "center", lineSpacing: 4 }).setOrigin(0, 0);
     this.face = scene.add.image(0, 0, "head-deco-happy").setOrigin(0.5).setVisible(false);
     this.demo = new DemoLane(scene, copy, fonts, reduced);
-    this.art = scene.add.graphics();
+    this.pad = new CalibPad(scene, copy, fonts, sizes, reduced);
     this.how = scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: `${sizes.body + 2}px`, color: INK, align: "center", lineSpacing: 2 }).setOrigin(0.5, 0);
     this.note = scene.add.text(0, 0, "", { fontFamily: fonts.body, fontStyle: "700", fontSize: `${sizes.small + 1}px`, color: "#5a4790", align: "center" }).setOrigin(0.5, 0);
     this.buttonLayer = scene.add.container(0, 0);
     this.footerIcon = scene.add.image(0, 0, "icon-sound").setOrigin(0, 0.5);
     this.footer = scene.add.text(0, 0, "", { fontFamily: fonts.body, fontStyle: "700", fontSize: `${sizes.small - 2}px`, color: "#7b62c4", align: "left", lineSpacing: 2 }).setOrigin(0, 0.5);
     this.root = scene.add
-      .container(this.x0, this.top, [this.bg, this.kickerBg, this.kicker, this.title, this.face, this.lead, this.demo.root, this.art, this.how, this.note, this.buttonLayer, this.footerIcon, this.footer])
+      .container(this.x0, this.top, [this.bg, this.kickerBg, this.kicker, this.title, this.face, this.lead, this.demo.root, this.pad.root, this.how, this.note, this.buttonLayer, this.footerIcon, this.footer])
       .setDepth(30)
       .setVisible(false);
-    this.checks = new IconPool(() => {
-      const icon = scene.add.image(0, 0, "icon-check");
-      this.root.addAt(icon, this.root.getIndex(this.art) + 1);
-      return icon;
-    });
   }
 
   get visible() {
@@ -365,9 +509,6 @@ export class ShowCard {
       this.lead.setPosition(mid - this.lead.width / 2, y);
       y += this.lead.height + 18;
     }
-    this.art.clear();
-    this.checks.begin();
-    this.checks.end();
     this.demoOn = c.demo !== null;
     const demoH = this.stacked ? 184 : 156;
     if (c.demo) {
@@ -378,21 +519,33 @@ export class ShowCard {
     } else {
       this.demo.root.setVisible(false);
     }
-    if (c.dots) {
-      this.artBox = { x: pad, y, w: inner, h: 110 };
-      y += 120;
+    this.padMode = c.pad;
+    if (c.pad) {
+      const padH = this.stacked ? 200 : 176;
+      y += c.demo ? 0 : 14;
+      this.pad.root.setVisible(true).setPosition(pad, y);
+      this.pad.setup(inner, padH);
+      y += padH + 26;
+    } else {
+      this.pad.root.setVisible(false);
     }
     this.how.setText(c.how).setWordWrapWidth(inner).setPosition(mid, y);
     y += c.how ? this.how.height + 10 : 0;
     this.note.setText(c.note).setWordWrapWidth(inner).setPosition(mid, y);
     y += c.note ? this.note.height + 18 : 6;
     y = this.layoutButtons(c, y, pad, inner);
-    this.footer.setText(c.footer).setWordWrapWidth(inner - 44);
-    const fw = this.footerIcon.displayWidth + 10 + this.footer.width;
-    const fy = y + Math.max(this.footer.height, 30) / 2 + 4;
-    this.footerIcon.setPosition(mid - fw / 2, fy);
-    this.footer.setPosition(mid - fw / 2 + this.footerIcon.displayWidth + 10, fy);
-    y += Math.max(this.footer.height, 30) + 24;
+    this.footer.setText(c.footer).setWordWrapWidth(inner - 44).setVisible(c.footer !== "");
+    this.footerIcon.setTexture(c.footerIcon ?? "icon-sound").setVisible(c.footer !== "");
+    this.footerIcon.setScale(Math.min(1, 40 / this.footerIcon.height));
+    if (c.footer) {
+      const fw = this.footerIcon.displayWidth + 10 + this.footer.width;
+      const fy = y + Math.max(this.footer.height, 30) / 2 + 4;
+      this.footerIcon.setPosition(mid - fw / 2, fy);
+      this.footer.setPosition(mid - fw / 2 + this.footerIcon.displayWidth + 10, fy);
+      y += Math.max(this.footer.height, 30) + 24;
+    } else {
+      y += 12;
+    }
     const h = y;
     this.bg.clear();
     paper(this.bg, 0, 0, this.w, h, 34, CREAM_HEX, 10);
@@ -462,10 +615,17 @@ export class ShowCard {
   hide() {
     this.root.setVisible(false);
     this.demoOn = false;
+    this.padMode = null;
   }
 
   update(now: number) {
-    if (this.root.visible && this.demoOn) this.demo.update(now);
+    if (!this.root.visible) return;
+    if (this.demoOn) this.demo.update(now);
+    if (this.padMode === "preview") this.pad.preview(now);
+  }
+
+  drawPad(state: PadState, now: number) {
+    if (this.root.visible && this.padMode === "live") this.pad.draw(state, now);
   }
 
   buttonAt(x: number, y: number): CardButtonId | null {
@@ -475,36 +635,5 @@ export class ShowCard {
 
   press(id: CardButtonId | null) {
     for (const b of this.buttons) b.root.setScale(b.id === id ? 0.96 : 1);
-  }
-
-  setNote(text: string) {
-    this.note.setText(text);
-  }
-
-  setHow(text: string) {
-    this.how.setText(text);
-  }
-
-  get howText() {
-    return this.how.text;
-  }
-
-  dots(states: ("waiting" | "now" | "hit")[]) {
-    const g = this.art;
-    const box = this.artBox;
-    g.clear();
-    this.checks.begin();
-    const n = states.length;
-    const gap = Math.min(104, box.w / n);
-    const r = Math.min(30, gap * 0.32);
-    const cy = box.y + box.h / 2;
-    states.forEach((state, i) => {
-      const cx = box.x + box.w / 2 + (i - (n - 1) / 2) * gap;
-      g.fillStyle(INK_HEX, 1).fillCircle(cx + 3, cy + 5, r);
-      g.fillStyle(state === "hit" ? C.mint : state === "now" ? C.sun : C.cream2, 1).fillCircle(cx, cy, r);
-      g.lineStyle(5, INK_HEX, 1).strokeCircle(cx, cy, r);
-      if (state === "hit") this.checks.place(cx + r * 0.02, cy + r * 0.05, r * 1.32, 1);
-    });
-    this.checks.end();
   }
 }
