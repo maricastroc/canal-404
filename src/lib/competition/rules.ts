@@ -501,7 +501,7 @@ const TALENT_RANGE = [0, 5000] as const;
 
 const talentShow: GameRule = {
   game: "talent-show",
-  version: 1,
+  version: 2,
   levels: SONG_ORDER,
   stats: RUN_STATS,
   judge(level, claim) {

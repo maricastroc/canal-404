@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: mais folga no eco
+- **Echoes by ear get more room.** In Vinheta de Intervalo and the medley's echo stretch, the notes you repeat after Mila now count a bit earlier or later: bullseye up to 60 ms, nice up to 120, almost up to 180, the same as assist mode. Notes you can see keep their timing. The echo song was by far the hardest, harder than both songs of the final; it is now close to them.
+- **New boards.** The change bumps the game's rules to version 2, so all six songs start fresh boards ([decision 0014](docs/decisions/0014-talent-show-judge.md)).
+
 ### Ícones do Lucide em todo o canal
 - **One icon set.** Every icon that was still a text symbol or a hand-drawn shape now comes from Lucide, the set the portal already used: star ratings, check marks, arrows, close buttons, play and rewind labels, music notes and hearts on the site, and HUD and button icons in all nine games, including Madrugada's "Ver a casa" eye. Arrow keys inside control lists and in-game hints show as arrow icons too.
 - **Some stay hand-drawn.** Icons that are richer than Lucide's (the watcher's eye in Operação: Recreio, the garage padlocks in Ladeira Abaixo) or have no real match (comic reactions, painted signs and road chalk, particles, the finish flag, Madrugada's board markers) keep their original art.
