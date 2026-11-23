@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: acerto de tempo mais confiável
+- **Late taps no longer look early.** The timing check used to pair each tap with the nearest click, and clicks come every 600 ms, so tapping about a third of a second late was read as tapping a quarter second early. The game then drew the notes about 250 ms ahead of the music, and players who followed the lane heard their own hits land between the beats. Each tap now counts for the click it follows.
+- **Results that can't be right are refused.** Taps that vary too much, or a result outside −100 to +250 ms, ask for another try, with a tip to tap in rhythm without waiting for each beat (and to try without Bluetooth headphones). A value saved by the old check outside that range is dropped, so the check runs again.
+- **No flash to react to.** The check's dots now highlight the next beat to tap instead of lighting up the instant each click sounds. The instructions ask to tap in rhythm, without waiting for each beat.
+
 ### Ao Vivo no 404: mais folga no eco
 - **Echoes by ear get more room.** In Vinheta de Intervalo and the medley's echo stretch, the notes you repeat after Mila now count a bit earlier or later: bullseye up to 60 ms, nice up to 120, almost up to 180, the same as assist mode. Notes you can see keep their timing. The echo song was by far the hardest, harder than both songs of the final; it is now close to them.
 - **New boards.** The change bumps the game's rules to version 2, so all six songs start fresh boards ([decision 0014](docs/decisions/0014-talent-show-judge.md)).

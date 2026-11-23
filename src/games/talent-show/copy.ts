@@ -1,4 +1,5 @@
 import { localized } from "@/i18n/copy";
+import type { CalibrationFailure } from "./sim/calibration";
 import type { Mark } from "./sim/judge";
 import type { BandMember, RoundId, SongId } from "./song/notation";
 
@@ -34,11 +35,15 @@ export const TALENT_COPY = localized({
     assistOn: "Modo assistido ligado: fica fora do placar.",
     calibKicker: "Antes do show",
     calibTitle: "Acerto de tempo",
-    calibHow: "Toque junto com as batidas, do jeito que você tocaria no jogo.",
+    calibHow: "Toque no ritmo das batidas, sem esperar cada uma, do jeito que você tocaria no jogo.",
     calibListen: "Escute a contagem…",
     calibGo: "Agora!",
     calibResult: (ms: number) => (Math.abs(ms) < 5 ? "Seu aparelho está no tempo." : `Ajuste do aparelho: ${ms > 0 ? "+" : "−"}${Math.abs(ms)} ms`),
-    calibFail: "Não deu para medir. Toque junto com todas as batidas.",
+    calibFail: {
+      few: "Não deu para medir. Toque junto com todas as batidas.",
+      uneven: "Os toques variaram demais. Toque no ritmo, junto com as batidas.",
+      off: "Seus toques ficaram longe das batidas. Toque no ritmo, sem esperar cada uma. Com fone Bluetooth, tente sem ele.",
+    } satisfies Record<CalibrationFailure, string>,
     host: {
       go: "Valendo!",
       weak: "Sinal fraco!",
@@ -90,11 +95,15 @@ export const TALENT_COPY = localized({
     assistOn: "Assist mode is on: it stays off the scoreboard.",
     calibKicker: "Before the show",
     calibTitle: "Timing check",
-    calibHow: "Tap along with the beats, the way you would in the game.",
+    calibHow: "Tap in rhythm with the beats, without waiting for each one, the way you would in the game.",
     calibListen: "Listen to the count…",
     calibGo: "Now!",
     calibResult: (ms: number) => (Math.abs(ms) < 5 ? "Your device is right on time." : `Device offset: ${ms > 0 ? "+" : "−"}${Math.abs(ms)} ms`),
-    calibFail: "Couldn't measure that. Tap along with every beat.",
+    calibFail: {
+      few: "Couldn't measure that. Tap along with every beat.",
+      uneven: "Your taps varied too much. Tap in rhythm, along with the beats.",
+      off: "Your taps landed far from the beats. Tap in rhythm without waiting for each one. With Bluetooth headphones, try without them.",
+    } satisfies Record<CalibrationFailure, string>,
     host: {
       go: "We're live!",
       weak: "Weak signal!",
