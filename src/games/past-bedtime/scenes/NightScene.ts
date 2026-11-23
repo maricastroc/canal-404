@@ -19,7 +19,7 @@ import { NightLighting, type DynamicLight } from "./lighting";
 import { floatZ, noiseRing, pop, popIcon, say, sightLine, soundLine, squiggle, type BubbleTone, type Box, type Speaker } from "./fx";
 import { drawExit } from "./exit";
 import { StoryBox } from "./story";
-import { drawCreakMarks, drawCreaks, drawFloor, drawHides, drawProps, drawWalls, faceMap, hideStyleFor, NIGHT, themeFor } from "./house";
+import { drawCreakMarks, drawCreaks, drawFloor, drawHides, drawProps, drawWalls, faceMap, hideStyleFor, NIGHT, themeFor, type HideStyle, type Theme } from "./house";
 import { ARROW_ICONS, iconKey, loadNightIcons } from "./icons";
 import { computeLayout, tileCenter, wobble, type Frame, type Layout } from "./layout";
 import { Notebook, type ButtonId, type LegendItem, type NoteKind, type NotebookView } from "./notebook";
@@ -105,6 +105,9 @@ export class NightScene extends Phaser.Scene {
   private fleeting: string | null = null;
   private stripesTold = false;
   private flinch = false;
+  private floorKind: Theme["floor"] = "wood";
+  private hideKind: HideStyle = "curtain";
+  private foot = 0;
   private useArt = false;
   private artHides = false;
   private story: StoryBox | null = null;
@@ -185,8 +188,25 @@ export class NightScene extends Phaser.Scene {
     if (this.state.status === "won") this.notebook.showWin(this.state.turn, this.sim.grid.level.par, partStars(this.sim.grid.level.par, this.state.turn, this.hints), this.levelIndex === LEVELS.length - 1, this.copy.lines.brunoWin[this.sim.grid.level.id] ?? this.copy.notes.won);
   }
 
-  private sfx(recipe: SoundRecipe, volume = 1) {
-    getAudio().play(recipe, { volume });
+  private sfx(recipe: SoundRecipe, volume = 1, pitch = 1) {
+    getAudio().play(recipe, { volume, pitch });
+  }
+
+  private footstep(x: number, y: number) {
+    const grid = this.sim.grid;
+    this.foot = 1 - this.foot;
+    const pitch = (this.foot ? 1 : 0.9) * (0.96 + Math.random() * 0.08);
+    if (isHiding(grid, x, y)) {
+      this.sfx(this.hideKind === "plant" ? NIGHT_SFX.rustlePlant : NIGHT_SFX.rustleCurtain, 1, 0.95 + Math.random() * 0.1);
+      return;
+    }
+    const recipe = this.floorKind === "checker" ? NIGHT_SFX.stepTile : this.floorKind === "parquet" ? NIGHT_SFX.stepParquet : NIGHT_SFX.stepWood;
+    this.sfx(recipe, 1, pitch);
+  }
+
+  private earVolume(x: number, y: number) {
+    const d = Math.abs(x - this.state.x) + Math.abs(y - this.state.y);
+    return Math.max(0.3, Math.min(1, 1.15 - d * 0.1));
   }
 
   private loadLevel(index: number, story = true) {
@@ -223,6 +243,8 @@ export class NightScene extends Phaser.Scene {
     const L = this.layout;
     const s = L.tile;
     const theme = themeFor(level.id);
+    this.floorKind = theme.floor;
+    this.hideKind = hideStyleFor(level.id);
     const decor = decorFor(level.id);
     this.useArt = this.bridge.art === "final" && hasArt(`floor-${level.id}`);
     this.artHides = false;
@@ -560,7 +582,7 @@ export class NightScene extends Phaser.Scene {
           const c = tileCenter(L, e.to.x, e.to.y);
           this.bruno.setFacing(e.dir);
           this.bruno.hop(c.x, c.y, MOVE_MS);
-          this.sfx(NIGHT_SFX.step, 0.6);
+          this.time.delayedCall(MOVE_MS * 0.72, () => this.footstep(e.to.x, e.to.y));
           break;
         }
         case "wait":
@@ -636,7 +658,7 @@ export class NightScene extends Phaser.Scene {
           if (a.kind !== "dad") break;
           const p = a.view.headPoint();
           if (this.state.status !== "caught") this.time.delayedCall(MOVE_MS, () => this.talk(p.x, p.y - s * 0.3, this.pick(this.copy.lines.dadToss), "whisper", 1400, "dad"));
-          this.sfx(NIGHT_SFX.stir);
+          this.sfx(NIGHT_SFX.toss);
           break;
         }
         case "sleep": {
@@ -659,11 +681,15 @@ export class NightScene extends Phaser.Scene {
           const c = tileCenter(L, e.to.x, e.to.y);
           if (a.kind === "grandma") {
             a.view.walkTo(c.x, c.y, MOVE_MS + 40);
+            this.sfx(NIGHT_SFX.slipper, this.earVolume(e.to.x, e.to.y), 0.94 + Math.random() * 0.12);
             if (this.time.now - this.lastBubble > 5000 && Math.random() < 0.18) {
               this.lastBubble = this.time.now;
               this.time.delayedCall(MOVE_MS, () => this.talk(c.x, c.y - s * 0.75, this.pick(this.copy.lines.grandmaWalk), "whisper", 1500, "grandma"));
             }
-          } else if (a.kind === "dog") a.view.trotTo(c.x, c.y, MOVE_MS);
+          } else if (a.kind === "dog") {
+            a.view.trotTo(c.x, c.y, MOVE_MS);
+            this.sfx(NIGHT_SFX.paws, this.earVolume(e.to.x, e.to.y) * (this.floorKind === "checker" ? 1.2 : 0.85), 0.95 + Math.random() * 0.1);
+          }
           break;
         }
         case "dogArrive": {
@@ -682,6 +708,7 @@ export class NightScene extends Phaser.Scene {
           const c = tileCenter(L, e.x, e.y);
           a.view.swipe(() => {
             this.sfx(NIGHT_SFX.knock);
+            this.time.delayedCall(520, () => this.sfx(NIGHT_SFX.meow, 0.8));
             squiggle(this, fonts, c.x + s * 0.3, c.y - s * 0.7, this.pick(this.copy.lines.knock), Math.round(s * 0.3), "#ffe39a");
             noiseRing(this, c.x, c.y, s * 2, 0xffe39a);
             const cup = this.add.graphics().setDepth(36);
@@ -780,6 +807,7 @@ export class NightScene extends Phaser.Scene {
       return;
     }
     this.turnNote(prev, events);
+    if (this.moodFor(this.state) === "tense") this.sfx(NIGHT_SFX.heartbeat);
     if (this.flinch) {
       this.flinch = false;
       this.bruno.setMood("scared");
@@ -1902,6 +1930,8 @@ export class NightScene extends Phaser.Scene {
         floatZ(this, fonts, p.x + s * 0.1, p.y + s * 0.1, Math.round(s * 0.2));
       }
     });
+    if (st.status === "playing" && Math.random() < 0.3) this.sfx(NIGHT_SFX.cricket, 0.7 + Math.random() * 0.5, 0.94 + Math.random() * 0.12);
+    if (st.status === "playing" && Math.random() < 0.025) this.sfx(NIGHT_SFX.carPass);
     if (st.status === "playing" && Math.random() < 0.45) this.bruno.blink();
     if (st.status === "playing" && this.time.now - this.lastInput > 3000 && Math.random() < 0.3) this.bruno.glance(Math.random() < 0.5 ? -1 : 1);
     st.agents.forEach((a, i) => {
