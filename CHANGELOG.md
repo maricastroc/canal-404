@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: o Tema volta ao bumbo
+- **Notes on the beat in Tema do Canal 404.** Around 1:03, four bars started on the bass drum and then fell between the kicks, where nothing in the music played. They now follow the bass drum all the way, like the same groove at 0:32. Same number of notes, same difficulty.
+- **New boards.** The change bumps the game's rules to version 3, so all six songs start fresh boards ([decision 0014](docs/decisions/0014-talent-show-judge.md)).
+
 ### Ao Vivo no 404: mais folga no eco
 - **Echoes by ear get more room.** In Vinheta de Intervalo and the medley's echo stretch, the notes you repeat after Mila now count a bit earlier or later: bullseye up to 60 ms, nice up to 120, almost up to 180, the same as assist mode. Notes you can see keep their timing. The echo song was by far the hardest, harder than both songs of the final; it is now close to them.
 - **New boards.** The change bumps the game's rules to version 2, so all six songs start fresh boards ([decision 0014](docs/decisions/0014-talent-show-judge.md)).

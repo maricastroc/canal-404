@@ -81,7 +81,7 @@ const THEME: Song = {
     "x...x.x.x...x.x.",
     "x.x.x.x.x.x.x...",
     ...THEME_MELODY_FULL,
-    ...times("x..x..x.x.x.x...", 4),
+    ...times("x..x..x.x..x..x.", 4),
     ...THEME_MELODY.slice(4),
     THEME_MELODY[6],
     THEME_MELODY[7],
