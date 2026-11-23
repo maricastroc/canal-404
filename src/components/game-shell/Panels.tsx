@@ -52,7 +52,7 @@ const COPY = localized({
     chooseLevel: (word: LevelWord) => `Escolha a ${word}`,
     starsTotal: (count: number, total: number) => `Estrelas: ${count}/${total}`,
     upNext: "A seguir",
-    locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : word === "pista" ? "Chegue ao pódio na pista anterior para desbloquear." : word === "parte" ? "Termine a parte anterior" : word === "música" ? "Termine a música anterior" : "Termine a fase anterior"),
+    locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : word === "pista" ? "Chegue ao pódio na pista anterior para desbloquear." : word === "parte" ? "Termine a parte anterior" : word === "música" ? "Conclua a música anterior para desbloquear." : "Termine a fase anterior"),
     noStars: "Sem estrelas",
     saved: "Sua aventura está salva. Continue de onde parou.",
     adventure: "Sua aventura",
@@ -115,7 +115,7 @@ const COPY = localized({
     chooseLevel: (word: LevelWord) => PICK[word],
     starsTotal: (count: number, total: number) => `Stars: ${count}/${total}`,
     upNext: "Up next",
-    locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : word === "pista" ? "Make the podium on the previous track to unlock." : word === "parte" ? "Finish the previous part" : word === "música" ? "Finish the previous song" : "Finish the previous level"),
+    locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : word === "pista" ? "Make the podium on the previous track to unlock." : word === "parte" ? "Finish the previous part" : word === "música" ? "Finish the previous song to unlock." : "Finish the previous level"),
     noStars: "No stars",
     saved: "Your adventure is saved. Pick up where you left off.",
     adventure: "Your adventure",
@@ -293,6 +293,27 @@ function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
         <RatingStar key={i} on={i < count} className="size-5" />
       ))}
     </span>
+  );
+}
+
+function StarRule({ rule }: { rule: NonNullable<GameMeta["starRule"]> }) {
+  const copy = useCopy(COPY);
+  return (
+    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-display text-sm uppercase tracking-wide text-ink-soft shorter:mt-1.5 max-sm:mt-2.5 [@media(max-height:540px)]:mt-1 [@media(max-height:540px)]:text-xs">
+      <span>{rule.label}</span>
+      <span className="inline-flex gap-1.5">
+        {rule.steps.map((step, i) => (
+          <span key={step} className="inline-flex items-center gap-0.5 rounded-md border-2 border-ink bg-cream-2 py-0.5 pl-1 pr-0.5 leading-none tracking-normal text-ink">
+            {step}
+            <span role="img" aria-label={copy.stars(i + 1, rule.steps.length)} className="inline-flex">
+              {Array.from({ length: i + 1 }, (_, k) => (
+                <RatingStar key={k} on className="size-3.5" />
+              ))}
+            </span>
+          </span>
+        ))}
+      </span>
+    </p>
   );
 }
 
@@ -574,7 +595,10 @@ export function IntroPanel({
       <div className="grid shrink-0 items-center gap-4 sm:grid-cols-[1fr_auto]">
         <div className="[@media(max-height:540px)]:flex [@media(max-height:540px)]:items-center [@media(max-height:540px)]:gap-4">
           <GameTitle game={game} />
-          <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base max-sm:mt-3 max-sm:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
+          <div className="[@media(max-height:540px)]:min-w-0">
+            <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base max-sm:mt-3 max-sm:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
+            {game.starRule ? <StarRule rule={game.starRule} /> : null}
+          </div>
         </div>
         <div className="hidden sm:block [@media(max-height:540px)]:hidden">{Cast ? <Cast mood="intro" locale={locale} /> : <CastPair game={game} />}</div>
       </div>

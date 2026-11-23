@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: textos revisados
+- **Shorter, clearer cards.** Each song card now gives one quick instruction ("Nota comprida! Segure até o rastro terminar. Depois, solte!", "Primeiro, escute a Mila. Depois, repita a sequência no mesmo ritmo!") and breaks its lines between sentences instead of leaving a word alone on the last line. Mila's part of the lane reads "Vez da Mila" next to "Sua vez".
+- **One word per thing.** Nota, círculo, nota comprida, rastro, sequência (Mila's phrases), precisão and estrelas everywhere; the hit streak is now "Combo", a missed note says "Escapou!", and the song subtitles drop "Contratempo", "Chiado" and "andamento".
+- **Title screen.** A shorter pitch, the star thresholds as a compact row (50% ★, 80% ★★, 92% ★★★), one-line song descriptions and "Conclua a música anterior para desbloquear." on locked songs.
+- **Results that match the run.** The title and line follow the stars ("Que show!", "Bela apresentação!", "Passou!", "Quase lá!", "Intervalo!"), and the 50% rule is said once. How-to cards, controls and loading tips were rewritten too; one tip still claimed the game corrected the device's sound delay, which stopped being true with the calibration. English follows the same changes. Songs, timing windows, scoring and boards are unchanged.
+
 ### Ao Vivo no 404: os jurados seguram as plaquinhas
 - **Paddles in hand.** The jury's score paddles used to float above their heads with the stick ending in the air. Now Mr. Arlindo's stick goes into the fist he already raises, and the Inspector and the lunch lady raise an arm in their own sleeve and skin colors to hold theirs. The paddle pops out of the hand instead of sliding up, so it never comes loose, and the lunch lady's board stays in front of her bun and her angry steam.
 
