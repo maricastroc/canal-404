@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, fitText, paper } from "@/games/kit/ui";
 import type { TalentCopy } from "../copy";
 import type { BandMember, SongId } from "../song/notation";
-import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ribbon, type Spark } from "./lane";
+import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, type Spark } from "./lane";
 
 export type CardButtonId = "primary" | "assist";
 export type DemoKind = "learn" | "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
@@ -106,6 +106,8 @@ class DemoLane {
   readonly root: Phaser.GameObjects.Container;
   private g: Phaser.GameObjects.Graphics;
   private icons: IconPool;
+  private ghostG: Phaser.GameObjects.Graphics;
+  private ghostIcons: IconPool;
   private front: Phaser.GameObjects.Graphics;
   private hand: Phaser.GameObjects.Image;
   private ear: Phaser.GameObjects.Container;
@@ -129,15 +131,21 @@ class DemoLane {
   ) {
     this.g = scene.add.graphics();
     this.noise = scene.add.tileSprite(0, 0, 10, 10, "talent-static").setOrigin(0, 0.5).setTileScale(3).setVisible(false);
+    this.ghostG = scene.add.graphics();
     this.front = scene.add.graphics();
     this.hand = scene.add.image(0, 0, "icon-pointer").setOrigin(0.5, 0);
     this.ear = scene.add.container(0, 0, [scene.add.image(0, 0, "icon-ear-ink"), scene.add.image(0, 0, "icon-ear")]).setVisible(false);
     this.popup = cartoonText(scene, 0, 0, "", { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.22, shadow: false }).setOrigin(0.5);
     for (let i = 0; i < 3; i += 1) this.tags.push(cartoonText(scene, 0, 0, "", { size: 20, color: "#f7ecd4", font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(0, 0.5).setVisible(false));
-    this.root = scene.add.container(0, 0, [this.g, this.noise, this.front, this.ear, ...this.tags, this.popup, this.hand]);
+    this.root = scene.add.container(0, 0, [this.g, this.noise, this.ghostG, this.front, this.ear, ...this.tags, this.popup, this.hand]);
     this.icons = new IconPool(() => {
       const icon = scene.add.image(0, 0, "icon-note");
       this.root.addAt(icon, this.root.getIndex(this.noise));
+      return icon;
+    });
+    this.ghostIcons = new IconPool(() => {
+      const icon = scene.add.image(0, 0, "icon-note");
+      this.root.addAt(icon, this.root.getIndex(this.front));
       return icon;
     });
   }
@@ -161,7 +169,9 @@ class DemoLane {
     const f = this.front;
     g.clear();
     f.clear();
+    this.ghostG.clear();
     this.icons.begin();
+    this.ghostIcons.begin();
     g.fillStyle(INK_HEX, 1).fillRoundedRect(4, 6, w, h, 22);
     g.fillStyle(C.plum700, 1).fillRoundedRect(0, 0, w, h, 22);
     g.lineStyle(5, INK_HEX, 1).strokeRoundedRect(0, 0, w, h, 22);
@@ -235,12 +245,16 @@ class DemoLane {
         }
         if (at <= beat) continue;
         const hidden = staticSpan !== null && x >= staticSpan[0] - r * 0.4 && x <= staticSpan[1] + r * 0.4;
-        if (hidden) continue;
+        if (hidden) {
+          drawNote(this.ghostG, this.ghostIcons, x, laneY, r, color, ghostAlpha("lost", false, Math.round(at * 4), now, this.reduced) * edge(x));
+          continue;
+        }
         if (item.kind === "echo") drawEcho(g, x, laneY, r, edge(x));
         else drawNote(g, this.icons, x, laneY, r, color, edge(x));
       }
     }
     this.icons.end();
+    this.ghostIcons.end();
     if (staticSpan) {
       const [x0, x1] = staticSpan;
       const half = ribbon(r) - 3;

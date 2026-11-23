@@ -3,7 +3,7 @@ import { beatMsAt, STEPS_PER_BAR, timeOf, type CompiledSong, type Signal, type T
 import { agogo, bucket, click, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Stage } from "./voices";
 
 const LOOKAHEAD = 0.2;
-const SIGNAL_CUTOFF: Record<Signal, number> = { clear: 5200, weak: 2000, lost: 650 };
+const SIGNAL_CUTOFF: Record<Signal, number> = { clear: 5200, weak: 2000, lost: 1300 };
 const SIGNAL_HISS: Record<Signal, number> = { clear: 0, weak: 0.035, lost: 0.09 };
 
 type Cue = { at: number; play: (time: number) => void; skippable: boolean };

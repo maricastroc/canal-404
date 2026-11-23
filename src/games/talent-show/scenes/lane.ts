@@ -1,5 +1,5 @@
 import type * as Phaser from "phaser";
-import type { BandMember } from "../song/notation";
+import type { BandMember, Signal } from "../song/notation";
 
 export const C = {
   ink: 0x1d1830,
@@ -32,6 +32,15 @@ export type Track = { x: number; y: number; w: number; h: number };
 export type Spark = { born: number; color: number; seed: number };
 
 export const RING_GAP = 16;
+
+const GHOST: Record<"show" | "assist", Record<Exclude<Signal, "clear">, number>> = { show: { weak: 0.7, lost: 0.42 }, assist: { weak: 0.9, lost: 0.75 } };
+
+export function ghostAlpha(signal: Exclude<Signal, "clear">, assist: boolean, seed: number, now: number, still: boolean) {
+  const base = GHOST[assist ? "assist" : "show"][signal];
+  if (still || signal === "weak") return base;
+  const n = Math.sin((Math.floor(now / 70) + 1) * 12.9898 + seed * 78.233) * 43758.5453;
+  return base * (0.6 + 0.4 * (n - Math.floor(n)));
+}
 
 export class IconPool {
   private readonly items: Phaser.GameObjects.Image[] = [];
