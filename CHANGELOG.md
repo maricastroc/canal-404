@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: as notas aparecem no chuvisco
+- **Faded, not gone.** In Balada do Chuvisco, the "SEM SINAL" bars used to hide their notes completely: 9 of the song's 24 bars, a third of its notes, including three bars in a row near the end. Their rhythm follows neither the melody nor the drums, so players had to guess, and a player who lost the beat there was usually cut by the crowd. The notes now show through the static, dim and flickering; under "SINAL FRACO" they are brighter and steady (they used to be almost invisible there too). The pot-pourri's static stretch works the same way, and assist mode shows them more clearly.
+- **The beat stays in the music.** A lost signal still muffles the band, but less: the snare now comes through, so beats 2 and 4 can still be heard.
+- The song card's demo, the how-to art on the game page and the tips say the notes fade instead of vanishing. Charts, timing windows, scoring and boards are unchanged.
+
 ### Ao Vivo no 404: textos revisados
 - **Shorter, clearer cards.** Each song card now gives one quick instruction ("Nota comprida! Segure até o rastro terminar. Depois, solte!", "Primeiro, escute a Mila. Depois, repita a sequência no mesmo ritmo!") and breaks its lines between sentences instead of leaving a word alone on the last line. Mila's part of the lane reads "Vez da Mila" next to "Sua vez".
 - **One word per thing.** Nota, círculo, nota comprida, rastro, sequência (Mila's phrases), precisão and estrelas everywhere; the hit streak is now "Combo", a missed note says "Escapou!", and the song subtitles drop "Contratempo", "Chiado" and "andamento".

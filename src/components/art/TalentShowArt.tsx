@@ -515,6 +515,8 @@ function BeatPanel({ locale }: { locale: Locale }) {
       <Strip x={LANE.x} y={LANE.y} w={LANE.w} h={LANE.h}>
         <Static x={x0} y={LANE.y + 3} w={x1 - x0} h={LANE.h - 6} cell={3} />
         <Beats x0={LANE.hit} x1={LANE.x + LANE.w - 6} step={18} y={LANE.y} h={LANE.h} first={0} />
+        <Ball x={LANE.hit + 36} y={laneY} r={7.5} fill={P.sun} opacity={0.4} />
+        <Ball x={LANE.hit + 90} y={laneY} r={7.5} fill={P.sun} opacity={0.4} />
         <Ball x={LANE.hit + 126} y={laneY} r={7.5} fill={P.sun} />
         <HitRing x={LANE.hit} y={laneY} r={7.5} />
         <Rays x={LANE.hit} y={laneY} r0={12.5} r1={15} />

@@ -13,7 +13,7 @@ import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART, type PaddleHold } from "./figure";
-import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ribbon, type Spark, type TallyState } from "./lane";
+import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, type Spark, type TallyState } from "./lane";
 import { DESK_LIP, layoutFor, type Layout, type Orientation, type Spot } from "./layout";
 
 const NOTE_GLYPH: IconNode = Music2.map(([tag, attrs]): IconNode[number] => [tag, tag === "circle" ? { ...attrs, fill: "#1d1830" } : attrs]);
@@ -98,6 +98,8 @@ export class StageScene extends Phaser.Scene {
   private notesG!: Phaser.GameObjects.Graphics;
   private noteIcons!: IconPool;
   private missIcons!: IconPool;
+  private ghostG!: Phaser.GameObjects.Graphics;
+  private ghostIcons!: IconPool;
   private ringBaseG!: Phaser.GameObjects.Graphics;
   private ringFrontG!: Phaser.GameObjects.Graphics;
   private meterG!: Phaser.GameObjects.Graphics;
@@ -628,6 +630,8 @@ export class StageScene extends Phaser.Scene {
     this.weakTile = this.add.tileSprite(track.x, track.y, track.w, track.h, "talent-static").setOrigin(0, 0).setTileScale(5).setDepth(11.5);
     this.lostTile.setMask(this.lostMask.createGeometryMask());
     this.weakTile.setMask(this.weakMask.createGeometryMask());
+    this.ghostG = this.add.graphics().setDepth(11.6);
+    this.ghostIcons = new IconPool(() => this.add.image(0, 0, "icon-note").setDepth(11.7));
     this.ringFrontG = this.add.graphics().setDepth(12);
     this.ear = this.add.container(this.L.lane.hitX, this.laneY, [this.add.image(0, 0, "icon-ear-ink"), this.add.image(0, 0, "icon-ear")]).setDepth(12.1).setVisible(false);
     for (let i = 0; i < 8; i += 1) this.labels.push(cartoonText(this, 0, 0, "", { size: this.L.text.label, color: "#f7ecd4", font: this.bridge.fonts.display, stroke: 0.22, shadow: false }).setDepth(13).setVisible(false));
@@ -1322,8 +1326,10 @@ export class StageScene extends Phaser.Scene {
     const right = S.x + S.w - 10;
     const assist = OFFSTAGE.includes(this.mode) ? this.bridge.assist.get() : this.assist;
     g.clear();
+    this.ghostG.clear();
     this.noteIcons.begin();
     this.missIcons.begin();
+    this.ghostIcons.begin();
     const firstBar = Math.max(0, Math.floor((beatNow - (hitX - left) / LN.pxPerBeat) / 4));
     const lastBar = Math.min(compiled.bars - 1, Math.floor((beatNow + (right - hitX) / LN.pxPerBeat) / 4));
     let label = 0;
@@ -1376,8 +1382,10 @@ export class StageScene extends Phaser.Scene {
       const grade = verdict?.grades[note.index] ?? null;
       const tail = verdict?.tails[note.index] ?? null;
       const signal = compiled.signal[note.bar];
-      if (signal === "lost" && grade === null && !assist) continue;
-      const signalAlpha = (signal === "weak" ? (assist ? 0.6 : 0.3) : signal === "lost" ? 0.5 : 1) * edgeFade(x);
+      const ghost = signal !== "clear";
+      const layer = ghost ? this.ghostG : g;
+      const icons = ghost ? this.ghostIcons : this.noteIcons;
+      const signalAlpha = (ghost ? ghostAlpha(signal, assist, note.index, now, this.bridge.reducedMotion) : 1) * edgeFade(x);
       const color = MEMBER_COLOR[compiled.song.segments[compiled.segmentOfBar[note.bar]].featured];
       const fade = (px: number) => Math.max(0, 1 - Math.max(0, hitX - px) / 200);
       const missed = this.missAt.get(note.index);
@@ -1393,8 +1401,8 @@ export class StageScene extends Phaser.Scene {
       if (note.kind === "hold") {
         const held = grade !== null && grade !== "miss" && tail === null;
         if (grade === null) {
-          drawTail(g, x, xEnd, laneY, r, color, 0.6 * signalAlpha, left, right);
-          drawNote(g, this.noteIcons, x, laneY, r, color, signalAlpha, false);
+          drawTail(layer, x, xEnd, laneY, r, color, 0.6 * signalAlpha, left, right);
+          drawNote(layer, icons, x, laneY, r, color, signalAlpha, false);
         } else if (grade === "miss") {
           drawTail(g, x, xEnd, laneY, r, C.gray, 0.55 * fade(xEnd), left, right);
           this.drawMissed(g, x, laneY, r, fall, fade(x));
@@ -1414,10 +1422,11 @@ export class StageScene extends Phaser.Scene {
         continue;
       }
       if (grade !== null) continue;
-      drawNote(g, this.noteIcons, x, laneY, r, color, signalAlpha);
+      drawNote(layer, icons, x, laneY, r, color, signalAlpha);
     }
     this.noteIcons.end();
     this.missIcons.end();
+    this.ghostIcons.end();
     for (let i = label; i < this.labels.length; i += 1) this.labels[i].setVisible(false);
     const base = this.ringBaseG;
     const front = this.ringFrontG;
