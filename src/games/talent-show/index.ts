@@ -1,13 +1,12 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
-import { isPlausibleOffset } from "./sim/calibration";
-import { MAX_OFFSET } from "./sim/judge";
 import { songResult } from "./result";
 import { CANVAS, type Orientation } from "./scenes/layout";
 import { StageScene, type TalentBridge } from "./scenes/StageScene";
 import { SONG_ORDER } from "./song/songs";
 
-const CALIBRATION_KEY = "canal404:talent-show:calibration:v1";
+const TUTORIAL_KEY = "canal404:talent-show:tutorial:v1";
+const OLD_CALIBRATION_KEY = "canal404:talent-show:calibration:v1";
 const ASSIST_KEY = "canal404:talent-show:assist:v1";
 const FINALE_ACHIEVEMENT = "talent-finale";
 const RESULT_HOLD_MS = 1800;
@@ -27,11 +26,18 @@ function write(key: string, value: string) {
   } catch {}
 }
 
-function loadCalibration() {
-  const raw = read(CALIBRATION_KEY);
-  if (raw === null) return null;
-  const n = Number(raw);
-  return isPlausibleOffset(n, MAX_OFFSET) ? n : null;
+function forget(key: string) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {}
+}
+
+function tutorialSeen() {
+  if (read(OLD_CALIBRATION_KEY) !== null) {
+    write(TUTORIAL_KEY, "1");
+    forget(OLD_CALIBRATION_KEY);
+  }
+  return read(TUTORIAL_KEY) === "1";
 }
 
 function orientationOf(parent: HTMLElement): Orientation {
@@ -65,7 +71,7 @@ function mount(ctx: GameHostContext): GameInstance {
       touch: window.matchMedia?.("(pointer: coarse)").matches ?? false,
       reducedMotion: ctx.reducedMotion,
       assist: { get: () => read(ASSIST_KEY) === "1", set: (on) => write(ASSIST_KEY, on ? "1" : "0") },
-      calibration: { load: loadCalibration, save: (ms) => write(CALIBRATION_KEY, String(ms)) },
+      tutorial: { seen: tutorialSeen, done: () => write(TUTORIAL_KEY, "1") },
       onLoad: (value) => {
         if (!ready) ctx.onProgress(value, "art");
       },
