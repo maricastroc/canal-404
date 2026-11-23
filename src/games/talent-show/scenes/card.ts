@@ -246,7 +246,7 @@ class DemoLane {
         if (at <= beat) continue;
         const hidden = staticSpan !== null && x >= staticSpan[0] - r * 0.4 && x <= staticSpan[1] + r * 0.4;
         if (hidden) {
-          drawNote(this.ghostG, this.ghostIcons, x, laneY, r, color, ghostAlpha("lost", false, Math.round(at * 4), now, this.reduced) * edge(x));
+          drawNote(this.ghostG, this.ghostIcons, x, laneY, r, color, ghostAlpha("lost", false, Math.round(at * 4), now, this.reduced, at - beat) * edge(x));
           continue;
         }
         if (item.kind === "echo") drawEcho(g, x, laneY, r, edge(x));
