@@ -36,7 +36,7 @@ export type Layout = StageLayout & {
   score: { x: number; y: number; size: number };
   crowd: CrowdRow[];
   lane: { housing: Box; track: Box; hitX: number; pxPerBeat: number; r: number; frame: Frame; vertical: boolean };
-  popup: { x: number; y: number; min: number; max: number };
+  readout: { x: number; y: number; max: number };
   talk: { top: number; bottom: number; lanes: [number, number] | null };
   hint: { x: number; y: number } | null;
   meter: Box;
@@ -155,8 +155,8 @@ function phoneLayout(H: number): Layout {
     score: { x: W - 44, y: 156, size: 44 },
     crowd: crowd.reverse(),
     lane: { housing, track, hitX, pxPerBeat, r, frame: { x: left, y: bottom, rotation: -Math.PI / 2 }, vertical: true },
-    popup: { x: right + (W - right) / 2, y: hitY - 40, min: right + 8, max: W - 8 },
-    talk: { top: laneTop + 110, bottom: hitY - 150, lanes: [left - 14, right + 14] },
+    readout: { x: right + 22, y: hitY - Math.round(r * 1.2), max: W - right - 40 },
+    talk: { top: laneTop + 110, bottom: hitY - 200, lanes: [left - 14, right + 14] },
     hint: { x: W / 2, y: bottom - 56 },
     meter: { x: 28, y: laneTop + 30, w: flank - 56, h: 46 },
     streak: { x: 32, y: hitY },
@@ -187,7 +187,7 @@ function wideLayout(W: number): Layout {
     score: { x: W - 60, y: 148, size: 46 },
     crowd: [centeredRow(housing.y + 54, 0.74, crowdCount, 124, W)],
     lane: { housing, track, hitX: 330, pxPerBeat: 380, r: 66, frame: IDENTITY, vertical: false },
-    popup: { x: 460, y: housing.y - 54, min: 16, max: W - 16 },
+    readout: { x: 264, y: housing.y - 74, max: 320 },
     talk: { top: stage.stage.top - 60, bottom: housing.y - 64, lanes: null },
     hint: { x: W / 2, y: housing.y - 40 },
     meter: { x: W - 560, y: housing.y - 26, w: 500, h: 50 },
@@ -226,7 +226,7 @@ function landscapeLayout(): Layout {
     nameTag: { y: 722 },
     crowd: [centeredRow(1104, 0.88, 17, 114, W)],
     lane: { housing, track, hitX: 300, pxPerBeat: 340, r: 46, frame: IDENTITY, vertical: false },
-    popup: { x: 400, y: housing.y - 46, min: 0, max: W },
+    readout: { x: 262, y: housing.y - 68, max: 320 },
     talk: { top: housing.y + housing.h + 10, bottom: H - 8, lanes: null },
     hint: null,
     meter: { x: W - 500, y: housing.y - 22, w: 440, h: 42 },
@@ -265,7 +265,7 @@ function portraitLayout(): Layout {
     nameTag: { y: 950 },
     crowd: [centeredRow(1480, 1, 9, 122, W), centeredRow(1610, 1.12, 8, 140, W), centeredRow(1736, 1.26, 7, 160, W)],
     lane: { housing, track, hitX: 196, pxPerBeat: 272, r: 56, frame: IDENTITY, vertical: false },
-    popup: { x: 316, y: housing.y - 46, min: 0, max: W },
+    readout: { x: 186, y: housing.y - 68, max: 230 },
     talk: { top: housing.y + housing.h + 10, bottom: H - 8, lanes: null },
     hint: null,
     meter: { x: W - 470, y: housing.y + housing.h - 18, w: 430, h: 42 },

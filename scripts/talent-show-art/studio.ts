@@ -202,8 +202,24 @@ function crowd(variant: number) {
     `<circle cx="60" cy="56" r="27" fill="${fill}"/><circle cx="60" cy="24" r="14" fill="${fill}"/><path d="M12 130 Q14 86 60 84 Q106 86 108 130 Z" fill="${fill}"/>`,
     `<circle cx="60" cy="54" r="28" fill="${fill}"/><path d="M28 44 Q60 14 92 44 L104 48 L28 48 Z" fill="${fill}"/><path d="M10 130 Q12 84 60 82 Q108 84 110 130 Z" fill="${fill}"/>`,
     `<circle cx="60" cy="58" r="28" fill="${fill}"/><path d="M10 130 Q12 88 60 86 Q108 88 110 130 Z" fill="${fill}"/><path d="M22 96 L6 20 M98 96 L114 20" stroke="${fill}" stroke-width="18" stroke-linecap="round"/>`,
+    `<circle cx="60" cy="54" r="29" fill="${fill}"/><path d="M34 46 Q22 52 20 70" stroke="${fill}" stroke-width="10" stroke-linecap="round" fill="none"/><path d="M86 46 Q98 52 100 70" stroke="${fill}" stroke-width="10" stroke-linecap="round" fill="none"/><circle cx="19" cy="74" r="11" fill="${fill}"/><circle cx="101" cy="74" r="11" fill="${fill}"/><path d="M14 130 Q16 88 60 86 Q104 88 106 130 Z" fill="${fill}"/>`,
+    `<circle cx="60" cy="50" r="31" fill="${fill}"/>${[
+      [36, 30, 15],
+      [60, 20, 16],
+      [84, 30, 15],
+      [30, 52, 14],
+      [90, 52, 14],
+    ]
+      .map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`)
+      .join("")}<path d="M10 130 Q12 86 60 84 Q108 86 110 130 Z" fill="${fill}"/>`,
   ];
   return svg(120, 130, `${heads[variant]}<path d="M34 34 Q60 18 86 34" stroke="${rim}" stroke-width="4" fill="none" stroke-linecap="round"/>`);
+}
+
+function crowdArms(pose: "up" | "wave") {
+  const stroke = `stroke="${P.plum800}" stroke-width="18" stroke-linecap="round"`;
+  if (pose === "up") return svg(120, 130, `<path d="M22 96 L6 20 M98 96 L114 20" ${stroke}/>`);
+  return svg(40, 90, `<path d="M20 78 L20 16" ${stroke}/><circle cx="20" cy="13" r="11" fill="${P.plum800}"/>`);
 }
 
 export function studioSheet(): Sheet {
@@ -220,5 +236,9 @@ export function studioSheet(): Sheet {
     "crowd-1": { svg: crowd(1) },
     "crowd-2": { svg: crowd(2) },
     "crowd-3": { svg: crowd(3) },
+    "crowd-4": { svg: crowd(4) },
+    "crowd-5": { svg: crowd(5) },
+    "crowd-arms-up": { svg: crowdArms("up") },
+    "crowd-arm-wave": { svg: crowdArms("wave") },
   };
 }

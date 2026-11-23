@@ -29,7 +29,7 @@ export const MEMBER_COLOR: Record<BandMember, number> = { deco: C.tangerine, lin
 
 type G = Phaser.GameObjects.Graphics;
 export type Track = { x: number; y: number; w: number; h: number };
-export type Spark = { born: number; color: number; seed: number };
+export type Spark = { born: number; color: number; seed: number; x?: number };
 
 export const RING_GAP = 16;
 
@@ -197,44 +197,65 @@ export function drawEcho(g: G, x: number, y: number, r: number, alpha: number, c
   }
 }
 
-export type RingState = { pulse: number; flash: number; flashColor: number; lit: number; shake: number; holding: boolean; listen?: boolean };
+export type RingState = { pulse: number; flash: number; flashColor: number; shake: number; holding: boolean; listen?: boolean; press?: number; near?: number; progress?: number };
 
 export function drawRingBase(g: G, x: number, y: number, r: number, o: RingState) {
-  const R = r + RING_GAP + o.pulse * 5;
+  const R = r + RING_GAP + o.pulse * 3;
   const cx = x + o.shake;
   const glow = o.listen ? C.plum300 : C.sun;
-  g.fillStyle(glow, 0.1 + 0.12 * o.pulse).fillCircle(cx, y, R + 36);
+  const near = o.near ?? 0;
+  g.fillStyle(glow, 0.06 + 0.08 * o.pulse + 0.16 * near).fillCircle(cx, y, R + 30);
+  if (o.flash > 0) g.fillStyle(o.flashColor, 0.45 * o.flash).fillCircle(cx, y, R + 30 + 14 * (1 - o.flash));
   g.fillStyle(C.plum950, 1).fillCircle(cx, y, R);
-  g.fillStyle(glow, 0.07 + 0.06 * o.pulse).fillCircle(cx, y, r);
-  if (o.flash > 0) g.fillStyle(o.flashColor, 0.7 * o.flash).fillCircle(cx, y, R);
-  const dash = 16;
-  for (let i = 0; i < dash; i += 1) {
-    const a0 = (i / dash) * Math.PI * 2;
-    g.lineStyle(3, o.listen ? C.plum300 : C.cream, 0.5);
+  if (o.flash > 0) g.fillStyle(o.flashColor, 0.12 * o.flash).fillCircle(cx, y, R);
+  g.lineStyle(3, o.listen ? C.plum300 : C.cream, 0.3 + 0.45 * near).strokeCircle(cx, y, r);
+}
+
+export function drawRingFront(g: G, x: number, y: number, r: number, o: RingState) {
+  const press = o.press ?? 0;
+  const R = r + RING_GAP + o.pulse * 3;
+  const cx = x + o.shake;
+  const flashing = o.flash > 0.2;
+  const lit = flashing || o.holding || press > 0.2;
+  const bulb = o.listen ? C.plum300 : flashing ? o.flashColor : C.sunPale;
+  for (let i = 0; i < 12; i += 1) {
+    const a = -Math.PI / 2 + (i / 12) * Math.PI * 2;
+    const bx = cx + Math.cos(a) * (R + 19);
+    const by = y + Math.sin(a) * (R + 19);
+    g.fillStyle(lit ? bulb : C.plum700, 1).fillCircle(bx, by, 5.5);
+    g.lineStyle(3, C.ink, 1).strokeCircle(bx, by, 5.5);
+  }
+  g.lineStyle(17 + press * 6, C.ink, 1).strokeCircle(cx, y, R);
+  g.lineStyle(10 + press * 6, o.listen ? C.plum300 : press > 0 && !o.holding ? C.sunPale : C.sun, 1).strokeCircle(cx, y, R);
+  const progress = o.progress ?? 0;
+  if (progress > 0) {
+    g.lineStyle(10, C.paper, 1);
     g.beginPath();
-    g.arc(cx, y, r, a0, a0 + (Math.PI * 2) / dash / 2);
+    g.arc(cx, y, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, progress));
     g.strokePath();
   }
 }
 
-export function drawRingFront(g: G, x: number, y: number, r: number, o: RingState) {
-  const R = r + RING_GAP + o.pulse * 5;
-  const cx = x + o.shake;
-  const bulbs = 12;
-  for (let i = 0; i < bulbs; i += 1) {
-    const a = -Math.PI / 2 + (i / bulbs) * Math.PI * 2;
-    const on = o.listen ? o.flash > 0.2 : o.flash > 0.2 || o.holding || (((i + Math.floor(o.lit)) % 3) + 3) % 3 === 0;
-    const bx = cx + Math.cos(a) * (R + 20);
-    const by = y + Math.sin(a) * (R + 20);
-    g.fillStyle(on ? (o.listen ? C.plum300 : C.sunPale) : C.plum600, 1).fillCircle(bx, by, 6.5);
-    g.lineStyle(3, C.ink, 1).strokeCircle(bx, by, 6.5);
-  }
-  g.lineStyle(17, C.ink, 1).strokeCircle(cx, y, R);
-  g.lineStyle(10, o.listen ? C.plum300 : o.holding ? C.sunPale : C.sun, 1).strokeCircle(cx, y, R);
-}
-
 export function drawBurst(g: G, x: number, y: number, r: number, color: number, k: number) {
   g.lineStyle(12 * (1 - k), color, 1 - k).strokeCircle(x, y, r + RING_GAP + k * 56);
+}
+
+export type PopStrength = "perfect" | "good" | "near" | "held";
+const POP: Record<PopStrength, { width: number; reach: number }> = { perfect: { width: 14, reach: 1.15 }, good: { width: 10, reach: 0.9 }, near: { width: 6, reach: 0.55 }, held: { width: 12, reach: 1 } };
+
+export function drawPop(g: G, icons: IconPool, x: number, y: number, r: number, color: number, tint: number, strength: PopStrength, k: number, still: boolean) {
+  if (k < 0 || k >= 1) return;
+  const spec = POP[strength];
+  const grow = still ? 0 : k;
+  const fade = 1 - k;
+  if (strength !== "held") {
+    const scale = 1 + 0.28 * grow;
+    g.fillStyle(color, fade).fillCircle(x, y, r * scale);
+    g.fillStyle(C.paper, 0.75 * Math.max(0, 1 - k * 2.5)).fillCircle(x, y, r * scale);
+    g.lineStyle(5, C.ink, fade).strokeCircle(x, y, r * scale);
+    icons.place(x, y, r * 1.2 * scale, fade);
+  }
+  g.lineStyle(spec.width * fade, tint, fade).strokeCircle(x, y, r * (1.05 + spec.reach * (still ? 0.5 : grow)));
 }
 
 export function drawSparks(g: G, x: number, y: number, r: number, sparks: Spark[], now: number, life: number) {
@@ -244,7 +265,7 @@ export function drawSparks(g: G, x: number, y: number, r: number, sparks: Spark[
     for (let i = 0; i < 7; i += 1) {
       const a = s.seed + (i / 7) * Math.PI * 2;
       const d = r + RING_GAP + 8 + k * (70 + (i % 3) * 16);
-      const px = x + Math.cos(a) * d;
+      const px = (s.x ?? x) + Math.cos(a) * d;
       const py = y + Math.sin(a) * d;
       const size = (1 - k) * (i % 2 ? 9 : 12);
       g.fillStyle(s.color, 1 - k * k);

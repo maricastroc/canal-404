@@ -298,7 +298,7 @@ class DemoLane {
     const pulse = this.reduced ? 0 : Math.max(0, 1 - (((beat % 1) + 1) % 1) * 4);
     const phase = beat - loopStart;
     const listen = spec.listen !== undefined && ((phase >= spec.listen[0] && phase < spec.listen[1]) || phase - spec.loop >= spec.listen[0]);
-    const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.reduced ? 0 : -Math.floor(beat), shake: 0, holding, listen };
+    const ring = { pulse, flash: flashK, flashColor: this.flash.color, shake: 0, holding, listen, press: Math.max(0, 1 - (now - (this.pressUntil - PRESS_MS)) / 110) };
     this.ear.setVisible(listen).setPosition(hitX, laneY).setScale((r * 1.2) / 96);
     drawRingBase(f, hitX, laneY, r, ring);
     drawRingFront(f, hitX, laneY, r, ring);

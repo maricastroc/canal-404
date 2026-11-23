@@ -8,6 +8,10 @@ const SIGNAL_HISS: Record<Signal, number> = { clear: 0, weak: 0.035, lost: 0.09 
 
 type Cue = { at: number; play: (time: number) => void; skippable: boolean };
 
+export function pitched(sound: TapSound): sound is "keys" | "fridge" {
+  return sound === "keys" || sound === "fridge";
+}
+
 export function toneFreq(midi: number | null) {
   let m = midi ?? 72;
   while (m < 64) m += 12;
