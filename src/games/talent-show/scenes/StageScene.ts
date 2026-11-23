@@ -1385,7 +1385,7 @@ export class StageScene extends Phaser.Scene {
       const ghost = signal !== "clear";
       const layer = ghost ? this.ghostG : g;
       const icons = ghost ? this.ghostIcons : this.noteIcons;
-      const signalAlpha = (ghost ? ghostAlpha(signal, assist, note.index, now, this.bridge.reducedMotion) : 1) * edgeFade(x);
+      const signalAlpha = (ghost ? ghostAlpha(signal, assist, note.index, now, this.bridge.reducedMotion, (x - hitX) / LN.pxPerBeat) : 1) * edgeFade(x);
       const color = MEMBER_COLOR[compiled.song.segments[compiled.segmentOfBar[note.bar]].featured];
       const fade = (px: number) => Math.max(0, 1 - Math.max(0, hitX - px) / 200);
       const missed = this.missAt.get(note.index);
