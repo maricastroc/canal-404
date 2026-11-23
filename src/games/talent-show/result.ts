@@ -18,16 +18,17 @@ const COPY = localized({
     assist: "Modo assistido",
     offBoard: "fora do placar",
     lines: {
-      3: "O júri inteiro levantou nota alta e a plateia pediu bis.",
-      2: "Boa apresentação. O Seu Arlindo quase sorriu.",
-      1: "Passou. O Inspetor anotou cada barulho.",
-    } as Record<1 | 2 | 3, string>,
+      3: { title: "Que show!", text: "A plateia foi à loucura e o júri inteiro deu nota alta." },
+      2: { title: "Bela apresentação!", text: "O júri aprovou, e o Seu Arlindo quase sorriu." },
+      1: { title: "Passou!", text: "O júri aprovou, mas espera mais precisão na próxima." },
+      0: { title: "Quase lá!", text: "A banda chegou ao fim, mas o júri ainda não deu estrela." },
+    } as Record<0 | 1 | 2 | 3, { title: string; text: string }>,
     hints: {
-      0: "Termine com pelo menos 50% de precisão para ganhar a primeira estrela.",
+      0: "A primeira estrela pede pelo menos 50% de precisão.",
       1: "Chegue a 80% de precisão para a segunda estrela.",
       2: "Chegue a 92% de precisão para a terceira estrela.",
     } as Record<0 | 1 | 2, string>,
-    cutHint: "Erros e barulho esvaziam a plateia. Segure o ritmo até o fim para ganhar a primeira estrela.",
+    cutHint: "Erros e barulho espantam a plateia. Chegue ao fim da música para ganhar estrelas.",
   },
   en: {
     again: "Play again",
@@ -37,16 +38,17 @@ const COPY = localized({
     assist: "Assist mode",
     offBoard: "off the scoreboard",
     lines: {
-      3: "The whole jury raised high scores and the crowd asked for an encore.",
-      2: "Good show. Mr. Arlindo almost smiled.",
-      1: "You made it through. The Inspector wrote down every noise.",
-    } as Record<1 | 2 | 3, string>,
+      3: { title: "What a show!", text: "The crowd went wild and the whole jury gave top marks." },
+      2: { title: "Great performance!", text: "The jury approved, and Mr. Arlindo almost smiled." },
+      1: { title: "You're through!", text: "The jury approved, but they want more accuracy next time." },
+      0: { title: "So close!", text: "The band made it to the end, but the jury held back the stars." },
+    } as Record<0 | 1 | 2 | 3, { title: string; text: string }>,
     hints: {
-      0: "Finish with at least 50% accuracy to earn the first star.",
+      0: "The first star needs at least 50% accuracy.",
       1: "Reach 80% accuracy for the second star.",
       2: "Reach 92% accuracy for the third star.",
     } as Record<0 | 1 | 2, string>,
-    cutHint: "Misses and noise empty the crowd. Keep the beat to the end to earn the first star.",
+    cutHint: "Misses and noise drive the crowd away. Make it to the end of the song to earn stars.",
   },
 });
 
@@ -69,7 +71,7 @@ export function songResult(report: RunReport, locale: Locale): GameResult {
   ];
   if (report.log.assist) facts.push({ label: copy.assist, value: copy.offBoard });
   const cut = v.cutAt !== null;
-  const text = cut ? { title: game.cutTitle, text: game.cutText } : v.stars === 0 ? { title: game.resultsTitle, text: game.noStar } : { title: game.resultsTitle, text: copy.lines[v.stars as 1 | 2 | 3] };
+  const text = cut ? { title: game.cutTitle, text: game.cutText } : copy.lines[v.stars as 0 | 1 | 2 | 3];
   return {
     won: v.stars > 0,
     score: runScore(v),
