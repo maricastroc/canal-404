@@ -7,7 +7,7 @@ import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, callFreq, keysFreq } from "../audio/player";
 import { click, type Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type JuryId, type TalentCopy } from "../copy";
-import { calibrate, CALIBRATION_LATE, CALIBRATION_SPREAD, clickFor, isPlausibleOffset, type Calibration } from "../sim/calibration";
+import { calibrate, CALIBRATION_LATE, CALIBRATION_MIN_OFFSET, CALIBRATION_SPREAD, clickFor, type Calibration } from "../sim/calibration";
 import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
@@ -105,6 +105,7 @@ export class StageScene extends Phaser.Scene {
   private calibErrors: (number | null)[] = [];
   private calibEnd = 0;
   private calibHitAt = -Infinity;
+  private calibHit = -1;
   private calibPressAt = -Infinity;
   private calibResult: Calibration | null = null;
 
@@ -738,7 +739,7 @@ export class StageScene extends Phaser.Scene {
     return {
       kicker: copy.calibLiveKicker,
       title: copy.calibLiveTitle,
-      lead: copy.tapAnywhere(this.bridge.touch),
+      lead: copy.calibAlong(this.bridge.touch),
       face: null,
       demo: null,
       pad: "live",
@@ -757,7 +758,7 @@ export class StageScene extends Phaser.Scene {
     return {
       kicker: copy.calibLiveKicker,
       title: ok ? copy.calibOkTitle : copy.calibFailTitle,
-      lead: ok ? copy.calibOkLead : result && !result.ok ? copy.calibFail[result.reason] : copy.calibFail.few,
+      lead: ok ? copy.calibOkLead : this.calibAdvice(),
       face: null,
       demo: null,
       pad: "live",
@@ -931,6 +932,7 @@ export class StageScene extends Phaser.Scene {
     this.calibErrors = this.calibClicks.map(() => null);
     this.calibEnd = base + total * CALIBRATION_BEAT + 0.2;
     this.calibHitAt = -Infinity;
+    this.calibHit = -1;
     this.calibPressAt = -Infinity;
     this.calibResult = null;
     this.setMode("calibrating");
@@ -944,13 +946,38 @@ export class StageScene extends Phaser.Scene {
     if (click >= 0 && this.calibErrors[click] === null) {
       this.calibErrors[click] = (heard - this.calibClicks[click]) * 1000;
       this.calibHitAt = this.calibPressAt;
+      this.calibHit = click;
     }
+  }
+
+  private tapMark(error: number, center = 0, band: [number, number] = [CALIBRATION_MIN_OFFSET, MAX_OFFSET]): BeatMark {
+    return error - center > band[1] ? "late" : error - center < band[0] ? "early" : "done";
   }
 
   private calibMarks(heard: number): BeatMark[] {
     const late = CALIBRATION_LATE / 1000;
     const next = this.calibClicks.findIndex((t, i) => this.calibErrors[i] === null && heard < t + late);
-    return this.calibClicks.map((t, i) => (this.calibErrors[i] !== null ? "done" : heard >= t + late ? "missed" : i === next ? "now" : "pending"));
+    return this.calibClicks.map((t, i) => {
+      const error = this.calibErrors[i];
+      if (error !== null) return this.tapMark(error);
+      return heard >= t + late ? "missed" : i === next ? "now" : "pending";
+    });
+  }
+
+  private calibMedian(errors: (number | null)[]) {
+    const taken = errors.filter((e): e is number => e !== null).sort((a, b) => a - b);
+    return taken.length > 0 ? taken[Math.floor(taken.length / 2)] : 0;
+  }
+
+  private calibAdvice() {
+    const copy = this.copy;
+    const result = this.calibResult;
+    if (!result || result.ok || result.reason === "few") return copy.calibFail.few;
+    if (result.reason === "off") return this.calibMedian(this.calibErrors) > 0 ? copy.calibLate : copy.calibEarly;
+    const tail = this.calibErrors.slice(-4);
+    const steady = tail.every((e) => e !== null) && Math.max(...(tail as number[])) - Math.min(...(tail as number[])) <= CALIBRATION_SPREAD;
+    const median = this.calibMedian(tail);
+    return steady && median >= CALIBRATION_MIN_OFFSET && median <= MAX_OFFSET ? copy.calibSettled : copy.calibFail.uneven;
   }
 
   private calibState(now: number): PadState {
@@ -961,20 +988,18 @@ export class StageScene extends Phaser.Scene {
     const counting = heard < this.calibClicks[0] - CALIBRATION_BEAT / 2;
     const phase = counting ? (beat >= 0 ? "count" : "idle") : "taps";
     const marks = this.calibMarks(heard).map((m) => (counting && m === "now" ? "pending" : m));
-    return { phase, count: beat + 1, beat: beat + 1, beatAt, hitAt: this.calibHitAt, pressAt: this.calibPressAt, marks };
+    const hitError = this.calibHit >= 0 ? this.calibErrors[this.calibHit] : null;
+    const hit = hitError === null || hitError === undefined ? null : this.tapMark(hitError);
+    return { phase, count: beat + 1, beat: beat + 1, beatAt, hitAt: this.calibHitAt, pressAt: this.calibPressAt, marks, hit };
   }
 
   private calibOutcome(): PadState {
     const result = this.calibResult;
-    const taken = this.calibErrors.filter((e): e is number => e !== null).sort((a, b) => a - b);
-    const median = taken.length > 0 ? taken[Math.floor(taken.length / 2)] : 0;
-    const marks = this.calibErrors.map((error): BeatMark => {
-      if (error === null) return "missed";
-      if (result && !result.ok && result.reason === "off" && !isPlausibleOffset(Math.round(error), MAX_OFFSET)) return "missed";
-      if (result && !result.ok && result.reason === "uneven" && Math.abs(error - median) > CALIBRATION_SPREAD / 2) return "missed";
-      return "done";
-    });
-    return { phase: result?.ok ? "done" : "retry", count: 0, beat: 0, beatAt: -Infinity, hitAt: -Infinity, pressAt: -Infinity, marks };
+    const uneven = result !== null && !result.ok && result.reason === "uneven";
+    const median = this.calibMedian(this.calibErrors);
+    const half = CALIBRATION_SPREAD / 2;
+    const marks = this.calibErrors.map((error): BeatMark => (error === null ? "missed" : uneven ? this.tapMark(error, median, [-half, half]) : this.tapMark(error)));
+    return { phase: result?.ok ? "done" : "retry", count: 0, beat: 0, beatAt: -Infinity, hitAt: -Infinity, pressAt: -Infinity, marks, hit: null };
   }
 
   private finishCalibration() {
