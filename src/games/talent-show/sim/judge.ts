@@ -1,4 +1,4 @@
-import type { CompiledSong, SongId } from "../song/notation";
+import type { CompiledSong, NoteKind, SongId } from "../song/notation";
 
 export type Grade = "perfect" | "good" | "near" | "miss";
 export type Tail = "held" | "dropped";
@@ -44,8 +44,8 @@ export type Verdict = {
 
 type Raw = { at: number; mark: Mark; note: number | null; error: number | null; order: number };
 
-export function windowsFor(assist: boolean) {
-  return assist ? ASSIST_WINDOWS : WINDOWS;
+export function windowsFor(assist: boolean, kind?: NoteKind) {
+  return assist || kind === "echo" ? ASSIST_WINDOWS : WINDOWS;
 }
 
 function gradeFor(error: number, w: Windows): Exclude<Grade, "miss"> {
@@ -57,7 +57,8 @@ function gradeFor(error: number, w: Windows): Exclude<Grade, "miss"> {
 
 export function judge(compiled: CompiledSong, input: JudgeInput, until = Infinity): Verdict {
   const { notes } = compiled;
-  const w = windowsFor(input.assist);
+  const windowOf = (i: number) => windowsFor(input.assist, notes[i].kind);
+  const reach = notes.reduce((most, _, i) => Math.max(most, windowOf(i).near), windowsFor(input.assist).near);
   const firstAt = Math.min(notes[0]?.at ?? 0, compiled.calls[0]?.at ?? Infinity);
   const lastAt = notes[notes.length - 1]?.at ?? 0;
   const presses = input.taps
@@ -66,7 +67,7 @@ export function judge(compiled: CompiledSong, input: JudgeInput, until = Infinit
       const release = up === null || up === undefined ? null : up - input.offset;
       return { t: t - input.offset, up: release !== null && release <= until ? release : null };
     })
-    .filter((p) => p.t <= until && p.t >= firstAt - w.near && p.t <= lastAt + w.near)
+    .filter((p) => p.t <= until && p.t >= firstAt - reach && p.t <= lastAt + reach)
     .sort((a, b) => a.t - b.t);
   const taps = presses.map((p) => p.t);
 
@@ -75,13 +76,13 @@ export function judge(compiled: CompiledSong, input: JudgeInput, until = Infinit
   const raw: Raw[] = [];
   let start = 0;
   taps.forEach((t, order) => {
-    while (start < notes.length && notes[start].at < t - w.near) start += 1;
+    while (start < notes.length && notes[start].at < t - reach) start += 1;
     let best = -1;
     let bestSize = Infinity;
-    for (let i = start; i < notes.length && notes[i].at <= t + w.near; i += 1) {
+    for (let i = start; i < notes.length && notes[i].at <= t + reach; i += 1) {
       if (owner[i] !== null) continue;
       const size = Math.abs(t - notes[i].at);
-      if (size < bestSize) {
+      if (size <= windowOf(i).near && size < bestSize) {
         best = i;
         bestSize = size;
       }
@@ -93,14 +94,14 @@ export function judge(compiled: CompiledSong, input: JudgeInput, until = Infinit
     owner[best] = t;
     ownerPress[best] = order;
     const error = t - notes[best].at;
-    raw.push({ at: t, mark: gradeFor(error, w), note: best, error, order });
+    raw.push({ at: t, mark: gradeFor(error, windowOf(best)), note: best, error, order });
   });
   const releases: (number | null)[] = notes.map(() => null);
   notes.forEach((note, i) => {
     const order = taps.length + i;
     const tap = owner[i];
     if (tap === null) {
-      const closes = note.at + w.near;
+      const closes = note.at + windowOf(i).near;
       if (closes < until) raw.push({ at: closes, mark: "miss", note: i, error: null, order });
       return;
     }
