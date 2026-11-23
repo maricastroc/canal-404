@@ -5,6 +5,11 @@ import type { BandMember, RoundId, SongId } from "./song/notation";
 
 export type JuryId = "inspector" | "arlindo" | "lunch";
 type SongText = { title: string; idea: string; how: string; who: string };
+export type CrowdLine = { text: string; think: boolean };
+export type CrowdLines = { any: CrowdLine[]; hot: CrowdLine[]; cold: CrowdLine[]; songs: Record<SongId, CrowdLine[]> };
+
+const say = (text: string): CrowdLine => ({ text, think: false });
+const think = (text: string): CrowdLine => ({ text, think: true });
 
 export const TALENT_COPY = localized({
   "pt-BR": {
@@ -15,7 +20,7 @@ export const TALENT_COPY = localized({
     songs: {
       theme: { title: "Tema do Canal 404", idea: "Toque", how: "Toque quando a nota chegar no círculo.", who: "Déco no balde" },
       signoff: { title: "Fim de Transmissão", idea: "Segure", how: "Nas notas compridas, segure até o fim do rastro e só então solte.", who: "Lina no teclado" },
-      recess: { title: "Vinheta de Intervalo", idea: "Eco", how: "A Mila toca uma frase. Depois é a sua vez: repita de ouvido.", who: "Mila no gravador" },
+      recess: { title: "Vinheta de Intervalo", idea: "Eco", how: "Com a orelha no círculo, só escute a Mila. Depois é a sua vez: repita a mesma frase de ouvido.", who: "Mila no gravador" },
       street: { title: "Rua Sem Saída (Tema)", idea: "Contratempo", how: "As notas caem entre as batidas. Nas pausas, não toque.", who: "Bruno no chocalho" },
       static: { title: "Balada do Chuvisco", idea: "Chiado", how: "Quando o sinal cair, continue no ritmo sem ver as notas.", who: "404 na apresentação" },
       medley: { title: "Pot-pourri do 404", idea: "Tudo junto", how: "Um pedaço de cada música. A cada troca, o andamento muda.", who: "A banda toda" },
@@ -50,9 +55,11 @@ export const TALENT_COPY = localized({
       lost: "Caiu o sinal! Continua!",
       back: "Voltamos!",
       shh: "Shhh!",
+      listen: "Escute a Mila!",
       now: (title: string) => `Agora: ${title}!`,
     },
     yourTurn: "Sua vez",
+    yourTurnCue: "Sua vez!",
     milaTurn: "Mila",
     noSignal: "SEM SINAL",
     weakSignal: "SINAL FRACO",
@@ -66,6 +73,19 @@ export const TALENT_COPY = localized({
     keysHint: "Qualquer tecla toca · A: modo assistido · C: acerto de tempo · Esc: pausa",
     assistButton: (on: boolean): string => (on ? "Assistido: ligado" : "Assistido: desligado"),
     calibrateButton: "Refazer acerto",
+    crowdLines: {
+      any: [say("Vai, banda!"), say("Oi, mãe! Tô na TV!"), say("Aumenta o som!"), think("Será que eu apareço?"), think("Queria estar no palco…"), think("Esqueci de gravar em casa!")],
+      hot: [say("Que ritmo!"), say("Isso é que é show!"), say("Arrasou!"), say("Uhuuu!"), think("Eles ensaiaram muito…")],
+      cold: [say("Cadê o ritmo?"), say("Vou pegar pipoca."), think("Hmm… desafinou?"), think("Muda de canal?")],
+      songs: {
+        theme: [say("Balde também é bateria?"), think("Conheço esse tema!")],
+        signoff: [say("Segura, Lina!"), think("Que música bonita…")],
+        recess: [say("Isso é um gravador?"), say("Agora repete!")],
+        street: [say("Essa é a da rua!"), say("Chacoalha, Bruno!")],
+        static: [say("Bate na TV!"), think("Cadê a imagem?")],
+        medley: [say("Essa eu conheço!"), think("Tem de tudo aqui!")],
+      },
+    } satisfies CrowdLines,
   },
   en: {
     title: "Live on 404",
@@ -75,7 +95,7 @@ export const TALENT_COPY = localized({
     songs: {
       theme: { title: "Canal 404 Theme", idea: "Tap", how: "Tap when the note reaches the circle.", who: "Déco on the bucket" },
       signoff: { title: "Sign-Off", idea: "Hold", how: "On long notes, hold until the trail ends, then let go.", who: "Lina on keys" },
-      recess: { title: "Commercial Break Jingle", idea: "Echo", how: "Mila plays a phrase. Then it's your turn: repeat it by ear.", who: "Mila on the recorder" },
+      recess: { title: "Commercial Break Jingle", idea: "Echo", how: "While the ear is in the circle, just listen to Mila. Then it's your turn: repeat the same phrase by ear.", who: "Mila on the recorder" },
       street: { title: "Dead End Street (Theme)", idea: "Off-beat", how: "The notes fall between the beats. Don't play in the rests.", who: "Bruno on the shaker" },
       static: { title: "The Static Ballad", idea: "Static", how: "When the signal drops, keep the beat without seeing the notes.", who: "404 hosting" },
       medley: { title: "404 Medley", idea: "All together", how: "A piece of every song. Each switch changes the tempo.", who: "The whole band" },
@@ -110,9 +130,11 @@ export const TALENT_COPY = localized({
       lost: "Signal's gone! Keep going!",
       back: "We're back!",
       shh: "Shhh!",
+      listen: "Listen to Mila!",
       now: (title: string) => `Now: ${title}!`,
     },
     yourTurn: "Your turn",
+    yourTurnCue: "Your turn!",
     milaTurn: "Mila",
     noSignal: "NO SIGNAL",
     weakSignal: "WEAK SIGNAL",
@@ -126,6 +148,19 @@ export const TALENT_COPY = localized({
     keysHint: "Any key plays · A: assist mode · C: timing check · Esc: pause",
     assistButton: (on: boolean): string => (on ? "Assist: on" : "Assist: off"),
     calibrateButton: "Redo timing",
+    crowdLines: {
+      any: [say("Go, band!"), say("Hi, Mom! I'm on TV!"), say("Turn it up!"), think("Am I on camera?"), think("I wish I was up there…"), think("I forgot to tape this!")],
+      hot: [say("What a beat!"), say("Now that's a show!"), say("Nailed it!"), say("Woo-hoo!"), think("They practiced a lot…")],
+      cold: [say("Where's the beat?"), say("I'll go get popcorn."), think("Hmm… off-key?"), think("Change the channel?")],
+      songs: {
+        theme: [say("Is a bucket a drum?"), think("I know this theme!")],
+        signoff: [say("Hold it, Lina!"), think("Such a pretty song…")],
+        recess: [say("Is that a tape recorder?"), say("Now repeat it!")],
+        street: [say("That's the street one!"), say("Shake it, Bruno!")],
+        static: [say("Smack the TV!"), think("Where's the picture?")],
+        medley: [say("I know this one!"), think("It's got everything!")],
+      },
+    } satisfies CrowdLines,
   },
 });
 
