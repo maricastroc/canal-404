@@ -7,6 +7,7 @@ import { TAPE_MAX, TAPE_PATTERN } from "@/games/downhill-derby/sim/judge";
 import { MOVES_MAX, MOVES_PATTERN } from "@/games/past-bedtime/sim/judge";
 import { MAX_OFFSET, TAPS_MAX } from "@/games/talent-show/sim/judge";
 import { SONG_ORDER } from "@/games/talent-show/song/songs";
+import { isSyncableKey, SNAPSHOT_MAX_BYTES, SNAPSHOT_MAX_KEYS } from "@/lib/competition/recovery";
 import { GAME_SLUGS } from "@/lib/competition/rules";
 import { isDayKey } from "@/lib/missions/calendar";
 
@@ -132,6 +133,17 @@ export const missionHistorySchema = z.object({
 });
 
 export const nicknameSchema = z.object({ nickname: z.string().max(64) }).strict();
+
+export const recoverSchema = z.object({ code: z.string().max(64) }).strict();
+
+export const snapshotSchema = z
+  .object({
+    version: z.literal(1),
+    keys: z
+      .record(z.string().refine(isSyncableKey, "chave do aparelho"), z.string().max(SNAPSHOT_MAX_BYTES))
+      .refine((keys) => Object.keys(keys).length <= SNAPSHOT_MAX_KEYS, "chaves demais"),
+  })
+  .strict();
 
 export const boardQuerySchema = z.object({
   game: z.enum(GAME_SLUGS),

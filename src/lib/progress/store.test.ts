@@ -151,4 +151,57 @@ describe("progress store", () => {
       });
     });
   });
+
+  describe("copy on the board", () => {
+    const VACATION = "canal404:off-air-vacation:v1";
+    const PAJAMA = "canal404:pajama-war:v1";
+    const DERBY = "canal404:downhill-derby:v1";
+
+    it("leaves the device's own keys and the backups out of the copy", async () => {
+      const ls = window.localStorage;
+      ls.setItem(KEY, JSON.stringify({ version: 1, visits: 2 }));
+      ls.setItem(VACATION, JSON.stringify({ v: 1, area: "lobby" }));
+      ls.setItem("canal404:outbox:v1", JSON.stringify({ version: 1, items: [] }));
+      ls.setItem("canal404:talent-show:calibration:v1", "42");
+      ls.setItem("canal404:sync:v1", JSON.stringify({ version: 1, player: "p" }));
+      ls.setItem(`${KEY}:backup:v0:1`, "{}");
+      ls.setItem("outro-site", "x");
+      const { takeSnapshot } = await import("./snapshot");
+      expect(Object.keys(takeSnapshot(ls).keys)).toEqual([VACATION, KEY].sort());
+    });
+
+    it("backs up the saves a restored copy replaces and keeps the device's own keys", async () => {
+      const ls = window.localStorage;
+      const mine = JSON.stringify({ version: 1, visits: 7, games: { "food-fight": { highScore: 90, bestStars: 1, plays: 1, wins: 1, lastScore: 90 } } });
+      const pajama = JSON.stringify({ version: 1, matches: 4 });
+      const outbox = JSON.stringify({ version: 1, items: [] });
+      ls.setItem(KEY, mine);
+      ls.setItem(PAJAMA, pajama);
+      ls.setItem("canal404:outbox:v1", outbox);
+      const theirs = JSON.stringify({ version: 1, visits: 30, secrets: { cat: 5 } });
+      const derby = JSON.stringify({ version: 1, cart: "deco", ghost: false, unlocked: [], tracks: {} });
+      const { applySnapshot } = await import("./snapshot");
+      applySnapshot({ version: 1, keys: { [KEY]: theirs, [DERBY]: derby } }, ls);
+      expect(ls.getItem(KEY)).toBe(theirs);
+      expect(ls.getItem(DERBY)).toBe(derby);
+      expect(ls.getItem(PAJAMA)).toBeNull();
+      expect(ls.getItem("canal404:outbox:v1")).toBe(outbox);
+      const backup = (key: string) => Object.keys(ls).filter((k) => k.startsWith(`${key}:backup:restore:`)).map((k) => ls.getItem(k));
+      expect(backup(KEY)).toEqual([mine]);
+      expect(backup(PAJAMA)).toEqual([pajama]);
+      const store = await loadStore();
+      expect(store.getSnapshot()).toMatchObject({ visits: 30, secrets: { cat: 5 }, games: {} });
+    });
+
+    it("migrates an older save that arrives in a copy", async () => {
+      const ls = window.localStorage;
+      const old = JSON.stringify({ wins: { lia: 2 }, matches: 3, bestTime: 41 });
+      const { applySnapshot } = await import("./snapshot");
+      applySnapshot({ version: 1, keys: { [PAJAMA]: old } }, ls);
+      const { loadStats } = await import("@/games/pajama-war/storage");
+      expect(loadStats()).toMatchObject({ wins: { lia: 2, nico: 0, bia: 0 }, matches: 3, bestTime: 41 });
+      expect(JSON.parse(ls.getItem(PAJAMA)!)).toMatchObject({ version: 1, matches: 3 });
+      expect(Object.keys(ls).some((k) => k.startsWith(`${PAJAMA}:backup:v0:`))).toBe(true);
+    });
+  });
 });

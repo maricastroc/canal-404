@@ -12,6 +12,7 @@ import { getAudio } from "@/lib/audio/engine";
 import { useMusicState, useSound } from "@/lib/audio/hooks";
 import { TRACKS, trackText } from "@/lib/audio/tracks";
 import { isTrackUnlocked } from "@/lib/audio/unlocks";
+import { syncCloudCopy } from "@/lib/competition/cloud-copy";
 import { ACHIEVEMENTS, SECRETS, achievementText, secretText } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { resetProgress, setSetting, unlockAchievement } from "@/lib/progress/store";
@@ -51,7 +52,7 @@ const COPY = localized({
     secretFound: "Encontrado.",
     secretPending: "Ainda não encontrado.",
     manage: "Gerenciar progresso",
-    resetWarning: "Isso apaga os segredos, as conquistas, os recordes e as aventuras salvas neste navegador. Tem certeza?",
+    resetWarning: "Isso apaga os segredos, as conquistas, os recordes e as aventuras salvas neste navegador, e também a cópia guardada no placar, se você tiver carteirinha. Tem certeza?",
     resetConfirm: "Sim, apagar tudo",
     cancel: "Cancelar",
     reset: "Apagar meu progresso",
@@ -81,7 +82,7 @@ const COPY = localized({
     secretFound: "Found.",
     secretPending: "Not found yet.",
     manage: "Manage progress",
-    resetWarning: "This erases the secrets, achievements, records and saved adventures in this browser. Are you sure?",
+    resetWarning: "This erases the secrets, achievements, records and saved adventures in this browser, and the copy kept on the board too, if you have a membership card. Are you sure?",
     resetConfirm: "Yes, erase everything",
     cancel: "Cancel",
     reset: "Erase my progress",
@@ -327,6 +328,7 @@ export function ExtrasHub() {
               size="sm"
               onClick={() => {
                 resetProgress();
+                void syncCloudCopy({ force: true });
                 setConfirming(false);
                 play("static");
               }}

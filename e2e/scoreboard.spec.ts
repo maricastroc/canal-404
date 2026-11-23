@@ -98,6 +98,39 @@ test.describe("scoreboard with the backend", () => {
     await card.getByRole("button", { name: "Sim, apagar" }).click();
     await expect(card).toContainText("Sem carteirinha");
   });
+
+  test("takes the card and the progress to another device with the recovery code", async ({ page, browser, baseURL }) => {
+    await seed(page);
+    await page.goto("/extras#membership");
+    const card = page.getByTestId("player-card");
+    await card.getByLabel("Seu apelido").fill(nickname());
+    await card.getByRole("button", { name: "Tirar carteirinha" }).click();
+    await expect(card).toContainText("Sócio do fliperama");
+    await card.getByRole("button", { name: "Levar para outro aparelho" }).click();
+    const copied = page.waitForResponse((r) => r.url().endsWith("/api/players/me/copy") && r.request().method() === "PUT" && r.ok());
+    await card.getByRole("button", { name: "Criar código" }).click();
+    await copied;
+    const code = (await card.getByTestId("recovery-code").textContent())!.trim();
+
+    const other = await browser.newContext({ baseURL });
+    const phone = await other.newPage();
+    await phone.goto("/extras#membership");
+    const fresh = phone.getByTestId("player-card");
+    await fresh.getByRole("button", { name: "Já tenho carteirinha" }).click();
+    await fresh.getByLabel("Código de recuperação").fill(code.toLowerCase());
+    await fresh.getByRole("button", { name: "Usar código" }).click();
+    await expect(fresh).toContainText("Sócio do fliperama");
+    await expect
+      .poll(() => phone.evaluate(() => JSON.parse(localStorage.getItem("canal404:progress:v1") ?? "{}").games?.["bad-ideas-lab"]?.levels?.test?.stars))
+      .toBe(3);
+    await other.close();
+
+    await page.reload();
+    await expect(card).toContainText("Sócio do fliperama");
+    await card.getByRole("button", { name: "Sair do placar" }).click();
+    await card.getByRole("button", { name: "Sim, apagar" }).click();
+    await expect(card).toContainText("Sem carteirinha");
+  });
 });
 
 test.describe("scoreboard without the backend", () => {

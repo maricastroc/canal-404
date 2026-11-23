@@ -57,7 +57,7 @@ export function toastText(read: (locale: Locale) => { title: string; description
   };
 }
 
-const STORAGE_KEY = "canal404:progress:v1";
+export const STORAGE_KEY = "canal404:progress:v1";
 const DATA_PREFIX = "canal404:";
 const SECRET_SET = new Set<string>(SECRETS.map((s) => s.id));
 const ACHIEVEMENT_SET = new Set<string>(ACHIEVEMENTS.map((a) => a.id));

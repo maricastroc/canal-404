@@ -1,5 +1,7 @@
 # 0003: Competition backend with Prisma, Postgres and anonymous players
 
+> Since [decision 0015](0015-recovery-code-and-cloud-copy.md), a recovery code takes the card to another device, and the board keeps a copy of each card holder's progress.
+
 ## Context
 
 Stage 2 adds global boards, daily challenges and shared achievements. Until now everything lived in `localStorage`, and the portal had no server code besides pages. The portal is a hobby project for all ages, deployed on Vercel, so the backend has to be cheap, keep personal data to the minimum, and never be required to play.
