@@ -12,7 +12,7 @@ import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, ty
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
-import { FIGURE, FEET, HOST_BOX, JURY_ART } from "./figure";
+import { FIGURE, FEET, HOST_BOX, JURY_ART, type PaddleHold } from "./figure";
 import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ribbon, type Spark, type TallyState } from "./lane";
 import { DESK_LIP, layoutFor, type Layout, type Orientation, type Spot } from "./layout";
 
@@ -57,7 +57,7 @@ const LISTEN_TAIL_MS = 150;
 
 type Popup = { text: Phaser.GameObjects.Text; born: number };
 type Burst = { born: number; color: number };
-type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; heart: Phaser.GameObjects.Image; mood: Mood; moodUntil: number; heartUntil: number };
+type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Container; plateText: Phaser.GameObjects.Text; arm: Phaser.GameObjects.Graphics; heart: Phaser.GameObjects.Image; mood: Mood; moodUntil: number; heartUntil: number };
 type KidView = { root: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; head: Phaser.GameObjects.Image; pose: Pose; poseUntil: number; face: KidFace; flash: KidFace; faceUntil: number; base: KidFace; spot: Spot };
 type Fan = { img: Phaser.GameObjects.Image; variant: number; leave: number; phase: number; y: number };
 type Floater = { img: Phaser.GameObjects.Image; born: number; x: number; y: number; drift: number };
@@ -381,15 +381,19 @@ export class StageScene extends Phaser.Scene {
       const art = JURY_ART[id];
       const img = this.add.image(0, 0, this.juryTexture(id, "neutral")).setOrigin(art.originX, art.crop / art.h).setScale(art.scale / 2);
       img.setCrop(0, 0, art.w * 2, art.crop * 2);
-      const top = -art.crop * art.scale;
+      const local = (x: number, y: number) => ({ x: (x - art.originX * art.w) * art.scale, y: (y - art.crop) * art.scale });
+      const fist = local(art.hold.fist[0], art.hold.fist[1]);
+      const side = fist.x < 0 ? -1 : 1;
       const plateImg = this.add.image(0, 0, "plate").setOrigin(0.5, 1).setScale(0.4);
       const plateText = this.add.text(0, -116 * 0.8, "", this.font("display", 62, "#1d1830")).setOrigin(0.5);
-      const plate = this.add.container(art.plateX, top + 18, [plateImg, plateText]).setVisible(false);
-      const heart = this.add.image(art.plateX * 0.6, top - 3, "icon-heart").setDisplaySize(58, 58).setVisible(false);
-      this.add.container(J.xs[i], J.deskTop + 16, [img, plate, heart]).setScale(J.scale).setDepth(5);
+      const plate = this.add.container(fist.x, fist.y + 8, [plateImg, plateText]).setVisible(false);
+      const arm = this.add.graphics().setVisible(false);
+      this.drawHold(arm, art.hold, local, art.scale);
+      const heart = this.add.image(fist.x + side * 62, fist.y - 150, "icon-heart").setDisplaySize(58, 58).setVisible(false);
+      this.add.container(J.xs[i], J.deskTop + 16, art.hold.front ? [img, plate, arm, heart] : [plate, img, arm, heart]).setScale(J.scale).setDepth(5);
       const name = this.add.text(J.xs[i], plateY, this.copy.jury[id], this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5).setDepth(6.5);
       if (name.width > 146) name.setScale(146 / name.width);
-      this.jury.set(id, { img, plate, plateText, heart, mood: "neutral", moodUntil: 0, heartUntil: 0 });
+      this.jury.set(id, { img, plate, plateText, arm, heart, mood: "neutral", moodUntil: 0, heartUntil: 0 });
     });
     const inspector = JURY_ART.inspector;
     this.shh = this.add
@@ -397,6 +401,27 @@ export class StageScene extends Phaser.Scene {
       .setOrigin(1, 0.5)
       .setDepth(16)
       .setVisible(false);
+  }
+
+  private drawHold(g: Phaser.GameObjects.Graphics, hold: PaddleHold, local: (x: number, y: number) => { x: number; y: number }, scale: number) {
+    const ink = 4 * scale;
+    const curves = hold.arm.map((s) => {
+      const [a, b, c] = [s.from, s.via, s.to].map(([x, y]) => local(x, y));
+      return { points: new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(a.x, a.y), new Phaser.Math.Vector2(b.x, b.y), new Phaser.Math.Vector2(c.x, c.y)).getPoints(18), color: s.color, width: s.width * scale };
+    });
+    const stroke = (points: Phaser.Math.Vector2[], color: number, width: number) => {
+      g.lineStyle(width, color, 1).strokePoints(points, false, false);
+      g.fillStyle(color, 1).fillCircle(points[0].x, points[0].y, width / 2).fillCircle(points[points.length - 1].x, points[points.length - 1].y, width / 2);
+    };
+    for (const c of curves) stroke(c.points, C.ink, c.width + ink * 2);
+    for (const c of curves) stroke(c.points, c.color, c.width);
+    if (hold.skin === null) return;
+    const f = local(hold.fist[0], hold.fist[1]);
+    const w = 26 * scale;
+    const h = 30 * scale;
+    g.fillStyle(hold.skin, 1).fillRoundedRect(f.x - w / 2, f.y - h / 2, w, h, 9 * scale);
+    g.lineStyle(ink, C.ink, 1).strokeRoundedRect(f.x - w / 2, f.y - h / 2, w, h, 9 * scale);
+    g.lineStyle(2.5 * scale, C.ink, 1).lineBetween(f.x - w * 0.32, f.y - h * 0.08, f.x + w * 0.32, f.y - h * 0.08).lineBetween(f.x - w * 0.32, f.y + h * 0.18, f.x + w * 0.32, f.y + h * 0.18);
   }
 
   private juryMood(id: JuryId, mood: Mood, ms = 900) {
@@ -857,6 +882,7 @@ export class StageScene extends Phaser.Scene {
     }
     this.jury.forEach((view, id) => {
       view.plate.setVisible(false);
+      view.arm.setVisible(false);
       this.juryMood(id, "neutral", 0);
     });
     this.setKidFaces("normal");
@@ -967,10 +993,11 @@ export class StageScene extends Phaser.Scene {
     if (!view) return;
     const grade = Math.max(0, Math.min(10, base + JURY_BIAS[id]));
     view.plateText.setText(String(grade));
-    view.plate.setVisible(true);
+    view.plate.setVisible(true).setScale(1);
+    view.arm.setVisible(true);
     view.plate.setData("until", performance.now() + ms);
     this.juryMood(id, grade >= 8 ? "happy" : grade <= 4 ? "angry" : "neutral", ms);
-    if (!this.bridge.reducedMotion) this.tweens.add({ targets: view.plate, y: { from: view.plate.y + 40, to: view.plate.y }, duration: 260, ease: "Back.easeOut" });
+    if (!this.bridge.reducedMotion) this.tweens.add({ targets: view.plate, scale: { from: 0.7, to: 1 }, duration: 260, ease: "Back.easeOut" });
   }
 
   update() {
@@ -1164,7 +1191,10 @@ export class StageScene extends Phaser.Scene {
       if (view.mood !== "neutral" && now > view.moodUntil) this.juryMood(id, "neutral", 0);
       if (view.heart.visible && now > view.heartUntil) view.heart.setVisible(false);
       const until = view.plate.getData("until") as number | undefined;
-      if (view.plate.visible && until !== undefined && now > until) view.plate.setVisible(false);
+      if (view.plate.visible && until !== undefined && now > until) {
+        view.plate.setVisible(false);
+        view.arm.setVisible(false);
+      }
     });
     const rise = this.bridge.reducedMotion ? 0 : 44;
     const baseY = this.L.lane.housing.y - 46;
