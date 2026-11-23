@@ -313,8 +313,8 @@ DECOR.sofa = {
     { kind: "scarf", x: 5.36, y: 1.0 },
     { kind: "comic", x: 2.18, y: 1.5 },
     { kind: "yarnBall", x: 9.5, y: 1.62 },
-    { kind: "popcornBowl", x: 4.92, y: 3.44 },
-    { kind: "remote", x: 4.42, y: 3.62 },
+    { kind: "popcornBowl", x: 8.92, y: 3.44 },
+    { kind: "remote", x: 8.42, y: 3.62 },
     { kind: "vhsStack", x: 5.4, y: 5.36 },
   ],
   lights: [

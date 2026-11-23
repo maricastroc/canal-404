@@ -161,14 +161,14 @@ export const PANTRY: LevelDef = {
     "############",
   ],
   loud: 3,
-  agents: [{ kind: "patrol", id: "grandma", path: [...run(2, 2, 10), ...run(2, 9, 3), ...run(2, 2, 10), ...run(2, 9, 6), peek(5, 2, 0), ...run(2, 4, 3)], start: 6, range: 3, cone: "narrow", hear: 0, alert: 2 }],
+  agents: [{ kind: "patrol", id: "grandma", path: [...run(2, 3, 9), ...run(2, 8, 4), ...run(2, 5, 10), ...run(2, 9, 6), peek(5, 2, 0), ...run(2, 4, 3)], start: 14, range: 4, cone: "narrow", hear: 0, alert: 2 }],
   props: [
     { kind: "pantry", x: 1, y: 1 },
     { kind: "pantry", x: 3, y: 1 },
     { kind: "pantry", x: 7, y: 1 },
     { kind: "pantry", x: 9, y: 1 },
   ],
-  par: 13,
+  par: 14,
 };
 
 export const LAUNDRY: LevelDef = {
@@ -221,23 +221,24 @@ export const SOFA: LevelDef = {
   map: [
     "############",
     "#.o..ooo.o.#",
-    "#B......h.G#",
-    "#...oo.....#",
-    "#..o...h...#",
+    "#Bo.......G#",
+    "#...o...oo.#",
+    "#.....h..h.#",
     "#o...ooo..o#",
     "############",
   ],
   loud: 3,
   agents: [
-    { kind: "sleeper", id: "dad", x: 6, y: 1, wake: 3, range: 4, cone: "wide", hear: 0 },
-    { kind: "cat", id: "pixel", x: 6, y: 5, sx: 6, sy: 4, period: 6, offset: 2, loud: 5, hear: 0 },
+    { kind: "sleeper", id: "dad", x: 6, y: 1, wake: 5, range: 5, cone: "wide", hear: 0, toss: { period: 10, offset: 6, facing: 1 } },
+    { kind: "cat", id: "pixel", x: 7, y: 5, sx: 7, sy: 4, period: 7, offset: 0, loud: 5, hear: 0 },
   ],
   props: [
     { kind: "armchair", x: 2, y: 1 },
     { kind: "sofa", x: 5, y: 1, w: 3 },
     { kind: "armchair", x: 9, y: 1 },
-    { kind: "coffeeTable", x: 4, y: 3, w: 2, h: 1 },
-    { kind: "plant", x: 3, y: 4 },
+    { kind: "plant", x: 2, y: 2 },
+    { kind: "plant", x: 4, y: 3 },
+    { kind: "coffeeTable", x: 8, y: 3, w: 2, h: 1 },
     { kind: "shelf", x: 1, y: 5 },
     { kind: "sideboard", x: 5, y: 5, w: 3 },
     { kind: "plant", x: 10, y: 5 },
