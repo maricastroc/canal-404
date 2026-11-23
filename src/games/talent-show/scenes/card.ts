@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, fitText, paper } from "@/games/kit/ui";
 import type { TalentCopy } from "../copy";
 import type { BandMember, SongId } from "../song/notation";
-import { C, IconPool, MEMBER_COLOR, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTrack, ribbon, type Spark } from "./lane";
+import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ribbon, type Spark } from "./lane";
 
 export type CardButtonId = "primary" | "assist" | "calibrate";
 export type DemoKind = "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
@@ -24,7 +24,7 @@ export type CardContent = {
 export const DEMO_OF: Record<SongId, DemoKind> = { theme: "tap", signoff: "hold", recess: "echo", street: "offbeat", static: "static", medley: "medley" };
 
 type DemoItem = { beat: number; kind: "tap" | "hold" | "call" | "echo"; end?: number; who: BandMember };
-type DemoSpec = { loop: number; items: DemoItem[]; regions?: { from: number; to: number; kind: "call" | "echo" | "static" }[]; strongBeats?: boolean };
+type DemoSpec = { loop: number; items: DemoItem[]; regions?: { from: number; to: number; kind: "call" | "echo" | "static" }[]; strongBeats?: boolean; listen?: [number, number] };
 
 const DEMOS: Record<DemoKind, DemoSpec> = {
   tap: { loop: 4, items: [0, 1, 2, 3].map((beat) => ({ beat, kind: "tap", who: "deco" })) },
@@ -49,6 +49,7 @@ const DEMOS: Record<DemoKind, DemoSpec> = {
       { from: 0, to: 4, kind: "call" },
       { from: 4, to: 8, kind: "echo" },
     ],
+    listen: [-0.5, 2.3],
   },
   offbeat: { loop: 4, items: [0.5, 1.5, 2.5, 3.5].map((beat) => ({ beat, kind: "tap", who: "bruno" })), strongBeats: true },
   static: { loop: 8, items: [0, 1, 2, 3, 4, 5, 6, 7].map((beat) => ({ beat, kind: "tap", who: "404" })), regions: [{ from: 3, to: 7, kind: "static" }] },
@@ -74,6 +75,7 @@ class DemoLane {
   private icons: IconPool;
   private front: Phaser.GameObjects.Graphics;
   private hand: Phaser.GameObjects.Image;
+  private ear: Phaser.GameObjects.Container;
   private popup: Phaser.GameObjects.Text;
   private tags: Phaser.GameObjects.Text[] = [];
   private noise: Phaser.GameObjects.TileSprite;
@@ -96,9 +98,10 @@ class DemoLane {
     this.noise = scene.add.tileSprite(0, 0, 10, 10, "talent-static").setOrigin(0, 0.5).setTileScale(3).setVisible(false);
     this.front = scene.add.graphics();
     this.hand = scene.add.image(0, 0, "icon-pointer").setOrigin(0.5, 0);
+    this.ear = scene.add.container(0, 0, [scene.add.image(0, 0, "icon-ear-ink"), scene.add.image(0, 0, "icon-ear")]).setVisible(false);
     this.popup = cartoonText(scene, 0, 0, "", { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.22, shadow: false }).setOrigin(0.5);
     for (let i = 0; i < 3; i += 1) this.tags.push(cartoonText(scene, 0, 0, "", { size: 20, color: "#f7ecd4", font: fonts.display, stroke: 0.2, shadow: false }).setOrigin(0, 0.5).setVisible(false));
-    this.root = scene.add.container(0, 0, [this.g, this.noise, this.front, ...this.tags, this.popup, this.hand]);
+    this.root = scene.add.container(0, 0, [this.g, this.noise, this.front, this.ear, ...this.tags, this.popup, this.hand]);
     this.icons = new IconPool(() => {
       const icon = scene.add.image(0, 0, "icon-note");
       this.root.addAt(icon, this.root.getIndex(this.noise));
@@ -148,12 +151,21 @@ class DemoLane {
           staticSpan = [x0, x1];
           continue;
         }
-        drawRegion(g, x0, x1, laneY, r, region.kind === "call" ? C.plum600 : C.sun, region.kind === "call" ? 0.75 : 0.24);
+        const call = region.kind === "call";
+        drawRegion(g, x0, x1, laneY, r, call ? C.plum600 : C.sun, call ? 0.75 : 0.3, call ? null : xOf(base + region.from));
         const text = this.tags[tag];
-        if (text && x1 - x0 > 70) {
+        const marks = spec.items.filter((item) => item.kind === region.kind && item.beat >= region.from && item.beat < region.to);
+        const gap = TALLY_GAP * 0.8;
+        if (text) text.setText(call ? this.copy.milaTurn : this.copy.yourTurn);
+        const floor = x0 < hitX + r + RING_GAP + 30 ? hitX + r + RING_GAP + 30 : x0 + 8;
+        const tx = text ? Math.min(x1 - text.width - marks.length * gap - 12, Math.max(floor, xOf(base + region.from) + 8)) : 0;
+        if (text && tx >= floor - 1) {
           tag += 1;
-          text.setText(region.kind === "call" ? this.copy.milaTurn : this.copy.yourTurn).setColor(region.kind === "call" ? "#b9a6ef" : "#ffc83d");
-          text.setPosition(Math.max(x0 + 8, Math.min(x1 - text.width - 6, xOf(base + region.from) + 8)), track.y + 16).setVisible(true);
+          text.setColor(call ? "#b9a6ef" : "#ffc83d").setPosition(tx, track.y + 16).setVisible(true);
+          marks.forEach((item, i) => {
+            const x = text.x + text.width + 4 + gap / 2 + i * gap;
+            if (x > left + 8 && x < x1 - 8) drawTally(g, x, track.y + 16, call ? "call" : "echo", base + item.beat <= beat ? "done" : "waiting");
+          });
         }
       }
     }
@@ -215,7 +227,10 @@ class DemoLane {
     this.fireEvents(spec, beat, now);
     const flashK = Math.max(0, 1 - (now - this.flash.born) / 260);
     const pulse = this.reduced ? 0 : Math.max(0, 1 - (((beat % 1) + 1) % 1) * 4);
-    const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.reduced ? 0 : -Math.floor(beat), shake: 0, holding };
+    const phase = beat - loopStart;
+    const listen = spec.listen !== undefined && ((phase >= spec.listen[0] && phase < spec.listen[1]) || phase - spec.loop >= spec.listen[0]);
+    const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.reduced ? 0 : -Math.floor(beat), shake: 0, holding, listen };
+    this.ear.setVisible(listen).setPosition(hitX, laneY).setScale((r * 1.2) / 96);
     drawRingBase(f, hitX, laneY, r, ring);
     drawRingFront(f, hitX, laneY, r, ring);
     if (flashK > 0) drawBurst(f, hitX, laneY, r, this.flash.color, 1 - flashK);
@@ -235,8 +250,11 @@ class DemoLane {
     const base = Math.floor(this.last / spec.loop) * spec.loop;
     for (let k = 0; k <= 1; k += 1) {
       for (const item of spec.items) {
-        if (item.kind === "call") continue;
         const at = base + k * spec.loop + item.beat;
+        if (item.kind === "call") {
+          if (at > this.last && at <= beat) this.flash = { born: now, color: C.plum300 };
+          continue;
+        }
         if (at > this.last && at <= beat) this.hit(item.kind === "hold" ? null : "perfect", MEMBER_COLOR[item.who], now, item.kind === "hold");
         if (item.kind === "hold" && item.end !== undefined) {
           const end = base + k * spec.loop + item.end;

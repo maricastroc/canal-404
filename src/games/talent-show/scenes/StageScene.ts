@@ -1,20 +1,20 @@
 import * as Phaser from "phaser";
-import { ArrowRight, Check, Heart, Music2, Play, Pointer, Volume2, X, type IconNode } from "lucide";
+import { ArrowRight, Check, Ear, Heart, Music2, Play, Pointer, Volume2, X, type IconNode } from "lucide";
 import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
 import { cartoonText } from "@/games/kit/ui";
 import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, callFreq, keysFreq } from "../audio/player";
 import { click, type Stage } from "../audio/voices";
-import { TALENT_COPY, type JuryId, type TalentCopy } from "../copy";
+import { TALENT_COPY, type CrowdLine, type JuryId, type TalentCopy } from "../copy";
 import { calibrate, CALIBRATION_LATE, clickFor } from "../sim/calibration";
 import { judge, MAX_OFFSET, replay, type Mark, type TapLog, type Verdict } from "../sim/judge";
-import { barAt, beatMsAt, type BandMember, type CompiledSong, type Signal, type SongId } from "../song/notation";
+import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART } from "./figure";
-import { C, IconPool, MEMBER_COLOR, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTrack, ribbon, type Spark } from "./lane";
+import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ribbon, type Spark, type TallyState } from "./lane";
 import { DESK_LIP, layoutFor, type Layout, type Orientation, type Spot } from "./layout";
 
 const NOTE_GLYPH: IconNode = Music2.map(([tag, attrs]): IconNode[number] => [tag, tag === "circle" ? { ...attrs, fill: "#1d1830" } : attrs]);
@@ -54,6 +54,8 @@ const CALIBRATION_COUNT = 4;
 const CALIBRATION_TAPS = 8;
 const MISS_FALL_MS = 480;
 const SPARK_MS = 380;
+const TALK_MS = 2600;
+const LISTEN_TAIL_MS = 150;
 
 type Popup = { text: Phaser.GameObjects.Text; born: number };
 type Burst = { born: number; color: number };
@@ -61,6 +63,13 @@ type JuryView = { img: Phaser.GameObjects.Image; plate: Phaser.GameObjects.Conta
 type KidView = { root: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; head: Phaser.GameObjects.Image; pose: Pose; poseUntil: number; face: KidFace; flash: KidFace; faceUntil: number; base: KidFace; spot: Spot };
 type Fan = { img: Phaser.GameObjects.Image; variant: number; leave: number; phase: number; y: number };
 type Floater = { img: Phaser.GameObjects.Image; born: number; x: number; y: number; drift: number };
+type ListenSpan = { from: number; to: number; echo: boolean };
+
+function byBar(notes: ChartNote[]) {
+  const map = new Map<number, ChartNote[]>();
+  for (const n of notes) map.set(n.bar, [...(map.get(n.bar) ?? []), n]);
+  return map;
+}
 
 export class StageScene extends Phaser.Scene {
   private bridge!: TalentBridge;
@@ -140,6 +149,22 @@ export class StageScene extends Phaser.Scene {
   private floaters: Floater[] = [];
   private card!: ShowCard;
   private pressedButton: CardButtonId | null = null;
+  private callsByBar = new Map<number, ChartNote[]>();
+  private echoesByBar = new Map<number, ChartNote[]>();
+  private listenSpans: ListenSpan[] = [];
+  private listenSeen = 0;
+  private callSeen = 0;
+  private coached = false;
+  private ear!: Phaser.GameObjects.Container;
+  private talk!: Phaser.GameObjects.Container;
+  private talkBg!: Phaser.GameObjects.Graphics;
+  private talkText!: Phaser.GameObjects.Text;
+  private talkFan: Fan | null = null;
+  private talkUntil = 0;
+  private talkNext = 0;
+  private talkRecent: string[] = [];
+  private talkStreak = 0;
+  private talkCold = false;
 
   constructor() {
     super("stage");
@@ -160,6 +185,8 @@ export class StageScene extends Phaser.Scene {
       { key: "icon-note", icon: NOTE_GLYPH, size: 96, color: "#1d1830", strokeWidth: 2.6 },
       { key: "icon-miss", icon: X, size: 128, color: "#ef4f43", strokeWidth: 2.4 },
       { key: "icon-check", icon: Check, size: 96, color: "#1d1830", strokeWidth: 3.4 },
+      { key: "icon-ear", icon: Ear, size: 96, color: "#b9a6ef", strokeWidth: 2.6 },
+      { key: "icon-ear-ink", icon: Ear, size: 96, color: "#1d1830", strokeWidth: 6 },
     ]);
   }
 
@@ -178,6 +205,7 @@ export class StageScene extends Phaser.Scene {
     this.buildHost();
     this.buildBand();
     this.buildCrowd();
+    this.buildTalk();
     this.buildLane();
     this.buildHud();
     const portrait = this.bridge.orientation === "portrait";
@@ -452,6 +480,98 @@ export class StageScene extends Phaser.Scene {
     order.forEach((fan, rank) => (fan.leave = rank));
   }
 
+  private buildTalk() {
+    this.talkBg = this.add.graphics();
+    this.talkText = this.add.text(0, 0, "", this.font("body", this.L.text.label, "#1d1830")).setOrigin(0.5);
+    this.talk = this.add.container(0, 0, [this.talkBg, this.talkText]).setDepth(9.5).setVisible(false);
+  }
+
+  private crowdLine(): CrowdLine {
+    const lines = this.copy.crowdLines;
+    const crowd = this.verdict?.crowd ?? 70;
+    const streak = this.verdict?.streak ?? 0;
+    const source = this.compiled.song.segments[this.segment].source ?? this.songId;
+    const mood = crowd < 40 ? lines.cold : streak >= 10 ? lines.hot : null;
+    const pool = mood && Math.random() < 0.5 ? mood : Math.random() < 0.5 ? lines.songs[source] : lines.any;
+    const fresh = pool.filter((line) => !this.talkRecent.includes(line.text));
+    const choices = fresh.length > 0 ? fresh : pool;
+    return choices[Math.floor(Math.random() * choices.length)];
+  }
+
+  private crowdSay(now: number) {
+    const W = this.L.W;
+    const fans = this.fans.filter((f) => f.img.visible && f !== this.talkFan && f.img.x > W * 0.12 && f.img.x < W * 0.88);
+    if (fans.length === 0) {
+      this.talkNext = now + 2000;
+      return;
+    }
+    const fan = fans[Math.floor(Math.random() * fans.length)];
+    const line = this.crowdLine();
+    this.talkRecent = [line.text, ...this.talkRecent].slice(0, 5);
+    this.talkFan = fan;
+    this.drawTalk(fan, line);
+    this.talkUntil = now + TALK_MS;
+    this.talkNext = this.talkUntil + 3000 + Math.random() * 4000;
+  }
+
+  private drawTalk(fan: Fan, line: CrowdLine) {
+    const L = this.L;
+    const size = L.text.label;
+    this.talkText.setText(line.text);
+    const w = this.talkText.width + 40;
+    const h = size * 1.8;
+    const headX = fan.img.x;
+    const headY = fan.y - fan.img.displayHeight * 0.66;
+    const headR = fan.img.displayWidth * 0.26;
+    const toRight = headX < L.W / 2;
+    const top = L.lane.housing.y + L.lane.housing.h + 10;
+    const y = Math.max(top + h / 2, Math.min(L.H - h / 2 - 8, headY - h * 0.35));
+    const x = Math.max(16, Math.min(L.W - 16 - w, toRight ? headX + headR + 24 : headX - headR - 24 - w));
+    const side = toRight ? 0 : w;
+    const tx = headX + (toRight ? headR * 0.4 : -headR * 0.4) - x;
+    const ty = headY - y;
+    const radius = line.think ? h / 2 : 16;
+    const g = this.talkBg;
+    g.clear();
+    g.fillStyle(C.ink, 1).fillRoundedRect(4, -h / 2 + 5, w, h, radius);
+    g.fillStyle(C.cream, 1).fillRoundedRect(0, -h / 2, w, h, radius);
+    g.lineStyle(4, C.ink, 1).strokeRoundedRect(0, -h / 2, w, h, radius);
+    if (line.think) {
+      for (const [k, dot] of [
+        [0.34, 8],
+        [0.68, 5],
+      ] as const) {
+        const cx = side + (tx - side) * k;
+        const cy = ty * k;
+        g.fillStyle(C.cream, 1).fillCircle(cx, cy, dot);
+        g.lineStyle(3, C.ink, 1).strokeCircle(cx, cy, dot);
+      }
+    } else {
+      const inward = toRight ? 4 : -4;
+      g.fillStyle(C.cream, 1).fillTriangle(side + inward, -h * 0.16, side + inward, h * 0.24, tx * 0.55 + side * 0.45, ty * 0.55);
+      g.lineStyle(4, C.ink, 1).lineBetween(side, -h * 0.16, tx * 0.55 + side * 0.45, ty * 0.55).lineBetween(tx * 0.55 + side * 0.45, ty * 0.55, side, h * 0.24);
+    }
+    this.talkText.setPosition(w / 2, 0);
+    this.talk.setPosition(x, y).setAlpha(1).setVisible(true);
+    this.tweens.killTweensOf(this.talk);
+    this.talk.setScale(1);
+    if (!this.bridge.reducedMotion) this.tweens.add({ targets: this.talk, scale: { from: 0.6, to: 1 }, duration: 180, ease: "Back.easeOut" });
+  }
+
+  private updateTalk(now: number) {
+    if (this.mode !== "playing") {
+      if (this.talk.visible) this.talk.setVisible(false);
+      return;
+    }
+    if (this.talk.visible) {
+      const left = this.talkUntil - now;
+      if (left <= 0 || !this.talkFan?.img.visible) this.talk.setVisible(false);
+      else this.talk.setAlpha(Math.min(1, left / 250));
+      return;
+    }
+    if (now >= this.talkNext) this.crowdSay(now);
+  }
+
   private animateCrowd(shown: number) {
     const total = this.fans.length;
     const level = this.mode === "cut" ? 0 : Math.max(0, Math.min(100, this.displayCrowd)) / 100;
@@ -493,6 +613,7 @@ export class StageScene extends Phaser.Scene {
     this.lostTile.setMask(this.lostMask.createGeometryMask());
     this.weakTile.setMask(this.weakMask.createGeometryMask());
     this.ringFrontG = this.add.graphics().setDepth(12);
+    this.ear = this.add.container(this.L.lane.hitX, this.laneY, [this.add.image(0, 0, "icon-ear-ink"), this.add.image(0, 0, "icon-ear")]).setDepth(12.1).setVisible(false);
     for (let i = 0; i < 8; i += 1) this.labels.push(cartoonText(this, 0, 0, "", { size: this.L.text.label, color: "#f7ecd4", font: this.bridge.fonts.display, stroke: 0.22, shadow: false }).setDepth(13).setVisible(false));
     for (let i = 0; i < 6; i += 1) {
       const text = cartoonText(this, this.L.lane.popupX, H.y - 40, "", { size: this.L.text.mark, color: "#ffc83d", font: this.bridge.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(14).setVisible(false);
@@ -514,7 +635,34 @@ export class StageScene extends Phaser.Scene {
     this.missAt.clear();
     this.streak.setVisible(false);
     this.streakShown = 0;
+    this.buildTurns();
     this.placeBand(false);
+  }
+
+  private buildTurns() {
+    const c = this.compiled;
+    this.callsByBar = byBar(c.calls);
+    this.echoesByBar = byBar(c.notes.filter((n) => n.kind === "echo"));
+    this.listenSpans = [];
+    for (let bar = 0; bar < c.bars; bar += 1) {
+      if (!this.callsByBar.has(bar) || this.callsByBar.has(bar - 1)) continue;
+      let last = bar;
+      while (this.callsByBar.has(last + 1)) last += 1;
+      const calls = this.callsByBar.get(last) ?? [];
+      const start = c.barStart[bar];
+      const before = c.notes.filter((n) => n.at < start).at(-1);
+      const from = Math.min(start, Math.max(start - beatMsAt(c, start) / 2, before ? before.end + LISTEN_TAIL_MS : -Infinity));
+      this.listenSpans.push({ from, to: (calls.at(-1)?.at ?? start) + LISTEN_TAIL_MS, echo: this.echoesByBar.has(last + 1) });
+    }
+  }
+
+  private listening(shown: number) {
+    return this.listenSpans.some((span) => shown >= span.from && shown < span.to);
+  }
+
+  private tallyOf(note: ChartNote): TallyState {
+    const grade = this.verdict?.grades[note.index] ?? null;
+    return grade === null ? "waiting" : grade === "miss" ? "miss" : "done";
   }
 
   private featured(): BandMember {
@@ -753,6 +901,14 @@ export class StageScene extends Phaser.Scene {
     this.sparks = [];
     this.missAt.clear();
     this.streakShown = 0;
+    this.listenSeen = 0;
+    this.callSeen = 0;
+    this.coached = false;
+    this.talkFan = null;
+    this.talkRecent = [];
+    this.talkStreak = 0;
+    this.talkCold = false;
+    this.talkNext = performance.now() + 6000 + Math.random() * 2000;
     if (this.segment !== 0) {
       this.segment = 0;
       this.placeBand(true);
@@ -888,6 +1044,7 @@ export class StageScene extends Phaser.Scene {
       this.card.dots(this.calibClicks.map((_, i) => (this.calibErrors[i] !== null ? "hit" : i === next ? "now" : "waiting")));
       if (heard > this.calibEnd) this.finishCalibration();
     }
+    this.updateTalk(now);
     let shown: number;
     if (this.mode === "countin" || this.mode === "playing") {
       const songMs = this.songNow(now);
@@ -956,9 +1113,49 @@ export class StageScene extends Phaser.Scene {
       else if (this.lastSignal === "lost") this.say(copy.host.back, 1200);
       this.lastSignal = signal;
     }
+    this.updateTurns(shown);
+    this.updateTalkMood(verdict.streak, verdict.crowd);
     this.setStreak(verdict.streak);
     if (verdict.cutAt !== null) this.cut();
     else if (shown >= this.compiled.endMs) this.endSong();
+  }
+
+  private updateTurns(shown: number) {
+    const calls = this.compiled.calls;
+    while (this.callSeen < calls.length && calls[this.callSeen].at <= shown) {
+      if (shown - calls[this.callSeen].at < 200) {
+        this.flash = { born: performance.now(), color: C.plum300 };
+        this.floatNote();
+      }
+      this.callSeen += 1;
+    }
+    const spans = this.listenSpans;
+    while (this.listenSeen < spans.length && shown >= spans[this.listenSeen].to) {
+      const span = spans[this.listenSeen];
+      if (span.echo && shown - span.to < 400) this.popup(this.copy.yourTurnCue, "#ffc83d");
+      this.listenSeen += 1;
+    }
+    const first = spans[0];
+    if (!this.coached && first && shown >= first.from && shown < first.to) {
+      this.coached = true;
+      this.say(this.copy.host.listen, 1600);
+    }
+  }
+
+  private updateTalkMood(streak: number, crowd: number) {
+    const now = performance.now();
+    const cold = crowd < 40;
+    const milestone = streak >= 10 && streak % 10 === 0 && streak !== this.talkStreak;
+    if (milestone) this.talkStreak = streak;
+    if (!this.talk.visible && ((cold && !this.talkCold) || milestone)) this.talkNext = Math.min(this.talkNext, now + 250);
+    this.talkCold = cold;
+  }
+
+  private popup(text: string, color: string) {
+    const popup = this.popups.reduce((a, b) => (a.born < b.born ? a : b));
+    for (const p of this.popups) p.text.setVisible(false);
+    popup.born = performance.now();
+    popup.text.setText(text).setColor(color).setVisible(true).setAlpha(1).setScale(this.bridge.reducedMotion ? 1 : 1.3);
   }
 
   private setStreak(n: number) {
@@ -983,10 +1180,7 @@ export class StageScene extends Phaser.Scene {
 
   private onMark(mark: Mark, streak: number, note: number | null) {
     const now = performance.now();
-    const popup = this.popups.reduce((a, b) => (a.born < b.born ? a : b));
-    for (const p of this.popups) p.text.setVisible(false);
-    popup.born = now;
-    popup.text.setText(this.copy.marks[mark]).setColor(MARK_COLOR[mark]).setVisible(true).setAlpha(1).setScale(this.bridge.reducedMotion ? 1 : 1.3);
+    this.popup(this.copy.marks[mark], MARK_COLOR[mark]);
     if (mark === "miss" || mark === "dropped" || mark === "noise") {
       this.flash = { born: now, color: C.tomato };
       if (mark === "miss" && note !== null) this.missAt.set(note, now);
@@ -1169,20 +1363,30 @@ export class StageScene extends Phaser.Scene {
     const firstBar = Math.max(0, Math.floor((beatNow - (hitX - left) / LN.pxPerBeat) / 4));
     const lastBar = Math.min(compiled.bars - 1, Math.floor((beatNow + (right - hitX) / LN.pxPerBeat) / 4));
     let label = 0;
-    const callBars = new Set(compiled.calls.map((c) => c.bar));
-    const echoBars = new Set(compiled.notes.filter((n) => n.kind === "echo").map((n) => n.bar));
+    const tallyY = S.y + (laneY - ribbon(r) - S.y) / 2;
+    const ringClear = hitX + r + RING_GAP + 40;
     for (let bar = firstBar; bar <= lastBar; bar += 1) {
       const x0 = Math.max(left, xOfBeat(bar * 4));
       const x1 = Math.min(right, xOfBeat(bar * 4 + 4));
       if (x1 <= x0) continue;
-      const tag = callBars.has(bar) ? "call" : echoBars.has(bar) ? "echo" : null;
-      if (tag) {
-        drawRegion(g, x0, x1, laneY, r, tag === "call" ? C.plum600 : C.sun, tag === "call" ? 0.75 : 0.24);
+      const calls = this.callsByBar.get(bar);
+      const items = calls ?? this.echoesByBar.get(bar);
+      if (items) {
+        const call = calls !== undefined;
+        const start = xOfBeat(bar * 4);
+        drawRegion(g, x0, x1, laneY, r, call ? C.plum600 : C.sun, call ? 0.75 : 0.3, call ? null : start);
         const text = this.labels[label];
-        if (text && x1 - x0 > 80) {
+        const tallyW = items.length * TALLY_GAP + 8;
+        if (text) text.setText(call ? this.copy.milaTurn : this.copy.yourTurn);
+        const floor = x0 < ringClear ? ringClear : x0 + 12;
+        const tx = text ? Math.min(x1 - text.width - tallyW - 10, Math.max(floor, start + 12)) : 0;
+        if (text && tx >= floor - 1) {
           label += 1;
-          text.setText(tag === "call" ? this.copy.milaTurn : this.copy.yourTurn).setColor(tag === "call" ? "#b9a6ef" : "#ffc83d").setOrigin(0, 0.5);
-          text.setPosition(Math.max(x0 + 12, Math.min(x1 - text.width - 10, xOfBeat(bar * 4) + 12)), S.y + (laneY - ribbon(r) - S.y) / 2).setVisible(true);
+          text.setColor(call ? "#b9a6ef" : "#ffc83d").setOrigin(0, 0.5).setPosition(tx, tallyY).setVisible(true);
+          items.forEach((item, i) => {
+            const x = text.x + text.width + 8 + TALLY_GAP / 2 + i * TALLY_GAP;
+            if (x > left + 10 && x < x1 - 10) drawTally(g, x, tallyY, call ? "call" : "echo", call ? (item.at <= shown ? "done" : "waiting") : this.tallyOf(item));
+          });
         }
       }
       for (let beat = 0; beat < 4; beat += 1) {
@@ -1259,7 +1463,12 @@ export class StageScene extends Phaser.Scene {
     const shakeK = Math.max(0, (this.shakeUntil - now) / 240);
     const shake = this.bridge.reducedMotion ? 0 : Math.sin(now * 0.09) * 8 * shakeK;
     const beatIndex = Math.floor(beatNow);
-    const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.bridge.reducedMotion ? 0 : -beatIndex, shake, holding };
+    const listen = this.listening(shown);
+    const ring = { pulse, flash: flashK, flashColor: this.flash.color, lit: this.bridge.reducedMotion ? 0 : -beatIndex, shake, holding, listen };
+    this.ear
+      .setVisible(listen)
+      .setPosition(hitX + shake, laneY)
+      .setScale((r * (1.2 + 0.2 * flashK)) / 96);
     const moving = this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
     this.chase.forEach((b, i) => {
       const on = moving && !this.bridge.reducedMotion ? (Math.floor(i / 2) + beatIndex) % 4 === 0 : Math.floor(i / 2) % 4 === 0;

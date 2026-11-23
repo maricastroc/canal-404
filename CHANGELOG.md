@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: a plateia fala e a vez da Mila fica clara
+- **Listen, then repeat.** While Mila plays her phrase, the hit circle turns lilac with an ear in it and its lights go dark, so her notes no longer look like yours; each of her notes flashes the circle as it lands. When her phrase ends, "Sua vez!" pops up over the circle and it turns gold again.
+- **Count the notes.** The "Mila" and "Sua vez" labels on the lane carry one mark per note: Mila's diamonds fill as she plays them, your circles fill as you hit them (red on a miss). Your turn is a stronger gold with a dashed edge. The host says "Escute a Mila!" the first time, the song's hint says what the ear means, and the pre-show demo shows the same ear and marks. Echo notes stay hidden outside assist mode, and the chart, timing and scoring are unchanged.
+- **The crowd talks.** During every song, someone in the audience says or thinks something every few seconds in a speech or thought bubble: lines about the song and its performer, cheers on a long streak, and grumbles when the crowd is emptying. The bubbles sit in the audience, never over the lane.
+
 ### Ao Vivo no 404: o Tema volta ao bumbo
 - **Notes on the beat in Tema do Canal 404.** Around 1:03, four bars started on the bass drum and then fell between the kicks, where nothing in the music played. They now follow the bass drum all the way, like the same groove at 0:32. Same number of notes, same difficulty.
 - **An agogô marks the groove.** The bass drum is too low for laptop and phone speakers, so the notes that follow it at 0:32 and 1:03 seemed to follow nothing. An agogô (low bell on the downbeats, high bell on the rest) now plays exactly those notes in both stretches, loud enough to hear on a phone.

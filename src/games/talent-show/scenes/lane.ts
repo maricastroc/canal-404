@@ -76,10 +76,40 @@ export function drawBeatLine(g: G, x: number, laneY: number, r: number, strong: 
   g.fillStyle(strong ? C.plum500 : C.plum600, strong ? 0.95 : 0.8).fillRect(x - (strong ? 2.5 : 1.5), laneY - half, strong ? 5 : 3, half * 2);
 }
 
-export function drawRegion(g: G, x0: number, x1: number, laneY: number, r: number, color: number, alpha: number) {
+export function drawRegion(g: G, x0: number, x1: number, laneY: number, r: number, color: number, alpha: number, dashFrom: number | null = null) {
   const half = ribbon(r) - 3;
   if (x1 - x0 < 4) return;
   g.fillStyle(color, alpha).fillRect(x0, laneY - half, x1 - x0, half * 2);
+  if (dashFrom === null) return;
+  const dash = 18;
+  const start = dashFrom + Math.ceil((x0 - dashFrom) / (dash * 2)) * dash * 2;
+  for (let x = start - dash * 2; x < x1; x += dash * 2) {
+    const a = Math.max(x0, x);
+    const b = Math.min(x1, x + dash);
+    if (b <= a) continue;
+    g.fillStyle(color, 0.9).fillRect(a, laneY - half, b - a, 4).fillRect(a, laneY + half - 4, b - a, 4);
+  }
+}
+
+export type TallyState = "waiting" | "done" | "miss";
+
+export const TALLY_GAP = 26;
+
+export function drawTally(g: G, x: number, y: number, kind: "call" | "echo", state: TallyState) {
+  const s = 9;
+  if (kind === "call") {
+    const pts = [
+      { x, y: y - s * 1.25 },
+      { x: x + s, y },
+      { x, y: y + s * 1.25 },
+      { x: x - s, y },
+    ];
+    g.fillStyle(state === "done" ? C.plum300 : C.plum950, 1).fillPoints(pts, true);
+    g.lineStyle(3, state === "done" ? C.ink : C.plum300, 1).strokePoints(pts, true);
+    return;
+  }
+  g.fillStyle(state === "done" ? C.sun : state === "miss" ? C.tomato : C.plum950, 1).fillCircle(x, y, s);
+  g.lineStyle(3, state === "waiting" ? C.sun : C.ink, 1).strokeCircle(x, y, s);
 }
 
 export function drawNote(g: G, icons: IconPool, x: number, y: number, r: number, color: number, alpha = 1, streaks = true) {
@@ -138,19 +168,20 @@ export function drawEcho(g: G, x: number, y: number, r: number, alpha: number, c
   }
 }
 
-export type RingState = { pulse: number; flash: number; flashColor: number; lit: number; shake: number; holding: boolean };
+export type RingState = { pulse: number; flash: number; flashColor: number; lit: number; shake: number; holding: boolean; listen?: boolean };
 
 export function drawRingBase(g: G, x: number, y: number, r: number, o: RingState) {
   const R = r + RING_GAP + o.pulse * 5;
   const cx = x + o.shake;
-  g.fillStyle(C.sun, 0.1 + 0.12 * o.pulse).fillCircle(cx, y, R + 36);
+  const glow = o.listen ? C.plum300 : C.sun;
+  g.fillStyle(glow, 0.1 + 0.12 * o.pulse).fillCircle(cx, y, R + 36);
   g.fillStyle(C.plum950, 1).fillCircle(cx, y, R);
-  g.fillStyle(C.sun, 0.07 + 0.06 * o.pulse).fillCircle(cx, y, r);
+  g.fillStyle(glow, 0.07 + 0.06 * o.pulse).fillCircle(cx, y, r);
   if (o.flash > 0) g.fillStyle(o.flashColor, 0.7 * o.flash).fillCircle(cx, y, R);
   const dash = 16;
   for (let i = 0; i < dash; i += 1) {
     const a0 = (i / dash) * Math.PI * 2;
-    g.lineStyle(3, C.cream, 0.5);
+    g.lineStyle(3, o.listen ? C.plum300 : C.cream, 0.5);
     g.beginPath();
     g.arc(cx, y, r, a0, a0 + (Math.PI * 2) / dash / 2);
     g.strokePath();
@@ -163,14 +194,14 @@ export function drawRingFront(g: G, x: number, y: number, r: number, o: RingStat
   const bulbs = 12;
   for (let i = 0; i < bulbs; i += 1) {
     const a = -Math.PI / 2 + (i / bulbs) * Math.PI * 2;
-    const on = o.flash > 0.2 || o.holding || (((i + Math.floor(o.lit)) % 3) + 3) % 3 === 0;
+    const on = o.listen ? o.flash > 0.2 : o.flash > 0.2 || o.holding || (((i + Math.floor(o.lit)) % 3) + 3) % 3 === 0;
     const bx = cx + Math.cos(a) * (R + 20);
     const by = y + Math.sin(a) * (R + 20);
-    g.fillStyle(on ? C.sunPale : C.plum600, 1).fillCircle(bx, by, 6.5);
+    g.fillStyle(on ? (o.listen ? C.plum300 : C.sunPale) : C.plum600, 1).fillCircle(bx, by, 6.5);
     g.lineStyle(3, C.ink, 1).strokeCircle(bx, by, 6.5);
   }
   g.lineStyle(17, C.ink, 1).strokeCircle(cx, y, R);
-  g.lineStyle(10, o.holding ? C.sunPale : C.sun, 1).strokeCircle(cx, y, R);
+  g.lineStyle(10, o.listen ? C.plum300 : o.holding ? C.sunPale : C.sun, 1).strokeCircle(cx, y, R);
 }
 
 export function drawBurst(g: G, x: number, y: number, r: number, color: number, k: number) {
