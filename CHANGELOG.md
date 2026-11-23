@@ -4,6 +4,9 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: os jurados seguram as plaquinhas
+- **Paddles in hand.** The jury's score paddles used to float above their heads with the stick ending in the air. Now Mr. Arlindo's stick goes into the fist he already raises, and the Inspector and the lunch lady raise an arm in their own sleeve and skin colors to hold theirs. The paddle pops out of the hand instead of sliding up, so it never comes loose, and the lunch lady's board stays in front of her bun and her angry steam.
+
 ### Ao Vivo no 404 sem calibração
 - **Straight to the show.** The first time you play, the "Acerte a nota!" card shows how notes reach the yellow circle, and its button, now "Entendi! Começar o show", starts the song. The calibration step is gone: tapping along with clicks turned out to be hard to pass even on a laptop's own speakers, because waiting to hear each click lands the taps about a third of a second late, and the game already accounts for the delay the device reports.
 - **No stored adjustments.** A timing adjustment saved by an earlier calibration is dropped, since a wrong one shifted the whole lane. Players who had calibrated skip the how-to card.
