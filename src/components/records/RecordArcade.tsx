@@ -11,10 +11,10 @@ import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { formatNumber } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
-import { boardMeta, checkText, GAME_SLUGS, type GameSlug, type Metric } from "@/lib/competition/boards";
+import { boardMeta, checkText, GAME_SLUGS, isFinishersBoard, type GameSlug, type Metric } from "@/lib/competition/boards";
 import { pickBoard, rankedLevels, type BoardLevel } from "@/lib/competition/choice";
 import { connect, fetchBoard } from "@/lib/competition/client";
-import { formatMetric, ordinal } from "@/lib/competition/format";
+import { finishDate, formatMetric, ordinal } from "@/lib/competition/format";
 import { useCompetition } from "@/lib/competition/hooks";
 import { recordsHref } from "@/lib/competition/links";
 import type { BoardEntry, LeaderboardResponse } from "@/lib/competition/types";
@@ -68,6 +68,14 @@ const COPY = localized({
     check: "Como o canal confere",
     where: { fase: "desta fase", arena: "desta arena", pista: "desta pista", parte: "desta parte", música: "desta música", game: "deste jogo" },
     caption: (game: string, level: string | null) => `Melhores do canal em ${game}${level ? `, ${level}` : ""}`,
+    finishersTitle: "Quem terminou",
+    finishedOn: "Terminou em",
+    finishersPeople: (n: number) => (n === 1 ? "1 pessoa terminou" : `${formatNumber(n, "pt-BR")} pessoas terminaram`),
+    finishersEmptyTitle: "Ninguém terminou ainda",
+    finishersEmptyText: "Que tal ser a primeira pessoa a terminar as férias?",
+    finishersCaption: (game: string) => `Quem terminou ${game}`,
+    finishedYou: (date: string) => `Você terminou em ${date}.`,
+    again: "Jogar de novo",
   },
   en: {
     word: { fase: "Level", arena: "Arena", pista: "Track", parte: "Part", música: "Song" },
@@ -103,6 +111,14 @@ const COPY = localized({
     check: "How the channel checks",
     where: { fase: "on this level", arena: "in this arena", pista: "on this track", parte: "in this part", música: "in this song", game: "in this game" },
     caption: (game: string, level: string | null) => `Channel's best in ${game}${level ? `, ${level}` : ""}`,
+    finishersTitle: "Who finished",
+    finishedOn: "Finished on",
+    finishersPeople: (n: number) => (n === 1 ? "1 person finished" : `${formatNumber(n, "en")} people finished`),
+    finishersEmptyTitle: "Nobody has finished yet",
+    finishersEmptyText: "How about being the first person to finish the vacation?",
+    finishersCaption: (game: string) => `Who finished ${game}`,
+    finishedYou: (date: string) => `You finished on ${date}.`,
+    again: "Play again",
   },
 });
 
@@ -183,8 +199,24 @@ function LevelPicker({ game, levels, current }: { game: GameMeta & { slug: GameS
   );
 }
 
-function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" | "nickname" | "tag" | "you" | "metrics"> & { verified?: boolean }; metrics: readonly Metric[]; verified?: string }) {
+function Name({ nickname, tag, you, verified }: { nickname: string; tag: string; you: boolean; verified?: string }) {
   const copy = useCopy(COPY);
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <span className="font-semibold text-cream">{boardNickname(nickname)}</span>
+      <span className="text-sm text-plum-300">#{tag}</span>
+      {you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">{copy.you}</span> : null}
+      {verified ? (
+        <span className="inline-flex text-mint" title={verified}>
+          <VerifiedIcon className="size-4" />
+          <span className="sr-only">{verified}</span>
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" | "nickname" | "tag" | "you" | "metrics"> & { verified?: boolean }; metrics: readonly Metric[]; verified?: string }) {
   const locale = useLocale();
   return (
     <tr className={entry.you ? "bg-sun/15" : "odd:bg-white/[0.03]"}>
@@ -195,17 +227,7 @@ function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" 
         </span>
       </td>
       <td className="px-1 py-1.5">
-        <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span className="font-semibold text-cream">{boardNickname(entry.nickname)}</span>
-          <span className="text-sm text-plum-300">#{entry.tag}</span>
-          {entry.you ? <span className="rounded border-2 border-ink bg-sun px-1 font-display text-[10px] uppercase leading-4 tracking-wider text-ink">{copy.you}</span> : null}
-          {verified && entry.verified ? (
-            <span className="inline-flex text-mint" title={verified}>
-              <VerifiedIcon className="size-4" />
-              <span className="sr-only">{verified}</span>
-            </span>
-          ) : null}
-        </span>
+        <Name nickname={entry.nickname} tag={entry.tag} you={entry.you} verified={entry.verified ? verified : undefined} />
       </td>
       {metrics.map((metric, i) => (
         <td key={i} className={`whitespace-nowrap px-1 py-1.5 text-right text-sm text-cream-2 last:rounded-r-lg last:pr-2 ${i === 2 ? "hidden sm:table-cell" : ""}`}>
@@ -213,6 +235,54 @@ function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" 
         </td>
       ))}
     </tr>
+  );
+}
+
+function FinisherRow({ entry }: { entry: Pick<BoardEntry, "nickname" | "tag" | "you" | "achievedAt"> }) {
+  const locale = useLocale();
+  return (
+    <tr className={entry.you ? "bg-sun/15" : "odd:bg-white/[0.03]"}>
+      <td className="rounded-l-lg py-1.5 pl-2 pr-1">
+        <Name nickname={entry.nickname} tag={entry.tag} you={entry.you} />
+      </td>
+      <td className="whitespace-nowrap rounded-r-lg py-1.5 pl-1 pr-2 text-right text-sm text-cream-2">{finishDate(entry.achievedAt, locale)}</td>
+    </tr>
+  );
+}
+
+function FinishersTable({ data, caption }: { data: LeaderboardResponse; caption: string }) {
+  const copy = useCopy(COPY);
+  const standing = data.you?.standing;
+  const outside = standing && standing.position > data.entries.length ? standing : null;
+  return (
+    <table className="w-full border-separate border-spacing-y-1 text-left">
+      <caption className="sr-only">{caption}</caption>
+      <thead>
+        <tr className="font-display text-[11px] uppercase tracking-wider text-plum-300">
+          <th scope="col" className="pl-2 font-normal">
+            {copy.nickname}
+          </th>
+          <th scope="col" className="pr-2 text-right font-normal">
+            {copy.finishedOn}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.entries.map((entry) => (
+          <FinisherRow key={`${entry.position}-${entry.tag}`} entry={entry} />
+        ))}
+        {outside && data.you ? (
+          <>
+            <tr aria-hidden>
+              <td colSpan={2} className="py-0.5 text-plum-300">
+                <EllipsisIcon className="mx-auto size-5" />
+              </td>
+            </tr>
+            <FinisherRow entry={{ nickname: data.you.nickname, tag: data.you.tag, you: true, achievedAt: outside.best.achievedAt }} />
+          </>
+        ) : null}
+      </tbody>
+    </table>
   );
 }
 
@@ -275,6 +345,7 @@ function ScreenMessage({ title, text, tone = "text-sun", children, live, tall }:
 
 function Screen({ view, game, caption, where, onRetry }: { view: View; game: GameMeta & { slug: GameSlug }; caption: string; where: string; onRetry: () => void }) {
   const copy = useCopy(COPY);
+  const finishers = isFinishersBoard(game.slug);
   return (
     <div aria-busy={view.kind === "loading"} className="relative m-3 overflow-hidden rounded-xl border-[3px] border-ink bg-[#10122e] text-cream shadow-[inset_0_0_40px_rgba(157,240,220,0.12)]">
       <div className="relative z-10 p-2 sm:p-3">
@@ -295,7 +366,7 @@ function Screen({ view, game, caption, where, onRetry }: { view: View; game: Gam
           </ScreenMessage>
         ) : null}
         {view.kind === "empty" ? (
-          <ScreenMessage title={copy.emptyTitle} text={copy.emptyText(where)} tone="text-lime">
+          <ScreenMessage title={finishers ? copy.finishersEmptyTitle : copy.emptyTitle} text={finishers ? copy.finishersEmptyText : copy.emptyText(where)} tone="text-lime">
             <IntentLink href={`/play/${game.slug}`} className={inkStyle("sun", "sm")}>
               <PlayIcon className="size-4" /> {copy.play(game.title)}
             </IntentLink>
@@ -303,10 +374,10 @@ function Screen({ view, game, caption, where, onRetry }: { view: View; game: Gam
         ) : null}
         {view.kind === "board" ? (
           <>
-            <p className="pb-1 text-center font-display text-sm uppercase tracking-[0.3em] text-screen">{copy.best}</p>
-            <BoardTable game={game.slug} data={view.data} caption={caption} />
+            <p className="pb-1 text-center font-display text-sm uppercase tracking-[0.3em] text-screen">{finishers ? copy.finishersTitle : copy.best}</p>
+            {finishers ? <FinishersTable data={view.data} caption={caption} /> : <BoardTable game={game.slug} data={view.data} caption={caption} />}
             <p className="pt-2 text-center text-xs font-semibold text-plum-300">
-              {copy.people(view.data.total)}
+              {finishers ? copy.finishersPeople(view.data.total) : copy.people(view.data.total)}
             </p>
           </>
         ) : null}
@@ -321,6 +392,7 @@ function PlayerPanel({ game, view, status, nickname, tag }: { game: GameMeta & {
   const copy = useCopy(COPY);
   const locale = useLocale();
   const meta = boardMeta(game.slug, locale);
+  const finishers = isFinishersBoard(game.slug);
   return (
     <section aria-labelledby="player-panel-title" className="paper rounded-2xl border-[3px] border-ink p-4 text-ink shadow-[var(--shadow-ink)]">
       <h2 id="player-panel-title" className="flex items-center gap-2 font-display text-lg uppercase tracking-wide">
@@ -333,7 +405,9 @@ function PlayerPanel({ game, view, status, nickname, tag }: { game: GameMeta & {
           <p className="mt-2 font-semibold">
             {copy.playsAs} <span className="font-display tracking-wide">{nickname}</span> <span className="text-ink-soft">#{tag}</span>.
           </p>
-          {standing ? (
+          {standing && finishers ? (
+            <p className="mt-2 rounded-lg border-2 border-ink bg-sun px-2 py-1.5 font-semibold">{copy.finishedYou(finishDate(standing.best.achievedAt, locale))}</p>
+          ) : standing ? (
             <p className="mt-2 rounded-lg border-2 border-ink bg-sun px-2 py-1.5 font-semibold">
               {copy.standing(
                 ordinal(standing.position, locale),
@@ -358,7 +432,7 @@ function PlayerPanel({ game, view, status, nickname, tag }: { game: GameMeta & {
         </p>
       )}
       <IntentLink href={`/play/${game.slug}`} className={inkStyle("tomato", "md", "mt-3 w-full justify-center")}>
-        <PlayIcon className="size-4" /> {standing ? copy.beat : copy.playNow}
+        <PlayIcon className="size-4" /> {standing ? (finishers ? copy.again : copy.beat) : copy.playNow}
       </IntentLink>
     </section>
   );
@@ -375,7 +449,7 @@ function RulesNote({ game }: { game: GameSlug }) {
         {copy.rules}
       </h2>
       <p className="mt-1 font-semibold">{meta.explain}</p>
-      <p className="mt-2 text-sm">{copy.tie}</p>
+      {isFinishersBoard(game) ? null : <p className="mt-2 text-sm">{copy.tie}</p>}
       <h3 className="mt-3 flex items-center gap-1.5 font-display text-sm uppercase tracking-wider">
         {meta.check === "replayed" ? <VerifiedIcon className="size-4 text-mint-deep" /> : null}
         {copy.check}
@@ -424,7 +498,7 @@ export function RecordArcade() {
   const current = levels?.find((l) => l.id === level) ?? null;
   const name = levelName(game, current, copy.word);
   const where = current ? copy.where[game.levelWord ?? "fase"] : copy.where.game;
-  const caption = copy.caption(game.title, name);
+  const caption = isFinishersBoard(slug) ? copy.finishersCaption(game.title) : copy.caption(game.title, name);
 
   const retry = async () => {
     await connect(true);

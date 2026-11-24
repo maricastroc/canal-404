@@ -1,4 +1,4 @@
-import { formatNumber, ordinal as localOrdinal } from "@/i18n/format";
+import { dateFormat, formatNumber, ordinal as localOrdinal } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
 import { boardMeta, type GameSlug, type Metric } from "./boards";
 
@@ -34,4 +34,8 @@ export function formatBest(game: GameSlug, metrics: number[], locale: Locale, co
 
 export function ordinal(position: number, locale: Locale) {
   return localOrdinal(position, locale);
+}
+
+export function finishDate(iso: string, locale: Locale) {
+  return dateFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
 }
