@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { CHAR_RES, FOOT, H, HINT_R, INTERACT_R, resortResult, SCORE, W, type AreaId, type Dir } from "../config";
+import { CHAR_RES, FOOT, H, HINT_R, INTERACT_R, resortResult, RIDE_AREAS, SCORE, W, type AreaId, type Dir } from "../config";
 import { sameFrame, type Frame } from "../layout";
 import { ALL_POSTERS, ALL_TOKENS, freshState, saveState, type FolkKey, type Item, type State } from "../save";
 import { RESORT_SFX, type ResortSfx } from "../sounds";
@@ -15,7 +15,7 @@ import { PhoneJournal } from "../ui/phoneJournal";
 import { cartoonText, fitText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
 import { AREAS, POOL, type Builder, type NearOpts, type PropOpts, type React, type Show, type SpotDef, type Surface } from "./areas";
-import { critter, dustAt, footprint, resident, splashAt, type CritterDef, type ResidentDef } from "./life";
+import { critter, dustAt, footprint, resident, splashAt, tread, type CritterDef, type ResidentDef } from "./life";
 import { Npc, type NpcOpts } from "./npc";
 import { currentFrame, watchFrame } from "./frame";
 import { findPath } from "./path";
@@ -230,6 +230,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.player.dir = sp ? sp[2] : this.s.dir;
       this.player.facing = sp ? sp[3] : this.s.facing;
       this.player.onStep = () => this.onStep();
+      this.player.ride(this.canRide());
       this.player.sync(0);
       this.unstick();
       this.snapCamera();
@@ -737,6 +738,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.journal.hide();
   }
 
+  private canRide() {
+    return this.mode === "play" && Boolean(this.s.flags.bike) && RIDE_AREAS.includes(this.area);
+  }
+
   private interact() {
     if (!this.nearest || this.busy || !this.player) return;
     const sp = this.nearest;
@@ -831,6 +836,12 @@ export class WorldScene extends Phaser.Scene implements Builder {
       sfx: (n, v) => this.sfx(n, v),
       wait: (ms) => this.wait(ms),
       act: () => this.player?.act(this.time.now),
+      mount: () => {
+        const p = this.player;
+        if (!p) return;
+        p.ride(this.canRide());
+        dustAt(this, p.x, p.y);
+      },
       mood: (who, mood) => this.npcs.get(who)?.setMood(mood, 1800, this.time.now),
       action: (name) => this.action(name),
       goto: (area, spawn) => {
@@ -1540,7 +1551,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
         my = dy / d;
       }
       p.update(time, dt, mx, my, () => false);
-    } else p.update(time, dt, mx, my, this.blocked);
+    } else {
+      const arriving = this.target !== null && Math.hypot(this.target.x - p.x, this.target.y - p.y) < 320;
+      p.update(time, dt, mx, my, this.blocked, free && !arriving);
+    }
     for (const kb of this.kicks) this.updateKick(kb, p, time, dt);
     this.updateCamera(dt);
     this.fadeTall(dt);
@@ -1806,10 +1820,28 @@ export class WorldScene extends Phaser.Scene implements Builder {
       if (surf) break;
     }
     const kind = surf?.kind ?? (this.area === "beach" ? "sand" : this.area === "station" || this.area === "lobby" || this.area === "room404" || this.area === "arcade" ? "wood" : "grass");
+    if (p.riding) {
+      this.roll(p, kind, surf);
+      return;
+    }
     const sound: Record<Surface["kind"], ResortSfx> = { sand: "stepSand", wood: "stepWood", grass: "step", dirt: "step", water: "ripple", tile: "step" };
     this.sfx(sound[kind], kind === "water" ? 0.35 : 0.5, kind === "dirt" ? 0.8 : 1);
     if (kind === "sand") footprint(this, p.x, p.y, p.facing, p.dir, this.stepSide, surf?.gone);
     else if (kind === "dirt" && this.stepSide > 0) dustAt(this, p.x, p.y, surf?.color);
+    if (surf?.splash) {
+      const [sx, sy] = surf.splash;
+      splashAt(this, sx, sy, 0.55);
+    }
+  }
+
+  private roll(p: Player, kind: Surface["kind"], surf: Surface | null) {
+    const loud = this.stepSide > 0;
+    if (kind === "sand") {
+      tread(this, p.x, p.y, p.dir, surf?.gone);
+      if (loud) this.sfx("stepSand", 0.35, 0.8);
+    } else if (kind === "dirt" && loud) dustAt(this, p.x, p.y, surf?.color);
+    else if (kind === "wood" && loud) this.sfx("stepWood", 0.3, 1.2);
+    else if (kind === "water") this.sfx("ripple", 0.3);
     if (surf?.splash) {
       const [sx, sy] = surf.splash;
       splashAt(this, sx, sy, 0.55);

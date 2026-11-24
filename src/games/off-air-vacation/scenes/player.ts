@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ACCEL, CHAR_RES, DECO_SCALE, SPEED, SPRITE_FOOT, type Dir } from "../config";
+import { ACCEL, BIKE_FOOT, BIKE_RAMP, BIKE_SPEED, CHAR_RES, DECO_SCALE, SPEED, SPRITE_FOOT, type Dir } from "../config";
 
 const BASE = DECO_SCALE / CHAR_RES;
 
@@ -14,6 +14,7 @@ function slide(blocked: (x: number, y: number) => boolean, x: number, y: number,
   return 0;
 }
 const STEPS = ["walk-a", "walk-b", "walk-c", "walk-d"] as const;
+const PEDALS = ["bike-a", "bike-b", "bike-c", "bike-d"] as const;
 
 export class Player {
   readonly sprite: Phaser.GameObjects.Image;
@@ -30,6 +31,8 @@ export class Player {
   private pose = "idle-f";
   private cheering = false;
   private sitting = false;
+  private boost = 0;
+  riding = false;
   onStep: ((n: number) => void) | null = null;
 
   constructor(
@@ -45,7 +48,14 @@ export class Player {
   }
 
   get top() {
-    return this.y - 220 * DECO_SCALE;
+    return this.y - (this.riding ? 256 : 220) * DECO_SCALE;
+  }
+
+  ride(on: boolean) {
+    if (this.riding === on) return;
+    this.riding = on;
+    this.boost = 0;
+    this.pose = "";
   }
 
   face(dx: number, dy: number) {
@@ -75,10 +85,16 @@ export class Player {
     this.vy = 0;
   }
 
-  update(time: number, dt: number, mx: number, my: number, blocked: (x: number, y: number) => boolean) {
+  update(time: number, dt: number, mx: number, my: number, blocked: (x: number, y: number) => boolean, cruise = false) {
     const len = Math.hypot(mx, my);
-    const tx = len > 0.05 ? (mx / Math.max(1, len)) * SPEED : 0;
-    const ty = len > 0.05 ? (my / Math.max(1, len)) * SPEED * 0.92 : 0;
+    const was = Math.hypot(this.vx, this.vy);
+    const against = was > 60 && len > 0.05 && (this.vx * mx + this.vy * my) / (was * len) < -0.2;
+    if (this.riding && cruise && len > 0.6 && !against) this.boost = Math.min(1, this.boost + dt / BIKE_RAMP);
+    else this.boost = Math.max(0, this.boost - dt * 3);
+    const k = this.boost * this.boost * (3 - 2 * this.boost);
+    const top = SPEED + (BIKE_SPEED - SPEED) * k;
+    const tx = len > 0.05 ? (mx / Math.max(1, len)) * top : 0;
+    const ty = len > 0.05 ? (my / Math.max(1, len)) * top * 0.92 : 0;
     const step = ACCEL * dt;
     this.vx += Phaser.Math.Clamp(tx - this.vx, -step, step);
     this.vy += Phaser.Math.Clamp(ty - this.vy, -step, step);
@@ -107,7 +123,16 @@ export class Player {
       if (ax > 30) this.facing = this.vx > 0 ? 1 : -1;
     }
     let pose = `idle-${this.dir}`;
-    if (this.cheering) pose = "cheer";
+    if (this.riding) {
+      pose = `bike-idle-${this.dir}`;
+      if (speed > 40) {
+        const before = Math.floor(this.clock / 60);
+        this.clock += speed * dt;
+        const now = Math.floor(this.clock / 60);
+        pose = `${PEDALS[now % 4]}-${this.dir}`;
+        if (now !== before) this.onStep?.(now);
+      }
+    } else if (this.cheering) pose = "cheer";
     else if (this.sitting) pose = "sit";
     else if (time < this.actUntil) pose = `act-${this.dir}`;
     else if (speed > 40) {
@@ -119,9 +144,9 @@ export class Player {
     }
     if (pose !== this.pose) {
       this.pose = pose;
-      this.sprite.setTexture(`deco-${pose}`);
+      this.sprite.setTexture(`deco-${pose}`).setOrigin(0.5, this.riding ? BIKE_FOOT : SPRITE_FOOT);
     }
-    const target = this.dir === "s" && speed > 40 ? this.facing * 4 : 0;
+    const target = this.dir === "s" && speed > 40 && !this.riding ? this.facing * 4 : 0;
     this.lean += (target - this.lean) * Math.min(1, dt * 10);
     this.sync(time);
   }
@@ -137,7 +162,8 @@ export class Player {
       .setFlipX(this.facing < 0 && this.dir === "s")
       .setAngle(this.reduced ? 0 : this.lean)
       .setDepth(this.y);
-    this.shadow.setPosition(this.x, this.y + 2).setDepth(this.y - 1).setScale((110 / 128) * (1 - jump / 120), (30 / 128) * (1 - jump / 120));
+    const wide = this.riding ? (this.dir === "s" ? 200 : 96) : 110;
+    this.shadow.setPosition(this.x, this.y + 2).setDepth(this.y - 1).setScale((wide / 128) * (1 - jump / 120), (30 / 128) * (1 - jump / 120));
   }
 
   get moving() {

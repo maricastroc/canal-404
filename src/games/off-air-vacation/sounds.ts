@@ -138,6 +138,14 @@ export const RESORT_SFX = {
       { kind: "tone", wave: "sine", from: 2600, to: 3400, duration: 0.06, delay: 0.08, gain: 0.025 },
     ],
   },
+  ring: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 2637, duration: 0.12, gain: 0.07 },
+      { kind: "tone", wave: "sine", from: 3951, duration: 0.08, gain: 0.025 },
+      { kind: "tone", wave: "sine", from: 2637, duration: 0.24, delay: 0.15, gain: 0.07 },
+      { kind: "tone", wave: "sine", from: 3951, duration: 0.12, delay: 0.15, gain: 0.025 },
+    ],
+  },
   discover: {
     layers: [
       { kind: "tone", wave: "triangle", from: 784, duration: 0.08, gain: 0.05 },

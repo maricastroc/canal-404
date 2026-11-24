@@ -447,11 +447,7 @@ export function dustAt(b: Builder, x: number, y: number, color = 0xd9b98a) {
   scene.tweens.add({ targets: d, y: y - 26, displayWidth: 90, displayHeight: 44, alpha: 0, duration: 520, ease: "Quad.easeOut", onComplete: () => release(d) });
 }
 
-export function footprint(b: Builder, x: number, y: number, facing: number, dir: string, side: number, gone?: (x: number, y: number) => boolean) {
-  const scene = b.world;
-  const angle = dir === "s" ? (facing > 0 ? 90 : -90) : dir === "k" ? 0 : 180;
-  const off = dir === "s" ? [0, side * 8] : [side * 9, 0];
-  const img = fxImage(scene, "footprint").setPosition(x + off[0], y + 2 + off[1]).setDepth(0.36).setTint(0xb58a4e).setAlpha(0.5).setAngle(angle).setScale(0.8);
+function fadeMark(scene: Phaser.Scene, img: Phaser.GameObjects.Image, alpha: number, gone?: (x: number, y: number) => boolean) {
   const born = scene.time.now;
   const life = 7000;
   const tick = () => {
@@ -461,8 +457,22 @@ export function footprint(b: Builder, x: number, y: number, facing: number, dir:
       scene.tweens.add({ targets: img, alpha: 0, duration: 300, onComplete: () => release(img) });
       return;
     }
-    img.setAlpha(0.5 * (1 - age / life));
+    img.setAlpha(alpha * (1 - age / life));
     scene.time.delayedCall(250, tick);
   };
   scene.time.delayedCall(250, tick);
+}
+
+export function footprint(b: Builder, x: number, y: number, facing: number, dir: string, side: number, gone?: (x: number, y: number) => boolean) {
+  const scene = b.world;
+  const angle = dir === "s" ? (facing > 0 ? 90 : -90) : dir === "k" ? 0 : 180;
+  const off = dir === "s" ? [0, side * 8] : [side * 9, 0];
+  const img = fxImage(scene, "footprint").setPosition(x + off[0], y + 2 + off[1]).setDepth(0.36).setTint(0xb58a4e).setAlpha(0.5).setAngle(angle).setScale(0.8);
+  fadeMark(scene, img, 0.5, gone);
+}
+
+export function tread(b: Builder, x: number, y: number, dir: string, gone?: (x: number, y: number) => boolean) {
+  const scene = b.world;
+  const img = fxImage(scene, "tread").setPosition(x, y + 2).setDepth(0.36).setTint(0xb58a4e).setAlpha(0.42).setAngle(dir === "s" ? 90 : 0).setScale(1);
+  fadeMark(scene, img, 0.42, gone);
 }

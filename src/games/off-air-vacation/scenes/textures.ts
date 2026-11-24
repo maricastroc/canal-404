@@ -155,6 +155,10 @@ export function makeTextures(scene: Phaser.Scene) {
     g.fillEllipse(14, 25, 20, 26);
     g.fillEllipse(14, 7, 14, 10);
   });
+  gfx("tread", 12, 64, (g) => {
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(3, 0, 6, 64, 3);
+  });
   gfx("ring", 120, 48, (g) => {
     g.lineStyle(6, 0xffffff, 1);
     g.strokeEllipse(60, 24, 110, 40);
