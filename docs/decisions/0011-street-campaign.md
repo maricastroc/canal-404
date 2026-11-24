@@ -41,3 +41,5 @@ Each level has a stock (for example 2 balloons, 1 sneaker, 2 ducks). The player 
 
 - Any change to a level's data, the gadgets or the thresholds changes trajectories and needs a new rules version for the street boards, as in [0009](0009-street-replay.md).
 - Players' old street high score is replaced by the sum of their best level scores the first time they clear a level, as in every game with levels.
+
+> Rules version 4 (2026-11-24): in "Caminho bloqueado" the crate starts at the edge of its beam (x 1272 → 1302), so knocking it into the pit no longer needs a pixel-perfect lob. Around the best aim, a 7×7 grid of whole degrees and percents goes from 27 to 47 cells that drop the crate, and the new 3-launch solution holds for 44, 48 and 39 of the 49 cells around each launch. About 1% of the aim grid now drops the crate and cuts the rope in one launch, a 2-launch route with the same 3 stars as the planned 3 launches. "Confusão geral" was measured too and is unchanged: its launches already hold for 34, 48 and 36 of 49 cells around the middle of each window. The bump starts new boards for all nine levels; the launch log stays `street-launches` version 2.

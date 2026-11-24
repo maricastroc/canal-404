@@ -14,9 +14,9 @@ export const SOLUTIONS: Record<PhaseId, Launch[]> = {
     { at: 256, angle: -600, power: 560, ammo: "balloon" },
   ],
   "blocked-path": [
-    { at: 30, angle: 6800, power: 640, ammo: "duck" },
-    { at: 373, angle: 4600, power: 880, ammo: "duck" },
-    { at: 685, angle: 4200, power: 680, ammo: "balloon" },
+    { at: 20, angle: 6800, power: 570, ammo: "duck" },
+    { at: 336, angle: 4600, power: 620, ammo: "duck" },
+    { at: 637, angle: 4200, power: 680, ammo: "balloon" },
   ],
   counterattack: [
     { at: 30, angle: 4400, power: 680, ammo: "shoe" },

@@ -116,7 +116,7 @@ function resort(overrides: Partial<Record<string, number>> = {}): RunClaim {
 
 describe("boards", () => {
   it("names one board per game or per level, with the rules version", () => {
-    expect(boardId("dead-end-street", "domino")).toBe("dead-end-street/domino/v3");
+    expect(boardId("dead-end-street", "domino")).toBe("dead-end-street/domino/v4");
     expect(boardId("bad-ideas-lab", "pixel")).toBe("bad-ideas-lab/pixel/v1");
   });
 
