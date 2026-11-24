@@ -14,6 +14,8 @@ import type { MissionBest, MissionState, MissionView } from "@/lib/missions/type
 import type { Channel } from "./objects/TvChannels";
 import { LAST_HOUR_MINUTES } from "./missionLines";
 
+const CTA_ROOM = "calc(17cqw + 1.5 * max(10px, 7.8cqw) + 6px + 1.5cqw)";
+
 export type MissionOnAir = { view: MissionView; state: MissionState; best: MissionBest | null; offset: number };
 
 const MissionContext = createContext<MissionOnAir | null>(null);
@@ -107,9 +109,9 @@ export function MissionScreen() {
   const title = missionText(m.view, locale).title;
   const long = title.length > 16;
   return (
-    <div className="absolute inset-0 overflow-hidden bg-plum-900">
+    <div className="absolute inset-0 flex flex-col overflow-hidden bg-plum-900">
       <div aria-hidden className="absolute inset-0 opacity-70" style={{ backgroundImage: "repeating-linear-gradient(135deg, #2b2150 0 10cqw, #33275e 10cqw 20cqw)" }} />
-      <div className="absolute inset-x-0 top-0 flex items-center gap-[0.45em] border-b-[2px] border-ink bg-tomato px-[6%] py-[2.2%]">
+      <div className="relative flex shrink-0 items-center gap-[0.45em] border-b-[2px] border-ink bg-tomato px-[6%] py-[2.2%]">
         <span
           className="rounded-[3px] bg-ink px-[0.4em] font-display text-[max(7px,4.6cqw)] uppercase leading-[1.4] text-sun"
           style={m.state === "completed" ? undefined : { animation: "rec-blink 1.4s steps(1) infinite" }}
@@ -118,17 +120,17 @@ export function MissionScreen() {
         </span>
         <span className="font-display text-[max(7px,5cqw)] uppercase tracking-wide text-ink">{copy.show}</span>
       </div>
-      <div className="absolute inset-x-[7%] top-[21%]">
-        <p className="truncate font-display text-[max(7px,4.4cqw)] uppercase tracking-wide text-plum-300">
+      <div className="relative flex min-h-0 flex-1 flex-col justify-center px-[7%] pt-[1%] [&>*]:shrink-0" style={{ paddingBottom: CTA_ROOM }}>
+        <p className="truncate font-display text-[max(7px,4.4cqw)] uppercase leading-tight tracking-wide text-plum-300">
           {place.game}
           {place.level ? ` · ${place.level.split(":")[0]}` : ""}
         </p>
         <p
-          className={`mt-[2%] line-clamp-2 font-display uppercase leading-[0.95] text-sun [text-shadow:0.06em_0.08em_0_var(--color-ink)] ${long ? "text-[max(11px,9cqw)]" : "text-[max(12px,11.5cqw)]"}`}
+          className={`mt-[1.5%] line-clamp-2 font-display uppercase leading-[0.95] text-sun [text-shadow:0.06em_0.08em_0_var(--color-ink)] ${long ? "text-[max(10px,8.2cqw)]" : "text-[max(12px,11.5cqw)]"}`}
         >
           {title}
         </p>
-        <div className="mt-[5%]">
+        <div className="mt-[3%] flex">
           <Status m={m} />
         </div>
       </div>
