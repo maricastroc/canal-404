@@ -42,6 +42,8 @@ function mount(ctx: GameHostContext): GameInstance {
     },
   });
 
+  const world = () => game.scene.getScene("world") as WorldScene | null;
+
   const open = (data: object) => {
     if (!game.registry.get("text")) {
       game.registry.set("pending", data);
@@ -80,6 +82,7 @@ function mount(ctx: GameHostContext): GameInstance {
       else resume();
     },
     pause() {
+      world()?.persist();
       if (game.scene.isActive("world")) game.scene.pause("world");
     },
     resume() {
@@ -108,6 +111,7 @@ function mount(ctx: GameHostContext): GameInstance {
       return { title: text.areas[s.area], text: mainObjective(s, text).text, stats };
     },
     destroy() {
+      world()?.persist();
       game.destroy(true);
     },
   };

@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Jogo com defeito mostra "Sinal perdido" em vez de travar
+- **A game that breaks no longer freezes on screen.** An unexpected error inside any game used to stop its animation for good. The canvas froze, Pausar and Continuar did nothing, and only a page reload helped. Now the game is closed and the "Sinal perdido" card appears with "Tentar de novo", which loads it again from the title screen.
+- **Missing art or text is reported too.** If a game's drawings still fail to download after the two automatic retries, the same card appears instead of a game with blank boxes. If Férias Fora do Ar can't download its story text, the same card replaces a loading screen that used to spin forever.
+- **Férias Fora do Ar saves when you leave or pause.** Leaving the game page used to drop up to eight seconds of walking and play time, because the save that should run on exit never did. Pausing and leaving now save on the spot.
+- **Ao Vivo no 404** releases its sound player before the stage is rebuilt after a rotation, so no sound node is left behind.
+- Scores, stars, saves and boards are unchanged.
+
 ### Ao Vivo no 404: o cartão volta depois de girar o celular
 - **Turning the phone with a song card open no longer leaves an empty stage.** Rotating the phone, or resizing the window across a layout change, while the how-to or song card was showing rebuilt the stage without the card. Taps and Esc then did nothing until Pausar → Recomeçar. Now the rebuilt stage shows the same card again, ready to start. Songs, timing, scoring and boards are unchanged.
 

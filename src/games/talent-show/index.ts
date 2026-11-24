@@ -178,6 +178,7 @@ function mount(ctx: GameHostContext): GameInstance {
     }
     shape = next;
     stale = false;
+    scene()?.quit();
     game.destroy(true);
     boot();
     return true;

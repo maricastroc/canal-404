@@ -524,6 +524,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.ctx.audio.play(RESORT_SFX[name], { volume: Phaser.Math.Clamp(volume, 0.05, 1.2), pitch });
   }
 
+  persist() {
+    if (this.s) this.save();
+  }
+
   private save() {
     if (this.mode === "attract") return;
     if (this.player) {

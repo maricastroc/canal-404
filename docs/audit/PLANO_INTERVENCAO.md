@@ -6,7 +6,8 @@
 
 **Andamento:**
 - Etapa 0 concluída em 2026-11-24: PRs #132 (F01), #133 (F02) e #134 (F04), já no `main`.
-- Próxima: Etapa 1.
+- Etapa 1 (F03, F07, F10) na branch `fix/game-fault-panel`.
+- Próxima: Etapa 2.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -148,6 +149,10 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - "Recarregar o jogo" volta à introdução com o jogo funcionando.
   - Os e2e continuam verdes, sem painel de erro espúrio.
 - **Esforço:** S.
+- **Como foi feito** (branch `fix/game-fault-panel`, junto com 1.2 e 1.3):
+  - o shell escuta `error` em `window` nas etapas carregando, introdução, jogando e pausado; ignora `Script error.` e erros de extensões;
+  - ao falhar, destrói a instância e esvazia o elemento do jogo (`hostRef.current.replaceChildren()`), porque com o laço do Phaser morto o `destroy()` nunca termina e o canvas antigo ficava na página;
+  - o painel passou a se chamar "Erro no jogo".
 
 ### PR 1.2: Falhas de carregamento chegam ao shell (F07)
 
@@ -168,6 +173,11 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - Com um arquivo bloqueado, aparece o painel de erro e o "Tentar de novo" funciona quando o bloqueio sai.
   - Sem bloqueio, os 9 jogos carregam como antes (`e2e/games.spec.ts`).
 - **Esforço:** S–M.
+- **Como foi feito:**
+  - `onError` passou a ser obrigatório no contexto, porque quem o fornece é só o shell;
+  - o Phaser 3.90 já tenta de novo duas vezes cada arquivo (`loader.maxRetries`), então o helper `reportFailedLoads` (`src/games/kit/load.ts`) só avisa quem ainda falhou no `COMPLETE`;
+  - o helper é usado nos 10 pontos de carregamento dos 9 jogos, inclusive o `RaceScene` da Ladeira;
+  - foi tudo num PR só, porque cada jogo ganhou uma linha.
 
 ### PR 1.3: Salvar e liberar ao sair da página (F10)
 
@@ -184,6 +194,10 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - No Ao Vivo, uma reconstrução depois da tela de resultado não deixa nós de áudio conectados (conferir no `chrome://media-internals` ou contando nós no motor de áudio).
 - **Esforço:** XS–S.
 - **Depende de:** PR 0.1 (mesmo `WorldScene.ts`).
+- **Como foi feito:**
+  - `WorldScene.persist()` é chamado em `pause()` e `destroy()` do `GameInstance`;
+  - o Ao Vivo chama `scene()?.quit()` antes de `game.destroy(true)` no `reshape()`;
+  - no `main`, andar 1,5 s e sair perdia a posição; agora ela fica.
 
 **Resultado esperado da etapa:** toda falha conhecida dentro de um jogo vira um painel com saída, e nenhum dado se perde ao sair da página.
 
