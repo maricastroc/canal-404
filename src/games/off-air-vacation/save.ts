@@ -9,6 +9,8 @@ export type FolkKey = "bigodes" | "marola" | "tilt" | "marisa" | "psiu" | "lento
 
 export type State = {
   v: 1;
+  id: string;
+  rev: number;
   area: AreaId;
   x: number;
   y: number;
@@ -35,6 +37,8 @@ export const ALL_SECRETS: SecretId[] = ["room404", "machine", "lento"];
 export function freshState(): State {
   return {
     v: 1,
+    id: "",
+    rev: 0,
     area: "lobby",
     x: 1200,
     y: 1120,
@@ -68,6 +72,8 @@ function normalizeState(value: Json): State {
   if (isRecord(value.flags)) for (const [name, on] of Object.entries(value.flags)) if (typeof on === "boolean") flags[name] = on;
   return {
     v: 1,
+    id: typeof value.id === "string" ? value.id.slice(0, 40) : "",
+    rev: Math.max(0, Math.floor(finite(value.rev, 0))),
     area,
     x: sameArea ? finite(value.x, fresh.x) : fresh.x,
     y: sameArea ? finite(value.y, fresh.y) : fresh.y,
@@ -99,11 +105,31 @@ export function endingUnreported(s: State, highScore: number) {
   return highScore <= 0;
 }
 
+export function newAdventureId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function movedOn(raw: string, s: State) {
+  try {
+    const stored = JSON.parse(raw) as unknown;
+    if (!isRecord(stored)) return false;
+    const id = typeof stored.id === "string" ? stored.id : "";
+    const rev = typeof stored.rev === "number" && Number.isFinite(stored.rev) ? stored.rev : 0;
+    return (id !== "" && s.id !== "" && id !== s.id) || rev > s.rev;
+  } catch {
+    return false;
+  }
+}
+
 export function saveState(s: State) {
   try {
+    const raw = window.localStorage.getItem(SAVE_KEY);
+    if (raw === null ? s.rev > 0 : movedOn(raw, s)) return false;
+    s.rev += 1;
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+    return true;
   } catch {
-    return;
+    return false;
   }
 }
 

@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Progresso seguro com o canal aberto em várias abas
+- **One tab no longer erases what another saved.** Every tab kept its own copy of the progress in memory and wrote the whole thing back on each change. A level won in one tab could vanish when a game started in another, or when a tab came back from the browser's back button. The portal now reads the latest save before each change, and progress that was cleared while a tab was open no longer comes back from it.
+- **Férias Fora do Ar in two tabs.** A tab left behind no longer overwrites the adventure that moved on in another tab, or a new adventure started there. Instead it shows "Aventura aberta em outra aba" and stops saving until it is reloaded.
+- **"Apagar meu progresso" with the board out of reach.** The board's copy of the progress is now replaced as soon as the board can be reached again. Before, Extras later offered the erased progress back.
+- **Bringing a copy from the board on a full browser.** If there is no room to back up the saves the copy would replace, nothing is replaced and Extras says the copy couldn't be brought. A browser that only has tips and settings now takes the copy right away, without asking.
+- Scores, stars and boards are unchanged.
+
 ### Jogo com defeito mostra "Sinal perdido" em vez de travar
 - **A game that breaks no longer freezes on screen.** An unexpected error inside any game used to stop its animation for good. The canvas froze, Pausar and Continuar did nothing, and only a page reload helped. Now the game is closed and the "Sinal perdido" card appears with "Tentar de novo", which loads it again from the title screen.
 - **Missing art or text is reported too.** If a game's drawings still fail to download after the two automatic retries, the same card appears instead of a game with blank boxes. If Férias Fora do Ar can't download its story text, the same card replaces a loading screen that used to spin forever.

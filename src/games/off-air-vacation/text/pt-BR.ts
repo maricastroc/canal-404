@@ -195,6 +195,8 @@ export const TEXT = {
     mission: "Missão",
     missionDone: "Missão cumprida",
     missionAnnounce: (text: string) => `Missão: ${text}`,
+    otherTab: "Aventura aberta em outra aba",
+    otherTabText: "O progresso daqui não está sendo salvo. Continue na outra aba ou recarregue esta.",
   },
   intro: {
     posters: "Pôsteres",

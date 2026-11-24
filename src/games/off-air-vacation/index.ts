@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import type { Locale } from "@/i18n/locales";
-import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, clearState, endingUnreported, freshState, loadState } from "./save";
+import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, clearState, endingUnreported, freshState, loadState, newAdventureId } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { WorldScene } from "./scenes/WorldScene";
@@ -56,7 +56,7 @@ function mount(ctx: GameHostContext): GameInstance {
   };
 
   const begin = () => {
-    game.registry.set("state", freshState());
+    game.registry.set("state", { ...freshState(), id: newAdventureId() });
     open({ mode: "play", area: "lobby", spawn: "start", intro: true });
   };
 
