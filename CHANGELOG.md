@@ -4,6 +4,21 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Faxina depois da auditoria
+- **Nothing changes for visitors.** This round removes code nobody could reach and brings the docs up to date.
+- **Removed:**
+  - the "turn your phone sideways" tip, which no game showed anymore because every game says how it is held;
+  - Ladeira Abaixo's dust and crate mode, which was always off;
+  - a second full judging of every Ao Vivo no 404 song, whose result nobody read;
+  - unused components and helpers.
+- **Férias Fora do Ar** drops unknown discoveries when it loads a save, as it already did with items and posters.
+- **Error reports.** A game that fails to download now counts toward the same limit of 8 error reports per page as other errors. Decision 0002 also lists the scoreboard event.
+- **Project housekeeping.**
+  - Tests on `main` are no longer cancelled when another merge lands.
+  - The scoreboard test checks the board's answer instead of the result's wording.
+  - `jiti` is declared as a dev dependency.
+  - The README describes the room's TV as it is now.
+
 ### Peças comuns dos jogos num lugar só
 - **Operação: Recreio on touchscreen laptops.** The touch buttons used to appear only on devices that report a touch screen as their main pointer, so a laptop with a touch screen had no way to play by touch. Now they appear at the first touch, as in Guerra do Pijama and Ladeira Abaixo.
 - **One key press counts once in every game.** Guerra de Lanche, Férias Fora do Ar and Operação: Recreio now have the guard that Rua Sem Saída, the Laboratório and Guerra do Pijama already had against the same key press being handled twice.

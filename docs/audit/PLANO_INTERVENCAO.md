@@ -12,8 +12,8 @@
 - Etapa 4 concluída em 2026-11-24: PR #139 (F06, F12 a F16).
 - Etapa 5 concluída em 2026-11-24: PR #140 (F09, F25).
 - Etapa 6 concluída em 2026-11-24: PR #141 (F18, F19, F20 parte 2); o PR 6.4 (decisão sobre o placar do Férias) aguarda decisão.
-- Etapa 7 (F13, F22, F23) na branch `refactor/game-kit`.
-- Próxima: Etapa 8.
+- Etapa 7 concluída em 2026-11-24: PR #142 (F13, F22, F23).
+- Etapa 8 (F24, F26) na branch `chore/cleanup`; o PR 8.4 (F27) fica para quando houver conteúdo novo de história.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -615,23 +615,43 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - `e2e/scoreboard.spec.ts:84`: trocar a regex de texto por asserções sobre a resposta da API (linha 82) e a presença da região.
   - **Aceitação:** um merge seguido de outro deixa as duas execuções de `main` completas, e o e2e passa.
   - **Esforço:** XS.
+  - **Como foi feito** (branch `chore/cleanup`, com 8.2 e 8.3, num PR só):
+    - `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}` em `tests.yml`;
+    - o primeiro envio em `scoreboard.spec.ts` confere na resposta da API a posição e a marca (1 peça); o segundo confere `improved: false` e a mesma marca, no lugar de "Seu melhor continua 1 peça · …";
+    - a frase de status depois do primeiro envio ficou, porque o teste espera por ela antes de refazer a fase;
+    - verificado: `scoreboard.spec.ts` e `mission.spec.ts` passam contra um banco de teste local. Que as duas execuções de `main` cheguem ao fim só dá para ver depois do merge.
 - **PR 8.2, código morto (F26):**
   - remover a lista verificada em AUDITORIA, seção D, F26;
   - remover o modo dust/kick da Ladeira, ou estreitar o tipo para `"off"`;
   - remover a segunda execução do juiz no Ao Vivo e a dica "gire o celular".
   - **Aceitação:** typecheck, lint, testes e e2e verdes.
   - **Esforço:** S.
+  - **Como foi feito:**
+    - saíram os 15 exports da lista (`Sticker`, `StarIcon`, `badgeSvg`, `StrangeHouseCover` e os textos dele, `FOLK_VIEWBOX`, `bumpCounter`, `setCounter`, `TOTAL_SECRETS`, `TOTAL_ACHIEVEMENTS`, `SECRET_IDS`, `otherLocale`, `physicsIsDeterministic`, `addTelemetrySink`, `resetTelemetryForTests` e `resetMissionForTests`) e o `TOTALS` do Férias; o campo `counters` do save ficou;
+    - a dica "gire o celular" saiu, e `orientation` passou a ser obrigatório no registro, para que nenhum jogo novo fique sem ela;
+    - Ladeira: o modo dust/kick saiu de `race.ts` (`RaceWorld` agora só avança os rivais), de `RaceScene`, do `cart.ts` e do `copy.ts`. `DownhillSim.interfere` e a estatística `interfered`, que só esse modo usava e que ninguém lia, também saíram. É uma chamada que nunca acontecia, então trajetórias e replays não mudam;
+    - Ao Vivo: `finish()` não roda mais o `replay` nem a comparação, e o `RunReport` ficou com `song`, `verdict` e `log`;
+    - Férias: `found` passa por `only(value.found, ALL_FOUND)`, com o tipo `FoundId` dos 14 ids da história, e o teste do save cobre um id desconhecido. Nenhum id saiu da história desde o começo, então ninguém perde descobertas;
+    - o `bestTime` do Pijama ficou: é um campo do save, e tirá-lo mexeria no formato sem nenhum ganho;
+    - verificado: typecheck, lint, 145 testes de unidade, 55 de banco e o e2e completo. A gaveta de menu do celular falhou uma vez no primeiro carregamento, como na Etapa 4, e passou três vezes seguidas sozinha;
+    - jogado num script headless: na Ladeira os rivais andam na corrida sem erros; no Ao Vivo, o fim da música e o corte pela plateia mostram o resultado.
 - **PR 8.3, documentação e dependências (F26):**
   - `README.md:132` sem "game of the week";
   - a 0002 lista `board_submit` e o teto de `game_load_error`, ou o código passa a respeitar o teto;
   - `jiti` em `devDependencies`, com `npm install --save-dev jiti` na versão já resolvida no lock.
   - **Esforço:** XS.
+  - **Como foi feito:**
+    - o README descreve a TV como ela é hoje (canais dos jogos, o desenho do mascote, o plantão da missão e a estante de fitas);
+    - a 0002 lista `board_submit` e o que ele carrega;
+    - o código passou a respeitar o teto: `reportLoadError` em `telemetry.ts` divide com `reportError` o limite de 8 erros distintos por página. Num teste, quatro falhas iguais de carregamento enviaram um evento só;
+    - `jiti@^2.7.0` em `devDependencies`, a versão que o lock já tinha.
 - **PR 8.4, opcional: `WorldScene.ts` do Férias (F27):**
   - levar os casos de `action()` para as áreas;
   - tipar `vars`.
   - Só quando houver conteúdo novo de história.
   - **Aceitação:** jogar a aventura inteira, do início ao fim, em pt-BR e em inglês.
   - **Esforço:** M–L.
+  - **Não feito:** fica para quando houver conteúdo novo de história, como o próprio item pede.
 
 ---
 
