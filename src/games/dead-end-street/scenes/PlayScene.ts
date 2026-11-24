@@ -56,6 +56,10 @@ const HIGH_CLOUDS: [string, number, number][] = [
   ["cloud-a", 260, -1400],
 ];
 
+function stepFrom(value: number, steps: number) {
+  return steps > 0 ? Math.floor(value + 1e-6) + steps : Math.ceil(value - 1e-6) + steps;
+}
+
 type Gesture =
   | { kind: "aim"; id: number; start: Vec; base: Vec; at: number; moved: boolean; saved: { angle: number; power: number } }
   | { kind: "pan"; id: number; start: Vec; last: Vec; at: number; moved: boolean }
@@ -134,6 +138,7 @@ export class PlayScene extends Phaser.Scene {
   private charged = false;
   private keys!: Record<"left" | "right" | "up" | "down" | "a" | "d" | "w" | "s", Phaser.Input.Keyboard.Key>;
   private holdSince = 0;
+  private heldAim = { angle: 0, power: 0 };
   private aimAnnounce?: Phaser.Time.TimerEvent;
   private bandSnap = 0;
   private playMs = 0;
@@ -618,19 +623,21 @@ export class PlayScene extends Phaser.Scene {
         return;
       }
       const map: Record<string, [number, number]> = {
-        arrowleft: [1.5, 0],
-        a: [1.5, 0],
-        arrowright: [-1.5, 0],
-        d: [-1.5, 0],
-        arrowup: [0, 0.025],
-        w: [0, 0.025],
-        arrowdown: [0, -0.025],
-        s: [0, -0.025],
+        arrowleft: [1, 0],
+        a: [1, 0],
+        arrowright: [-1, 0],
+        d: [-1, 0],
+        arrowup: [0, 1],
+        w: [0, 1],
+        arrowdown: [0, -1],
+        s: [0, -1],
       };
       const step = map[key];
       if (step && !event.repeat) {
+        const size = event.shiftKey ? 5 : 1;
         this.holdSince = this.time.now;
-        this.adjustAim(step[0], step[1]);
+        this.heldAim = { angle: 0, power: 0 };
+        this.nudgeAim(step[0] * size, step[1] * size);
       }
     }));
 
@@ -825,14 +832,8 @@ export class PlayScene extends Phaser.Scene {
 
   private stepAim(kind: "angle" | "power", dir: 1 | -1) {
     if (this.sim.phase !== "ready" || !this.readyImage || this.aiming) return;
-    if (kind === "angle") {
-      const next = dir > 0 ? Math.floor(this.aimAngle + 1e-6) + 1 : Math.ceil(this.aimAngle - 1e-6) - 1;
-      this.aimAngle = Phaser.Math.Clamp(next, ANGLE_MIN, ANGLE_MAX);
-    } else {
-      const pct = this.aimPower * 100;
-      const next = dir > 0 ? Math.floor(pct + 1e-6) + 1 : Math.ceil(pct - 1e-6) - 1;
-      this.aimPower = Phaser.Math.Clamp(next / 100, MIN_POWER, 1);
-    }
+    if (kind === "angle") this.aimAngle = Phaser.Math.Clamp(stepFrom(this.aimAngle, dir), ANGLE_MIN, ANGLE_MAX);
+    else this.aimPower = Phaser.Math.Clamp(stepFrom(this.aimPower * 100, dir) / 100, MIN_POWER, 1);
     this.aimTouched = true;
     this.sfx("stretch", 0.3, 50);
     this.checkCharge();
@@ -1099,9 +1100,9 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private adjustAim(dAngle: number, dPower: number) {
-    this.aimAngle = Phaser.Math.Clamp(this.aimAngle + dAngle, ANGLE_MIN, ANGLE_MAX);
-    this.aimPower = Phaser.Math.Clamp(this.aimPower + dPower, MIN_POWER, 1);
+  private nudgeAim(angleSteps: number, powerSteps: number) {
+    if (angleSteps) this.aimAngle = Phaser.Math.Clamp(stepFrom(this.aimAngle, angleSteps), ANGLE_MIN, ANGLE_MAX);
+    if (powerSteps) this.aimPower = Phaser.Math.Clamp(stepFrom(this.aimPower * 100, powerSteps) / 100, MIN_POWER, 1);
     this.aimTouched = true;
     this.checkCharge();
     this.scheduleAimAnnounce();
@@ -1126,9 +1127,9 @@ export class PlayScene extends Phaser.Scene {
     let angle = Phaser.Math.RadToDeg(Math.atan2(dy, -dx));
     if (angle > 135) angle = ANGLE_MAX;
     else if (angle < -135) angle = ANGLE_MIN;
-    this.aimAngle = Phaser.Math.Clamp(angle, ANGLE_MIN, ANGLE_MAX);
+    this.aimAngle = Phaser.Math.Clamp(Math.round(angle), ANGLE_MIN, ANGLE_MAX);
     const before = this.aimPower;
-    this.aimPower = len / MAX_PULL;
+    this.aimPower = Math.round((len / MAX_PULL) * 100) / 100;
     if (Math.floor(before * 6) !== Math.floor(this.aimPower * 6)) this.sfx("stretch", 0.25 + this.aimPower * 0.4, 60);
     this.checkCharge();
   }
@@ -1712,8 +1713,19 @@ export class PlayScene extends Phaser.Scene {
     let dPower = 0;
     if (k.left.isDown || k.a.isDown) dAngle += 40 * rate;
     if (k.right.isDown || k.d.isDown) dAngle -= 40 * rate;
-    if (k.up.isDown || k.w.isDown) dPower += 0.5 * rate;
-    if (k.down.isDown || k.s.isDown) dPower -= 0.5 * rate;
-    if (dAngle || dPower) this.adjustAim(dAngle, dPower);
+    if (k.up.isDown || k.w.isDown) dPower += 50 * rate;
+    if (k.down.isDown || k.s.isDown) dPower -= 50 * rate;
+    if (!dAngle && !dPower) {
+      this.heldAim = { angle: 0, power: 0 };
+      return;
+    }
+    const held = this.heldAim;
+    held.angle += dAngle;
+    held.power += dPower;
+    const angleSteps = Math.trunc(held.angle);
+    const powerSteps = Math.trunc(held.power);
+    held.angle -= angleSteps;
+    held.power -= powerSteps;
+    if (angleSteps || powerSteps) this.nudgeAim(angleSteps, powerSteps);
   }
 }
