@@ -82,6 +82,10 @@ export const SCORE = {
   threeStars: 11500,
 };
 
+export const CATCH = { from: 0.68, radius: 100, whiffMs: 400 };
+
+export const IMPACT = { interrupt: 70, big: 80, catch: 60 };
+
 export const FOOD_BAG = ["sandwich", "sandwich", "apple", "grapes", "banana"] as const;
 
 export const FOOD_EFFECTS = { slipMs: 1200, splashMs: 900, recoverMs: [150, 350] as [number, number] };
