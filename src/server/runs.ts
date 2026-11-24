@@ -80,8 +80,14 @@ async function existing(db: Db, ticket: Ticket, player: Player) {
   return outcomeOf(db, run, true);
 }
 
+function paused(retryAfter: number) {
+  return new HttpError("rate_limited", "O placar pausou seus envios por um tempo. Volte daqui a pouco.", { retryAfter }, { "Retry-After": String(retryAfter) });
+}
+
 async function recordRejection(db: Db, input: SubmitInput, reason: string): Promise<never> {
   const { ticket, player, claim, now } = input;
+  const counted = await consume(db, LIMITS.rejected, player.id, now);
+  if (!counted.ok) throw paused(counted.retryAfter);
   try {
     await db.run.create({
       data: {
@@ -110,7 +116,6 @@ async function recordRejection(db: Db, input: SubmitInput, reason: string): Prom
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
   }
-  await consume(db, LIMITS.rejected, player.id, now);
   throw new HttpError("rejected", REJECTION_TEXT[reason] ?? REJECTION_TEXT.inconsistent, { reason });
 }
 
@@ -119,9 +124,7 @@ export async function submitRun(db: Db, input: SubmitInput): Promise<SubmitOutco
   if (ticket.playerId && ticket.playerId !== player.id) throw new HttpError("wrong_player", "Esse ingresso é de outra pessoa.");
   const repeated = await existing(db, ticket, player);
   if (repeated) return repeated;
-  if ((await peek(db, LIMITS.rejected, player.id, now)) >= LIMITS.rejected.max) {
-    throw new HttpError("rate_limited", "O placar pausou seus envios por um tempo. Volte daqui a pouco.", { retryAfter: 3600 }, { "Retry-After": "3600" });
-  }
+  if ((await peek(db, LIMITS.rejected, player.id, now)) >= LIMITS.rejected.max) throw paused(3600);
   const verdict = judgeRun(ticket.game, ticket.level, claim);
   if (!verdict.ok) return recordRejection(db, input, verdict.reason);
   const elapsed = now.getTime() - ticket.issuedAt;

@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export const GET = competitionRoute(async ({ request, db, now }) => {
   const player = await currentPlayer(db, request, now);
   if (!player) throw new HttpError("not_joined", "Você ainda não entrou no placar.");
+  await enforce(db, LIMITS.cloudCopyRead, player.id, now);
   const save = await db.playerSave.findUnique({ where: { playerId: player.id } });
   return json({ copy: cloudCopyView(save) });
 });

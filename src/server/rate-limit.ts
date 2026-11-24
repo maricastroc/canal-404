@@ -17,6 +17,7 @@ export const LIMITS = {
   recover: { name: "recover", max: 20, windowMs: 60 * 60 * 1000 },
   recoverDaily: { name: "recover-day", max: 60, windowMs: 24 * 60 * 60 * 1000 },
   cloudCopy: { name: "cloud-copy", max: 120, windowMs: 60 * 60 * 1000 },
+  cloudCopyRead: { name: "cloud-copy-read", max: 120, windowMs: 60 * 60 * 1000 },
 } satisfies Record<string, Limit>;
 
 export async function consume(db: Db, limit: Limit, subject: string, now = new Date()) {

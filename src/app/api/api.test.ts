@@ -1,6 +1,6 @@
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
 import { attemptBonus } from "@/games/bad-ideas-lab/levels";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CloudCopy } from "@/lib/competition/recovery";
 import type { ApiErrorBody, LeaderboardResponse, PublicPlayer } from "@/lib/competition/types";
 import { closeDb, type Db } from "@/server/db";
@@ -59,12 +59,15 @@ describe("when the database is down", () => {
   });
 
   it("answers offline and 503 without leaking errors", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     await closeDb();
     process.env.DATABASE_URL = "postgresql://nobody:nothing@127.0.0.1:1/none";
     expect(await body(await status())).toEqual({ status: "offline" });
     const response = await ticket(apiRequest("/api/runs/tickets", { method: "POST", body: { game: "dead-end-street", level: "warm-up" } }));
     expect(response.status).toBe(503);
     expect(await body(response)).toEqual({ error: { code: "unavailable", message: expect.any(String) } });
+    expect(warn).toHaveBeenCalledWith("scoreboard database unavailable", expect.any(String));
+    expect(warn.mock.calls.flat().join(" ")).not.toContain("postgresql://");
   });
 });
 
@@ -126,6 +129,14 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect(statuses[LIMITS.join.max]).toBe(429);
     const other = await joinAs("Pato Outro", "198.51.100.5");
     expect(other.response.status).toBe(201);
+  });
+
+  it("counts one IPv6 network as one address", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i <= LIMITS.join.max; i += 1) statuses.push((await joinAs(`Pato ${String.fromCharCode(97 + (i % 26))}${i}`, `2001:db8:7:42:${(i + 1).toString(16)}::1`)).response.status);
+    expect(statuses.slice(0, LIMITS.join.max).every((s) => s === 201)).toBe(true);
+    expect(statuses[LIMITS.join.max]).toBe(429);
+    expect((await joinAs("Pato Vizinho", "2001:db8:7:43::1")).response.status).toBe(201);
   });
 
   it("renames and deletes the player", async () => {
@@ -306,6 +317,14 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect((await guess("0000-0000-0000-0000")).status).toBe(429);
     expect((await guess("0000-0000-0000-0000", "198.51.100.22")).status).toBe(404);
     expect((await recoveryPost(apiRequest("/api/players/me/recovery", { method: "POST", body: {} }))).status).toBe(401);
+  });
+
+  it("limits how often one player reads the copy of the progress", async () => {
+    const { cookie } = await joinAs("Pato Leitor", "203.0.113.40");
+    const statuses: number[] = [];
+    for (let i = 0; i <= LIMITS.cloudCopyRead.max; i += 1) statuses.push((await copyGet(apiRequest("/api/players/me/copy", { cookie }))).status);
+    expect(statuses.slice(0, LIMITS.cloudCopyRead.max).every((s) => s === 200)).toBe(true);
+    expect(statuses[LIMITS.cloudCopyRead.max]).toBe(429);
   });
 
   it("keeps the copy of the progress private, refuses the device's own keys and erases it with the player", async () => {

@@ -101,6 +101,22 @@ export function clientAddress(request: Request) {
   return first || request.headers.get("x-real-ip")?.trim() || "local";
 }
 
+const HEXTET = /^[0-9a-f]{1,4}$/i;
+
+export function networkOf(address: string) {
+  const ip = address.replace(/^\[|\]$/g, "").split("%")[0].toLowerCase();
+  if (!ip.includes(":")) return ip;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(ip);
+  if (mapped) return mapped[1];
+  const halves = ip.split("::");
+  if (halves.length > 2) return ip;
+  const left = halves[0] ? halves[0].split(":") : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const groups = halves.length === 2 ? [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right] : left;
+  if (groups.length !== 8 || !groups.every((g) => HEXTET.test(g))) return ip;
+  return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(":")}::/64`;
+}
+
 export function addressKey(request: Request, secret: string) {
-  return createHmac("sha256", secret).update(`address:${clientAddress(request)}`).digest("hex").slice(0, 32);
+  return createHmac("sha256", secret).update(`address:${networkOf(clientAddress(request))}`).digest("hex").slice(0, 32);
 }
