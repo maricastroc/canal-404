@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Placar mais difícil de abusar e mais fácil de acompanhar
+- **One home network, one limit.** Limits per address now treat every address of one home IPv6 network (a /64) as one, as they already did for families and schools behind one IPv4 address. Before, a single connection could get a fresh limit for each of its addresses.
+- **The pause after rejected results holds under bursts.** Eight rejected results in an hour pause a player's submissions. Results sent all at once could all slip in before the pause; now the ninth is refused as soon as it arrives.
+- **Reading the copy of the progress has a limit too**, like saving it (120 per hour per player). Visitors read it only when Extras checks for a copy, so nobody should notice.
+- **Database outages show up in the logs** as one line with the error code, without addresses or details.
+- Scores, boards and saved data are unchanged.
+
 ### Teclado, rolagem e celular mais previsíveis no portal
 - **The game stays out of the way of its cards.** With the title, pause, result or error card open, Tab and Shift+Tab move between the card and the header (Voltar, Som), never into the game hidden behind the card, and the game returns to focus when play continues. Screen readers can still reach Voltar from the title card.
 - **Mission visitors start in the right place.** Coming from a mission link while the mission was still loading, "Começar missão" appeared without focus. It now gets focus as soon as it shows.

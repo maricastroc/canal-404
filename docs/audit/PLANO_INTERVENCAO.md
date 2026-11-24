@@ -10,8 +10,9 @@
 - Etapa 2 concluída em 2026-11-24: PR #137 (F08, F11, F20 parte 1).
 - Etapa 3 concluída em 2026-11-24: PR #138 (F05, F17).
 - Etapa 4 concluída em 2026-11-24: PR #139 (F06, F12 a F16).
-- Etapa 5 (F09, F25) na branch `fix/portal-a11y`.
-- Próxima: Etapa 6.
+- Etapa 5 concluída em 2026-11-24: PR #140 (F09, F25).
+- Etapa 6 (F18, F19, F20 parte 2) na branch `fix/server-limits`; o PR 6.4 (decisão sobre o placar do Férias) aguarda decisão.
+- Próxima: Etapa 7.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -495,6 +496,12 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
 - **Mudança:** nos erros classificados como indisponíveis, registrar uma linha com só o código (`P2028`, `ECONNRESET`, …), sem mensagem nem dados.
 - **Critérios de aceitação:** o teste "when the database is down" (`api.test.ts`) continua sem vazar detalhes na resposta, e o log mostra o código.
 - **Esforço:** XS.
+- **Como foi feito** (branch `fix/server-limits`, com 6.2 e 6.3):
+  - `failureCode()` em `src/server/db.ts` percorre o erro e as causas atrás de um `code` curto;
+  - `route.ts` registra `console.warn("scoreboard database unavailable", code)`;
+  - o teste "when the database is down" confere o aviso e que a URL não aparece.
+  - o teste mostrou que, com o adapter `pg` do Prisma 7, uma queda vista numa consulta crua chega como `P2010` com `meta.driverAdapterError.cause.kind = "DatabaseNotReachable"`;
+  - `isUnavailable` não reconhecia esse formato, e essas quedas iam para `console.error` como erro inesperado; agora são reconhecidas pelo `kind` e registradas como `P2010:DatabaseNotReachable`.
 
 ### PR 6.2: Limites que resistem a IPv6 e a envios em paralelo (F19)
 
@@ -508,6 +515,10 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - 25 envios forjados em paralelo param em 8.
 - **Critérios de aceitação:** `npm run test:db` verde.
 - **Esforço:** S.
+- **Como foi feito:**
+  - `networkOf()` em `http.ts` reduz IPv6 ao prefixo /64, trata IPv4 mapeado como IPv4 e deixa o resto como está, e `addressKey` usa esse valor;
+  - `recordRejection` conta a rejeição antes de gravar e responde com a pausa (429) a partir da nona;
+  - os testes novos ficam em `api.test.ts` (rede IPv6) e `runs.test.ts` (20 rejeições em paralelo gravam 8).
 
 ### PR 6.3: Cópia na nuvem com limites de leitura (F20, parte 2)
 
@@ -517,6 +528,10 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - opcionalmente, exigir que cada valor seja JSON válido. Atenção: hoje existem flags em texto puro, como `"0"`/`"1"` do Ao Vivo, que são JSON válido, mas confira cada chave do inventário.
 - **Critérios de aceitação:** o teste da cópia em `api.test.ts` continua verde, e 300 GETs seguidos são limitados.
 - **Esforço:** S.
+- **Como foi feito:**
+  - `LIMITS.cloudCopyRead` (120 por hora por jogador) no GET;
+  - a validação de JSON nos valores ficou de fora, para não recusar uma cópia inteira por uma chave nova;
+  - o teste novo fica em `api.test.ts`.
 
 ### PR 6.4: Decisão sobre o placar do Férias (F21)
 

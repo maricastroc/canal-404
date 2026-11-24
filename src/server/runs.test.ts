@@ -168,6 +168,16 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     expect(await rejectionOf(submitRun(db, { player, ticket, claim: good, now: new Date(START + 90_000) }))).toMatchObject({ code: "rate_limited" });
   });
 
+  it("keeps the pause when many rejected results arrive at once", async () => {
+    const { player } = await makePlayer(db);
+    const bad = { ...claimWith(2), score: 1 };
+    const sent = Array.from({ length: 20 }, (_, i) => rejectionOf(submitRun(db, { player, ticket: ticketFor("food-fight", null, player.id, START + i).ticket, claim: bad, now: new Date(START + 90_000) })));
+    const codes = (await Promise.all(sent)).map((r) => r.code);
+    expect(codes.filter((c) => c === "rejected")).toHaveLength(LIMITS.rejected.max);
+    expect(codes.filter((c) => c === "rate_limited")).toHaveLength(20 - LIMITS.rejected.max);
+    expect(await db.run.count({ where: { playerId: player.id, verification: "rejected" } })).toBe(LIMITS.rejected.max);
+  });
+
   it("erases everything about a player when they leave", async () => {
     const { player } = await makePlayer(db);
     await submitLunch(player.id, 2, START, player);
