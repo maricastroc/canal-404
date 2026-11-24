@@ -31,7 +31,7 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
     "404": {
       name: "404",
       role: "O mascote",
-      bio: "Tudo começou quando um técnico colou dois olhos numa TV quebrada para animar uma reunião. A ideia funcionou bem demais. Hoje ele apresenta a programação, vive perdendo o controle remoto e garante que perdido ele não está.",
+      bio: "Tudo começou quando um técnico colou dois olhos numa TV quebrada para animar uma reunião. A ideia funcionou até demais. Hoje, o 404 apresenta a programação, vive perdendo o controle remoto e insiste que está tudo sob controle.",
       likes: "Chiado de fundo, plateia, fitas VHS",
       dislikes: "Ímãs. Muitos ímãs juntos, pior ainda.",
       catchphrase: "Não estou perdido. Estou explorando!",
@@ -40,7 +40,7 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
     lina: {
       name: "Lina",
       role: "A inventora",
-      bio: "Usa óculos de proteção na testa desde os seis anos e tem uma caixa de ferramentas maior que ela. Montou a engenhoca da Rua Sem Saída usando peças de três bicicletas e uma geladeira.",
+      bio: "Usa óculos de proteção na testa desde os seis anos e tem uma caixa de ferramentas maior que ela. Construiu a engenhoca da Rua Sem Saída com peças de três bicicletas e uma geladeira.",
       likes: "Fita adesiva, parafusos tortos, planos B",
       dislikes: "Manuais de instruções",
       catchphrase: "Isso não é um defeito, é um recurso!",
@@ -48,12 +48,12 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
     },
     bruno: {
       name: "Bruno",
-      role: "O plano",
-      bio: "Tem um caderno para tudo. Até para organizar os outros cadernos. Calcula trajetórias, prevê desastres e tenta avisar o Déco. Quase nunca adianta. A linha pontilhada da Rua Sem Saída? É o plano dele.",
+      role: "O estrategista",
+      bio: "Tem um caderno para tudo. Até para organizar os outros cadernos. Calcula trajetórias, prevê desastres e tenta impedir as ideias do Déco. Quase nunca consegue. A linha pontilhada da Rua Sem Saída? Foi ele quem desenhou.",
       likes: "Mapas, canetas de quatro cores, previsões corretas",
       dislikes: "Improviso",
       catchphrase: "Segundo meus cálculos... ah, deixa pra lá.",
-      fact: "Calculou a velocidade exata de um tênis voando. Conclusão: depende de quem chuta.",
+      fact: "Calculou a velocidade exata de um tênis voando. Resultado: depende de quem chutou.",
     },
     deco: {
       name: "Déco",
@@ -61,7 +61,7 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
       bio: "Primeiro age, depois pensa — e às vezes pula a segunda parte. Tem um curativo novo por semana e uma ideia genial por minuto. É ele quem puxa o elástico da engenhoca.",
       likes: "Coisas que explodem (de mentirinha), corrida, pudim",
       dislikes: "Esperar a contagem regressiva",
-      catchphrase: "Vai dar certo! ...Provavelmente!",
+      catchphrase: "Vai dar certo! ...Provavelmente.",
       fact: "Já foi lançado pela própria engenhoca. Duas vezes.",
     },
     mila: {
@@ -78,7 +78,7 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
     "404": {
       name: "404",
       role: "The mascot",
-      bio: "It all started when a technician stuck two eyes on a broken TV to liven up a meeting. The idea worked a little too well. Now he hosts the lineup, keeps losing the remote and swears he is not lost.",
+      bio: "It all started when a technician stuck two eyes on a broken TV to liven up a meeting. The idea worked a little too well. Now 404 hosts the lineup, keeps losing the remote and insists everything is under control.",
       likes: "Background static, a live audience, VHS tapes",
       dislikes: "Magnets. Lots of magnets together, even worse.",
       catchphrase: "I'm not lost. I'm exploring!",
@@ -95,12 +95,12 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
     },
     bruno: {
       name: "Bruno",
-      role: "The plan",
-      bio: "He has a notebook for everything. Even one to keep the other notebooks organized. He calculates trajectories, predicts disasters and tries to warn Déco. It almost never works. The dotted line in Dead End Street? That's his plan.",
+      role: "The strategist",
+      bio: "He has a notebook for everything. Even one to keep the other notebooks organized. He calculates trajectories, predicts disasters and tries to stop Déco's ideas. He almost never manages. The dotted line in Dead End Street? He drew it.",
       likes: "Maps, four-color pens, correct predictions",
       dislikes: "Winging it",
       catchphrase: "According to my calculations... oh, never mind.",
-      fact: "He worked out the exact speed of a flying sneaker. Conclusion: it depends on who kicks it.",
+      fact: "He worked out the exact speed of a flying sneaker. Result: it depends on who kicked it.",
     },
     deco: {
       name: "Déco",
@@ -108,7 +108,7 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
       bio: "He acts first and thinks later — and sometimes skips the second part. He gets a new bandage every week and a brilliant idea every minute. He's the one who pulls the contraption's rubber band.",
       likes: "Things that explode (pretend ones), racing, pudding",
       dislikes: "Waiting for the countdown",
-      catchphrase: "It'll work! ...Probably!",
+      catchphrase: "It'll work! ...Probably.",
       fact: "He's been launched by his own contraption. Twice.",
     },
     mila: {
