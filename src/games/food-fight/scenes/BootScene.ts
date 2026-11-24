@@ -35,6 +35,7 @@ const ASSETS: [key: string, file: string, width: number, height: number][] = [
   ["apple", "apple.svg", 54, 60],
   ["grapes", "grapes.svg", 60, 64],
   ["banana", "banana.svg", 80, 48],
+  ["banana-peel", "banana-peel.svg", 96, 52],
   ["splat-pudding", "splat-pudding.svg", 180, 130],
   ["splat-food", "splat-food.svg", 170, 120],
   ["splat-screen", "splat-screen.svg", 420, 300],
