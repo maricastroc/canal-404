@@ -58,7 +58,7 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
     deco: {
       name: "Déco",
       role: "O impulsivo",
-      bio: "Primeiro age, depois pensa — e às vezes pula a segunda parte. Tem um curativo novo por semana e uma ideia genial por minuto. É ele quem puxa o elástico da engenhoca.",
+      bio: "Primeiro age, depois pensa. E às vezes pula a segunda parte. Tem um curativo novo por semana e uma ideia genial por minuto. É ele quem puxa o elástico da engenhoca.",
       likes: "Coisas que explodem (de mentirinha), corrida, pudim",
       dislikes: "Esperar a contagem regressiva",
       catchphrase: "Vai dar certo! ...Provavelmente.",
@@ -105,7 +105,7 @@ const TEXT: Localized<Record<CharacterId, CharacterText>> = {
     deco: {
       name: "Déco",
       role: "The impulsive one",
-      bio: "He acts first and thinks later — and sometimes skips the second part. He gets a new bandage every week and a brilliant idea every minute. He's the one who pulls the contraption's rubber band.",
+      bio: "He acts first and thinks later. And sometimes he skips the second part. He gets a new bandage every week and a brilliant idea every minute. He's the one who pulls the contraption's rubber band.",
       likes: "Things that explode (pretend ones), racing, pudding",
       dislikes: "Waiting for the countdown",
       catchphrase: "It'll work! ...Probably.",
