@@ -48,6 +48,7 @@ function mount(ctx: GameHostContext): GameInstance {
   let pendingWin: number | null = null;
   let game: Phaser.Game | null = null;
   let frame = measure(ctx.parent);
+  let carried: Carry | null = null;
 
   const scene = () => (game && (game.scene.isActive("night") || game.scene.isPaused("night")) ? (game.scene.getScene("night") as NightScene) : null);
 
@@ -80,6 +81,7 @@ function mount(ctx: GameHostContext): GameInstance {
       },
       onError: (error) => ctx.onError(error),
       onReady: () => {
+        carried = null;
         if (paused) window.setTimeout(holdScenes, 0);
         if (ready) return;
         ready = true;
@@ -160,7 +162,8 @@ function mount(ctx: GameHostContext): GameInstance {
         game.scale.refresh();
         return;
       }
-      const carry = night?.carry() ?? null;
+      const carry = night?.carry() ?? carried;
+      carried = carry;
       frame = next;
       game.destroy(true);
       boot(carry);
