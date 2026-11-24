@@ -26,7 +26,7 @@ import type { MissionView } from "@/lib/missions/types";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/progress/definitions";
 import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { getGameRecord, recordGameResult, recordGameStart, recordLevelResult, unlockAchievement } from "@/lib/progress/store";
-import { errorMessage, isStaleChunkError, track } from "@/lib/telemetry";
+import { isStaleChunkError, reportLoadError, track } from "@/lib/telemetry";
 import { computeLevelProgress } from "./levelProgress";
 import { LoadingScreen, pickTip } from "./LoadingScreen";
 import { useAnnouncer } from "./useAnnouncer";
@@ -288,7 +288,7 @@ export function GameShell({ slug }: { slug: string }) {
       } catch {}
       hostRef.current?.replaceChildren();
       loadErrorRef.current = error;
-      if (loading) track({ name: "game_load_error", game: slug, message: errorMessage(error) });
+      if (loading) reportLoadError(slug, error);
       setStage("error");
       setShowLoader(false);
     };
@@ -432,7 +432,7 @@ export function GameShell({ slug }: { slug: string }) {
         window.clearInterval(creep);
         console.error(error);
         loadErrorRef.current = error;
-        track({ name: "game_load_error", game: slug, message: errorMessage(error) });
+        reportLoadError(slug, error);
         if (!cancelled) {
           setStage("error");
           setShowLoader(false);

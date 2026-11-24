@@ -44,12 +44,20 @@ export function errorMessage(error: unknown) {
   return "Erro desconhecido";
 }
 
+function firstReport(key: string) {
+  if (reported.has(key) || reported.size >= MAX_ERRORS) return false;
+  reported.add(key);
+  return true;
+}
+
 export function reportError(source: string, error: unknown) {
   const message = errorMessage(error).slice(0, MAX_TEXT);
-  const key = `${source}|${message}`;
-  if (reported.has(key) || reported.size >= MAX_ERRORS) return;
-  reported.add(key);
-  track({ name: "client_error", source, message });
+  if (firstReport(`${source}|${message}`)) track({ name: "client_error", source, message });
+}
+
+export function reportLoadError(game: string, error: unknown) {
+  const message = errorMessage(error).slice(0, MAX_TEXT);
+  if (firstReport(`load:${game}|${message}`)) track({ name: "game_load_error", game, message });
 }
 
 export function isStaleChunkError(error: unknown) {
