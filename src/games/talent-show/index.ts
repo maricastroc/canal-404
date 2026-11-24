@@ -163,7 +163,7 @@ function mount(ctx: GameHostContext): GameInstance {
   ctx.parent.addEventListener("pointerup", up);
   ctx.parent.addEventListener("pointercancel", up);
   target.addEventListener("keydown", keydown);
-  target.addEventListener("keyup", keyup);
+  window.addEventListener("keyup", keyup);
 
   const reshape = () => {
     if (!game) return false;
@@ -218,7 +218,7 @@ function mount(ctx: GameHostContext): GameInstance {
       ctx.parent.removeEventListener("pointerup", up);
       ctx.parent.removeEventListener("pointercancel", up);
       target.removeEventListener("keydown", keydown);
-      target.removeEventListener("keyup", keyup);
+      window.removeEventListener("keyup", keyup);
       observer.disconnect();
       scene()?.quit();
       game?.destroy(true);

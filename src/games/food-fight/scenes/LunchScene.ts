@@ -272,9 +272,11 @@ export class LunchScene extends Phaser.Scene {
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this));
     this.onResize();
-    this.events.on(Phaser.Scenes.Events.RESUME, () => {
+    const releaseDuck = () => {
       this.duckPointer = null;
-    });
+    };
+    this.events.on(Phaser.Scenes.Events.RESUME, releaseDuck);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.RESUME, releaseDuck));
 
     if (!this.registry.get("readySent")) {
       this.registry.set("readySent", true);

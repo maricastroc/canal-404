@@ -8,8 +8,9 @@
 - Etapa 0 concluída em 2026-11-24: PRs #132 (F01), #133 (F02) e #134 (F04), já no `main`.
 - Etapa 1 concluída em 2026-11-24: PR #136 (F03, F07, F10).
 - Etapa 2 concluída em 2026-11-24: PR #137 (F08, F11, F20 parte 1).
-- Etapa 3 (F05, F17) na branch `fix/multi-tab-saves`.
-- Próxima: Etapa 4.
+- Etapa 3 concluída em 2026-11-24: PR #138 (F05, F17).
+- Etapa 4 (F06, F12, F13, F14, F15, F16) na branch `fix/game-lifecycle`.
+- Próxima: Etapa 5.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -355,6 +356,9 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - no resultado de um nocaute, "Voltar ao sino" continua funcionando;
   - em missão nada muda.
 - **Esforço:** S.
+- **Como foi feito** (branch `fix/game-lifecycle`, com os PRs 4.2 a 4.5):
+  - `restart()` volta ao sino só quando a cena está em nocaute (`knockedOut`, ou seja, a tela de resultado); no meio da partida, limpa o checkpoint e recomeça;
+  - no Chrome, tocar o sino do corredor e apertar "Recomeçar partida" recomeça a fase com esta mudança e voltava ao sino no `main`.
 
 ### PR 4.2: Ao Vivo, pausa silenciosa e nota longa preservada (F12)
 
@@ -371,6 +375,11 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - segurar uma nota longa, pausar e continuar segurando, e ela conta como segurada.
 - **Esforço:** S.
 - **Depende de:** PR 0.2 (mesmos arquivos).
+- **Como foi feito:**
+  - `dispose()` também zera o ganho do `sfx`;
+  - a pausa não solta mais as notas seguradas, e uma soltura durante a pausa ou a contagem de volta fecha a nota no ponto da pausa (`releaseAtPause`);
+  - o `keyup` passou a ser ouvido em `window`, porque o painel de pausa tira o foco do palco;
+  - não foi testado com áudio real no navegador; a verificação foi o smoke e2e e a leitura do código.
 
 ### PR 4.3: Rua Sem Saída, mira e teclado (F13, F14, F16)
 
@@ -384,6 +393,7 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - Q, Tab e as setas agem uma vez por toque;
   - depois de 5 reinícios, o número de listeners de pausa da cena é 1.
 - **Esforço:** S.
+- **Como foi feito:** a proteção `handledKeys`, igual à do Laboratório; `dock.stopHold()` na pausa e na retomada; os listeners de `PAUSE`/`RESUME` saem no `SHUTDOWN`.
 
 ### PR 4.4: Madrugada, resize duplo não perde a parte (F15)
 
@@ -391,6 +401,7 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
 - **Mudança:** guardar o último `carry` (jogadas e dicas) e o nível pendente na closure, e usá-los quando `scene()` for nulo.
 - **Critérios de aceitação:** dois redimensionamentos seguidos no meio de uma parte mantêm as jogadas e a contagem de dicas. Verificar no Safari do iOS, girando o aparelho, ou com dois `resize` seguidos no DevTools.
 - **Esforço:** S.
+- **Como foi feito:** `carried` guarda o último `carry` até o `onReady` do jogo reconstruído.
 
 ### PR 4.5: Pequenos ajustes de ciclo de vida (F16)
 
@@ -399,6 +410,7 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - `downhill-derby/scenes/GarageScene.ts:102`: `once` em vez de `on`.
 - **Critérios de aceitação:** o número de listeners fica constante entre reinícios.
 - **Esforço:** XS.
+- **Como foi feito:** o `RESUME` do Lanche sai no `SHUTDOWN`; o `SHUTDOWN` da garagem usa `once`.
 
 **Resultado esperado da etapa:** os botões e a pausa fazem o que dizem em todos os jogos.
 

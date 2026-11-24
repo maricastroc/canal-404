@@ -104,6 +104,7 @@ export class PlayScene extends Phaser.Scene {
   private lina!: Phaser.GameObjects.Image;
   private hud!: StreetHud;
   private dock: DockHud | null = null;
+  private handledKeys = new WeakSet<KeyboardEvent>();
   private frame: Frame = FULL_FRAME;
   private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
   private slingCam: Phaser.Cameras.Scene2D.Camera | null = null;
@@ -594,6 +595,8 @@ export class PlayScene extends Phaser.Scene {
     }) as typeof this.keys;
     kb.addCapture([Phaser.Input.Keyboard.KeyCodes.SPACE]);
     kb.on("keydown", (event: KeyboardEvent) => {
+      if (this.handledKeys.has(event)) return;
+      this.handledKeys.add(event);
       const key = event.key.toLowerCase();
       if (key === "escape" || key === "p") {
         this.ctx.onEvent({ type: "pause-request" });
@@ -671,8 +674,16 @@ export class PlayScene extends Phaser.Scene {
     };
     this.input.on("pointerup", release);
     this.input.on("pointerupoutside", release);
-    this.events.on(Phaser.Scenes.Events.PAUSE, () => this.endGesture());
-    this.events.on(Phaser.Scenes.Events.RESUME, () => this.endGesture());
+    const settle = () => {
+      this.endGesture();
+      this.dock?.stopHold();
+    };
+    this.events.on(Phaser.Scenes.Events.PAUSE, settle);
+    this.events.on(Phaser.Scenes.Events.RESUME, settle);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.PAUSE, settle);
+      this.events.off(Phaser.Scenes.Events.RESUME, settle);
+    });
   }
 
   private touchDown(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) {

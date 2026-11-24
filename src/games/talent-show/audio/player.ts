@@ -160,6 +160,11 @@ export class SongPlayer {
 
   dispose() {
     this.stop(0.05);
+    const { ctx } = this.stage;
+    const gain = this.sfx.gain;
+    gain.cancelScheduledValues(ctx.currentTime);
+    gain.setValueAtTime(gain.value, ctx.currentTime);
+    gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
     window.setTimeout(() => this.sfx.disconnect(), 3000);
   }
 }
