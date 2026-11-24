@@ -78,6 +78,7 @@ function mount(ctx: GameHostContext): GameInstance {
       onLoad: (value) => {
         if (!ready) ctx.onProgress(value, "art");
       },
+      onError: (error) => ctx.onError(error),
       onReady: () => {
         if (paused) window.setTimeout(holdScenes, 0);
         if (ready) return;

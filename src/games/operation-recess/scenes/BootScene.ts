@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowBigUp, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Flag, Heart, Sword, TriangleAlert, Waves } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { reportFailedLoads } from "../../kit/load";
 import { HERO_TEX } from "../config";
 
 const BASE = "/assets/operation-recess/";
@@ -161,6 +162,7 @@ export class BootScene extends Phaser.Scene {
       { key: "mark-alert", icon: TriangleAlert, size: 88, color: "#1d1830", strokeWidth: 2.6 },
       { key: "mark-shot", icon: Waves, size: 88, color: "#1d1830", strokeWidth: 2.6 },
     ]);
+    reportFailedLoads(this, ctx.onError);
   }
 
   create() {

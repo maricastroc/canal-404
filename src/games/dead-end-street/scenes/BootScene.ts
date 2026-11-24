@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { Angle, ArrowBigDown, ArrowLeftRight, Check, ChevronDown, ChevronUp, Droplet, Maximize2, Minimize2, Minus, Plus, Send, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero, Star } from "lucide";
 import { loadIcons, type IconSpec } from "@/games/kit/icons";
+import { reportFailedLoads } from "@/games/kit/load";
 import type { GameHostContext } from "@/games/types";
 
 const BASE = "/assets/dead-end-street/";
@@ -103,6 +104,7 @@ export class BootScene extends Phaser.Scene {
       this.load.svg(key, BASE + file, { width, height });
     }
     loadIcons(this, ICONS);
+    reportFailedLoads(this, ctx.onError);
   }
 
   create() {

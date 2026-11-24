@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { reportFailedLoads } from "../../kit/load";
 import { ICON_SPECS } from "../icons";
 
 const BASE = "/assets/bad-ideas-lab/";
@@ -48,6 +49,7 @@ export class BootScene extends Phaser.Scene {
       this.load.svg(key, BASE + file, { width, height });
     }
     loadIcons(this, ICON_SPECS);
+    reportFailedLoads(this, ctx.onError);
   }
 
   create() {

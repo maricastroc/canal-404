@@ -1,4 +1,6 @@
 import * as Phaser from "phaser";
+import { reportFailedLoads } from "../../kit/load";
+import type { GameHostContext } from "@/games/types";
 import { getAudio } from "@/lib/audio/engine";
 import type { SoundRecipe } from "@/lib/audio/types";
 import type { Locale } from "@/i18n/locales";
@@ -216,6 +218,7 @@ export class RaceScene extends Phaser.Scene {
   preload() {
     const bridge = this.registry.get("bridge") as SceneBridge;
     for (const [key, file] of COURSE_FILES[bridge.course]) this.load.svg(key, `/assets/downhill-derby/${file}.svg`, { scale: SAMPLE_RES });
+    reportFailedLoads(this, (this.registry.get("ctx") as GameHostContext).onError);
   }
 
   create() {

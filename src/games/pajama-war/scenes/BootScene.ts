@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowBigDown, Crosshair, Heart, HeartPulse, Play, Star, Timer, Trophy, X, Zap } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { reportFailedLoads } from "../../kit/load";
 import { KIDS, POSES } from "../config";
 
 const BASE = "/assets/pajama-war/";
@@ -87,6 +88,7 @@ export class BootScene extends Phaser.Scene {
       { key: "aim-reticle-ink", icon: Crosshair, size: 48, color: "#1d1830", strokeWidth: 3.5 },
       { key: "aim-reticle", icon: Crosshair, size: 48, color: "#ffffff", strokeWidth: 1.75 },
     ]);
+    reportFailedLoads(this, ctx.onError);
   }
 
   create() {

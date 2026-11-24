@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowBigDown, ArrowBigUp, ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RotateCcw, RotateCw, TrendingUp } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { reportFailedLoads } from "../../kit/load";
 import { artFiles } from "./cart";
 import { CAST_FILES } from "./cast";
 import { PROP_FILES } from "./props";
@@ -51,6 +52,7 @@ export class BootScene extends Phaser.Scene {
       { key: "dd-ico-key-left", icon: ArrowLeft, size: 96, strokeWidth: 3 },
       { key: "dd-ico-key-right", icon: ArrowRight, size: 96, strokeWidth: 3 },
     ]);
+    reportFailedLoads(this, ctx.onError);
   }
 
   create() {
