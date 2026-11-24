@@ -55,6 +55,7 @@ type Projectile = {
   onArrive: () => void;
   ring?: Phaser.GameObjects.Image;
   thrower?: Rival;
+  lesson?: boolean;
 };
 
 type Target = { kind: "rival"; rival: Rival } | { kind: "lunchLady" } | { kind: "point"; x: number; y: number };
@@ -69,20 +70,31 @@ function bezier(a: Pt, c: Pt, b: Pt, k: number): Pt {
 const SAVE_KEY = "canal404:food-fight:v1";
 const SIDE_BUBBLE = { x: MILA.x + 112, y: MILA.y - 150 };
 
-function tutorialSeen() {
+type FoodFightSave = { tutorialDone?: boolean; catchDone?: boolean; catchLessons?: number };
+
+function readSave(): FoodFightSave {
   try {
-    return JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}").tutorialDone === true;
+    const raw = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}");
+    return raw && typeof raw === "object" ? raw : {};
   } catch {
-    return false;
+    return {};
   }
 }
 
-function rememberTutorial() {
+function writeSave(patch: FoodFightSave) {
   try {
-    window.localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, tutorialDone: true }));
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify({ ...readSave(), ...patch, v: 1 }));
   } catch {
     return;
   }
+}
+
+function tutorialSeen() {
+  return readSave().tutorialDone === true;
+}
+
+function rememberTutorial() {
+  writeSave({ tutorialDone: true });
 }
 
 export class LunchScene extends Phaser.Scene {
@@ -131,7 +143,7 @@ export class LunchScene extends Phaser.Scene {
   private hud!: LunchHud;
   private clockHands!: Phaser.GameObjects.Graphics;
   private bell!: Phaser.GameObjects.Image;
-  private tutorial: "throw" | "duck" | null = null;
+  private tutorial: "throw" | "duck" | "catch" | null = null;
   private tutorialRival: Rival | null = null;
   private lastSaid = new Map<string, number>();
   private lastSecond = -1;
@@ -151,6 +163,9 @@ export class LunchScene extends Phaser.Scene {
   private frame: Frame = LANDSCAPE_FRAME;
   private frozenUntil = 0;
   private catchLockUntil = 0;
+  private slowScale = 1;
+  private slowShot: Projectile | null = null;
+  private catchLesson = false;
   private tables: Phaser.GameObjects.Image[] = [];
   private peels = new Map<number, Peel>();
   private ladyStop = 0;
@@ -223,6 +238,9 @@ export class LunchScene extends Phaser.Scene {
     this.frame = LANDSCAPE_FRAME;
     this.frozenUntil = 0;
     this.catchLockUntil = 0;
+    this.slowScale = 1;
+    this.slowShot = null;
+    this.catchLesson = false;
   }
 
   create() {
@@ -578,8 +596,20 @@ export class LunchScene extends Phaser.Scene {
     this.announce(this.copy.tutorial.duckAnnounce);
   }
 
+  private tutorialCatch() {
+    if (this.tutorial !== "duck") return;
+    this.tutorial = "catch";
+    this.hud.pulseDuck(false);
+    const r = this.rivals[3];
+    this.tutorialRival = r;
+    r.rise("cap", 2, this.t, 500);
+    this.milaSay(this.copy.tutorial.catchIntro, 2600, "shout", true);
+    this.announce(this.copy.tutorial.catchAnnounce);
+  }
+
   private endTutorial() {
     if (!this.tutorial) return;
+    this.endSlow();
     this.tutorial = null;
     this.tutorialRival = null;
     this.registry.set("tutorialDone", true);
@@ -601,6 +631,8 @@ export class LunchScene extends Phaser.Scene {
     this.bestStreak = 0;
     this.interrupts = 0;
     this.throws = 0;
+    const save = readSave();
+    this.catchLesson = !this.registry.get("catchDone") && !save.catchDone && (save.catchLessons ?? 0) < CATCH.lessonRounds;
     this.hud.setStreak(0);
     this.updateScore();
     this.hud.setTimer(ROUND_MS, ROUND_MS, false);
@@ -763,7 +795,8 @@ export class LunchScene extends Phaser.Scene {
           r.lower(() => (r.readyAt = this.t + Phaser.Math.Between(300, 900)));
         } else {
           const tut = this.tutorial === "duck" && r === this.tutorialRival;
-          r.startWindup(this.t, tut ? 2200 : phase.windup * r.def.windup);
+          const lesson = this.tutorial === "catch" && r === this.tutorialRival;
+          r.startWindup(this.t, tut ? 2200 : lesson ? 1200 : phase.windup * r.def.windup);
           this.sfx("windup", 0.7);
           if (tut) {
             this.milaSay(this.copy.tutorial.duckSay, 3200, "shout", true);
@@ -825,19 +858,25 @@ export class LunchScene extends Phaser.Scene {
       if (p.ring) {
         const catchable = p.thrower && k >= CATCH.from;
         if (catchable && p.ring.texture.key !== "catch-ring") p.ring.setTexture("catch-ring");
+        if (catchable && !p.lesson && this.wantsCatchLesson(p)) this.startCatchLesson(p);
         const pulse = this.ctx.reducedMotion ? 1 : 1 + Math.sin(this.t / 70) * 0.08;
         p.ring.setPosition(pos.x, pos.y).setScale(p.img.scaleX * 0.95 * pulse);
       }
       if (k >= 1) p.onArrive();
       else this.projectiles.push(p);
     }
+    if (this.slowShot) {
+      if (this.projectiles.includes(this.slowShot)) this.hud.movePointer(this.slowShot.img.x, this.slowShot.img.y);
+      else this.endSlow();
+    }
   }
 
   private throwPudding(r: Rival) {
     const from = r.release(this.t);
     const tut = this.tutorial === "duck" && r === this.tutorialRival;
+    const lesson = this.tutorial === "catch" && r === this.tutorialRival;
     const phase = this.phaseAt(this.roundT);
-    const dur = (tut ? 1.5 : phase.flight) * (r.slot.row === "back" ? 1050 : 900);
+    const dur = (tut || lesson ? 1.5 : phase.flight) * (r.slot.row === "back" ? 1050 : 900);
     const big = r.big;
     const img = this.add.image(from.x, from.y, "pudding").setDepth(14).setScale(r.scale * (big ? 1.25 : 0.95));
     const ring = this.add.image(from.x, from.y, "threat-ring").setDepth(13.9).setAlpha(0.9);
@@ -849,7 +888,32 @@ export class LunchScene extends Phaser.Scene {
       this.puddingArrives(img, big, tut, r);
     });
     shot.ring = ring;
-    if (this.mode === "playing") shot.thrower = r;
+    if (this.mode === "playing" || lesson) shot.thrower = r;
+  }
+
+  private wantsCatchLesson(p: Projectile) {
+    if (this.tutorial === "catch") return p.thrower === this.tutorialRival;
+    return this.mode === "playing" && this.catchLesson && !this.ducking;
+  }
+
+  private startCatchLesson(p: Projectile) {
+    p.lesson = true;
+    this.slowShot = p;
+    this.slowScale = CATCH.lessonScale;
+    this.hud.showPointer(p.img.x, p.img.y);
+    this.hideBubbles();
+    this.hud.flash(this.copy.catch.lessonTitle, "#93cf4c", 1400, this.keyboardUsed ? this.copy.catch.lessonKeys : this.copy.catch.lessonTap);
+    this.announce(this.copy.catch.lessonAnnounce);
+    if (this.tutorial === "catch") return;
+    this.catchLesson = false;
+    writeSave({ catchLessons: (readSave().catchLessons ?? 0) + 1 });
+  }
+
+  private endSlow() {
+    if (!this.slowShot) return;
+    this.slowShot = null;
+    this.slowScale = 1;
+    this.hud.hidePointer();
   }
 
   private impact(ms: number) {
@@ -875,7 +939,7 @@ export class LunchScene extends Phaser.Scene {
   }
 
   private tryCatch(x?: number, y?: number) {
-    if (this.mode !== "playing" || this.ducking) return false;
+    if ((this.mode !== "playing" && this.tutorial !== "catch") || this.ducking) return false;
     const pointer = x !== undefined;
     if (!pointer && this.t < this.catchLockUntil) return false;
     const p = this.catchable(x, y);
@@ -893,6 +957,11 @@ export class LunchScene extends Phaser.Scene {
     this.incoming = Math.max(0, this.incoming - 1);
     this.impact(IMPACT.catch);
     this.throws += 1;
+    if (!this.registry.get("catchDone")) {
+      this.registry.set("catchDone", true);
+      writeSave({ catchDone: true });
+    }
+    this.catchLesson = false;
     this.throwReadyAt = this.t + THROW_GAP_MS;
     this.setPose("throw", 260);
     this.sfx("catch", 0.9);
@@ -920,10 +989,21 @@ export class LunchScene extends Phaser.Scene {
     this.sfx("splat", 0.4);
     this.word(this.copy.throwing.escaped, to.x, to.y - 40, "#fbf5e6", r.slot.row === "back" ? 28 : 34);
     this.decal("splat-pudding", to.x, to.y, 1.5, 0.6, 0.7);
+    if (this.tutorial === "catch" && r === this.tutorialRival) {
+      this.milaSay(this.copy.tutorial.caught, 1800, "cheer", true);
+      this.time.delayedCall(1300, () => this.endTutorial());
+    }
   }
 
   private puddingArrives(img: Phaser.GameObjects.Image, big: boolean, tut: boolean, thrower: Rival) {
     this.incoming = Math.max(0, this.incoming - 1);
+    if (this.tutorial === "catch" && thrower === this.tutorialRival) {
+      this.tweens.add({ targets: img, alpha: 0, duration: 200, onComplete: () => img.destroy() });
+      this.milaSay(this.copy.tutorial.catchMissed, 2600, "shout", true);
+      this.announce(this.copy.tutorial.catchMissed);
+      this.time.delayedCall(2000, () => this.endTutorial());
+      return;
+    }
     if (this.mode === "ending" || this.mode === "over") {
       this.tweens.add({ targets: img, alpha: 0, duration: 200, onComplete: () => img.destroy() });
       return;
@@ -936,7 +1016,7 @@ export class LunchScene extends Phaser.Scene {
         this.sfx("laugh", 0.7);
       }
       this.takeHit(big, tut);
-      if (tut) this.time.delayedCall(1300, () => this.endTutorial());
+      if (tut) this.time.delayedCall(1900, () => this.tutorialCatch());
       return;
     }
     if (this.ducking) {
@@ -945,7 +1025,7 @@ export class LunchScene extends Phaser.Scene {
       if (Math.random() < 0.5 && thrower.sulk()) thrower.taunt(Phaser.Utils.Array.GetRandom(this.copy.sulk) as string);
       if (tut) {
         this.milaSay(this.copy.tutorial.dodged, 1800, "cheer", true);
-        this.time.delayedCall(900, () => this.endTutorial());
+        this.time.delayedCall(1100, () => this.tutorialCatch());
       } else if (Math.random() < 0.3) {
         this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.phew) as string, 1100, "peek");
       }
@@ -1335,7 +1415,13 @@ export class LunchScene extends Phaser.Scene {
       this.hud.pulseDuck(false);
       this.milaSay(this.copy.tutorial.early, 2200, "cheer", true);
       this.announce(this.copy.tutorial.early);
-      this.time.delayedCall(1500, () => this.endTutorial());
+      this.time.delayedCall(1500, () => this.tutorialCatch());
+    } else if (this.tutorial === "catch" && r === this.tutorialRival) {
+      const caught = food === "pudding";
+      const line = caught ? this.copy.tutorial.caught : this.copy.tutorial.catchEarly;
+      this.milaSay(line, caught ? 1800 : 2800, "cheer", true);
+      this.announce(line);
+      this.time.delayedCall(caught ? 1300 : 2400, () => this.endTutorial());
     }
   }
 
@@ -1439,7 +1525,7 @@ export class LunchScene extends Phaser.Scene {
     } else {
       this.reloadAcc = Math.min(this.reloadAcc, RELOAD_MS * 0.5);
     }
-    const danger = this.incoming > 0 && this.t >= this.invulnerableUntil;
+    const danger = this.incoming > 0 && this.t >= this.invulnerableUntil && !this.slowShot;
     this.hud.setDuck(this.ducking ? "down" : danger && canAct ? "danger" : "idle");
   }
 
@@ -1501,6 +1587,7 @@ export class LunchScene extends Phaser.Scene {
   }
 
   private finishRound() {
+    this.endSlow();
     this.brawlUntil = 0;
     this.cook.hide();
     this.hud.hideControls();
@@ -1574,7 +1661,7 @@ export class LunchScene extends Phaser.Scene {
       this.tweens.resumeAll();
     }
     if (this.mode === "attract" || this.mode === "over") return;
-    const dt = Math.min(delta, 100);
+    const dt = Math.min(delta, 100) * this.slowScale;
     this.t += dt;
     if (this.mode === "playing") this.roundT = this.t - this.roundStart;
     this.updateDuck(dt);

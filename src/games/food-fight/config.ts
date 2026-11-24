@@ -82,7 +82,7 @@ export const SCORE = {
   threeStars: 11500,
 };
 
-export const CATCH = { from: 0.68, radius: 100, whiffMs: 400 };
+export const CATCH = { from: 0.68, radius: 100, whiffMs: 400, lessonScale: 0.25, lessonRounds: 3 };
 
 export const IMPACT = { interrupt: 70, big: 80, catch: 60 };
 
