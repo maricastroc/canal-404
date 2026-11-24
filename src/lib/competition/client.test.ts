@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameResult } from "@/games/types";
 import { connect, flushOutbox, getCompetition, holdUntilJoined, join, pendingCount, requestTicket, resetCompetitionForTests, submitResult } from "./client";
 
-type Route = (init: RequestInit | undefined) => { status: number; body?: unknown } | "network";
+type Answer = { status: number; body?: unknown } | "network";
+
+type Route = (init: RequestInit | undefined) => Answer | Promise<Answer>;
 
 function serve(routes: Record<string, Route>) {
   const calls: { method: string; path: string; body: unknown }[] = [];
@@ -11,7 +13,7 @@ function serve(routes: Record<string, Route>) {
     const method = init?.method ?? "GET";
     calls.push({ method, path, body: init?.body ? JSON.parse(String(init.body)) : undefined });
     const route = routes[`${method} ${path}`];
-    const answer = route ? route(init) : { status: 404, body: { error: { code: "not_found", message: "?" } } };
+    const answer = route ? await route(init) : { status: 404, body: { error: { code: "not_found", message: "?" } } };
     if (answer === "network") throw new TypeError("Failed to fetch");
     return new Response(JSON.stringify(answer.body ?? {}), { status: answer.status, headers: { "content-type": "application/json" } });
   });
@@ -70,6 +72,33 @@ describe("competition client", () => {
     up = true;
     expect(await flushOutbox()).toBe(1);
     expect(pendingCount()).toBe(0);
+  });
+
+  it("keeps results queued while the outbox is being sent", async () => {
+    let release = () => {};
+    const slow = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const calls = serve({
+      "GET /api/status": () => ({ status: 200, body: { status: "online" } }),
+      "GET /api/players/me": () => ({ status: 200, body: { player: PLAYER } }),
+      "POST /api/runs": async (init) => {
+        if ((JSON.parse(String(init?.body)) as { ticket: string }).ticket === "t.old") await slow;
+        return { status: 201, body: ACCEPTED };
+      },
+    });
+    await connect();
+    await holdUntilJoined(Promise.resolve({ token: "t.old", mission: null }), RESULT);
+    const flushing = flushOutbox();
+    await vi.waitFor(() => expect(calls.some((c) => c.path === "/api/runs")).toBe(true));
+    await holdUntilJoined(Promise.resolve({ token: "t.new", mission: null }), RESULT);
+    release();
+    expect(await flushing).toBe(1);
+    expect(pendingCount()).toBe(1);
+    expect(await flushOutbox()).toBe(1);
+    expect(pendingCount()).toBe(0);
+    const sent = calls.filter((c) => c.method === "POST" && c.path === "/api/runs").map((c) => (c.body as { ticket: string }).ticket);
+    expect(sent).toEqual(["t.old", "t.new"]);
   });
 
   it("holds a result left without a nickname and sends it once the visitor joins", async () => {
