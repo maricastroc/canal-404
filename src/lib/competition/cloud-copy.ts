@@ -1,7 +1,8 @@
 import { isRecord } from "@/lib/progress/migrate";
 import { applySnapshot, hasProgress, sameSnapshot, takeSnapshot } from "@/lib/progress/snapshot";
 import { adoptPlayer, apiCall, getCompetition, type ApiError } from "./client";
-import { SNAPSHOT_MAX_BYTES, SYNC_MARK_KEY, type CloudCopy, type Snapshot } from "./recovery";
+import { reportError } from "@/lib/telemetry";
+import { SNAPSHOT_MAX_BYTES, SNAPSHOT_MAX_KEYS, SYNC_MARK_KEY, type CloudCopy, type Snapshot } from "./recovery";
 import type { PublicPlayer } from "./types";
 
 const SENT_KEY = "canal404:cloud-sent";
@@ -55,13 +56,19 @@ function rememberSent(id: string) {
 
 async function upload(snapshot: Snapshot, playerId: string, keepalive: boolean) {
   const text = JSON.stringify(snapshot);
-  if (new TextEncoder().encode(text).length > SNAPSHOT_MAX_BYTES) return false;
+  const bytes = new TextEncoder().encode(text).length;
+  const keys = Object.keys(snapshot.keys).length;
+  if (bytes > SNAPSHOT_MAX_BYTES || keys > SNAPSHOT_MAX_KEYS) {
+    reportError("cloud-copy", `copy too big: ${keys} keys, ${bytes} bytes`);
+    return false;
+  }
   const id = `${playerId}:${digest(text)}`;
   if (id === lastSent() || id === sending) return true;
   sending = id;
   try {
     const response = await apiCall<{ savedAt: string }>("/api/players/me/copy", { method: "PUT", body: snapshot, keepalive });
     if (response.ok) rememberSent(id);
+    else if (response.status >= 400 && response.status < 500 && response.status !== 429) reportError("cloud-copy", `copy refused: ${response.status} ${response.error?.code ?? ""}`);
     return response.ok;
   } finally {
     if (sending === id) sending = null;

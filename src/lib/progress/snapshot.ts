@@ -36,14 +36,19 @@ function progressIn(raw: string) {
   }
 }
 
+const FLAG_KEYS = new Set(["canal404:food-fight:v1", "canal404:talent-show:tutorial:v1", "canal404:talent-show:assist:v1", "canal404:mission-achievements:v1"]);
+
 export function hasProgress(snapshot: Snapshot) {
-  return Object.entries(snapshot.keys).some(([key, raw]) => (key === STORAGE_KEY ? progressIn(raw) : true));
+  return Object.entries(snapshot.keys).some(([key, raw]) => (key === STORAGE_KEY ? progressIn(raw) : !FLAG_KEYS.has(key)));
 }
 
 export function applySnapshot(snapshot: Snapshot, storage: Storage) {
-  for (const key of syncableKeys(storage)) {
+  const keys = syncableKeys(storage);
+  for (const key of keys) {
     const raw = storage.getItem(key);
-    if (raw !== null && raw !== snapshot.keys[key]) backupRaw(key, raw, "restore", storage);
+    if (raw !== null && raw !== snapshot.keys[key] && !backupRaw(key, raw, "restore", storage)) throw new Error(`no room to back up ${key}`);
+  }
+  for (const key of keys) {
     if (!Object.hasOwn(snapshot.keys, key)) storage.removeItem(key);
   }
   for (const [key, raw] of Object.entries(snapshot.keys)) {

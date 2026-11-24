@@ -90,6 +90,22 @@ describe("progress store", () => {
       expect(listener).toHaveBeenCalledTimes(1);
       expect(store.getSnapshot().visits).toBe(7);
     });
+
+    it("keeps what another tab saved when this tab changes the save", async () => {
+      const store = await loadStore({ version: 1, visits: 3 });
+      store.getSnapshot();
+      window.localStorage.setItem(KEY, JSON.stringify({ version: 1, visits: 3, games: { "bad-ideas-lab": { highScore: 1450, bestStars: 3, plays: 1, wins: 1, lastScore: 1450, levels: { test: { stars: 3, score: 1450 } } } } }));
+      store.recordGameStart("food-fight");
+      expect(stored().games).toMatchObject({ "bad-ideas-lab": { levels: { test: { stars: 3 } } }, "food-fight": { plays: 1 } });
+    });
+
+    it("does not bring back a save that was cleared while the tab was open", async () => {
+      const store = await loadStore({ version: 1, visits: 3, games: { "pajama-war": { highScore: 900, bestStars: 2, plays: 4, wins: 2, lastScore: 900 } } });
+      store.getSnapshot();
+      window.localStorage.clear();
+      store.recordGameStart("food-fight");
+      expect(Object.keys(stored().games)).toEqual(["food-fight"]);
+    });
   });
 
   describe("game results", () => {
@@ -121,9 +137,10 @@ describe("progress store", () => {
       window.localStorage.setItem("canal404:off-air-vacation:v1", "{}");
       window.localStorage.setItem("canal404:pajama-war:v1", "{}");
       window.localStorage.setItem(`${KEY}:backup:v1:1`, "{}");
+      window.localStorage.setItem("canal404:sync:v1", JSON.stringify({ version: 1, player: "p" }));
       window.localStorage.setItem("outro-site", "fica");
       store.resetProgress();
-      expect(Object.keys(window.localStorage).sort()).toEqual([KEY, "outro-site"]);
+      expect(Object.keys(window.localStorage).sort()).toEqual([KEY, "canal404:sync:v1", "outro-site"]);
     });
 
     it("erases games, secrets and counters but keeps the visitor, settings and first visit", async () => {
@@ -191,6 +208,30 @@ describe("progress store", () => {
       expect(backup(PAJAMA)).toEqual([pajama]);
       const store = await loadStore();
       expect(store.getSnapshot()).toMatchObject({ visits: 30, secrets: { cat: 5 }, games: {} });
+    });
+
+    it("leaves every save as it was when there is no room to back them up", async () => {
+      const ls = window.localStorage;
+      const mine = JSON.stringify({ version: 1, visits: 7 });
+      const vacation = JSON.stringify({ v: 1, area: "beach" });
+      ls.setItem(KEY, mine);
+      ls.setItem(VACATION, vacation);
+      const setItem = Storage.prototype.setItem;
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key: string, value: string) {
+        if (key.includes(":backup:")) throw new DOMException("full", "QuotaExceededError");
+        setItem.call(this, key, value);
+      });
+      const { applySnapshot } = await import("./snapshot");
+      expect(() => applySnapshot({ version: 1, keys: { [KEY]: JSON.stringify({ version: 1, visits: 30 }) } }, ls)).toThrow();
+      expect(ls.getItem(KEY)).toBe(mine);
+      expect(ls.getItem(VACATION)).toBe(vacation);
+    });
+
+    it("treats a browser with only tips and settings as empty", async () => {
+      const { hasProgress } = await import("./snapshot");
+      const flags = { "canal404:food-fight:v1": JSON.stringify({ v: 1, tutorialDone: true }), "canal404:talent-show:assist:v1": "0", [KEY]: JSON.stringify({ version: 1, visits: 2, achievements: { "first-visit": 1 } }) };
+      expect(hasProgress({ version: 1, keys: flags })).toBe(false);
+      expect(hasProgress({ version: 1, keys: { ...flags, [VACATION]: JSON.stringify({ v: 1, area: "beach" }) } })).toBe(true);
     });
 
     it("migrates an older save that arrives in a copy", async () => {
