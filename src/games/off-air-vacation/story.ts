@@ -63,6 +63,7 @@ export type Director = {
   sfx(name: ResortSfx, volume?: number): void;
   wait(ms: number): Promise<void>;
   act(): void;
+  mount(): void;
   mood(who: FolkKey, mood: Mood): void;
   action(name: string): Promise<void>;
   goto(area: AreaId, spawn: string): void;
@@ -279,6 +280,10 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
       await d.say("marola", L.ended, "happy");
       return;
     }
+    if (f.whistleReturned && !f.bike) {
+      await d.say("marola", L.bikeReminder, "talk");
+      return;
+    }
     if (f.whistleReturned) {
       await d.say("marola", repeatLine(d.s, "marola", L.after), "talk");
       await bump(d, "marola");
@@ -298,6 +303,7 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
         await d.say("marola", L.askAround, "talk");
       }
       await d.say("marola", L.arcade, "normal");
+      await d.say("marola", L.bike, "talk");
       d.objective();
       return;
     }
@@ -338,6 +344,21 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
     await d.say("narrator", L.first);
     await d.say("deco", L.far);
     d.objective();
+  },
+
+  bike: async (d) => {
+    const L = d.text.lines.bike;
+    if (!d.flag("whistleReturned")) {
+      await d.say("narrator", L.locked);
+      await d.say("marola", L.lockedMarola, "look");
+      return;
+    }
+    if (d.flag("bike")) return;
+    d.set("bike");
+    d.mount();
+    d.sfx("ring", 0.9);
+    await d.say("deco", L.take, "happy");
+    await d.say("narrator", L.how);
   },
 
   net: async (d) => {

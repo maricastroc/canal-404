@@ -3,18 +3,22 @@ export const H = 1080;
 
 export const SPEED = 390;
 export const ACCEL = 2800;
+export const BIKE_SPEED = 700;
+export const BIKE_RAMP = 0.6;
 export const FOOT = { hw: 26, up: 12, down: 10 };
 export const INTERACT_R = 150;
 export const HINT_R = 420;
 export const CHAR_RES = 1.3;
 export const DECO_SCALE = 1.06;
 export const SPRITE_FOOT = 212 / 224;
+export const BIKE_FOOT = 248 / 260;
 export const SAVE_KEY = "canal404:off-air-vacation:v1";
 
 export type AreaId = "lobby" | "pool" | "arcade" | "beach" | "forest" | "station" | "room404";
 export type Dir = "f" | "k" | "s";
 
 export const AREA_IDS: AreaId[] = ["lobby", "pool", "arcade", "beach", "forest", "station", "room404"];
+export const RIDE_AREAS: AreaId[] = ["pool", "beach", "forest"];
 
 export const MAP_POS: Record<AreaId, [number, number]> = {
   lobby: [600, 200],

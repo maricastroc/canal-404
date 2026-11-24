@@ -439,6 +439,7 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       noShadow: true,
       frames: s.flags.whistleReturned ? { normal: "normal", talk: "talk-w", look: "look-w", happy: "happy", sad: "normal", surprised: "talk-w" } : undefined,
     });
+    b.prop("bike-parked", 810, 1660, { origin: [0.5, 1], rect: [-70, -26, 140, 26], show: (st) => !st.flags.bike });
     b.prop("umbrella-a", 1110, 1760, { origin: [0.5, 1], anim: "sway", amp: 1, circle: 18, shadow: 70, react: "rustle", reactR: 90, occlude: [0.98, 0.55, 0.45] });
     b.prop("umbrella-b", 1720, 1760, { origin: [0.5, 1], anim: "sway", amp: 1, circle: 18, shadow: 70, react: "rustle", reactR: 90, occlude: [0.98, 0.55, 0.45] });
     b.prop("lounge-a", 960, 1800, { origin: [0.5, 1], rect: [-92, -54, 184, 54], react: "bounce" });
@@ -514,6 +515,8 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
     b.spot({ id: "flamingo", x: 1420, y: 1610, r: 150, verb: (st) => (st.items.includes("net") && !st.flags.gotWhistle ? b.text.verbs.useNet : b.text.verbs.examine), script: "flamingo", hint: "item" });
     b.spot({ id: "net", x: 2710, y: 1340, r: 120, verb: b.text.verbs.take, script: "net", show: (st) => !st.items.includes("net") && !st.flags.gotWhistle, hint: "item" });
     b.spot({ id: "lounge", x: 1260, y: 1850, r: 120, verb: b.text.verbs.examine, script: "loungeToken", hint: "secret" });
+    b.spot({ id: "bike", x: 810, y: 1660, r: 130, verb: b.text.verbs.examine, script: "bike", show: (st) => !st.flags.whistleReturned });
+    b.spot({ id: "bikeFree", x: 810, y: 1660, r: 130, verb: b.text.verbs.take, script: "bike", show: (st) => Boolean(st.flags.whistleReturned && !st.flags.bike), hint: "item" });
     b.spot({ id: "capi", x: 380, y: 1800, r: 170, verb: b.text.verbs.talk, script: "capi" });
     b.spot({ id: "juiceMenu", x: 170, y: 1800, r: 90, verb: b.text.verbs.read, script: "juiceMenu" });
     b.spot({ id: "poolSign", x: 1240, y: 1610, r: 110, verb: b.text.verbs.read, script: "poolSign" });

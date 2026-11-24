@@ -39,6 +39,7 @@ const DECO = [
   "cheer",
   "sit",
   ...["a", "b", "c", "d"].flatMap((step) => ["f", "k", "s"].map((dir) => `walk-${step}-${dir}`)),
+  ...["idle", "a", "b", "c", "d"].flatMap((step) => ["f", "k", "s"].map((dir) => `bike-${step}-${dir}`)),
 ];
 
 const FOLK_FRAMES: Record<string, string[]> = {
@@ -65,7 +66,7 @@ const FACES = [
   "face-mascot-surprised",
 ];
 
-const PROPS = `air-hockey arcade-carpet arcade-front arcade-wall beachball bed big-button boardwalk bottle cab-a cab-b cab-c cab-d cab-gold cables calendar
+const PROPS = `air-hockey arcade-carpet arcade-front arcade-wall beachball bed big-button bike-parked boardwalk bottle cab-a cab-b cab-c cab-d cab-gold cables calendar
 carousel-horse cartridge chair chandelier claw cliff clock column console counter crab-a crab-b curtain-open curtain deckchair desk-bell dish door-404-open
 door-404 doormat duck elevator fall-pool fern flamingo-empty flamingo forest-floor frame-cat frame-sunset frame-tv glint grass gull-a gull-b hedge hibiscus
 hotel island item-cartridge item-key item-net item-order item-poster item-remote item-token item-whistle juice-bar key-rack kiosk lantern-post lifeguard-chair
@@ -79,6 +80,7 @@ stool stump suitcases guest-book radio flamingo-look flamingo-empty-look chips r
 const ART_SCALE: Record<string, number> = {
   palm: 1.35,
   "palm-b": 1.35,
+  "bike-parked": 1.06,
   kiosk: 1.3,
   "ticket-booth": 1.4,
   "surf-a": 1.15,

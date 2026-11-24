@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Férias Fora do Ar: bike da patrulha
+- **A bike to get around faster.** The lifeguard's patrol bike is parked by Capitão Marola's chair. After you return his whistle, he lends it to you, and taking it rings its bell. Saves that already returned the whistle find it there with a sparkle, and Marola reminds you about it.
+- **Outside you ride, inside you walk.** Déco rides at the pool, the beach and the forest, and walks in the lobby, the arcade, the broadcast room and room 404. There is no new button.
+- **Speed.** Déco starts at walking pace and reaches about 1.8× after holding the direction for half a second, so short taps and arriving at a spot stay precise. On phones, a light push on the stick walks and a full push pedals. Crossing the pool now takes about 4 seconds instead of 7.
+- **Art.** Déco on the bike from the side, front and back, with pedaling frames and a foot down when stopped. The bike has a wicker basket, a bell and a toy life ring. It leaves tire tracks on the sand.
+- **Board.** Nothing changes: the Férias board is a list of who finished, with no time ranking.
+
 ### Guerra de Lanche: pausa no impacto e pudim devolvido
 - **Hits land harder.** A "Na hora H!" and a big kid going down freeze the scene for a split second (70 to 80 ms). Reduced motion turns it off.
 - **Catch the pudding.** In the last third of a pudding's flight its ring turns green. Tap it near Déco, or press the up arrow or W, to catch it and throw it straight back at whoever threw it.
