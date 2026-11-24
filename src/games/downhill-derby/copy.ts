@@ -3,6 +3,8 @@ import type { SignKey } from "./sim/track";
 import type { CartId } from "./sim/carts";
 import type { CrashReason, TrickKind } from "./sim/sim";
 
+export type GhostState = "on" | "off" | "later";
+
 export type RaceCopy = {
   you: string;
   time: string;
@@ -98,7 +100,10 @@ export type RaceCopy = {
     go: string;
     traits: Record<CartId, string>;
     locked: Record<"lina" | "mila", string>;
-    ghost: (on: boolean) => string;
+    ghost: (state: GhostState) => string;
+    ghostTitle: string;
+    ghostLead: string;
+    ghostLater: string;
     keys: string;
     touch: string;
   };
@@ -266,7 +271,10 @@ export const RACE_COPY = localized<RaceCopy>({
         mila: "Leve, gira rápido e acelera nas poças. O pouso tem que ser certeiro.",
       },
       locked: { lina: "Fique à frente da Lina na pista Dia de Feira para desbloquear.", mila: "Fique à frente da Mila na pista Morro da Antena para desbloquear." },
-      ghost: (on) => `Fantasma da melhor corrida: ${on ? "ligado" : "desligado"}`,
+      ghost: (state) => `Fantasma da melhor corrida: ${state === "on" ? "ligado" : state === "off" ? "desligado" : "disponível após sua primeira corrida"}`,
+      ghostTitle: "Fantasma da melhor corrida",
+      ghostLead: "Dispute contra seu recorde",
+      ghostLater: "Disponível após sua primeira corrida",
       keys: "← → Trocar de carrinho · Enter ou Espaço: correr · G: mostrar/ocultar fantasma",
       touch: "Toque num carrinho e depois em CORRER!",
     },
@@ -432,7 +440,10 @@ export const RACE_COPY = localized<RaceCopy>({
         mila: "Light, spins fast and speeds up in puddles. Landings must be spot on.",
       },
       locked: { lina: "Stay ahead of Lina on the Market Day track to unlock.", mila: "Stay ahead of Mila on the Antenna Hill track to unlock." },
-      ghost: (on) => `Best run ghost: ${on ? "on" : "off"}`,
+      ghost: (state) => `Best run ghost: ${state === "on" ? "on" : state === "off" ? "off" : "available after your first race"}`,
+      ghostTitle: "Best run ghost",
+      ghostLead: "Race against your record",
+      ghostLater: "Available after your first race",
       keys: "← → Switch cart · Enter or Space: race · G: show/hide ghost",
       touch: "Tap a cart, then RACE!",
     },

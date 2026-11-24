@@ -463,7 +463,7 @@ const TEXT = gameText({
       ],
       keyTips: ["Com o Plano B, segure ↓ e a linha pontilhada mostra onde o pulo vai cair.", "No chão, ← → empinam o carrinho. Equilibre para ganhar pontos."],
       touchTips: ["Com o Plano B, segure AGACHAR e a linha pontilhada mostra onde o pulo vai cair.", "No chão, as setas de girar empinam o carrinho. Equilibre para ganhar pontos."],
-      controlsSummary: "Ladeira Abaixo. Seta para baixo agacha, espaço pula, setas para os lados giram no ar e empinam no chão, Esc pausa.",
+      controlsSummary: "Ladeira Abaixo. Na garagem, setas para os lados trocam o carrinho, G liga ou desliga o fantasma e Enter corre. Na pista, seta para baixo agacha, espaço pula, setas para os lados giram no ar e empinam no chão, Esc pausa.",
       copy: {
         winTitle: "Pódio!",
         winText: "Lá embaixo, todo mundo quer revanche.",
@@ -946,7 +946,7 @@ const TEXT = gameText({
       ],
       keyTips: ["With Plan B, hold ↓ and a dotted line shows where the jump will land.", "On the ground, ← → pop a wheelie. Keep it balanced for points."],
       touchTips: ["With Plan B, hold CROUCH and a dotted line shows where the jump will land.", "On the ground, the spin arrows pop a wheelie. Keep it balanced for points."],
-      controlsSummary: "Downhill Derby. Down arrow crouches, space jumps, left and right arrows spin in the air and wheelie on the ground, Esc pauses.",
+      controlsSummary: "Downhill Derby. In the garage, left and right arrows switch carts, G turns the ghost on or off and Enter races. On the track, down arrow crouches, space jumps, left and right arrows spin in the air and wheelie on the ground, Esc pauses.",
       copy: {
         winTitle: "Podium!",
         winText: "Down at the bottom, everyone wants a rematch.",

@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowBigDown, ArrowBigUp, ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, RotateCcw, RotateCw, TrendingUp, Trophy } from "lucide";
+import { ArrowBigDown, ArrowBigUp, ArrowLeft, ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Ghost, Lock, RotateCcw, RotateCw, TrendingUp, Trophy } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { reportFailedLoads } from "../../kit/load";
@@ -52,6 +52,9 @@ export class BootScene extends Phaser.Scene {
       { key: "dd-ico-key-left", icon: ArrowLeft, size: 96, strokeWidth: 3 },
       { key: "dd-ico-key-right", icon: ArrowRight, size: 96, strokeWidth: 3 },
       { key: "dd-ico-trophy", icon: Trophy, size: 96, strokeWidth: 2.6 },
+      { key: "dd-ico-ghost", icon: Ghost, size: 128, fill: "#fbf5e6", strokeWidth: 2.4 },
+      { key: "dd-ico-check", icon: Check, size: 96, strokeWidth: 3.6 },
+      { key: "dd-ico-lock", icon: Lock, size: 96, strokeWidth: 2.8 },
     ]);
     reportFailedLoads(this, ctx.onError);
   }
