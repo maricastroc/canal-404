@@ -114,7 +114,7 @@ const TEXT = gameText({
       ],
       controls: [
         { input: "Mouse", action: "Arraste para trás e solte para lançar", on: "keys" },
-        { input: "Setas ou WASD", action: "← → ajustam o ângulo; ↑ ↓ ajustam a força", on: "keys" },
+        { input: "Setas ou WASD", action: "← → ajustam o ângulo e ↑ ↓ ajustam a força, de 1 em 1. Com Shift, de 5 em 5", on: "keys" },
         { input: "1 a 4, Q ou clique", action: "Trocar a munição", on: "keys" },
         { input: "Espaço ou Enter", action: "Lançar", on: "keys" },
         { input: "Esc ou P", action: "Pausar", on: "keys" },
@@ -138,6 +138,7 @@ const TEXT = gameText({
         "Munição que sobra vira bônus no final.",
         "A linha pontilhada é o plano do Bruno. Confie... um pouco.",
       ],
+      keyTips: ["Errou por pouco? As setas corrigem o ângulo e a força de um em um."],
       touchTips: ["Errou por pouco? Os botões de ÂNGULO e FORÇA corrigem de um em um.", "O tiro só sai quando você toca em LANÇAR. Dá para mirar com calma.", "VER TUDO mostra o quintal inteiro, até com o elástico puxado."],
       controlsSummary: "Rua Sem Saída. Setas ajustam ângulo e força, 1 a 4 trocam a munição, espaço lança, Esc pausa.",
       copy: {
@@ -592,7 +593,7 @@ const TEXT = gameText({
       ],
       controls: [
         { input: "Mouse", action: "Drag back and let go to launch", on: "keys" },
-        { input: "Arrows or WASD", action: "← → adjust the angle; ↑ ↓ adjust the power", on: "keys" },
+        { input: "Arrows or WASD", action: "← → adjust the angle and ↑ ↓ adjust the power, one step at a time. Hold Shift for steps of 5", on: "keys" },
         { input: "1 to 4, Q or click", action: "Swap ammo", on: "keys" },
         { input: "Space or Enter", action: "Launch", on: "keys" },
         { input: "Esc or P", action: "Pause", on: "keys" },
@@ -616,6 +617,7 @@ const TEXT = gameText({
         "Leftover ammo turns into a bonus at the end.",
         "The dotted line is Bruno's plan. Trust it... a little.",
       ],
+      keyTips: ["Just short? The arrow keys fix the angle and power one step at a time."],
       touchTips: ["Just short? The ANGLE and POWER buttons fix it one step at a time.", "The shot only goes when you tap LAUNCH, so take your time aiming.", "SEE ALL shows the whole yard, even with the band pulled."],
       controlsSummary: "Dead End Street. Arrows set angle and power, 1 to 4 swap the ammo, space launches, Esc pauses.",
       copy: {
