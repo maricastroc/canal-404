@@ -34,9 +34,9 @@ describe("Férias Fora do Ar save", () => {
   it("drops unknown values instead of trusting them", () => {
     window.localStorage.setItem(
       SAVE_KEY,
-      JSON.stringify({ v: 1, area: "moon", x: 50, items: ["remote", "laser", "remote"], posters: ["surf", 3], flags: { tiltWon: true, bad: "yes" }, ending: "maybe", facing: -1 }),
+      JSON.stringify({ v: 1, area: "moon", x: 50, items: ["remote", "laser", "remote"], posters: ["surf", 3], found: ["clock", "moonwalk", "clock"], flags: { tiltWon: true, bad: "yes" }, ending: "maybe", facing: -1 }),
     );
-    expect(loadState()).toEqual({ ...freshState(), items: ["remote"], posters: ["surf"], flags: { tiltWon: true }, facing: -1 });
+    expect(loadState()).toEqual({ ...freshState(), items: ["remote"], posters: ["surf"], found: ["clock"], flags: { tiltWon: true }, facing: -1 });
   });
 
   it("remembers an ending whose result was never sent", () => {
