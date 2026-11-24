@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Férias Fora do Ar: Sr. Bigodes de corpo inteiro na festa
+- **No more floating bust.** The receptionist's sprites stop at the chest because a desk hides the rest in the lobby. At the closing party he stood in the open, so he looked like a torso on the floor. He now has a full-body party sprite: the same head and jacket, the rest of the bellhop uniform with gold buttons and stripes, trousers, shoes and a tail. He waves, blinks and bounces gently with the other guests.
+- **On the deck.** He moved from the grass in front of the juice bar onto the pool deck, under the lifeguard chair. On phones the camera now shows him whole when he speaks.
+- **The lobby stays the same.** Behind the reception desk he is still the bust.
+
 ### Férias Fora do Ar: bike da patrulha
 - **A bike to get around faster.** The lifeguard's patrol bike is parked by Capitão Marola's chair. After you return his whistle, he lends it to you, and taking it rings its bell. Saves that already returned the whistle find it there with a sparkle, and Marola reminds you about it.
 - **Outside you ride, inside you walk.** Déco rides at the pool, the beach and the forest, and walks in the lobby, the arcade, the broadcast room and room 404. There is no new button.
