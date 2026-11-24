@@ -7,10 +7,12 @@ export const SAVE_KEY = "canal404:downhill-derby:v1";
 
 export type TrackRecord = { time: number; show: number; splits: number[] };
 
-export type DerbySave = { cart: CartId; ghost: boolean; unlocked: CartId[]; tracks: Partial<Record<CourseId, TrackRecord>> };
+export type TrackWins = Partial<Record<CartId, number>>;
+
+export type DerbySave = { cart: CartId; ghost: boolean; unlocked: CartId[]; tracks: Partial<Record<CourseId, TrackRecord>>; wins: Partial<Record<CourseId, TrackWins>> };
 
 export function emptySave(): DerbySave {
-  return { cart: "deco", ghost: false, unlocked: [], tracks: {} };
+  return { cart: "deco", ghost: false, unlocked: [], tracks: {}, wins: {} };
 }
 
 function normalizeRecord(value: unknown): TrackRecord | null {
@@ -19,6 +21,16 @@ function normalizeRecord(value: unknown): TrackRecord | null {
   if (time <= 0) return null;
   const splits = Array.isArray(value.splits) ? value.splits.map((v) => finite(v, Number.NaN)) : [];
   return { time, show: Math.max(0, Math.round(finite(value.show, 0))), splits };
+}
+
+function normalizeWins(value: unknown): TrackWins | null {
+  if (!isRecord(value)) return null;
+  const wins: TrackWins = {};
+  for (const cart of CART_IDS) {
+    const count = Math.floor(finite(value[cart], 0));
+    if (count > 0) wins[cart] = count;
+  }
+  return Object.keys(wins).length > 0 ? wins : null;
 }
 
 function normalizeSave(value: Json): DerbySave {
@@ -30,6 +42,12 @@ function normalizeSave(value: Json): DerbySave {
     for (const course of RACE_COURSES) {
       const record = normalizeRecord(value.tracks[course]);
       if (record) save.tracks[course] = record;
+    }
+  }
+  if (isRecord(value.wins)) {
+    for (const course of RACE_COURSES) {
+      const wins = normalizeWins(value.wins[course]);
+      if (wins) save.wins[course] = wins;
     }
   }
   if (!isUnlocked(save, save.cart)) save.cart = "deco";
@@ -53,6 +71,11 @@ export function writeSave(save: DerbySave, storage?: Storage | null) {
   } catch {
     return;
   }
+}
+
+export function addWin(save: DerbySave, course: CourseId, cart: CartId) {
+  const wins = (save.wins[course] ??= {});
+  wins[cart] = (wins[cart] ?? 0) + 1;
 }
 
 export function updateSave(change: (save: DerbySave) => void) {

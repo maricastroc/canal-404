@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { DEFAULT_CAMERA, InputState } from "./input";
 import { raceResult } from "./result";
-import { isUnlocked, loadSave, updateSave } from "./save";
+import { addWin, isUnlocked, loadSave, updateSave } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { GarageScene, type GarageData, type GarageHost } from "./scenes/GarageScene";
@@ -74,6 +74,9 @@ function mount(ctx: GameHostContext): GameInstance {
           save.tracks[id] = record;
         });
       },
+      win: (id, rider) => {
+        updateSave((save) => addWin(save, id, rider));
+      },
     },
     onBeat: (id, rival) => {
       const target = CART_IDS.find((c) => UNLOCKS[c]?.course === id && UNLOCKS[c]?.beat === rival);
@@ -132,7 +135,7 @@ function mount(ctx: GameHostContext): GameInstance {
         g.registry.set("frame", frame);
         g.registry.set("bridge", bridge);
         g.registry.set("garage", garageHost);
-        g.registry.set("attract", { attract: true, course: course(), index: level, cart, ghost, unlocked: initial.unlocked } satisfies GarageData);
+        g.registry.set("attract", { attract: true, course: course(), index: level, cart, ghost, unlocked: initial.unlocked, wins: initial.wins[course()] ?? {} } satisfies GarageData);
       },
       postBoot: () => ctx.onProgress(0.05, "art"),
     },
@@ -151,7 +154,8 @@ function mount(ctx: GameHostContext): GameInstance {
     input.releaseAll();
     resumeAll();
     if (game.scene.getScene("race")) game.scene.remove("race");
-    const data: GarageData = { attract: false, course: course(), index: level, cart, ghost, unlocked: loadSave().unlocked };
+    const save = loadSave();
+    const data: GarageData = { attract: false, course: course(), index: level, cart, ghost, unlocked: save.unlocked, wins: save.wins[course()] ?? {} };
     if (game.scene.isActive("garage")) game.scene.getScene("garage").scene.restart(data);
     else game.scene.start("garage", data);
   };

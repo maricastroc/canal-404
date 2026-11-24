@@ -4,6 +4,7 @@ import type { Locale } from "@/i18n/locales";
 import { RACE_COPY, type RaceCopy } from "../copy";
 import { CART_IDS, UNLOCKS, type CartId } from "../sim/carts";
 import type { CourseId } from "../sim/course";
+import type { TrackWins } from "../save";
 import { DOWNHILL_SFX } from "../sounds";
 import type { Frame } from "../layout";
 import { CartView, INK } from "./cart";
@@ -18,7 +19,7 @@ export type GarageHost = {
   toggleGhost: () => boolean;
 };
 
-export type GarageData = { attract: boolean; course: CourseId; index: number; cart: CartId; ghost: boolean; unlocked: readonly CartId[] };
+export type GarageData = { attract: boolean; course: CourseId; index: number; cart: CartId; ghost: boolean; unlocked: readonly CartId[]; wins: TrackWins };
 
 const CW = 400;
 const CH = 560;
@@ -31,11 +32,13 @@ const CREAM = 0xfbf5e6;
 const SUN = 0xffcf3f;
 const LOCKED = 0xd8d2ea;
 
-type Card = { cart: CartId; x: number; g: Phaser.GameObjects.Graphics; view: CartView; name: Phaser.GameObjects.Text; rider: Phaser.GameObjects.Text; trait: Phaser.GameObjects.Text; lock: Phaser.GameObjects.Graphics | null; shake: number };
+type Badge = { g: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; count: Phaser.GameObjects.Text };
+
+type Card = { cart: CartId; x: number; g: Phaser.GameObjects.Graphics; view: CartView; name: Phaser.GameObjects.Text; rider: Phaser.GameObjects.Text; trait: Phaser.GameObjects.Text; lock: Phaser.GameObjects.Graphics | null; badge: Badge | null; shake: number };
 
 type Box = { x: number; y: number; w: number; h: number };
 
-type Tile = Box & { cart: CartId; g: Phaser.GameObjects.Graphics; head: Phaser.GameObjects.Image; lock: Phaser.GameObjects.Graphics | null };
+type Tile = Box & { cart: CartId; g: Phaser.GameObjects.Graphics; head: Phaser.GameObjects.Image; lock: Phaser.GameObjects.Graphics | null; badge: Badge | null };
 
 type Tall = {
   u: number;
@@ -75,7 +78,7 @@ export class GarageScene extends Phaser.Scene {
   }
 
   init(data: GarageData) {
-    this.data0 = { attract: data.attract ?? true, course: data.course ?? "arlindo", index: data.index ?? 0, cart: data.cart ?? "deco", ghost: data.ghost ?? false, unlocked: data.unlocked ?? [] };
+    this.data0 = { attract: data.attract ?? true, course: data.course ?? "arlindo", index: data.index ?? 0, cart: data.cart ?? "deco", ghost: data.ghost ?? false, unlocked: data.unlocked ?? [], wins: data.wins ?? {} };
     this.cards = [];
     this.chipG = null;
     this.chipText = null;
@@ -133,7 +136,7 @@ export class GarageScene extends Phaser.Scene {
       const trait = this.add.text(x + CW / 2, Y0 + 458, text, { ...body(23, locked ? "#a3402c" : "#3d3554"), align: "center", wordWrap: { width: CW - 48 } }).setOrigin(0.5, 0).setDepth(3);
       const lock = locked ? this.drawLock() : null;
       if (locked) view.setAlpha(0.45);
-      this.cards.push({ cart, x, g, view, name, rider, trait, lock, shake: 0 });
+      this.cards.push({ cart, x, g, view, name, rider, trait, lock, badge: this.makeBadge(cart, 4), shake: 0 });
     });
     this.goG = this.add.graphics().setDepth(5);
     this.goText = this.add.text(GO.x, GO.y, this.copy.garage.go.toUpperCase(), display(60, "#1d1830")).setOrigin(0.5).setDepth(6);
@@ -229,7 +232,7 @@ export class GarageScene extends Phaser.Scene {
       const locked = !this.unlocked(cart);
       if (locked) head.setAlpha(0.45);
       const tl = locked ? this.drawLock().setScale(0.42 * u * k).setPosition(x + tw - 15 * u, tilesY + 17 * u) : null;
-      return { cart, x, y: tilesY, w: tw, h: tileH, g, head, lock: tl };
+      return { cart, x, y: tilesY, w: tw, h: tileH, g, head, lock: tl, badge: this.makeBadge(cart, 3) };
     });
     this.goG = this.add.graphics().setDepth(5);
     this.goText = this.add.text(go.x + go.w / 2, go.y + go.h / 2, this.copy.garage.go.toUpperCase(), display(60, "#1d1830")).setOrigin(0.5).setDepth(6);
@@ -305,6 +308,7 @@ export class GarageScene extends Phaser.Scene {
       }
       tile.head.setY(tile.y + tile.h * 0.5 + 4 * u + lift).setTexture(`${tile.cart}-head-${on ? "happy" : "normal"}`);
       tile.lock?.setY(tile.y + 17 * u + lift);
+      if (tile.badge) this.placeBadge(tile.badge, tile.x + tile.w + 6 * u, tile.y - 10 * u + lift, 22 * u, on ? CREAM : SUN);
     }
     if (!attract) {
       const ready = !locked;
@@ -389,6 +393,36 @@ export class GarageScene extends Phaser.Scene {
     return g;
   }
 
+  private makeBadge(cart: CartId, depth: number): Badge | null {
+    const wins = this.data0.wins[cart] ?? 0;
+    if (wins <= 0 || !this.unlocked(cart)) return null;
+    const g = this.add.graphics().setDepth(depth);
+    const icon = this.add.image(0, 0, "dd-ico-trophy").setDepth(depth);
+    const count = this.add.text(0, 0, `${wins}`, { fontFamily: this.host.fonts.display, fontSize: "64px", color: "#1d1830" }).setOrigin(0, 0.5).setDepth(depth);
+    return { g, icon, count };
+  }
+
+  private placeBadge(b: Badge, right: number, top: number, h: number, fill: number) {
+    const size = h * 0.6;
+    const pad = h * 0.3;
+    const gap = h * 0.14;
+    b.icon.setDisplaySize(size, size);
+    b.count.setScale((h * 0.62) / 64);
+    const w = pad + size + gap + b.count.width * b.count.scaleX + pad;
+    const x = right - w;
+    const r = h * 0.3;
+    const g = b.g;
+    g.clear();
+    g.fillStyle(INK, 1);
+    g.fillRoundedRect(x + h * 0.08, top + h * 0.1, w, h, r);
+    g.fillStyle(fill, 1);
+    g.fillRoundedRect(x, top, w, h, r);
+    g.lineStyle(Math.max(2, h * 0.08), INK, 1);
+    g.strokeRoundedRect(x, top, w, h, r);
+    b.icon.setPosition(x + pad + size / 2, top + h / 2);
+    b.count.setPosition(x + pad + size + gap, top + h / 2);
+  }
+
   private unlocked(cart: CartId) {
     return !UNLOCKS[cart] || this.data0.unlocked.includes(cart);
   }
@@ -444,6 +478,7 @@ export class GarageScene extends Phaser.Scene {
       c.rider.setPosition(x + CW / 2, y + 416);
       c.trait.setPosition(x + CW / 2, y + 458);
       c.lock?.setPosition(x + CW - 44, y + 46);
+      if (c.badge) this.placeBadge(c.badge, x + CW - 22, y + 24, 48, on ? CREAM : SUN);
     });
     if (!attract) {
       const ready = this.unlocked(CART_IDS[this.selected]);

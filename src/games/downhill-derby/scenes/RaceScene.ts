@@ -65,7 +65,7 @@ export type SceneBridge = {
   ghost: boolean;
   rivalDefs: readonly RivalDef[];
   form: RaceForm;
-  records: { load: (course: CourseId) => TrackRecord | null; save: (course: CourseId, record: TrackRecord) => void };
+  records: { load: (course: CourseId) => TrackRecord | null; save: (course: CourseId, record: TrackRecord) => void; win: (course: CourseId, cart: CartId) => void };
   onBeat: (course: CourseId, rival: CartId) => void;
   onShow: (points: number) => void;
   onFinish: (finish: RaceFinish) => void;
@@ -1216,6 +1216,7 @@ export class RaceScene extends Phaser.Scene {
       };
     }
     const place = placeOf(time, this.rivals.map((r) => this.rivalTime(r)));
+    if (place === 1) this.bridge.records.win(this.track.id, this.player);
     const list = this.standings();
     this.cart.react(place === 1 ? "win" : "lose");
     if (place === 1) this.fx.confetti(this.sim.x, this.sim.y - 300, 60);
