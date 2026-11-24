@@ -197,6 +197,8 @@ export const TEXT: VacationText = {
     mission: "Mission",
     missionDone: "Mission complete",
     missionAnnounce: (text: string) => `Mission: ${text}`,
+    otherTab: "Adventure open in another tab",
+    otherTabText: "Progress here isn't being saved. Keep playing in the other tab or reload this one.",
   },
   intro: {
     posters: "Posters",

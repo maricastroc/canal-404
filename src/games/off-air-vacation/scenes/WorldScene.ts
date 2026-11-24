@@ -537,7 +537,14 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.s.facing = this.player.facing;
     }
     this.s.area = this.area;
-    saveState(this.s);
+    if (!saveState(this.s)) this.warnOtherTab();
+  }
+
+  private warnOtherTab() {
+    if (this.registry.get("otherTab") || !this.sys.isActive()) return;
+    this.registry.set("otherTab", true);
+    this.hud.toast(this.text.hud.otherTab, this.text.hud.otherTabText, "ui-dot", 0xef4f43);
+    this.ctx.onEvent({ type: "announce", message: `${this.text.hud.otherTab}. ${this.text.hud.otherTabText}` });
   }
 
   private refresh() {

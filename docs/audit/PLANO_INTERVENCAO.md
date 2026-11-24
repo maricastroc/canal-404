@@ -7,8 +7,9 @@
 **Andamento:**
 - Etapa 0 concluída em 2026-11-24: PRs #132 (F01), #133 (F02) e #134 (F04), já no `main`.
 - Etapa 1 concluída em 2026-11-24: PR #136 (F03, F07, F10).
-- Etapa 2 (F08, F11, F20 parte 1) na branch `fix/single-score-source`.
-- Próxima: Etapa 3.
+- Etapa 2 concluída em 2026-11-24: PR #137 (F08, F11, F20 parte 1).
+- Etapa 3 (F05, F17) na branch `fix/multi-tab-saves`.
+- Próxima: Etapa 4.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -283,6 +284,10 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - depois de um `clear`, a próxima gravação não ressuscita o save.
 - **Critérios de aceitação:** os testes passam e `npm test` fica verde.
 - **Esforço:** S.
+- **Como foi feito** (branch `fix/multi-tab-saves`, junto com 3.2 e 3.3):
+  - a loja guarda o último texto que viu (`seen`), e antes de cada alteração (`fresh()`) relê o save se o texto guardado mudou;
+  - o evento `storage` com `key === null` e o `pageshow` restaurado do bfcache também provocam a releitura;
+  - comparar o texto evita reprocessar o save a cada clique.
 
 ### PR 3.2: O Férias não sobrescreve a aba mais nova (F05, Férias)
 
@@ -296,6 +301,11 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
 - **Critérios de aceitação:** com duas abas do Férias, a aba de trás não apaga cartazes pegos na da frente.
 - **Esforço:** S.
 - **Depende de:** PR 0.1. Se os dois forem feitos perto um do outro, junte as mudanças de formato numa única subida de versão.
+- **Como foi feito:**
+  - o save ganhou `id` (sorteado por `newAdventureId()` a cada aventura nova) e `rev`, sem subir a versão, porque campos ausentes viram `""` e `0` na normalização, como o teste "fills fields added after the save was made" já previa;
+  - `saveState` recusa gravar quando o save guardado é de outra aventura, tem `rev` maior ou foi apagado enquanto esta aba tinha `rev > 0`;
+  - a aba recusada mostra "Aventura aberta em outra aba" uma vez e anuncia o aviso;
+  - o filtro de `found` (item 3) ficou para a Etapa 8.
 
 ### PR 3.3: Cópia na nuvem coerente (F17)
 
@@ -317,6 +327,11 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - restaurar com a cota cheia mantém os saves locais;
   - um navegador só com flags recebe a cópia sem perguntar.
 - **Esforço:** S (cada item é XS).
+- **Como foi feito:**
+  - o reset mantém `canal404:sync:v1`;
+  - `applySnapshot` faz todos os backups antes de remover qualquer coisa, e lança erro se um falhar (o Extras já mostra a falha);
+  - `upload` chama `reportError` para cópia grande demais e para recusas 4xx;
+  - `hasProgress` ignora as chaves que só guardam flags (`FLAG_KEYS` em `snapshot.ts`).
 
 **Resultado esperado da etapa:** o progresso local é a fonte única e coerente, e a cópia cumpre o que o Extras promete.
 

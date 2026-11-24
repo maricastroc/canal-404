@@ -8,6 +8,7 @@ import {
   type AchievementId,
   type SecretId,
 } from "./definitions";
+import { SYNC_MARK_KEY } from "@/lib/competition/recovery";
 import { finite, isRecord, readVersioned, type Json, type MigrationSpec } from "./migrate";
 
 export type LevelRecord = { stars: number; score: number };
@@ -85,6 +86,7 @@ const EMPTY_RECORD: GameRecord = {
 
 let state: ProgressState = DEFAULT_STATE;
 let loaded = false;
+let seen: string | null = null;
 const listeners = new Set<() => void>();
 
 let toasts: Toast[] = [];
@@ -162,7 +164,7 @@ function clearGameData() {
     const keys: string[] = [];
     for (let i = 0; i < storage.length; i += 1) {
       const key = storage.key(i);
-      if (key && key.startsWith(DATA_PREFIX) && key !== STORAGE_KEY) keys.push(key);
+      if (key && key.startsWith(DATA_PREFIX) && key !== STORAGE_KEY && key !== SYNC_MARK_KEY) keys.push(key);
     }
     for (const key of keys) storage.removeItem(key);
   } catch {
@@ -170,21 +172,49 @@ function clearGameData() {
   }
 }
 
+function storedRaw() {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function writeStorage() {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const raw = JSON.stringify(state);
+    window.localStorage.setItem(STORAGE_KEY, raw);
+    seen = raw;
   } catch {}
+}
+
+function reload() {
+  state = readStorage();
+  seen = storedRaw();
+}
+
+function catchUp() {
+  if (storedRaw() === seen) return false;
+  reload();
+  return true;
 }
 
 function ensureLoaded() {
   if (loaded || typeof window === "undefined") return;
   loaded = true;
-  state = readStorage();
+  reload();
   window.addEventListener("storage", (event) => {
-    if (event.key !== STORAGE_KEY) return;
-    state = readStorage();
-    emit();
+    if (event.key !== STORAGE_KEY && event.key !== null) return;
+    if (catchUp()) emit();
   });
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted && catchUp()) emit();
+  });
+}
+
+function fresh() {
+  ensureLoaded();
+  if (typeof window !== "undefined" && catchUp()) emit();
 }
 
 function emit() {
@@ -242,7 +272,7 @@ export function dismissToast(id: number) {
 }
 
 export function registerVisit() {
-  ensureLoaded();
+  fresh();
   let isNewSession = true;
   try {
     isNewSession = !window.sessionStorage.getItem("canal404:session");
@@ -265,7 +295,7 @@ export function registerVisit() {
 }
 
 export function unlockAchievement(id: AchievementId) {
-  ensureLoaded();
+  fresh();
   if (state.achievements[id]) return false;
   commit({ ...state, achievements: { ...state.achievements, [id]: Date.now() } });
   if (ACHIEVEMENT_SET.has(id)) pushToast({ kind: "achievement", ...toastText((locale) => achievementText(id, locale)) });
@@ -273,7 +303,7 @@ export function unlockAchievement(id: AchievementId) {
 }
 
 export function unlockSecret(id: SecretId) {
-  ensureLoaded();
+  fresh();
   if (state.secrets[id]) return false;
   commit({ ...state, secrets: { ...state.secrets, [id]: Date.now() } });
   if (SECRET_SET.has(id)) pushToast({ kind: "secret", ...toastText((locale) => secretText(id, locale)) });
@@ -284,29 +314,29 @@ export function unlockSecret(id: SecretId) {
 }
 
 export function bumpCounter(id: string, by = 1) {
-  ensureLoaded();
+  fresh();
   const value = (state.counters[id] ?? 0) + by;
   commit({ ...state, counters: { ...state.counters, [id]: value } });
   return value;
 }
 
 export function setCounter(id: string, value: number) {
-  ensureLoaded();
+  fresh();
   commit({ ...state, counters: { ...state.counters, [id]: value } });
 }
 
 export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
-  ensureLoaded();
+  fresh();
   commit({ ...state, settings: { ...state.settings, [key]: value } });
 }
 
 export function getGameRecord(slug: string): GameRecord {
-  ensureLoaded();
+  fresh();
   return state.games[slug] ?? EMPTY_RECORD;
 }
 
 export function recordGameStart(slug: string) {
-  ensureLoaded();
+  fresh();
   const current = state.games[slug] ?? EMPTY_RECORD;
   commit({
     ...state,
@@ -318,7 +348,7 @@ export function recordGameResult(
   slug: string,
   result: { score: number; stars: number; won: boolean },
 ) {
-  ensureLoaded();
+  fresh();
   const current = state.games[slug] ?? EMPTY_RECORD;
   const isRecord = result.score > current.highScore;
   const next: GameRecord = {
@@ -337,7 +367,7 @@ export function recordLevelResult(
   levelId: string,
   result: { score: number; stars: number; won: boolean },
 ) {
-  ensureLoaded();
+  fresh();
   const current = state.games[slug] ?? EMPTY_RECORD;
   const levels = { ...current.levels };
   const before = levels[levelId] ?? { stars: 0, score: 0 };
@@ -362,7 +392,7 @@ export function recordLevelResult(
 }
 
 export function resetProgress() {
-  ensureLoaded();
+  fresh();
   clearGameData();
   commit({
     ...DEFAULT_STATE,

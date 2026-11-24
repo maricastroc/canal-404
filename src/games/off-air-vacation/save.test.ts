@@ -55,6 +55,28 @@ describe("Férias Fora do Ar save", () => {
     expect(endingUnreported(older, 2150)).toBe(false);
   });
 
+  it("does not overwrite an adventure another tab moved forward", () => {
+    const here = { ...freshState(), id: "a1" };
+    expect(saveState(here)).toBe(true);
+    const there = loadState()!;
+    there.posters = ["club"];
+    expect(saveState(there)).toBe(true);
+    here.area = "beach";
+    expect(saveState(here)).toBe(false);
+    expect(loadState()).toMatchObject({ id: "a1", posters: ["club"], area: "lobby" });
+  });
+
+  it("does not bring back an adventure erased or replaced elsewhere", () => {
+    const here = { ...freshState(), id: "a1" };
+    saveState(here);
+    clearState();
+    expect(saveState(here)).toBe(false);
+    expect(window.localStorage.getItem(SAVE_KEY)).toBeNull();
+    expect(saveState({ ...freshState(), id: "b2" })).toBe(true);
+    expect(saveState(here)).toBe(false);
+    expect(loadState()?.id).toBe("b2");
+  });
+
   it("clears the save for a new adventure", () => {
     saveState(freshState());
     clearState();

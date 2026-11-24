@@ -64,12 +64,13 @@ export function listBackups(key: string, storage: Storage) {
 export function backupRaw(key: string, raw: string, label: string, storage: Storage) {
   try {
     const existing = listBackups(key, storage);
-    if (existing.some((name) => storage.getItem(name) === raw)) return;
+    if (existing.some((name) => storage.getItem(name) === raw)) return true;
     storage.setItem(`${backupPrefix(key)}${label}:${Date.now()}`, raw);
     const all = listBackups(key, storage);
     for (const name of all.slice(0, Math.max(0, all.length - KEEP_BACKUPS))) storage.removeItem(name);
+    return true;
   } catch {
-    return;
+    return false;
   }
 }
 
