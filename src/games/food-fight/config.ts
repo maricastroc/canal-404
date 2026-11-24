@@ -57,18 +57,18 @@ export type Phase = {
 };
 
 export const PHASES: Phase[] = [
-  { from: 0, maxActive: 1, windup: 1350, gap: [900, 1500], speedy: 0, big: 0, flight: 1.0 },
-  { from: 15000, maxActive: 2, windup: 1200, gap: [700, 1300], speedy: 0.25, big: 0, flight: 0.95 },
-  { from: 35000, maxActive: 2, windup: 1050, gap: [550, 1100], speedy: 0.3, big: 0.15, flight: 0.9 },
-  { from: 52000, maxActive: 3, windup: 950, gap: [450, 900], speedy: 0.35, big: 0.2, flight: 0.86 },
-  { from: 65000, maxActive: 3, windup: 850, gap: [350, 700], speedy: 0.4, big: 0.2, flight: 0.8 },
+  { from: 0, maxActive: 2, windup: 1300, gap: [800, 1300], speedy: 0, big: 0, flight: 1.0 },
+  { from: 12000, maxActive: 2, windup: 1150, gap: [600, 1100], speedy: 0.3, big: 0, flight: 0.95 },
+  { from: 28000, maxActive: 3, windup: 1000, gap: [500, 950], speedy: 0.3, big: 0.15, flight: 0.9 },
+  { from: 52000, maxActive: 3, windup: 900, gap: [400, 800], speedy: 0.35, big: 0.2, flight: 0.85 },
+  { from: 63000, maxActive: 4, windup: 820, gap: [320, 650], speedy: 0.4, big: 0.25, flight: 0.8 },
 ];
 
-export const LUNCH_LADY = { times: [15000, 30000, 60000, 70500], speed: 0.27, minGap: 2000, enterX: 2080, exitX: -180, y: 712, scale: 0.68, stride: 26 };
+export const LUNCH_LADY = { times: [7000, 17000, 27500, 60000, 70000], speed: 0.27, minGap: 1200, stopMs: 1300, enterX: 2080, exitX: -180, y: 712, scale: 0.68, stride: 26 };
 
 export const COOK = { times: [23000, 37500, 65000], warnMs: 1800, take: 3, grabMs: 1300, enterX: -170, standX: 140, exitX: -200, enterSpeed: 0.32, exitSpeed: 0.38, y: 846, scale: 0.88 };
 
-export const EVENTS = { trayFrom: 19000, trayChance: 0.3, brawlAt: 43000, brawlMs: 6500, brawlers: 4 };
+export const EVENTS = { trayFrom: 19000, trayChance: 0.3, brawlAt: 43000, brawlMs: 6500, brawlers: 4, strayChance: 0.22, strayWindup: 750 };
 
 export const SCORE = {
   bigHurt: 50,
@@ -82,6 +82,6 @@ export const SCORE = {
   threeStars: 11500,
 };
 
-export const FOODS = ["sandwich", "apple", "grapes", "banana"] as const;
+export const FOOD_BAG = ["sandwich", "sandwich", "apple", "grapes", "banana"] as const;
 
-export const FOOD_EFFECTS = { slipMs: 1700, splashMs: 1300, recoverMs: [350, 700] as [number, number] };
+export const FOOD_EFFECTS = { slipMs: 1200, splashMs: 900, recoverMs: [150, 350] as [number, number] };

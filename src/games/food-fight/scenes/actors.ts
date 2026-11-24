@@ -412,6 +412,8 @@ export class LunchLady {
   angry = false;
   private speed = LUNCH_LADY.speed;
   private walked = 0;
+  private stopX: number | null = null;
+  private pausedFor = 0;
   private exitX = LUNCH_LADY.exitX;
   private stretch = 1;
 
@@ -424,10 +426,12 @@ export class LunchLady {
     this.marker = scene.add.image(-300, 420, "icon-ban").setDepth(15).setAlpha(0.92).setVisible(false);
   }
 
-  start(enterX: number, exitX: number, stretch: number) {
+  start(enterX: number, exitX: number, stretch: number, stopX: number | null = null) {
     this.active = true;
     this.angry = false;
     this.walked = 0;
+    this.stopX = stopX;
+    this.pausedFor = 0;
     this.exitX = exitX;
     this.stretch = stretch;
     this.img.setTexture("lady-walk-0").setPosition(enterX, LUNCH_LADY.y).setAngle(0).setVisible(true);
@@ -457,16 +461,32 @@ export class LunchLady {
     this.marker.setPosition(this.img.x, LUNCH_LADY.y - this.img.displayHeight - 34 - lift);
   }
 
-  retarget(x: number, exitX: number, stretch: number) {
+  retarget(x: number, exitX: number, stretch: number, stopX: number | null = null) {
     this.exitX = exitX;
     this.stretch = stretch;
+    if (this.stopX !== null) this.stopX = stopX;
     if (!this.active) return;
     this.img.setX(x);
     this.place();
   }
 
+  get paused() {
+    return this.pausedFor > 0;
+  }
+
   update(delta: number) {
     if (!this.active) return;
+    if (this.pausedFor > 0 && !this.angry) {
+      this.pausedFor -= delta;
+      return;
+    }
+    if (this.stopX !== null && this.img.x <= this.stopX && !this.angry) {
+      this.stopX = null;
+      this.pausedFor = LUNCH_LADY.stopMs;
+      this.walked = 0;
+      this.place();
+      return;
+    }
     const step = this.speed * delta * (this.angry ? 1.6 : 1);
     this.img.x -= step * this.stretch;
     this.walked += step;
@@ -476,6 +496,7 @@ export class LunchLady {
 
   scold() {
     this.angry = true;
+    this.pausedFor = 0;
     this.place();
     if (!this.reduced) {
       const s = LUNCH_LADY.scale;

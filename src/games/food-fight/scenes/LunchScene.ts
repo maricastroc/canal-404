@@ -6,7 +6,7 @@ import {
   AMMO_SPOTS,
   DECO,
   EVENTS,
-  FOODS,
+  FOOD_BAG,
   FOOD_EFFECTS,
   H,
   INVULNERABLE_MS,
@@ -36,7 +36,7 @@ import { Cook, LunchLady, Rival } from "./actors";
 import { LunchHud } from "./hud";
 
 type Mode = "attract" | "tutorial" | "playing" | "ending" | "over";
-type Food = (typeof FOODS)[number];
+type Food = (typeof FOOD_BAG)[number];
 type Pt = { x: number; y: number };
 type Pose = "idle" | "throw" | "splat" | "cheer";
 
@@ -148,6 +148,8 @@ export class LunchScene extends Phaser.Scene {
   private frame: Frame = LANDSCAPE_FRAME;
   private tables: Phaser.GameObjects.Image[] = [];
   private peels = new Map<number, Peel>();
+  private ladyStop = 0;
+  private ladyWasPaused = false;
   private taught = new Set<string>();
   private topStrip!: Phaser.GameObjects.Image;
   private extension!: Phaser.GameObjects.Graphics;
@@ -211,6 +213,8 @@ export class LunchScene extends Phaser.Scene {
     this.tables = [];
     this.peels = new Map();
     this.taught = new Set();
+    this.ladyStop = 0;
+    this.ladyWasPaused = false;
     this.frame = LANDSCAPE_FRAME;
   }
 
@@ -343,7 +347,7 @@ export class LunchScene extends Phaser.Scene {
       this.deco.setY(this.deco.y + dy - previous.drop);
       this.mila.setY(this.mila.y + dy - previous.drop);
     }
-    this.lunchLady.retarget(frameX(frame, landscapeX(previous, this.lunchLady.img.x)), frameX(frame, LUNCH_LADY.exitX), walkScale(frame));
+    this.lunchLady.retarget(frameX(frame, landscapeX(previous, this.lunchLady.img.x)), frameX(frame, LUNCH_LADY.exitX), walkScale(frame), this.ladyStopX(frame));
     this.topStrip.setY(frame.top > 0 ? frame.top - 40 : frame.top);
     this.drawExtension(frame);
     const scenery = SCENERY[frame.kind];
@@ -448,7 +452,7 @@ export class LunchScene extends Phaser.Scene {
   }
 
   private randomFood(): Food {
-    return FOODS[Phaser.Math.Between(0, FOODS.length - 1)];
+    return FOOD_BAG[Phaser.Math.Between(0, FOOD_BAG.length - 1)];
   }
 
   private ammoY(i: number) {
@@ -674,6 +678,11 @@ export class LunchScene extends Phaser.Scene {
     if (this.t < this.brawlNext) return;
     this.brawlNext = this.t + Phaser.Math.Between(300, 520);
     const ready = this.rivals.filter((r) => r.brawl && r.state === "up");
+    const straying = this.rivals.some((r) => r.brawl && (r.state === "windup" || r.state === "after"));
+    if (ready.length && !straying && Math.random() < EVENTS.strayChance) {
+      this.strayPudding(Phaser.Utils.Array.GetRandom(ready) as Rival);
+      return;
+    }
     if (ready.length < 2) return;
     const a = Phaser.Utils.Array.GetRandom(ready) as Rival;
     const b = Phaser.Utils.Array.GetRandom(ready.filter((x) => x !== a)) as Rival;
@@ -692,6 +701,16 @@ export class LunchScene extends Phaser.Scene {
     });
   }
 
+  private strayPudding(r: Rival) {
+    r.startWindup(this.t, EVENTS.strayWindup);
+    this.sfx("windup", 0.7);
+    if (!this.taught.has("stray")) {
+      this.taught.add("stray");
+      this.milaSay(this.copy.brawl.straySay, 1800, "shout", true);
+    }
+    this.announce(this.copy.pudding.incoming(r.slot.key), "windup", 900);
+  }
+
   private endBrawl() {
     this.brawlUntil = 0;
     this.sfx("whistle", 1);
@@ -700,7 +719,7 @@ export class LunchScene extends Phaser.Scene {
       if (r.visible && r.state !== "lowering") r.lower(() => (r.readyAt = this.t + 900));
     }
     this.nextSpawnAt = this.t + 1700;
-    this.startLunchLady();
+    if (!this.lunchLady.active) this.startLunchLady();
     this.milaSay(this.copy.brawl.endSay, 2000, "shout", true);
     this.announce(this.copy.brawl.endAnnounce);
   }
@@ -738,9 +757,21 @@ export class LunchScene extends Phaser.Scene {
     }
   }
 
+  private ladyStopX(frame: Frame) {
+    const slot = SLOTS[this.ladyStop];
+    return frame.kind === "portrait" ? slot.portraitX : slot.x;
+  }
+
   private startLunchLady() {
     const f = this.frame;
-    this.lunchLady.start(frameX(f, LUNCH_LADY.enterX), frameX(f, LUNCH_LADY.exitX), walkScale(f));
+    const backs = SLOTS.flatMap((slot, i) => (slot.row === "back" ? [i] : []));
+    this.ladyStop = Phaser.Utils.Array.GetRandom(backs) as number;
+    this.ladyWasPaused = false;
+    this.lunchLady.start(frameX(f, LUNCH_LADY.enterX), frameX(f, LUNCH_LADY.exitX), walkScale(f), this.ladyStopX(f));
+  }
+
+  private behindLady(r: Rival, at = r.face(), margin = 0) {
+    return r.slot.row === "back" && this.lunchLady.covers(at, margin);
   }
 
   private launch(img: Phaser.GameObjects.Image, from: Pt, to: Pt, dur: number, lift: number, scaleTo: number, onArrive: () => void) {
@@ -878,9 +909,8 @@ export class LunchScene extends Phaser.Scene {
     let best: Rival | null = null;
     let score = 0;
     for (const r of this.rivals) {
-      if (!r.targetable) continue;
-      const shield = this.lunchLady.covers(r.face(), 30) && r.state !== "windup";
-      const u = r.urgency(this.t) * (shield ? 0.4 : 1);
+      if (!r.targetable || this.behindLady(r, r.face(), 30)) continue;
+      const u = r.urgency(this.t);
       if (u > score) {
         score = u;
         best = r;
@@ -978,7 +1008,8 @@ export class LunchScene extends Phaser.Scene {
     img.destroy();
     if (this.mode === "ending" || this.mode === "over") return;
     if (target.kind === "rival" && target.rival.targetable) {
-      this.contact(target.rival, food, to);
+      if (this.behindLady(target.rival, to)) this.lunchLadyHit();
+      else this.contact(target.rival, food, to);
       return;
     }
     const escaped = target.kind === "rival" && (target.rival.state === "lowering" || target.rival.state === "hidden");
@@ -1448,6 +1479,12 @@ export class LunchScene extends Phaser.Scene {
     this.updateProjectiles();
     this.updateRivals();
     this.lunchLady.update(dt);
+    if (this.lunchLady.paused && !this.ladyWasPaused && this.mode === "playing") {
+      const table = SLOTS[this.ladyStop].key;
+      this.milaSay(this.copy.lady.stopSay(table), 1600, "shout");
+      this.announce(this.copy.lady.stopAnnounce(table));
+    }
+    this.ladyWasPaused = this.lunchLady.paused;
     this.cook.update(dt, () => this.cookArrive(), () => this.cook.leave(this.cookTook > 0));
     if (this.ladyWasActive && !this.lunchLady.active) this.ladyGoneAt = this.t;
     this.ladyWasActive = this.lunchLady.active;

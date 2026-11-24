@@ -19,10 +19,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 - **Banana leaves a peel.** A banana that misses lands on that table as a peel. The next kid who pops up there slips and stays dizzy for a moment: he can't throw and is easy to hit.
 - **Grapes splash.** Grapes that hit splash the kids at the tables numbered right before and after. They get dizzy and, if they were about to throw, the pudding falls on their own heads. A tray keeps the splash out.
 - **Apple hits hard.** An apple takes down a big kid in one hit and goes through a tray.
-- **Sandwich** stays a plain snack.
+- **Sandwich** stays a plain snack and is the most common one.
 - **Next snack.** The snack that flies next sits bigger and a little higher on the table.
 - **Learning the effects.** Mila explains each effect the first time it happens, screen readers hear every one, and the tips mention them in pt-BR and English.
-- **Same scoring.** No effect scores a hit without a throw, so the scoreboard rules and boards are unchanged.
+- **Same scoring.** No effect scores a hit without a throw, so the judge counts hits the same way.
 
 ### Rua Sem Saída: mira precisa e Caminho bloqueado mais justo
 - **Sunbathing gnome.** It now sits facing the player in a striped beach chair with its pointed hat up, so it reads as a gnome at a glance. The physics and scoring are unchanged.
