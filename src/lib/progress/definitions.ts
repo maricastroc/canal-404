@@ -37,6 +37,14 @@ export type AchievementId =
   | "offair-mystery"
   | "offair-posters"
   | "offair-room"
+  | "downhill-win"
+  | "downhill-gnome"
+  | "downhill-sweep"
+  | "bedtime-first"
+  | "bedtime-par"
+  | "bedtime-tape"
+  | "talent-first"
+  | "talent-perfect"
   | "talent-finale";
 
 export type ProgressText = {
@@ -91,6 +99,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "offair-mystery", color: "mint" },
   { id: "offair-posters", color: "tangerine" },
   { id: "offair-room", color: "sky" },
+  { id: "downhill-win", color: "tangerine" },
+  { id: "downhill-gnome", color: "sun" },
+  { id: "downhill-sweep", color: "plum" },
+  { id: "bedtime-first", color: "sky" },
+  { id: "bedtime-par", color: "mint" },
+  { id: "bedtime-tape", color: "plum" },
+  { id: "talent-first", color: "sun" },
+  { id: "talent-perfect", color: "mint" },
   { id: "talent-finale", color: "bubblegum" },
 ];
 
@@ -308,6 +324,46 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
       description: "Você abriu o quarto 404 e conheceu quem dorme lá.",
       hint: "Um hóspede bem lento guarda uma chave.",
     },
+    "downhill-win": {
+      title: "Bandeirada",
+      description: "Você cruzou a linha de chegada em 1º lugar na Ladeira Abaixo.",
+      hint: "Chegue em 1º lugar numa pista da Ladeira Abaixo.",
+    },
+    "downhill-gnome": {
+      title: "Anão Dourado",
+      description: "Você pegou o anão dourado escondido no telhado do Seu Arlindo.",
+      hint: "Nem todo anão do Seu Arlindo mora no jardim.",
+    },
+    "downhill-sweep": {
+      title: "Tríplice Coroa",
+      description: "Você venceu as 3 pistas da Ladeira Abaixo.",
+      hint: "Chegue em 1º lugar nas 3 pistas da Ladeira Abaixo.",
+    },
+    "bedtime-first": {
+      title: "Pé Ante Pé",
+      description: "Você passou pela porta dos pais sem acordar o pai.",
+      hint: "Termine a primeira parte da Madrugada.",
+    },
+    "bedtime-par": {
+      title: "Plano Perfeito",
+      description: "Você terminou uma parte da Madrugada dentro da meta de jogadas.",
+      hint: "Termine uma parte da Madrugada dentro da meta de jogadas, sem pedir dica.",
+    },
+    "bedtime-tape": {
+      title: "Fita Gravada",
+      description: "Você gravou a Sessão Chiado e voltou para a cama sem ninguém perceber.",
+      hint: "Grave a Sessão Chiado e volte para a cama.",
+    },
+    "talent-first": {
+      title: "Calouro Aprovado",
+      description: "O júri te deu a primeira estrela no Ao Vivo no 404.",
+      hint: "Ganhe uma estrela em qualquer música do Ao Vivo no 404.",
+    },
+    "talent-perfect": {
+      title: "Nota Dez",
+      description: "Você ganhou 3 estrelas numa música do Ao Vivo no 404 sem o modo assistido.",
+      hint: "Chegue a 92% de precisão numa música, sem o modo assistido.",
+    },
     "talent-finale": {
       title: "Bis!",
       description: "Você terminou o Pot-pourri do 404 com pelo menos uma estrela.",
@@ -439,6 +495,46 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
       title: "Guest of 404",
       description: "You opened Room 404 and met whoever sleeps there.",
       hint: "A very slow guest is keeping a key.",
+    },
+    "downhill-win": {
+      title: "Checkered Flag",
+      description: "You crossed the finish line in 1st place in Downhill Derby.",
+      hint: "Finish 1st on a Downhill Derby track.",
+    },
+    "downhill-gnome": {
+      title: "Golden Gnome",
+      description: "You grabbed the golden gnome hidden on Mr. Arlindo's roof.",
+      hint: "Not every one of Mr. Arlindo's gnomes lives in the garden.",
+    },
+    "downhill-sweep": {
+      title: "Triple Crown",
+      description: "You won all 3 Downhill Derby tracks.",
+      hint: "Finish 1st on all 3 Downhill Derby tracks.",
+    },
+    "bedtime-first": {
+      title: "Tiptoe",
+      description: "You got past Mom and Dad's door without waking Dad.",
+      hint: "Finish the first part of Past Bedtime.",
+    },
+    "bedtime-par": {
+      title: "Flawless Plan",
+      description: "You finished a Past Bedtime part within the move target.",
+      hint: "Finish a Past Bedtime part within the move target, without asking for a hint.",
+    },
+    "bedtime-tape": {
+      title: "Taped!",
+      description: "You taped the Static Show and got back to bed without anyone noticing.",
+      hint: "Tape the Static Show and get back to bed.",
+    },
+    "talent-first": {
+      title: "Jury Approved",
+      description: "The jury gave you your first star on Live on 404.",
+      hint: "Earn a star on any Live on 404 song.",
+    },
+    "talent-perfect": {
+      title: "Perfect Ten",
+      description: "You earned 3 stars on a Live on 404 song without assist mode.",
+      hint: "Reach 92% accuracy on a song, without assist mode.",
     },
     "talent-finale": {
       title: "Encore!",
