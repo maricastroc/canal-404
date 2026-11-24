@@ -99,7 +99,7 @@ export class GarageScene extends Phaser.Scene {
       this.scene.restart({ ...this.data0, cart: CART_IDS[this.selected] });
     });
     this.frame = currentFrame(this);
-    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => {
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.removeAllListeners();
       for (const c of this.cards) c.view.destroy();
       for (const v of this.tall?.views.values() ?? []) v.destroy();
