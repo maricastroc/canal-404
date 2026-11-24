@@ -1065,7 +1065,7 @@ export class DockHud implements StreetHud {
     });
   }
 
-  private stopHold() {
+  stopHold() {
     this.holdTimer?.remove();
     this.holdTimer = undefined;
   }
