@@ -189,18 +189,14 @@ export async function flushOutbox() {
   flushing = true;
   let sent = 0;
   try {
-    const items = readOutbox();
-    const keep: OutboxItem[] = [];
-    for (const item of items) {
+    const settled = new Set<string>();
+    for (const item of readOutbox()) {
       const outcome = await send(item.ticket, item.claim);
-      if (outcome === "network") {
-        keep.push(item);
-        continue;
-      }
-      if (outcome.kind === "not-joined") keep.push(item);
-      else sent += 1;
+      if (outcome === "network" || outcome.kind === "not-joined") continue;
+      settled.add(item.ticket);
+      sent += 1;
     }
-    writeOutbox(keep);
+    writeOutbox(readOutbox().filter((item) => !settled.has(item.ticket)));
   } finally {
     flushing = false;
   }
