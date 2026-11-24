@@ -14,7 +14,7 @@ import { useSound } from "@/lib/audio/hooks";
 import { boardMeta, checkText, GAME_SLUGS, isFinishersBoard, type GameSlug, type Metric } from "@/lib/competition/boards";
 import { pickBoard, rankedLevels, type BoardLevel } from "@/lib/competition/choice";
 import { connect, fetchBoard } from "@/lib/competition/client";
-import { finishDate, formatMetric, ordinal } from "@/lib/competition/format";
+import { finishDate, formatMetricLong, formatMetricValue, ordinal } from "@/lib/competition/format";
 import { useCompetition } from "@/lib/competition/hooks";
 import { recordsHref } from "@/lib/competition/links";
 import type { BoardEntry, LeaderboardResponse } from "@/lib/competition/types";
@@ -56,15 +56,16 @@ const COPY = localized({
     people: (n: number) => (n === 1 ? "1 pessoa no placar" : `${formatNumber(n, "pt-BR")} pessoas no placar`),
     yourPlace: "Seu lugar",
     soon: "Quando o placar estrear, seu apelido aparece aqui.",
-    playsAs: "Você joga como",
-    standing: (place: string, total: number, best: string) => `${place} de ${formatNumber(total, "pt-BR")}: ${best}`,
+    playsAs: "No placar, você é",
+    place: (place: string) => `${place} lugar`,
+    among: (total: number) => (total === 1 ? "" : ` entre ${formatNumber(total, "pt-BR")} jogadores`),
     noRecord: "Você ainda não tem recorde neste placar.",
     noCard: "Sem carteirinha ainda. Jogue uma partida e escolha um apelido no fim, ou",
     getCard: "tire a carteirinha em Extras",
     beat: "Tentar bater",
     playNow: "Jogar agora",
     rules: "Regras da casa",
-    tie: "Empate em tudo? Fica na frente quem chegou primeiro.",
+    tie: "Se tudo empatar, fica na frente quem registrou o resultado primeiro.",
     check: "Como o canal confere",
     where: { fase: "desta fase", arena: "desta arena", pista: "desta pista", parte: "desta parte", música: "desta música", game: "deste jogo" },
     caption: (game: string, level: string | null) => `Melhores do canal em ${game}${level ? `, ${level}` : ""}`,
@@ -99,15 +100,16 @@ const COPY = localized({
     people: (n: number) => (n === 1 ? "1 person on the board" : `${formatNumber(n, "en")} people on the board`),
     yourPlace: "Your place",
     soon: "When the board premieres, your nickname shows up here.",
-    playsAs: "You play as",
-    standing: (place: string, total: number, best: string) => `${place} of ${formatNumber(total, "en")}: ${best}`,
+    playsAs: "On the board, you're",
+    place: (place: string) => `${place} place`,
+    among: (total: number) => (total === 1 ? "" : ` out of ${formatNumber(total, "en")} players`),
     noRecord: "You don't have a record on this board yet.",
     noCard: "No membership card yet. Play a run and pick a nickname at the end, or",
     getCard: "get your membership card in Extras",
     beat: "Try to beat it",
     playNow: "Play now",
     rules: "House rules",
-    tie: "Tied on everything? Whoever got there first stays ahead.",
+    tie: "If everything is tied, whoever posted the result first stays ahead.",
     check: "How the channel checks",
     where: { fase: "on this level", arena: "in this arena", pista: "on this track", parte: "in this part", música: "in this song", game: "in this game" },
     caption: (game: string, level: string | null) => `Channel's best in ${game}${level ? `, ${level}` : ""}`,
@@ -230,8 +232,8 @@ function Row({ entry, metrics, verified }: { entry: Pick<BoardEntry, "position" 
         <Name nickname={entry.nickname} tag={entry.tag} you={entry.you} verified={entry.verified ? verified : undefined} />
       </td>
       {metrics.map((metric, i) => (
-        <td key={i} className={`whitespace-nowrap px-1 py-1.5 text-right text-sm text-cream-2 last:rounded-r-lg last:pr-2 ${i === 2 ? "hidden sm:table-cell" : ""}`}>
-          {formatMetric(metric, entry.metrics[i] ?? 0, locale)}
+        <td key={i} className={`whitespace-nowrap px-1 py-1.5 text-right text-sm tabular-nums text-cream-2 last:rounded-r-lg last:pr-2 ${i === 2 ? "hidden sm:table-cell" : ""}`}>
+          {formatMetricValue(metric, entry.metrics[i] ?? 0, locale)}
         </td>
       ))}
     </tr>
@@ -408,16 +410,21 @@ function PlayerPanel({ game, view, status, nickname, tag }: { game: GameMeta & {
           {standing && finishers ? (
             <p className="mt-2 rounded-lg border-2 border-ink bg-sun px-2 py-1.5 font-semibold">{copy.finishedYou(finishDate(standing.best.achievedAt, locale))}</p>
           ) : standing ? (
-            <p className="mt-2 rounded-lg border-2 border-ink bg-sun px-2 py-1.5 font-semibold">
-              {copy.standing(
-                ordinal(standing.position, locale),
-                standing.total,
-                meta.metrics
+            <div className="mt-2 rounded-lg border-2 border-ink bg-sun px-3 py-2">
+              <p className="leading-tight">
+                <span className="inline-flex items-center gap-1 align-[-0.1em] font-display text-2xl leading-none tracking-wide">
+                  {standing.position === 1 ? <TrophyIcon className="size-5" /> : null}
+                  {copy.place(ordinal(standing.position, locale))}
+                </span>
+                <span className="font-bold">{copy.among(standing.total)}</span>
+              </p>
+              <p className="mt-1 text-sm font-semibold text-ink-soft">
+                {meta.metrics
                   .slice(0, 2)
-                  .map((m, i) => formatMetric(m, standing.best.metrics[i] ?? 0, locale))
-                  .join(" · "),
-              )}
-            </p>
+                  .map((m, i) => formatMetricLong(m, standing.best.metrics[i] ?? 0, locale))
+                  .join(" · ")}
+              </p>
+            </div>
           ) : (
             <p className="mt-2 font-semibold text-ink-soft">{copy.noRecord}</p>
           )}
@@ -448,7 +455,11 @@ function RulesNote({ game }: { game: GameSlug }) {
       <h2 id="rules-title" className="font-display text-lg uppercase tracking-wide">
         {copy.rules}
       </h2>
-      <p className="mt-1 font-semibold">{meta.explain}</p>
+      {meta.explain.split("\n").map((line, i) => (
+        <p key={i} className={i === 0 ? "mt-1 font-semibold" : "mt-1.5"}>
+          {line}
+        </p>
+      ))}
       {isFinishersBoard(game) ? null : <p className="mt-2 text-sm">{copy.tie}</p>}
       <h3 className="mt-3 flex items-center gap-1.5 font-display text-sm uppercase tracking-wider">
         {meta.check === "replayed" ? <VerifiedIcon className="size-4 text-mint-deep" /> : null}

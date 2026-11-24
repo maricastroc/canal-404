@@ -89,7 +89,8 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
     ],
   },
   "talent-show": {
-    explain: "Cada música tem seu placar. Mais pontos vence. Empate: mais notas na mosca; depois, menos barulho. Partidas no modo assistido não entram.",
+    explain:
+      "Cada música tem seu próprio ranking. Quanto mais pontos, melhor!\nEmpatou? Vence quem acertou mais notas na mosca. Se continuar empatado, ganha quem fez menos barulho.\nPartidas no modo assistido não entram no placar.",
     check: "replayed",
     metrics: [
       { label: "Pontos", unit: "points", lowerIsBetter: false },
@@ -135,7 +136,7 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
     metrics: [{ label: "Moves", noun: ["move", "moves"] }, { label: "Wake-ups", noun: ["wake-up", "wake-ups"] }, { label: "Creaks", noun: ["creak", "creaks"] }],
   },
   "talent-show": {
-    explain: "Each song has its own board. Most points wins. Tiebreak: more bullseye notes, then less noise. Runs in assist mode don't go on the board.",
+    explain: "Each song has its own board. The more points, the better!\nTied? Whoever hit more bullseye notes wins. Still tied, whoever made less noise wins.\nRuns in assist mode don't go on the board.",
     metrics: [{ label: "Points" }, { label: "Bullseye", noun: ["bullseye note", "bullseye notes"] }, { label: "Noise", noun: ["stray tap", "stray taps"] }],
   },
 };
@@ -186,7 +187,7 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
       verified: "Jogadas refeitas pelo canal",
     },
     "talent-show": {
-      explain: "O canal refaz seus toques no servidor, com a mesma partitura do jogo, e só aceita o resultado se a pontuação bater. Toques precisos demais para uma pessoa ficam fora do placar.",
+      explain: "O Canal 404 refaz sua apresentação no servidor, com a mesma partitura do jogo. Só entram no placar resultados com a pontuação conferida e toques dentro do alcance de uma pessoa.",
       verified: "Toques refeitos pelo canal",
     },
   },
@@ -208,7 +209,7 @@ const REPLAYED = localized<Partial<Record<GameSlug, Required<CheckText>>>>({
       verified: "Moves replayed by the channel",
     },
     "talent-show": {
-      explain: "The channel replays your taps on the server against the game's own chart and only accepts the result if the score matches. Taps too precise for a person stay off the board.",
+      explain: "Canal 404 replays your performance on the server against the game's own chart. Only results with a matching score and taps within a person's reach go on the board.",
       verified: "Taps replayed by the channel",
     },
   },
