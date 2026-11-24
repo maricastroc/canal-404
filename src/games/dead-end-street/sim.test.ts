@@ -9,7 +9,7 @@ const GOLDEN: Record<PhaseId, { steps: number; score: number }> = {
   "up-high": { steps: 415, score: 1700 },
   domino: { steps: 266, score: 1575 },
   "surprise-bath": { steps: 363, score: 1775 },
-  "blocked-path": { steps: 953, score: 1225 },
+  "blocked-path": { steps: 903, score: 1225 },
   counterattack: { steps: 386, score: 1550 },
   "free-for-all": { steps: 915, score: 1425 },
   "grand-mess": { steps: 411, score: 1775 },

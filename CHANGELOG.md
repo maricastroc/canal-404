@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Rua Sem Saída: mira precisa e Caminho bloqueado mais justo
+- **Sunbathing gnome.** It now sits facing the player in a striped beach chair with its pointed hat up, so it reads as a gnome at a glance. The physics and scoring are unchanged.
+- **Desktop aim in whole numbers.** Dragging rounds to 1° and 1%, like the phone, so the number on screen is the number launched. The arrows and WASD step by 1, or by 5 with Shift.
+- **Restart keeps the aim.** Restarting a level brings each launch back with the aim it had in the last attempt. Moving to another level starts from 35° and 50%.
+- **Caminho bloqueado is fairer.** The crate starts at the edge of its beam, so knocking it into the pit no longer needs a pixel-perfect lob. The level still takes 3 launches for 3 stars, and a rare launch that drops the crate and cuts the rope at once makes it 2.
+- **New boards.** The change bumps Rua Sem Saída's rules to version 4, so all nine levels start fresh boards ([decision 0011](docs/decisions/0011-street-campaign.md)).
+
 ### Pausa e Como jogar em telas separadas
 - **The pause stays small.** "Como jogar" no longer stretches the pause card. It swaps it for its own view with the game's name, the three tips, the controls and a "Voltar à pausa" button. The game stays paused the whole time.
 - **Every game gets it**, since they all share the same pause card.

@@ -124,7 +124,7 @@ const STREET_GADGETS = 16;
 const deadEndStreet: GameRule = {
   game: "dead-end-street",
   replay: "street-launches",
-  version: 3,
+  version: 4,
   levels: PHASE_IDS,
   stats: [...STREET_STATS, "timeMs"],
   judge(level, claim) {

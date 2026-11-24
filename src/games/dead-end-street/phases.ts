@@ -295,7 +295,7 @@ export const PHASES: PhaseDef[] = [
     ],
     pieces: [
       { id: "bowling", tex: "bowling-ball", x: 850, y: 444, shape: { type: "ball", r: 26 }, density: 0.01, restitution: 0.1, friction: 0.05, frictionAir: 0.0005, material: "rubber" },
-      crate("crate", 1272, 668),
+      crate("crate", 1302, 668),
       { id: "bridge", tex: "bridge", x: 1406.8, y: 663.3, angle: 84, shape: { type: "box", w: 100, h: 16, chamfer: 3 }, density: 0.003, material: "wood" },
     ],
     targets: [{ ...gnome("golden-gnome", 1600, 656, 300, "golden-gnome"), direct: false }],
