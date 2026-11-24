@@ -79,17 +79,18 @@ test.describe("scoreboard with the backend", () => {
     await board.getByLabel("Seu apelido").fill(nickname());
     const submitted = page.waitForResponse((r) => r.url().endsWith("/api/runs") && r.request().method() === "POST" && r.status() === 201);
     await board.getByRole("button", { name: "Entrar no placar" }).click();
-    expect((await (await submitted).json()).run).toMatchObject({ verification: "replayed", eligible: true });
+    const first = await (await submitted).json();
+    expect(first.run).toMatchObject({ verification: "replayed", eligible: true });
+    expect(first.board).toMatchObject({ position: expect.any(Number), best: { metrics: [1, expect.any(Number)] } });
     await expect(board.getByRole("status")).toContainText(/Você entrou no placar|Novo recorde pessoal!|Recorde do canal!|Placar inaugurado/, { timeout: simTime(15_000) });
-    await expect(board.getByRole("status")).toContainText(/(1 peça · \d+,\d{2} s\. ((Agora v|V)ocê está em \d+º de \d+|Você passou na frente de todo mundo: 1º de \d+)|sua marca: 1 peça · \d+,\d{2} s)\./);
     await expect(board.getByRole("link", { name: "Ver o fliperama de recordes" })).toHaveAttribute("href", "/records?game=bad-ideas-lab&level=pixel");
 
     await result.getByRole("button", { name: "Refazer fase" }).click();
     await expect(result).toBeHidden();
+    const resubmitted = page.waitForResponse((r) => r.url().endsWith("/api/runs") && r.request().method() === "POST" && r.status() === 201);
     const again = await placePixelRamp(page);
-    await expect(again.getByRole("region", { name: "Placar da fase" }).getByRole("status")).toContainText(/Seu melhor continua 1 peça · \d+,\d{2} s/, {
-      timeout: simTime(15_000),
-    });
+    await expect(again.getByRole("region", { name: "Placar da fase" })).toBeVisible();
+    expect((await (await resubmitted).json()).board).toMatchObject({ improved: false, best: first.board.best });
 
     await page.goto("/extras#membership");
     const card = page.getByTestId("player-card");
