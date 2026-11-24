@@ -4,6 +4,18 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Teclado, rolagem e celular mais previsíveis no portal
+- **The game stays out of the way of its cards.** With the title, pause, result or error card open, Tab and Shift+Tab move between the card and the header (Voltar, Som), never into the game hidden behind the card, and the game returns to focus when play continues. Screen readers can still reach Voltar from the title card.
+- **Mission visitors start in the right place.** Coming from a mission link while the mission was still loading, "Começar missão" appeared without focus. It now gets focus as soon as it shows.
+- **No smooth scroll when changing pages.** Leaving a page scrolled down used to glide back to the top. Now it jumps straight there. With reduced motion on, moving around the room on phones, jumping to the day's board and opening the new-adventure confirmation no longer animate.
+- **Phones held sideways.** The top bar, the pages, the footer and the game header keep clear of the notch and the rounded corners.
+- **Smaller fixes.**
+  - Toasts with a link wait while the pointer or keyboard is on them, so their link can be reached.
+  - A poster that fails to draw says so and offers "Tentar de novo", instead of tuning in forever.
+  - A tape that fails to download can be tried again without reloading the page.
+  - The link to the Missão 404 page inside a game no longer reloads the whole site.
+  - Times on the membership card and the cloud copy use the visitor's own time zone, and the copy offer names it.
+
 ### Botões e pausa que fazem o que dizem
 - **Operação: Recreio: "Recomeçar partida" starts the level over.** After a bell, the header and pause-menu restart used to send Bruno back to the bell with his hearts refilled and the hits taken after it forgotten. That run also no longer counted for the board. The restart now begins the level from the start. After a knockout, "Voltar ao sino" on the result screen still continues from the last bell.
 - **Ao Vivo no 404: pausing is silent and keeps long notes.** The count-in clicks, Mila's notes and the static hiss used to keep playing for a few seconds after a pause. A long note held when the game paused always counted as dropped. Now everything stops at once. A note still held after the pause keeps counting, and one released during the pause ends where the song stopped.
