@@ -4,6 +4,9 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: o cartão volta depois de girar o celular
+- **Turning the phone with a song card open no longer leaves an empty stage.** Rotating the phone, or resizing the window across a layout change, while the how-to or song card was showing rebuilt the stage without the card. Taps and Esc then did nothing until Pausar → Recomeçar. Now the rebuilt stage shows the same card again, ready to start. Songs, timing, scoring and boards are unchanged.
+
 ### Resultados guardados não somem com a rede instável
 - **A result saved for later is no longer dropped while older ones are being sent.** When the board couldn't be reached, results waited in the browser and went up as soon as it came back. If a new result was saved while that sending was still going on, for example a match finished on a flaky phone connection, or one waiting for a nickname, it was erased when the sending ended and never reached the board or the day's mission. Now only the results that were actually answered leave the list. Local progress was never affected, and scores and boards are unchanged.
 
