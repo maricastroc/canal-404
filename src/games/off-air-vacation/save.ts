@@ -93,6 +93,12 @@ export function loadState(): State | null {
   return loaded.status === "ok" ? loaded.value : null;
 }
 
+export function endingUnreported(s: State, highScore: number) {
+  if (!s.flags.ended) return false;
+  if ("resultPending" in s.flags) return s.flags.resultPending;
+  return highScore <= 0;
+}
+
 export function saveState(s: State) {
   try {
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(s));

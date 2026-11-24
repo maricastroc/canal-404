@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SAVE_KEY } from "./config";
-import { clearState, freshState, loadState, saveState } from "./save";
+import { clearState, endingUnreported, freshState, loadState, saveState } from "./save";
 
 const backups = () => Object.keys(window.localStorage).filter((k) => k.startsWith(`${SAVE_KEY}:backup:`));
 
@@ -37,6 +37,22 @@ describe("Férias Fora do Ar save", () => {
       JSON.stringify({ v: 1, area: "moon", x: 50, items: ["remote", "laser", "remote"], posters: ["surf", 3], flags: { tiltWon: true, bad: "yes" }, ending: "maybe", facing: -1 }),
     );
     expect(loadState()).toEqual({ ...freshState(), items: ["remote"], posters: ["surf"], flags: { tiltWon: true }, facing: -1 });
+  });
+
+  it("remembers an ending whose result was never sent", () => {
+    saveState({ ...freshState(), ending: "off", flags: { ended: true, resultPending: true } });
+    const pending = loadState()!;
+    expect(pending.ending).toBe("off");
+    expect(endingUnreported(pending, 2150)).toBe(true);
+    saveState({ ...pending, flags: { ended: true, resultPending: false } });
+    expect(endingUnreported(loadState()!, 0)).toBe(false);
+    expect(endingUnreported(freshState(), 0)).toBe(false);
+  });
+
+  it("sends the ending of an older save only if the portal never recorded one", () => {
+    const older = { ...freshState(), flags: { ended: true } };
+    expect(endingUnreported(older, 0)).toBe(true);
+    expect(endingUnreported(older, 2150)).toBe(false);
   });
 
   it("clears the save for a new adventure", () => {
