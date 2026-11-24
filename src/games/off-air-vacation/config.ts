@@ -27,3 +27,11 @@ export const MAP_POS: Record<AreaId, [number, number]> = {
 };
 
 export const SCORE = { mystery: 1000, poster: 100, token: 50, secret: 250 };
+
+export type ResortCounts = { posters: number; tokens: number; secrets: number };
+
+export function resortResult(counts: ResortCounts, solved = true) {
+  const score = (solved ? SCORE.mystery : 0) + counts.posters * SCORE.poster + counts.tokens * SCORE.token + counts.secrets * SCORE.secret;
+  const stars = 1 + (counts.posters >= 3 ? 1 : 0) + (counts.secrets >= 2 ? 1 : 0);
+  return { score, stars };
+}

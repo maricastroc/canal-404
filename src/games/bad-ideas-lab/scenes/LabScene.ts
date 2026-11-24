@@ -11,7 +11,7 @@ import {
   partAngle,
   type PartType,
 } from "../config";
-import { attemptBonus, LEVELS, starsFor, type LevelDef } from "../levels";
+import { attemptBonus, LAB_SCORE, labScore, LEVELS, starsFor, type LevelDef } from "../levels";
 import { goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Vec } from "../geometry";
 import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { COPY, levelText, type LabCopy, type LevelText } from "../copy";
@@ -1977,8 +1977,8 @@ export class LabScene extends Phaser.Scene {
     const stars = starsFor(used, level.par);
     const r = this.copy.result;
     const breakdown = [
-      { label: r.worked, value: 1000 },
-      { label: r.saved(saved), value: saved * 150 },
+      { label: r.worked, value: LAB_SCORE.worked },
+      { label: r.saved(saved), value: saved * LAB_SCORE.savedPart },
       { label: r.tries(this.runs), value: attemptBonus(this.runs) },
     ].filter((row, i) => i === 0 || row.value > 0);
     this.time.delayedCall(this.ctx.reducedMotion ? 0 : 320, () =>
@@ -1989,7 +1989,7 @@ export class LabScene extends Phaser.Scene {
         if (!this.ctx.reducedMotion) this.burst(at.x, at.y, 5, "spark");
       }),
     );
-    const score = breakdown.reduce((a, b) => a + b.value, 0);
+    const score = labScore(total, used, this.runs);
     const achievements = ["lab-first"];
     if (used < level.par) achievements.push("lab-minimalist");
     if (this.levelIndex === LEVELS.length - 1) achievements.push("lab-complete");

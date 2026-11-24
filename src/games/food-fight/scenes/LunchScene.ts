@@ -1037,9 +1037,9 @@ export class LunchScene extends Phaser.Scene {
     const out = r.hit(this.t);
     if (out.result === "hurt") {
       this.sfx("bonk", 0.9);
-      this.hitScore += 50;
+      this.hitScore += SCORE.bigHurt;
       this.word(this.copy.throwing.ouch, f.x, top - 40, "#fbf5e6", back ? 36 : 44);
-      this.popScore("+50", f.x, top + 4);
+      this.popScore(`+${SCORE.bigHurt}`, f.x, top + 4);
       this.updateScore();
       return;
     }

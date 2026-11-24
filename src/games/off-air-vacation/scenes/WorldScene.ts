@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
-import { CHAR_RES, FOOT, H, HINT_R, INTERACT_R, SCORE, W, type AreaId, type Dir } from "../config";
+import { CHAR_RES, FOOT, H, HINT_R, INTERACT_R, resortResult, SCORE, W, type AreaId, type Dir } from "../config";
 import { sameFrame, type Frame } from "../layout";
 import { ALL_POSTERS, ALL_TOKENS, freshState, saveState, type FolkKey, type Item, type State } from "../save";
 import { RESORT_SFX, type ResortSfx } from "../sounds";
@@ -833,7 +833,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
 
   private emitScore() {
     const sc = score(this.s);
-    const total = (this.s.flags.ended ? SCORE.mystery : 0) + sc.posters * SCORE.poster + sc.tokens * SCORE.token + sc.secrets * SCORE.secret;
+    const total = resortResult(sc, Boolean(this.s.flags.ended)).score;
     if (this.hud instanceof DeckHud) this.hud.setCounts([sc.posters, ALL_POSTERS.length], [sc.tokens, ALL_TOKENS.length]);
     this.ctx.onEvent({ type: "score", score: total });
   }
@@ -1404,8 +1404,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       { label: T.tokens(sc.tokens), value: sc.tokens * SCORE.token },
       { label: T.secrets(sc.secrets), value: sc.secrets * SCORE.secret },
     ];
-    const total = rows.reduce((a, r) => a + r.value, 0);
-    const stars = 1 + (sc.posters >= 3 ? 1 : 0) + (sc.secrets >= 2 ? 1 : 0);
+    const { score: total, stars } = resortResult(sc);
     this.s.ending = this.s.ending ?? "on";
     const off = this.s.ending === "off";
     const achievements = ["offair-mystery"];

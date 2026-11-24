@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { attemptBonus } from "@/games/bad-ideas-lab/levels";
+import { attemptBonus, labScore, starsFor } from "@/games/bad-ideas-lab/levels";
+import { resortResult } from "@/games/off-air-vacation/config";
 import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
@@ -19,7 +20,8 @@ import type { Dir } from "@/games/past-bedtime/sim/types";
 import { replay as replayTalent, runScore, runStats, type TapLog } from "@/games/talent-show/sim/judge";
 import type { SongId } from "@/games/talent-show/song/notation";
 import { compiledSong, SONG_ORDER } from "@/games/talent-show/song/songs";
-import { boardId, judgeRun, metricValues, type RankKey, type RunClaim } from "./rules";
+import { PLAYABLE } from "@/games/registry";
+import { boardId, judgeRun, metricValues, RULES, type RankKey, type RunClaim } from "./rules";
 
 const RECESS_MONITORS = Object.fromEntries(RECESS_LEVELS.map((l) => [l.id, l.enemies.length]));
 
@@ -63,11 +65,10 @@ function derby(run: KnownRun, rivals = [0, 0, 0], tape = run.tape, claim: Partia
 function lab(level: string, parts: { type: string; x: number; y: number; rot: number }[], steps: number, runs = 2): RunClaim {
   const inventory: Record<string, number> = { test: 1, pixel: 2, toast: 2, juice: 2, remote: 3, finale: 5 };
   const par: Record<string, number> = { test: 1, pixel: 1, toast: 1, juice: 1, remote: 2, finale: 3 };
-  const score = 1000 + (inventory[level] - parts.length) * 150 + attemptBonus(runs);
   return {
     won: true,
-    score,
-    stars: parts.length <= par[level] ? 3 : parts.length === par[level] + 1 ? 2 : 1,
+    score: labScore(inventory[level], parts.length, runs),
+    stars: starsFor(parts.length, par[level]),
     stats: { parts: parts.length, inventory: inventory[level], par: par[level], runs, steps },
     replay: { kind: "lab-placements", version: 1, parts },
   };
@@ -109,14 +110,21 @@ function pajama(overrides: Partial<Record<string, number>> = {}): RunClaim {
 
 function resort(overrides: Partial<Record<string, number>> = {}): RunClaim {
   const s = { posters: 4, tokens: 3, secrets: 2, discoveries: 11, met: 10, ending: 1, timeMs: 1_900_000, ...overrides } as Record<string, number>;
-  const score = 1000 + s.posters * 100 + s.tokens * 50 + s.secrets * 250;
-  return { won: true, score, stars: 1 + (s.posters >= 3 ? 1 : 0) + (s.secrets >= 2 ? 1 : 0), stats: s };
+  const { score, stars } = resortResult({ posters: s.posters, tokens: s.tokens, secrets: s.secrets });
+  return { won: true, score, stars, stats: s };
 }
 
 describe("boards", () => {
   it("names one board per game or per level, with the rules version", () => {
     expect(boardId("dead-end-street", "domino")).toBe("dead-end-street/domino/v3");
     expect(boardId("bad-ideas-lab", "pixel")).toBe("bad-ideas-lab/pixel/v1");
+  });
+
+  it("knows every level the catalog asks tickets for, and no other", () => {
+    for (const game of PLAYABLE) {
+      const rule = RULES[game.slug as keyof typeof RULES];
+      expect(rule.levels ? [...rule.levels] : null, game.slug).toEqual(game.levels?.map((l) => l.id) ?? null);
+    }
   });
 });
 

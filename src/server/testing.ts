@@ -1,5 +1,5 @@
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { attemptBonus, LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
+import { labScore, LEVELS as LAB_LEVELS, starsFor } from "@/games/bad-ideas-lab/levels";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { boardId, type GameSlug, type RunClaim } from "@/lib/competition/rules";
 import { nicknameKey } from "@/lib/competition/nickname";
@@ -64,8 +64,8 @@ export function labClaim(level: string, parts: PlacedPart[], options: { steps?: 
   const steps = options.steps ?? simulateLab(def, parts).steps;
   return {
     won: true,
-    score: 1000 + (total - parts.length) * 150 + attemptBonus(runs),
-    stars: parts.length <= def.par ? 3 : parts.length === def.par + 1 ? 2 : 1,
+    score: labScore(total, parts.length, runs),
+    stars: starsFor(parts.length, def.par),
     stats: { parts: parts.length, inventory: total, par: def.par, runs, steps },
     replay: { kind: "lab-placements", version: 1, parts },
   };

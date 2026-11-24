@@ -4,7 +4,7 @@ import { cleanup } from "./cleanup";
 import { HttpError } from "./http";
 import { consume, LIMITS } from "./rate-limit";
 import { submitRun } from "./runs";
-import { boardOf, hasTestDb, lunchClaim, makePlayer, resetDb, testDb, ticketFor } from "./testing";
+import { boardOf, hasTestDb, labClaim, lunchClaim, makePlayer, resetDb, testDb, ticketFor } from "./testing";
 
 const START = Date.UTC(2026, 10, 3, 15, 0, 0);
 const BOARD = boardOf("food-fight", null);
@@ -42,6 +42,19 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     expect(outcome.board).toMatchObject({ id: BOARD, improved: true, previous: null, position: 1, total: 1 });
     const best = await db.personalBest.findUnique({ where: { playerId_board: { playerId: player.id, board: BOARD } } });
     expect(best).toMatchObject({ runId: outcome.run.id, score: 6000, rank1: 6000, rank2: -2 });
+  });
+
+  it("keeps only the replay the game's judge uses", async () => {
+    const { player } = await makePlayer(db);
+    const lunch = ticketFor("food-fight", null, player.id, START);
+    const stray = { kind: "bedtime-moves" as const, version: 1 as const, moves: "w".repeat(400) };
+    const checked = await submitRun(db, { player, ticket: lunch.ticket, claim: { ...claimWith(2), replay: stray }, now: new Date(START + 90_000) });
+    expect(checked.run).toMatchObject({ verification: "checked", eligible: true });
+    expect((await db.run.findUnique({ where: { id: checked.run.id } }))?.replay).toBeNull();
+    const lab = ticketFor("bad-ideas-lab", "juice", player.id, START);
+    const replayed = await submitRun(db, { player, ticket: lab.ticket, claim: labClaim("juice", [{ type: "fan", x: 160, y: 580, rot: 0 }]), now: new Date(START + 90_000) });
+    expect(replayed.run).toMatchObject({ verification: "replayed" });
+    expect((await db.run.findUnique({ where: { id: replayed.run.id } }))?.replay).toMatchObject({ kind: "lab-placements" });
   });
 
   it("only replaces the personal best with a better result", async () => {

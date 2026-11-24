@@ -1,8 +1,9 @@
 import { GRID, PARTS, STEP_MS, type PartType } from "@/games/bad-ideas-lab/config";
 import { placementConflict, type PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { attemptBonus, LEVELS as LAB_LEVELS } from "@/games/bad-ideas-lab/levels";
+import { labScore, LEVELS as LAB_LEVELS, starsFor } from "@/games/bad-ideas-lab/levels";
 import { MAX_STEPS as LAB_MAX_STEPS, traceLab } from "@/games/bad-ideas-lab/sim";
 import { isCart, isRaceCourse, replayDownhill } from "@/games/downhill-derby/sim/judge";
+import { RACE_COURSES } from "@/games/downhill-derby/sim/score";
 import { isNightLevel, replayNight } from "@/games/past-bedtime/sim/judge";
 import { LEVELS as NIGHT_LEVELS } from "@/games/past-bedtime/sim/levels";
 import { MIN_TURN_MS, partScore, partStars } from "@/games/past-bedtime/sim/score";
@@ -13,7 +14,7 @@ import { STEP_MS as STREET_STEP_MS } from "@/games/dead-end-street/config";
 import { ammoTotal, PHASE_IDS, phaseById } from "@/games/dead-end-street/phases";
 import { replayStreet } from "@/games/dead-end-street/sim";
 import { AMMO_MAX, COUNTDOWN_MS, EVENTS, LIVES as LUNCH_LIVES, LUNCH_LADY, PHASES, RELOAD_MS, RIVALS, ROUND_MS, SCORE as LUNCH_SCORE, THROW_GAP_MS, type RivalKind } from "@/games/food-fight/config";
-import { SCORE as RESORT_SCORE } from "@/games/off-air-vacation/config";
+import { resortResult } from "@/games/off-air-vacation/config";
 import { EXTRAS_CAP, HEARTS, RUN, SCORE as RECESS_SCORE, TILE } from "@/games/operation-recess/config";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
@@ -54,6 +55,7 @@ export type GameRule = {
   game: GameSlug;
   version: number;
   levels: readonly string[] | null;
+  replay: GameReplay["kind"] | null;
   stats: readonly string[];
   judge: (level: string | null, claim: RunClaim) => Verdict;
 };
@@ -121,6 +123,7 @@ const STREET_GADGETS = 16;
 
 const deadEndStreet: GameRule = {
   game: "dead-end-street",
+  replay: "street-launches",
   version: 3,
   levels: PHASE_IDS,
   stats: [...STREET_STATS, "timeMs"],
@@ -183,6 +186,7 @@ function labPlacements(levelId: string, replay: GameReplay | undefined): { ok: t
 
 const badIdeasLab: GameRule = {
   game: "bad-ideas-lab",
+  replay: "lab-placements",
   version: 1,
   levels: LAB_LEVELS.map((l) => l.id),
   stats: ["parts", "inventory", "par", "runs", "steps"],
@@ -204,8 +208,8 @@ const badIdeasLab: GameRule = {
     if (machine.parts.length !== s.parts) return reject("inconsistent", "número de peças não confere");
     const replay = traceLab(def, machine.parts);
     if (replay.outcome !== "success") return reject("replay_failed", `a máquina terminou em ${replay.outcome}`);
-    const score = 1000 + (total - s.parts) * 150 + attemptBonus(s.runs);
-    const stars = s.parts <= def.par ? 3 : s.parts === def.par + 1 ? 2 : 1;
+    const score = labScore(total, s.parts, s.runs);
+    const stars = starsFor(s.parts, def.par);
     return settle(
       claim,
       { won: true, score, stars, rank: [-s.parts, -replay.steps, 0], minElapsedMs: replay.steps * STEP_MS },
@@ -217,7 +221,7 @@ const badIdeasLab: GameRule = {
 };
 
 const MAX_KNOCKOUT_POINTS = Math.max(...Object.values(RIVALS).map((r) => r.points)) * LUNCH_SCORE.brawlMultiplier;
-const BIG_FIRST_HIT = 50;
+const BIG_FIRST_HIT = LUNCH_SCORE.bigHurt;
 const MIN_KNOCKOUT_POINTS = Math.min(...Object.values(RIVALS).map((r) => r.points));
 
 function lunchLimits(timeMs: number) {
@@ -255,6 +259,7 @@ function maxComboPoints(hits: number, bestStreak: number) {
 
 const foodFight: GameRule = {
   game: "food-fight",
+  replay: null,
   version: 1,
   levels: null,
   stats: ["hits", "hitPoints", "interrupts", "interruptPoints", "comboPoints", "lives", "hitsTaken", "lunchLadyHits", "bestStreak", "throws", "timeMs"],
@@ -324,6 +329,7 @@ function killSums(kinds: (keyof typeof KILL_POINTS)[], kills: number) {
 
 const operationRecess: GameRule = {
   game: "operation-recess",
+  replay: null,
   version: 1,
   levels: RECESS_LEVELS.map((l) => l.id),
   stats: ["kills", "killPoints", "stickers", "extras", "hits", "hearts", "resumed", "boss", "timeMs"],
@@ -378,6 +384,7 @@ const PAJAMA_SLACK = 0.95;
 
 const pajamaWar: GameRule = {
   game: "pajama-war",
+  replay: null,
   version: 1,
   levels: ARENAS.map((a) => a.id),
   stats: ["hits", "kos", "throws", "hp", "damageTaken", "place", "timeMs", "kid"],
@@ -421,6 +428,7 @@ const RESORT_MIN_MS = 60_000;
 
 const offAirVacation: GameRule = {
   game: "off-air-vacation",
+  replay: null,
   version: 1,
   levels: null,
   stats: ["posters", "tokens", "secrets", "discoveries", "met", "ending", "timeMs"],
@@ -436,8 +444,7 @@ const offAirVacation: GameRule = {
     });
     if (!r.ok) return reject("bad_stats", r.detail);
     const s = r.values;
-    const score = RESORT_SCORE.mystery + s.posters * RESORT_SCORE.poster + s.tokens * RESORT_SCORE.token + s.secrets * RESORT_SCORE.secret;
-    const stars = 1 + (s.posters >= 3 ? 1 : 0) + (s.secrets >= 2 ? 1 : 0);
+    const { score, stars } = resortResult(s);
     return settle(claim, { won: true, score, stars, rank: [score, -s.timeMs, s.discoveries], minElapsedMs: 0 });
   },
 };
@@ -446,8 +453,9 @@ const DERBY_STATS = ["place", "crashes", "show", "hits", "perfect", "bestSeq"] a
 
 const downhillDerby: GameRule = {
   game: "downhill-derby",
+  replay: "downhill-run",
   version: 1,
-  levels: ["arlindo", "feira", "antena"],
+  levels: RACE_COURSES,
   stats: [...DERBY_STATS, "timeMs"],
   judge(level, claim) {
     if (!isRaceCourse(level)) return reject("unknown_level", "pista desconhecida");
@@ -474,6 +482,7 @@ const NIGHT_STATS = ["turns", "wakes", "creaks", "covered"] as const;
 
 const pastBedtime: GameRule = {
   game: "past-bedtime",
+  replay: "bedtime-moves",
   version: 2,
   levels: NIGHT_LEVELS.map((l) => l.id),
   stats: [...NIGHT_STATS, "hints"],
@@ -501,6 +510,7 @@ const TALENT_RANGE = [0, 5000] as const;
 
 const talentShow: GameRule = {
   game: "talent-show",
+  replay: "talent-taps",
   version: 4,
   levels: SONG_ORDER,
   stats: RUN_STATS,
@@ -529,6 +539,10 @@ const talentShow: GameRule = {
     );
   },
 };
+
+export function keptReplay(game: GameSlug, replay: GameReplay | undefined) {
+  return replay && replay.kind === RULES[game].replay ? replay : undefined;
+}
 
 export const RULES: Record<GameSlug, GameRule> = {
   "dead-end-street": deadEndStreet,

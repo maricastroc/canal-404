@@ -71,6 +71,7 @@ export const COOK = { times: [23000, 37500, 65000], warnMs: 1800, take: 3, grabM
 export const EVENTS = { trayFrom: 19000, trayChance: 0.3, brawlAt: 43000, brawlMs: 6500, brawlers: 4 };
 
 export const SCORE = {
+  bigHurt: 50,
   comboStep: 20,
   lifeBonus: 300,
   cleanBonus: 500,
