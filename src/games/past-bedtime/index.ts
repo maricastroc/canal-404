@@ -6,6 +6,7 @@ import { frameFor, sameFrame, type Frame } from "./scenes/layout";
 import { NightScene, type Carry, type Command, type NightBridge } from "./scenes/NightScene";
 import { NightUiScene } from "./scenes/NightUi";
 import { LEVELS } from "./sim/levels";
+import { destroyGame } from "../kit/game";
 
 const KEYS: Record<string, Command> = {
   ArrowUp: "up",
@@ -165,7 +166,7 @@ function mount(ctx: GameHostContext): GameInstance {
       const carry = night?.carry() ?? carried;
       carried = carry;
       frame = next;
-      game.destroy(true);
+      destroyGame(game);
       boot(carry);
       return;
     }
@@ -204,7 +205,7 @@ function mount(ctx: GameHostContext): GameInstance {
       clearWin();
       target.removeEventListener("keydown", keydown);
       observer.disconnect();
-      game?.destroy(true);
+      if (game) destroyGame(game);
       game = null;
     },
   };

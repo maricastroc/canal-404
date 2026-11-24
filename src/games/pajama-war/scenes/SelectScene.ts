@@ -8,6 +8,7 @@ import type { Frame } from "../layout";
 import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
 import { loadStats } from "../storage";
 import { INK, INK_HEX, cartoonText } from "../../kit/ui";
+import { eachKeyOnce } from "../../kit/keys";
 import { KID_RES } from "./BootScene";
 import { currentFrame, watchFrame } from "./frame";
 import { makeTextures } from "./room";
@@ -135,10 +136,7 @@ export class SelectScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.POINTER_UP, this.swipeEnd, this);
 
     const kb = this.input.keyboard!;
-    const handled = new WeakSet<KeyboardEvent>();
-    kb.on("keydown", (event: KeyboardEvent) => {
-      if (handled.has(event)) return;
-      handled.add(event);
+    kb.on("keydown", eachKeyOnce((event) => {
       const key = event.key.toLowerCase();
       if (key === "escape" || key === "p") {
         this.ctx.onEvent({ type: "pause-request" });
@@ -152,7 +150,7 @@ export class SelectScene extends Phaser.Scene {
         event.preventDefault();
         this.go();
       }
-    });
+    }));
     watchFrame(this, (frame) => this.applyFrame(frame));
     this.choose(this.index, true);
     this.ctx.onEvent({ type: "announce", message: this.text.intro });

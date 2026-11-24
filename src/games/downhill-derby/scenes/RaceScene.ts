@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { reportFailedLoads } from "../../kit/load";
+import { coarsePointer, isTouchPointer } from "../../kit/touch";
 import type { GameHostContext } from "@/games/types";
 import { getAudio } from "@/lib/audio/engine";
 import type { SoundRecipe } from "@/lib/audio/types";
@@ -289,7 +290,7 @@ export class RaceScene extends Phaser.Scene {
     this.spinKey.setDepth(9.1).setVisible(false);
     this.worldLayer.add(this.spinKey);
     this.fx = new WorldFx(this, this.worldLayer);
-    this.touchActive = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
+    this.touchActive = coarsePointer();
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => this.pointerDown(p));
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => this.pointerMove(p));
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.pointerUp(p));
@@ -707,7 +708,7 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private pointerDown(p: Phaser.Input.Pointer) {
-    if (p.wasTouch && !this.touchActive) {
+    if (isTouchPointer(p) && !this.touchActive) {
       this.touchActive = true;
       this.hud.setTouch(true);
     }

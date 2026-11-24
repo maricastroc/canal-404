@@ -13,6 +13,7 @@ import { ResortHud, liveTag, type VhsMode } from "../ui/hud";
 import { Journal, pinUi, type Tab } from "../ui/journal";
 import { PhoneJournal } from "../ui/phoneJournal";
 import { cartoonText, fitText } from "../../kit/ui";
+import { eachKeyOnce } from "../../kit/keys";
 import { AREAS, POOL, type Builder, type NearOpts, type PropOpts, type React, type Show, type SpotDef, type Surface } from "./areas";
 import { critter, dustAt, footprint, resident, splashAt, type CritterDef, type ResidentDef } from "./life";
 import { Npc, type NpcOpts } from "./npc";
@@ -589,7 +590,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     const K = Phaser.Input.Keyboard.KeyCodes;
     this.keys = kb.addKeys({ up: K.UP, down: K.DOWN, left: K.LEFT, right: K.RIGHT, w: K.W, a: K.A, s: K.S, d: K.D }) as typeof this.keys;
     kb.addCapture([K.SPACE, K.UP, K.DOWN, K.LEFT, K.RIGHT]);
-    kb.on("keydown", (event: KeyboardEvent) => this.onKey(event));
+    kb.on("keydown", eachKeyOnce((event) => this.onKey(event)));
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => this.onPointerDown(p));
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
       if (this.mode === "attract") return;

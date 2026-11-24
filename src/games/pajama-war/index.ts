@@ -7,6 +7,7 @@ import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { SelectScene } from "./scenes/SelectScene";
 import { loadStats } from "./storage";
+import { destroyGame } from "../kit/game";
 
 const SCENES = ["arena", "select"] as const;
 
@@ -94,7 +95,7 @@ function mount(ctx: GameHostContext): GameInstance {
     },
     setHighScore() {},
     destroy() {
-      game.destroy(true);
+      destroyGame(game);
     },
   };
 }

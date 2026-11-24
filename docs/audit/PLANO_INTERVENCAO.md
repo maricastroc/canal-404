@@ -11,8 +11,9 @@
 - Etapa 3 concluída em 2026-11-24: PR #138 (F05, F17).
 - Etapa 4 concluída em 2026-11-24: PR #139 (F06, F12 a F16).
 - Etapa 5 concluída em 2026-11-24: PR #140 (F09, F25).
-- Etapa 6 (F18, F19, F20 parte 2) na branch `fix/server-limits`; o PR 6.4 (decisão sobre o placar do Férias) aguarda decisão.
-- Próxima: Etapa 7.
+- Etapa 6 concluída em 2026-11-24: PR #141 (F18, F19, F20 parte 2); o PR 6.4 (decisão sobre o placar do Férias) aguarda decisão.
+- Etapa 7 (F13, F22, F23) na branch `refactor/game-kit`.
+- Próxima: Etapa 8.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -567,12 +568,24 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - jogado no celular em pé e deitado, e no desktop redimensionando;
   - o `scenes/frame.ts` do jogo é apagado.
 - **Esforço:** M no total.
+- **Como foi feito** (branch `refactor/game-kit`, com 7.2 e 7.3, num PR só, como nas etapas anteriores):
+  - `src/games/kit/frame.ts` tem `watchFrameWith(scene, rules, apply, options)`, `measureWith` e `frameOf`; as regras de cada jogo (`frameFor`, quadro padrão e `same`) entram como parâmetro;
+  - todos os jogos limpam em `SHUTDOWN` e em `DESTROY`;
+  - as diferenças entre as cópias viraram opções: `swap` (Férias), `skipSame` (Ladeira, que ignora resize repetido) e `fresh` (Pijama, cujo `sameFrame` ignora `unit`, `top` e `safe.top` e por isso sempre aplica o quadro recém-medido);
+  - o `skipSame` ficou só na Ladeira: nos outros jogos ele mudaria quando o layout é reaplicado, e esta etapa não muda comportamento;
+  - desvio do critério: os `scenes/frame.ts` não foram apagados. Cada um ficou com 17 a 23 linhas que só ligam as regras do jogo ao kit e mantêm `measureFrame`, `currentFrame` e `watchFrame` com as mesmas assinaturas, para que as cenas e o `index.ts` não mudem;
+  - verificado: num script headless, Rua, Laboratório, Pijama, Recreio, Férias e Ladeira passaram de 1280×800 para 390×844, 844×390 e de volta, sem erros e com o canvas sempre dentro do palco; no meio da aventura, o Férias só guarda o quadro novo (`pendingFrame`), como no `main`; `e2e/games.spec.ts` e `e2e/mobile.spec.ts` passam.
 
 ### PR 7.2: `onKey` com proteção contra reprocessamento (F13)
 
 - **Arquivos:** `src/games/kit/` e os jogos de teclado.
 - **Mudança:** mover a proteção do Laboratório e do Pijama para o kit e adotar nos outros jogos.
 - **Esforço:** S.
+- **Como foi feito:**
+  - `eachKeyOnce(handler)` em `src/games/kit/keys.ts`, com um `WeakSet` por handler, envolve os 7 `kb.on("keydown", …)` dos jogos Phaser;
+  - saíram as quatro cópias (Pijama ×2, Laboratório e Rua), e Lanche, Férias e Recreio passaram a ter a proteção;
+  - Ladeira, Ao Vivo e Madrugada leem o teclado em listeners do DOM, fora do Phaser, e não precisam dela;
+  - verificado: a tecla P pausa Lanche, Férias, Recreio, Pijama, Rua e Laboratório.
 
 ### PR 7.3: Detecção de toque e destruição limpa (F22, F23)
 
@@ -583,6 +596,13 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - num notebook com tela de toque (ou com emulação de toque no DevTools sem `pointer: coarse`), o Recreio mostra os controles no primeiro toque;
   - 10 ciclos de abrir e sair não acumulam contextos WebGL. Não deve aparecer o aviso "Too many active WebGL contexts".
 - **Esforço:** S.
+- **Como foi feito:**
+  - `coarsePointer()` e `isTouchPointer(p)` em `src/games/kit/touch.ts`;
+  - o Recreio trocou a constante `TOUCH_UI` do módulo por `touchUi` na cena, que liga no primeiro toque e reaplica os controles; a Ladeira e o hud do Pijama usam os mesmos helpers;
+  - o Férias e a escolha de personagem do Pijama continuam lendo `(pointer: coarse)` uma vez: neles o toque já funciona sem os controles de toque (tocar no lugar ou no cartão), e trocar no meio mudaria textos já desenhados;
+  - `destroyGame(game)` em `src/games/kit/game.ts` chama `game.destroy(true)` e, depois do `DESTROY` do Phaser, perde o contexto com `WEBGL_lose_context`. O `setTimeout` deixa o renderer terminar de se desmontar antes, para que o Phaser não registre a perda;
+  - é usado no `destroy()` dos 9 jogos e nas reconstruções do Ao Vivo e da Madrugada;
+  - verificado: no Recreio com tela de toque e ponteiro fino, um clique não liga os botões e o primeiro toque liga; em 10 ciclos de abrir e sair do Lanche, os contextos WebGL vivos ficam em 1 (o do teste de recursos do Phaser), contra 2, 3, … 7 em 6 ciclos sem o helper; os 9 jogos abrem e saem duas vezes sem erros e sem o aviso de contextos demais.
 
 **Custo-benefício:** só vale porque as divergências já causaram bugs (F10, F13, F14, F16). Se as Etapas 1 e 4 resolverem os casos e ninguém mais mexer nesses arquivos, esta etapa pode esperar.
 
