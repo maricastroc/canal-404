@@ -308,7 +308,7 @@ describe("Guerra de Lanche", () => {
     const lost = { hits: 11, hitPoints: 1100, interrupts: 7, interruptPoints: 700, comboPoints: 0, lives: 0, hitsTaken: 3, lunchLadyHits: 1, bestStreak: 1, throws: 29, timeMs: 23_349 };
     expect(ok(judgeRun("food-fight", null, lunch(lost))).score).toBe(1600);
     expect(judgeRun("food-fight", null, lunch({ ...lost, hitPoints: 1700 }))).toMatchObject({ ok: false, reason: "inconsistent" });
-    const early = { hits: 6, hitPoints: 600, interrupts: 2, interruptPoints: 200, comboPoints: 60, lives: 0, hitsTaken: 3, lunchLadyHits: 0, bestStreak: 3, throws: 12, timeMs: 12_000 };
+    const early = { hits: 6, hitPoints: 600, interrupts: 2, interruptPoints: 200, comboPoints: 60, lives: 0, hitsTaken: 3, lunchLadyHits: 0, bestStreak: 3, throws: 12, timeMs: 6_000 };
     ok(judgeRun("food-fight", null, lunch(early)));
     expect(judgeRun("food-fight", null, lunch({ ...early, hitPoints: 650 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("food-fight", null, lunch({ ...early, lunchLadyHits: 1, throws: 13 }))).toMatchObject({ ok: false, reason: "inconsistent" });

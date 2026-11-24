@@ -260,7 +260,7 @@ function maxComboPoints(hits: number, bestStreak: number) {
 const foodFight: GameRule = {
   game: "food-fight",
   replay: null,
-  version: 1,
+  version: 2,
   levels: null,
   stats: ["hits", "hitPoints", "interrupts", "interruptPoints", "comboPoints", "lives", "hitsTaken", "lunchLadyHits", "bestStreak", "throws", "timeMs"],
   judge(_level, claim) {
