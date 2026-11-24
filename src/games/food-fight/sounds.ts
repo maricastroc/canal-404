@@ -36,6 +36,13 @@ export const LUNCH_SFX = {
   duck: {
     layers: [{ kind: "noise", duration: 0.14, gain: 0.08, filter: { type: "lowpass", from: 1600, to: 400 } }],
   },
+  slip: {
+    layers: [
+      { kind: "tone", wave: "sine", from: 380, to: 1500, duration: 0.2, gain: 0.08, glide: "linear" },
+      { kind: "tone", wave: "triangle", from: 240, to: 90, duration: 0.18, delay: 0.2, gain: 0.18 },
+      { kind: "noise", duration: 0.1, delay: 0.2, gain: 0.1, filter: { type: "lowpass", from: 1400, to: 300 } },
+    ],
+  },
   reload: {
     layers: [
       { kind: "tone", wave: "sine", from: 420, to: 760, duration: 0.07, gain: 0.12 },

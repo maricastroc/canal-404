@@ -2,7 +2,8 @@ import * as Phaser from "phaser";
 import { COOK, LUNCH_LADY, RIVALS, type RivalDef, type RivalKind, type SlotDef } from "../config";
 import { cartoonText, type Fonts } from "../../kit/ui";
 
-export type RivalState = "hidden" | "rising" | "up" | "windup" | "after" | "stunned" | "lowering";
+export type RivalState = "hidden" | "rising" | "up" | "windup" | "after" | "dazed" | "stunned" | "lowering";
+export type DazeKind = "slip" | "splash";
 
 const SPRITE_H = 250;
 const TRAY_UP_Y = -86;
@@ -88,13 +89,14 @@ export class Rival {
   }
 
   get targetable() {
-    return this.state === "rising" || this.state === "up" || this.state === "windup" || this.state === "after";
+    return this.state === "rising" || this.state === "up" || this.state === "windup" || this.state === "after" || this.state === "dazed";
   }
 
   urgency(now: number) {
     if (this.shielded) return 0.5;
     if (this.state === "windup") return 3 + 1 / Math.max(1, this.windupStart + this.windupMs - now);
     if (this.state === "up" || this.state === "rising") return 2;
+    if (this.state === "dazed") return 1.5;
     if (this.state === "after") return 1;
     return 0;
   }
@@ -129,7 +131,7 @@ export class Rival {
     this.splat.setVisible(false);
     this.headSplat.setVisible(false);
     this.scene.tweens.killTweensOf(this.tray);
-    this.tray.setVisible(this.trayKid).setPosition(0, TRAY_UP_Y).setAngle(-5);
+    this.tray.setVisible(this.trayKid).setPosition(0, TRAY_UP_Y).setAngle(-5).setAlpha(1);
     this.container.setScale(this.scale).setY(this.hiddenY).setVisible(true).setAngle(0);
     this.state = "rising";
     this.scene.tweens.killTweensOf(this.container);
@@ -143,9 +145,7 @@ export class Rival {
         if (this.state !== "rising") return;
         this.state = "up";
         this.until = now + duration + idle;
-        if (this.brawl && !this.reduced) {
-          this.fidget = this.scene.tweens.add({ targets: this.body, angle: { from: -5, to: 5 }, duration: 170, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-        }
+        this.startFidget();
       },
     });
   }
@@ -183,16 +183,21 @@ export class Rival {
     this.scene.tweens.add({ targets: this.tray, angle: { from: -16, to: -5 }, y: { from: TRAY_UP_Y + 10, to: TRAY_UP_Y }, duration: 240, ease: "Back.easeOut" });
   }
 
+  private startFidget() {
+    if (!this.brawl || this.reduced) return;
+    this.fidget = this.scene.tweens.add({ targets: this.body, angle: { from: -5, to: 5 }, duration: 170, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
   private stopFidget() {
     this.fidget?.stop();
     this.fidget = undefined;
     this.body.setAngle(0);
   }
 
-  hit(now: number): HitOutcome {
+  hit(now: number, heavy = false): HitOutcome {
     const wasWindup = this.state === "windup";
     this.stopFidget();
-    this.hp -= 1;
+    this.hp = heavy ? 0 : this.hp - 1;
     if (this.hp > 0) {
       this.body.setTintFill(0xffffff);
       this.scene.time.delayedCall(90, () => this.body.clearTint());
@@ -218,17 +223,75 @@ export class Rival {
       this.pudding.setVisible(false);
       return { result: "down", interrupted: false };
     }
+    this.dropPudding();
+    return { result: "down", interrupted: true };
+  }
+
+  private dropPudding() {
     const landed = () => {
       this.puddingFalling = false;
       this.pudding.setVisible(false).setAngle(0);
-      if (this.state === "stunned") this.headSplat.setVisible(true);
+      if (this.state === "stunned" || this.state === "dazed") this.headSplat.setVisible(true);
     };
     if (this.reduced) landed();
     else {
       this.puddingFalling = true;
       this.scene.tweens.add({ targets: this.pudding, x: this.x, y: this.top() + 12 * this.scale, angle: 180, duration: 260, ease: "Quad.easeIn", onComplete: landed });
     }
-    return { result: "down", interrupted: true };
+  }
+
+  daze(now: number, ms: number, kind: DazeKind) {
+    const wasWindup = this.state === "windup";
+    this.stopFidget();
+    this.poseTimer?.remove();
+    this.state = "dazed";
+    this.until = now + ms;
+    this.alert.setVisible(false);
+    this.body.setTexture(this.texture("up")).setFlipX(false);
+    this.dizzy.setVisible(true);
+    if (this.shielded) this.loseTray();
+    if (wasWindup && this.pudding.visible) this.dropPudding();
+    else this.pudding.setVisible(false);
+    if (kind === "splash") {
+      this.splatTimer?.remove();
+      this.splat.setVisible(true).setAngle(Phaser.Math.Between(-20, 20));
+    }
+    if (this.reduced) return;
+    this.scene.tweens.killTweensOf(this.container);
+    this.container.setY(this.slot.upY);
+    if (kind === "slip") {
+      this.scene.tweens.add({ targets: this.container, angle: { from: 0, to: -22 }, y: this.slot.upY + 34 * this.scale, duration: 150, yoyo: true, ease: "Quad.easeOut" });
+    } else {
+      this.scene.tweens.add({ targets: this.container, angle: { from: 9, to: 0 }, duration: 300, ease: "Back.easeOut" });
+    }
+  }
+
+  recover(now: number, idle: number) {
+    this.state = "up";
+    this.until = now + idle;
+    this.dizzy.setVisible(false);
+    this.splat.setVisible(false);
+    this.container.setAngle(0);
+    this.startFidget();
+  }
+
+  loseTray() {
+    this.shielded = false;
+    this.scene.tweens.killTweensOf(this.tray);
+    if (this.reduced) {
+      this.tray.setVisible(false);
+      return;
+    }
+    this.scene.tweens.add({
+      targets: this.tray,
+      x: Phaser.Math.Between(0, 1) ? 150 : -150,
+      y: TRAY_UP_Y - 120,
+      angle: 260,
+      alpha: 0,
+      duration: 420,
+      ease: "Quad.easeOut",
+      onComplete: () => this.tray.setVisible(false),
+    });
   }
 
   hand(dir = 1) {
@@ -256,13 +319,13 @@ export class Rival {
   }
 
   celebrate() {
-    if (this.state === "hidden" || this.state === "lowering" || this.state === "stunned") return false;
+    if (this.state === "hidden" || this.state === "lowering" || this.state === "stunned" || this.state === "dazed") return false;
     if (!this.reduced) this.scene.tweens.add({ targets: this.container, y: this.container.y - 26 * this.scale, duration: 140, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
     return true;
   }
 
   sulk() {
-    if (this.state === "hidden" || this.state === "lowering" || this.state === "stunned") return false;
+    if (this.state === "hidden" || this.state === "lowering" || this.state === "stunned" || this.state === "dazed") return false;
     if (!this.reduced) this.scene.tweens.add({ targets: this.container, angle: { from: -6, to: 6 }, duration: 90, yoyo: true, repeat: 2, onComplete: () => this.container.setAngle(0) });
     return true;
   }
