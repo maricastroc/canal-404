@@ -1402,6 +1402,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     ];
     const total = rows.reduce((a, r) => a + r.value, 0);
     const stars = 1 + (sc.posters >= 3 ? 1 : 0) + (sc.secrets >= 2 ? 1 : 0);
+    this.s.ending = this.s.ending ?? "on";
     const off = this.s.ending === "off";
     const achievements = ["offair-mystery"];
     if (sc.posters === 5) achievements.push("offair-posters");
@@ -1430,6 +1431,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.s.x = POOL.party.player[0];
     this.s.y = POOL.party.player[1];
     this.s.area = "pool";
+    this.s.flags.resultPending = false;
     saveState(this.s);
     this.ctx.onEvent({ type: "score", score: total });
     this.ctx.onEvent({ type: "finished", result });

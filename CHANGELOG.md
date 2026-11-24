@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Férias Fora do Ar: o final não se perde
+- **Leaving during the ending no longer loses the adventure.** The save marked the adventure as over right after the final choice, but the result only went out at the end of the party by the pool. Closing the tab, reloading or losing the phone's battery in between left a finished adventure with no record, no "Mistério resolvido" achievement and nothing on the board, and the console only repeated that the channel was off the air. Now "Continuar aventura" takes a finished adventure that never sent its result straight back to the party, which then sends it.
+- **The choice is kept.** The ending picked at the console (off the air or still on) is saved together with the end of the adventure instead of a moment later.
+- Adventures that ended before this change get the party back only if this browser has no Férias record yet. Scores, stars and boards are unchanged.
+
 ### Ao Vivo no 404: cada toque mostra o que você tocou
 - **The note you hit lights up where you hit it.** Each hit now pops the note itself at the exact spot it was when you tapped (on the circle for a "Na mosca!", a little above or below for early or late taps), with a ring in the grade's color: gold for Na mosca, mint for Boa, cream for Quase. Even with notes close together, you see which one counted. Missed notes still turn gray and fall with an ✕.
 - **Feedback beside the circle.** "Na mosca!", "Boa!", "Quase!", "Escapou!" and the rest now appear in a fixed spot right next to the circle instead of floating over the audience, and each new message replaces the last with a short pop, so fast passages never pile up. On phones it sits just above the circle's height, clear of the thumb.

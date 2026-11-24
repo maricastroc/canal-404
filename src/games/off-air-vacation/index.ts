@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import type { Locale } from "@/i18n/locales";
-import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, clearState, freshState, loadState } from "./save";
+import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, clearState, endingUnreported, freshState, loadState } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { WorldScene } from "./scenes/WorldScene";
@@ -70,7 +70,8 @@ function mount(ctx: GameHostContext): GameInstance {
       return;
     }
     game.registry.set("state", saved);
-    open({ mode: "play", area: saved.area, spawn: "" });
+    if (endingUnreported(saved, ctx.highScore)) open({ mode: "party", area: "pool", spawn: "party" });
+    else open({ mode: "play", area: saved.area, spawn: "" });
   };
 
   return {

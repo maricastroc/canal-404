@@ -898,8 +898,9 @@ export const SCRIPTS: Record<string, (d: Director) => Promise<void>> = {
     d.discover("twist");
     await d.say("psiu", L.choice, "happy");
     const pick = await d.ask("deco", L.ask, L.options);
-    d.set("ended");
     d.s.ending = pick === 0 ? "off" : "on";
+    d.s.flags.resultPending = true;
+    d.set("ended");
     if (pick === 0) {
       await d.action("endOff");
       await d.say("narrator", L.nothing);
