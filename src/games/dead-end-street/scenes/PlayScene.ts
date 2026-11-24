@@ -56,6 +56,8 @@ const HIGH_CLOUDS: [string, number, number][] = [
   ["cloud-a", 260, -1400],
 ];
 
+type KeptAims = { phase: number; shots: { angle: number; power: number }[] };
+
 function stepFrom(value: number, steps: number) {
   return steps > 0 ? Math.floor(value + 1e-6) + steps : Math.ceil(value - 1e-6) + steps;
 }
@@ -1238,6 +1240,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private onLoad(def: ProjectileDef) {
+    const kept = this.keptAims().shots[this.sim.launches.length];
+    if (kept) {
+      this.aimAngle = kept.angle;
+      this.aimPower = kept.power;
+    }
     this.charged = this.aimPower >= 0.98;
     this.linaBubble.hide();
     const pos = this.pulledPosition();
@@ -1251,6 +1258,17 @@ export class PlayScene extends Phaser.Scene {
     this.sfx("load", 0.8);
     this.aimTouched = false;
     this.nextCoach();
+  }
+
+  private keptAims(): KeptAims {
+    const kept = this.registry.get("kept-aims") as KeptAims | undefined;
+    return kept?.phase === this.phaseIndex ? kept : { phase: this.phaseIndex, shots: [] };
+  }
+
+  private keepAim(shot: number) {
+    const kept = this.keptAims();
+    kept.shots[shot] = { angle: this.aimAngle, power: this.aimPower };
+    this.registry.set("kept-aims", kept);
   }
 
   private onSelect(def: ProjectileDef) {
@@ -1273,6 +1291,7 @@ export class PlayScene extends Phaser.Scene {
     if (!body) return;
     this.aimAngle = angle / 100;
     this.aimPower = power / 1000;
+    this.keepAim(this.sim.launches.length - 1);
     this.readyImage.destroy();
     this.readyImage = null;
     const sprite = this.addSprite(body, def.tex, def.material, { x: 0, y: 0 }, 8);
