@@ -5,6 +5,7 @@ export type Item = "net" | "whistle" | "remote" | "order" | "key" | "cartridge";
 export type PosterId = "club" | "summer" | "tilt" | "surf" | "ghost";
 export type TokenId = "lounge" | "shell" | "log";
 export type SecretId = "room404" | "machine" | "lento";
+export type FoundId = "clock" | "tv" | "waves" | "pause" | "order" | "antenna" | "door" | "monitors" | "calendar" | "twist" | "bridge" | "creature" | "broken" | "photo";
 export type FolkKey = "bigodes" | "marola" | "tilt" | "marisa" | "psiu" | "lento" | "mascot" | "capi" | "clique" | "cavuca" | "chiado" | "placar";
 
 export type State = {
@@ -22,7 +23,7 @@ export type State = {
   tokens: TokenId[];
   secrets: SecretId[];
   met: FolkKey[];
-  found: string[];
+  found: FoundId[];
   visited: AreaId[];
   time: number;
   ending: "off" | "on" | null;
@@ -33,6 +34,7 @@ export const ALL_FOLKS: FolkKey[] = ["bigodes", "marola", "tilt", "marisa", "psi
 export const ALL_POSTERS: PosterId[] = ["club", "summer", "tilt", "surf", "ghost"];
 export const ALL_TOKENS: TokenId[] = ["lounge", "shell", "log"];
 export const ALL_SECRETS: SecretId[] = ["room404", "machine", "lento"];
+export const ALL_FOUND: FoundId[] = ["clock", "tv", "waves", "pause", "order", "antenna", "door", "monitors", "calendar", "twist", "bridge", "creature", "broken", "photo"];
 
 export function freshState(): State {
   return {
@@ -85,7 +87,7 @@ function normalizeState(value: Json): State {
     tokens: only(value.tokens, ALL_TOKENS),
     secrets: only(value.secrets, ALL_SECRETS),
     met: only(value.met, ALL_FOLKS),
-    found: Array.isArray(value.found) ? [...new Set(value.found.filter((f): f is string => typeof f === "string"))] : [],
+    found: only(value.found, ALL_FOUND),
     visited: only(value.visited, AREA_IDS),
     time: Math.max(0, finite(value.time, 0)),
     ending: value.ending === "off" || value.ending === "on" ? value.ending : null,

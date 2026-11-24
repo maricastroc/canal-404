@@ -129,7 +129,7 @@ With Postgres running (`npm run db:up`), `npm run test:db` adds the server tests
 
 | Route | Content |
 | --- | --- |
-| `/` | Broadcast room: TV with the game of the week and channels, arcade cabinet that opens the catalog, radio with music, the NO AR sign that tunes the TV to the day's mission, the 404 mascot and objects hiding secrets |
+| `/` | Broadcast room: TV whose channels show the games, the mascot's cartoon and the mission bulletin, a shelf of VHS tapes, arcade cabinet that opens the catalog, radio with music, the NO AR sign that tunes the TV to the day's mission, the 404 mascot and objects hiding secrets |
 | `/games` | Catalog with category filters and the day's mission |
 | `/mission` | Missão 404 do Dia: the day's challenge, a countdown to the next one, the player's report, the day's board and past missions |
 | `/games/[slug]` | Game page (playable or "off the air"), with the game's champion when the scoreboard is on |

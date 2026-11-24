@@ -7,20 +7,6 @@ const ink = { stroke: P.ink, strokeWidth: 5, strokeLinejoin: "round" as const, s
 const ink4 = { stroke: P.ink, strokeWidth: 4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 const ink3 = { stroke: P.ink, strokeWidth: 3, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
-export const FOLK_VIEWBOX: Record<FolkId, [number, number]> = {
-  bigodes: [240, 230],
-  marola: [230, 270],
-  tilt: [230, 330],
-  marisa: [200, 230],
-  psiu: [170, 190],
-  lento: [220, 160],
-  capi: [240, 240],
-  clique: [200, 252],
-  cavuca: [220, 252],
-  chiado: [140, 142],
-  placar: [220, 262],
-};
-
 export const FOLK_FACE: Record<FolkId, [number, number, number]> = {
   bigodes: [40, 18, 160],
   marola: [40, 6, 150],

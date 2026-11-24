@@ -34,7 +34,7 @@ export type GameMeta = {
   touchTips?: string[];
   controlsSummary?: string;
   resumable?: string;
-  orientation?: "upright" | "any";
+  orientation: "upright" | "any";
   leanPhoneHeader?: boolean;
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };

@@ -17,10 +17,6 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (LOCALES as readonly string[]).includes(value);
 }
 
-export function otherLocale(locale: Locale): Locale {
-  return locale === "en" ? "pt-BR" : "en";
-}
-
 export function localePath(locale: Locale, path: string) {
   if (locale === DEFAULT_LOCALE || !path.startsWith("/") || path.startsWith("//") || NOT_PAGES.test(path)) return path;
   const prefix = `/${locale}`;

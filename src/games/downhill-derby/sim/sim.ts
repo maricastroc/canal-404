@@ -87,7 +87,6 @@ export type SimEvent =
   | { type: "surface"; cobbles: boolean }
   | { type: "shortcut" }
   | { type: "secret" }
-  | { type: "interfered"; kind: "dust" | "kick"; loss: number }
   | { type: "bounce"; rhythm: boolean; combo: number; delta: number; surface: number; late: boolean }
   | { type: "flock"; index: number; clean: boolean }
   | { type: "loop"; index: number; done: boolean }
@@ -112,7 +111,6 @@ export type SimStats = {
   airTime: number;
   shortcut: boolean;
   secret: boolean;
-  interfered: number;
   bounces: number;
   combo: number;
   flock: boolean;
@@ -212,7 +210,7 @@ export class DownhillSim {
   loopTheta = 0;
   private loopC = 1;
   private loopS = 0;
-  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, interfered: 0, bounces: 0, combo: 0, flock: false, loops: 0, show: 0, bestSeq: 0, tricks: 0 };
+  readonly stats: SimStats = { perfect: 0, ok: 0, crashes: 0, hits: 0, flips: 0, pops: 0, lipPops: 0, maxSpeed: 0, airTime: 0, shortcut: false, secret: false, bounces: 0, combo: 0, flock: false, loops: 0, show: 0, bestSeq: 0, tricks: 0 };
   readonly events: SimEvent[] = [];
   readonly removed = new Set<number>();
   private readonly dynamic: number[];
@@ -239,15 +237,6 @@ export class DownhillSim {
 
   get chargeRatio() {
     return this.params.chargeTime > 0 ? clamp(this.charge / this.params.chargeTime, 0, 1) : 1;
-  }
-
-  interfere(loss: number, kind: "dust" | "kick") {
-    if (this.finished || this.mode === "crash" || this.tumbling) return false;
-    if (this.mode === "air") this.vx *= 1 - loss;
-    else this.v *= 1 - loss;
-    this.stats.interfered += 1;
-    this.events.push({ type: "interfered", kind, loss });
-    return true;
   }
 
   drain() {

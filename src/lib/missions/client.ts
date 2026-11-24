@@ -71,8 +71,3 @@ export async function fetchMissionBoard(day: string | null, page = 1): Promise<M
   const response = await apiCall<MissionBoardResponse>(`/api/missions/board?${params}`);
   return response.ok ? response.data : null;
 }
-
-export function resetMissionForTests() {
-  snapshot = SERVER;
-  inflight = null;
-}

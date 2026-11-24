@@ -1,5 +1,5 @@
 import type { AreaId } from "./config";
-import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, type FolkKey, type Item, type PosterId, type SecretId, type State, type TokenId } from "./save";
+import { ALL_POSTERS, ALL_SECRETS, ALL_TOKENS, type FolkKey, type FoundId, type Item, type PosterId, type SecretId, type State, type TokenId } from "./save";
 import type { ResortSfx } from "./sounds";
 import type { VacationText } from "./text/pt-BR";
 
@@ -58,7 +58,7 @@ export type Director = {
   token(id: TokenId): Promise<void>;
   secret(id: SecretId): Promise<void>;
   meet(id: FolkKey): void;
-  discover(id: string): void;
+  discover(id: FoundId): void;
   objective(): void;
   sfx(name: ResortSfx, volume?: number): void;
   wait(ms: number): Promise<void>;
@@ -977,5 +977,3 @@ export function hasMain(s: State, who: FolkKey) {
   }
   return null;
 }
-
-export const TOTALS = { posters: ALL_POSTERS.length, tokens: ALL_TOKENS.length, secrets: ALL_SECRETS.length };

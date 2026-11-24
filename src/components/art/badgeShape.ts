@@ -15,9 +15,3 @@ export const BADGE_TONES = {
 } as const;
 
 export type BadgeTone = keyof typeof BADGE_TONES;
-
-export function badgeSvg(tone: BadgeTone, withStar: boolean, size = 64) {
-  const [fill, shade] = BADGE_TONES[tone];
-  const star = withStar ? `<path d="${BADGE_STAR}" fill="${P.white}" stroke="${P.ink}" stroke-width="2.4" stroke-linejoin="round"/>` : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="${size}" height="${size}"><path d="${BADGE_ROSETTE}" fill="${shade}" stroke="${P.ink}" stroke-width="3" stroke-linejoin="round"/><circle cx="32" cy="32" r="17" fill="${fill}" stroke="${P.ink}" stroke-width="3"/>${star}</svg>`;
-}

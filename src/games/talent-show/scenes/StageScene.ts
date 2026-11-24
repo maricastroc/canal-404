@@ -9,7 +9,7 @@ import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, pitched, toneFreq } from "../audio/player";
 import type { Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type JuryId, type TalentCopy } from "../copy";
-import { judge, replay, runScore, type JudgeEvent, type Mark, type TapLog, type Verdict } from "../sim/judge";
+import { judge, runScore, type JudgeEvent, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
@@ -20,7 +20,7 @@ import { DESK_LIP, layoutFor, toWorld, type Layout, type Shape, type Spot } from
 
 const NOTE_GLYPH: IconNode = Music2.map(([tag, attrs]): IconNode[number] => [tag, tag === "circle" ? { ...attrs, fill: "#1d1830" } : attrs]);
 
-export type RunReport = { song: SongId; verdict: Verdict; replayed: Verdict | null; matches: boolean; log: TapLog };
+export type RunReport = { song: SongId; verdict: Verdict; log: TapLog };
 
 export type TalentBridge = {
   locale: Locale;
@@ -1245,14 +1245,7 @@ export class StageScene extends Phaser.Scene {
     const input = this.judgeInput();
     const verdict = judge(this.compiled, input);
     const log: TapLog = { kind: "talent-taps", version: 2, song: this.songId, offset: 0, assist: this.assist, taps: input.taps, ups: input.ups };
-    const replayed = replay(this.compiled, JSON.parse(JSON.stringify(log)));
-    const matches =
-      replayed !== null &&
-      replayed.precision === verdict.precision &&
-      replayed.stars === verdict.stars &&
-      replayed.cutAt === verdict.cutAt &&
-      (Object.keys(verdict.counts) as Mark[]).every((k) => replayed.counts[k] === verdict.counts[k]);
-    this.bridge.onRun({ song: this.songId, verdict, replayed, matches, log });
+    this.bridge.onRun({ song: this.songId, verdict, log });
     return verdict;
   }
 

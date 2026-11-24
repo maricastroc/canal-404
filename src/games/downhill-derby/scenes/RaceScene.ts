@@ -205,7 +205,6 @@ export class RaceScene extends Phaser.Scene {
   private camSpeed = 0;
   private world!: RaceWorld;
   private ambient!: Ambient;
-  private kickViews = new Map<number, Phaser.GameObjects.Container>();
   private rollCycle = new Map<ObstacleView, number>();
   private helmetOn = false;
   private surfaceTips = new Set<string>();
@@ -617,10 +616,8 @@ export class RaceScene extends Phaser.Scene {
 
   restartRace() {
     this.pickRivals();
-    this.world = new RaceWorld(this.track, this.bridge.params, this.rivals.map((r) => r.frames), "off", this.player);
+    this.world = new RaceWorld(this.track, this.bridge.params, this.rivals.map((r) => r.frames), this.player);
     this.sim = this.world.player;
-    for (const v of this.kickViews.values()) v.destroy();
-    this.kickViews.clear();
     for (const r of this.rivals) {
       r.prev = { x: r.frames.x[0], y: r.frames.y[0], angle: r.frames.angle[0] };
       r.crashStart = -1;
@@ -891,89 +888,23 @@ export class RaceScene extends Phaser.Scene {
 
   private handleWorld(e: WorldEvent) {
     const s = this.sim;
-    if (e.type === "rival") {
-      const r = this.rivalAt(e.racer);
-      const ev = e.event;
-      if (ev.type === "land" && ev.quality !== "touch") r.view.react(ev.quality === "perfect" ? "perfect" : "ok");
-      if (ev.type === "land" && ev.quality !== "touch") r.view.land(Math.min(1, ev.air / 1.2 + 0.2));
-      if (ev.type === "takeoff") r.view.takeoff(ev.popped ? 0.8 : 0.2);
-      if (ev.type === "manhole" && r.id === "mila") {
-        const rx = this.world.sample(this.world.rivals[e.racer - 1], "x");
-        if (Math.abs(rx - s.x) < 1800) this.ambient.bubble(this.copy.mila, rx, heightAt(this.track.surfaces[0], rx) + r.lane - 300, 30);
-      }
-      if (ev.type === "hit" && ev.penalized) {
-        r.view.react("hit");
-        const o = this.obstacles.find((q) => q.index === ev.index && q.lane === r.laneIndex);
-        if (o && !o.hit) {
-          o.hit = true;
-          o.vx = Math.max(400, this.world.sample(this.world.rivals[e.racer - 1], "speed") * 0.7);
-          o.vy = -520;
-          o.spin = ev.kind === "crate" ? 5 : 11;
-        }
-      }
-      return;
+    const r = this.rivalAt(e.racer);
+    const ev = e.event;
+    if (ev.type === "land" && ev.quality !== "touch") r.view.react(ev.quality === "perfect" ? "perfect" : "ok");
+    if (ev.type === "land" && ev.quality !== "touch") r.view.land(Math.min(1, ev.air / 1.2 + 0.2));
+    if (ev.type === "takeoff") r.view.takeoff(ev.popped ? 0.8 : 0.2);
+    if (ev.type === "manhole" && r.id === "mila") {
+      const rx = this.world.sample(this.world.rivals[e.racer - 1], "x");
+      if (Math.abs(rx - s.x) < 1800) this.ambient.bubble(this.copy.mila, rx, heightAt(this.track.surfaces[0], rx) + r.lane - 300, 30);
     }
-    if (e.type === "dusted") {
-      const victimX = e.victim === 0 ? s.x : this.world.sample(this.world.rivals[e.victim - 1], "x");
-      const victimY = e.victim === 0 ? s.y : this.world.sample(this.world.rivals[e.victim - 1], "y") + this.rivalAt(e.victim).lane;
-      this.fx.impact(victimX + 40, victimY - 60, 0.9, 0xc9a77c);
-      if (e.victim === 0) {
-        this.cart.react("dusted");
-        this.hud.tag("dusted", this.copy.dusted, "#ffb08a");
-        this.hud.flashSpeed(-s.speed * 0.07);
-      } else {
-        this.rivalAt(e.victim).view.react("dusted");
-        this.hud.tag("dusted", this.copy.dustedRival[this.rivalAt(e.victim).id], "#7fe0c4");
-      }
-      this.sfx(DOWNHILL_SFX.crate, 0.5);
-      return;
-    }
-    if (e.type === "kick") {
-      const k = this.world.kicked.find((q) => q.id === e.id);
-      const lane = e.owner === 0 ? 0 : this.rivalAt(e.owner).laneIndex;
-      const o = k ? this.obstacles.find((q) => q.lane === lane && Math.abs(q.obstacle.x - k.x) < 60) : undefined;
-      if (k) {
-        const view = this.add.container(k.x, k.y);
-        const g = this.add.graphics();
-        g.fillStyle(INK, 1);
-        if (k.kind === "cone") {
-          g.fillTriangle(-26, 2, 26, 2, 0, -52);
-          g.fillStyle(0xff7a1a, 1);
-          g.fillTriangle(-20, -2, 20, -2, 0, -44);
-        } else {
-          g.fillRect(-52, -100, 104, 102);
-          g.fillStyle(0xc98b4a, 1);
-          g.fillRect(-46, -94, 92, 90);
-        }
-        view.add(g);
-        view.setDepth(7);
-        this.worldLayer.add(view);
-        this.kickViews.set(k.id, view);
-      }
+    if (ev.type === "hit" && ev.penalized) {
+      r.view.react("hit");
+      const o = this.obstacles.find((q) => q.index === ev.index && q.lane === r.laneIndex);
       if (o && !o.hit) {
         o.hit = true;
-        o.view.setVisible(false);
-      }
-      if (e.owner === 0) this.hud.tag("kick", this.copy.kicked, "#7fe0c4");
-      return;
-    }
-    if (e.type === "kickHit" || e.type === "kickGone") {
-      const view = this.kickViews.get(e.id);
-      if (view) {
-        this.fx.debris(view.x, view.y, 300, [0xc98b4a, 0xff7a1a, 0x7c4527]);
-        view.destroy();
-        this.kickViews.delete(e.id);
-      }
-      if (e.type === "kickHit") {
-        if (e.victim === 0) {
-          this.cart.react("hit");
-          this.hud.tag("kick", this.copy.kickedYou, "#ffb08a");
-          this.hud.flashSpeed(-s.speed * this.bridge.params.hitLoss);
-        } else {
-          this.rivalAt(e.victim).view.react("hit");
-          this.hud.tag("kick", this.copy.kickedRival[this.rivalAt(e.victim).id], "#7fe0c4");
-        }
-        this.sfx(DOWNHILL_SFX.crate);
+        o.vx = Math.max(400, this.world.sample(this.world.rivals[e.racer - 1], "speed") * 0.7);
+        o.vy = -520;
+        o.spin = ev.kind === "crate" ? 5 : 11;
       }
     }
   }
@@ -1941,7 +1872,7 @@ export class RaceScene extends Phaser.Scene {
   private gapFor(index: number, x: number, time: number) {
     const t = this.world.rivals[index];
     const rt = timeAtX(t.frames, x);
-    return Number.isFinite(rt) ? rt + t.delay - time : Infinity;
+    return Number.isFinite(rt) ? rt - time : Infinity;
   }
 
   private updateHud(dt: number, x: number, y: number) {
@@ -1971,7 +1902,7 @@ export class RaceScene extends Phaser.Scene {
         markers.push({ x: rx, color: r.color, letter: r.letter });
         const gap = this.phase === "countdown" ? 0 : this.gapFor(ri, x, time);
         r.flash = Math.max(0, r.flash - dt * 1.5);
-        const rivalFinish = t.finished ? t.finishTime : t.frames.finishTime + t.delay;
+        const rivalFinish = t.finished ? t.finishTime : t.frames.finishTime;
         entries.push({ name: r.name, color: r.color, you: false, x: rx, gap, finish: t.finished || sim.finished ? rivalFinish : Infinity, flash: r.flash, who: r.id });
         if (this.phase === "race" && !sim.finished) {
           const ahead = rx > x;

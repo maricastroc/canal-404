@@ -111,13 +111,3 @@ export function InkButton({
     </button>
   );
 }
-
-export function Sticker({ children, className = "", tone = "sun" }: { children: ReactNode; className?: string; tone?: Tone }) {
-  return (
-    <span
-      className={`inline-block rotate-3 rounded-lg border-[3px] border-ink px-2.5 py-1 font-display text-xs uppercase tracking-wider text-ink shadow-[var(--shadow-ink-sm)] ${toneBg(tone)} ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
