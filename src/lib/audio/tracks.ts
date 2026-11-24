@@ -19,22 +19,22 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
   "pt-BR": {
     theme: {
       title: "Tema do Canal 404",
-      mood: "A vinheta oficial. Toca desde 2004 sem parar.",
+      mood: "A vinheta oficial do canal. No ar desde 2004 (pelo menos na nossa cabeça).",
       unlock: "",
     },
     recess: {
       title: "Vinheta de Intervalo",
-      mood: "Música de espera para quando o lanche está no micro-ondas.",
+      mood: "A trilha oficial da espera pelo lanche no micro-ondas.",
       unlock: "Ligue o rádio da sala de transmissão.",
     },
     street: {
       title: "Rua Sem Saída (Tema)",
-      mood: "Trilha oficial da maior bagunça do bairro.",
+      mood: "A trilha sonora da maior bagunça do bairro.",
       unlock: "Faça seu primeiro lançamento em Rua Sem Saída.",
     },
     "sign-off": {
       title: "Fim de Transmissão",
-      mood: "A música que tocava quando o canal saía do ar. Ou não saía.",
+      mood: "A música que anunciava o fim da transmissão. Mas ninguém desligava a TV.",
       unlock: "Encontre 5 segredos na sala de transmissão.",
     },
     karaoke: {
@@ -44,29 +44,29 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
     },
     live: {
       title: "Ao Vivo no 404 (Gravação)",
-      mood: "A banda da turma ao vivo no show de calouros. Dá para ouvir o balde.",
+      mood: "A banda da turma no grande show de calouros. Sim, aquilo é um balde.",
       unlock: "Termine o Pot-pourri do 404 em Ao Vivo no 404.",
     },
   },
   en: {
     theme: {
       title: "Canal 404 Theme",
-      mood: "The official jingle. Playing nonstop since 2004.",
+      mood: "The channel's official jingle. On the air since 2004 (at least in our heads).",
       unlock: "",
     },
     recess: {
       title: "Commercial Break Jingle",
-      mood: "Hold music for when your snack is in the microwave.",
+      mood: "The official soundtrack for waiting on your snack in the microwave.",
       unlock: "Turn on the radio in the broadcast room.",
     },
     street: {
       title: "Dead End Street (Theme)",
-      mood: "The official soundtrack of the neighborhood's biggest mess.",
+      mood: "The soundtrack to the neighborhood's biggest mess.",
       unlock: "Make your first launch in Dead End Street.",
     },
     "sign-off": {
       title: "Sign-Off",
-      mood: "The song that played when the channel went off the air. Or didn't.",
+      mood: "The song that announced the end of the broadcast. Nobody ever turned off the TV.",
       unlock: "Find 5 secrets in the broadcast room.",
     },
     karaoke: {
@@ -76,7 +76,7 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
     },
     live: {
       title: "Live on 404 (Recording)",
-      mood: "The kids' band live on the talent show. You can hear the bucket.",
+      mood: "The kids' band at the big talent show. Yes, that's a bucket.",
       unlock: "Finish the 404 Medley in Live on 404.",
     },
   },
