@@ -35,7 +35,7 @@ const COPY = localized({
     leave: "Sair do placar",
     move: "Levar para outro aparelho",
     guardTitle: "Guarde sua carteirinha",
-    guard: "Por enquanto ela só existe neste navegador. Se você limpar os dados ou trocar de aparelho, ela se perde. Crie um código de recuperação e anote num lugar seguro.",
+    guard: "Sua carteirinha fica salva só neste navegador. Para usá-la em outro aparelho ou recuperá-la depois de limpar os dados, crie um código de recuperação e guarde num lugar seguro.",
     guardButton: "Criar código",
     haveCard: "Já tenho carteirinha",
     save: "Salvar",
@@ -47,12 +47,12 @@ const COPY = localized({
     later: "A carteirinha fica disponível quando o placar estiver no ar.",
     keepsTitle: "O que o placar guarda",
     keeps: [
-      "O apelido que você escolher e um número de quatro dígitos para diferenciar apelidos iguais.",
-      "Um código secreto guardado neste navegador, que funciona como sua carteirinha. Sem e-mail, sem senha, sem nome.",
-      "Os resultados que você enviar para o placar.",
-      "Uma cópia do progresso deste navegador (fases, estrelas, conquistas, segredos e aventuras salvas), para você levar a outro aparelho com um código de recuperação.",
+      { title: "Sua identidade", text: "Seu apelido e um número de quatro dígitos que diferencia jogadores com o mesmo apelido." },
+      { title: "Sua carteirinha", text: "Um código secreto salvo neste navegador mostra ao placar que é você. Sem e-mail, sem senha." },
+      { title: "Seus resultados", text: "Os resultados das suas partidas, que vão para o placar de cada jogo." },
+      { title: "Seu progresso", text: "Uma cópia das fases, estrelas, conquistas, segredos e aventuras salvas neste navegador. Com o código de recuperação, ela vai junto para outro aparelho." },
     ],
-    clear: "Se você limpar os dados do navegador, a carteirinha só volta com o código de recuperação. Ao sair do placar, apagamos tudo o que está no servidor na hora, inclusive a cópia do progresso.",
+    clear: "Se você limpar os dados do navegador, só o código de recuperação traz a carteirinha de volta. Ao sair do placar, apagamos na hora tudo o que é seu no servidor: apelido, resultados e a cópia do progresso. O progresso deste navegador continua. Carteirinhas paradas há mais de dois anos também são apagadas.",
   },
   en: {
     leaveError: "Couldn't reach the board right now. Try again in a little while.",
@@ -71,7 +71,7 @@ const COPY = localized({
     leave: "Leave the board",
     move: "Take it to another device",
     guardTitle: "Keep your card safe",
-    guard: "For now it only lives in this browser. If you clear your data or switch devices, it's gone. Create a recovery code and write it down somewhere safe.",
+    guard: "Your card is saved only in this browser. To use it on another device or get it back after clearing your data, create a recovery code and keep it somewhere safe.",
     guardButton: "Create code",
     haveCard: "I already have a card",
     save: "Save",
@@ -83,12 +83,12 @@ const COPY = localized({
     later: "The membership card becomes available when the board is on the air.",
     keepsTitle: "What the board keeps",
     keeps: [
-      "The nickname you pick and a four-digit number to tell identical nicknames apart.",
-      "A secret code saved in this browser that works as your membership card. No email, no password, no name.",
-      "The results you send to the board.",
-      "A copy of this browser's progress (levels, stars, achievements, secrets and saved adventures), so you can take it to another device with a recovery code.",
+      { title: "Your identity", text: "Your nickname and a four-digit number that tells players with the same nickname apart." },
+      { title: "Your card", text: "A secret code saved in this browser tells the board it's you. No email, no password." },
+      { title: "Your results", text: "The results of your games, which go to each game's board." },
+      { title: "Your progress", text: "A copy of the levels, stars, achievements, secrets and saved adventures in this browser. With the recovery code, it comes along to another device." },
     ],
-    clear: "If you clear your browser data, the membership card only comes back with the recovery code. When you leave the board, we delete everything on the server right away, including the copy of your progress.",
+    clear: "If you clear your browser data, only the recovery code brings your card back. When you leave the board, we delete everything of yours on the server right away: nickname, results and the copy of your progress. The progress in this browser stays. Cards left untouched for more than two years are deleted too.",
   },
 });
 
@@ -243,12 +243,15 @@ export function PlayerCard() {
       </div>
       <div className="paper border-[3px] border-ink p-5 shadow-[var(--shadow-ink)] wobbly">
         <h3 className="font-display text-xl uppercase tracking-wide text-ink">{copy.keepsTitle}</h3>
-        <ul className="copy mt-2 list-disc space-y-1.5 pl-5 text-ink-soft">
+        <ul className="copy mt-3 space-y-3 text-ink-soft">
           {copy.keeps.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item.title}>
+              <strong className="block text-ink">{item.title}</strong>
+              {item.text}
+            </li>
           ))}
         </ul>
-        <p className="copy mt-3 text-ink-soft">{copy.clear}</p>
+        <p className="copy mt-4 text-ink-soft">{copy.clear}</p>
       </div>
     </div>
   );
