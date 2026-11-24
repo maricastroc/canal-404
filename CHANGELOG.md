@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Botões e pausa que fazem o que dizem
+- **Operação: Recreio: "Recomeçar partida" starts the level over.** After a bell, the header and pause-menu restart used to send Bruno back to the bell with his hearts refilled and the hits taken after it forgotten. That run also no longer counted for the board. The restart now begins the level from the start. After a knockout, "Voltar ao sino" on the result screen still continues from the last bell.
+- **Ao Vivo no 404: pausing is silent and keeps long notes.** The count-in clicks, Mila's notes and the static hiss used to keep playing for a few seconds after a pause. A long note held when the game paused always counted as dropped. Now everything stops at once. A note still held after the pause keeps counting, and one released during the pause ends where the song stopped.
+- **Rua Sem Saída.** On phones, an aim arrow held when the game paused no longer keeps turning the aim after Continuar. On the keyboard, a quick burst of keys can no longer switch the projectile or move the aim twice for one press.
+- **Madrugada** keeps the moves and hints of the current part when the phone rotates and the screen settles in more than one step.
+- Scores, stars and boards are unchanged.
+
 ### Progresso seguro com o canal aberto em várias abas
 - **One tab no longer erases what another saved.** Every tab kept its own copy of the progress in memory and wrote the whole thing back on each change. A level won in one tab could vanish when a game started in another, or when a tab came back from the browser's back button. The portal now reads the latest save before each change, and progress that was cleared while a tab was open no longer comes back from it.
 - **Férias Fora do Ar in two tabs.** A tab left behind no longer overwrites the adventure that moved on in another tab, or a new adventure started there. Instead it shows "Aventura aberta em outra aba" and stops saving until it is reloaded.
