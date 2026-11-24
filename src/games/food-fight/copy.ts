@@ -59,6 +59,12 @@ export const COPY = localized({
       hitAnnounce: "Bateu na bandeja. Espere a bandeja baixar.",
     },
     feint: "Hehe!",
+    catch: {
+      word: "PEGUEI!",
+      hitWord: "DEVOLVIDO!",
+      say: "Pegou no ar! Devolveu!",
+      announce: "Você pegou o pudim no ar e devolveu.",
+    },
     food: {
       peelSay: "Virou casca! Quem levantar ali escorrega.",
       peelAnnounce: (table: number) => `A banana errou e virou casca na mesa ${table}. Quem levantar ali vai escorregar.`,
@@ -206,6 +212,12 @@ export const COPY = localized({
       hitAnnounce: "It hit the tray. Wait for the tray to come down.",
     },
     feint: "Hehe!",
+    catch: {
+      word: "GOT IT!",
+      hitWord: "RETURNED!",
+      say: "Caught it! Right back at him!",
+      announce: "You caught the pudding and threw it back.",
+    },
     food: {
       peelSay: "Banana peel! Whoever pops up there will slip.",
       peelAnnounce: (table: number) => `The banana missed and left a peel on table ${table}. Whoever pops up there will slip.`,

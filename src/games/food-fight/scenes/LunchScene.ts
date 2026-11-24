@@ -2,6 +2,8 @@ import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import {
   AMMO_MAX,
+  CATCH,
+  IMPACT,
   COUNTDOWN_MS,
   AMMO_SPOTS,
   DECO,
@@ -52,6 +54,7 @@ type Projectile = {
   scaleTo: number;
   onArrive: () => void;
   ring?: Phaser.GameObjects.Image;
+  thrower?: Rival;
 };
 
 type Target = { kind: "rival"; rival: Rival } | { kind: "lunchLady" } | { kind: "point"; x: number; y: number };
@@ -146,6 +149,8 @@ export class LunchScene extends Phaser.Scene {
   private brawlFillAt = 0;
   private milaPriorityUntil = 0;
   private frame: Frame = LANDSCAPE_FRAME;
+  private frozenUntil = 0;
+  private catchLockUntil = 0;
   private tables: Phaser.GameObjects.Image[] = [];
   private peels = new Map<number, Peel>();
   private ladyStop = 0;
@@ -216,6 +221,8 @@ export class LunchScene extends Phaser.Scene {
     this.ladyStop = 0;
     this.ladyWasPaused = false;
     this.frame = LANDSCAPE_FRAME;
+    this.frozenUntil = 0;
+    this.catchLockUntil = 0;
   }
 
   create() {
@@ -235,6 +242,15 @@ export class LunchScene extends Phaser.Scene {
       g.lineStyle(4, 0xfbf5e6, 0.95);
       g.strokeCircle(64, 64, 45);
       g.generateTexture("threat-ring", 128, 128);
+      g.destroy();
+    }
+    if (!this.textures.exists("catch-ring")) {
+      const g = this.make.graphics({}, false);
+      g.lineStyle(10, 0x93cf4c, 1);
+      g.strokeCircle(64, 64, 54);
+      g.lineStyle(4, 0xfbf5e6, 0.95);
+      g.strokeCircle(64, 64, 45);
+      g.generateTexture("catch-ring", 128, 128);
       g.destroy();
     }
     const scenery = SCENERY.landscape;
@@ -506,6 +522,12 @@ export class LunchScene extends Phaser.Scene {
         if (!event.repeat) this.throwAuto();
         return;
       }
+      if (key === "arrowup" || key === "w") {
+        event.preventDefault();
+        this.markKeyboard();
+        if (!event.repeat) this.tryCatch();
+        return;
+      }
       if (/^[1-5]$/.test(key)) {
         this.markKeyboard();
         if (!event.repeat) this.throwAtSlot(Number(key));
@@ -517,6 +539,7 @@ export class LunchScene extends Phaser.Scene {
         return;
       }
       if (this.mode !== "playing" && this.mode !== "tutorial") return;
+      if (this.tryCatch(p.worldX, p.worldY)) return;
       this.throwAtPoint(p.worldX, p.worldY);
     });
     const release = (p: Phaser.Input.Pointer) => {
@@ -800,6 +823,8 @@ export class LunchScene extends Phaser.Scene {
       const pos = bezier(p.from, p.ctrl, p.to, k);
       p.img.setPosition(pos.x, pos.y).setAngle(p.spin * k).setScale(p.scaleFrom + (p.scaleTo - p.scaleFrom) * k);
       if (p.ring) {
+        const catchable = p.thrower && k >= CATCH.from;
+        if (catchable && p.ring.texture.key !== "catch-ring") p.ring.setTexture("catch-ring");
         const pulse = this.ctx.reducedMotion ? 1 : 1 + Math.sin(this.t / 70) * 0.08;
         p.ring.setPosition(pos.x, pos.y).setScale(p.img.scaleX * 0.95 * pulse);
       }
@@ -824,6 +849,77 @@ export class LunchScene extends Phaser.Scene {
       this.puddingArrives(img, big, tut, r);
     });
     shot.ring = ring;
+    if (this.mode === "playing") shot.thrower = r;
+  }
+
+  private impact(ms: number) {
+    if (this.ctx.reducedMotion || ms <= 0) return;
+    if (!this.frozenUntil) this.tweens.pauseAll();
+    this.frozenUntil = Math.max(this.frozenUntil, this.time.now + ms);
+  }
+
+  private catchable(x?: number, y?: number) {
+    let best: Projectile | null = null;
+    let bestK = 0;
+    for (const p of this.projectiles) {
+      if (!p.thrower) continue;
+      const k = (this.t - p.t0) / p.dur;
+      if (k < CATCH.from) continue;
+      if (x !== undefined && y !== undefined && Phaser.Math.Distance.Between(x, y, p.img.x, p.img.y) > Math.max(CATCH.radius, p.img.displayWidth * 0.75)) continue;
+      if (k > bestK) {
+        bestK = k;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  private tryCatch(x?: number, y?: number) {
+    if (this.mode !== "playing" || this.ducking) return false;
+    const pointer = x !== undefined;
+    if (!pointer && this.t < this.catchLockUntil) return false;
+    const p = this.catchable(x, y);
+    if (!p?.thrower) {
+      if (!pointer) this.catchLockUntil = this.t + CATCH.whiffMs;
+      return false;
+    }
+    this.catchPudding(p, p.thrower);
+    return true;
+  }
+
+  private catchPudding(p: Projectile, thrower: Rival) {
+    this.projectiles = this.projectiles.filter((x) => x !== p);
+    p.ring?.destroy();
+    this.incoming = Math.max(0, this.incoming - 1);
+    this.impact(IMPACT.catch);
+    this.throws += 1;
+    this.throwReadyAt = this.t + THROW_GAP_MS;
+    this.setPose("throw", 260);
+    this.sfx("catch", 0.9);
+    this.word(this.copy.catch.word, p.img.x, p.img.y - 80, "#93cf4c", 46);
+    if (!this.taught.has("catch")) {
+      this.taught.add("catch");
+      this.milaSay(this.copy.catch.say, 1600, "cheer", true);
+    }
+    this.announce(this.copy.catch.announce, "catch", 2000);
+    const img = p.img;
+    const from = { x: img.x, y: img.y };
+    const to = thrower.face();
+    const dist = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
+    this.launch(img, from, to, 260 + dist * 0.12, 120, thrower.slot.row === "back" ? 0.6 : 0.8, () => this.returnArrives(img, thrower, to));
+  }
+
+  private returnArrives(img: Phaser.GameObjects.Image, r: Rival, to: Pt) {
+    img.destroy();
+    if (this.mode === "ending" || this.mode === "over") return;
+    if (r.targetable) {
+      if (this.behindLady(r, to)) this.lunchLadyHit();
+      else this.rivalHit(r, "pudding");
+      return;
+    }
+    this.sfx("splat", 0.4);
+    this.word(this.copy.throwing.escaped, to.x, to.y - 40, "#fbf5e6", r.slot.row === "back" ? 28 : 34);
+    this.decal("splat-pudding", to.x, to.y, 1.5, 0.6, 0.7);
   }
 
   private puddingArrives(img: Phaser.GameObjects.Image, big: boolean, tut: boolean, thrower: Rival) {
@@ -1186,14 +1282,15 @@ export class LunchScene extends Phaser.Scene {
     }
   }
 
-  private rivalHit(r: Rival, food: Food) {
+  private rivalHit(r: Rival, food: Food | "pudding") {
     const f = r.face();
     const top = r.top();
     const back = r.slot.row === "back";
-    const heavy = food === "apple" && r.hp > 1;
-    const out = r.hit(this.t, food === "apple");
+    const wasBig = r.hp > 1;
+    const out = r.hit(this.t, food === "apple" || food === "pudding");
     if (food === "grapes") this.splash(r);
-    if (heavy) this.foodNews("big", this.copy.food.bigSay, this.copy.food.bigAnnounce);
+    if (food === "apple" && wasBig) this.foodNews("big", this.copy.food.bigSay, this.copy.food.bigAnnounce);
+    if (out.result === "down") this.impact(Math.max(out.interrupted ? IMPACT.interrupt : 0, r.def.kind === "big" ? IMPACT.big : 0));
     if (out.result === "hurt") {
       this.sfx("bonk", 0.9);
       this.hitScore += SCORE.bigHurt;
@@ -1220,7 +1317,7 @@ export class LunchScene extends Phaser.Scene {
       this.announce(this.copy.throwing.interruptAnnounce, "interrupt", 2500);
     }
     this.updateScore();
-    const word = bonus ? this.copy.throwing.interruptWord : (Phaser.Utils.Array.GetRandom(this.copy.hitWords[food]) as string);
+    const word = bonus ? this.copy.throwing.interruptWord : food === "pudding" ? this.copy.catch.hitWord : (Phaser.Utils.Array.GetRandom(this.copy.hitWords[food]) as string);
     this.word(word, f.x, top - 44, bonus ? "#63d6c1" : "#ffc83d", back ? 38 : 48);
     this.popScore(`+${points + combo + bonus}`, f.x, top + 4, r.brawl ? "#ffc83d" : "#9df0dc");
     this.burst(f.x, f.y, 4, "spark");
@@ -1471,6 +1568,11 @@ export class LunchScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
+    if (this.frozenUntil) {
+      if (this.time.now < this.frozenUntil) return;
+      this.frozenUntil = 0;
+      this.tweens.resumeAll();
+    }
     if (this.mode === "attract" || this.mode === "over") return;
     const dt = Math.min(delta, 100);
     this.t += dt;

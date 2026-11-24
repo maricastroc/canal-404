@@ -226,6 +226,7 @@ const TEXT = gameText({
         { input: "Espaço ou Enter", action: "Lançar no aluno mais perigoso" },
         { input: "1 a 5", action: "Lançar na mesa com esse número" },
         { input: "Seta para baixo ou S (segurar)", action: "Abaixar" },
+        { input: "Tocar no pudim perto do Déco, ou seta para cima", action: "Pegar o pudim no ar e devolver" },
         { input: "Esc ou P", action: "Pausar" },
       ],
       howTo: [
@@ -235,6 +236,7 @@ const TEXT = gameText({
       ],
       tips: [
         "Viu um ponto de exclamação? Prepare-se para abaixar.",
+        "Quando o anel do pudim fica verde, dá para pegar no ar e devolver.",
         "Abaixado, a Mila te passa mais lanches.",
         "Os grandões de moletom precisam levar dois lanches. Ou uma maçã.",
         "Quem sobe de sorriso aberto joga rápido. Acerte primeiro.",
@@ -247,7 +249,7 @@ const TEXT = gameText({
         "Acertar a tia da cantina tira pontos. Quando ela para na frente de uma mesa, mire em outra.",
         "A merendeira leva os lanches que estiverem na mesa. Quando ela vier, jogue tudo antes!",
       ],
-      controlsSummary: "Guerra de Lanche. Espaço lança no aluno mais perigoso, 1 a 5 escolhem a mesa, segure seta para baixo para abaixar e recarregar, Esc pausa.",
+      controlsSummary: "Guerra de Lanche. Espaço lança no aluno mais perigoso, 1 a 5 escolhem a mesa, segure seta para baixo para abaixar e recarregar, seta para cima pega o pudim no ar quando o anel fica verde, Esc pausa.",
       copy: {
         winTitle: "Sinal!",
         winText: "O sinal tocou! A cantina sobreviveu a mais uma guerra de comida.",
@@ -709,6 +711,7 @@ const TEXT = gameText({
         { input: "Space or Enter", action: "Throw at the most dangerous kid" },
         { input: "1 to 5", action: "Throw at the table with that number" },
         { input: "Down arrow or S (hold)", action: "Duck" },
+        { input: "Tap the pudding near Déco, or up arrow", action: "Catch the pudding and throw it back" },
         { input: "Esc or P", action: "Pause" },
       ],
       howTo: [
@@ -718,6 +721,7 @@ const TEXT = gameText({
       ],
       tips: [
         "See an exclamation mark? Get ready to duck.",
+        "When a pudding's ring turns green, you can catch it and throw it back.",
         "While you're ducking, Mila hands you more snacks.",
         "The big kids in hoodies take two snacks. Or one apple.",
         "Kids who pop up grinning throw fast. Hit them first.",
@@ -730,7 +734,7 @@ const TEXT = gameText({
         "Hitting the lunch lady costs points. When she stops in front of a table, aim at another one.",
         "The cook takes any snacks left on the table. When she comes, throw everything first!",
       ],
-      controlsSummary: "Food Fight. Space throws at the most dangerous kid, 1 to 5 pick the table, hold the down arrow to duck and reload, Esc pauses.",
+      controlsSummary: "Food Fight. Space throws at the most dangerous kid, 1 to 5 pick the table, hold the down arrow to duck and reload, the up arrow catches a pudding when its ring turns green, Esc pauses.",
       copy: {
         winTitle: "Saved by the bell!",
         winText: "The bell rang! The cafeteria survived another food fight.",

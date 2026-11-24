@@ -4,6 +4,14 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Guerra de Lanche: pausa no impacto e pudim devolvido
+- **Hits land harder.** A "Na hora H!" and a big kid going down freeze the scene for a split second (70 to 80 ms). Reduced motion turns it off.
+- **Catch the pudding.** In the last third of a pudding's flight its ring turns green. Tap it near Déco, or press the up arrow or W, to catch it and throw it straight back at whoever threw it.
+  - The return counts as a throw and a hit, takes down a big kid in one go and keeps the streak.
+  - A key press before the ring turns green blocks catching for 0.4 seconds, so mashing doesn't work.
+  - You can't catch while ducking.
+- **Learning it.** Mila cheers the first catch, and the tips, controls and screen-reader summary mention it in pt-BR and English.
+
 ### Ladeira Abaixo: fantasma junto do Correr!
 - **A switch above the race button.** The best run ghost is no longer a status box in the garage corner. It is a switch centered right above "Correr!", with a ghost icon, "Fantasma da melhor corrida" and "Dispute contra seu recorde". On, the knob slides right with a check on a green track; off, it sits left. "Correr!" stays the biggest, brightest thing on screen.
 - **Locked until a ghost exists.** The ghost only lives in the current session, per track and cart. Until you finish a race with the selected cart, the switch shows a padlock and "Disponível após sua primeira corrida", and tapping it or pressing G just shakes it. The saved on/off choice is kept for when a ghost exists. Recording and playing the ghost are unchanged.
