@@ -10,7 +10,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
   - The return counts as a throw and a hit, takes down a big kid in one go and keeps the streak.
   - A key press before the ring turns green blocks catching for 0.4 seconds, so mashing doesn't work.
   - You can't catch while ducking.
-- **Learning it.** Mila cheers the first catch, and the tips, controls and screen-reader summary mention it in pt-BR and English.
+- **Learning it.**
+  - **New players:** the tutorial gets a third step. One more kid throws a slow pudding, and when its ring turns green the scene slows down, a hand points at the pudding and a banner says "ANEL VERDE!".
+  - **Players who already did the tutorial:** the first pudding that turns green while they are standing gets the same slow motion and banner, once per round, until they catch one or for three rounds.
+  - **Elsewhere:** Mila cheers the first catch, and the tips, controls and screen-reader summary mention it in pt-BR and English.
 
 ### Ladeira Abaixo: fantasma junto do Correr!
 - **A switch above the race button.** The best run ghost is no longer a status box in the garage corner. It is a switch centered right above "Correr!", with a ghost icon, "Fantasma da melhor corrida" and "Dispute contra seu recorde". On, the knob slides right with a check on a green track; off, it sits left. "Correr!" stays the biggest, brightest thing on screen.
