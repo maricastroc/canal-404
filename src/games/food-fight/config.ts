@@ -83,3 +83,5 @@ export const SCORE = {
 };
 
 export const FOODS = ["sandwich", "apple", "grapes", "banana"] as const;
+
+export const FOOD_EFFECTS = { slipMs: 1700, splashMs: 1300, recoverMs: [350, 700] as [number, number] };
