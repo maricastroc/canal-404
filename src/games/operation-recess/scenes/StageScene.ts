@@ -322,6 +322,10 @@ export class StageScene extends Phaser.Scene {
     return this.mode === "attract";
   }
 
+  get knockedOut() {
+    return this.mode === "ko";
+  }
+
   begin(resumed = false) {
     if (this.mode !== "attract") return;
     this.mode = "play";

@@ -80,7 +80,9 @@ function mount(ctx: GameHostContext): GameInstance {
       if (game.scene.isPaused("stage")) game.scene.resume("stage");
     },
     restart() {
-      restartScene(true);
+      const fromBell = stage()?.knockedOut === true;
+      if (!fromBell) game.registry.set("checkpoint", null);
+      restartScene(fromBell);
     },
     setHighScore() {},
     destroy() {
