@@ -248,7 +248,7 @@ export class StageScene extends Phaser.Scene {
     );
     this.setSong("theme");
     this.setMode("idle");
-    this.bridge.onReady();
+    this.events.once(Phaser.Scenes.Events.CREATE, () => this.bridge.onReady());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.player?.dispose());
   }
 

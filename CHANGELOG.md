@@ -4,6 +4,9 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: o cartão volta depois de girar o celular
+- **Turning the phone with a song card open no longer leaves an empty stage.** Rotating the phone, or resizing the window across a layout change, while the how-to or song card was showing rebuilt the stage without the card. Taps and Esc then did nothing until Pausar → Recomeçar. Now the rebuilt stage shows the same card again, ready to start. Songs, timing, scoring and boards are unchanged.
+
 ### Férias Fora do Ar: o final não se perde
 - **Leaving during the ending no longer loses the adventure.** The save marked the adventure as over right after the final choice, but the result only went out at the end of the party by the pool. Closing the tab, reloading or losing the phone's battery in between left a finished adventure with no record, no "Mistério resolvido" achievement and nothing on the board, and the console only repeated that the channel was off the air. Now "Continuar aventura" takes a finished adventure that never sent its result straight back to the party, which then sends it.
 - **The choice is kept.** The ending picked at the console (off the air or still on) is saved together with the end of the adventure instead of a moment later.
