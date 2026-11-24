@@ -6,8 +6,9 @@
 
 **Andamento:**
 - Etapa 0 concluída em 2026-11-24: PRs #132 (F01), #133 (F02) e #134 (F04), já no `main`.
-- Etapa 1 (F03, F07, F10) na branch `fix/game-fault-panel`.
-- Próxima: Etapa 2.
+- Etapa 1 concluída em 2026-11-24: PR #136 (F03, F07, F10).
+- Etapa 2 (F08, F11, F20 parte 1) na branch `fix/single-score-source`.
+- Próxima: Etapa 3.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -224,6 +225,11 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - as versões das regras inalteradas.
 - **Esforço:** S.
 - **Depende de:** PR 0.1, por causa do `WorldScene.ts` do Férias. Se preferir, separe a parte do Férias num PR seguinte.
+- **Como foi feito** (branch `fix/single-score-source`, junto com 2.2 e 2.3):
+  - `LAB_SCORE` e `labScore` (com `starsFor`) em `bad-ideas-lab/levels.ts`;
+  - `SCORE.bigHurt` em `food-fight/config.ts`;
+  - `resortResult` em `off-air-vacation/config.ts`;
+  - o jogo, o juiz, `rules.test.ts` e `src/server/testing.ts` usam esses mesmos helpers, sem cópia da conta.
 
 ### PR 2.2: Níveis do registry conferidos com as regras (F11)
 
@@ -237,6 +243,10 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - o teste passa hoje;
   - renomear um id só no registry, num teste local que não vai para o commit, faz o teste falhar.
 - **Esforço:** XS.
+- **Como foi feito:**
+  - o teste "knows every level the catalog asks tickets for" em `rules.test.ts` compara os jogos jogáveis do registry com as regras;
+  - a regra da Ladeira importa `RACE_COURSES`;
+  - trocar "antena" por "antenna" só no registry faz o teste falhar.
 
 ### PR 2.3: O servidor aceita só o replay que o jogo espera (F20, parte 1)
 
@@ -246,6 +256,10 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
 - **Testes:** em `api.test.ts`, um replay do Ao Vivo numa partida do Férias é recusado.
 - **Critérios de aceitação:** `npm run test:db` verde e o e2e de placar verde.
 - **Esforço:** S.
+- **Como foi feito:**
+  - cada regra declara o `replay` que usa (`null` nos jogos "checked");
+  - `keptReplay()` guarda só esse tipo e descarta o resto, sem recusar a partida, para não punir um cliente com um campo a mais;
+  - o teste fica em `src/server/runs.test.ts`.
 
 **Resultado esperado da etapa:** divergência entre jogo e juiz passa a ser impossível nas fórmulas e detectável nos ids.
 

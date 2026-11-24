@@ -1,5 +1,5 @@
 import type { Player, Run } from "@/generated/prisma/client";
-import { boardId, judgeRun, RULES, type IneligibleReason, type RunClaim, type Verdict } from "@/lib/competition/rules";
+import { boardId, judgeRun, keptReplay, RULES, type IneligibleReason, type RunClaim, type Verdict } from "@/lib/competition/rules";
 import type { BestView, SubmitResponse } from "@/lib/competition/types";
 import { leaderOf, standing, upsertBest } from "./boards";
 import { judgeMission, missionFlag, recordMission, storedMissionOutcome } from "./missions";
@@ -94,7 +94,7 @@ async function recordRejection(db: Db, input: SubmitInput, reason: string): Prom
         score: Math.max(0, Math.min(claim.score, 2_000_000_000)),
         stars: Math.max(0, Math.min(claim.stars, 3)),
         stats: claim.stats,
-        replay: claim.replay ?? undefined,
+        replay: keptReplay(ticket.game, claim.replay),
         rank1: 0,
         rank2: 0,
         rank3: 0,
@@ -146,7 +146,7 @@ export async function submitRun(db: Db, input: SubmitInput): Promise<SubmitOutco
           score: verdict.score,
           stars: verdict.stars,
           stats: claim.stats,
-          replay: claim.replay ?? undefined,
+          replay: keptReplay(ticket.game, claim.replay),
           rank1: verdict.rank[0],
           rank2: verdict.rank[1],
           rank3: verdict.rank[2],

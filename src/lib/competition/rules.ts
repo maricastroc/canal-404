@@ -55,6 +55,7 @@ export type GameRule = {
   game: GameSlug;
   version: number;
   levels: readonly string[] | null;
+  replay: GameReplay["kind"] | null;
   stats: readonly string[];
   judge: (level: string | null, claim: RunClaim) => Verdict;
 };
@@ -122,6 +123,7 @@ const STREET_GADGETS = 16;
 
 const deadEndStreet: GameRule = {
   game: "dead-end-street",
+  replay: "street-launches",
   version: 3,
   levels: PHASE_IDS,
   stats: [...STREET_STATS, "timeMs"],
@@ -184,6 +186,7 @@ function labPlacements(levelId: string, replay: GameReplay | undefined): { ok: t
 
 const badIdeasLab: GameRule = {
   game: "bad-ideas-lab",
+  replay: "lab-placements",
   version: 1,
   levels: LAB_LEVELS.map((l) => l.id),
   stats: ["parts", "inventory", "par", "runs", "steps"],
@@ -256,6 +259,7 @@ function maxComboPoints(hits: number, bestStreak: number) {
 
 const foodFight: GameRule = {
   game: "food-fight",
+  replay: null,
   version: 1,
   levels: null,
   stats: ["hits", "hitPoints", "interrupts", "interruptPoints", "comboPoints", "lives", "hitsTaken", "lunchLadyHits", "bestStreak", "throws", "timeMs"],
@@ -325,6 +329,7 @@ function killSums(kinds: (keyof typeof KILL_POINTS)[], kills: number) {
 
 const operationRecess: GameRule = {
   game: "operation-recess",
+  replay: null,
   version: 1,
   levels: RECESS_LEVELS.map((l) => l.id),
   stats: ["kills", "killPoints", "stickers", "extras", "hits", "hearts", "resumed", "boss", "timeMs"],
@@ -379,6 +384,7 @@ const PAJAMA_SLACK = 0.95;
 
 const pajamaWar: GameRule = {
   game: "pajama-war",
+  replay: null,
   version: 1,
   levels: ARENAS.map((a) => a.id),
   stats: ["hits", "kos", "throws", "hp", "damageTaken", "place", "timeMs", "kid"],
@@ -422,6 +428,7 @@ const RESORT_MIN_MS = 60_000;
 
 const offAirVacation: GameRule = {
   game: "off-air-vacation",
+  replay: null,
   version: 1,
   levels: null,
   stats: ["posters", "tokens", "secrets", "discoveries", "met", "ending", "timeMs"],
@@ -446,6 +453,7 @@ const DERBY_STATS = ["place", "crashes", "show", "hits", "perfect", "bestSeq"] a
 
 const downhillDerby: GameRule = {
   game: "downhill-derby",
+  replay: "downhill-run",
   version: 1,
   levels: RACE_COURSES,
   stats: [...DERBY_STATS, "timeMs"],
@@ -474,6 +482,7 @@ const NIGHT_STATS = ["turns", "wakes", "creaks", "covered"] as const;
 
 const pastBedtime: GameRule = {
   game: "past-bedtime",
+  replay: "bedtime-moves",
   version: 2,
   levels: NIGHT_LEVELS.map((l) => l.id),
   stats: [...NIGHT_STATS, "hints"],
@@ -501,6 +510,7 @@ const TALENT_RANGE = [0, 5000] as const;
 
 const talentShow: GameRule = {
   game: "talent-show",
+  replay: "talent-taps",
   version: 4,
   levels: SONG_ORDER,
   stats: RUN_STATS,
@@ -529,6 +539,10 @@ const talentShow: GameRule = {
     );
   },
 };
+
+export function keptReplay(game: GameSlug, replay: GameReplay | undefined) {
+  return replay && replay.kind === RULES[game].replay ? replay : undefined;
+}
 
 export const RULES: Record<GameSlug, GameRule> = {
   "dead-end-street": deadEndStreet,
