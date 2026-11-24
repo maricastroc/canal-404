@@ -1,6 +1,6 @@
 # 0013: Replaying Madrugada on the server
 
-> Rules version 2 (2026-11-22): in part 3 ("A escada") Grandma walks a loop, out along the bottom row and back along Bruno's row, instead of pacing back and forth, so following her is no longer enough. The par stays 16 and the move log stays `bedtime-moves` version 1. The bump starts new boards for all ten parts.
+> Rules version 2 (2026-11-22): in part 3 ("A escada") Grandma walks a loop, out along the bottom row and back along Bruno's row, instead of pacing back and forth, so following her is no longer enough. The par stays 16 and the move log stays `bedtime-moves` version 1. The bump started new boards for all ten parts, and players who had finished the night vanished from them while the game still showed their stars. Six parts have the same level data and judge as in version 1 (`doorway`, `hallway`, `kitchen`, `laundry`, `living`, `return`), so the migration `20261124200000_bedtime_v2_carry_over` copies each player's version 1 best onto the version 2 board of the same part, keeping whichever ranks higher (the earlier one on a tie). `stairs` changed with the bump. `dining`, `pantry` and `sofa` changed later the same day without a new version (PRs #110, #111 and #114, merged at 21:02 and 21:49), so their version 1 results are not carried over, and their version 2 boards hold runs from the layouts before and after those changes. As in [0011](0011-street-campaign.md), a bump that changes only some parts carries the others' bests over.
 
 ## Context
 

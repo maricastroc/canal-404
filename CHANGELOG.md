@@ -224,7 +224,7 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ### Madrugada: a Vó dá a volta na escada
 - **Part 3 is harder.** Grandma no longer just paces the bottom row: she walks out along it and comes back along the top row, toward the stairs. Following her is not enough anymore; Bruno has to slip past her side, where the flashlight can't reach. The map and the target (16 moves) stay the same, and the part's notes explain the loop and the blind side.
-- **New boards.** The change bumps Madrugada's rules to version 2, so all ten parts start fresh boards ([decision 0013](docs/decisions/0013-bedtime-replay.md)).
+- **Boards.** The change bumps Madrugada's rules to version 2. Six parts play exactly as in version 1 (A porta dos pais, O corredor, A cozinha, A área de serviço, A sala da TV and A volta), so each player's best from version 1 carries over to their new board, and a better run since then keeps its place. A escada, A despensa, A sala de jantar and O pai no sofá changed and keep only version 2 results ([decision 0013](docs/decisions/0013-bedtime-replay.md)).
 - **Clearer sticky note.** While Bruno is in danger, the note keeps a warning that good news can't hide: no move is safe, the light is coming, or one more wait wakes someone up. It also explains the striped tiles the first time they show up in a part.
 
 ### Madrugada entra no catálogo
