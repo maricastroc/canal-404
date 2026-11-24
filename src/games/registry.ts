@@ -114,7 +114,7 @@ const TEXT = gameText({
       ],
       controls: [
         { input: "Mouse", action: "Arraste para trás e solte para lançar", on: "keys" },
-        { input: "Setas ou WASD", action: "← → mudam o ângulo, ↑ ↓ mudam a força", on: "keys" },
+        { input: "Setas ou WASD", action: "← → ajustam o ângulo; ↑ ↓ ajustam a força", on: "keys" },
         { input: "1 a 4, Q ou clique", action: "Trocar a munição", on: "keys" },
         { input: "Espaço ou Enter", action: "Lançar", on: "keys" },
         { input: "Esc ou P", action: "Pausar", on: "keys" },
@@ -125,9 +125,9 @@ const TEXT = gameText({
         { input: "Rever o objetivo", action: "Toque no nome da fase, no alto da tela.", on: "touch" },
       ],
       howTo: [
-        { title: "Escolha", text: "Cada munição faz uma coisa: o tênis para onde cai, o balão molha e empurra, o pneu é pesado e o pato quica." },
-        { title: "Observe", text: "Nem sempre o tiro direto resolve. Cordas, baldes, tijolos e torneiras podem fazer o trabalho por você." },
-        { title: "Economize", text: "Menos lançamentos valem mais estrelas. Dá para repetir cada fase e tentar um jeito melhor." },
+        { title: "Escolha", text: "Cada munição tem um efeito: o tênis para onde cai, o balão molha e empurra, o pneu é pesado e o pato quica." },
+        { title: "Observe", text: "Nem sempre o tiro direto resolve. Cordas, baldes, tijolos e torneiras podem ajudar." },
+        { title: "Economize", text: "Quanto menos lançamentos, mais estrelas você ganha. Repita as fases para melhorar sua pontuação." },
       ],
       tips: [
         "Corda esticada? Qualquer coisa que passe por ela corta.",
@@ -592,7 +592,7 @@ const TEXT = gameText({
       ],
       controls: [
         { input: "Mouse", action: "Drag back and let go to launch", on: "keys" },
-        { input: "Arrows or WASD", action: "← → change the angle, ↑ ↓ change the power", on: "keys" },
+        { input: "Arrows or WASD", action: "← → adjust the angle; ↑ ↓ adjust the power", on: "keys" },
         { input: "1 to 4, Q or click", action: "Swap ammo", on: "keys" },
         { input: "Space or Enter", action: "Launch", on: "keys" },
         { input: "Esc or P", action: "Pause", on: "keys" },
@@ -603,9 +603,9 @@ const TEXT = gameText({
         { input: "Check the goal", action: "Tap the level name at the top of the screen.", on: "touch" },
       ],
       howTo: [
-        { title: "Pick", text: "Each ammo does one thing: the sneaker stays where it lands, the balloon soaks and shoves, the tire is heavy and the duck bounces." },
-        { title: "Look", text: "The direct shot isn't always the answer. Ropes, buckets, bricks and faucets can do the work for you." },
-        { title: "Save", text: "Fewer launches earn more stars. Replay any level and try a better way." },
+        { title: "Pick", text: "Each ammo has its own effect: the sneaker stays where it lands, the balloon soaks and shoves, the tire is heavy and the duck bounces." },
+        { title: "Look", text: "The direct shot isn't always the answer. Ropes, buckets, bricks and faucets can help." },
+        { title: "Save", text: "The fewer launches, the more stars you earn. Replay levels to beat your score." },
       ],
       tips: [
         "A tight rope? Anything that flies through it cuts it.",
