@@ -4,6 +4,7 @@ import { songResult } from "./result";
 import { sameShape, shapeFor, type Shape } from "./scenes/layout";
 import { StageScene, type TalentBridge } from "./scenes/StageScene";
 import { SONG_ORDER } from "./song/songs";
+import { destroyGame } from "../kit/game";
 
 const TUTORIAL_KEY = "canal404:talent-show:tutorial:v1";
 const OLD_CALIBRATION_KEY = "canal404:talent-show:calibration:v1";
@@ -179,7 +180,7 @@ function mount(ctx: GameHostContext): GameInstance {
     shape = next;
     stale = false;
     scene()?.quit();
-    game.destroy(true);
+    destroyGame(game);
     boot();
     return true;
   };
@@ -221,7 +222,7 @@ function mount(ctx: GameHostContext): GameInstance {
       window.removeEventListener("keyup", keyup);
       observer.disconnect();
       scene()?.quit();
-      game?.destroy(true);
+      if (game) destroyGame(game);
       game = null;
     },
   };

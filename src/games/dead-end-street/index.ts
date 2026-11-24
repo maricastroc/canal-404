@@ -4,6 +4,7 @@ import { PHASES } from "./phases";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { PlayScene } from "./scenes/PlayScene";
+import { destroyGame } from "../kit/game";
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
@@ -75,7 +76,7 @@ function mount(ctx: GameHostContext): GameInstance {
     },
     setHighScore() {},
     destroy() {
-      game.destroy(true);
+      destroyGame(game);
     },
   };
 }

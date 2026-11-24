@@ -12,6 +12,7 @@ import type { CourseId } from "./sim/course";
 import { DEFAULT_PARAMS, cloneParams } from "./sim/params";
 import { RACE_COURSES } from "./sim/score";
 import { loadRivals, type RivalDef } from "./sim/tapes";
+import { destroyGame } from "../kit/game";
 
 const RACE_KEYS = new Set(["Space", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "KeyS", "KeyA", "KeyD", "KeyW"]);
 
@@ -241,7 +242,7 @@ function mount(ctx: GameHostContext): GameInstance {
       target.removeEventListener("keyup", keyup);
       window.removeEventListener("blur", blur);
       observer.disconnect();
-      game.destroy(true);
+      destroyGame(game);
     },
   };
 }

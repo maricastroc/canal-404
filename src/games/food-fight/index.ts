@@ -3,6 +3,7 @@ import type { GameHostContext, GameInstance, GameModule } from "@/games/types";
 import { frameFor } from "./layout";
 import { BootScene } from "./scenes/BootScene";
 import { LunchScene } from "./scenes/LunchScene";
+import { destroyGame } from "../kit/game";
 
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
@@ -62,7 +63,7 @@ function mount(ctx: GameHostContext): GameInstance {
       lunch()?.setHighScore(value);
     },
     destroy() {
-      game.destroy(true);
+      destroyGame(game);
     },
   };
 }

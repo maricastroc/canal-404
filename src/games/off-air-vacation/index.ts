@@ -7,6 +7,7 @@ import { measureFrame } from "./scenes/frame";
 import { WorldScene } from "./scenes/WorldScene";
 import { mainObjective, score } from "./story";
 import type { VacationText } from "./text/pt-BR";
+import { destroyGame } from "../kit/game";
 
 const TEXT_LOADERS: Record<Locale, () => Promise<{ TEXT: VacationText }>> = {
   "pt-BR": () => import("./text/pt-BR"),
@@ -112,7 +113,7 @@ function mount(ctx: GameHostContext): GameInstance {
     },
     destroy() {
       world()?.persist();
-      game.destroy(true);
+      destroyGame(game);
     },
   };
 }
