@@ -127,3 +127,9 @@ const ATTEMPT_BONUS = [300, 200, 100];
 export function attemptBonus(runs: number) {
   return ATTEMPT_BONUS[runs - 1] ?? 0;
 }
+
+export const LAB_SCORE = { worked: 1000, savedPart: 150 };
+
+export function labScore(total: number, used: number, runs: number) {
+  return LAB_SCORE.worked + (total - used) * LAB_SCORE.savedPart + attemptBonus(runs);
+}
