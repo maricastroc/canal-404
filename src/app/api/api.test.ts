@@ -97,7 +97,10 @@ describe.skipIf(!hasTestDb)("competition API", () => {
     expect(header).toMatch(/HttpOnly/);
     expect(header).toMatch(/SameSite=Lax/);
     expect(header).toMatch(/Path=\/api/);
-    const me = await body<{ player: PublicPlayer }>(await meGet(apiRequest("/api/players/me", { cookie })));
+    const meResponse = await meGet(apiRequest("/api/players/me", { cookie }));
+    expect(cookieFrom(meResponse)).toBe(cookie);
+    expect(meResponse.headers.get("set-cookie")).toMatch(/Max-Age=\d+; HttpOnly/);
+    const me = await body<{ player: PublicPlayer }>(meResponse);
     expect(me.player.nickname).toBe("Déco Turbo");
     const stored = await db.player.findFirstOrThrow();
     expect(stored.tokenHash).toHaveLength(64);
@@ -106,7 +109,9 @@ describe.skipIf(!hasTestDb)("competition API", () => {
 
   it("returns no player without a cookie, and with a bogus one", async () => {
     expect(await body(await meGet(apiRequest("/api/players/me")))).toEqual({ player: null });
-    expect(await body(await meGet(apiRequest("/api/players/me", { cookie: "c404_player=nonsense" })))).toEqual({ player: null });
+    const bogus = await meGet(apiRequest("/api/players/me", { cookie: "c404_player=nonsense" }));
+    expect(await body(bogus)).toEqual({ player: null });
+    expect(bogus.headers.get("set-cookie")).toBeNull();
   });
 
   it("refuses cross-site writes, non-JSON bodies and oversized payloads", async () => {

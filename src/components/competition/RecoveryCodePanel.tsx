@@ -13,7 +13,7 @@ import { serverMessage } from "@/lib/competition/errors";
 const COPY = localized({
   "pt-BR": {
     title: "Levar para outro aparelho",
-    intro: "Crie um código secreto e digite em outro celular ou computador, em Extras → Carteirinha → Já tenho carteirinha. A carteirinha e o progresso vão junto.",
+    intro: "Crie um código secreto e digite em outro celular ou computador, em Extras → Carteirinha → Já tenho carteirinha. A carteirinha e o progresso vão junto. O código também traz a carteirinha de volta se este navegador apagar os dados.",
     createdOn: (date: string) => `Você criou um código em ${date}. Se perdeu, crie um novo.`,
     renewWarning: "O código antigo para de funcionar, e os aparelhos que entraram com ele saem da carteirinha até você digitar o código novo.",
     create: "Criar código",
@@ -28,7 +28,7 @@ const COPY = localized({
   },
   en: {
     title: "Take it to another device",
-    intro: "Create a secret code and type it on another phone or computer, in Extras → Membership card → I already have a card. Your card and your progress come along.",
+    intro: "Create a secret code and type it on another phone or computer, in Extras → Membership card → I already have a card. Your card and your progress come along. The code also brings your card back if this browser loses its data.",
     createdOn: (date: string) => `You created a code on ${date}. If you lost it, create a new one.`,
     renewWarning: "The old code stops working, and devices that joined with it leave the card until you type the new code.",
     create: "Create code",

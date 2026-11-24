@@ -2,7 +2,7 @@
 
 import Link from "@/i18n/Link";
 import { motion, useReducedMotion } from "motion/react";
-import { DoneIcon, OfflineIcon, TrophyIcon } from "@/components/art/Icons";
+import { DoneIcon, KeyIcon, OfflineIcon, TrophyIcon } from "@/components/art/Icons";
 import { NicknameForm } from "@/components/competition/NicknameForm";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import type { GameMeta } from "@/games/registry";
@@ -17,7 +17,7 @@ import { serverMessage } from "@/lib/competition/errors";
 import { recordsHref } from "@/lib/competition/links";
 import { boardNickname } from "@/lib/competition/nickname";
 
-export type BoardState = { phase: "sending" } | { phase: "join"; waiting: number } | { phase: "done"; outcome: SubmitOutcome };
+export type BoardState = { phase: "sending" } | { phase: "join"; waiting: number } | { phase: "done"; outcome: SubmitOutcome; joined?: boolean };
 
 type Line = { headline?: string; text: string; rival?: string; href?: string; live?: boolean; offline?: boolean; record?: boolean; stamp?: boolean };
 
@@ -72,6 +72,8 @@ const COPY = localized({
     finished: (total: number) => (total === 1 ? "Você é a primeira pessoa na lista de quem terminou as férias." : `Você entrou na lista de quem terminou as férias, com mais ${formatNumber(total - 1, "pt-BR")} ${total === 2 ? "pessoa" : "pessoas"}.`),
     alreadyFinished: (date: string) => `Seu nome já está na lista de quem terminou, desde ${date}.`,
     finishersArcade: "Ver quem terminou",
+    guard: "Sua carteirinha só existe neste navegador. Para não perder, crie um código de recuperação.",
+    guardLink: "Criar código em Extras",
   },
   en: {
     label: { fase: "Level board", arena: "Arena board", pista: "Track board", parte: "Part board", música: "Song board", game: "Game board" },
@@ -123,6 +125,8 @@ const COPY = localized({
     finished: (total: number) => (total === 1 ? "You're the first person on the list of people who finished the vacation." : `You joined the list of people who finished the vacation, along with ${formatNumber(total - 1, "en")} ${total === 2 ? "other" : "others"}.`),
     alreadyFinished: (date: string) => `Your name has been on the list of people who finished since ${date}.`,
     finishersArcade: "See who finished",
+    guard: "Your card only lives in this browser. To keep it, create a recovery code.",
+    guardLink: "Create a code in Extras",
   },
 });
 
@@ -275,6 +279,14 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
           </div>
         </div>
       )}
+      {state.phase === "done" && state.joined ? (
+        <div className="mt-2 border-t-2 border-dashed border-cream/30 pt-2">
+          <p className="copy-sm text-cream-2">{copy.guard}</p>
+          <Link href="/extras#membership" className="mt-1 inline-flex items-center gap-1.5 font-display text-sm uppercase tracking-wider text-sun underline decoration-2 underline-offset-4 hover:text-cream">
+            <KeyIcon className="size-4" /> {copy.guardLink}
+          </Link>
+        </div>
+      ) : null}
       {state.phase === "done" && line?.href ? (
         <Link href={line.href} className="mt-2 inline-flex items-center gap-1.5 font-display text-sm uppercase tracking-wider text-sun underline decoration-2 underline-offset-4 hover:text-cream">
           {finishers ? <DoneIcon className="size-4" /> : <TrophyIcon className="size-4" />} {finishers ? copy.finishersArcade : copy.arcade}

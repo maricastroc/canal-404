@@ -200,7 +200,7 @@ export function GameShell({ slug }: { slug: string }) {
   const levelProgress = computeLevelProgress(game.levels, hydrated ? levelRecords : undefined);
 
   const sendToBoard = useCallback(
-    (pending: PendingRun) => {
+    (pending: PendingRun, joined = false) => {
       const competition = getCompetition();
       if (!pending.result.stats || competition.status === "unconfigured") {
         setBoard(null);
@@ -232,7 +232,7 @@ export function GameShell({ slug }: { slug: string }) {
           if (playerId) announceAchievements(playerId, outcome.response.mission.achievements);
           void loadMission(playerId, true);
         }
-        setBoard({ phase: "done", outcome });
+        setBoard({ phase: "done", outcome, joined });
       });
     },
     [slug, play, setBoard],
@@ -244,7 +244,7 @@ export function GameShell({ slug }: { slug: string }) {
       const pending = pendingRef.current;
       if (outcome.ok && pending) {
         pendingRef.current = null;
-        sendToBoard(pending);
+        sendToBoard(pending, true);
       }
       if (outcome.ok) scheduleCloudCopy();
       return outcome;

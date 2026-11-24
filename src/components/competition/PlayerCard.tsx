@@ -34,6 +34,9 @@ const COPY = localized({
     rename: "Trocar apelido",
     leave: "Sair do placar",
     move: "Levar para outro aparelho",
+    guardTitle: "Guarde sua carteirinha",
+    guard: "Por enquanto ela só existe neste navegador. Se você limpar os dados ou trocar de aparelho, ela se perde. Crie um código de recuperação e anote num lugar seguro.",
+    guardButton: "Criar código",
     haveCard: "Já tenho carteirinha",
     save: "Salvar",
     leaveTitle: "Sair do placar?",
@@ -67,6 +70,9 @@ const COPY = localized({
     rename: "Change nickname",
     leave: "Leave the board",
     move: "Take it to another device",
+    guardTitle: "Keep your card safe",
+    guard: "For now it only lives in this browser. If you clear your data or switch devices, it's gone. Create a recovery code and write it down somewhere safe.",
+    guardButton: "Create code",
     haveCard: "I already have a card",
     save: "Save",
     leaveTitle: "Leave the board?",
@@ -204,6 +210,17 @@ export function PlayerCard() {
                   {leaveError}
                 </p>
               ) : null}
+            </div>
+          ) : null}
+          {player && status === "online" && mode === "view" && !player.recoveryAt ? (
+            <div className="mt-3 rounded-xl border-[3px] border-ink bg-cream-2 p-3" data-testid="recovery-reminder">
+              <p className="flex items-center gap-2 font-display text-lg uppercase tracking-wide text-ink">
+                <KeyIcon className="size-5" /> {copy.guardTitle}
+              </p>
+              <p className="copy-sm mt-1 text-ink-soft">{copy.guard}</p>
+              <InkButton tone="sun" size="sm" className="mt-3" onClick={() => setMode("code")}>
+                {copy.guardButton}
+              </InkButton>
             </div>
           ) : null}
           {player && mode === "code" ? <RecoveryCodePanel recoveryAt={player.recoveryAt} onClose={() => setMode("view")} /> : null}
