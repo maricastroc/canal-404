@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ladeira Abaixo: vitórias na Garagem
+- **Wins per cart.** The garage shows a trophy with how many times each cart finished 1st on the current track, like the kid cards in Guerra do Pijama. It only appears once that cart has won there.
+- **Where it shows.** On desktop it sits in the top corner of each cart card. On phones it sits on the corner of each cart tile, so all four counts show at once.
+- **Counting starts now.** Earlier races were not recorded, so every cart starts at zero. A win counts the moment you cross the line in 1st, before the result screen.
+
 ### Rua Sem Saída: mira precisa e Caminho bloqueado mais justo
 - **Sunbathing gnome.** It now sits facing the player in a striped beach chair with its pointed hat up, so it reads as a gnome at a glance. The physics and scoring are unchanged.
 - **Desktop aim in whole numbers.** Dragging rounds to 1° and 1%, like the phone, so the number on screen is the number launched. The arrows and WASD step by 1, or by 5 with Shift.
