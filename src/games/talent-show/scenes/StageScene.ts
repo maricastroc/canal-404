@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowRight, Check, Ear, Heart, Music2, Play, Pointer, Volume2, X, type IconNode } from "lucide";
 import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
+import { reportFailedLoads } from "@/games/kit/load";
 import { cartoonText } from "@/games/kit/ui";
 import { formatNumber } from "@/i18n/format";
 import { getAudio } from "@/lib/audio/engine";
@@ -31,6 +32,7 @@ export type TalentBridge = {
   assist: { get: () => boolean; set: (on: boolean) => void };
   tutorial: { seen: () => boolean; done: () => void };
   onLoad: (value: number) => void;
+  onError: (error: unknown) => void;
   onReady: () => void;
   onRun: (report: RunReport) => void;
   onPauseRequest: () => void;
@@ -217,6 +219,7 @@ export class StageScene extends Phaser.Scene {
       { key: "icon-ear", icon: Ear, size: 96, color: "#b9a6ef", strokeWidth: 2.6 },
       { key: "icon-ear-ink", icon: Ear, size: 96, color: "#1d1830", strokeWidth: 6 },
     ]);
+    reportFailedLoads(this, bridge.onError);
   }
 
   create() {

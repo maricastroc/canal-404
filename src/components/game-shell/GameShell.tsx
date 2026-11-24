@@ -278,6 +278,29 @@ export function GameShell({ slug }: { slug: string }) {
       }, hold);
     };
 
+    const fail = (error: unknown, loading: boolean) => {
+      if (cancelled || stageStateRef.current === "result" || stageStateRef.current === "error") return;
+      cancelled = true;
+      window.clearInterval(creep);
+      const broken = instance;
+      instance = null;
+      instanceRef.current = null;
+      try {
+        broken?.destroy();
+      } catch {}
+      hostRef.current?.replaceChildren();
+      loadErrorRef.current = error;
+      if (loading) track({ name: "game_load_error", game: slug, message: errorMessage(error) });
+      setStage("error");
+      setShowLoader(false);
+    };
+
+    const onCrash = (event: ErrorEvent) => {
+      if (event.message === "Script error." || /^[a-z-]+-extension:/.test(event.filename ?? "")) return;
+      fail(event.error ?? new Error(event.message), false);
+    };
+    window.addEventListener("error", onCrash);
+
     const run = async () => {
       try {
         await document.fonts.ready;
@@ -318,6 +341,7 @@ export function GameShell({ slug }: { slug: string }) {
             if (!cancelled) setProgress((p) => Math.max(p, Math.min(0.95, mapStage(value, stageName))));
           },
           onReady: finishLoading,
+          onError: (error) => fail(error, true),
           onEvent: (event) => {
             if (cancelled) return;
             switch (event.type) {
@@ -400,6 +424,11 @@ export function GameShell({ slug }: { slug: string }) {
             }
           },
         });
+        if (cancelled) {
+          instance.destroy();
+          instance = null;
+          return;
+        }
         instanceRef.current = instance;
       } catch (error) {
         window.clearInterval(creep);
@@ -417,6 +446,7 @@ export function GameShell({ slug }: { slug: string }) {
     return () => {
       cancelled = true;
       window.clearInterval(creep);
+      window.removeEventListener("error", onCrash);
       instance?.destroy();
       instanceRef.current = null;
     };

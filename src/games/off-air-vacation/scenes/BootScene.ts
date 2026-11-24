@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowBigRight, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, Hand, Lightbulb, Map as MapIcon, MapPin, Music2, Pause, Play, Rewind, Star, Target, Users, X, type IconNode } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { reportFailedLoads } from "../../kit/load";
 import { CHAR_RES } from "../config";
 import type { VacationText } from "../text/pt-BR";
 import { paintSigns } from "./signs";
@@ -131,19 +132,22 @@ export class BootScene extends Phaser.Scene {
       { key: "ui-music", icon: sticker(Music2, "#ffe39a"), size: 128 },
       { key: "ui-exit", icon: haloed(ArrowBigRight), size: 192 },
     ]);
+    reportFailedLoads(this, ctx.onError);
   }
 
   create() {
     const ctx = this.registry.get("ctx") as GameHostContext;
     const load = this.registry.get("textLoad") as Promise<VacationText>;
     paintSigns(this, ctx.fonts.round ?? ctx.fonts.body);
-    void load.then((text) => {
-      if (!(this.sys.game as Phaser.Game | null)) return;
-      this.registry.set("text", text);
-      ctx.onProgress(1, "scene");
-      const pending = this.registry.get("pending") as object | null;
-      this.registry.set("pending", null);
-      this.scene.start("world", pending ?? { mode: "attract", area: "pool", spawn: "attract" });
-    });
+    load
+      .then((text) => {
+        if (!(this.sys.game as Phaser.Game | null)) return;
+        this.registry.set("text", text);
+        ctx.onProgress(1, "scene");
+        const pending = this.registry.get("pending") as object | null;
+        this.registry.set("pending", null);
+        this.scene.start("world", pending ?? { mode: "attract", area: "pool", spawn: "attract" });
+      })
+      .catch((error: unknown) => ctx.onError(error));
   }
 }

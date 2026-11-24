@@ -66,6 +66,7 @@ export type GameHostContext = {
   };
   onProgress: (value: number, stage: LoadStage) => void;
   onReady: () => void;
+  onError: (error: unknown) => void;
   onEvent: (event: GameEvent) => void;
 };
 

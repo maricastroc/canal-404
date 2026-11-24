@@ -84,6 +84,7 @@ function mount(ctx: GameHostContext): GameInstance {
       onLoad: (value) => {
         if (!ready) ctx.onProgress(value, "art");
       },
+      onError: (error) => ctx.onError(error),
       onReady: () => {
         if (ready) {
           if (started) scene()?.prepare(SONG_ORDER[level]);

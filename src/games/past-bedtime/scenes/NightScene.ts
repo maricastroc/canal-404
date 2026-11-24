@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { getAudio } from "@/lib/audio/engine";
 import type { SoundRecipe } from "@/lib/audio/types";
 import { glyphOffset, type Fonts } from "@/games/kit/ui";
+import { reportFailedLoads } from "@/games/kit/load";
 import type { Locale } from "@/i18n/locales";
 import { NIGHT_COPY, type NightCopy, type Sleeper } from "../copy";
 import { isCreaky, isHiding, isWall, noiseDistances, pathTo } from "../sim/grid";
@@ -41,6 +42,7 @@ export type NightBridge = {
   carry: Carry | null;
   stars: () => Record<string, number>;
   onLoad: (value: number) => void;
+  onError: (error: unknown) => void;
   onReady: () => void;
   onLevel: (index: number) => void;
   onWin: (report: WinReport) => void;
@@ -128,6 +130,7 @@ export class NightScene extends Phaser.Scene {
     this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => bridge.onLoad(value));
     if (bridge.art === "final") loadArt(this);
     loadNightIcons(this);
+    reportFailedLoads(this, bridge.onError);
   }
 
   create() {

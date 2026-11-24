@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { ArrowBigDown, Ban, Pointer, Star } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
+import { reportFailedLoads } from "../../kit/load";
 import { RIVAL_KINDS, RIVAL_LOOKS } from "../config";
 
 const BASE = "/assets/food-fight/";
@@ -63,6 +64,7 @@ export class BootScene extends Phaser.Scene {
       { key: "icon-ban", icon: Ban, size: 64, color: "#ef4f43", fill: "#fbf5e6", strokeWidth: 3.2 },
       { key: "icon-dizzy-star", icon: Star, size: 36, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
     ]);
+    reportFailedLoads(this, ctx.onError);
   }
 
   create() {
