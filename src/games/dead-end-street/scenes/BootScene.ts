@@ -57,7 +57,7 @@ export const ASSETS: [key: string, file: string, width: number, height: number][
   ["faucet", "faucet.svg", 42, 38],
   ["blower", "blower.svg", 104, 80],
   ["sandbag", "sandbag.svg", 66, 72],
-  ["sun-gnome", "sun-gnome.svg", 100, 60],
+  ["sun-gnome", "sun-gnome.svg", 100, 104],
   ["giant-gnome", "giant-gnome.svg", 112, 242],
   ["sprinkler", "sprinkler.svg", 44, 34],
 ];
