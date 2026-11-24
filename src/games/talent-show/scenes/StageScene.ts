@@ -1025,6 +1025,10 @@ export class StageScene extends Phaser.Scene {
       this.registerUp(timeStamp, id);
       return;
     }
+    if (this.mode === "paused" || this.mode === "resuming") {
+      this.releaseAtPause(id);
+      return;
+    }
     if (!this.carded()) return;
     const pressed = this.pressedButton;
     this.pressedButton = null;
@@ -1051,6 +1055,7 @@ export class StageScene extends Phaser.Scene {
 
   keyUp(code: string, timeStamp: number) {
     if (this.mode === "playing" || this.mode === "countin") this.registerUp(timeStamp, `k${code}`);
+    else if (this.mode === "paused" || this.mode === "resuming") this.releaseAtPause(`k${code}`);
   }
 
   prepare(id: SongId) {
@@ -1157,8 +1162,6 @@ export class StageScene extends Phaser.Scene {
   private pauseSong() {
     if (!this.player) return;
     const songMs = Math.max(0, Math.round(this.songNow()));
-    const now = performance.now();
-    for (const id of [...this.active.keys()]) this.registerUp(now, id);
     this.stopPlayer();
     this.lastSongMs = this.mode === "resuming" ? this.resumeAt : songMs;
     this.resumeAt = this.lastSongMs;
@@ -1225,6 +1228,13 @@ export class StageScene extends Phaser.Scene {
     this.active.delete(id);
     press.up = Math.max(press.down, Math.round(this.songNow(timeStamp)));
     if (this.active.size === 0) this.player?.lift();
+  }
+
+  private releaseAtPause(id: string) {
+    const press = this.active.get(id);
+    if (!press) return;
+    this.active.delete(id);
+    press.up = Math.max(press.down, this.resumeAt);
   }
 
   private judgeInput() {
