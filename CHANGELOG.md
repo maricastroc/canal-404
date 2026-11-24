@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Peças comuns dos jogos num lugar só
+- **Operação: Recreio on touchscreen laptops.** The touch buttons used to appear only on devices that report a touch screen as their main pointer, so a laptop with a touch screen had no way to play by touch. Now they appear at the first touch, as in Guerra do Pijama and Ladeira Abaixo.
+- **One key press counts once in every game.** Guerra de Lanche, Férias Fora do Ar and Operação: Recreio now have the guard that Rua Sem Saída, the Laboratório and Guerra do Pijama already had against the same key press being handled twice.
+- **Leaving a game frees its graphics right away.** Each game opened in a visit used to keep its share of the graphics card until the browser cleaned up, and browsers allow only a handful at once. Now it is released as soon as the game closes, including when Ao Vivo no 404 or Madrugada rebuild after the phone rotates.
+- **Behind the scenes.** The six games that adapt their layout to the screen now share one resize routine, and the key guard, touch check and game shutdown live in the shared game kit. Layouts, controls and scores are unchanged.
+
 ### Placar mais difícil de abusar e mais fácil de acompanhar
 - **One home network, one limit.** Limits per address now treat every address of one home IPv6 network (a /64) as one, as they already did for families and schools behind one IPv4 address. Before, a single connection could get a fresh limit for each of its addresses.
 - **The pause after rejected results holds under bursts.** Eight rejected results in an hour pause a player's submissions. Results sent all at once could all slip in before the pause; now the ninth is refused as soon as it arrives.
