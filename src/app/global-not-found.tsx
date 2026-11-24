@@ -14,7 +14,7 @@ const HIDE_OTHER = `html:not([data-locale="en"]) [data-copy="en"],html[data-loca
 
 export default function GlobalNotFound() {
   return (
-    <html lang="pt-BR" className={FONT_CLASSES}>
+    <html lang="pt-BR" className={FONT_CLASSES} data-scroll-behavior="smooth">
       <head>
         <script dangerouslySetInnerHTML={{ __html: PICK_LANGUAGE }} />
         <style dangerouslySetInnerHTML={{ __html: HIDE_OTHER }} />

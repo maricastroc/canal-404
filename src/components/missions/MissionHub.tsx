@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { OfflineIcon, RestartIcon } from "@/components/art/Icons";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
+import { scrollMotion } from "@/lib/device";
 import { useCopy } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { connect } from "@/lib/competition/client";
@@ -114,7 +115,7 @@ export function MissionHub() {
             today={data.mission.day}
             onBoard={(day) => {
               setBoardDay(day);
-              boardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              boardRef.current?.scrollIntoView({ behavior: scrollMotion(), block: "start" });
             }}
           />
         </div>

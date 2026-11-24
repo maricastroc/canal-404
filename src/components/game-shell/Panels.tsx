@@ -16,10 +16,11 @@ import { KeyText } from "@/components/ui/KeyText";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
 import type { GameResult, IntroProgress, ResultFact, ResultStanding } from "@/games/types";
-import { useCopy, useLocale, useLocalePath } from "@/i18n/client";
+import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { formatNumber, ordinal } from "@/i18n/format";
 import { useSound } from "@/lib/audio/hooks";
+import { scrollMotion } from "@/lib/device";
 import { useNarrowScreen, useTouchScreen } from "@/lib/device";
 import type { JoinOutcome } from "@/lib/competition/client";
 import { missionOverridesStars } from "@/lib/missions/goals";
@@ -196,7 +197,6 @@ export function OverlayFrame({
     >
       <motion.div
         role="dialog"
-        aria-modal="true"
         aria-label={label}
         initial={{ opacity: 0, scale: 0.88, rotate: -2, y: 20 }}
         animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
@@ -530,9 +530,16 @@ export function IntroPanel({
   onSkipMission?: () => void;
 }) {
   const playRef = useAutoFocus<HTMLButtonElement>();
+  const hasMission = Boolean(mission);
+  useEffect(() => {
+    if (missionPending) return;
+    const id = window.setTimeout(() => {
+      if (!document.activeElement || document.activeElement === document.body) playRef.current?.focus({ preventScroll: true });
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, [missionPending, hasMission, playRef]);
   const locale = useLocale();
   const copy = COPY[locale];
-  const localePath = useLocalePath();
   const [saved] = useState(() => (game.resumable ? canResume(game.slug, game.resumable) : false));
   const [confirming, setConfirming] = useState(false);
   const resume = Boolean(game.resumable && saved);
@@ -547,7 +554,7 @@ export function IntroPanel({
   const sectioned = picking || Boolean(adventure);
   const confirmRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (confirming) confirmRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (confirming) confirmRef.current?.scrollIntoView({ block: "nearest", behavior: scrollMotion() });
   }, [confirming]);
   const begin = game.resumable && onNew ? (resume ? () => onPlay() : onNew) : () => onPlay(leveled ? suggested : undefined);
   const howFirst = narrow && !picking && !adventure && !mission && !missionPending && !(game.resumable && onNew);
@@ -612,9 +619,9 @@ export function IntroPanel({
         {missionNotice ? (
           <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">
             {missionNotice}{" "}
-            <a href={localePath("/mission")} className="underline decoration-2 underline-offset-2">
+            <Link href="/mission" className="underline decoration-2 underline-offset-2">
               {copy.missionLink}
-            </a>
+            </Link>
             .
           </p>
         ) : null}

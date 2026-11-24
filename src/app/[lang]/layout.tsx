@@ -49,10 +49,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
   const { lang: param } = await params;
   const lang = isLocale(param) ? param : DEFAULT_LOCALE;
   return (
-    <html
-      lang={lang}
-      className={FONT_CLASSES}
-    >
+    <html lang={lang} className={FONT_CLASSES} data-scroll-behavior="smooth">
       <body className="min-h-svh">
         <a
           href="#content"

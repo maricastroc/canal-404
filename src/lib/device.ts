@@ -16,6 +16,10 @@ export function useTouchScreen() {
   return useSyncExternalStore(subscribe, touchScreen, () => false);
 }
 
+export function scrollMotion(): ScrollBehavior {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
+
 const NARROW = "(max-width: 639px)";
 
 function subscribeNarrow(onChange: () => void) {

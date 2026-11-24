@@ -34,7 +34,7 @@ export function TopBar({ className = "" }: { className?: string }) {
 
   return (
     <header className={`on-dark relative z-50 border-b-[3px] border-ink bg-plum-800 ${className}`}>
-      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-3 px-3 sm:px-5">
+      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-3 safe-inline [--pad-inline:0.75rem] sm:[--pad-inline:1.25rem]">
         <IntentLink href="/" className="shrink-0 -rotate-2 transition-transform hover:rotate-0" onClick={() => play("click")}>
           <Logo slogan={false} label={copy.home} className="h-14 w-auto drop-shadow-[0_4px_0_rgba(20,15,38,0.5)]" />
         </IntentLink>
