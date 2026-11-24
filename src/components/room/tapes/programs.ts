@@ -9,11 +9,17 @@ let pending: Promise<Programs> | null = null;
 const listeners = new Set<() => void>();
 
 export function loadTapePrograms() {
-  pending ??= import(".").then((module) => {
-    programs = module.TAPE_PROGRAMS;
-    listeners.forEach((listener) => listener());
-    return programs;
-  });
+  pending ??= import(".").then(
+    (module) => {
+      programs = module.TAPE_PROGRAMS;
+      listeners.forEach((listener) => listener());
+      return programs;
+    },
+    (error: unknown) => {
+      pending = null;
+      throw error;
+    },
+  );
   return pending;
 }
 

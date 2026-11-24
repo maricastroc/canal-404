@@ -76,7 +76,7 @@ export function RecoveryCodePanel({ recoveryAt, onClose }: { recoveryAt: string 
     }
   };
 
-  const created = recoveryAt ? dateFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date(recoveryAt)) : null;
+  const created = recoveryAt ? dateFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(new Date(recoveryAt)) : null;
 
   return (
     <div className="rounded-xl border-[3px] border-ink bg-cream-2 p-3" data-testid="recovery-panel">

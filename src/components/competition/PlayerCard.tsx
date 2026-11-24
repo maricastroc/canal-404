@@ -87,7 +87,7 @@ const COPY = localized({
 });
 
 function memberSince(iso: string, locale: Locale) {
-  return dateFormat(locale, { month: "long", year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+  return dateFormat(locale, { month: "long", year: "numeric" }).format(new Date(iso));
 }
 
 export function PlayerCard() {
