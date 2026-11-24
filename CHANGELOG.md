@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Pausa e Como jogar em telas separadas
+- **The pause stays small.** "Como jogar" no longer stretches the pause card. It swaps it for its own view with the game's name, the three tips, the controls and a "Voltar à pausa" button. The game stays paused the whole time.
+- **Every game gets it**, since they all share the same pause card.
+- **Keyboard.** Esc in "Como jogar" goes back to the pause instead of resuming, and focus returns to "Como jogar". Pausing again always opens the short pause.
+- **Pause card.** "Sair do jogo" sits a little apart and smaller on desktop. 404's line is now "O 404 tirou uma soneca."
+- **Rua Sem Saída** has shorter tips. The arrow keys now "ajustam" the angle and power.
+
 ### Férias Fora do Ar: lista de quem terminou
 - **No contest at the end of the vacation.** The Férias board ranked by points and playtime. A made-up result could take first place for good, because ties go to whoever got there first. It is now a list of who finished the adventure, with the latest on top and the date each person finished. Nobody holds a first place anymore.
 - **Finishing again** keeps your name on the list with the date you first finished.

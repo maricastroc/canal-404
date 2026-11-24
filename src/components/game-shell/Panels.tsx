@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
-import { ArrowLeftIcon, CloseIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RatingStar, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
+import { ArrowLeftIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RatingStar, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
@@ -76,11 +76,12 @@ const COPY = localized({
     play: "Jogar",
     showLevels: (word: LevelWord) => `Ver ${word}s`,
     hideHelp: "Esconder instruções",
-    closeHelp: "Fechar ajuda",
     record: (value: string) => `Recorde: ${value}`,
     pausedLabel: "Jogo pausado",
     paused: "Pausa",
-    napping: "O 404 aproveitou para tirar um cochilo.",
+    napping: "O 404 tirou uma soneca.",
+    helpLabel: (title: string) => `Como jogar ${title}`,
+    backToPause: "Voltar à pausa",
     resume: "Continuar",
     restart: "Recomeçar",
     quit: "Sair do jogo",
@@ -139,11 +140,12 @@ const COPY = localized({
     play: "Play",
     showLevels: (word: LevelWord) => `See ${LEVEL[word]}s`,
     hideHelp: "Hide instructions",
-    closeHelp: "Close help",
     record: (value: string) => `Record: ${value}`,
     pausedLabel: "Game paused",
     paused: "Paused",
-    napping: "404 took the chance to grab a nap.",
+    napping: "404 is taking a nap.",
+    helpLabel: (title: string) => `How to play ${title}`,
+    backToPause: "Back to pause",
     resume: "Resume",
     restart: "Restart",
     quit: "Quit game",
@@ -210,31 +212,31 @@ export function OverlayFrame({
   );
 }
 
-export function ControlsList({ game }: { game: GameMeta }) {
+export function ControlsList({ game, roomy = false }: { game: GameMeta; roomy?: boolean }) {
   const device = useTouchScreen() ? "touch" : "keys";
   const controls = game.controls?.filter((c) => !c.on || c.on === device);
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <ol className="space-y-2">
+    <div className={`grid ${roomy ? "gap-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:gap-5" : "gap-3 sm:grid-cols-2"}`}>
+      <ol className={roomy ? "space-y-3" : "space-y-2"}>
         {game.howTo?.map((step, i) => (
           <li key={step.title} className="flex gap-2.5">
             <span className="grid size-8 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-sun font-display text-sm text-ink">
               {i + 1}
             </span>
-            <span className="leading-snug text-ink-soft">
+            <span className={`leading-snug text-ink-soft ${roomy ? "pt-0.5 text-pretty" : ""}`}>
               <strong className="font-display text-base uppercase tracking-wide text-ink">{step.title}: </strong>
               {step.text}
             </span>
           </li>
         ))}
       </ol>
-      <dl className="space-y-1.5 rounded-xl border-2 border-ink bg-cream-2 p-3">
+      <dl className={`rounded-xl border-2 border-ink bg-cream-2 ${roomy ? "space-y-2.5 self-start p-3.5" : "space-y-1.5 p-3"}`}>
         {controls?.map((c) => (
           <div key={c.input} className="flex flex-col">
-            <dt className="font-display text-xs uppercase tracking-wider text-ink">
+            <dt className={`font-display uppercase tracking-wider text-ink ${roomy ? "text-sm" : "text-xs"}`}>
               <KeyText text={c.input} />
             </dt>
-            <dd className="text-sm leading-snug text-ink-soft">
+            <dd className={`leading-snug text-ink-soft ${roomy ? "text-[15px]" : "text-sm"}`}>
               <KeyText text={c.action} />
             </dd>
           </div>
@@ -747,77 +749,115 @@ export function PausePanel({
   showHelp: boolean;
   onToggleHelp: () => void;
 }) {
-  const resumeRef = useAutoFocus<HTMLButtonElement>();
   const copy = useCopy(COPY);
   const narrow = useNarrowScreen();
+  const resumeRef = useRef<HTMLButtonElement>(null);
+  const howToRef = useRef<HTMLButtonElement>(null);
+  const helpTitleRef = useRef<HTMLHeadingElement>(null);
+  const lastView = useRef<boolean | null>(null);
+  const present = useIsPresent();
+  useEffect(() => {
+    if (!present) return;
+    const leavingHelp = lastView.current === true && !showHelp;
+    lastView.current = showHelp;
+    const id = window.setTimeout(() => {
+      const target = showHelp ? helpTitleRef.current : leavingHelp ? howToRef.current : resumeRef.current;
+      target?.focus({ preventScroll: true });
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, [showHelp, present]);
+  const fade = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.18, ease: "easeOut" as const } };
+  const label = showHelp ? copy.helpLabel(game.title) : copy.pausedLabel;
+  const help = (
+    <motion.div key="help" {...fade}>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Mascot404 expression="sleepy" className="w-14 shrink-0 -rotate-3 sm:w-16 [@media(max-height:420px)]:w-11" />
+        <div className="min-w-0">
+          <p className="font-display text-sm uppercase tracking-wider text-ink-soft">{game.title}</p>
+          <h2 ref={helpTitleRef} tabIndex={-1} className="mt-1 font-display text-[2rem] uppercase leading-none tracking-wide text-ink outline-none! max-[359px]:text-3xl min-[400px]:text-4xl sm:text-5xl">
+            {copy.howTo}
+          </h2>
+        </div>
+      </div>
+      <div className="mt-4 border-t-[3px] border-dashed border-ink/30 pt-4 sm:mt-5">
+        <ControlsList game={game} roomy />
+      </div>
+      <div className="mt-5 flex max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-14 max-sm:[&>button]:w-full flat:sticky flat:-bottom-6 flat:z-10 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:rounded-b-[inherit] flat:border-t-[3px] flat:border-ink flat:px-4 flat:py-2.5 flat:paper [@media(max-height:420px)]:max-sm:-mb-3 [@media(max-height:420px)]:max-sm:[&>button]:min-h-11">
+        <InkButton tone="cream" onClick={onToggleHelp}>
+          <ArrowLeftIcon className="size-5" /> {copy.backToPause}
+        </InkButton>
+      </div>
+    </motion.div>
+  );
   if (narrow) {
     return (
-      <OverlayFrame label={copy.pausedLabel} className="p-5 [@media(max-height:420px)]:py-3">
-        <div className="flex items-center gap-3">
-          <Mascot404 expression="sleepy" className={`shrink-0 -rotate-3 ${showHelp ? "w-12" : "w-[4.5rem] max-[359px]:w-16"} [@media(max-height:420px)]:w-11`} />
-          <div className="min-w-0 [@media(max-height:420px)]:flex [@media(max-height:420px)]:items-baseline [@media(max-height:420px)]:gap-3">
-            <h2 className={`font-display uppercase leading-none tracking-wide text-ink ${showHelp ? "text-3xl" : "text-4xl"} [@media(max-height:420px)]:text-3xl`}>{copy.paused}</h2>
-            {showHelp ? null : <p className="mt-1 text-pretty font-hand text-lg leading-snug text-ink-soft [@media(max-height:420px)]:mt-0">{copy.napping}</p>}
-          </div>
-        </div>
+      <OverlayFrame label={label} className="p-5 [@media(max-height:420px)]:py-3">
         {showHelp ? (
-          <div id="pause-help" className="mt-4 border-t-[3px] border-dashed border-ink/30 pt-3">
-            <div className="mb-3">
-              <PickHeader title={copy.howTo} />
+          help
+        ) : (
+          <motion.div key="pause" {...fade}>
+            <div className="flex items-center gap-3">
+              <Mascot404 expression="sleepy" className="w-[4.5rem] shrink-0 -rotate-3 max-[359px]:w-16 [@media(max-height:420px)]:w-11" />
+              <div className="min-w-0 [@media(max-height:420px)]:flex [@media(max-height:420px)]:items-baseline [@media(max-height:420px)]:gap-3">
+                <h2 className="font-display text-4xl uppercase leading-none tracking-wide text-ink [@media(max-height:420px)]:text-3xl">{copy.paused}</h2>
+                <p className="mt-1 text-pretty font-hand text-lg leading-snug text-ink-soft [@media(max-height:420px)]:mt-0">{copy.napping}</p>
+              </div>
             </div>
-            <ControlsList game={game} />
+            <div className="sticky -bottom-3 z-10 -mx-5 -mb-5 mt-4 flex flex-col gap-2 rounded-b-[inherit] border-t-[3px] border-ink px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 paper [&>button]:min-h-14 [&>button]:py-2 [@media(max-height:420px)]:-mb-3 [@media(max-height:420px)]:mt-3 [@media(max-height:420px)]:grid [@media(max-height:420px)]:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] [@media(max-height:420px)]:pt-2 [@media(max-height:420px)]:[&>button]:min-h-11">
+              <InkButton ref={resumeRef} tone="sun" size="lg" onClick={onResume} className="w-full">
+                <PlayIcon className="size-7 text-ink" /> {copy.resume}
+              </InkButton>
+              <div className="grid grid-cols-2 gap-2 [&>button]:min-h-11 [&>button]:px-2 [&>button]:text-base [&>button]:leading-tight [&>button]:tracking-normal [&>button]:[text-wrap:balance] max-[380px]:[&>button]:gap-1.5 max-[380px]:[&>button]:text-[15px]">
+                {onRestart ? (
+                  <InkButton tone="mint" onClick={onRestart}>
+                    <RestartIcon className="size-5" /> {copy.restart}
+                  </InkButton>
+                ) : null}
+                <InkButton ref={howToRef} tone="cream" onClick={onToggleHelp} className={onRestart ? "" : "col-span-2"}>
+                  <QuestionIcon className="size-5" /> {copy.howTo}
+                </InkButton>
+              </div>
+              <Link href={`/games/${game.slug}`} className={`${TERTIARY} mt-1 self-center [@media(max-height:420px)]:col-span-2 [@media(max-height:420px)]:mt-0 [@media(max-height:420px)]:justify-self-center [@media(max-height:420px)]:py-0`}>
+                <ArrowLeftIcon className="size-4" /> {copy.quit}
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </OverlayFrame>
+    );
+  }
+  return (
+    <OverlayFrame label={label} className="max-w-2xl p-5 sm:p-7 flat:p-4">
+      {showHelp ? (
+        help
+      ) : (
+        <motion.div key="pause" {...fade}>
+          <div className="flex items-center gap-4">
+            <Mascot404 expression="sleepy" className="w-24 shrink-0" />
+            <div>
+              <h2 className="font-display text-5xl uppercase tracking-wide text-ink">{copy.paused}</h2>
+              <p className="font-hand text-xl text-ink-soft">{copy.napping}</p>
+            </div>
           </div>
-        ) : null}
-        <div className="sticky -bottom-3 z-10 -mx-5 -mb-5 mt-4 flex flex-col gap-2 rounded-b-[inherit] border-t-[3px] border-ink px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 paper [&>button]:min-h-14 [&>button]:py-2 [@media(max-height:420px)]:-mb-3 [@media(max-height:420px)]:mt-3 [@media(max-height:420px)]:grid [@media(max-height:420px)]:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] [@media(max-height:420px)]:pt-2 [@media(max-height:420px)]:[&>button]:min-h-11">
-          <InkButton ref={resumeRef} tone="sun" size="lg" onClick={onResume} className="w-full">
-            <PlayIcon className="size-7 text-ink" /> {copy.resume}
-          </InkButton>
-          <div className="grid grid-cols-2 gap-2 [&>button]:min-h-11 [&>button]:px-2 [&>button]:text-base [&>button]:leading-tight [&>button]:tracking-normal [&>button]:[text-wrap:balance] max-[380px]:[&>button]:gap-1.5 max-[380px]:[&>button]:text-[15px]">
+          <div className="mt-5 flex flex-wrap gap-3">
+            <InkButton ref={resumeRef} tone="sun" onClick={onResume}>
+              <PlayIcon className="size-5 text-ink" /> {copy.resume}
+            </InkButton>
             {onRestart ? (
               <InkButton tone="mint" onClick={onRestart}>
                 <RestartIcon className="size-5" /> {copy.restart}
               </InkButton>
             ) : null}
-            <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp} aria-controls="pause-help" className={onRestart ? "" : "col-span-2"}>
-              {showHelp ? <CloseIcon className="size-5" /> : <QuestionIcon className="size-5" />} {showHelp ? copy.closeHelp : copy.howTo}
+            <InkButton ref={howToRef} tone="cream" onClick={onToggleHelp}>
+              <QuestionIcon className="size-5" /> {copy.howTo}
             </InkButton>
           </div>
-          <Link href={`/games/${game.slug}`} className={`${TERTIARY} self-center [@media(max-height:420px)]:col-span-2 [@media(max-height:420px)]:justify-self-center [@media(max-height:420px)]:py-0`}>
-            <ArrowLeftIcon className="size-4" /> {copy.quit}
-          </Link>
-        </div>
-      </OverlayFrame>
-    );
-  }
-  return (
-    <OverlayFrame label={copy.pausedLabel} className="max-w-2xl p-5 sm:p-7">
-      <div className="flex items-center gap-4">
-        <Mascot404 expression="sleepy" className="w-24 shrink-0" />
-        <div>
-          <h2 className="font-display text-5xl uppercase tracking-wide text-ink">{copy.paused}</h2>
-          <p className="font-hand text-xl text-ink-soft">{copy.napping}</p>
-        </div>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-3">
-        <InkButton ref={resumeRef} tone="sun" onClick={onResume}>
-          <PlayIcon className="size-5 text-ink" /> {copy.resume}
-        </InkButton>
-        {onRestart ? (
-          <InkButton tone="mint" onClick={onRestart}>
-            <RestartIcon className="size-5" /> {copy.restart}
-          </InkButton>
-        ) : null}
-        <InkButton tone="cream" onClick={onToggleHelp} aria-expanded={showHelp}>
-          {showHelp ? copy.hideHelp : copy.howTo}
-        </InkButton>
-        <InkLink href={`/games/${game.slug}`} tone="cream">
-          {copy.quit}
-        </InkLink>
-      </div>
-      {showHelp && (
-        <div className="mt-5 border-t-[3px] border-dashed border-ink/30 pt-4">
-          <ControlsList game={game} />
-        </div>
+          <div className="mt-6 flat:mt-4">
+            <InkLink href={`/games/${game.slug}`} tone="cream" size="sm" className="px-4">
+              <ArrowLeftIcon className="size-4" /> {copy.quit}
+            </InkLink>
+          </div>
+        </motion.div>
       )}
     </OverlayFrame>
   );

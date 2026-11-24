@@ -143,15 +143,16 @@ export function GameShell({ slug }: { slug: string }) {
   const instanceRef = useRef<GameInstance | null>(null);
   const stageStateRef = useRef<Stage>("loading");
   const [stage, setStageState] = useState<Stage>("loading");
+  const [showHelp, setShowHelp] = useState(false);
   const setStage = useCallback((next: Stage) => {
     stageStateRef.current = next;
     setStageState(next);
-  }, []);
+    if (next === "playing") setShowHelp(false);
+  }, [setShowHelp]);
   const [progress, setProgress] = useState(0.04);
   const [introProgress, setIntroProgress] = useState<IntroProgress | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
-  const [showHelp, setShowHelp] = useState(false);
   const { regions, announce, afterFocus } = useAnnouncer();
   const [score, setScore] = useState(0);
   const [result, setResult] = useState<{ result: GameResult; isRecord: boolean; note: string; mission: MissionView | null } | null>(null);
@@ -489,6 +490,11 @@ export function GameShell({ slug }: { slug: string }) {
     const since = performance.now();
     const onKey = (event: KeyboardEvent) => {
       if (event.timeStamp < since || event.repeat) return;
+      if (event.key === "Escape" && showHelp) {
+        event.preventDefault();
+        setShowHelp(false);
+        return;
+      }
       if (event.key === "Escape" || event.key.toLowerCase() === "p") {
         event.preventDefault();
         instanceRef.current?.resume();
@@ -498,7 +504,7 @@ export function GameShell({ slug }: { slug: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [stage, setStage]);
+  }, [stage, setStage, showHelp]);
 
   const focusGame = () => window.setTimeout(() => stageRef.current?.focus(), 40);
 
