@@ -1,6 +1,6 @@
 import { checkNickname, NICKNAME_PROBLEMS } from "@/lib/competition/nickname";
 import { assertWritable, HttpError, json, readJson, sameOrigin } from "@/server/http";
-import { clearedPlayerCookie, currentPlayer, publicPlayer, saveWithFreeTag } from "@/server/identity";
+import { clearedPlayerCookie, currentPlayer, playerCookie, publicPlayer, readToken, saveWithFreeTag } from "@/server/identity";
 import { LIMITS, enforce } from "@/server/rate-limit";
 import { competitionRoute } from "@/server/route";
 import { nicknameSchema } from "@/server/schemas";
@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 
 export const GET = competitionRoute(async ({ request, db, now }) => {
   const player = await currentPlayer(db, request, now);
-  return json({ player: player ? publicPlayer(player) : null });
+  const token = readToken(request);
+  if (!player || !token) return json({ player: null });
+  return json({ player: publicPlayer(player) }, { headers: { "Set-Cookie": playerCookie(token) } });
 });
 
 export const PATCH = competitionRoute(async ({ request, db, now }) => {
