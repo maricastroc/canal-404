@@ -25,6 +25,17 @@ export function formatMetric(metric: Metric, value: number, locale: Locale) {
   return `${formatNumber(value, locale)} ${value === 1 ? one : many}`.trim();
 }
 
+export function formatMetricValue(metric: Metric, value: number, locale: Locale) {
+  if (metric.unit === "points" || metric.unit === "count") return formatNumber(value, locale);
+  return formatMetric(metric, value, locale);
+}
+
+export function formatMetricLong(metric: Metric, value: number, locale: Locale) {
+  if (metric.unit !== "points") return formatMetric(metric, value, locale);
+  const words = locale === "en" ? ["point", "points"] : ["ponto", "pontos"];
+  return `${formatNumber(value, locale)} ${value === 1 ? words[0] : words[1]}`;
+}
+
 export function formatBest(game: GameSlug, metrics: number[], locale: Locale, count = 2) {
   return boardMeta(game, locale)
     .metrics.slice(0, count)
