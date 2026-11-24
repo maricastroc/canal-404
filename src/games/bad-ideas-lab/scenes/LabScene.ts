@@ -20,6 +20,7 @@ import { addIcon } from "../icons";
 import { LabSim, type SimTarget } from "../sim";
 import { LAB_SFX, type LabSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
+import { eachKeyOnce } from "../../kit/keys";
 import { LabCamera, type Pose } from "./camera";
 import { DockHud } from "./dockHud";
 import { currentFrame, watchFrame } from "./frame";
@@ -164,7 +165,6 @@ export class LabScene extends Phaser.Scene {
   private announcedValid = true;
   private announcedPath: string | null = null;
   private moveTimer?: Phaser.Time.TimerEvent;
-  private handledKeys = new WeakSet<KeyboardEvent>();
 
   constructor() {
     super("lab");
@@ -203,7 +203,6 @@ export class LabScene extends Phaser.Scene {
     this.lastStop = null;
     this.announcedValid = true;
     this.announcedPath = null;
-    this.handledKeys = new WeakSet();
     this.frame = FULL_FRAME;
     this.history = [];
     this.hintPulsing = false;
@@ -1515,7 +1514,7 @@ export class LabScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.LEFT,
       Phaser.Input.Keyboard.KeyCodes.RIGHT,
     ]);
-    kb.on("keydown", (event: KeyboardEvent) => this.onKey(event));
+    kb.on("keydown", eachKeyOnce((event) => this.onKey(event)));
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => this.onPointerMove(p));
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.onPointerUp(p));
     this.input.on("pointerupoutside", (p: Phaser.Input.Pointer) => this.onPointerUp(p));
@@ -1555,8 +1554,6 @@ export class LabScene extends Phaser.Scene {
   }
 
   private onKey(event: KeyboardEvent) {
-    if (this.handledKeys.has(event)) return;
-    this.handledKeys.add(event);
     const key = event.key.toLowerCase();
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (key === "escape" || key === "p") {

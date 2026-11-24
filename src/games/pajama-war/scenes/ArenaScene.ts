@@ -12,6 +12,7 @@ import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
 import { SPECIAL, SpecialSpawner } from "../special";
 import { loadStats, markHint, saveStats } from "../storage";
 import { cartoonText } from "../../kit/ui";
+import { eachKeyOnce } from "../../kit/keys";
 import { Brain, type BrainView } from "./brain";
 import { Fighter } from "./fighter";
 import { currentFrame, watchFrame } from "./frame";
@@ -502,10 +503,7 @@ export class ArenaScene extends Phaser.Scene {
     const K = Phaser.Input.Keyboard.KeyCodes;
     this.keys = kb.addKeys({ up: K.UP, down: K.DOWN, left: K.LEFT, right: K.RIGHT, w: K.W, a: K.A, s: K.S, d: K.D, space: K.SPACE }) as typeof this.keys;
     kb.addCapture([K.SPACE, K.UP, K.DOWN, K.LEFT, K.RIGHT]);
-    const handled = new WeakSet<KeyboardEvent>();
-    kb.on("keydown", (event: KeyboardEvent) => {
-      if (handled.has(event)) return;
-      handled.add(event);
+    kb.on("keydown", eachKeyOnce((event) => {
       const key = event.key.toLowerCase();
       if (this.mode === "over") {
         if (!event.repeat && (key === " " || key === "enter")) this.skipCelebration();
@@ -514,7 +512,7 @@ export class ArenaScene extends Phaser.Scene {
       if (key === "escape" || key === "p") this.ctx.onEvent({ type: "pause-request" });
       if (key === " " && this.time.now - this.mouseAt > 1500) this.aimMode = "assist";
       if (key === " " && !event.repeat) this.throwQueued = this.time.now;
-    });
+    }));
     if (this.attract) return;
     this.input.on(Phaser.Input.Events.POINTER_DOWN, () => {
       if (this.mode === "over") this.skipCelebration();

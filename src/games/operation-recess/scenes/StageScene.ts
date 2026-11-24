@@ -7,6 +7,7 @@ import { LEVELS, type LevelDef } from "../levels";
 import { recessStarHint, recessStars } from "../score";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
+import { eachKeyOnce } from "../../kit/keys";
 import { Inspector } from "./boss";
 import { FrameCamera, type Focus, type High } from "./camera";
 import { TouchDeck } from "./deck";
@@ -619,7 +620,7 @@ export class StageScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.LEFT,
       Phaser.Input.Keyboard.KeyCodes.RIGHT,
     ]);
-    kb.on("keydown", (event: KeyboardEvent) => {
+    kb.on("keydown", eachKeyOnce((event) => {
       const key = event.key.toLowerCase();
       if (key === "escape" || key === "p") {
         this.ctx.onEvent({ type: "pause-request" });
@@ -632,7 +633,7 @@ export class StageScene extends Phaser.Scene {
       } else if (key === "j" || key === "k" || key === "x") {
         this.attack();
       }
-    });
+    }));
   }
 
   private onPad(action: "left" | "right" | "jump" | "attack") {

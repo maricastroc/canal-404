@@ -28,6 +28,7 @@ import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { PHASES, type Material, type PhaseDef, type PieceDef, type Point } from "../phases";
 import { ANGLE_STEPS, POWER_STEPS, StreetSim, type GadgetEvent, type SimImpact, type SimTarget, type StreetTally } from "../sim";
 import { GAME_SFX, type GameSfx } from "../sounds";
+import { eachKeyOnce } from "../../kit/keys";
 import { StreetCamera, type CameraMode, type Pose, type Vec } from "./camera";
 import { DockHud, type CoachStep } from "./dock";
 import { currentFrame, watchFrame } from "./frame";
@@ -104,7 +105,6 @@ export class PlayScene extends Phaser.Scene {
   private lina!: Phaser.GameObjects.Image;
   private hud!: StreetHud;
   private dock: DockHud | null = null;
-  private handledKeys = new WeakSet<KeyboardEvent>();
   private frame: Frame = FULL_FRAME;
   private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
   private slingCam: Phaser.Cameras.Scene2D.Camera | null = null;
@@ -594,9 +594,7 @@ export class PlayScene extends Phaser.Scene {
       s: Phaser.Input.Keyboard.KeyCodes.S,
     }) as typeof this.keys;
     kb.addCapture([Phaser.Input.Keyboard.KeyCodes.SPACE]);
-    kb.on("keydown", (event: KeyboardEvent) => {
-      if (this.handledKeys.has(event)) return;
-      this.handledKeys.add(event);
+    kb.on("keydown", eachKeyOnce((event) => {
       const key = event.key.toLowerCase();
       if (key === "escape" || key === "p") {
         this.ctx.onEvent({ type: "pause-request" });
@@ -634,7 +632,7 @@ export class PlayScene extends Phaser.Scene {
         this.holdSince = this.time.now;
         this.adjustAim(step[0], step[1]);
       }
-    });
+    }));
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.tall) {

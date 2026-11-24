@@ -30,6 +30,7 @@ import { COPY, type FoodFightCopy } from "../copy";
 import { LANDSCAPE_FRAME, SCENERY, frameFor, frameX, landscapeX, walkScale, type Frame } from "../layout";
 import { LUNCH_SFX, type LunchSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
+import { eachKeyOnce } from "../../kit/keys";
 import { Cook, LunchLady, Rival } from "./actors";
 import { LunchHud } from "./hud";
 
@@ -473,7 +474,7 @@ export class LunchScene extends Phaser.Scene {
       shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
     }) as typeof this.keys;
     kb.addCapture([Phaser.Input.Keyboard.KeyCodes.SPACE, Phaser.Input.Keyboard.KeyCodes.DOWN, Phaser.Input.Keyboard.KeyCodes.UP]);
-    kb.on("keydown", (event: KeyboardEvent) => {
+    kb.on("keydown", eachKeyOnce((event) => {
       const key = event.key.toLowerCase();
       if (key === "escape" || key === "p") {
         this.ctx.onEvent({ type: "pause-request" });
@@ -491,7 +492,7 @@ export class LunchScene extends Phaser.Scene {
         this.markKeyboard();
         if (!event.repeat) this.throwAtSlot(Number(key));
       }
-    });
+    }));
     this.input.on("pointerdown", (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (over.includes(this.hud.duckHit)) {
         this.duckPointer = p.id;
