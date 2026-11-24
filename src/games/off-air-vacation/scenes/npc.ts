@@ -3,7 +3,7 @@ import { CHAR_RES } from "../config";
 import type { FolkKey } from "../save";
 import type { Mood } from "../story";
 
-export type NpcOpts = { scale?: number; flip?: boolean; depth?: number; frames?: Partial<Record<Mood, string>>; idle?: string; look?: string; bob?: number; follow?: boolean; notice?: number };
+export type NpcOpts = { scale?: number; flip?: boolean; depth?: number; frames?: Partial<Record<Mood, string>>; blink?: string; idle?: string; look?: string; bob?: number; follow?: boolean; notice?: number };
 
 const NO_TURN = new Set(["tilt", "mascot", "lento"]);
 
@@ -92,7 +92,7 @@ export class Npc {
       .setFlipX(Boolean(opts.flip))
       .setDepth(opts.depth ?? y);
     const start = this.key("normal");
-    this.blinkKey = scene.textures.exists(`${id}-blink`) ? `${id}-blink` : id === "psiu" ? "psiu-sad" : null;
+    this.blinkKey = opts.blink ? `${id}-${opts.blink}` : scene.textures.exists(`${id}-blink`) ? `${id}-blink` : id === "psiu" ? "psiu-sad" : null;
     this.blinkAt = 1200 + Math.random() * 3000;
     const pad = start === "mascot-sleep" ? 0 : id === "mascot" ? 10 : 8;
     this.sprite.setOrigin(0.5, 1 - (pad * CHAR_RES) / this.sprite.frame.realHeight);

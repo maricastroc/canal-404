@@ -43,7 +43,7 @@ const DECO = [
 ];
 
 const FOLK_FRAMES: Record<string, string[]> = {
-  bigodes: ["normal", "look", "talk", "surprised", "happy", "blink", "gaze-l", "gaze-r"],
+  bigodes: ["normal", "look", "talk", "surprised", "happy", "blink", "gaze-l", "gaze-r", "party", "party-blink"],
   marola: ["sad", "look", "talk", "normal", "talk-w", "happy", "look-w"],
   tilt: ["normal", "look", "talk", "sad", "happy", "surprised", "off", "blink"],
   marisa: ["normal", "look", "talk", "happy"],

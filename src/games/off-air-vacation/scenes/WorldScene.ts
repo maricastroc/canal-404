@@ -1322,8 +1322,10 @@ export class WorldScene extends Phaser.Scene implements Builder {
       ["marisa", P.marisa[0], P.marisa[1], { scale: 0.85 }],
       ["psiu", P.psiu[0], P.psiu[1], { scale: 0.8 }],
     ];
-    const bigodes = this.npc("bigodes", P.bigodes[0], P.bigodes[1], { scale: 0.9, depth: P.bigodes[1] });
+    const party = { normal: "party", talk: "party", look: "party", happy: "party", surprised: "party", sad: "party" };
+    const bigodes = this.npc("bigodes", P.bigodes[0], P.bigodes[1], { scale: 0.8, depth: P.bigodes[1], frames: party, blink: "party-blink" });
     bigodes?.setMood("happy", 999999, 0);
+    if (bigodes && !this.reduced) this.tweens.add({ targets: bigodes.sprite, y: P.bigodes[1] - 10, duration: 420, yoyo: true, repeat: -1, ease: "Quad.easeOut" });
     for (const [id, x, y, o] of people) {
       const n = this.npc(id, x, y, o);
       n?.setMood("happy", 999999, 0);

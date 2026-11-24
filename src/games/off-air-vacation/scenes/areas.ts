@@ -110,7 +110,7 @@ export const POOL = {
     player: [1340, 1720] as [number, number],
     pan: [1340, 1420] as [number, number],
     glow: [1240, 1360] as [number, number],
-    bigodes: [560, 1760] as [number, number],
+    bigodes: [720, 1760] as [number, number],
     tilt: [1010, 1730] as [number, number],
     marisa: [1690, 1730] as [number, number],
     psiu: [1940, 1680] as [number, number],
