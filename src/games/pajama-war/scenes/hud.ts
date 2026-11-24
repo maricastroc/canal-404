@@ -3,6 +3,7 @@ import { HP, KID_INFO, W, type KidId } from "../config";
 import type { PajamaCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import { INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
+import { isTouchPointer } from "../../kit/touch";
 
 type PortraitStyle = "row" | "big" | "ring";
 
@@ -661,16 +662,12 @@ export class PajamaHud {
     return this.touchUi;
   }
 
-  private isTouch(p: Phaser.Input.Pointer) {
-    return p.wasTouch || (p.event as PointerEvent | undefined)?.pointerType === "touch";
-  }
-
   private get cssUnit() {
     return this.frame.kind === "full" ? this.frame.width / Math.max(1, this.displayWidth || this.frame.width) : this.frame.unit;
   }
 
   private down(p: Phaser.Input.Pointer) {
-    if (!this.isTouch(p) || !this.controlsOn) return;
+    if (!isTouchPointer(p) || !this.controlsOn) return;
     if (!this.touchUi) {
       this.touchUi = true;
       this.refreshControls();

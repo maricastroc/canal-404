@@ -8,6 +8,7 @@ import { recessStarHint, recessStars } from "../score";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
+import { coarsePointer, isTouchPointer } from "../../kit/touch";
 import { Inspector } from "./boss";
 import { FrameCamera, type Focus, type High } from "./camera";
 import { TouchDeck } from "./deck";
@@ -29,7 +30,6 @@ type Hint = { lesson: Lesson; anchor: Anchor; past: number };
 type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
 type Warning = { text: Phaser.GameObjects.Text; x: number; y: number };
 
-const TOUCH_UI = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
 const FIGHT_RANGE = 480;
@@ -104,6 +104,7 @@ export class StageScene extends Phaser.Scene {
   private vignette!: Phaser.GameObjects.Image;
   private warnings: Warning[] = [];
   private controlsOn = false;
+  private touchUi = coarsePointer();
   private lastDt = 0;
 
   constructor() {
@@ -397,7 +398,7 @@ export class StageScene extends Phaser.Scene {
       this.deck.enable(on);
     } else {
       this.deck.enable(false);
-      this.hud.showTouch(on && Boolean(TOUCH_UI));
+      this.hud.showTouch(on && this.touchUi);
     }
   }
 
@@ -470,23 +471,23 @@ export class StageScene extends Phaser.Scene {
     this.lessonUntil = this.t + 9000;
     this.lessonPast = past;
     const tut = this.copy.tutorial;
-    if (lesson === "hold") this.announce(TOUCH_UI ? tut.holdTouchSay : tut.holdKeysSay);
-    if (this.compact && TOUCH_UI) {
+    if (lesson === "hold") this.announce(this.touchUi ? tut.holdTouchSay : tut.holdKeysSay);
+    if (this.compact && this.touchUi) {
       const role = lesson === "walk" ? "move" : lesson === "attack" ? "attack" : "jump";
       this.deck.coach(role, lesson === "hold" ? tut.holdTouch : tut.coach[role]);
       if (lesson === "attack") this.announce(tut.attackTouchSay);
       return;
     }
-    if (lesson === "walk") this.showChip(tut.walk, TOUCH_UI ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
+    if (lesson === "walk") this.showChip(tut.walk, this.touchUi ? ["chip-pad-left", "chip-pad-right"] : ["chip-left", "chip-right"]);
     if (lesson === "jump" || lesson === "hold") {
-      const text = lesson === "jump" ? (TOUCH_UI ? tut.jumpTouch : tut.jumpKeys) : TOUCH_UI ? tut.holdTouch : tut.holdKeys;
-      this.showChip(text, TOUCH_UI ? ["chip-jump"] : []);
+      const text = lesson === "jump" ? (this.touchUi ? tut.jumpTouch : tut.jumpKeys) : this.touchUi ? tut.holdTouch : tut.holdKeys;
+      this.showChip(text, this.touchUi ? ["chip-jump"] : []);
       this.hud.pulseJump(true);
       this.deck.pulseJump(true);
     }
     if (lesson === "attack") {
-      this.showChip(TOUCH_UI ? tut.attackTouch : tut.attackKeys, TOUCH_UI ? ["chip-attack"] : []);
-      this.announce(TOUCH_UI ? tut.attackTouchSay : tut.attackKeysSay);
+      this.showChip(this.touchUi ? tut.attackTouch : tut.attackKeys, this.touchUi ? ["chip-attack"] : []);
+      this.announce(this.touchUi ? tut.attackTouchSay : tut.attackKeysSay);
     }
   }
 
@@ -634,6 +635,11 @@ export class StageScene extends Phaser.Scene {
         this.attack();
       }
     }));
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
+      if (this.touchUi || !isTouchPointer(p)) return;
+      this.touchUi = true;
+      this.setControls(this.controlsOn);
+    });
   }
 
   private onPad(action: "left" | "right" | "jump" | "attack") {
