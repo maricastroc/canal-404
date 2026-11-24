@@ -98,6 +98,7 @@ function mount(ctx: GameHostContext): GameInstance {
   const garageHost: GarageHost = {
     locale: ctx.locale,
     fonts: bridge.fonts,
+    reducedMotion: ctx.reducedMotion,
     pick: (picked) => {
       cart = picked;
       chosen = true;
@@ -106,6 +107,7 @@ function mount(ctx: GameHostContext): GameInstance {
       });
       void race();
     },
+    announce: (message) => ctx.onEvent({ type: "announce", message, fresh: true }),
     toggleGhost: () => {
       ghost = !ghost;
       updateSave((save) => {
@@ -135,7 +137,7 @@ function mount(ctx: GameHostContext): GameInstance {
         g.registry.set("frame", frame);
         g.registry.set("bridge", bridge);
         g.registry.set("garage", garageHost);
-        g.registry.set("attract", { attract: true, course: course(), index: level, cart, ghost, unlocked: initial.unlocked, wins: initial.wins[course()] ?? {} } satisfies GarageData);
+        g.registry.set("attract", { attract: true, course: course(), index: level, cart, ghost, ghosts: [], unlocked: initial.unlocked, wins: initial.wins[course()] ?? {} } satisfies GarageData);
       },
       postBoot: () => ctx.onProgress(0.05, "art"),
     },
@@ -155,7 +157,8 @@ function mount(ctx: GameHostContext): GameInstance {
     resumeAll();
     if (game.scene.getScene("race")) game.scene.remove("race");
     const save = loadSave();
-    const data: GarageData = { attract: false, course: course(), index: level, cart, ghost, unlocked: save.unlocked, wins: save.wins[course()] ?? {} };
+    const ghosts = CART_IDS.filter((id) => forms.get(`${course()}:${id}`)?.ghost);
+    const data: GarageData = { attract: false, course: course(), index: level, cart, ghost, ghosts, unlocked: save.unlocked, wins: save.wins[course()] ?? {} };
     if (game.scene.isActive("garage")) game.scene.getScene("garage").scene.restart(data);
     else game.scene.start("garage", data);
   };

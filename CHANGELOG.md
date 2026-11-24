@@ -4,6 +4,17 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ladeira Abaixo: fantasma junto do Correr!
+- **A switch above the race button.** The best run ghost is no longer a status box in the garage corner. It is a switch centered right above "Correr!", with a ghost icon, "Fantasma da melhor corrida" and "Dispute contra seu recorde". On, the knob slides right with a check on a green track; off, it sits left. "Correr!" stays the biggest, brightest thing on screen.
+- **Locked until a ghost exists.** The ghost only lives in the current session, per track and cart. Until you finish a race with the selected cart, the switch shows a padlock and "Disponível após sua primeira corrida", and tapping it or pressing G just shakes it. The saved on/off choice is kept for when a ghost exists. Recording and playing the ghost are unchanged.
+- **Keyboard and screen readers.** ↓ and ↑ move a yellow focus ring from the carts to the switch and to "Correr!". Enter or Space toggles the switch when it has focus, G still works from anywhere, and screen readers hear the switch state on focus and on every change. The game's controls summary now mentions the garage keys.
+- **Footer.** On desktop the title, cards and street moved up a little to make room, the button is as wide as the switch, and the keyboard tip is a plain caption. Phones keep the full-width button with the switch above it, and the whole row is the touch area.
+
+### Ladeira Abaixo: vitórias na Garagem
+- **Wins per cart.** The garage shows a trophy with how many times each cart finished 1st on the current track, like the kid cards in Guerra do Pijama. It only appears once that cart has won there.
+- **Where it shows.** On desktop it sits in the top corner of each cart card. On phones it sits on the corner of each cart tile, so all four counts show at once.
+- **Counting starts now.** Earlier races were not recorded, so every cart starts at zero. A win counts the moment you cross the line in 1st, before the result screen.
+
 ### Guerra de Lanche: lanches com efeito
 - **Banana leaves a peel.** A banana that misses lands on that table as a peel. The next kid who pops up there slips and stays dizzy for a moment: he can't throw and is easy to hit.
 - **Grapes splash.** Grapes that hit splash the kids at the tables numbered right before and after. They get dizzy and, if they were about to throw, the pudding falls on their own heads. A tray keeps the splash out.
