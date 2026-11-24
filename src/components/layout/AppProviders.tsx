@@ -15,6 +15,7 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
 
   useEffect(() => {
     registerVisit();
+    void import("@/lib/progress/backfill").then(({ backfillAchievements }) => backfillAchievements()).catch(() => {});
   }, []);
 
   useEffect(() => {

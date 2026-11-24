@@ -71,6 +71,9 @@ export function songResult(report: RunReport, locale: Locale): GameResult {
   ];
   if (report.log.assist) facts.push({ label: copy.assist, value: copy.offBoard });
   const cut = v.cutAt !== null;
+  const achievements: string[] = [];
+  if (v.stars > 0) achievements.push("talent-first");
+  if (v.stars === 3 && !report.log.assist) achievements.push("talent-perfect");
   const text = cut ? { title: game.cutTitle, text: game.cutText } : copy.lines[v.stars as 0 | 1 | 2 | 3];
   return {
     won: v.stars > 0,
@@ -85,5 +88,6 @@ export function songResult(report: RunReport, locale: Locale): GameResult {
     starHint: cut ? copy.cutHint : v.stars < 3 ? copy.hints[v.stars as 0 | 1 | 2] : undefined,
     restartLabel: copy.again,
     facts,
+    achievements,
   };
 }

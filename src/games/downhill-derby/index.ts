@@ -88,7 +88,8 @@ function mount(ctx: GameHostContext): GameInstance {
     },
     onShow: (points) => ctx.onEvent({ type: "score", score: points }),
     onFinish: (finish: RaceFinish) => {
-      const result = raceResult(finish, ctx.locale, unlockedNow);
+      const wins = loadSave().wins;
+      const result = raceResult(finish, ctx.locale, unlockedNow, RACE_COURSES.every((id) => Object.keys(wins[id] ?? {}).length > 0));
       unlockedNow = null;
       ctx.onEvent({ type: "score", score: result.score });
       ctx.onEvent({ type: "finished", result });

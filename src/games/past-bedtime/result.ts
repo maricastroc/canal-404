@@ -40,6 +40,10 @@ export function partResult(report: WinReport, locale: Locale): GameResult {
   const copy = COPY[locale];
   const night = NIGHT_COPY[locale];
   const saved = movesSaved(report.par, report.turns);
+  const achievements: string[] = [];
+  if (report.index === 0) achievements.push("bedtime-first");
+  if (report.stars === 3) achievements.push("bedtime-par");
+  if (report.index === LEVELS.length - 1) achievements.push("bedtime-tape");
   return {
     won: true,
     score: partScore(report.par, report.turns),
@@ -55,5 +59,6 @@ export function partResult(report: WinReport, locale: Locale): GameResult {
     summary: night.wonMoves(report.turns, report.par),
     starHint: starHint(report, locale),
     restartLabel: copy.again,
+    achievements,
   };
 }

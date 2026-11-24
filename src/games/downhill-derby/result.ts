@@ -11,7 +11,7 @@ export const REPLAY_KIND = "downhill-run";
 
 const RACER_COLORS: Record<CartId, string> = { deco: "#ffc83d", lina: "#f27aa8", bruno: "#56c7a0", mila: "#a98bef" };
 
-export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | null): GameResult {
+export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | null, sweep: boolean): GameResult {
   const copy = RACE_COPY[locale];
   const r = copy.results;
   const stars = placeStars(f.place);
@@ -27,6 +27,10 @@ export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | nul
   const previous = f.previous;
   const time = formatTime(f.time, locale);
   const summary = !previous ? time : f.time < previous.time ? `${time} · ${r.newRecord}` : `${time} · ${r.record(formatTime(previous.time, locale))}`;
+  const achievements: string[] = [];
+  if (f.place === 1) achievements.push("downhill-win");
+  if (f.stats.secret) achievements.push("downhill-gnome");
+  if (sweep) achievements.push("downhill-sweep");
   const hint = unlocked ? r.unlocked(copy.carts[unlocked]) : ahead ? r.behind[ahead.who](seconds) : behind ? r.wonBy[behind.who](seconds) : undefined;
   return {
     won: stars > 0,
@@ -45,6 +49,7 @@ export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | nul
     featured: f.cart,
     restartLabel: r.again,
     alt: r.alt,
+    achievements,
     standings: f.standings.map((s, i) => ({
       name: s.you ? copy.you : copy.rivalNames[s.who],
       detail: s.you ? copy.youAre(copy.rivalNames[s.who]) : copy.carts[s.who],
