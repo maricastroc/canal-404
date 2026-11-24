@@ -4,6 +4,15 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Férias Fora do Ar: lista de quem terminou
+- **No contest at the end of the vacation.** The Férias board ranked by points and playtime. A made-up result could take first place for good, because ties go to whoever got there first. It is now a list of who finished the adventure, with the latest on top and the date each person finished. Nobody holds a first place anymore.
+- **Finishing again** keeps your name on the list with the date you first finished.
+- **Where it shows up.**
+  - The result card says "Seu nome está na lista!".
+  - The record arcade shows names and dates instead of positions and points.
+  - The game page shows how many people have finished.
+- The game's own result screen, points and stars are unchanged. Decision 0016 explains the choice.
+
 ### Faxina depois da auditoria
 - **Nothing changes for visitors.** This round removes code nobody could reach and brings the docs up to date.
 - **Removed:**

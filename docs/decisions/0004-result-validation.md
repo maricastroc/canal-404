@@ -1,6 +1,8 @@
 # 0004: How results are ranked and validated
 
 > Since [decision 0009](0009-street-replay.md), Rua Sem Saída is replayed on the server like the Laboratório, and its plausibility checks below were replaced by the replay.
+>
+> Since [decision 0016](0016-vacation-finishers-list.md), the Férias Fora do Ar board is a list of who finished, latest first, not a ranking.
 
 ## Context
 
@@ -21,7 +23,7 @@ Each game reports structured stats in `GameResult.stats` (and the Laboratório a
 | Guerra de Lanche | whole game | score, then fewer puddings taken, then the best streak | finished rounds with points |
 | Operação: Recreio | per level | fewer hits, then the fastest clear | cleared levels not resumed from a bell |
 | Guerra do Pijama | per arena | more energy left, then the fastest win | wins |
-| Férias Fora do Ar | whole game | score (discoveries), then shorter playtime | finished adventures |
+| Férias Fora do Ar | whole game | no ranking: who finished, latest first ([0016](0016-vacation-finishers-list.md)) | finished adventures |
 
 The remaining tie goes to whoever got there first. The Laboratório first-try bonus stays in the local score but not in the ranking, because the server can't know how many times the machine was switched on.
 

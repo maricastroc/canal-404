@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { resortResult } from "@/games/off-air-vacation/config";
 import { standing, topOfBoard } from "./boards";
 import { cleanup } from "./cleanup";
 import { HttpError } from "./http";
@@ -11,6 +12,11 @@ const BOARD = boardOf("food-fight", null);
 
 function claimWith(interrupts: number, timeMs = 75_000) {
   return lunchClaim({ interrupts, interruptPoints: interrupts * 100, timeMs });
+}
+
+function resortClaim(posters: number) {
+  const counts = { posters, tokens: 3, secrets: 2 };
+  return { won: true, ...resortResult(counts), stats: { ...counts, discoveries: 11, met: 10, ending: 1, timeMs: 1_900_000 } };
 }
 
 async function rejectionOf(promise: Promise<unknown>) {
@@ -113,6 +119,23 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     expect(top.entries[2].you).toBe(true);
     expect(await standing(db, "food-fight", BOARD, a.player.id)).toMatchObject({ position: 3, total: 3 });
     expect(await standing(db, "food-fight", BOARD, b.player.id)).toMatchObject({ position: 2, total: 3 });
+  });
+
+  it("lists who finished Férias, latest first, with no leader and no later replacement", async () => {
+    const vacation = boardOf("off-air-vacation", null);
+    const a = await makePlayer(db, "Primeira");
+    const b = await makePlayer(db, "Segunda");
+    const finish = (player: typeof a.player, posters: number, at: number) => {
+      const { ticket } = ticketFor("off-air-vacation", null, player.id, at);
+      return submitRun(db, { player, ticket, claim: resortClaim(posters), now: new Date(at) });
+    };
+    expect((await finish(a.player, 1, START)).board).toMatchObject({ id: vacation, improved: true, leader: null });
+    await finish(b.player, 5, START + 60_000);
+    const again = await finish(a.player, 5, START + 120_000);
+    expect(again.board).toMatchObject({ improved: false, leader: null, best: { achievedAt: new Date(START).toISOString() } });
+    const top = await topOfBoard(db, "off-air-vacation", vacation, 10, null);
+    expect(top.entries.map((e) => e.nickname)).toEqual(["Segunda", "Primeira"]);
+    expect(await standing(db, "off-air-vacation", vacation, a.player.id)).toMatchObject({ position: 2, total: 2 });
   });
 
   it("hides hidden players from everyone else but still shows them their place", async () => {

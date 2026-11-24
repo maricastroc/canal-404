@@ -11,9 +11,9 @@
 - Etapa 3 concluída em 2026-11-24: PR #138 (F05, F17).
 - Etapa 4 concluída em 2026-11-24: PR #139 (F06, F12 a F16).
 - Etapa 5 concluída em 2026-11-24: PR #140 (F09, F25).
-- Etapa 6 concluída em 2026-11-24: PR #141 (F18, F19, F20 parte 2); o PR 6.4 (decisão sobre o placar do Férias) aguarda decisão.
+- Etapa 6 concluída em 2026-11-24: PR #141 (F18, F19, F20 parte 2). O PR 6.4 (F21) foi decidido no mesmo dia, como lista de quem terminou, e está na branch `fix/vacation-finishers`.
 - Etapa 7 concluída em 2026-11-24: PR #142 (F13, F22, F23).
-- Etapa 8 (F24, F26) na branch `chore/cleanup`; o PR 8.4 (F27) fica para quando houver conteúdo novo de história.
+- Etapa 8 concluída em 2026-11-24: PR #143 (F24, F26); o PR 8.4 (F27) fica para quando houver conteúdo novo de história.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -544,6 +544,13 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
 - **O que mais decidir:** se o 3º segredo (só depois do final) deve contar.
 - **Onde registrar:** uma nova decisão `docs/decisions/0016-…` ou uma nota no topo da 0004, como o projeto já faz.
 - **Esforço:** XS a S, conforme a opção.
+- **Como foi feito** (branch `fix/vacation-finishers`, decidido em 2026-11-24: lista de quem terminou):
+  - a decisão está na [0016](../decisions/0016-vacation-finishers-list.md), com uma nota no topo da 0004 e a linha do Férias da tabela atualizada;
+  - `BOARD_META["off-air-vacation"].finishers` marca o placar. No servidor, ele é ordenado por `achievedAt`, do mais recente para o mais antigo, `leaderOf` devolve `null` e `upsertBest` insere com `ON CONFLICT DO NOTHING`, para que a primeira vez que a pessoa terminou fique;
+  - o juiz, a versão da regra e as chaves guardadas não mudaram, então o id do placar e as entradas que já existiam ficam. O 3º segredo deixou de importar, porque não há mais pontuação no placar;
+  - na tela: o cartão do resultado diz "Seu nome está na lista!" ou "já está na lista desde …"; o fliperama mostra apelido e data, sem posição nem troféu, e esconde a regra de empate; a página do jogo mostra quantas pessoas terminaram;
+  - o teste novo em `runs.test.ts` falha com o código antigo: ordem, sem líder e uma segunda vitória que não substitui a primeira;
+  - verificado num banco local com 11 pessoas e no Chrome headless: o fluxo completo do fim da aventura (apelido, lista, segunda vitória), o fliperama em pt-BR e inglês, no desktop e no celular, e o placar do Lanche continua com ranking.
 
 ---
 

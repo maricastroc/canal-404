@@ -2,7 +2,7 @@
 
 import Link from "@/i18n/Link";
 import { motion, useReducedMotion } from "motion/react";
-import { OfflineIcon, TrophyIcon } from "@/components/art/Icons";
+import { DoneIcon, OfflineIcon, TrophyIcon } from "@/components/art/Icons";
 import { NicknameForm } from "@/components/competition/NicknameForm";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import type { GameMeta } from "@/games/registry";
@@ -11,8 +11,8 @@ import { localized } from "@/i18n/copy";
 import { formatNumber } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
 import type { JoinOutcome, SubmitOutcome } from "@/lib/competition/client";
-import { formatBest, ordinal } from "@/lib/competition/format";
-import { BOARD_META, isGameSlug, type GameSlug } from "@/lib/competition/boards";
+import { finishDate, formatBest, ordinal } from "@/lib/competition/format";
+import { BOARD_META, isFinishersBoard, isGameSlug, type GameSlug } from "@/lib/competition/boards";
 import { serverMessage } from "@/lib/competition/errors";
 import { recordsHref } from "@/lib/competition/links";
 import { boardNickname } from "@/lib/competition/nickname";
@@ -65,6 +65,13 @@ const COPY = localized({
     waiting: (count: number) => (count === 1 ? "Mais 1 resultado seu está esperando o apelido e entra junto." : `Mais ${formatNumber(count, "pt-BR")} resultados seus estão esperando o apelido e entram juntos.`),
     joinButton: "Entrar no placar",
     arcade: "Ver o fliperama de recordes",
+    finishersLabel: "Quem terminou",
+    finishersJoin: "Quer seu nome na lista de quem terminou as férias? Escolha um apelido.",
+    finishersJoinButton: "Entrar na lista",
+    finishedTitle: "Seu nome está na lista!",
+    finished: (total: number) => (total === 1 ? "Você é a primeira pessoa na lista de quem terminou as férias." : `Você entrou na lista de quem terminou as férias, com mais ${formatNumber(total - 1, "pt-BR")} ${total === 2 ? "pessoa" : "pessoas"}.`),
+    alreadyFinished: (date: string) => `Seu nome já está na lista de quem terminou, desde ${date}.`,
+    finishersArcade: "Ver quem terminou",
   },
   en: {
     label: { fase: "Level board", arena: "Arena board", pista: "Track board", parte: "Part board", música: "Song board", game: "Game board" },
@@ -109,6 +116,13 @@ const COPY = localized({
     waiting: (count: number) => (count === 1 ? "1 more of your results is waiting for the nickname and goes up with it." : `${formatNumber(count, "en")} more of your results are waiting for the nickname and go up with it.`),
     joinButton: "Join the board",
     arcade: "Visit the record arcade",
+    finishersLabel: "Who finished",
+    finishersJoin: "Want your name on the list of people who finished the vacation? Pick a nickname.",
+    finishersJoinButton: "Join the list",
+    finishedTitle: "Your name is on the list!",
+    finished: (total: number) => (total === 1 ? "You're the first person on the list of people who finished the vacation." : `You joined the list of people who finished the vacation, along with ${formatNumber(total - 1, "en")} ${total === 2 ? "other" : "others"}.`),
+    alreadyFinished: (date: string) => `Your name has been on the list of people who finished since ${date}.`,
+    finishersArcade: "See who finished",
   },
 });
 
@@ -118,8 +132,12 @@ function levelKind(game: GameMeta) {
   return game.levels ? (game.levelWord ?? "fase") : "game";
 }
 
+function finishersOf(game: GameMeta) {
+  return isGameSlug(game.slug) && isFinishersBoard(game.slug);
+}
+
 export function boardLabel(game: GameMeta, locale: Locale) {
-  return COPY[locale].label[levelKind(game)];
+  return finishersOf(game) ? COPY[locale].finishersLabel : COPY[locale].label[levelKind(game)];
 }
 
 export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Locale): Line | null {
@@ -147,6 +165,12 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Lo
       if (run.ineligible === "inhuman") return { text: copy.inhuman };
       if (run.ineligible === "no_points") return { text: copy.noPoints };
       const slug = isGameSlug(game.slug) ? game.slug : null;
+      if (slug && isFinishersBoard(slug)) {
+        const href = recordsHref(slug, null);
+        if (board.improved) return { headline: copy.finishedTitle, text: copy.finished(board.total), href, live: true, record: true };
+        if (board.best) return { text: copy.alreadyFinished(finishDate(board.best.achievedAt, locale)), href, live: true };
+        return { text: copy.registered, href, live: true };
+      }
       const best = board.best && slug ? formatBest(slug, board.best.metrics, locale) : "";
       const place = board.position ? copy.place(ordinal(board.position, locale), board.total) : "";
       const alone = board.position === 1 && board.total === 1;
@@ -201,6 +225,7 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
   const copy = useCopy(COPY);
   const locale = useLocale();
   const label = boardLabel(game, locale);
+  const finishers = finishersOf(game);
   const line =
     state.phase === "sending"
       ? ({ text: copy.sending, live: true } satisfies Line)
@@ -231,9 +256,9 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
       </div>
       {state.phase === "join" ? (
         <>
-          <p className="copy mt-1.5 font-semibold">{copy.join}</p>
+          <p className="copy mt-1.5 font-semibold">{finishers ? copy.finishersJoin : copy.join}</p>
           {state.waiting > 0 ? <p className="copy-sm mt-1 text-cream-2">{copy.waiting(state.waiting)}</p> : null}
-          <NicknameForm dark submitLabel={copy.joinButton} onSubmit={onJoin} />
+          <NicknameForm dark submitLabel={finishers ? copy.finishersJoinButton : copy.joinButton} onSubmit={onJoin} />
         </>
       ) : (
         <div className="mt-1.5 flex items-start gap-3">
@@ -252,7 +277,7 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
       )}
       {state.phase === "done" && line?.href ? (
         <Link href={line.href} className="mt-2 inline-flex items-center gap-1.5 font-display text-sm uppercase tracking-wider text-sun underline decoration-2 underline-offset-4 hover:text-cream">
-          <TrophyIcon className="size-4" /> {copy.arcade}
+          {finishers ? <DoneIcon className="size-4" /> : <TrophyIcon className="size-4" />} {finishers ? copy.finishersArcade : copy.arcade}
         </Link>
       ) : null}
     </motion.section>
