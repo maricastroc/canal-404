@@ -93,6 +93,12 @@ Share images live in `public/og/`. After changing a cover, logo or the room, reg
 npm run og
 ```
 
+To fill the boards before real players arrive, `npm run seed:boards` adds made-up players below the best real run on every board that already has one, so play each level once first. Seeded runs carry the `seed` flag and never get the replay badge, and `npm run seed:boards -- --remove` deletes them all. It reads `DATABASE_URL` from `.env.local` and asks for `--yes` before writing anywhere but localhost; `--dry-run` shows what it would add, `--players`, `--play`, `--spread`, `--days` and `--game` shape it.
+
+```bash
+npm run seed:boards -- --dry-run
+```
+
 ## Testing
 
 ```bash
