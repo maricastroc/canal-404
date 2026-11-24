@@ -13,7 +13,7 @@ export type Metric = { label: string; unit: MetricUnit; lowerIsBetter: boolean; 
 
 export type BoardCheck = "replayed" | "checked";
 
-export type BoardMeta = { explain: string; metrics: readonly Metric[]; check: BoardCheck; practice?: readonly string[] };
+export type BoardMeta = { explain: string; metrics: readonly Metric[]; check: BoardCheck; practice?: readonly string[]; finishers?: true };
 
 export const BOARD_META: Record<GameSlug, BoardMeta> = {
   "dead-end-street": {
@@ -61,8 +61,9 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
     ],
   },
   "off-air-vacation": {
-    explain: "Quem descobriu mais coisas no resort. Empate: quem levou menos tempo.",
+    explain: "Aqui não tem disputa: é a lista de quem terminou a aventura, com quem terminou por último no topo.",
     check: "checked",
+    finishers: true,
     metrics: [
       { label: "Pontos", unit: "points", lowerIsBetter: false },
       { label: "Tempo", unit: "time", lowerIsBetter: true },
@@ -122,7 +123,7 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
     metrics: [{ label: "Energy", noun: ["energy", "energy"] }, { label: "Time" }, { label: "Hits", noun: ["hit", "hits"] }],
   },
   "off-air-vacation": {
-    explain: "Whoever discovered the most at the resort. Tiebreak: whoever took the least time.",
+    explain: "No contest here: it's the list of everyone who finished the adventure, with the latest on top.",
     metrics: [{ label: "Points" }, { label: "Time" }, { label: "Discoveries", noun: ["discovery", "discoveries"] }],
   },
   "downhill-derby": {
@@ -146,6 +147,10 @@ const BOARD_EN = Object.fromEntries(
     return [game, { ...meta, explain: text.explain, metrics: meta.metrics.map((m, i): Metric => ({ ...m, ...text.metrics[i] })) }];
   }),
 ) as Record<GameSlug, BoardMeta>;
+
+export function isFinishersBoard(game: GameSlug) {
+  return BOARD_META[game].finishers === true;
+}
 
 export function boardMeta(game: GameSlug, locale: Locale): BoardMeta {
   return locale === "en" ? BOARD_EN[game] : BOARD_META[game];
