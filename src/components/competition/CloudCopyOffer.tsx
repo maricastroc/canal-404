@@ -71,7 +71,7 @@ export function CloudCopyOffer({ playerId }: { playerId: string }) {
     setError(copy.failed);
   };
 
-  const date = dateFormat(locale, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(offer.savedAt));
+  const date = dateFormat(locale, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZoneName: "short" }).format(new Date(offer.savedAt));
 
   return (
     <div role="alertdialog" aria-label={copy.title} className="mt-3 rounded-xl border-[3px] border-ink bg-sun p-3" data-testid="cloud-copy-offer">

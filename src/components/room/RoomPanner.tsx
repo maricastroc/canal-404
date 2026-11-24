@@ -5,6 +5,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@/components/art/Icons";
 import { useCopy } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { useSound } from "@/lib/audio/hooks";
+import { scrollMotion } from "@/lib/device";
 import { SCENE, SPOTS, spotCenter } from "./layout";
 
 const ZONES = [
@@ -76,7 +77,7 @@ export function RoomPanner({ children }: { children: React.ReactNode }) {
     const el = ref.current;
     const scene = el && sceneOf(el);
     if (!el || !scene) return;
-    el.scrollTo({ left: scrollFor(el, scene, sceneX), behavior: smooth ? "smooth" : "auto" });
+    el.scrollTo({ left: scrollFor(el, scene, sceneX), behavior: smooth ? scrollMotion() : "auto" });
   }, []);
 
   useEffect(() => {
@@ -103,7 +104,7 @@ export function RoomPanner({ children }: { children: React.ReactNode }) {
     const el = ref.current;
     if (!el) return;
     play("whoosh", { volume: 0.5 });
-    el.scrollBy({ left: dir * el.clientWidth * 0.7, behavior: "smooth" });
+    el.scrollBy({ left: dir * el.clientWidth * 0.7, behavior: scrollMotion() });
   };
 
   const tab =

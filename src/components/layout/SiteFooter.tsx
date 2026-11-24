@@ -27,7 +27,7 @@ export async function SiteFooter() {
   const locale = await getLocale();
   const copy = COPY[locale];
   return (
-    <footer className="on-dark mt-16 border-t-[3px] border-ink bg-plum-950 px-4 py-8 text-cream">
+    <footer className="on-dark mt-16 border-t-[3px] border-ink bg-plum-950 py-8 text-cream safe-inline [--pad-inline:1rem]">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-center">
         <Squiggle className="w-32" />
         <p className="copy max-w-xl text-balance text-cream-2">{copy.tagline}</p>

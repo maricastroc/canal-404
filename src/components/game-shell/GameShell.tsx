@@ -620,7 +620,7 @@ export function GameShell({ slug }: { slug: string }) {
 
   return (
     <div onFocus={afterFocus} className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
-      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b-[3px] border-ink bg-plum-800 px-2 max-[359px]:gap-1 max-[359px]:px-1.5 sm:gap-3 sm:px-4">
+      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b-[3px] border-ink bg-plum-800 safe-inline [--pad-inline:0.5rem] max-[359px]:gap-1 max-[359px]:[--pad-inline:0.375rem] sm:gap-3 sm:[--pad-inline:1rem]">
         <Link
           href={`/games/${slug}`}
           onClick={() => play("back")}
@@ -681,6 +681,7 @@ export function GameShell({ slug }: { slug: string }) {
         <div
           ref={stageRef}
           tabIndex={0}
+          inert={stage !== "playing"}
           role="application"
           aria-roledescription={copy.game}
           aria-label={game.controlsSummary ?? game.title}

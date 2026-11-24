@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "@/i18n/Link";
+import { IntentLink } from "@/components/ui/IntentLink";
 import { Logo } from "@/components/art/Logo";
 import { useCopy, useLocalPathname, useLocale } from "@/i18n/client";
 import { useSound } from "@/lib/audio/hooks";
@@ -20,13 +20,13 @@ export function SideNav({ className = "" }: { className?: string }) {
   const { play, hover } = useSound();
   return (
     <aside className={`on-dark pointer-events-none flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-color:var(--color-plum-500)_transparent] [scrollbar-width:thin] short:gap-3 short:py-4 shorter:gap-2 shorter:py-3 ${className}`}>
-      <Link
+      <IntentLink
         href="/"
         className="pointer-events-auto block w-full shrink-0 -rotate-3 transition-transform hover:rotate-0 hover:scale-[1.03]"
         onClick={() => play("click")}
       >
         <Logo label={copy.homeWithSlogan} className="w-full drop-shadow-[0_8px_0_rgba(20,15,38,0.45)] short:mx-auto short:h-[118px] short:w-auto shorter:h-[76px]" />
-      </Link>
+      </IntentLink>
       <nav aria-label={copy.main} className="pointer-events-auto mt-1">
         <ul className="flex flex-col gap-3 short:gap-2 shorter:gap-1.5">
           {navItems(locale).map((item, i) => {

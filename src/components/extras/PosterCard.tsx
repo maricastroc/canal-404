@@ -13,6 +13,8 @@ import { POSTER_TEXT, type PosterDef } from "./posters";
 const COPY = localized({
   "pt-BR": {
     tuning: "Sintonizando…",
+    failed: "Sem sinal deste pôster.",
+    retry: "Tentar de novo",
     locked: "Bloqueado",
     poster: (number: string) => `Pôster ${number}`,
     saving: "Salvando...",
@@ -21,6 +23,8 @@ const COPY = localized({
   },
   en: {
     tuning: "Tuning in…",
+    failed: "No signal from this poster.",
+    retry: "Try again",
     locked: "Locked",
     poster: (number: string) => `Poster ${number}`,
     saving: "Saving...",
@@ -73,13 +77,23 @@ async function embeddedFonts(variables: string[]) {
   return `<style>svg{${[...names.values()].join(";")}}${faces.join("")}</style>`;
 }
 
+let sharedFonts: Promise<string> | null = null;
+
+function posterFonts() {
+  sharedFonts ??= embeddedFonts(["--font-luckiest"]).catch((error: unknown) => {
+    sharedFonts = null;
+    throw error;
+  });
+  return sharedFonts;
+}
+
 async function drawPoster(canvas: HTMLCanvasElement, svg: SVGSVGElement, texts: PosterText[]) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const display = family("--font-luckiest", "Arial Black, sans-serif");
   const hand = family("--font-patrick", "Comic Sans MS, sans-serif");
   await Promise.all([document.fonts.load(`80px ${display}`), document.fonts.load(`40px ${hand}`)]).catch(() => undefined);
-  const fonts = await embeddedFonts(["--font-luckiest"]);
+  const fonts = await posterFonts();
   const xml = new XMLSerializer()
     .serializeToString(svg)
     .replace(/^(<svg[^>]*>)/, `$1${fonts}`);
@@ -113,6 +127,8 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const { play } = useSound();
   const locale = useLocale();
@@ -124,11 +140,11 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
     let cancelled = false;
     drawPoster(canvasRef.current, svgRef.current, def.texts[locale])
       .then(() => !cancelled && setReady(true))
-      .catch(() => undefined);
+      .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
-  }, [def, unlocked, locale]);
+  }, [def, unlocked, locale, attempt]);
 
   const download = () => {
     const canvas = canvasRef.current;
@@ -160,7 +176,23 @@ export function PosterCard({ def, unlocked, index }: { def: PosterDef; unlocked:
               {def.art}
             </svg>
             <canvas ref={canvasRef} width={600} height={800} className="h-full w-full" aria-hidden />
-            {!ready && <div className="tag-label absolute inset-0 grid place-items-center text-sm text-cream">{copy.tuning}</div>}
+            {failed ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
+                <p className="tag-label text-sm text-cream">{copy.failed}</p>
+                <InkButton
+                  size="sm"
+                  tone="cream"
+                  onClick={() => {
+                    setFailed(false);
+                    setAttempt((n) => n + 1);
+                  }}
+                >
+                  {copy.retry}
+                </InkButton>
+              </div>
+            ) : (
+              !ready && <div className="tag-label absolute inset-0 grid place-items-center text-sm text-cream">{copy.tuning}</div>
+            )}
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[repeating-linear-gradient(-45deg,transparent_0_14px,rgb(255_255_255/0.04)_14px_28px)] p-4 text-center text-plum-300">

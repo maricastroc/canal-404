@@ -1,14 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import Link from "@/i18n/Link";
 import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSound } from "@/lib/audio/hooks";
 import { dismissToast, type Toast, type ToastText } from "@/lib/progress/store";
 import { StarBadge, KeyholeBadge } from "@/components/art/Badges";
 import { CloseIcon } from "@/components/art/Icons";
+import { IntentLink } from "@/components/ui/IntentLink";
 
 const COPY = localized({
   "pt-BR": {
@@ -39,14 +39,19 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
   const text = (value: ToastText) => (typeof value === "string" ? value : value[locale]);
   const title = text(toast.title);
 
+  const [held, setHeld] = useState(false);
+
   useEffect(() => {
-    if (!played.current) {
-      played.current = true;
-      play(toast.kind === "secret" ? "secret" : "achievement");
-    }
+    if (played.current) return;
+    played.current = true;
+    play(toast.kind === "secret" ? "secret" : "achievement");
+  }, [toast, play]);
+
+  useEffect(() => {
+    if (held) return;
     const timer = window.setTimeout(() => dismissToast(toast.id), 5200);
     return () => window.clearTimeout(timer);
-  }, [toast, play]);
+  }, [toast.id, held]);
 
   const isSecret = toast.kind === "secret";
 
@@ -75,6 +80,12 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
       exit={{ opacity: 0, x: 60, rotate: 6 }}
       transition={{ type: "spring", stiffness: 420, damping: 24 }}
       className="paper pointer-events-auto relative flex w-full max-w-sm items-center gap-3 border-[3px] border-ink p-3 pr-10 shadow-[var(--shadow-ink)] wobbly"
+      onPointerEnter={() => setHeld(true)}
+      onPointerLeave={() => setHeld(false)}
+      onFocus={() => setHeld(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld(false);
+      }}
     >
       <div className="w-14 shrink-0 [@media(max-height:520px)]:w-9">{isSecret ? <KeyholeBadge /> : <StarBadge />}</div>
       <div className="min-w-0">
@@ -88,13 +99,13 @@ function ToastCard({ toast, compact }: { toast: Toast; compact: boolean }) {
         <p className="mt-1 font-display text-lg leading-tight text-ink">{title}</p>
         <p className="text-sm leading-snug text-ink-soft [@media(max-height:520px)]:hidden">{text(toast.description)}</p>
         {toast.kind !== "info" && (
-          <Link
+          <IntentLink
             href={isSecret ? "/extras#secrets" : "/extras#achievements"}
             onClick={() => dismissToast(toast.id)}
             className="mt-1 inline-block font-display text-xs uppercase tracking-wide text-plum-700 underline decoration-2 underline-offset-2 hover:text-ink"
           >
             {isSecret ? copy.seeSecrets : copy.seeAchievements}
-          </Link>
+          </IntentLink>
         )}
       </div>
       <button

@@ -182,6 +182,11 @@ body {
   }
 }
 
+@utility safe-inline {
+  padding-left: max(var(--pad-inline, 0.75rem), env(safe-area-inset-left));
+  padding-right: max(var(--pad-inline, 0.75rem), env(safe-area-inset-right));
+}
+
 @utility paper {
   background-color: var(--color-cream);
   background-image: var(--noise), var(--fibers);

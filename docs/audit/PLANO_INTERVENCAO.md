@@ -9,8 +9,9 @@
 - Etapa 1 concluída em 2026-11-24: PR #136 (F03, F07, F10).
 - Etapa 2 concluída em 2026-11-24: PR #137 (F08, F11, F20 parte 1).
 - Etapa 3 concluída em 2026-11-24: PR #138 (F05, F17).
-- Etapa 4 (F06, F12, F13, F14, F15, F16) na branch `fix/game-lifecycle`.
-- Próxima: Etapa 5.
+- Etapa 4 concluída em 2026-11-24: PR #139 (F06, F12 a F16).
+- Etapa 5 (F09, F25) na branch `fix/portal-a11y`.
+- Próxima: Etapa 6.
 
 Este plano foi escrito para que outra sessão execute uma etapa sem refazer a investigação:
 
@@ -435,6 +436,11 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - com VoiceOver, dá para sair da introdução;
   - quem entra por `?mission=` com a API lenta tem o foco em "Começar missão".
 - **Esforço:** S.
+- **Como foi feito** (branch `fix/portal-a11y`, com 5.2 e 5.3):
+  - o palco recebe `inert` fora do modo `playing`;
+  - os painéis deixaram de declarar `aria-modal`, porque o cabeçalho continua utilizável de propósito;
+  - a introdução foca de novo o botão principal quando `missionPending` vira falso e o foco está no `body`;
+  - no Chrome, Tab e Shift+Tab na introdução e na pausa alternam entre o painel e o cabeçalho sem chegar ao palco.
 
 ### PR 5.2: Rolagem, movimento reduzido e safe areas (F25)
 
@@ -447,6 +453,12 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - com movimento reduzido não há rolagem animada;
   - no iPhone deitado (aparelho ou simulador), o cabeçalho e o TopBar ficam fora do notch.
 - **Esforço:** S.
+- **Como foi feito:**
+  - `data-scroll-behavior="smooth"` no `<html>` dos dois layouts;
+  - `scrollMotion()` em `src/lib/device.ts` para as três rolagens;
+  - um `@utility safe-inline` em `globals.css`, que usa `max(var(--pad-inline), env(safe-area-inset-*))`, no cabeçalho do jogo, no TopBar, no `main` das seções e no rodapé;
+  - sem notch, as margens laterais medidas continuam as mesmas (20 px e 16 px);
+  - não foi verificado em iPhone real.
 
 ### PR 5.3: Toasts, links e estados presos (F25)
 
@@ -464,6 +476,12 @@ Etapas 2, 3.1, 3.3, 5, 6, 8: independentes; podem rodar a qualquer momento
   - os horários no fuso do visitante, ou com o rótulo do fuso (decidir).
 - **Critérios de aceitação:** cada item verificado à mão. Os e2e continuam verdes.
 - **Esforço:** S.
+- **Como foi feito:**
+  - os toasts ficam parados com hover ou foco e usam `IntentLink`;
+  - o logo do SideNav usa `IntentLink`, e o link para `/mission` no painel usa `@/i18n/Link`;
+  - o pôster tem estado de erro com "Tentar de novo" e busca a fonte uma vez por página;
+  - o `import()` das fitas sai do cache quando falha;
+  - os horários usam o fuso do visitante, e a oferta da cópia mostra o nome do fuso.
 
 ---
 
