@@ -14,15 +14,10 @@ export type RaceCopy = {
   tiers: readonly [string, string, string, string];
   kmh: string;
   passed: Record<CartId, string>;
-  dusted: string;
-  dustedRival: Record<CartId, string>;
-  kicked: string;
   bark: string;
   startled: string;
   holdIt: string;
   cluck: string;
-  kickedYou: string;
-  kickedRival: Record<CartId, string>;
   zones: Record<"street" | "market" | "works" | "final", string>;
   shop: { fruit: string; pastel: string; sale: string; detour: string; works: string; slow: string; cheer: string; go: string };
   passedBy: Record<CartId, string>;
@@ -128,15 +123,10 @@ export const RACE_COPY = localized<RaceCopy>({
     tiers: ["Rolando", "Embalado", "Voando baixo", "Sem freio"],
     kmh: "km/h",
     passed: { deco: "Você passou o Déco!", lina: "Você passou a Lina!", bruno: "Você passou o Bruno!", mila: "Você passou a Mila!" },
-    dusted: "Poeira na cara!",
-    dustedRival: { deco: "Poeira no Déco!", lina: "Poeira na Lina!", bruno: "Poeira no Bruno!", mila: "Poeira na Mila!" },
-    kicked: "Caixote lá vai!",
     bark: "AU! AU!",
     startled: "Ô, MENINO!",
     holdIt: "MINHAS LARANJAS!",
     cluck: "CÓ CÓ!",
-    kickedYou: "Levou um caixote!",
-    kickedRival: { deco: "Caixote no Déco!", lina: "Caixote na Lina!", bruno: "Caixote no Bruno!", mila: "Caixote na Mila!" },
     zones: { street: "RUA DAS PITANGUEIRAS", market: "FEIRA DA ESQUINA", works: "LADEIRA EM OBRAS", final: "DESCIDA FINAL" },
     shop: { fruit: "FRUTAS", pastel: "PASTEL", sale: "PROMOÇÃO!", detour: "DESVIO →", works: "OBRA", slow: "DEVAGAR", cheer: "VAI, DÉCO!", go: "LADEIRA ABAIXO" },
     passedBy: { deco: "O Déco passou você!", lina: "A Lina passou você!", bruno: "O Bruno passou você!", mila: "A Mila passou você!" },
@@ -299,15 +289,10 @@ export const RACE_COPY = localized<RaceCopy>({
     tiers: ["Rolling", "Picking up", "Flying low", "No brakes"],
     kmh: "km/h",
     passed: { deco: "You passed Déco!", lina: "You passed Lina!", bruno: "You passed Bruno!", mila: "You passed Mila!" },
-    dusted: "Dust in your face!",
-    dustedRival: { deco: "Dust on Déco!", lina: "Dust on Lina!", bruno: "Dust on Bruno!", mila: "Dust on Mila!" },
-    kicked: "Crate incoming!",
     bark: "WOOF! WOOF!",
     startled: "HEY, KID!",
     holdIt: "MY ORANGES!",
     cluck: "BAWK!",
-    kickedYou: "Hit by a crate!",
-    kickedRival: { deco: "Crate hits Déco!", lina: "Crate hits Lina!", bruno: "Crate hits Bruno!", mila: "Crate hits Mila!" },
     zones: { street: "PITANGA STREET", market: "CORNER MARKET", works: "ROADWORKS HILL", final: "FINAL DESCENT" },
     shop: { fruit: "FRUIT", pastel: "PASTRIES", sale: "SALE!", detour: "DETOUR →", works: "WORKS", slow: "SLOW", cheer: "GO, DÉCO!", go: "DOWNHILL DERBY" },
     passedBy: { deco: "Déco passed you!", lina: "Lina passed you!", bruno: "Bruno passed you!", mila: "Mila passed you!" },

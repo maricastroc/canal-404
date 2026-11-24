@@ -53,7 +53,6 @@ const COVER_ALT = localized({
     "dead-end-street": "Capa de Rua Sem Saída: Déco e Lina num carrinho com uma colher gigante lançando um tênis em direção a uma pilha de vasos com um gnomo",
     "bad-ideas-lab": "Capa de Laboratório de Péssimas Ideias: Lina atrás da bancada, com um frasco borbulhando, engrenagens e uma lâmpada acesa",
     "food-fight": "Capa de Guerra de Lanche: na cantina, Déco se prepara para arremessar um sanduíche enquanto a Mila se protege de um pudim com uma bandeja",
-    "strange-house": "Capa de Casa Estranha: uma casa torta à noite com janelas acesas e uma cadeira flutuando",
     "operation-recess": "Capa de Operação: Recreio: no corredor da escola, Bruno ergue a espada de papelão contra um monitor que apita bloqueando o caminho para a diretoria",
     "pajama-war": "Capa de Guerra do Pijama: Lia, Nico e Bia numa guerra de travesseiros no quarto, com penas voando",
     "off-air-vacation": "Capa de Férias Fora do Ar: Déco chega ao Resort 404 com mala e mapa e encara o Sr. Bigodes, sério demais atrás do balcão da recepção, enquanto o relógio da fachada está parado às 4:04 e a TV ao lado só mostra chuvisco",
@@ -65,7 +64,6 @@ const COVER_ALT = localized({
     "dead-end-street": "Dead End Street cover: Déco and Lina in a cart with a giant spoon, launching a sneaker at a stack of flowerpots with a gnome",
     "bad-ideas-lab": "Bad Ideas Lab cover: Lina behind the workbench, with a bubbling flask, gears and a lit light bulb",
     "food-fight": "Food Fight cover: in the cafeteria, Déco gets ready to throw a sandwich while Mila blocks a pudding with a tray",
-    "strange-house": "Strange House cover: a crooked house at night with lit windows and a floating chair",
     "operation-recess": "Operation: Recess cover: in the school hallway, Bruno raises his cardboard sword at a whistle-blowing hall monitor who blocks the way to the principal's office",
     "pajama-war": "Pajama War cover: Lia, Nico and Bia in a pillow war in the bedroom, with feathers flying",
     "off-air-vacation": "Off-Air Vacation cover: Déco arrives at Resort 404 with a suitcase and a map and faces Mr. Bigodes, far too serious behind the front desk, while the clock on the building is stuck at 4:04 and the TV next to it only shows static",
@@ -401,49 +399,6 @@ export function FoodFightCover({ decorative, locale = DEFAULT_LOCALE }: CoverPro
         <path d="M0 -12 Q1 -18 5 -20" fill="none" stroke={P.woodDeep} strokeWidth="3" strokeLinecap="round" />
         <path d="M-6 -6 Q-4 -9 -1 -9" fill="none" stroke={P.white} strokeWidth="2.5" strokeLinecap="round" />
       </g>
-    </Frame>
-  );
-}
-
-export function StrangeHouseCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
-  return (
-    <Frame decorative={decorative} bg={P.plum800} label={COVER_ALT[locale]["strange-house"]}>
-      {[
-        [30, 30],
-        [80, 64],
-        [290, 24],
-        [230, 70],
-        [140, 18],
-        [20, 120],
-        [300, 120],
-      ].map(([x, y]) => (
-        <circle key={`${x}${y}`} cx={x} cy={y} r="2.4" fill={P.sunPale} />
-      ))}
-      <circle cx="262" cy="56" r="28" fill={P.sunPale} {...ink} />
-      <circle cx="252" cy="48" r="6" fill="#e8d28a" />
-      <circle cx="270" cy="66" r="4" fill="#e8d28a" />
-      <path d="M0 210 Q80 196 160 206 Q240 214 320 200 L320 240 L0 240 Z" fill={P.plum950} />
-      <g>
-        <path d="M96 210 L104 116 L82 118 L160 50 L234 112 L214 116 L224 210 Z" fill={P.plum600} {...ink} />
-        <path d="M200 120 L206 210 L224 210 L214 116 Z" fill={P.plum700} />
-        <path d="M196 84 L202 56 L218 58 L216 98" fill={P.plum600} {...ink} />
-        <path d="M150 72 L170 72 L170 96 L150 96 Z" fill={P.sun} {...ink} strokeWidth={3} transform="rotate(8 160 84)" />
-        <rect x="118" y="130" width="30" height="34" fill={P.sun} {...ink} transform="rotate(-8 133 147)" />
-        <rect x="176" y="136" width="26" height="30" fill={P.sun} {...ink} transform="rotate(10 189 151)" />
-        <path d="M134 130 L134 164 M118 146 L148 146" stroke={P.ink} strokeWidth="3" transform="rotate(-8 133 147)" />
-        <path d="M150 210 L150 176 Q160 166 170 176 L170 210 Z" fill={P.ink} />
-        <circle cx="128" cy="140" r="4" fill={P.ink} />
-        <circle cx="138" cy="140" r="4" fill={P.ink} />
-      </g>
-      <g transform="translate(260 150) rotate(150)">
-        <rect x="-18" y="-4" width="36" height="8" fill={P.wood} {...ink} strokeWidth={3} />
-        <path d="M-15 4 L-15 24 M15 4 L15 24 M-15 -4 L-15 -26 L15 -26 L15 -4" stroke={P.ink} strokeWidth="4" fill="none" />
-      </g>
-      <g transform="translate(62 96) rotate(-24)">
-        <path d="M-18 -12 L0 -6 L18 -12 L18 12 L0 18 L-18 12 Z" fill={P.mint} {...ink} strokeWidth={3} />
-        <path d="M0 -6 L0 18" stroke={P.ink} strokeWidth="3" />
-      </g>
-      <Kid who="mila" x={8} y={150} size={84} face="normal" rotate={-6} />
     </Frame>
   );
 }

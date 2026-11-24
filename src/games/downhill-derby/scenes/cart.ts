@@ -15,7 +15,7 @@ export const ARM_POSES = ["steer", "up", "flail", "grip"] as const;
 
 export type ArmPose = (typeof ARM_POSES)[number];
 
-export type Reaction = "go" | "perfect" | "ok" | "crash" | "recover" | "hit" | "passed" | "passedBy" | "dusted" | "win" | "lose" | "prep";
+export type Reaction = "go" | "perfect" | "ok" | "crash" | "recover" | "hit" | "passed" | "passedBy" | "win" | "lose" | "prep";
 
 type View = { key: string; x: number; y: number; w: number; h: number };
 
@@ -293,10 +293,6 @@ export class CartView {
         break;
       case "passedBy":
         face("sad", 0.8);
-        break;
-      case "dusted":
-        face("sad", 0.7);
-        arm("flail", 0.3);
         break;
       case "win":
         this.hold = { expr: "happy", pose: "up" };

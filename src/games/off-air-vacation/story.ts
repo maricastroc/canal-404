@@ -977,5 +977,3 @@ export function hasMain(s: State, who: FolkKey) {
   }
   return null;
 }
-
-export const TOTALS = { posters: ALL_POSTERS.length, tokens: ALL_TOKENS.length, secrets: ALL_SECRETS.length };

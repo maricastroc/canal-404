@@ -313,18 +313,6 @@ export function unlockSecret(id: SecretId) {
   return true;
 }
 
-export function bumpCounter(id: string, by = 1) {
-  fresh();
-  const value = (state.counters[id] ?? 0) + by;
-  commit({ ...state, counters: { ...state.counters, [id]: value } });
-  return value;
-}
-
-export function setCounter(id: string, value: number) {
-  fresh();
-  commit({ ...state, counters: { ...state.counters, [id]: value } });
-}
-
 export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
   fresh();
   commit({ ...state, settings: { ...state.settings, [key]: value } });
@@ -406,6 +394,3 @@ export function resetProgress() {
       : {},
   });
 }
-
-export const TOTAL_SECRETS = SECRETS.length;
-export const TOTAL_ACHIEVEMENTS = ACHIEVEMENTS.length;

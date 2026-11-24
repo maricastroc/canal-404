@@ -9,8 +9,6 @@ export type TelemetryEvent =
   | { name: "board_submit"; game: string; outcome: "record" | "accepted" | "ineligible" | "rejected" | "queued" | "unranked" | "not_joined" }
   | { name: "client_error"; source: string; message: string };
 
-type Sink = (name: string, props: Props) => void;
-
 declare global {
   interface Window {
     umami?: { track: (name: string, data?: Props) => void };
@@ -19,15 +17,7 @@ declare global {
 
 const MAX_TEXT = 120;
 const MAX_ERRORS = 8;
-const sinks = new Set<Sink>();
 const reported = new Set<string>();
-
-export function addTelemetrySink(sink: Sink) {
-  sinks.add(sink);
-  return () => {
-    sinks.delete(sink);
-  };
-}
 
 function clean(props: Record<string, unknown>): Props {
   const out: Props = {};
@@ -43,11 +33,6 @@ export function track(event: TelemetryEvent) {
   if (typeof window === "undefined") return;
   const { name, ...rest } = event;
   const props = clean(rest);
-  for (const sink of sinks) {
-    try {
-      sink(name, props);
-    } catch {}
-  }
   try {
     window.umami?.track(name, props);
   } catch {}
@@ -69,9 +54,4 @@ export function reportError(source: string, error: unknown) {
 
 export function isStaleChunkError(error: unknown) {
   return /ChunkLoadError|Loading chunk|dynamically imported module|Importing a module script failed/i.test(errorMessage(error));
-}
-
-export function resetTelemetryForTests() {
-  sinks.clear();
-  reported.clear();
 }

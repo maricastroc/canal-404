@@ -64,7 +64,6 @@ const COPY = localized({
     resume: "Continuar",
     pause: "Pausar",
     game: "jogo",
-    rotate: "Dica: gire o celular para ver maior",
     upright: "Segure o celular em pé",
     uprightText: (title: string) => `${title} se joga com o celular na vertical.`,
   },
@@ -91,7 +90,6 @@ const COPY = localized({
     resume: "Resume",
     pause: "Pause",
     game: "game",
-    rotate: "Tip: turn your phone sideways for a bigger view",
     upright: "Hold your phone upright",
     uprightText: (title: string) => `${title} is played with your phone held upright.`,
   },
@@ -772,14 +770,6 @@ export function GameShell({ slug }: { slug: string }) {
             </div>
           </div>
         )}
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center px-3 landscape:hidden sm:hidden">
-          {stage === "playing" && !game.orientation && (
-            <p className="rounded-full border-[3px] border-ink bg-sun px-3 py-1 font-display text-xs uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)]">
-              {copy.rotate}
-            </p>
-          )}
-        </div>
       </div>
       <div className="sr-only" data-testid="game-announcer">
         <p aria-live="polite" aria-atomic="true">

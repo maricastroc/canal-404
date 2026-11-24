@@ -48,10 +48,6 @@ Matter.Axes.rotate = rotateAxes;
 Matter.Vector.rotate = rotateVector;
 Object.assign(Matter.Resolver, { _restingThresh: 2, _restingThreshTangent: Math.sqrt(6) });
 
-export function physicsIsDeterministic() {
-  return Matter.Vertices.rotate === rotateVertices && Matter.Axes.rotate === rotateAxes && Matter.Vector.rotate === rotateVector;
-}
-
 function normalise(x: number, y: number) {
   const length = Math.sqrt(x * x + y * y);
   return length === 0 ? { x: 0, y: 0 } : { x: x / length, y: y / length };

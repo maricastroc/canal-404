@@ -448,8 +448,6 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
   },
 });
 
-export const SECRET_IDS = SECRETS.map((s) => s.id);
-
 export function secretText(id: SecretId, locale: Locale) {
   return SECRET_TEXT[locale][id];
 }
