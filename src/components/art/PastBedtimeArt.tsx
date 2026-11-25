@@ -175,9 +175,9 @@ export function PastBedtimeCoverArt() {
         <Sprite name="clock-bird" cx={46} base={40} w={20} />
         <rect x={252} y={150} width={68} height={56} fill={P.woodDark} stroke={P.ink} strokeWidth={3} />
         <Sprite name="prop-tv-1x1" cx={284} base={152} w={54} />
-        <Sprite name="cat-idle" cx={290} base={80} w={36} />
       </Room>
       <Glow x={283} y={110} r={26} color={P.mint} />
+      <Sprite name="cat-idle" cx={267} base={98} w={34} flip />
       <Sprite name="prop-vcr-1x1" cx={286} base={204} w={46} />
       <Glow x={296} y={176} r={18} color={P.tomato} />
       <Beam points="75,161 196,184 190,238 79,172" spot={{ cx: 170, cy: 214, rx: 32, ry: 12 }} />

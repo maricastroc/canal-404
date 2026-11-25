@@ -124,20 +124,27 @@ function frameArt(w: number, h: number, v: number) {
     <path d="M${m + 3} ${m + 3} L${m + iw * 0.3} ${m + 3}" stroke="#fff" stroke-width="1.6" opacity="0.7" stroke-linecap="round"/>`);
 }
 
+function curtainDrape(w: number, h: number, fill: string, fold: string) {
+  const cw = w * 0.24;
+  const tie = h * 0.56;
+  const shape = `M-6 -6 L${cw} -6 Q${cw * 0.98} ${h * 0.3} ${cw * 0.44} ${tie} Q${cw * 0.62} ${h * 0.8} ${cw * 0.8} ${h + 6} Q${cw * 0.56} ${h + 9} ${cw * 0.36} ${h + 6} Q${cw * 0.14} ${h + 9} -6 ${h + 6} Z`;
+  const folds = `M${cw * 0.28} -4 Q${cw * 0.3} ${h * 0.3} ${cw * 0.12} ${tie - 2} M${cw * 0.62} -4 Q${cw * 0.62} ${h * 0.3} ${cw * 0.3} ${tie - 2} M${cw * 0.14} ${tie + 4} Q${cw * 0.2} ${h * 0.82} ${cw * 0.18} ${h + 5} M${cw * 0.34} ${tie + 4} Q${cw * 0.46} ${h * 0.82} ${cw * 0.52} ${h + 5}`;
+  return `<path d="${shape}" fill="${fill}" ${ink(2.5)}/>
+    <path d="${folds}" fill="none" stroke="${fold}" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M${cw * 0.45} -3 Q${cw * 0.48} ${h * 0.26} ${cw * 0.24} ${tie - 4}" fill="none" stroke="#fff" stroke-width="1.4" opacity="0.35" stroke-linecap="round"/>
+    <path d="M-6 ${tie - 3} Q${cw * 0.2} ${tie + 2} ${cw * 0.5} ${tie - 2} L${cw * 0.52} ${tie + 4} Q${cw * 0.2} ${tie + 8} -6 ${tie + 3} Z" fill="#ffc83d" ${ink(1.5)}/>`;
+}
+
 function windowArt(w: number, h: number, v?: string) {
   let stars = "";
   for (let i = 0; i < 10; i += 1) stars += `<circle cx="${w * (0.08 + ((i * 37) % 84) / 100)}" cy="${h * (0.1 + ((i * 53) % 45) / 100)}" r="1" fill="#fff" opacity="0.9"/>`;
   const curtains = v === "curtain" || v === "checker";
-  const cc = v === "checker" ? "#d9534f" : "#c4687c";
   let cur = "";
   if (curtains) {
-    for (const side of [0, 1]) {
-      const cw = w * 0.22;
-      const x = side === 0 ? -4 : w - cw + 4;
-      cur += `<path d="M${x} -6 L${x + cw} -6 Q${x + cw * (side ? 0.2 : 0.8)} ${h * 0.6} ${x + cw * (side ? 0.1 : 0.9)} ${h + 6} L${x} ${h + 6} Z" fill="${cc}" ${ink(2.5)}/>`;
-      cur += `<path d="M${x + cw * 0.35} -4 Q${x + cw * 0.4} ${h * 0.5} ${x + cw * 0.3} ${h + 4}" stroke="#fff" stroke-width="1.6" opacity="0.4" fill="none"/>`;
-    }
+    const drape = v === "checker" ? curtainDrape(w, h, "#d9534f", "#a63a37") : curtainDrape(w, h, "#c4687c", "#9e4a60");
+    cur += `<g>${drape}</g><g transform="translate(${w} 0) scale(-1 1)">${drape}</g>`;
     cur += `<rect x="-10" y="-10" width="${w + 20}" height="5" rx="2" fill="#7c4527" ${ink(1.5)}/>`;
+    cur += `<circle cx="-8.5" cy="-7.5" r="2.6" fill="#c9a24a" ${ink(1.5)}/><circle cx="${w + 8.5}" cy="-7.5" r="2.6" fill="#c9a24a" ${ink(1.5)}/>`;
   }
   return svg(`-12 -12 ${w + 24} ${h + 24}`, `
     <rect x="-5" y="-5" width="${w + 10}" height="${h + 10}" rx="3" fill="#eee4cf" ${ink(2.5)}/>

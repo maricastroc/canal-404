@@ -10,7 +10,9 @@ export const BRUNO_BOX = { x: 4, y: -24, w: 142, h: 244, feetX: 75, feetY: 210, 
 export const BRUNO_FACES = ["calm", "sneak", "tense", "breath", "scared", "caught", "happy", "relief"] as const;
 type Face = (typeof BRUNO_FACES)[number];
 
-const HEAD = "translate(-1 -31) scale(0.76)";
+const HEAD = "translate(12.7 -24.1) scale(0.623)";
+const SIDE_HEAD_AT = "translate(77 90) scale(0.59) translate(-103 -176)";
+const SIDE_FAR_PANTS = "#25679f";
 
 function eyes(face: Face, blink: boolean) {
   const xs = [77, 123];
@@ -92,47 +94,50 @@ function headFront(face: Face, blink: boolean) {
   </g>`;
 }
 
-function notebook(x: number, y: number, rot: number) {
-  return `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-13" y="-17" width="26" height="34" rx="3" fill="${P.cream}" ${ink(4)}/><path d="M-6 -17 L-6 17" stroke="${P.tomato}" stroke-width="2.2"/><path d="M-1 -8 L9 -8 M-1 -1 L9 -1 M-1 6 L7 6" stroke="#9cc7ea" stroke-width="2" stroke-linecap="round"/><path d="M-13 -11 L-17 -11 M-13 -3 L-17 -3 M-13 5 L-17 5 M-13 13 L-17 13" stroke="${P.ink}" stroke-width="2.5" stroke-linecap="round"/></g>`;
+function notebook(x: number, y: number, rot: number, scale = 1) {
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${scale})"><rect x="-13" y="-17" width="26" height="34" rx="3" fill="${P.cream}" ${ink(4)}/><path d="M-6 -17 L-6 17" stroke="${P.tomato}" stroke-width="2.2"/><path d="M-1 -8 L9 -8 M-1 -1 L9 -1 M-1 6 L7 6" stroke="#9cc7ea" stroke-width="2" stroke-linecap="round"/><path d="M-13 -11 L-17 -11 M-13 -3 L-17 -3 M-13 5 L-17 5 M-13 13 L-17 13" stroke="${P.ink}" stroke-width="2.5" stroke-linecap="round"/></g>`;
 }
+
+const sideSlipper = (x: number, y: number, fill: string) =>
+  `<g transform="translate(${x} ${y})"><path d="M-13 -5 Q-16 8 -8 10 L22 10 Q31 10 29 1 Q25 -9 10 -8 L-6 -8 Q-12 -8 -13 -5 Z" fill="${fill}" ${ink(4)}/><path d="M-4 -7 Q6 -1 15 -7" fill="none" stroke="${P.white}" stroke-width="3" stroke-linecap="round"/></g>`;
 
 const slipper = (x: number, y: number) =>
   `<path d="M${x - 15} ${y + 9} Q${x - 16} ${y - 5} ${x} ${y - 5} Q${x + 16} ${y - 5} ${x + 15} ${y + 9} Z" fill="${P.mint}" ${ink(4)}/><path d="M${x - 8} ${y + 1} Q${x} ${y - 5} ${x + 8} ${y + 1}" fill="none" stroke="${P.white}" stroke-width="3" stroke-linecap="round"/>`;
 
 function torso(back: boolean) {
-  return `<path d="M46 122 Q48 106 75 102 Q102 106 104 122 L105 172 L45 172 Z" fill="${P.sky}" ${ink(5)}/>
-    <path d="M58 110 L57 170 M75 104 L75 170 M92 110 L93 170" stroke="${P.skyPale}" stroke-width="3.5" opacity="0.9"/>
-    <path d="M88 126 L103 126 L105 172 L92 172 Z" fill="${P.skyDeep}" opacity="0.55"/>
-    ${back ? "" : `<circle cx="75" cy="126" r="2.8" fill="${P.white}" ${ink(1.5)}/><circle cx="75" cy="141" r="2.8" fill="${P.white}" ${ink(1.5)}/><circle cx="75" cy="156" r="2.8" fill="${P.white}" ${ink(1.5)}/>`}
-    <path d="M45 166 L105 166" stroke="${P.skyDeep}" stroke-width="5"/>`;
+  return `<path d="M48 102 Q50 87 75 84 Q100 87 102 102 L103 150 L47 150 Z" fill="${P.sky}" ${ink(5)}/>
+    <path d="M61 90 L60 147 M75 87 L75 147 M89 90 L90 147" stroke="${P.skyPale}" stroke-width="3.5" opacity="0.9"/>
+    <path d="M89 106 L101 106 L103 150 L92 150 Z" fill="${P.skyDeep}" opacity="0.55"/>
+    ${back ? "" : `<circle cx="75" cy="104" r="2.8" fill="${P.white}" ${ink(1.5)}/><circle cx="75" cy="118" r="2.8" fill="${P.white}" ${ink(1.5)}/><circle cx="75" cy="132" r="2.8" fill="${P.white}" ${ink(1.5)}/>`}
+    <path d="M50 144.5 L100 144.5" stroke="${P.skyDeep}" stroke-width="5"/>`;
 }
 
 const BOX = `${BRUNO_BOX.x} ${BRUNO_BOX.y} ${BRUNO_BOX.w} ${BRUNO_BOX.h}`;
 
 function front(face: Face, blink: boolean) {
   return svg(BOX, `
-    ${limb("M63 168 L61 196", P.skyDeep, 21)}
-    ${limb("M87 168 L89 196", P.skyDeep, 21)}
-    ${slipper(58, 203)}${slipper(92, 203)}
-    ${limb("M51 126 Q40 146 45 162", P.sky)}
-    <circle cx="45" cy="164" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
+    ${limb("M64 146 L63 198", P.skyDeep, 22)}
+    ${limb("M86 146 L87 198", P.skyDeep, 22)}
+    ${slipper(62, 203)}${slipper(88, 203)}
+    ${limb("M52 104 Q40 126 46 144", P.sky)}
+    <circle cx="46" cy="146" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
     ${torso(false)}
-    ${notebook(97, 146, 10)}
-    ${limb("M99 126 Q112 140 105 154", P.sky)}
-    <circle cx="104" cy="156" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
+    ${notebook(96, 126, 10, 0.9)}
+    ${limb("M98 104 Q111 118 104 132", P.sky)}
+    <circle cx="103" cy="134" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
     ${headFront(face, blink)}`);
 }
 
 function back() {
   return svg(BOX, `
-    ${limb("M63 168 L61 196", P.skyDeep, 21)}
-    ${limb("M87 168 L89 196", P.skyDeep, 21)}
-    <ellipse cx="60" cy="205" rx="14" ry="7" fill="${P.mintDeep}" ${ink(4)}/><ellipse cx="90" cy="205" rx="14" ry="7" fill="${P.mintDeep}" ${ink(4)}/>
+    ${limb("M64 146 L63 198", P.skyDeep, 22)}
+    ${limb("M86 146 L87 198", P.skyDeep, 22)}
+    <ellipse cx="62" cy="205" rx="14" ry="7" fill="${P.mintDeep}" ${ink(4)}/><ellipse cx="88" cy="205" rx="14" ry="7" fill="${P.mintDeep}" ${ink(4)}/>
     ${torso(true)}
-    ${limb("M51 126 Q40 146 45 162", P.sky)}
-    <circle cx="45" cy="164" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
-    ${limb("M99 126 Q110 146 105 162", P.sky)}
-    <circle cx="105" cy="164" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
+    ${limb("M52 104 Q40 126 46 144", P.sky)}
+    <circle cx="46" cy="146" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
+    ${limb("M98 104 Q110 126 104 144", P.sky)}
+    <circle cx="104" cy="146" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
     <g transform="${HEAD}">
       <path d="M84 150 L84 180 Q100 188 116 180 L116 150 Z" fill="${P.skinLight}" ${ink(4)}/>
       <path d="M74 172 Q100 184 126 172" fill="none" stroke="${P.white}" stroke-width="8" stroke-linecap="round"/>
@@ -151,19 +156,21 @@ function side(face: Face, source: string) {
   const raw = readFileSync(join(source, `side-head-${SIDE_HEAD[face]}.svg`), "utf8");
   const inner = raw.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
   return svg(BOX, `
-    ${limb("M70 168 L58 196", P.skyDeep, 21)}
-    <path d="M43 209 Q41 196 56 195 L66 196 Q72 201 70 209 Z" fill="${P.mintDeep}" ${ink(4)}/>
-    ${limb("M80 168 L91 196", P.skyDeep, 21)}
-    <path d="M80 209 Q80 196 93 195 L103 196 Q111 201 109 209 Z" fill="${P.mint}" ${ink(4)}/>
-    <path d="M57 122 Q59 106 77 104 Q95 106 97 122 L98 172 L56 172 Z" fill="${P.sky}" ${ink(5)}/>
-    <path d="M68 108 L68 170 M85 108 L86 170" stroke="${P.skyPale}" stroke-width="3.5" opacity="0.9"/>
-    <path d="M56 166 L98 166" stroke="${P.skyDeep}" stroke-width="5"/>
-    ${notebook(105, 140, 6)}
-    ${limb("M76 126 Q86 146 101 148", P.sky)}
-    <circle cx="102" cy="149" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
-    <g transform="translate(78 114) scale(0.72) translate(-103 -180)">${inner}</g>
-    ${face === "relief" ? `<path d="M117 66 Q129 60 133 68 Q141 66 143 74 Q137 82 125 78 Q117 80 115 74 Z" fill="#e9f2f6" ${ink(2.5)}/>` : ""}
-    ${face === "scared" ? `<path d="M60 4 L54 -10 M80 0 L80 -16 M100 4 L106 -10" fill="none" ${ink(4)}/>` : ""}`);
+    ${limb("M70 146.6 L66.4 173.6 L64.6 198.5", SIDE_FAR_PANTS, 23)}
+    ${sideSlipper(64.6, 198.5, P.mintDeep)}
+    ${limb("M77.5 146.8 L81.2 173.8 L81.2 198.8", P.skyDeep, 23)}
+    ${sideSlipper(81.2, 198.8, P.mint)}
+    <path d="M55.7 149.6 L92.9 150.8 Q99.7 128.2 95.7 104.6 Q91.5 86.5 77.2 84.5 Q60.3 84 56.2 100.4 Z" fill="${P.sky}" ${ink(5)}/>
+    <path d="M70 89 L69 147 M85 88 L87 148" stroke="${P.skyPale}" stroke-width="3.5" opacity="0.9"/>
+    <path d="M55.7 149.6 L65.3 149.9 Q62.7 121.4 66.1 91.1 Q59.1 88.1 56.2 100.4 Z" fill="${P.skyDeep}" opacity="0.6"/>
+    <path d="M58 144.6 L93 145.6" stroke="${P.skyDeep}" stroke-width="5"/>
+    <path d="M81 85.6 L93.8 97.2 L92.9 86 Z" fill="${P.white}" ${ink(3)}/>
+    <g transform="${SIDE_HEAD_AT}">${inner}</g>
+    ${notebook(101, 124, 6, 0.9)}
+    ${limb("M76.6 98.4 L80.8 121.9 L95.5 132", P.sky, 20)}
+    <circle cx="96.5" cy="132.5" r="9.5" fill="${P.skinLight}" ${ink(4)}/>
+    ${face === "relief" ? `<g transform="translate(118.8 56.3) scale(0.82) translate(-129 -70)"><path d="M117 66 Q129 60 133 68 Q141 66 143 74 Q137 82 125 78 Q117 80 115 74 Z" fill="#e9f2f6" ${ink(2.5)}/></g>` : ""}
+    ${face === "scared" ? `<g transform="translate(78.7 -4.3) scale(0.82) translate(-80 4)"><path d="M60 4 L54 -10 M80 0 L80 -16 M100 4 L106 -10" fill="none" ${ink(4)}/></g>` : ""}`);
 }
 
 type Look = "down" | "left" | "right" | "up";
