@@ -8,7 +8,7 @@ import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
 import { ArrowLeftIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RatingStar, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
-import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon } from "@/components/art/Icons";
+import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon, ShareIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
@@ -18,7 +18,9 @@ import type { GameMeta } from "@/games/registry";
 import type { GameResult, IntroProgress, ResultFact, ResultStanding } from "@/games/types";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
-import { formatNumber, ordinal } from "@/i18n/format";
+import { countOf, formatNumber, ordinal } from "@/i18n/format";
+import { localePath } from "@/i18n/locales";
+import { SITE_URL } from "@/lib/site";
 import { useSound } from "@/lib/audio/hooks";
 import { scrollMotion } from "@/lib/device";
 import { useNarrowScreen, useTouchScreen } from "@/lib/device";
@@ -142,6 +144,11 @@ const COPY = localized({
     catalog: "Ver catálogo",
     pickLevel: (word: LevelWord) => `Escolher ${word}`,
     backToRoom: "Voltar à sala",
+    share: "Compartilhar",
+    linkCopied: "Link copiado!",
+    shareWhere: (word: LevelWord, n: number, title: string) => `, ${word} ${n} (${title})`,
+    shareStars: (game: string, stars: number, where: string) => `Tirei ${countOf(stars, ["estrela", "estrelas"], "pt-BR")} em ${game}${where}.`,
+    sharePoints: (game: string, score: number, where: string) => `Fiz ${countOf(score, ["ponto", "pontos"], "pt-BR")} em ${game}${where}.`,
     errorLabel: "Erro no jogo",
     lost: "Sinal perdido",
     lostText: "Não conseguimos sintonizar o jogo. Tenta de novo?",
@@ -206,6 +213,11 @@ const COPY = localized({
     catalog: "See catalog",
     pickLevel: (word: LevelWord) => PICK[word],
     backToRoom: "Back to the room",
+    share: "Share",
+    linkCopied: "Link copied!",
+    shareWhere: (word: LevelWord, n: number, title: string) => `, ${LEVEL[word]} ${n} (${title})`,
+    shareStars: (game: string, stars: number, where: string) => `I got ${countOf(stars, ["star", "stars"], "en")} in ${game}${where}.`,
+    sharePoints: (game: string, score: number, where: string) => `I scored ${countOf(score, ["point", "points"], "en")} in ${game}${where}.`,
     errorLabel: "Game error",
     lost: "Signal lost",
     lostText: "We couldn't tune in the game. Try again?",
@@ -907,6 +919,48 @@ export function PausePanel({
   );
 }
 
+function ShareResult({ game, result }: { game: GameMeta; result: GameResult }) {
+  const locale = useLocale();
+  const copy = COPY[locale];
+  const { play } = useSound();
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 2400);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+  const share = async () => {
+    play("click");
+    const where = result.level ? copy.shareWhere(game.levelWord ?? "fase", result.level.index + 1, result.level.title) : "";
+    const text = result.stars > 0 ? copy.shareStars(game.title, result.stars, where) : copy.sharePoints(game.title, result.score, where);
+    const url = `${SITE_URL}${localePath(locale, `/games/${game.slug}`)}?utm_source=share`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: game.title, text, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <>
+      <button type="button" onClick={share} className={TERTIARY}>
+        {copied ? <CheckIcon className="size-4" /> : <ShareIcon className="size-4" />} {copied ? copy.linkCopied : copy.share}
+      </button>
+      <span role="status" className="sr-only">
+        {copied ? copy.linkCopied : ""}
+      </span>
+    </>
+  );
+}
+
 export function ResultPanel({
   game,
   result,
@@ -968,6 +1022,7 @@ export function ResultPanel({
       className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-[15px] max-[380px]:[&>button>svg]:hidden max-[380px]:[&>a>svg]:hidden max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:leading-tight max-[380px]:[&>*]:[text-wrap:balance] max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3"
       actions={resultActions}
       links={[
+        <ShareResult key="share" game={game} result={result} />,
         ...(onLevels
           ? [
               <button key="levels" type="button" onClick={onLevels} className={TERTIARY}>

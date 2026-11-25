@@ -35,6 +35,7 @@ import {
   RadioTower,
   Rewind,
   RotateCcw,
+  Share2,
   Smartphone,
   Smile,
   Star,
@@ -99,6 +100,7 @@ export const TimerIcon = make(Timer);
 export const TapeIcon = make(CassetteTape);
 export const DoneIcon = make(CircleCheckBig);
 export const CheckIcon = make(Check);
+export const ShareIcon = make(Share2);
 export const LevelsIcon = make(LayoutGrid);
 export const ChevronLeftIcon = make(ChevronLeft);
 export const ChevronRightIcon = make(ChevronRight);
