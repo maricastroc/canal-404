@@ -13,17 +13,19 @@ export const MILA = { x: 590, y: 790, duckDrop: 170 };
 export const OUR_TABLE = { x: 400, y: 756 };
 export const AMMO_SPOTS = [104, 140, 176, 212, 248, 284].map((x) => ({ x, y: 772 }));
 export const WALL_SPLAT = { x: 150, y: 590 };
+export const TABLE_PROPS = { y: 772, holder: { x: 456, scale: 0.9 }, napkins: [440, 456, 472], plates: { x: 690, scale: 0.8 }, juice: { x: 714, scale: 0.8 } };
+export const MENU_BOARD = { titleX: 1180, titleY: 141, specialX: 1076, specialY: 202, left: 1030, right: 1336, rowY: 246, rowGap: 34 };
 
 export type Row = "back" | "front";
 
 export type SlotDef = { key: number; row: Row; x: number; portraitX: number; tableY: number; upY: number; scale: number; maskBottom: number };
 
 export const SLOTS: SlotDef[] = [
-  { key: 1, row: "back", x: 1020, portraitX: 170, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
-  { key: 2, row: "front", x: 1180, portraitX: 285, tableY: 790, upY: 806, scale: 0.95, maskBottom: 944 },
-  { key: 3, row: "back", x: 1370, portraitX: 470, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
-  { key: 4, row: "front", x: 1600, portraitX: 655, tableY: 790, upY: 806, scale: 0.95, maskBottom: 944 },
-  { key: 5, row: "back", x: 1720, portraitX: 770, tableY: 590, upY: 604, scale: 0.72, maskBottom: 702 },
+  { key: 1, row: "back", x: 1020, portraitX: 170, tableY: 590, upY: 604, scale: 0.72, maskBottom: 693 },
+  { key: 2, row: "front", x: 1180, portraitX: 285, tableY: 790, upY: 806, scale: 0.95, maskBottom: 930 },
+  { key: 3, row: "back", x: 1370, portraitX: 470, tableY: 590, upY: 604, scale: 0.72, maskBottom: 693 },
+  { key: 4, row: "front", x: 1600, portraitX: 655, tableY: 790, upY: 806, scale: 0.95, maskBottom: 930 },
+  { key: 5, row: "back", x: 1720, portraitX: 770, tableY: 590, upY: 604, scale: 0.72, maskBottom: 693 },
 ];
 
 export type RivalKind = "cap" | "speedy" | "big";
