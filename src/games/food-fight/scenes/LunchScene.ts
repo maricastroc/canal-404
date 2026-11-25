@@ -15,6 +15,7 @@ import {
   LIVES,
   COOK,
   LUNCH_LADY,
+  MENU_BOARD,
   MILA,
   OUR_TABLE,
   PHASES,
@@ -24,6 +25,7 @@ import {
   RIVAL_LOOKS,
   SCORE,
   SLOTS,
+  TABLE_PROPS,
   THROW_GAP_MS,
   W,
   type Phase,
@@ -34,7 +36,7 @@ import { LANDSCAPE_FRAME, SCENERY, frameFor, frameX, landscapeX, walkScale, type
 import { LUNCH_SFX, type LunchSfx } from "../sounds";
 import { Bubble, cartoonText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
-import { Cook, LunchLady, Rival } from "./actors";
+import { Cook, LunchLady, Rival, type Reaction } from "./actors";
 import { LunchHud } from "./hud";
 
 type Mode = "attract" | "tutorial" | "playing" | "ending" | "over";
@@ -68,6 +70,8 @@ function bezier(a: Pt, c: Pt, b: Pt, k: number): Pt {
 }
 
 const SAVE_KEY = "canal404:food-fight:v1";
+type Gloat = Extract<Reaction, "taunt" | "cheer" | "laugh">;
+const PERSONALITY: Record<RivalKind, [Gloat, Gloat]> = { cap: ["taunt", "laugh"], speedy: ["cheer", "taunt"], big: ["laugh", "cheer"] };
 const SIDE_BUBBLE = { x: MILA.x + 112, y: MILA.y - 150 };
 
 type FoodFightSave = { tutorialDone?: boolean; catchDone?: boolean; catchLessons?: number };
@@ -176,6 +180,8 @@ export class LunchScene extends Phaser.Scene {
   private clock!: Phaser.GameObjects.Image;
   private ourTable!: Phaser.GameObjects.Image;
   private ourMaskShape!: Phaser.GameObjects.Graphics;
+  private props: Phaser.GameObjects.Image[] = [];
+  private napkins: Phaser.GameObjects.Image[] = [];
 
   constructor() {
     super("lunch");
@@ -231,6 +237,8 @@ export class LunchScene extends Phaser.Scene {
     this.brawlFillAt = 0;
     this.milaPriorityUntil = 0;
     this.tables = [];
+    this.props = [];
+    this.napkins = [];
     this.peels = new Map();
     this.taught = new Set();
     this.ladyStop = 0;
@@ -279,25 +287,26 @@ export class LunchScene extends Phaser.Scene {
     this.lunchLady = new LunchLady(this, reduced);
     this.cook = new Cook(this, reduced);
 
-    const backMask = this.make.graphics({}, false).fillRect(-W, -H, W * 3, H + 702).createGeometryMask();
-    const frontMask = this.make.graphics({}, false).fillRect(-W, -H, W * 3, H + 944).createGeometryMask();
+    const masks = new Map<number, Phaser.Display.Masks.GeometryMask>();
     for (const slot of SLOTS) {
       const back = slot.row === "back";
-      this.tables.push(
-        this.add
-          .image(slot.x, slot.tableY, "rival-table")
-          .setOrigin(0.5, 0)
-          .setScale(back ? 0.7 : 0.95)
-          .setDepth(back ? 4 : 7),
-      );
-      this.rivals.push(new Rival(this, slot, back ? backMask : frontMask, fonts, reduced));
+      if (!masks.has(slot.maskBottom)) masks.set(slot.maskBottom, this.make.graphics({}, false).fillRect(-W, -H, W * 3, H + slot.maskBottom).createGeometryMask());
+      const table = this.add
+        .image(slot.x, slot.tableY, "rival-table")
+        .setOrigin(0.5, 0)
+        .setScale(back ? 0.7 : 0.95)
+        .setDepth(back ? 4 : 7);
+      this.tables.push(table);
+      this.rivals.push(new Rival(this, slot, table, masks.get(slot.maskBottom)!, fonts, reduced));
     }
+    this.buildMenu();
 
     this.ourMaskShape = this.make.graphics({}, false).fillRect(-W, -H, W * 3, H + 940);
     const ourMask = this.ourMaskShape.createGeometryMask();
     this.deco = this.add.image(DECO.x, DECO.standY, "deco-idle").setOrigin(0.5, 1).setDepth(9).setMask(ourMask);
     this.mila = this.add.image(MILA.x, MILA.y, "mila-peek").setOrigin(0.5, 1).setDepth(10).setMask(ourMask);
     this.ourTable = this.add.image(OUR_TABLE.x, OUR_TABLE.y, "our-table").setOrigin(0.5, 0).setDepth(11);
+    this.buildTableProps();
     for (const spot of AMMO_SPOTS) {
       this.ammoImgs.push(this.add.image(spot.x, spot.y, "sandwich").setOrigin(0.5, 1).setScale(0.62).setDepth(12).setVisible(false));
     }
@@ -370,6 +379,8 @@ export class LunchScene extends Phaser.Scene {
     this.cameras.main.setScroll(0, frame.top);
     this.ourMaskShape.setY(dy);
     this.ourTable.setY(OUR_TABLE.y + dy);
+    this.props.forEach((img) => img.setY(TABLE_PROPS.y + dy));
+    this.napkins.forEach((img) => img.visible && img.getData("seated") && img.setY(TABLE_PROPS.y - 20 + dy));
     this.ammoImgs.forEach((img, i) => img.setY(this.ammoY(i)));
     this.overlay.setY(560 + dy);
     this.cook.setBaseY(COOK.y + dy);
@@ -403,6 +414,53 @@ export class LunchScene extends Phaser.Scene {
     this.bubble.setBaseScale(bubbleScale);
     this.sideBubble.setBaseScale(bubbleScale);
     this.sideBubble.setWrap((frame.width - 12 - SIDE_BUBBLE.x) / bubbleScale - 24);
+  }
+
+  private buildMenu() {
+    const m = this.copy.menu;
+    const chalk = (x: number, y: number, text: string, size: number, alpha: number) =>
+      this.add.text(x, y, text, { fontFamily: this.ctx.fonts.hand, fontSize: `${size}px`, color: "#e8f5ee" }).setAlpha(alpha).setDepth(0.5);
+    chalk(MENU_BOARD.titleX, MENU_BOARD.titleY, m.title, 34, 0.9).setOrigin(0.5).setAngle(-1.5);
+    chalk(MENU_BOARD.specialX, MENU_BOARD.specialY, m.special, 28, 0.88).setOrigin(0, 0.5).setAngle(-2);
+    const dots = this.add.graphics().setDepth(0.5).fillStyle(0xe8f5ee, 0.5);
+    m.prices.forEach(([item, price], i) => {
+      const y = MENU_BOARD.rowY + i * MENU_BOARD.rowGap;
+      const a = chalk(MENU_BOARD.left, y, item, 25, 0.85).setOrigin(0, 0.5);
+      const b = chalk(MENU_BOARD.right, y, price, 25, 0.85).setOrigin(1, 0.5);
+      for (let x = a.x + a.width + 10; x < b.x - b.width - 8; x += 12) dots.fillCircle(x, y + 7, 1.8);
+    });
+  }
+
+  private buildTableProps() {
+    const y = TABLE_PROPS.y;
+    this.props.push(
+      this.add.image(TABLE_PROPS.juice.x, y, "juice").setOrigin(0.5, 1).setScale(TABLE_PROPS.juice.scale).setDepth(11.4),
+      this.add.image(TABLE_PROPS.plates.x, y + 2, "plates").setOrigin(0.5, 1).setScale(TABLE_PROPS.plates.scale).setDepth(11.5),
+      this.add.image(TABLE_PROPS.holder.x, y, "napkin-holder").setOrigin(0.5, 1).setScale(TABLE_PROPS.holder.scale).setDepth(11.5),
+    );
+    TABLE_PROPS.napkins.forEach((x, i) => {
+      this.napkins.push(this.add.image(x, y - 20, "napkin").setOrigin(0.5, 1).setScale(0.62).setAngle(-16 + i * 14).setDepth(11.3).setData("seated", true));
+    });
+  }
+
+  private useNapkin(left: number) {
+    const n = this.napkins[left];
+    if (!n?.getData("seated")) return;
+    n.setData("seated", false);
+    if (this.ctx.reducedMotion) {
+      n.setVisible(false);
+      return;
+    }
+    this.tweens.add({
+      targets: n,
+      x: DECO.face.x + 40,
+      y: DECO.face.y + this.frame.drop + 30,
+      angle: n.angle + Phaser.Math.Between(140, 220),
+      scale: 0.9,
+      duration: 320,
+      ease: "Quad.easeOut",
+      onComplete: () => this.tweens.add({ targets: n, alpha: 0, y: n.y + 60, duration: 260, onComplete: () => n.setVisible(false) }),
+    });
   }
 
   private drawExtension(frame: Frame) {
@@ -1073,6 +1131,7 @@ export class LunchScene extends Phaser.Scene {
     this.lives -= 1;
     this.hitsTaken += 1;
     this.hud.setLives(this.lives);
+    this.useNapkin(this.lives);
     this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.ouch) as string, 1100, "shout");
     if (this.lives <= 0) {
       this.lose();
@@ -1557,7 +1616,8 @@ export class LunchScene extends Phaser.Scene {
       this.tweens.add({ targets: [this.deco, this.mila], y: "-=30", duration: 180, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
     }
     this.word(this.copy.win.ring, this.bell.x, this.bell.y + 120, "#ffc83d", 56);
-    this.hud.flash(this.copy.win.title, "#ffc83d", 1500, this.copy.win.sub);
+    this.hud.flash(this.copy.win.title, "#ffc83d", 1500, this.copy.win.sub, "headline");
+    this.sulkAway();
     this.burst(DECO.x, 520 + this.frame.drop, 14);
     this.announce(this.copy.win.announce);
     this.time.delayedCall(1900, () => this.finish(true));
@@ -1569,21 +1629,79 @@ export class LunchScene extends Phaser.Scene {
     this.setPose("splat");
     this.mila.setTexture("mila-shout");
     this.sfx("lose", 1);
-    this.hud.flash(this.copy.lose.title, "#ef4f43", 1500, this.copy.lose.sub);
-    let i = 0;
-    for (const r of this.rivals) {
-      if (r.state === "hidden") {
-        const rr = r;
-        this.time.delayedCall(150 + i * 120, () => {
-          const kind = this.pickKind();
-          rr.rise(kind, this.pickLook(kind), this.t, 0, { hold: true });
-          rr.taunt(this.copy.brawl.gloat);
-        });
-        i += 1;
-      }
-    }
+    this.hud.flash(this.copy.lose.title, "#ef4f43", 1500, this.copy.lose.sub, "headline");
+    this.gloat();
     this.announce(this.copy.lose.announce);
     this.time.delayedCall(2000, () => this.finish(false));
+  }
+
+  private sulkAway() {
+    let spoke = false;
+    for (const r of this.rivals) {
+      if (!r.visible || r.state === "lowering") continue;
+      const line = spoke ? undefined : (Phaser.Utils.Array.GetRandom(this.copy.ending.sulk) as string);
+      if (!r.react("huff", line)) {
+        r.lower(() => undefined);
+        continue;
+      }
+      spoke = true;
+      this.time.delayedCall(520, () => r.visible && r.state !== "lowering" && r.lower(() => undefined));
+    }
+  }
+
+  private rantSpot() {
+    const backs = this.rivals.filter((r) => r.slot.row === "back").sort((a, b) => a.x - b.x);
+    return { backs, x: (backs[backs.length - 2].x + backs[backs.length - 1].x) / 2 };
+  }
+
+  private gloat() {
+    const lines = this.copy.ending;
+    const stopX = this.lunchLady.active ? this.lunchLady.img.x : this.rantSpot().x;
+    const picked = new Map<number, Gloat>();
+    let speakers = 0;
+    const react = (r: Rival) => {
+      const [main, alt] = PERSONALITY[r.def.kind];
+      const kind = [r.slot.key - 1, r.slot.key + 1].some((k) => picked.get(k) === main) ? alt : main;
+      picked.set(r.slot.key, kind);
+      const speaks = speakers < 2 && Math.abs(r.x - stopX) > 200;
+      if (speaks) speakers += 1;
+      r.react(kind, speaks ? (Phaser.Utils.Array.GetRandom(lines[kind]) as string) : undefined);
+    };
+    let standing = 0;
+    let rising = 0;
+    for (const r of this.rivals) {
+      if (r.state === "stunned" || r.state === "dazed") continue;
+      if (r.state === "hidden") {
+        const delay = 150 + rising * 120;
+        rising += 1;
+        this.time.delayedCall(delay, () => {
+          const kind = this.pickKind();
+          r.rise(kind, this.pickLook(kind), this.t, 0, { hold: true });
+        });
+        this.time.delayedCall(delay + 260, () => react(r));
+        continue;
+      }
+      r.stay(this.t);
+      this.time.delayedCall(r.state === "rising" ? 260 : 60 + standing * 110, () => react(r));
+      standing += 1;
+    }
+    this.time.delayedCall(420, () => this.ladyStorms());
+  }
+
+  private ladyStorms() {
+    if (this.mode !== "ending" && this.mode !== "over") return;
+    const { backs, x: stopX } = this.rantSpot();
+    this.lunchLady.storm(frameX(this.frame, LUNCH_LADY.enterX), stopX, () => {
+      const x = this.lunchLady.img.x;
+      this.sfx("whistle", 0.7);
+      this.word(this.copy.lady.whistle, x, this.lunchLady.top() - 34, "#fbf5e6", 46);
+      let spoke = false;
+      for (const r of backs) {
+        if (Math.abs(r.x - x) > 200 || !r.react("surprise", spoke ? undefined : this.copy.ending.surprise)) continue;
+        spoke = true;
+        this.time.delayedCall(380, () => r.visible && r.state !== "lowering" && r.lower(() => undefined));
+      }
+    });
   }
 
   private finishRound() {
@@ -1604,7 +1722,6 @@ export class LunchScene extends Phaser.Scene {
     }
     this.projectiles = [];
     this.incoming = 0;
-    for (const r of this.rivals) if (r.visible && r.state !== "lowering") r.lower(() => undefined);
   }
 
   private finish(won: boolean) {

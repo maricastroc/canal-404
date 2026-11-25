@@ -4,6 +4,9 @@ import { cartoonText, type Fonts } from "../../kit/ui";
 
 export type RivalState = "hidden" | "rising" | "up" | "windup" | "after" | "dazed" | "stunned" | "lowering";
 export type DazeKind = "slip" | "splash";
+export type Reaction = "taunt" | "cheer" | "laugh" | "surprise" | "huff";
+
+type Squash = [scaleX: number, scaleY: number, ms: number, ease?: string];
 
 const SPRITE_H = 250;
 const TRAY_UP_Y = -86;
@@ -13,6 +16,9 @@ export type HitOutcome = { result: "hurt" | "down"; interrupted: boolean };
 
 export class Rival {
   readonly container: Phaser.GameObjects.Container;
+  private rig: Phaser.GameObjects.Container;
+  private rigMotion?: Phaser.Tweens.Tween | Phaser.Tweens.TweenChain;
+  private tableScale: number;
   private body: Phaser.GameObjects.Image;
   private splat: Phaser.GameObjects.Image;
   private tray: Phaser.GameObjects.Image;
@@ -43,6 +49,7 @@ export class Rival {
   constructor(
     private scene: Phaser.Scene,
     readonly slot: SlotDef,
+    private table: Phaser.GameObjects.Image,
     mask: Phaser.Display.Masks.GeometryMask,
     private fonts: Fonts,
     private reduced: boolean,
@@ -53,8 +60,10 @@ export class Rival {
     this.splat = scene.add.image(0, -150, "splat-food").setScale(0.9).setVisible(false);
     this.tray = scene.add.image(0, TRAY_UP_Y, "tray").setAngle(-5).setVisible(false);
     this.headSplat = scene.add.image(0, -204, "splat-pudding").setScale(0.62).setVisible(false);
+    this.tableScale = table.scaleY;
+    this.rig = scene.add.container(0, 0, [this.body, this.splat, this.headSplat, this.tray]);
     this.container = scene.add
-      .container(slot.x, this.hiddenY, [this.body, this.splat, this.headSplat, this.tray])
+      .container(slot.x, this.hiddenY, [this.rig])
       .setDepth(depth)
       .setScale(slot.scale)
       .setVisible(false);
@@ -114,7 +123,45 @@ export class Rival {
     return `rival-${this.def.kind}-${this.look}-${pose}`;
   }
 
-  rise(kind: RivalKind, look: number, now: number, idle: number, opts: { feint?: boolean; hold?: boolean; tray?: boolean; brawl?: boolean } = {}) {
+  private shape(steps: Squash[], from?: [number, number], onDone?: () => void) {
+    this.rigMotion?.stop();
+    this.rigMotion = undefined;
+    if (this.reduced) {
+      this.rig.setScale(1);
+      return;
+    }
+    if (from) this.rig.setScale(from[0], from[1]);
+    this.rigMotion = this.scene.tweens.chain({
+      targets: this.rig,
+      tweens: steps.map(([scaleX, scaleY, duration, ease]) => ({ scaleX, scaleY, duration, ease: ease ?? "Sine.easeOut" })),
+      onComplete: () => {
+        this.rigMotion = undefined;
+        onDone?.();
+      },
+    });
+  }
+
+  private settleRig() {
+    this.rigMotion?.stop();
+    this.rigMotion = undefined;
+    this.rig.setScale(1);
+  }
+
+  private breathe() {
+    if (this.reduced || this.brawl || this.state !== "up") return;
+    this.rigMotion?.stop();
+    this.rigMotion = this.scene.tweens.add({ targets: this.rig, scaleX: 0.99, scaleY: 1.022, duration: 440, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+
+  private rustle(strength: number) {
+    if (this.reduced) return;
+    const base = this.tableScale;
+    this.scene.tweens.killTweensOf(this.table);
+    this.table.setScale(base);
+    this.scene.tweens.add({ targets: this.table, scaleY: base * (1 + 0.035 * strength), scaleX: base * (1 - 0.006 * strength), duration: 80, yoyo: true, ease: "Sine.easeOut" });
+  }
+
+  rise(kind: RivalKind, look: number, now: number, idle: number, opts: { feint?: boolean; hold?: boolean; tray?: boolean; brawl?: boolean; fromY?: number } = {}) {
     this.def = RIVALS[kind];
     this.look = look;
     this.hp = this.def.hp;
@@ -132,7 +179,7 @@ export class Rival {
     this.headSplat.setVisible(false);
     this.scene.tweens.killTweensOf(this.tray);
     this.tray.setVisible(this.trayKid).setPosition(0, TRAY_UP_Y).setAngle(-5).setAlpha(1);
-    this.container.setScale(this.scale).setY(this.hiddenY).setVisible(true).setAngle(0);
+    this.container.setScale(this.scale).setY(opts.fromY ?? this.hiddenY).setVisible(true).setAngle(0);
     this.state = "rising";
     this.scene.tweens.killTweensOf(this.container);
     const duration = kind === "speedy" ? 150 : 230;
@@ -140,7 +187,7 @@ export class Rival {
       targets: this.container,
       y: this.slot.upY,
       duration,
-      ease: "Back.easeOut",
+      ease: "Cubic.easeOut",
       onComplete: () => {
         if (this.state !== "rising") return;
         this.state = "up";
@@ -148,6 +195,17 @@ export class Rival {
         this.startFidget();
       },
     });
+    if (opts.fromY === undefined) this.rustle(kind === "big" ? 1.3 : 1);
+    const pop = kind === "speedy" ? 0.06 : kind === "big" ? 0.1 : 0.08;
+    this.shape(
+      [
+        [0.96, 1.05, duration * 0.7, "Quad.easeOut"],
+        [1 + pop, 1 - pop, duration * 0.3 + 40, "Quad.easeOut"],
+        [1, 1, 170, "Back.easeOut"],
+      ],
+      [0.88, 1.12],
+      () => this.breathe(),
+    );
   }
 
   startWindup(now: number, ms: number) {
@@ -156,6 +214,10 @@ export class Rival {
     this.windupMs = ms;
     this.until = now + ms;
     this.body.setTexture(this.texture("windup"));
+    this.shape([
+      [1.06, 0.94, 90, "Quad.easeOut"],
+      [0.97, 1.04, 170, "Sine.easeInOut"],
+    ]);
     if (this.shielded) {
       this.shielded = false;
       if (this.reduced) this.tray.setY(TRAY_DOWN_Y);
@@ -173,6 +235,10 @@ export class Rival {
     this.alert.setVisible(false);
     this.state = "after";
     this.until = now + 420;
+    this.shape([
+      [1.07, 0.94, 70, "Quad.easeOut"],
+      [1, 1, 180, "Back.easeOut"],
+    ]);
     return from;
   }
 
@@ -204,6 +270,10 @@ export class Rival {
       if (!this.reduced) {
         this.scene.tweens.add({ targets: this.container, angle: { from: -8, to: 0 }, duration: 260, ease: "Back.easeOut" });
       }
+      this.shape([
+        [1.08, 0.92, 60, "Quad.easeOut"],
+        [1, 1, 200, "Back.easeOut"],
+      ]);
       if (this.state === "windup") this.until = Math.max(this.until, now + 500);
       return { result: "hurt", interrupted: false };
     }
@@ -218,6 +288,11 @@ export class Rival {
     if (!this.reduced) {
       this.scene.tweens.add({ targets: this.container, angle: { from: 10, to: -6 }, duration: 160, yoyo: true, repeat: 1 });
     }
+    this.shape([
+      [1.16, 0.84, 70, "Quad.easeOut"],
+      [0.95, 1.05, 130, "Sine.easeOut"],
+      [1.02, 0.97, 200, "Sine.easeInOut"],
+    ]);
     const interrupted = wasWindup && this.pudding.visible;
     if (!interrupted) {
       this.pudding.setVisible(false);
@@ -256,14 +331,18 @@ export class Rival {
       this.splatTimer?.remove();
       this.splat.setVisible(true).setAngle(Phaser.Math.Between(-20, 20));
     }
-    if (this.reduced) return;
+    this.shape(kind === "slip" ? [[0.92, 1.1, 90, "Quad.easeOut"], [1.1, 0.9, 150, "Quad.easeIn"], [1, 1, 220, "Back.easeOut"]] : [[1.1, 0.9, 80, "Quad.easeOut"], [1, 1, 240, "Back.easeOut"]]);
     this.scene.tweens.killTweensOf(this.container);
-    this.container.setY(this.slot.upY);
-    if (kind === "slip") {
-      this.scene.tweens.add({ targets: this.container, angle: { from: 0, to: -22 }, y: this.slot.upY + 34 * this.scale, duration: 150, yoyo: true, ease: "Quad.easeOut" });
-    } else {
-      this.scene.tweens.add({ targets: this.container, angle: { from: 9, to: 0 }, duration: 300, ease: "Back.easeOut" });
+    if (this.reduced) {
+      this.container.setY(this.slot.upY);
+      return;
     }
+    const settle = Math.abs(this.container.y - this.slot.upY) > 1 ? [{ y: this.slot.upY, duration: 80, ease: "Quad.easeOut" }] : [];
+    const wobble =
+      kind === "slip"
+        ? { angle: { from: 0, to: -22 }, y: this.slot.upY + 34 * this.scale, duration: 150, yoyo: true, ease: "Quad.easeOut" }
+        : { angle: { from: 9, to: 0 }, duration: 300, ease: "Back.easeOut" };
+    this.scene.tweens.chain({ targets: this.container, tweens: [...settle, wobble] });
   }
 
   recover(now: number, idle: number) {
@@ -273,6 +352,7 @@ export class Rival {
     this.splat.setVisible(false);
     this.container.setAngle(0);
     this.startFidget();
+    this.shape([[1, 1, 160, "Sine.easeOut"]], undefined, () => this.breathe());
   }
 
   loseTray() {
@@ -296,7 +376,7 @@ export class Rival {
 
   hand(dir = 1) {
     const s = this.scale;
-    return { x: this.x + 80 * s * dir, y: this.container.y - 176 * s };
+    return { x: this.x + 80 * s * dir * this.rig.scaleX, y: this.container.y - 176 * s * this.rig.scaleY };
   }
 
   throwPose(dir: number) {
@@ -316,17 +396,103 @@ export class Rival {
       if (this.state === "up") this.splat.setVisible(false);
     });
     if (!this.reduced) this.scene.tweens.add({ targets: this.container, angle: { from: -9, to: 0 }, duration: 260, ease: "Back.easeOut" });
+    this.shape([
+      [1.1, 0.9, 60, "Quad.easeOut"],
+      [1, 1, 200, "Back.easeOut"],
+    ]);
+  }
+
+  private get onStage() {
+    return this.state !== "hidden" && this.state !== "lowering" && this.state !== "stunned" && this.state !== "dazed";
   }
 
   celebrate() {
-    if (this.state === "hidden" || this.state === "lowering" || this.state === "stunned" || this.state === "dazed") return false;
-    if (!this.reduced) this.scene.tweens.add({ targets: this.container, y: this.container.y - 26 * this.scale, duration: 140, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
+    if (!this.onStage) return false;
+    this.shape([
+      [0.9, 1.13, 120, "Quad.easeOut"],
+      [1.06, 0.94, 100, "Quad.easeIn"],
+      [0.93, 1.09, 110, "Quad.easeOut"],
+      [1, 1, 180, "Back.easeOut"],
+    ]);
     return true;
   }
 
   sulk() {
-    if (this.state === "hidden" || this.state === "lowering" || this.state === "stunned" || this.state === "dazed") return false;
+    if (!this.onStage) return false;
     if (!this.reduced) this.scene.tweens.add({ targets: this.container, angle: { from: -6, to: 6 }, duration: 90, yoyo: true, repeat: 2, onComplete: () => this.container.setAngle(0) });
+    this.shape([
+      [1.06, 0.92, 140, "Quad.easeOut"],
+      [1, 1, 300, "Sine.easeInOut"],
+    ]);
+    return true;
+  }
+
+  stay(now: number) {
+    if (this.state === "lowering") {
+      this.rise(this.def.kind, this.look, now, 0, { hold: true, fromY: this.container.y });
+      return;
+    }
+    this.hold = true;
+    this.alert.setVisible(false);
+    if (!this.puddingFalling) this.pudding.setVisible(false);
+    if (this.state === "windup" || this.state === "after") {
+      this.state = "up";
+      this.body.setTexture(this.texture("up")).setFlipX(false);
+      this.shape([[1, 1, 160, "Sine.easeOut"]]);
+    }
+  }
+
+  react(kind: Reaction, line?: string) {
+    if (!this.onStage) return false;
+    this.stopFidget();
+    this.poseTimer?.remove();
+    this.alert.setVisible(false);
+    if (!this.puddingFalling) this.pudding.setVisible(false);
+    if (line) this.taunt(line);
+    const arm = kind === "taunt" || kind === "cheer";
+    this.body.setTexture(this.texture(arm ? "windup" : "up")).setFlipX(kind === "taunt");
+    if (this.reduced) return true;
+    const tweens = this.scene.tweens;
+    if (this.state !== "rising") {
+      tweens.killTweensOf(this.container);
+      this.container.setAngle(0);
+    }
+    if (kind === "taunt") {
+      tweens.add({ targets: this.container, angle: -7, duration: 150, ease: "Back.easeOut" });
+      this.shape([
+        [0.94, 1.08, 140, "Quad.easeOut"],
+        [1.03, 0.97, 130, "Sine.easeInOut"],
+        [0.97, 1.04, 130, "Sine.easeInOut"],
+        [1.03, 0.97, 130, "Sine.easeInOut"],
+        [0.98, 1.03, 160, "Sine.easeInOut"],
+      ]);
+    } else if (kind === "cheer") {
+      tweens.add({ targets: this.container, angle: { from: -5, to: 5 }, duration: 190, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: () => this.container.setAngle(0) });
+      this.shape([
+        [0.9, 1.14, 110, "Quad.easeOut"],
+        [1.07, 0.93, 90, "Quad.easeIn"],
+        [0.9, 1.14, 110, "Quad.easeOut"],
+        [1.07, 0.93, 90, "Quad.easeIn"],
+        [0.94, 1.08, 110, "Quad.easeOut"],
+        [1, 1, 180, "Back.easeOut"],
+      ]);
+    } else if (kind === "laugh") {
+      tweens.add({ targets: this.container, angle: { from: 3, to: -3 }, duration: 70, yoyo: true, repeat: 5, onComplete: () => this.container.setAngle(0) });
+      const shake: Squash[] = [];
+      for (let i = 0; i < 8; i += 1) shake.push(i % 2 ? [1.03, 0.96, 60, "Sine.easeInOut"] : [0.98, 1.04, 60, "Sine.easeInOut"]);
+      this.shape([[1.08, 0.9, 130, "Quad.easeOut"], ...shake, [1, 1, 220, "Back.easeOut"]]);
+    } else if (kind === "surprise") {
+      this.shape([
+        [0.86, 1.16, 80, "Quad.easeOut"],
+        [1.02, 0.98, 160, "Back.easeOut"],
+      ]);
+    } else {
+      tweens.add({ targets: this.container, angle: { from: -4, to: 4 }, duration: 170, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: () => this.container.setAngle(0) });
+      this.shape([
+        [1.07, 0.91, 240, "Sine.easeOut"],
+        [1.04, 0.94, 300, "Sine.easeInOut"],
+      ]);
+    }
     return true;
   }
 
@@ -336,6 +502,10 @@ export class Rival {
     this.alert.setVisible(false);
     this.pudding.setVisible(false);
     this.scene.tweens.killTweensOf(this.container);
+    this.shape([
+      [0.95, 1.06, 50, "Quad.easeOut"],
+      [1.1, 0.88, 150, "Quad.easeIn"],
+    ]);
     this.scene.tweens.add({
       targets: this.container,
       y: this.hiddenY,
@@ -344,6 +514,8 @@ export class Rival {
       ease: "Quad.easeIn",
       onComplete: () => {
         this.state = "hidden";
+        this.settleRig();
+        this.rustle(0.7);
         this.container.setVisible(false);
         this.dizzy.setVisible(false);
         this.splat.setVisible(false);
@@ -357,7 +529,8 @@ export class Rival {
   }
 
   taunt(text: string) {
-    const t = cartoonText(this.scene, this.x, this.top() - 30, text, {
+    const top = this.state === "rising" ? this.slot.upY - 228 * this.scale : this.top();
+    const t = cartoonText(this.scene, this.x, top - 30, text, {
       size: this.slot.row === "back" ? 30 : 36,
       color: "#fbf5e6",
       font: this.fonts.display,
@@ -389,6 +562,7 @@ export class Rival {
 
   forceHide() {
     this.stopFidget();
+    this.settleRig();
     this.scene.tweens.killTweensOf(this.container);
     this.state = "hidden";
     this.container.setVisible(false).setY(this.hiddenY);
@@ -416,6 +590,7 @@ export class LunchLady {
   private pausedFor = 0;
   private exitX = LUNCH_LADY.exitX;
   private stretch = 1;
+  private ranting = false;
 
   constructor(
     private scene: Phaser.Scene,
@@ -434,7 +609,8 @@ export class LunchLady {
     this.pausedFor = 0;
     this.exitX = exitX;
     this.stretch = stretch;
-    this.img.setTexture("lady-walk-0").setPosition(enterX, LUNCH_LADY.y).setAngle(0).setVisible(true);
+    this.ranting = false;
+    this.img.setTexture("lady-walk-0").setPosition(enterX, LUNCH_LADY.y).setAngle(0).setScale(LUNCH_LADY.scale).setVisible(true);
     this.shadow.setVisible(true);
     this.marker.setVisible(true);
     this.place();
@@ -451,8 +627,8 @@ export class LunchLady {
     return Math.abs(at.x - this.img.x) < halfW && at.y > top - margin && at.y < this.img.y + 40;
   }
 
-  private place() {
-    const frame = Math.floor(this.walked / LUNCH_LADY.stride) % 4;
+  private place(stride = LUNCH_LADY.stride) {
+    const frame = Math.floor(this.walked / stride) % 4;
     this.img.setTexture(`${this.angry ? "lady-angry" : "lady-walk"}-${frame}`);
     const lift = frame % 2 === 1 ? 7 : 0;
     this.img.setY(LUNCH_LADY.y - (this.reduced ? 0 : lift));
@@ -475,7 +651,7 @@ export class LunchLady {
   }
 
   update(delta: number) {
-    if (!this.active) return;
+    if (!this.active || this.ranting) return;
     if (this.pausedFor > 0 && !this.angry) {
       this.pausedFor -= delta;
       return;
@@ -504,8 +680,70 @@ export class LunchLady {
     }
   }
 
+  storm(enterX: number, stopX: number, onArrive: () => void) {
+    this.scene.tweens.killTweensOf(this.img);
+    this.ranting = true;
+    this.angry = true;
+    this.pausedFor = 0;
+    this.marker.setVisible(false);
+    if (!this.active) {
+      this.active = true;
+      this.walked = 0;
+      this.img.setPosition(enterX, LUNCH_LADY.y).setScale(LUNCH_LADY.scale).setAngle(0).setVisible(true);
+      this.shadow.setVisible(true);
+    } else {
+      stopX = this.img.x;
+    }
+    const dist = Math.abs(this.img.x - stopX);
+    if (this.reduced || dist < 8) {
+      this.img.setX(stopX);
+      this.rant();
+      onArrive();
+      return;
+    }
+    const walk = { x: this.img.x };
+    this.scene.tweens.add({
+      targets: walk,
+      x: stopX,
+      duration: dist / 0.85,
+      ease: "Sine.easeOut",
+      onUpdate: () => {
+        this.walked += Math.abs(walk.x - this.img.x);
+        this.img.setX(walk.x);
+        this.place(38);
+        this.marker.setVisible(false);
+      },
+      onComplete: () => {
+        this.rant();
+        onArrive();
+      },
+    });
+  }
+
+  private rant() {
+    const s = LUNCH_LADY.scale;
+    this.img.setTexture("lady-scold").setY(LUNCH_LADY.y).setAngle(0).setScale(s);
+    this.shadow.setPosition(this.img.x + 4, LUNCH_LADY.y + 4).setScale(1);
+    if (this.reduced) return;
+    this.scene.tweens.chain({
+      targets: this.img,
+      tweens: [
+        { scaleX: s * 1.07, scaleY: s * 0.93, duration: 80, ease: "Quad.easeOut" },
+        { scaleX: s, scaleY: s, duration: 160, ease: "Back.easeOut" },
+        { scaleX: s * 1.05, scaleY: s * 0.95, duration: 70, ease: "Quad.easeOut" },
+        { scaleX: s, scaleY: s, duration: 160, ease: "Back.easeOut" },
+      ],
+    });
+    this.scene.tweens.add({ targets: this.img, angle: { from: -2.5, to: 2.5 }, duration: 130, yoyo: true, repeat: 4, delay: 240, ease: "Sine.easeInOut", onComplete: () => this.img.setAngle(0) });
+  }
+
+  top() {
+    return this.img.y - this.img.displayHeight;
+  }
+
   hide() {
     this.active = false;
+    this.ranting = false;
     this.img.setVisible(false);
     this.shadow.setVisible(false);
     this.marker.setVisible(false);

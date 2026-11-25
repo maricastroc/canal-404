@@ -136,6 +136,21 @@ export const COPY = localized({
       stopSay: (table: number) => `A tia parou na mesa ${table}! Mira em outra.`,
       stopAnnounce: (table: number) => `A tia da cantina parou na frente da mesa ${table}. Um lanche nessa mesa acerta ela.`,
     },
+    ending: {
+      taunt: ["Bem feito!", "Te peguei!"],
+      cheer: ["Ganhamos!", "Uhuu!"],
+      laugh: ["HAHAHA!", "HUAHUA!"],
+      surprise: "Xiii, a tia!",
+      sulk: ["Ah, não!", "Poxa!"],
+    },
+    menu: {
+      title: "CARDÁPIO",
+      special: "Pudim do dia!",
+      prices: [
+        ["Sanduíche", "2 figurinhas"],
+        ["Suco", "5 tampinhas"],
+      ] as [string, string][],
+    },
     lastSeconds: {
       title: "ÚLTIMOS 10 SEGUNDOS!",
       announce: "Faltam 10 segundos!",
@@ -297,6 +312,21 @@ export const COPY = localized({
       hitAnnounce: (penalty: number) => `You hit the lunch lady! Minus ${formatNumber(penalty, "en")} points.`,
       stopSay: (table: number) => `She stopped at table ${table}! Aim elsewhere.`,
       stopAnnounce: (table: number) => `The lunch lady stopped in front of table ${table}. A snack thrown at that table will hit her.`,
+    },
+    ending: {
+      taunt: ["Gotcha!", "Told you!"],
+      cheer: ["We won!", "Woo-hoo!"],
+      laugh: ["HAHAHA!", "BWAHAHA!"],
+      surprise: "Uh-oh, lunch lady!",
+      sulk: ["Oh no!", "Aw, man!"],
+    },
+    menu: {
+      title: "MENU",
+      special: "Pudding of the day!",
+      prices: [
+        ["Sandwich", "2 stickers"],
+        ["Juice", "5 bottle caps"],
+      ] as [string, string][],
     },
     lastSeconds: {
       title: "LAST 10 SECONDS!",
