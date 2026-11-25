@@ -48,8 +48,8 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       unlock: "Termine o Pot-pourri do 404 em Ao Vivo no 404.",
     },
     downhill: {
-      title: "Ladeira Abaixo (Tema)",
-      mood: "Sem freio, sem plano B e com muito vento na cara.",
+      title: "Ladeira Abaixo (Chegada)",
+      mood: "A vinheta da linha de chegada. Do pódio ao trombone triste.",
       unlock: "",
     },
   },
@@ -85,8 +85,8 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       unlock: "Finish the 404 Medley in Live on 404.",
     },
     downhill: {
-      title: "Downhill Derby (Theme)",
-      mood: "No brakes, no plan B and plenty of wind in your face.",
+      title: "Downhill Derby (Finish)",
+      mood: "The finish-line sting. From the podium to the sad trombone.",
       unlock: "",
     },
   },

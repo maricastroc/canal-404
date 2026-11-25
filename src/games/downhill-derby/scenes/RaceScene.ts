@@ -21,7 +21,7 @@ import { buildCourse } from "../sim/courses";
 import { covers, heightAt } from "../sim/track";
 import { EngineHum } from "../engineHum";
 import { RaceMusic } from "../music";
-import { boing, DOWNHILL_SFX, PADDLE, rollGrain, windGrain } from "../sounds";
+import { boing, DOWNHILL_SFX, PADDLE, poseSound, rollGrain, windGrain } from "../sounds";
 import { CartView, INK } from "./cart";
 import { WorldFx } from "./fx";
 import { formatNumber } from "@/i18n/format";
@@ -309,14 +309,8 @@ export class RaceScene extends Phaser.Scene {
       this.music.destroy();
       this.hum.destroy();
     });
-    this.events.on(Phaser.Scenes.Events.PAUSE, () => {
-      this.music.pause();
-      this.hum.silence();
-    });
-    this.events.on(Phaser.Scenes.Events.RESUME, () => {
-      this.releaseInput();
-      this.music.resume();
-    });
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => this.hum.silence());
+    this.events.on(Phaser.Scenes.Events.RESUME, () => this.releaseInput());
     watchFrame(this, (frame) => this.applyFrame(frame));
     this.restartRace();
   }
@@ -874,7 +868,6 @@ export class RaceScene extends Phaser.Scene {
       this.goT = 0.5;
       this.sfx(DOWNHILL_SFX.go);
       this.sfx(DOWNHILL_SFX.vroom);
-      this.music.play();
       this.acc = 0;
     }
   }
@@ -1166,11 +1159,12 @@ export class RaceScene extends Phaser.Scene {
       case "pose":
         if (e.level > 0) {
           this.hud.tag("pose", c.show.poses[e.level - 1], e.level >= 3 ? "#ffcf3f" : "#7fe0c4");
-          if (e.level >= 2) this.sfx(DOWNHILL_SFX.tier, 0.5 + e.level * 0.15);
+          this.sfx(poseSound(e.level));
         }
         this.cart.setPose(e.level);
         break;
       case "wheelie":
+        this.sfx(e.on ? DOWNHILL_SFX.wheelie : DOWNHILL_SFX.touch, e.on ? 1 : 0.7);
         break;
       case "finish":
         this.finishRace();
