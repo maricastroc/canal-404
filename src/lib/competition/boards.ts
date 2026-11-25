@@ -71,7 +71,7 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
     ],
   },
   "downhill-derby": {
-    explain: "Cada pista tem seu placar. Menor tempo vence. Empate: menos capotadas; depois, mais pontos de show.",
+    explain: "Cada pista tem seu placar. Menor tempo vence. Empate: menos capotadas; depois, mais pontos da corrida.",
     check: "replayed",
     metrics: [
       { label: "Tempo", unit: "racetime", lowerIsBetter: true },
@@ -128,7 +128,7 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
     metrics: [{ label: "Points" }, { label: "Time" }, { label: "Discoveries", noun: ["discovery", "discoveries"] }],
   },
   "downhill-derby": {
-    explain: "Each track has its own board. Fastest time wins. Tiebreak: fewer wipeouts, then more show points.",
+    explain: "Each track has its own board. Fastest time wins. Tiebreak: fewer wipeouts, then more race points.",
     metrics: [{ label: "Time" }, { label: "Wipeouts", noun: ["wipeout", "wipeouts"] }, { label: "Show" }],
   },
   "past-bedtime": {
