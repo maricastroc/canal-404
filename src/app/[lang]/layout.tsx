@@ -10,6 +10,20 @@ import "../globals.css";
 const UMAMI_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC ?? "https://cloud.umami.is/script.js";
 
+const KEEP_CHANNEL = `window.umamiBeforeSend=function(type,payload){
+function keep(value){
+if(typeof value!=="string"||value.indexOf("?")<0)return value;
+try{
+var url=new URL(value,location.origin);
+var channel=url.searchParams.get("utm_source");
+url.search=channel&&/^[a-z0-9-]{1,24}$/.test(channel)?"utm_source="+channel:"";
+return /^[a-z][a-z0-9+.-]*:/i.test(value)?url.href:url.pathname+url.search+url.hash;
+}catch(error){return value.split("?")[0]}
+}
+if(payload&&typeof payload==="object"){payload.url=keep(payload.url);payload.referrer=keep(payload.referrer)}
+return payload;
+};`;
+
 const COPY = localized({
   "pt-BR": {
     description: "O canal saiu do ar, mas o portal de jogos continua funcionando. Explore a sala de transmissão, descubra segredos e jogue os jogos do canal.",
@@ -58,7 +72,8 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
           {COPY[lang].skip}
         </a>
         <AppProviders locale={lang}>{children}</AppProviders>
-        {UMAMI_ID && <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} data-do-not-track="true" data-exclude-search="true" strategy="afterInteractive" />}
+        {UMAMI_ID && <script dangerouslySetInnerHTML={{ __html: KEEP_CHANNEL }} />}
+        {UMAMI_ID && <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} data-do-not-track="true" data-before-send="umamiBeforeSend" strategy="afterInteractive" />}
       </body>
     </html>
   );

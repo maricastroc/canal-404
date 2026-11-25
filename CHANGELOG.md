@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Compartilhar resultado e canal de origem
+- **Share your result.** Every game's end-of-run screen has a Compartilhar / Share link next to Voltar à sala. On phones and browsers with a share sheet it opens the sheet; elsewhere it copies the text and link and says "Link copiado!". The text names the game, the stars (or the points when there are none) and the level, track, arena, part or song, followed by the game's page in the player's language with `?utm_source=share`.
+- **Know where visitors come from.** Links in social bios can carry `?utm_source=tiktok`, `reels`, `shorts` and so on, and Umami now records that tag. Before, the tracker dropped the whole query string, and in-app browsers often send no referrer, so those visits showed up as direct.
+- **Still nothing personal.** Only `utm_source` is kept, and only when it's a short lowercase slug. Every other parameter is still dropped from the page address and the referrer before anything leaves the browser (decision 0002).
+
 ### Ao Vivo no 404: sem modo assistido
 - **One button to start.** The song card no longer has the assist toggle, and A no longer turns it on. The card shows only Começar, and the how-to-play, the board explanation and the 3-star achievement no longer mention it.
 - **Why.** On most songs assist mode only widened the timing by 15 to 45 ms, which no one could feel. On Vinheta de Intervalo, Balada do Chuvisco and Pot-pourri it showed the hidden notes, which are the point of those songs, and the notes played by ear already get the wider timing for everyone.
