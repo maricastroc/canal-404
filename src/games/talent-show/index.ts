@@ -8,7 +8,7 @@ import { destroyGame } from "../kit/game";
 
 const TUTORIAL_KEY = "canal404:talent-show:tutorial:v1";
 const OLD_CALIBRATION_KEY = "canal404:talent-show:calibration:v1";
-const ASSIST_KEY = "canal404:talent-show:assist:v1";
+const OLD_ASSIST_KEY = "canal404:talent-show:assist:v1";
 const FINALE_ACHIEVEMENT = "talent-finale";
 const RESULT_HOLD_MS = 1800;
 const IGNORED_KEYS = new Set(["Tab", "MetaLeft", "MetaRight", "AltLeft", "AltRight", "ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "CapsLock", "F5", "F12"]);
@@ -73,6 +73,7 @@ function mount(ctx: GameHostContext): GameInstance {
   };
 
   const boot = () => {
+    forget(OLD_ASSIST_KEY);
     const bridge: TalentBridge = {
       locale: ctx.locale,
       fonts: { display: ctx.fonts.display, body: ctx.fonts.body },
@@ -80,7 +81,6 @@ function mount(ctx: GameHostContext): GameInstance {
       touch: coarse(),
       inlineScore: inlineScore(ctx.parent),
       reducedMotion: ctx.reducedMotion,
-      assist: { get: () => read(ASSIST_KEY) === "1", set: (on) => write(ASSIST_KEY, on ? "1" : "0") },
       tutorial: { seen: tutorialSeen, done: () => write(TUTORIAL_KEY, "1") },
       onLoad: (value) => {
         if (!ready) ctx.onProgress(value, "art");

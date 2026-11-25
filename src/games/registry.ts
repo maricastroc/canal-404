@@ -551,9 +551,7 @@ const TEXT = gameText({
       controls: [
         { input: "Qualquer tecla", action: "Pressione quando a nota chegar ao círculo. Nas notas compridas, mantenha a tecla pressionada.", on: "keys" },
         { input: "Esc ou P", action: "Pausa o show. Ao voltar, você recebe uma contagem para entrar no ritmo.", on: "keys" },
-        { input: "Modo assistido", action: "Ative antes da música, com a tecla A, para jogar com uma ajudinha.", on: "keys" },
         { input: "Toque na tela", action: "Toque quando a nota chegar ao círculo. Nas notas compridas, mantenha o dedo pressionado.", on: "touch" },
-        { input: "Modo assistido", action: "Ative antes da música para jogar com uma ajudinha.", on: "touch" },
       ],
       howTo: [
         { title: "Toque na hora", text: "Quando a nota chegar ao círculo, toque! Quanto mais preciso, mais pontos." },
@@ -566,11 +564,10 @@ const TEXT = gameText({
         "Na vez da Mila, só escute. Tocar junto com ela vira barulho.",
         "Na Rua Sem Saída, não siga a batida no automático: espere cada nota chegar ao círculo.",
         "Quando o sinal falha, as notas aparecem fracas e somem antes do círculo. Guarde o ritmo que você viu e siga a música.",
-        "O modo assistido dá mais margem, mostra as notas escondidas e não deixa a plateia ir embora. Ele não vale para o placar.",
       ],
-      keyTips: ["Qualquer tecla toca. Nas notas compridas, mantenha a tecla pressionada.", "Aperte A antes da música para ligar o modo assistido."],
+      keyTips: ["Qualquer tecla toca. Nas notas compridas, mantenha a tecla pressionada."],
       touchTips: ["Toque em qualquer lugar da tela. Nas notas compridas, mantenha o dedo pressionado.", "No iPhone, tire do modo silencioso para ouvir a música."],
-      controlsSummary: "Ao Vivo no 404. Qualquer tecla toca e, pressionada, segura as notas compridas. Esc ou P pausa. Antes de cada música, A liga o modo assistido.",
+      controlsSummary: "Ao Vivo no 404. Qualquer tecla toca e, pressionada, segura as notas compridas. Esc ou P pausa.",
       copy: {
         winTitle: "Que apresentação!",
         winText: "O júri levantou as placas e a plateia pediu bis.",
@@ -1036,9 +1033,7 @@ const TEXT = gameText({
       controls: [
         { input: "Any key", action: "Press when the note reaches the circle. On long notes, keep the key held down.", on: "keys" },
         { input: "Esc or P", action: "Pauses the show. When you come back, a count-in gets you back on the beat.", on: "keys" },
-        { input: "Assist mode", action: "Turn it on before the song with the A key to play with a little help.", on: "keys" },
         { input: "Tap the screen", action: "Tap when the note reaches the circle. On long notes, keep your finger down.", on: "touch" },
-        { input: "Assist mode", action: "Turn it on before the song to play with a little help.", on: "touch" },
       ],
       howTo: [
         { title: "Tap on time", text: "When the note reaches the circle, tap! The more precise, the more points." },
@@ -1051,11 +1046,10 @@ const TEXT = gameText({
         "On Mila's turn, just listen. Playing along with her counts as noise.",
         "In Dead End Street, don't just tap along to the beat: wait for each note to reach the circle.",
         "When the signal fails, the notes show up faint and vanish before the circle. Remember the rhythm you saw and follow the music.",
-        "Assist mode gives you more room, shows the hidden notes and keeps the crowd from leaving. It doesn't count for the scoreboard.",
       ],
-      keyTips: ["Any key plays. On long notes, keep the key held down.", "Press A before the song to turn on assist mode."],
+      keyTips: ["Any key plays. On long notes, keep the key held down."],
       touchTips: ["Tap anywhere on the screen. On long notes, keep your finger down.", "On iPhone, turn off silent mode to hear the music."],
-      controlsSummary: "Live on 404. Any key plays and, held down, holds long notes. Esc or P pauses. Before each song, A turns on assist mode.",
+      controlsSummary: "Live on 404. Any key plays and, held down, holds long notes. Esc or P pauses.",
       copy: {
         winTitle: "What a show!",
         winText: "The jury raised their paddles and the crowd asked for an encore.",

@@ -4,7 +4,7 @@ import type { TalentCopy } from "../copy";
 import type { BandMember, SongId } from "../song/notation";
 import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawBurst, drawCall, drawEcho, drawNote, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, type Spark } from "./lane";
 
-export type CardButtonId = "primary" | "assist";
+export type CardButtonId = "primary";
 export type CardMode = "row" | "stacked" | "phone";
 export type DemoKind = "learn" | "tap" | "hold" | "echo" | "offbeat" | "static" | "medley";
 
@@ -15,9 +15,7 @@ export type CardContent = {
   face: string | null;
   demo: DemoKind | null;
   how: string;
-  note: string;
   primary: { label: string; icon: string } | null;
-  secondary: { id: Exclude<CardButtonId, "primary">; label: string; on: boolean }[];
   footer: string;
   footerIcon?: string;
 };
@@ -264,7 +262,7 @@ class DemoLane {
         if (at <= beat) continue;
         const hidden = staticSpan !== null && x >= staticSpan[0] - r * 0.4 && x <= staticSpan[1] + r * 0.4;
         if (hidden) {
-          drawNote(this.ghostG, this.ghostIcons, x, laneY, r, color, ghostAlpha("lost", false, Math.round(at * 4), now, this.reduced, at - beat) * edge(x));
+          drawNote(this.ghostG, this.ghostIcons, x, laneY, r, color, ghostAlpha("lost", Math.round(at * 4), now, this.reduced, at - beat) * edge(x));
           continue;
         }
         if (item.kind === "echo") drawEcho(g, x, laneY, r, edge(x));
@@ -359,7 +357,6 @@ export class ShowCard {
   private lead: Phaser.GameObjects.Text;
   private face: Phaser.GameObjects.Image;
   private how: Phaser.GameObjects.Text;
-  private note: Phaser.GameObjects.Text;
   private footer: Phaser.GameObjects.Text;
   private footerIcon: Phaser.GameObjects.Image;
   private demo: DemoLane;
@@ -392,12 +389,11 @@ export class ShowCard {
     this.face = scene.add.image(0, 0, "head-deco-happy").setOrigin(0.5).setVisible(false);
     this.demo = new DemoLane(scene, copy, fonts, reduced, mode === "phone", sizes.tag);
     this.how = scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: `${sizes.body + 2}px`, color: INK, align: "center", lineSpacing: 2 }).setOrigin(0.5, 0);
-    this.note = scene.add.text(0, 0, "", { fontFamily: fonts.body, fontStyle: "700", fontSize: `${sizes.small + 1}px`, color: "#5a4790", align: "center" }).setOrigin(0.5, 0);
     this.buttonLayer = scene.add.container(0, 0);
     this.footerIcon = scene.add.image(0, 0, "icon-sound").setOrigin(0, 0.5);
     this.footer = scene.add.text(0, 0, "", { fontFamily: fonts.body, fontStyle: "700", fontSize: `${sizes.small - 2}px`, color: "#7b62c4", align: "left", lineSpacing: 2 }).setOrigin(0, 0.5);
     this.root = scene.add
-      .container(this.x0, this.top, [this.bg, this.kickerBg, this.kicker, this.title, this.face, this.lead, this.demo.root, this.how, this.note, this.buttonLayer, this.footerIcon, this.footer])
+      .container(this.x0, this.top, [this.bg, this.kickerBg, this.kicker, this.title, this.face, this.lead, this.demo.root, this.how, this.buttonLayer, this.footerIcon, this.footer])
       .setDepth(30)
       .setVisible(false);
   }
@@ -441,13 +437,12 @@ export class ShowCard {
       y += 8;
       const textX = pad + demoW + 34 + textW / 2;
       this.how.setText(wrapLines(this.how, c.how, textW));
-      this.note.setText(wrapLines(this.note, c.note, textW));
       if (c.face) {
         this.face.setTexture(c.face).setVisible(true);
         this.face.setScale(76 / this.face.height);
       }
       const leadH = c.face ? Math.max(76, this.lead.height) : this.lead.height;
-      const textH = leadH + 26 + (c.how ? this.how.height : 0) + (c.note ? this.note.height + 16 : 0);
+      const textH = leadH + 26 + (c.how ? this.how.height : 0);
       const demoH = Math.round(Math.max(textH + 40, Math.min(560, Math.max(460, this.box.maxH * 0.34))));
       this.demo.place(pad, y, demoW, demoH);
       this.demo.setup(c.demo, demoH, demoW);
@@ -463,8 +458,6 @@ export class ShowCard {
       }
       ty += leadH + 26;
       this.how.setPosition(textX, ty);
-      ty += c.how ? this.how.height + 16 : 0;
-      this.note.setPosition(textX, ty);
       y += demoH + 30;
     } else {
       const demoH = this.stacked ? 184 : 156;
@@ -477,11 +470,9 @@ export class ShowCard {
         this.demo.root.setVisible(false);
       }
       this.how.setText(wrapLines(this.how, c.how, inner)).setPosition(mid, y);
-      y += c.how ? this.how.height + 10 : 0;
-      this.note.setText(wrapLines(this.note, c.note, inner)).setPosition(mid, y);
-      y += c.note ? this.note.height + 18 : 6;
+      y += c.how ? this.how.height + 16 : 6;
     }
-    y = this.layoutButtons(c, y, pad, inner);
+    y = this.layoutButtons(c, y, inner);
     this.footer.setText(c.footer).setWordWrapWidth(inner - 44).setVisible(c.footer !== "");
     this.footerIcon.setTexture(c.footerIcon ?? "icon-sound").setVisible(c.footer !== "");
     this.footerIcon.setScale(Math.min(1, 40 / this.footerIcon.height));
@@ -511,54 +502,28 @@ export class ShowCard {
     for (const b of this.buttons) b.box.setPosition(this.x0 + (b.root.x - b.box.width / 2), top + (b.root.y - b.box.height / 2));
   }
 
-  private layoutButtons(c: CardContent, y: number, pad: number, inner: number) {
+  private layoutButtons(c: CardContent, y: number, inner: number) {
     this.buttonLayer.removeAll(true);
     this.buttons = [];
-    const mid = this.w / 2;
-    const primaryH = this.mode === "phone" ? 108 : this.stacked ? 86 : 76;
-    const smallH = this.mode === "phone" ? 82 : this.stacked ? 68 : 62;
-    const make = (id: CardButtonId, label: string, x: number, cy: number, w: number, h: number, fill: number, icon: string | null, size: number) => {
-      const g = this.scene.add.graphics();
-      g.fillStyle(INK_HEX, 1).fillRoundedRect(-w / 2 + 5, -h / 2 + 7, w, h, 18);
-      g.fillStyle(fill, 1).fillRoundedRect(-w / 2, -h / 2, w, h, 18);
-      g.lineStyle(5, INK_HEX, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, 18);
-      const text = cartoonText(this.scene, 0, 0, label.toUpperCase(), { size, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
-      fitText(text, w - (icon ? 86 : 36), size, Math.round(size * 0.6));
-      const parts: Phaser.GameObjects.GameObject[] = [g, text];
-      if (icon) {
-        const img = this.scene.add.image(0, 0, icon).setOrigin(0.5);
-        img.setScale((size * 1.05) / img.height);
-        const total = img.displayWidth + 12 + text.width;
-        img.setPosition(-total / 2 + img.displayWidth / 2, 0);
-        text.setX(-total / 2 + img.displayWidth + 12 + text.width / 2);
-        parts.push(img);
-      }
-      const root = this.scene.add.container(x, cy, parts);
-      this.buttonLayer.add(root);
-      this.buttons.push({ id, root, box: new Phaser.Geom.Rectangle(0, 0, w, h) });
-    };
-    const small = c.secondary;
-    if (!c.primary && small.length === 0) return y;
-    if (this.stacked || small.length === 0) {
-      if (c.primary) {
-        const w = Math.min(inner, this.mode === "phone" ? 720 : 520);
-        make("primary", c.primary.label, mid, y + primaryH / 2, w, primaryH, C.sun, c.primary.icon, this.sizes.body + 6);
-        y += primaryH + 18;
-      }
-      if (small.length) {
-        const gap = 22;
-        const w = (inner - gap * (small.length - 1)) / small.length;
-        small.forEach((s, i) => make(s.id, s.label, pad + w / 2 + i * (w + gap), y + smallH / 2, w, smallH, s.on ? C.sun : C.cream2, null, this.sizes.small));
-        y += smallH + 18;
-      }
-      return y;
-    }
-    const gap = 20;
-    const primaryW = 330;
-    const smallW = (inner - primaryW - gap * small.length) / small.length;
-    small.forEach((s, i) => make(s.id, s.label, pad + smallW / 2 + i * (smallW + gap), y + primaryH / 2, smallW, smallH, s.on ? C.sun : C.cream2, null, this.sizes.small));
-    if (c.primary) make("primary", c.primary.label, pad + inner - primaryW / 2, y + primaryH / 2, primaryW, primaryH, C.sun, c.primary.icon, this.sizes.body + 6);
-    return y + primaryH + 18;
+    if (!c.primary) return y;
+    const h = this.mode === "phone" ? 108 : this.stacked ? 86 : 76;
+    const w = Math.min(inner, this.mode === "phone" ? 720 : 520);
+    const size = this.sizes.body + 6;
+    const g = this.scene.add.graphics();
+    g.fillStyle(INK_HEX, 1).fillRoundedRect(-w / 2 + 5, -h / 2 + 7, w, h, 18);
+    g.fillStyle(C.sun, 1).fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+    g.lineStyle(5, INK_HEX, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, 18);
+    const text = cartoonText(this.scene, 0, 0, c.primary.label.toUpperCase(), { size, color: INK, font: this.fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
+    fitText(text, w - 86, size, Math.round(size * 0.6));
+    const img = this.scene.add.image(0, 0, c.primary.icon).setOrigin(0.5);
+    img.setScale((size * 1.05) / img.height);
+    const total = img.displayWidth + 12 + text.width;
+    img.setPosition(-total / 2 + img.displayWidth / 2, 0);
+    text.setX(-total / 2 + img.displayWidth + 12 + text.width / 2);
+    const root = this.scene.add.container(this.w / 2, y + h / 2, [g, text, img]);
+    this.buttonLayer.add(root);
+    this.buttons.push({ id: "primary", root, box: new Phaser.Geom.Rectangle(0, 0, w, h) });
+    return y + h + 18;
   }
 
   hide() {

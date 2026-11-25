@@ -361,8 +361,8 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     },
     "talent-perfect": {
       title: "Nota Dez",
-      description: "Você ganhou 3 estrelas numa música do Ao Vivo no 404 sem o modo assistido.",
-      hint: "Chegue a 92% de precisão numa música, sem o modo assistido.",
+      description: "Você ganhou 3 estrelas numa música do Ao Vivo no 404.",
+      hint: "Chegue a 92% de precisão numa música.",
     },
     "talent-finale": {
       title: "Bis!",
@@ -533,8 +533,8 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     },
     "talent-perfect": {
       title: "Perfect Ten",
-      description: "You earned 3 stars on a Live on 404 song without assist mode.",
-      hint: "Reach 92% accuracy on a song, without assist mode.",
+      description: "You earned 3 stars on a Live on 404 song.",
+      hint: "Reach 92% accuracy on a song.",
     },
     "talent-finale": {
       title: "Encore!",
