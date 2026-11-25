@@ -6,7 +6,7 @@ import { reportFailedLoads } from "@/games/kit/load";
 import { cartoonText } from "@/games/kit/ui";
 import { formatNumber } from "@/i18n/format";
 import { getAudio } from "@/lib/audio/engine";
-import { AudibleClock, SongPlayer, pitched, toneFreq } from "../audio/player";
+import { AudibleClock, SongPlayer, onBeat, onBeatSound, pitched, toneFreq } from "../audio/player";
 import type { Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type TalentCopy } from "../copy";
 import { judge, runScore, STARS, type JudgeEvent, type Mark, type TapLog, type Verdict } from "../sim/judge";
@@ -1048,13 +1048,21 @@ export class StageScene extends Phaser.Scene {
     if (previous && previous.up === null) previous.up = Math.max(previous.down, raw);
     this.active.set(id, press);
     const claimed = this.claimed(raw);
-    const bar = claimed ? claimed.bar : Math.max(0, Math.min(this.compiled.bars - 1, barAt(this.compiled, raw)));
-    const segment = this.compiled.song.segments[this.compiled.segmentOfBar[bar]];
+    const segment = this.segmentOf(claimed ? claimed.bar : this.barOf(raw));
     const near = claimed ?? this.nearestNote(raw);
     const freq = toneFreq(near ? this.compiled.tones[near.step] : null);
-    this.player.press(segment.tap, freq);
+    const covered = claimed !== null && onBeat(this.compiled, claimed) && this.player.hitOnBeat(claimed);
+    if (!covered) this.player.press(segment.tap, freq);
     this.pressAt = performance.now();
     this.kidHit(segment.featured);
+  }
+
+  private barOf(ms: number) {
+    return Math.max(0, Math.min(this.compiled.bars - 1, barAt(this.compiled, ms)));
+  }
+
+  private segmentOf(bar: number) {
+    return this.compiled.song.segments[this.compiled.segmentOfBar[bar]];
   }
 
   private claimed(raw: number) {
@@ -1336,6 +1344,8 @@ export class StageScene extends Phaser.Scene {
       this.flash = { born: now, color: MARK_TINT[mark] };
     }
     if (mark === "miss" && note) this.missAt.set(note.index, now);
+    const offBeat = mark === "miss" ? note !== null && onBeat(this.compiled, note) : mark === "noise" && onBeatSound(this.segmentOf(this.barOf(at)).tap);
+    if (offBeat) this.player?.missOnBeat();
     if (note && strength) {
       const lane = this.L.lane;
       const x = hit ? lane.hitX + (this.beatPos(note.at) - this.beatPos(at)) * lane.pxPerBeat : lane.hitX;
