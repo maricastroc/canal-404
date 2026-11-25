@@ -15,8 +15,6 @@ const COPY = localized({
     timing: "Tempo médio",
     onTime: "no tempo",
     off: (ms: number, late: boolean) => `${ms} ms ${late ? "atrasado" : "adiantado"}`,
-    assist: "Modo assistido",
-    offBoard: "fora do placar",
     lines: {
       3: { title: "Que show!", text: "A plateia foi à loucura e o júri inteiro deu nota alta." },
       2: { title: "Bela apresentação!", text: "O júri aprovou, e o Seu Arlindo quase sorriu." },
@@ -35,8 +33,6 @@ const COPY = localized({
     timing: "Average timing",
     onTime: "on time",
     off: (ms: number, late: boolean) => `${ms} ms ${late ? "late" : "early"}`,
-    assist: "Assist mode",
-    offBoard: "off the scoreboard",
     lines: {
       3: { title: "What a show!", text: "The crowd went wild and the whole jury gave top marks." },
       2: { title: "Great performance!", text: "The jury approved, and Mr. Arlindo almost smiled." },
@@ -69,11 +65,10 @@ export function songResult(report: RunReport, locale: Locale): GameResult {
     { label: game.bestStreak, value: String(v.bestStreak) },
     { label: copy.timing, value: timing },
   ];
-  if (report.log.assist) facts.push({ label: copy.assist, value: copy.offBoard });
   const cut = v.cutAt !== null;
   const achievements: string[] = [];
   if (v.stars > 0) achievements.push("talent-first");
-  if (v.stars === 3 && !report.log.assist) achievements.push("talent-perfect");
+  if (v.stars === 3) achievements.push("talent-perfect");
   const text = cut ? { title: game.cutTitle, text: game.cutText } : copy.lines[v.stars as 0 | 1 | 2 | 3];
   return {
     won: v.stars > 0,

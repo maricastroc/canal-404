@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ao Vivo no 404: sem modo assistido
+- **One button to start.** The song card no longer has the assist toggle, and A no longer turns it on. The card shows only Começar, and the how-to-play, the board explanation and the 3-star achievement no longer mention it.
+- **Why.** On most songs assist mode only widened the timing by 15 to 45 ms, which no one could feel. On Vinheta de Intervalo, Balada do Chuvisco and Pot-pourri it showed the hidden notes, which are the point of those songs, and the notes played by ear already get the wider timing for everyone.
+- **Boards stay.** Runs keep the same format, always sent with assist off, so the judge, the boards and the records don't change. A saved assist setting is cleared the next time the game opens.
+
 ### Rua Sem Saída: dicas da Lina e do Déco
 - **New gadgets get explained.** The first time you play a level that introduces a gadget, Lina and Déco say what it does right after Mr. Arlindo's line. Level 5 covers the rope, the bucket and the faucet. Level 6 covers the bridge held by the rope. Level 7 covers the leaf blower and the gate that flips on every launch. The tips explain the gadget, never the solution, and they don't come back once you've seen them or already cleared the level.
 - **A nudge when stuck.** After two losses in a row on the same level, Lina gives a hint about that level at the start of the next try, until you win. All nine levels have one.

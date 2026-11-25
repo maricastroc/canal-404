@@ -90,7 +90,7 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
   },
   "talent-show": {
     explain:
-      "Cada música tem seu próprio ranking. Quanto mais pontos, melhor!\nEmpatou? Vence quem acertou mais notas na mosca. Se continuar empatado, ganha quem fez menos barulho.\nPartidas no modo assistido não entram no placar.",
+      "Cada música tem seu próprio ranking. Quanto mais pontos, melhor!\nEmpatou? Vence quem acertou mais notas na mosca. Se continuar empatado, ganha quem fez menos barulho.",
     check: "replayed",
     metrics: [
       { label: "Pontos", unit: "points", lowerIsBetter: false },
@@ -136,7 +136,7 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
     metrics: [{ label: "Moves", noun: ["move", "moves"] }, { label: "Wake-ups", noun: ["wake-up", "wake-ups"] }, { label: "Creaks", noun: ["creak", "creaks"] }],
   },
   "talent-show": {
-    explain: "Each song has its own board. The more points, the better!\nTied? Whoever hit more bullseye notes wins. Still tied, whoever made less noise wins.\nRuns in assist mode don't go on the board.",
+    explain: "Each song has its own board. The more points, the better!\nTied? Whoever hit more bullseye notes wins. Still tied, whoever made less noise wins.",
     metrics: [{ label: "Points" }, { label: "Bullseye", noun: ["bullseye note", "bullseye notes"] }, { label: "Noise", noun: ["stray tap", "stray taps"] }],
   },
 };

@@ -33,13 +33,13 @@ export type Spark = { born: number; color: number; seed: number; x?: number };
 
 export const RING_GAP = 16;
 
-const GHOST: Record<"show" | "assist", Record<Exclude<Signal, "clear">, number>> = { show: { weak: 0.55, lost: 0.42 }, assist: { weak: 0.9, lost: 0.75 } };
+const GHOST: Record<Exclude<Signal, "clear">, number> = { weak: 0.55, lost: 0.42 };
 const LOST_HIDDEN_BEATS = 1;
 const LOST_FADE_BEATS = 0.75;
 
-export function ghostAlpha(signal: Exclude<Signal, "clear">, assist: boolean, seed: number, now: number, still: boolean, beatsAhead: number) {
-  const base = GHOST[assist ? "assist" : "show"][signal];
-  if (assist || signal === "weak") return base;
+export function ghostAlpha(signal: Exclude<Signal, "clear">, seed: number, now: number, still: boolean, beatsAhead: number) {
+  const base = GHOST[signal];
+  if (signal === "weak") return base;
   const reveal = Math.max(0, Math.min(1, (beatsAhead - LOST_HIDDEN_BEATS) / LOST_FADE_BEATS));
   if (still) return base * reveal;
   const n = Math.sin((Math.floor(now / 70) + 1) * 12.9898 + seed * 78.233) * 43758.5453;

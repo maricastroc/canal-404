@@ -15,7 +15,7 @@ import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
 import { FIGURE, FEET, HOST_BOX, JURY_ART, type PaddleHold } from "./figure";
-import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawCall, drawEcho, drawNote, drawPop, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, shade, type PopStrength, type Spark, type TallyState } from "./lane";
+import { C, IconPool, MEMBER_COLOR, RING_GAP, TALLY_GAP, drawBeatLine, drawCall, drawNote, drawPop, drawRegion, drawRingBase, drawRingFront, drawSparks, drawTail, drawTally, drawTrack, ghostAlpha, ribbon, shade, type PopStrength, type Spark, type TallyState } from "./lane";
 import { DESK_LIP, layoutFor, toWorld, type Layout, type Shape, type Spot } from "./layout";
 
 const NOTE_GLYPH: IconNode = Music2.map(([tag, attrs]): IconNode[number] => [tag, tag === "circle" ? { ...attrs, fill: "#1d1830" } : attrs]);
@@ -29,7 +29,6 @@ export type TalentBridge = {
   touch: boolean;
   inlineScore: boolean;
   reducedMotion: boolean;
-  assist: { get: () => boolean; set: (on: boolean) => void };
   tutorial: { seen: () => boolean; done: () => void };
   onLoad: (value: number) => void;
   onError: (error: unknown) => void;
@@ -101,7 +100,6 @@ export class StageScene extends Phaser.Scene {
   private clock: AudibleClock | null = null;
   private player: SongPlayer | null = null;
   private t0 = 0;
-  private assist = false;
   private tutorialSeen = false;
   private presses: { down: number; up: number | null }[] = [];
   private active = new Map<string, { down: number; up: number | null }>();
@@ -945,7 +943,6 @@ export class StageScene extends Phaser.Scene {
   private introContent(): CardContent {
     const copy = this.copy;
     const song = copy.songs[this.songId];
-    const assistOn = this.bridge.assist.get();
     return {
       kicker: copy.kicker(copy.rounds[roundOf(this.songId)], SONG_ORDER.indexOf(this.songId) + 1, SONG_ORDER.length),
       title: song.title,
@@ -953,9 +950,7 @@ export class StageScene extends Phaser.Scene {
       face: SONG_FACE[this.songId],
       demo: DEMO_OF[this.songId],
       how: song.how,
-      note: assistOn ? copy.assistOn : "",
       primary: { label: copy.begin, icon: "icon-play" },
-      secondary: [{ id: "assist", label: copy.assistButton(assistOn), on: assistOn }],
       footer: this.bridge.touch ? copy.soundNote : `${copy.soundNote}\n${copy.keysHint}`,
     };
   }
@@ -969,9 +964,7 @@ export class StageScene extends Phaser.Scene {
       face: null,
       demo: "learn",
       how: copy.tapAnywhere(this.bridge.touch),
-      note: "",
       primary: { label: copy.tutorialGo, icon: "icon-play" },
-      secondary: [],
       footer: copy.soundNote,
     };
   }
@@ -1001,13 +994,6 @@ export class StageScene extends Phaser.Scene {
     return this.card.buttonAt(this.scale.transformX(pageX), this.scale.transformY(pageY));
   }
 
-  private pressButton(id: CardButtonId) {
-    if (id === "assist") {
-      this.bridge.assist.set(!this.bridge.assist.get());
-      this.setMode("intro");
-    } else this.advance(true);
-  }
-
   private busy() {
     return this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
   }
@@ -1034,7 +1020,7 @@ export class StageScene extends Phaser.Scene {
     this.pressedButton = null;
     this.card.press(null);
     if (pressed) {
-      if (this.buttonAt(pageX, pageY) === pressed) this.pressButton(pressed);
+      if (this.buttonAt(pageX, pageY) === pressed) this.advance(true);
       return;
     }
     this.advance(false);
@@ -1049,7 +1035,6 @@ export class StageScene extends Phaser.Scene {
     }
     if (!this.carded()) return;
     if (pauseKey) this.bridge.onPauseRequest();
-    else if (this.mode === "intro" && code === "KeyA") this.pressButton("assist");
     else this.advance(false);
   }
 
@@ -1116,7 +1101,6 @@ export class StageScene extends Phaser.Scene {
     if (!stage) return;
     getAudio().stopMusic();
     this.stopPlayer();
-    this.assist = this.bridge.assist.get();
     this.player = new SongPlayer(stage, this.compiled);
     this.t0 = this.player.start(0);
     this.clock?.sample();
@@ -1238,13 +1222,13 @@ export class StageScene extends Phaser.Scene {
   }
 
   private judgeInput() {
-    return { taps: this.presses.map((p) => p.down), ups: this.presses.map((p) => p.up), offset: 0, assist: this.assist };
+    return { taps: this.presses.map((p) => p.down), ups: this.presses.map((p) => p.up), offset: 0, assist: false };
   }
 
   private finish() {
     const input = this.judgeInput();
     const verdict = judge(this.compiled, input);
-    const log: TapLog = { kind: "talent-taps", version: 2, song: this.songId, offset: 0, assist: this.assist, taps: input.taps, ups: input.ups };
+    const log: TapLog = { kind: "talent-taps", version: 2, song: this.songId, offset: 0, assist: false, taps: input.taps, ups: input.ups };
     this.bridge.onRun({ song: this.songId, verdict, log });
     return verdict;
   }
@@ -1624,7 +1608,6 @@ export class StageScene extends Phaser.Scene {
     const xOf = (ms: number) => xOfBeat(this.beatPos(ms));
     const left = S.x + 10;
     const right = S.x + S.w - 10;
-    const assist = OFFSTAGE.includes(this.mode) ? this.bridge.assist.get() : this.assist;
     g.clear();
     this.ghostG.clear();
     this.noteIcons.begin();
@@ -1666,7 +1649,7 @@ export class StageScene extends Phaser.Scene {
         drawBeatLine(g, x, laneY, r, beat === 0);
       }
     }
-    label = this.drawStatic(xOfBeat, beatNow, left, right, label, assist);
+    label = this.drawStatic(xOfBeat, beatNow, left, right, label);
     const verdict = this.verdict;
     const edgeFade = (x: number) => Math.max(0, Math.min(1, (right - x) / (r * 1.6)));
     for (const call of compiled.calls) {
@@ -1688,17 +1671,14 @@ export class StageScene extends Phaser.Scene {
       const ghost = signal !== "clear";
       const layer = ghost ? this.ghostG : g;
       const icons = ghost ? this.ghostIcons : this.noteIcons;
-      const signalAlpha = (ghost ? ghostAlpha(signal, assist, note.index, now, this.bridge.reducedMotion, (x - hitX) / LN.pxPerBeat) : 1) * edgeFade(x);
+      const signalAlpha = (ghost ? ghostAlpha(signal, note.index, now, this.bridge.reducedMotion, (x - hitX) / LN.pxPerBeat) : 1) * edgeFade(x);
       const color = MEMBER_COLOR[compiled.song.segments[compiled.segmentOfBar[note.bar]].featured];
       const fade = (px: number) => Math.max(0, 1 - Math.max(0, hitX - px) / 200);
       const missed = this.missAt.get(note.index);
       const fall = missed !== undefined ? (now - missed) / MISS_FALL_MS : null;
-      if (grade === null && (note.kind !== "echo" || assist) && (signal !== "lost" || assist)) near = Math.max(near, 1 - Math.abs(x - hitX) / (LN.pxPerBeat * 0.5));
+      if (grade === null && note.kind !== "echo" && signal !== "lost") near = Math.max(near, 1 - Math.abs(x - hitX) / (LN.pxPerBeat * 0.5));
       if (note.kind === "echo") {
-        if (grade === null) {
-          if (assist) drawEcho(g, x, laneY, r, 0.6 * edgeFade(x));
-          continue;
-        }
+        if (grade === null) continue;
         if (grade === "miss") this.drawMissed(g, x, laneY, r, fall, fade(x));
         continue;
       }
@@ -1778,7 +1758,7 @@ export class StageScene extends Phaser.Scene {
     this.missIcons.place(x + d.x, y + d.y, r * 1.6, alpha);
   }
 
-  private drawStatic(xOfBeat: (beat: number) => number, now: number, left: number, right: number, labelStart: number, assist: boolean) {
+  private drawStatic(xOfBeat: (beat: number) => number, now: number, left: number, right: number, labelStart: number) {
     const S = this.L.lane.track;
     const half = ribbon(this.L.lane.r) - 3;
     this.lostMask.clear();
@@ -1814,8 +1794,8 @@ export class StageScene extends Phaser.Scene {
       tile.tilePositionX = (now * this.L.lane.pxPerBeat) / 5;
       tile.tilePositionY = drift;
     }
-    this.lostTile.setVisible(anyLost).setAlpha(assist ? 0.5 : 1);
-    this.weakTile.setVisible(anyWeak).setAlpha(assist ? 0.3 : 0.6);
+    this.lostTile.setVisible(anyLost).setAlpha(1);
+    this.weakTile.setVisible(anyWeak).setAlpha(0.6);
     return label;
   }
 }

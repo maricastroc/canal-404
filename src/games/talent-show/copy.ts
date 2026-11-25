@@ -45,7 +45,6 @@ export const TALENT_COPY = localized({
     kicker: (round: string, n: number, total: number) => `${round} · Música ${n} de ${total}`,
     begin: "Começar",
     soundNote: "Jogue com som! No iPhone, tire do modo silencioso.",
-    assistOn: "Modo assistido ligado: esta apresentação não vale para o placar.",
     host: {
       go: "Valendo!",
       weak: "Sinal fraco!",
@@ -64,8 +63,7 @@ export const TALENT_COPY = localized({
     cutText: "A plateia foi embora e o canal cortou para os comerciais.",
     precision: "Precisão",
     bestStreak: "Maior combo",
-    keysHint: "Qualquer tecla toca · A: modo assistido · Esc: pausa",
-    assistButton: (on: boolean): string => (on ? "Assistido: ligado" : "Assistido: desligado"),
+    keysHint: "Qualquer tecla toca · Esc: pausa",
     crowdLines: {
       any: [say("Vai, banda!"), say("Oi, mãe! Tô na TV!"), say("Aumenta o som!"), think("Será que eu apareço?"), think("Queria estar no palco…"), think("Esqueci de gravar em casa!")],
       hot: [say("Que ritmo!"), say("Isso é que é show!"), say("Arrasou!"), say("Uhuuu!"), think("Eles ensaiaram muito…")],
@@ -112,7 +110,6 @@ export const TALENT_COPY = localized({
     kicker: (round: string, n: number, total: number) => `${round} · Song ${n} of ${total}`,
     begin: "Start",
     soundNote: "Play with sound on! On iPhone, turn off silent mode.",
-    assistOn: "Assist mode on: this performance won't count for the scoreboard.",
     host: {
       go: "We're live!",
       weak: "Weak signal!",
@@ -131,8 +128,7 @@ export const TALENT_COPY = localized({
     cutText: "The crowd walked out and the channel cut to commercials.",
     precision: "Accuracy",
     bestStreak: "Best combo",
-    keysHint: "Any key plays · A: assist mode · Esc: pause",
-    assistButton: (on: boolean): string => (on ? "Assist: on" : "Assist: off"),
+    keysHint: "Any key plays · Esc: pause",
     crowdLines: {
       any: [say("Go, band!"), say("Hi, Mom! I'm on TV!"), say("Turn it up!"), think("Am I on camera?"), think("I wish I was up there…"), think("I forgot to tape this!")],
       hot: [say("What a beat!"), say("Now that's a show!"), say("Nailed it!"), say("Woo-hoo!"), think("They practiced a lot…")],
