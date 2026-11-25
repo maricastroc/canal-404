@@ -4,6 +4,7 @@ import { attemptBonus, LEVELS } from "@/games/bad-ideas-lab/levels";
 import { SOLUTIONS } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
+import { traceFor } from "@/games/operation-recess/testing";
 import { KIDS } from "@/games/pajama-war/config";
 import { simulateLab } from "@/games/bad-ideas-lab/sim";
 import { replayStreet, type Launch } from "@/games/dead-end-street/sim";
@@ -104,7 +105,10 @@ function evidenceOf(mission: MissionDef, claim: RunClaim) {
 function proofOf(mission: MissionDef) {
   if (mission.game === "bad-ideas-lab") return labClaim(mission.level!, LAB_PROOFS[mission.key]);
   if (mission.game === "dead-end-street") return streetClaim(mission.level!, STREET_PROOFS[mission.key]);
-  if (mission.game === "operation-recess") return RECESS_PROOFS[mission.key];
+  if (mission.game === "operation-recess") {
+    const proof = RECESS_PROOFS[mission.key];
+    return proof && { ...proof, replay: traceFor(mission.level!, proof.stats, proof.won) };
+  }
   if (mission.game === "pajama-war") return PAJAMA_PROOFS[mission.key];
   return LUNCH_PROOFS[mission.key];
 }

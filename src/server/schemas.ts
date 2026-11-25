@@ -7,6 +7,7 @@ import { TAPE_MAX, TAPE_PATTERN } from "@/games/downhill-derby/sim/judge";
 import { MOVES_MAX, MOVES_PATTERN } from "@/games/past-bedtime/sim/judge";
 import { MAX_OFFSET, TAPS_MAX } from "@/games/talent-show/sim/judge";
 import { SONG_ORDER } from "@/games/talent-show/song/songs";
+import { TRACE_MAX, TRACE_TIME_MAX } from "@/games/operation-recess/trace";
 import { isSyncableKey, SNAPSHOT_MAX_BYTES, SNAPSHOT_MAX_KEYS } from "@/lib/competition/recovery";
 import { GAME_SLUGS } from "@/lib/competition/rules";
 import { isDayKey } from "@/lib/missions/calendar";
@@ -21,7 +22,7 @@ export const statsSchema = z
   .record(statKey, z.number().int().min(-INT).max(INT))
   .refine((stats) => Object.keys(stats).length <= 24, "estatísticas demais");
 
-const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2, "downhill-run": 1, "bedtime-moves": 1, "talent-taps": 2 } as const;
+const REPLAY_VERSIONS = { "lab-placements": 1, "street-launches": 2, "downhill-run": 1, "bedtime-moves": 1, "talent-taps": 2, "recess-trace": 1 } as const;
 
 export function outdatedReplay(body: unknown) {
   const replay = (body as { result?: { replay?: { kind?: unknown; version?: unknown } } } | null)?.result?.replay;
@@ -97,7 +98,22 @@ const talentReplaySchema = z
   })
   .strict();
 
-export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema, downhillReplaySchema, bedtimeReplaySchema, talentReplaySchema]);
+const traceTime = z.number().int().min(0).max(TRACE_TIME_MAX);
+const traceEvent = z.tuple([traceTime, z.number().int().min(0).max(255)]);
+
+const recessReplaySchema = z
+  .object({
+    kind: z.literal("recess-trace"),
+    version: z.literal(REPLAY_VERSIONS["recess-trace"]),
+    kills: z.array(traceEvent).max(TRACE_MAX),
+    items: z.array(traceEvent).max(TRACE_MAX),
+    hits: z.array(traceTime).max(TRACE_MAX),
+    bells: z.array(traceTime).max(TRACE_MAX),
+    arena: traceTime.nullable(),
+  })
+  .strict();
+
+export const replaySchema = z.discriminatedUnion("kind", [labReplaySchema, streetReplaySchema, downhillReplaySchema, bedtimeReplaySchema, talentReplaySchema, recessReplaySchema]);
 
 export const submitSchema = z
   .object({

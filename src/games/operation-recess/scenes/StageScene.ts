@@ -9,6 +9,7 @@ import { recessStarHint, recessStars } from "../score";
 import { RecessMusic } from "../music";
 import { addSticker, loadSave, writeSave, type RecessSave } from "../save";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
+import { TraceRecorder } from "../trace";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
 import { coarsePointer, isTouchPointer } from "../../kit/touch";
@@ -69,6 +70,8 @@ export class StageScene extends Phaser.Scene {
   private boss: Inspector | null = null;
   private music!: RecessMusic;
   private album!: RecessSave;
+  private trace!: TraceRecorder;
+  private enemyIndex!: Map<Enemy, number>;
   private arena = { left: 0, right: 0, entered: false };
   private gate: Phaser.GameObjects.Zone | null = null;
   private keys!: Record<"left" | "right" | "a" | "d" | "space" | "up" | "w", Phaser.Input.Keyboard.Key>;
@@ -118,6 +121,8 @@ export class StageScene extends Phaser.Scene {
   }
 
   init() {
+    this.trace = new TraceRecorder();
+    this.enemyIndex = new Map();
     this.enemies = [];
     this.waves = [];
     this.balls = [];
@@ -239,11 +244,13 @@ export class StageScene extends Phaser.Scene {
       for (const b of this.bells) if (b.x <= cx(resume.col) + TILE) b.ring(this, true);
       this.ctx.onEvent({ type: "score", score: this.score });
     }
-    for (const e of this.level.enemies) {
-      if (resume && e.col < startCol + 4) continue;
+    this.level.enemies.forEach((e, index) => {
+      if (resume && e.col < startCol + 4) return;
       const feet = cy((e.row ?? 11) + 1);
-      this.enemies.push(makeEnemy(this.api, e.kind, cx(e.col) + TILE / 2, feet, e.style));
-    }
+      const enemy = makeEnemy(this.api, e.kind, cx(e.col) + TILE / 2, feet, e.style);
+      this.enemies.push(enemy);
+      this.enemyIndex.set(enemy, index);
+    });
     if (resume) for (const it of this.items) if (it.img.x < cx(startCol)) it.take(this);
 
     if (this.level.boss) {
@@ -702,6 +709,7 @@ export class StageScene extends Phaser.Scene {
     if (this.t < this.invulnUntil || this.mode !== "play") return;
     this.hearts -= 1;
     this.hits += 1;
+    this.trace.hit(this.t);
     this.invulnUntil = this.t + INVULN_MS;
     this.hero.knock(fromX, this.t, KNOCK_X, KNOCK_Y);
     this.sfx("hurt", 0.9);
@@ -720,6 +728,7 @@ export class StageScene extends Phaser.Scene {
   private fell() {
     this.hearts -= 1;
     this.hits += 1;
+    this.trace.hit(this.t);
     this.hud.setHearts(this.hearts, "lost");
     this.sfx("hurt", 0.8);
     if (this.hearts <= 0) {
@@ -771,6 +780,7 @@ export class StageScene extends Phaser.Scene {
       stars: 0,
       breakdown: this.breakdown(false),
       stats: this.resultStats(false),
+      replay: this.trace.toReplay(),
       level: { index: this.levelIndex, id: this.level.id, title: this.text.title, total: LEVELS.length },
       copy: { title: lose.loseTitle, text: cp ? lose.loseFromBell : lose.loseText },
       ...(cp ? { restartLabel: lose.restartFromBell } : {}),
@@ -836,6 +846,7 @@ export class StageScene extends Phaser.Scene {
       stars,
       breakdown: this.breakdown(true),
       stats: this.resultStats(true),
+      replay: this.trace.toReplay(),
       achievements,
       level: { index: this.levelIndex, id: this.level.id, title: this.text.title, total: LEVELS.length },
       copy: last ? { title: this.copy.result.finalTitle, text: this.copy.result.finalText } : { title: this.copy.result.passedTitle, text: this.copy.result.passedText(this.text.win) },
@@ -927,6 +938,7 @@ export class StageScene extends Phaser.Scene {
 
   private enterArena() {
     this.arena.entered = true;
+    this.trace.enter(this.t);
     if (!this.compact) {
       const cam = this.cameras.main;
       cam.stopFollow();
@@ -1186,9 +1198,10 @@ export class StageScene extends Phaser.Scene {
     this.enemies = this.enemies.filter((e) => !(e.dead && !e.sprite.active));
     if (this.mode !== "play") return;
 
-    for (const it of this.items) {
+    for (const [index, it] of this.items.entries()) {
       if (!it.near(view.x, view.top, view.feet)) continue;
       it.take(this);
+      this.trace.item(t, index);
       if (it.kind === "snack") {
         this.hearts = Math.min(HEARTS, this.hearts + 1);
         this.hud.setHearts(this.hearts, "gained");
@@ -1209,6 +1222,7 @@ export class StageScene extends Phaser.Scene {
     for (const bell of this.bells) {
       if (bell.reached || view.x < bell.x - 30) continue;
       bell.ring(this, this.ctx.reducedMotion);
+      this.trace.bell(t);
       this.sfx("bell", 0.9);
       if (this.registry.get("checkpoints") === false) {
         this.word("DING!", bell.x, FLOOR_Y - 260, "#63d6c1", 44);
@@ -1331,6 +1345,7 @@ export class StageScene extends Phaser.Scene {
       this.onEnemyHit(e.x, top, e.body.bottom, res === "kill");
       if (res === "kill") {
         this.kills += 1;
+        this.trace.kill(t, this.enemyIndex.get(e) ?? -1);
         this.hud.setMonitors(this.kills, this.level.enemies.length, true);
         const pts = e.kind === "shield" ? SCORE.shield : e.kind === "whistle" ? SCORE.whistle : SCORE.common;
         this.killScore += pts;

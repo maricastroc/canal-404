@@ -18,6 +18,7 @@ import { resortResult } from "@/games/off-air-vacation/config";
 import { EXTRAS_CAP, HEARTS, RUN, SCORE as RECESS_SCORE, TILE } from "@/games/operation-recess/config";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { recessStars } from "@/games/operation-recess/score";
+import { checkTrace } from "@/games/operation-recess/trace";
 import { ARENAS } from "@/games/pajama-war/arenas";
 import { HIT as PAJAMA_HIT, HP, KIDS, PILLOW, SCORE as PAJAMA_SCORE, STATS as KID_STATS } from "@/games/pajama-war/config";
 import type { GameReplay, GameStats } from "@/games/types";
@@ -29,7 +30,7 @@ export { BOARD_META, GAME_SLUGS, isGameSlug, metricValues, type BoardMeta, type 
 
 export type RunClaim = { won: boolean; score: number; stars: number; stats: GameStats; replay?: GameReplay };
 
-export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed" | "bad_run" | "run_failed" | "bad_moves" | "moves_failed" | "bad_taps";
+export type RejectReason = "unknown_level" | "bad_stats" | "inconsistent" | "score_mismatch" | "bad_replay" | "replay_failed" | "bad_launches" | "launches_failed" | "bad_run" | "run_failed" | "bad_moves" | "moves_failed" | "bad_taps" | "bad_trace";
 
 export type Verification = "checked" | "replayed";
 
@@ -329,7 +330,7 @@ function killSums(kinds: (keyof typeof KILL_POINTS)[], kills: number) {
 
 const operationRecess: GameRule = {
   game: "operation-recess",
-  replay: null,
+  replay: "recess-trace",
   version: 2,
   levels: RECESS_LEVELS.map((l) => l.id),
   stats: ["kills", "killPoints", "stickers", "extras", "hits", "hearts", "resumed", "boss", "timeMs"],
@@ -364,6 +365,10 @@ const operationRecess: GameRule = {
     const goal = def.exit?.col ?? def.boss?.arena ?? def.length;
     const minRunMs = (Math.max(0, goal - def.start) * TILE * 1000) / RUN;
     if (won && !s.resumed && s.timeMs < minRunMs * 0.9) return reject("inconsistent", "rápido demais para as pernas do Bruno");
+    const trace = claim.replay;
+    if (!trace || trace.kind !== "recess-trace") return reject("bad_trace", "linha do tempo ausente");
+    const problem = checkTrace(def, s, won, trace);
+    if (problem) return reject("bad_trace", problem);
     const score =
       s.killPoints +
       s.stickers * RECESS_SCORE.sticker +
