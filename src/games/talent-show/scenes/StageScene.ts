@@ -9,7 +9,7 @@ import { getAudio } from "@/lib/audio/engine";
 import { AudibleClock, SongPlayer, pitched, toneFreq } from "../audio/player";
 import type { Stage } from "../audio/voices";
 import { TALENT_COPY, type CrowdLine, type TalentCopy } from "../copy";
-import { judge, runScore, type JudgeEvent, type Mark, type TapLog, type Verdict } from "../sim/judge";
+import { judge, runScore, STARS, type JudgeEvent, type Mark, type TapLog, type Verdict } from "../sim/judge";
 import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, type Signal, type SongId } from "../song/notation";
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
@@ -64,6 +64,7 @@ const MISS_QUIET_MS = 220;
 const RECHECK_MS = 300;
 const READOUT_MS = 560;
 const READOUT_FADE_MS = 140;
+const APPLAUSE_MS = 150;
 
 type Pop = { born: number; x: number; color: number; tint: number; strength: PopStrength };
 type Chip = { text: string; color: number; heard: boolean };
@@ -129,6 +130,8 @@ export class StageScene extends Phaser.Scene {
   private ampCone!: Phaser.GameObjects.Image;
   private ampScale = 1;
   private missRun = 0;
+  private lastNoteEnd = 0;
+  private applauded = false;
   private lastFrame = 0;
   private bubble!: Phaser.GameObjects.Container;
   private bubbleBg!: Phaser.GameObjects.Graphics;
@@ -747,6 +750,7 @@ export class StageScene extends Phaser.Scene {
   private setSong(id: SongId) {
     this.songId = id;
     this.compiled = compiledSong(id);
+    this.lastNoteEnd = this.compiled.notes.reduce((end, n) => Math.max(end, n.end), 0);
     const text = this.copy.songs[id];
     this.titleText.setText(text.title);
     this.subtitleText.setText(`${this.copy.rounds[roundOf(id)]} · ${text.idea}`);
@@ -974,6 +978,7 @@ export class StageScene extends Phaser.Scene {
     this.readout.setVisible(false);
     this.crowd.reset();
     this.missRun = 0;
+    this.applauded = false;
     this.missAt.clear();
     this.streakShown = 0;
     this.setScore(0);
@@ -1095,7 +1100,7 @@ export class StageScene extends Phaser.Scene {
     this.setKidFaces(verdict.stars >= 2 ? "happy" : verdict.stars === 0 ? "wow" : "normal");
     const base = Math.round((10 * Math.max(0, verdict.points)) / Math.max(1, verdict.maxPoints));
     this.jury.plates(base, 4000);
-    this.crowd.finale(verdict.stars);
+    this.applaud(verdict.stars);
     const beat = this.beatPos(this.lastSongMs);
     if (verdict.stars >= 2) this.stageLights.cue("chase", beat, 8, verdict.stars >= 3 ? 4 : 2);
     if (verdict.stars >= 1) this.stageLights.cue("pulse", beat, 3);
@@ -1237,6 +1242,18 @@ export class StageScene extends Phaser.Scene {
     this.setStreak(verdict.streak);
     if (verdict.cutAt !== null) this.cut();
     else if (shown >= this.compiled.endMs) this.endSong();
+    else if (shown >= this.lastNoteEnd + APPLAUSE_MS) this.applaud(this.starsOf(verdict.precision));
+  }
+
+  private starsOf(precision: number) {
+    return precision < STARS.one ? 0 : 1 + (precision >= STARS.two ? 1 : 0) + (precision >= STARS.three ? 1 : 0);
+  }
+
+  private applaud(stars: number) {
+    if (this.applauded) return;
+    this.applauded = true;
+    this.player?.cheer(stars);
+    this.crowd.finale(stars);
   }
 
   private markNew(verdict: Verdict) {
