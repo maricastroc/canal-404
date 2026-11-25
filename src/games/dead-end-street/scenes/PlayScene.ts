@@ -23,7 +23,7 @@ import {
   type ProjectileDef,
   type ProjectileId,
 } from "../config";
-import { COPY, type StreetCopy } from "../copy";
+import { COPY, type StreetCopy, type TipLine } from "../copy";
 import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { PHASES, type Material, type PhaseDef, type PieceDef, type Point } from "../phases";
 import { ANGLE_STEPS, POWER_STEPS, StreetSim, type GadgetEvent, type SimImpact, type SimTarget, type StreetTally } from "../sim";
@@ -57,6 +57,12 @@ const HIGH_CLOUDS: [string, number, number][] = [
 ];
 
 type KeptAims = { phase: number; shots: { angle: number; power: number }[] };
+
+type Misses = { phase: number; count: number };
+
+function tipDuration(text: string) {
+  return 1800 + text.length * 55;
+}
 
 function stepFrom(value: number, steps: number) {
   return steps > 0 ? Math.floor(value + 1e-6) + steps : Math.ceil(value - 1e-6) + steps;
@@ -134,6 +140,7 @@ export class PlayScene extends Phaser.Scene {
   private cat!: Cat;
   private decoBubble!: Bubble;
   private linaBubble!: Bubble;
+  private tipBubble!: Bubble;
   private lastSound = new Map<string, number>();
   private lastHit = { at: -1000, x: 0, y: 0 };
   private freezeUntil = 0;
@@ -230,6 +237,8 @@ export class PlayScene extends Phaser.Scene {
     this.cat = new Cat(this, this.ctx.fonts, this.fx, reduced, () => this.sfx("hiss", 0.9), this.copy.words.hiss);
     this.decoBubble = new Bubble(this, this.ctx.fonts, "left", 36, 16);
     this.linaBubble = new Bubble(this, this.ctx.fonts, "left", 36, 16);
+    this.tipBubble = new Bubble(this, this.ctx.fonts, "left", 28, 16);
+    this.tipBubble.setWrap(540);
     this.hud = this.makeHud(this.frame.kind);
     this.hud.setBest(this.records[this.phaseIndex]?.score ?? 0);
     this.hud.setLaunches(0);
@@ -342,6 +351,7 @@ export class PlayScene extends Phaser.Scene {
       this.hud.destroy();
       this.decoBubble.hide();
       this.linaBubble.hide();
+      this.tipBubble.hide();
       this.endGesture();
     }
     this.frame = frame;
@@ -379,6 +389,7 @@ export class PlayScene extends Phaser.Scene {
     this.arlindo.setScale(s);
     this.decoBubble.setBaseScale(Math.min(s, 1.5));
     this.linaBubble.setBaseScale(Math.min(s, 1.5));
+    this.tipBubble.setBaseScale(Math.min(s, 1.5));
   }
 
   setRecords(records: LevelRecord[]) {
@@ -402,6 +413,7 @@ export class PlayScene extends Phaser.Scene {
       this.introTimer = this.time.delayedCall(2300, () => this.endIntro(true));
     }
     this.time.delayedCall(700, () => this.arlindo.shout(text.arlindo, 1900));
+    this.time.delayedCall(2800, () => this.giveTips());
     this.sim.start();
     this.sim.targets.forEach((t, i) => this.time.delayedCall(500 + i * 220, () => this.cueTarget(t)));
   }
@@ -555,6 +567,7 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     this.linaBubble.hide();
+    this.tipBubble.hide();
     this.decoBubble.say(text, 70, 610, duration);
   }
 
@@ -564,7 +577,45 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     this.decoBubble.hide();
+    this.tipBubble.hide();
     this.linaBubble.say(text, 470, 650, duration);
+  }
+
+  private giveTips() {
+    if (this.sim.phase === "attract" || this.sim.finishing) return;
+    const id = this.phaseDef.id;
+    const tips = this.copy.tips;
+    const misses = this.registry.get("misses") as Misses | undefined;
+    let lines: TipLine[] = [];
+    if (misses?.phase === this.phaseIndex && misses.count >= 2) {
+      lines = [{ who: "lina", text: tips.nudge[id] }];
+    } else {
+      const seen = (this.registry.get("tips-seen") as string[] | undefined) ?? [];
+      const debut = tips.debut[id];
+      if (debut && !seen.includes(id) && !this.records[this.phaseIndex]?.stars) {
+        lines = debut;
+        this.registry.set("tips-seen", [...seen, id]);
+      }
+    }
+    let at = 0;
+    for (const line of lines) {
+      this.time.delayedCall(at, () => this.tipSay(line));
+      at += tipDuration(line.text) + 250;
+    }
+  }
+
+  private tipSay(line: TipLine) {
+    if (this.sim.finishing) return;
+    const duration = tipDuration(line.text);
+    this.ctx.onEvent({ type: "announce", message: line.text, transient: true });
+    if (this.dock) {
+      this.dock.say(line.who, line.text, duration);
+      return;
+    }
+    this.decoBubble.hide();
+    this.linaBubble.hide();
+    const at = line.who === "deco" ? { x: 70, y: 610 } : { x: 470, y: 650 };
+    this.tipBubble.say(line.text, at.x, at.y, duration);
   }
 
   private get aimable() {
@@ -1506,6 +1557,7 @@ export class PlayScene extends Phaser.Scene {
     this.hud.hideBanner();
     this.decoBubble.hide();
     this.linaBubble.hide();
+    this.tipBubble.hide();
     this.dock?.coach(null);
     if (this.tall) this.endGesture();
     if (this.tall && finale) {
@@ -1542,6 +1594,9 @@ export class PlayScene extends Phaser.Scene {
       this.arlindo.shout(this.copy.arlindo.lose, 2000);
       this.tweens.add({ targets: [this.deco, this.lina], scaleY: 0.92, angle: -4, duration: 400, ease: "Sine.easeOut" });
     }
+    const misses = this.registry.get("misses") as Misses | undefined;
+    const missed = won ? 0 : (misses?.phase === this.phaseIndex ? misses.count : 0) + 1;
+    this.registry.set("misses", { phase: this.phaseIndex, count: missed });
     const previous = this.records[this.phaseIndex] ?? { stars: 0, score: 0 };
     if (won) this.records[this.phaseIndex] = { stars: Math.max(previous.stars, stars), score: Math.max(previous.score, score) };
     this.registry.set("records", this.records.map((r) => ({ ...r })));

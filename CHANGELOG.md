@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Rua Sem Saída: dicas da Lina e do Déco
+- **New gadgets get explained.** The first time you play a level that introduces a gadget, Lina and Déco say what it does right after Mr. Arlindo's line. Level 5 covers the rope, the bucket and the faucet. Level 6 covers the bridge held by the rope. Level 7 covers the leaf blower and the gate that flips on every launch. The tips explain the gadget, never the solution, and they don't come back once you've seen them or already cleared the level.
+- **A nudge when stuck.** After two losses in a row on the same level, Lina gives a hint about that level at the start of the next try, until you win. All nine levels have one.
+- **Everywhere.** The tips use the kids' speech bubbles on desktop and the speech cards on phones, in pt-BR and English, and they are read to screen readers.
+- **Nothing else changes.** Levels, replays and boards stay the same.
+
 ### Férias Fora do Ar: Sr. Bigodes de corpo inteiro na festa
 - **No more floating bust.** The receptionist's sprites stop at the chest because a desk hides the rest in the lobby. At the closing party he stood in the open, so he looked like a torso on the floor. He now has a full-body party sprite: the same head and jacket, the rest of the bellhop uniform with gold buttons and stripes, trousers, shoes and a tail. He waves, blinks and bounces gently with the other guests.
 - **On the deck.** He moved from the grass in front of the juice bar onto the pool deck, under the lifeguard chair. On phones the camera now shows him whole when he speaks.
