@@ -175,6 +175,7 @@ export class BootScene extends Phaser.Scene {
       { key: "hud-heart-off", icon: Heart, size: 64, color: "#9a8fbf", strokeWidth: 2.4 },
       { key: "mark-alert", icon: TriangleAlert, size: 88, color: "#1d1830", strokeWidth: 2.6 },
       { key: "mark-shot", icon: Waves, size: 88, color: "#1d1830", strokeWidth: 2.6 },
+      { key: "mark-open", icon: Sword, size: 88, color: "#1d1830", strokeWidth: 2.6 },
     ]);
     reportFailedLoads(this, ctx.onError);
   }
