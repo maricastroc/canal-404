@@ -4,6 +4,14 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Guerra do Pijama: cenários mais vivos
+- **Feet on the floor.** Every kid has a tighter shadow right under the feet, and the furniture and toys in all three arenas cast soft shadows on the floor, so nothing looks pasted on. Beds, the TV, the bookshelf and the mattress stack shade the wall behind them, and the sofa shades the mattresses, without darkening a kid who stands in between.
+- **Bedroom.** The round rug is a little less saturated so it stops competing with the kids. Moonlight from the window falls on the floor in the shape of the panes, with a faint beam and a few specks of dust. The beds look slept in, with pillows knocked askew and a turned-down blanket corner, and the string lights glow and dim each at its own pace.
+- **Living room.** The TV has scanlines, a rolling band and a light on the floor and wall that flickers in the color of the current show. The lamps flicker when a pillow lands nearby. The sleeping cat has a shadow wherever it naps.
+- **Backyard.** The grass has patches and tufts instead of one flat green. The tent glows from inside and spills warm light onto the grass at its door, the lanterns light small pools around them, the grill glows and puffs smoke, the tree's leaves sway over a still trunk, the tire swing's shadow follows it, and the fireflies wander and blink out of sync, some of them behind the furniture.
+- **Smaller banners.** PRONTOS? and JÁ! sit higher and smaller and JÁ! leaves faster, so they no longer cover the sofa. ESQUENTOU! and SEM DESCANSO! show near the top. The arena tips are a title and one line: "TRAVESSEIRO ESPECIAL! Pegue antes dos outros!" and "RICOCHETE! Jogue nos móveis com mola." Win and knockout banners stay as they were.
+- **Nothing else changes.** Rules, hitboxes, AI, scores and boards are the same. With reduced motion the scenery stays still.
+
 ### Ao Vivo no 404: chocalho do Bruno no tempo
 - **On the beat.** In Rua Sem Saída and in Bruno's part of the Pot-pourri, the shaker you hear when you hit a note now plays with the music, at the note's exact time. Before, it only sounded once the tap arrived, and the device's audio delay (about 40 ms on a Mac, more with Bluetooth) put it almost half a sixteenth late at 148 bpm, against a bass and hi-hat that play every sixteenth.
 - **Mistakes still sound like mistakes.** A miss or a tap between notes silences Bruno's shaker until your next hit, and a tap between notes still shakes right away so you hear it.

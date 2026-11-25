@@ -9,6 +9,53 @@ import { Ambient } from "./ambient";
 
 const RES = 1.25;
 const BULB_COLORS = [0xffd36b, 0xff8fc4, 0x8ff0d8, 0x9fd4ff, 0xffb36b];
+const SHADE_DEPTH = 26;
+
+type Footprint = [cx: number, cy: number, w: number, h: number];
+
+const SHADOWS: Record<string, Footprint> = {
+  "bed-pink": [170, 376, 372, 70],
+  "bed-blue": [170, 376, 372, 70],
+  nightstand: [75, 152, 156, 32],
+  "toy-chest": [115, 174, 236, 42],
+  beanbag: [106, 152, 214, 42],
+  blocks: [56, 104, 116, 26],
+  teddy: [55, 113, 104, 24],
+  boombox: [80, 101, 160, 26],
+  ball: [36, 68, 62, 18],
+  books: [54, 70, 104, 20],
+  sofa: [240, 254, 496, 64],
+  mattresses: [260, 124, 540, 36],
+  armchair: [114, 216, 236, 46],
+  tv: [150, 320, 300, 44],
+  "coffee-table": [165, 160, 318, 44],
+  "floor-lamp": [70, 335, 104, 22],
+  "plant-big": [85, 239, 112, 24],
+  bookshelf: [140, 347, 286, 40],
+  tent: [230, 306, 470, 56],
+  tree: [238, 557, 170, 36],
+  screen: [140, 352, 170, 28],
+  grill: [80, 185, 140, 26],
+  cooler: [80, 121, 166, 28],
+  stump: [65, 91, 128, 26],
+  gnome: [45, 127, 84, 20],
+  lantern: [40, 105, 66, 16],
+};
+
+const WALL_SHADE_DEPTH = 5.5;
+
+const BACKDROPS: Record<string, { at: Footprint; alpha: number; on?: string }> = {
+  "bed-pink": { at: [170, 70, 380, 150], alpha: 0.3 },
+  "bed-blue": { at: [170, 70, 380, 150], alpha: 0.3 },
+  sofa: { at: [240, 10, 540, 120], alpha: 0.42, on: "mattresses" },
+  mattresses: { at: [260, 58, 590, 170], alpha: 0.32 },
+  tv: { at: [150, 96, 340, 230], alpha: 0.3 },
+  bookshelf: { at: [140, 120, 320, 290], alpha: 0.3 },
+};
+
+const CROWNS: Record<string, { trunk: string; crown: string; pivot: [number, number] }> = {
+  tree: { trunk: "tree-trunk", crown: "tree-crown", pivot: [241, 330] },
+};
 
 type Theme = { wall: [number, number, number]; floor: [number, number, number]; side: number; base: number; dots: number };
 const THEMES: Record<ArenaDef["theme"], Theme> = {
@@ -16,6 +63,49 @@ const THEMES: Record<ArenaDef["theme"], Theme> = {
   living: { wall: [0xc8704a, 0xa85a3c, 0xdc8a5c], floor: [0x8c5a3c, 0x734630, 0xa66c48], side: 0x8a4a34, base: 0x55301e, dots: 0xffd18a },
   yard: { wall: [0x1c2a52, 0x16213f, 0x24346a], floor: [0x3f6a3a, 0x335a30, 0x4f7d44], side: 0x16213f, base: 0x2b3d26, dots: 0xffffff },
 };
+
+function seeded(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(s ^ (s >>> 15), 1 | s);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function drawGrass(g: Phaser.GameObjects.Graphics, t: Theme) {
+  const w = 384;
+  const h = 192;
+  const rnd = seeded(12);
+  g.fillStyle(t.floor[0], 1);
+  g.fillRect(0, 0, w, h);
+  const wrap = (x: number, y: number, rx: number, ry: number, draw: (x: number, y: number) => void) => {
+    for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) if (x + ox + rx > 0 && x + ox - rx < w && y + oy + ry > 0 && y + oy - ry < h) draw(x + ox, y + oy);
+  };
+  for (let i = 0; i < 16; i += 1) {
+    const x = rnd() * w;
+    const y = rnd() * h;
+    const rx = 22 + rnd() * 40;
+    const ry = 7 + rnd() * 10;
+    g.fillStyle(rnd() < 0.5 ? t.floor[2] : t.floor[1], 0.22 + rnd() * 0.12);
+    wrap(x, y, rx, ry, (px, py) => g.fillEllipse(px, py, rx * 2, ry * 2));
+  }
+  for (let i = 0; i < 38; i += 1) {
+    const light = i % 3 === 0;
+    g.fillStyle(light ? t.floor[2] : t.floor[1], light ? 0.55 : 0.6);
+    g.fillRect(Math.floor(rnd() * (w - 3)), Math.floor(rnd() * (h - 10)), 3, 6 + Math.floor(rnd() * 4));
+  }
+  for (let i = 0; i < 16; i += 1) {
+    const x = 6 + rnd() * (w - 12);
+    const y = 14 + rnd() * (h - 16);
+    const light = i % 4 === 0;
+    g.lineStyle(2.4, light ? 0x6b9c58 : 0x2a4828, light ? 0.4 : 0.5);
+    g.lineBetween(x, y, x - 5, y - 8);
+    g.lineBetween(x + 1, y, x + 1, y - 11);
+    g.lineBetween(x + 2, y, x + 7, y - 7);
+  }
+}
 
 export function makeTextures(scene: Phaser.Scene) {
   const tex = scene.textures;
@@ -43,6 +133,41 @@ export function makeTextures(scene: Phaser.Scene) {
     [0.35, "rgba(255,255,255,0.45)"],
     [1, "rgba(255,255,255,0)"],
   ]);
+  radial("shade", 128, 128, [
+    [0, "rgba(29,24,48,0.82)"],
+    [0.45, "rgba(29,24,48,0.7)"],
+    [0.75, "rgba(29,24,48,0.34)"],
+    [1, "rgba(29,24,48,0)"],
+  ]);
+  if (!tex.exists("yard-patches")) {
+    const c = tex.createCanvas("yard-patches", 480, 250)!;
+    const ctx = c.getContext();
+    const rnd = seeded(404);
+    const blot = (x: number, y: number, r: number, rgb: string, a: number) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${rgb},${a})`);
+      g.addColorStop(0.6, `rgba(${rgb},${a * 0.5})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(1, 0.42);
+      ctx.translate(-x, -y);
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.restore();
+    };
+    for (let i = 0; i < 34; i += 1) {
+      const light = rnd() < 0.42;
+      blot(rnd() * 480, 8 + rnd() * 236, 26 + rnd() * 64, light ? "132,182,104" : "16,34,22", light ? 0.13 + rnd() * 0.06 : 0.17 + rnd() * 0.08);
+    }
+    blot(345, 4, 170, "176,204,150", 0.12);
+    const edge = ctx.createLinearGradient(0, 0, 0, 40);
+    edge.addColorStop(0, "rgba(16,30,24,0.32)");
+    edge.addColorStop(1, "rgba(16,30,24,0)");
+    ctx.fillStyle = edge;
+    ctx.fillRect(0, 0, 480, 40);
+    c.refresh();
+  }
   if (!tex.exists("vignette")) {
     const c = tex.createCanvas("vignette", 480, 270)!;
     const ctx = c.getContext();
@@ -132,16 +257,13 @@ export function makeTextures(scene: Phaser.Scene) {
         g.fillCircle(40, 120, 3);
       }
     });
+    if (name === "yard") {
+      gfx("floor-yard", 384, 192, (g) => drawGrass(g, t));
+      continue;
+    }
     gfx(`floor-${name}`, 320, 96, (g) => {
       g.fillStyle(t.floor[0], 1);
       g.fillRect(0, 0, 320, 96);
-      if (name === "yard") {
-        g.fillStyle(t.floor[2], 0.5);
-        for (let i = 0; i < 26; i += 1) g.fillRect((i * 53) % 320, (i * 37) % 96, 3, 9);
-        g.fillStyle(t.floor[1], 0.5);
-        for (let i = 0; i < 20; i += 1) g.fillRect((i * 71 + 20) % 320, (i * 29 + 40) % 96, 3, 7);
-        return;
-      }
       g.fillStyle(t.floor[2], 0.35);
       g.fillRect(0, 0, 320, 6);
       g.fillRect(0, 48, 320, 6);
@@ -163,6 +285,8 @@ export type Block = Box & { prop: Prop | null };
 
 export class Prop {
   readonly img: Phaser.GameObjects.Image;
+  readonly crown: Phaser.GameObjects.Image | null = null;
+  readonly shadow: Phaser.GameObjects.Image | null = null;
   readonly base: { x: number; y: number; angle: number; sx: number; sy: number };
   readonly springs: Phaser.GameObjects.Image[] = [];
   vx = 0;
@@ -170,23 +294,80 @@ export class Prop {
   busy = false;
   idleAt = 0;
   private tipped = false;
+  private shadowAt = { dx: 0, dy: 0 };
 
   constructor(
     private scene: Phaser.Scene,
     readonly def: PropDef,
     private reduced: boolean,
+    shade = 0.5,
   ) {
     const s = (def.scale ?? 1) / RES;
     const origin = def.origin ?? (def.react === "swing" ? [0.5, 0] : [0.5, 1]);
-    this.img = scene.add.image(def.x, def.y, def.key).setOrigin(origin[0], origin[1]).setScale(s).setFlipX(Boolean(def.flip)).setAngle(def.angle ?? 0);
+    const split = CROWNS[def.key];
+    this.img = scene.add.image(def.x, def.y, split?.trunk ?? def.key).setOrigin(origin[0], origin[1]).setScale(s).setFlipX(Boolean(def.flip)).setAngle(def.angle ?? 0);
     if (def.depth !== undefined) this.img.setDepth(def.depth);
     else if (def.layer === "wall") this.img.setDepth(5);
     else if (def.layer === "floor") this.img.setDepth(20 + def.y / 1000);
     else this.img.setDepth(def.y);
     this.base = { x: def.x, y: def.y, angle: def.angle ?? 0, sx: s, sy: s };
+    const k = def.scale ?? 1;
+    const artW = this.img.width / RES;
+    const artH = this.img.height / RES;
+    const at = (ax: number, ay: number) => this.artPoint(ax, ay);
+    const foot = SHADOWS[def.key];
+    if (foot && def.layer !== "wall") {
+      const [cx, cy, w, h] = foot;
+      const p = at(cx, cy);
+      this.shadowAt = { dx: p.x - def.x, dy: p.y - def.y };
+      this.shadow = scene.add
+        .image(p.x, p.y, "shade")
+        .setDisplaySize(w * k, h * k)
+        .setAlpha(shade)
+        .setDepth(def.layer === "floor" ? this.img.depth - 0.0005 : SHADE_DEPTH);
+    }
+    if (split) {
+      const [px, py] = split.pivot;
+      const p = at(px, py);
+      this.crown = scene.add
+        .image(p.x, p.y, split.crown)
+        .setOrigin(def.flip ? 1 - px / artW : px / artW, py / artH)
+        .setScale(s)
+        .setFlipX(Boolean(def.flip))
+        .setDepth(this.img.depth + 0.01);
+    }
     for (const [dx, dy, angle] of def.spring ?? []) {
       this.springs.push(scene.add.image(def.x + dx, def.y + dy, "spring").setOrigin(0.5, 0.92).setScale(0.82).setAngle(angle).setDepth(this.img.depth + 0.4));
     }
+  }
+
+  artPoint(ax: number, ay: number) {
+    const d = this.def;
+    const k = d.scale ?? 1;
+    const ox = this.img.originX * (this.img.width / RES);
+    const oy = this.img.originY * (this.img.height / RES);
+    return { x: d.x + (ax - ox) * k * (d.flip ? -1 : 1), y: d.y + (ay - oy) * k };
+  }
+
+  backdrop(depth: number) {
+    const back = BACKDROPS[this.def.key];
+    if (!back) return;
+    const [cx, cy, w, h] = back.at;
+    const k = this.def.scale ?? 1;
+    const p = this.artPoint(cx, cy);
+    this.scene.add.image(p.x, p.y, "shade").setDisplaySize(w * k, h * k).setAlpha(back.alpha).setDepth(depth);
+  }
+
+  get sway() {
+    return this.crown ?? this.img;
+  }
+
+  get swayBase() {
+    return this.crown ? 0 : this.base.angle;
+  }
+
+  follow() {
+    this.shadow?.setPosition(this.img.x + this.shadowAt.dx, this.img.y + this.shadowAt.dy);
   }
 
   boing(sfx: (n: PajamaSfx, v?: number) => void, power = 1) {
@@ -241,7 +422,8 @@ export class Prop {
     const done = () => (this.busy = false);
     if (kind === "rustle") {
       sfx("rustle", 0.3);
-      scene.tweens.add({ targets: this.img, angle: { from: this.base.angle + dir * 3.5 * p, to: this.base.angle }, duration: 900, ease: "Elastic.easeOut", easeParams: [1.1, 0.3], onComplete: done });
+      const base = this.swayBase;
+      scene.tweens.add({ targets: this.sway, angle: { from: base + dir * (this.crown ? 2.4 : 3.5) * p, to: base }, duration: 900, ease: "Elastic.easeOut", easeParams: [1.1, 0.3], onComplete: done });
     } else if (kind === "wobble" || kind === "swing") {
       sfx("wobble", 0.35);
       scene.tweens.add({ targets: this.img, angle: { from: this.base.angle + dir * 14 * p, to: this.base.angle }, duration: 900, ease: "Elastic.easeOut", easeParams: [1.2, 0.3], onComplete: done });
@@ -302,8 +484,9 @@ export class Room {
   readonly solid: Box[];
   readonly nav: NavGrid;
   readonly props: Prop[] = [];
+  readonly glows = new Map<Prop, Phaser.GameObjects.Image>();
   readonly ambient: Ambient;
-  private lights: { bulbs: Phaser.GameObjects.Image[]; halos: Phaser.GameObjects.Image[]; pts: { x: number; y: number }[]; cur: { x: number; y: number }[]; wire: Phaser.GameObjects.Graphics; kick: number; def: ArenaDef["lights"][number] }[] = [];
+  private lights: { bulbs: Phaser.GameObjects.Image[]; halos: Phaser.GameObjects.Image[]; cores: Phaser.GameObjects.Image[]; pts: { x: number; y: number }[]; cur: { x: number; y: number }[]; wire: Phaser.GameObjects.Graphics; kick: number; def: ArenaDef["lights"][number] }[] = [];
   private floorPillows: { img: Phaser.GameObjects.Image; x: number; y: number }[] = [];
   private theme: Theme;
   private cat: Cat | null = null;
@@ -321,7 +504,7 @@ export class Room {
     this.theme = THEMES[def.theme];
     this.drawShell();
     for (const p of def.props) {
-      const prop = new Prop(scene, p, reduced);
+      const prop = new Prop(scene, p, reduced, def.theme === "yard" ? 0.78 : 0.66);
       this.props.push(prop);
       if (p.glow) {
         const g = scene.add
@@ -331,8 +514,14 @@ export class Room {
           .setAlpha(p.glow.alpha ?? 0.3)
           .setBlendMode(Phaser.BlendModes.ADD)
           .setDepth(p.layer === "wall" ? 6 : 25);
+        this.glows.set(prop, g);
         if (!reduced && p.react === "wobble") scene.tweens.add({ targets: g, alpha: (p.glow.alpha ?? 0.3) * (p.key === "lantern" ? 0.7 : 0.82), duration: p.key === "lantern" ? 900 + ((p.x * 7) % 900) : 1400, delay: (p.x * 3) % 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       }
+    }
+    for (const prop of this.props) {
+      const on = BACKDROPS[prop.def.key]?.on;
+      const surface = on ? this.props.find((p) => p.def.key === on) : null;
+      prop.backdrop(surface ? surface.img.depth + 0.05 : WALL_SHADE_DEPTH);
     }
     for (const [x, y, tint, angle] of def.floorPillows) {
       const muted = (((tint >> 16) & 255) * 0.74) << 16 | (((tint >> 8) & 255) * 0.72) << 8 | ((tint & 255) * 0.78);
@@ -419,6 +608,7 @@ export class Room {
     ceiling.fillRect(0, 40, W, 40);
     this.ceiling = ceiling;
     if (d.theme === "yard") {
+      s.add.image(0, wb, "yard-patches").setOrigin(0, 0).setDisplaySize(W, floorEnd - wb).setDepth(0.55);
       s.add.tileSprite(0, wb - 136, W, 138, "fence").setOrigin(0, 0).setTileScale(0.8 / RES, 0.8 / RES).setDepth(3);
       this.skyGlow = s.add.image(W / 2, 0, "glow").setDisplaySize(W * 1.4, 520).setTint(0x3a4a8a).setAlpha(0.35).setDepth(0.6);
       g.fillStyle(0x140f26, 0.3);
@@ -462,13 +652,15 @@ export class Room {
     }
     const bulbs: Phaser.GameObjects.Image[] = [];
     const halos: Phaser.GameObjects.Image[] = [];
+    const cores: Phaser.GameObjects.Image[] = [];
     pts.forEach((p, i) => {
       if (i % 6 === 0) return;
       const color = BULB_COLORS[i % BULB_COLORS.length];
       halos.push(s.add.image(p.x, p.y + 20, "glow").setDisplaySize(90, 90).setTint(color).setAlpha(0.42).setBlendMode(Phaser.BlendModes.ADD).setDepth(7.5));
       bulbs.push(s.add.image(p.x, p.y, "bulb").setOrigin(0.5, 0).setTint(color).setDepth(8));
+      cores.push(s.add.image(p.x, p.y + 21, "glow").setDisplaySize(26, 26).setTint(color).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD).setDepth(8.1));
     });
-    this.lights.push({ bulbs, halos, pts, cur: pts.map((p) => ({ ...p })), wire, kick: 0, def: l });
+    this.lights.push({ bulbs, halos, cores, pts, cur: pts.map((p) => ({ ...p })), wire, kick: 0, def: l });
   }
 
   blockAt(x: number, y: number, pad = 0) {
@@ -526,6 +718,7 @@ export class Room {
       }
       p.img.setPosition(nx, ny).setDepth(ny);
       p.img.angle += (p.vx / 30) * dt * 57;
+      p.follow();
     }
     this.cat?.update(t, dt, feet, sfx);
     this.ambient.update(t, dt);
@@ -567,8 +760,10 @@ export class Room {
         }
         const angle = this.reduced ? 0 : Math.sin(t / 700 + i) * 6 + Math.sin(t / 110 + i) * 24 * l.kick;
         l.bulbs[j].setPosition(p.x, p.y).setAngle(angle);
-        const flick = this.reduced ? 0.42 : 0.36 + Math.sin(t / 300 + i * 1.7) * 0.06;
-        l.halos[j].setPosition(p.x, p.y + 20).setAlpha(flick);
+        const glow = this.reduced ? 0.5 : 0.5 + 0.38 * Math.sin(t / (820 + ((i * 263) % 1500)) + i * 2.3) + 0.12 * Math.sin(t / 2900 + i * 0.7) + Math.min(0.3, l.kick * 0.25);
+        const rad = Phaser.Math.DegToRad(angle);
+        l.halos[j].setPosition(p.x, p.y + 20).setAlpha(0.3 + glow * 0.16);
+        l.cores[j].setPosition(p.x - Math.sin(rad) * 21, p.y + Math.cos(rad) * 21).setAlpha(0.28 + glow * 0.42);
         j += 1;
       });
     }
@@ -587,6 +782,8 @@ class Cat {
   private idleStep = 0;
   private breath: Phaser.Tweens.Tween | null = null;
   private readonly scale = 0.72 / RES;
+  private shadow: Phaser.GameObjects.Image;
+  private ground: number;
 
   constructor(
     private scene: Phaser.Scene,
@@ -595,7 +792,19 @@ class Cat {
   ) {
     const [x, y, depth] = spots[0];
     this.img = scene.add.image(x, y, "cat-sleep").setOrigin(0.5, 1).setScale(this.scale).setDepth(depth || y);
+    this.ground = y;
+    this.shadow = scene.add.image(x, y - 3, "shade").setAlpha(0.42);
+    this.placeShadow();
     this.breathe();
+  }
+
+  private placeShadow() {
+    const k = Math.min(1, Math.max(0, this.ground - this.img.y) / 60);
+    this.shadow
+      .setPosition(this.img.x, this.ground - 3)
+      .setDisplaySize(118 * (1 - k * 0.35), 20 * (1 - k * 0.3))
+      .setAlpha(0.42 * (1 - k * 0.5))
+      .setDepth(this.img.depth - 0.02);
   }
 
   private breathe() {
@@ -621,7 +830,10 @@ class Cat {
     this.state = state;
     this.breath?.stop();
     this.img.setTexture("cat-run").setScale(this.scale).setFlipX(this.to.x < this.img.x);
-    if (this.reduced) this.img.setPosition(this.to.x, this.to.y);
+    if (this.reduced) {
+      this.img.setPosition(this.to.x, this.to.y);
+      this.ground = this.to.y;
+    }
   }
 
   scare(x: number, y: number, sfx: (n: PajamaSfx, v?: number) => void) {
@@ -655,6 +867,8 @@ class Cat {
 
   private settle(t: number) {
     this.img.setPosition(this.to.x, this.to.y).setDepth(this.to.depth || this.to.y).setTexture("cat-sleep").setFlipX(this.to.x > 960);
+    this.ground = this.to.y;
+    this.placeShadow();
     this.state = "sleep";
     this.calmAt = t + 3500;
     this.idleAt = t + 8000;
@@ -684,6 +898,7 @@ class Cat {
 
   update(t: number, dt: number, feet: { x: number; y: number; vx: number; vy: number }[], sfx: (n: PajamaSfx, v?: number) => void) {
     this.time = t;
+    this.placeShadow();
     if (this.state === "peek") {
       if (t >= this.until) {
         this.state = "sleep";
@@ -711,6 +926,7 @@ class Cat {
     }
     this.img.x += (dx / d) * step;
     this.img.y += (dy / d) * step;
+    this.ground = this.img.y;
     this.img.setDepth(this.img.y + 1);
     if (this.state === "walk" && !this.reduced) this.img.setScale(this.scale, this.scale * (1 + Math.abs(Math.sin(t / 90)) * 0.05));
   }

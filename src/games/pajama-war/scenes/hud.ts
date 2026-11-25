@@ -35,6 +35,10 @@ export type Offscreen = { kid: KidId; x: number; y: number; alert: boolean };
 
 export type Playfield = { left: number; top: number; right: number; bottom: number };
 
+export type Hint = { title?: string; body: string };
+
+export type FlashAt = "start" | "event" | "center" | "end";
+
 const STICK = { base: 104, knob: 54, leash: 64, dead: 12, full: 46 };
 const BUTTON_R = 112;
 const FIRE = { decide: 150, start: 9, steady: 5 };
@@ -48,7 +52,7 @@ export class PajamaHud {
   private portraits = new Map<KidId, Portrait>();
   private banner: Phaser.GameObjects.Text;
   private sub: Phaser.GameObjects.Text;
-  private bannerTop = false;
+  private bannerAt: FlashAt = "center";
   private stickBase: Phaser.GameObjects.Arc;
   private stickKnob: Phaser.GameObjects.Arc;
   private stickLabel: Phaser.GameObjects.Text;
@@ -75,8 +79,10 @@ export class PajamaHud {
   private frame: Frame = FULL_FRAME;
   private displayWidth = 0;
   private tip: Phaser.GameObjects.Container;
+  private tipTitle: Phaser.GameObjects.Text;
   private tipText: Phaser.GameObjects.Text;
   private tipBg: Phaser.GameObjects.Graphics;
+  private tipH = 0;
   private tipTimer?: Phaser.Time.TimerEvent;
   private tipScale = 1;
   private deck: Phaser.GameObjects.Graphics;
@@ -167,8 +173,9 @@ export class PajamaHud {
     this.throwBtn = scene.add.container(0, 0, [bg, this.throwPress, this.throwRing, this.throwIcon, lbl, this.aimKnob]).setDepth(2005).setVisible(false);
 
     this.tipBg = scene.add.graphics();
-    this.tipText = cartoonText(scene, 0, 0, "", { size: 32, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center", wrap: 900 }).setOrigin(0.5);
-    this.tip = scene.add.container(W / 2, 156, [this.tipBg, this.tipText]).setDepth(2004).setVisible(false).setAngle(-1);
+    this.tipTitle = cartoonText(scene, 0, 0, "", { size: 40, color: "#ef4f43", font: fonts.display, stroke: 0.12, shadow: false, align: "center" }).setOrigin(0.5);
+    this.tipText = cartoonText(scene, 0, 0, "", { size: 30, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center", wrap: 900 }).setOrigin(0.5);
+    this.tip = scene.add.container(W / 2, 156, [this.tipBg, this.tipTitle, this.tipText]).setDepth(2004).setVisible(false).setAngle(-1);
 
     for (const { kid, isPlayer } of kids) if (!isPlayer) this.pins.set(kid, this.makePin(kid));
   }
@@ -214,12 +221,20 @@ export class PajamaHud {
     g.strokeCircle(0, 0, alert ? 50 : 48);
   }
 
-  hint(text: string, ms = 4800) {
+  hint(hint: Hint, ms = 3800) {
     this.tipTimer?.remove();
     this.scene.tweens.killTweensOf(this.tip);
-    this.tipText.setText(text);
-    const w = this.tipText.width + 56;
-    const h = this.tipText.height + 26;
+    const titled = Boolean(hint.title);
+    this.tipTitle.setText(hint.title ?? "").setVisible(titled);
+    this.tipText.setText(hint.body).setFontSize(titled ? 26 : 30);
+    const gap = titled ? -6 : 0;
+    const inner = (titled ? this.tipTitle.height + gap : 0) + this.tipText.height;
+    const w = Math.max(titled ? this.tipTitle.width : 0, this.tipText.width) + 56;
+    const h = inner + (titled ? 18 : 26);
+    this.tipH = h;
+    const top = -inner / 2;
+    if (titled) this.tipTitle.setY(top + this.tipTitle.height / 2);
+    this.tipText.setY(top + (titled ? this.tipTitle.height + gap : 0) + this.tipText.height / 2);
     const g = this.tipBg;
     g.clear();
     g.fillStyle(INK_HEX, 1);
@@ -240,7 +255,7 @@ export class PajamaHud {
   }
 
   private placeTip() {
-    const h = (this.tipText.height + 26) * this.tipScale;
+    const h = this.tipH * this.tipScale;
     const f = this.frame;
     if (f.kind === "full") {
       this.tip.setPosition(f.width / 2, (this.k === 1 ? 156 : 120 * this.k) + h / 2 - 30);
@@ -438,38 +453,45 @@ export class PajamaHud {
     this.timer.setText(`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`);
   }
 
-  flash(text: string, color: string, ms: number, sub = "", top = false) {
+  flash(text: string, color: string, ms: number, opts: { sub?: string; at?: FlashAt } = {}) {
+    const sub = opts.sub ?? "";
     this.bannerTimer?.remove();
     this.scene.tweens.killTweensOf([this.banner, this.sub]);
-    this.bannerTop = top;
+    this.bannerAt = opts.at ?? "center";
     this.banner.setText(text).setColor(color).setVisible(true).setAlpha(1);
     this.sub.setText(sub).setVisible(Boolean(sub)).setAlpha(1);
     const scale = this.placeBanner();
+    const burst = this.bannerAt === "start" && !sub;
     if (!this.reduced) {
       this.banner.setScale(scale * 0.4);
-      this.scene.tweens.add({ targets: this.banner, scale, duration: 260, ease: "Back.easeOut" });
+      this.scene.tweens.add({ targets: this.banner, scale, duration: burst ? 200 : 260, ease: "Back.easeOut" });
     }
     this.bannerTimer = this.scene.time.delayedCall(ms, () => {
-      this.scene.tweens.add({ targets: [this.banner, this.sub], alpha: 0, duration: 220, onComplete: () => this.banner.setVisible(false) });
+      this.scene.tweens.add({ targets: [this.banner, this.sub], alpha: 0, duration: burst ? 180 : 220, onComplete: () => this.banner.setVisible(false) });
+      if (burst && !this.reduced) this.scene.tweens.add({ targets: this.banner, scale: scale * 1.25, duration: 180, ease: "Quad.easeIn" });
     });
   }
 
   private placeBanner() {
     const f = this.frame;
+    const at = this.bannerAt;
     if (f.kind === "full") {
-      this.banner.setScale(1).setPosition(f.width / 2, this.bannerTop ? 175 : f.height / 2 - 70);
-      this.sub.setScale(1).setPosition(f.width / 2, this.bannerTop ? 275 : f.height / 2 + 40);
-      return 1;
+      const [y, k, gap, ks] = at === "start" ? [250, 0.8, 84, 0.86] : at === "event" ? [216, 0.62, 66, 0.8] : at === "end" ? [175, 1, 100, 1] : [f.height / 2 - 70, 1, 110, 1];
+      this.banner.setScale(k).setPosition(f.width / 2, y);
+      this.sub.setScale(ks).setPosition(f.width / 2, y + gap);
+      return k;
     }
     const u = f.unit;
     const room = f.width - 32 * u - f.safe.left - f.safe.right;
-    const big = Math.min((f.kind === "tall" ? 46 : 52) * u / 120, room / Math.max(1, this.banner.width));
-    const small = Math.min((f.kind === "tall" ? 17 : 18) * u / 44, room / Math.max(1, this.sub.width));
+    const band = f.kind === "band";
+    const [kb, kSub] = at === "start" ? [band ? 0.72 : 0.86, band ? 0.9 : 1] : at === "event" ? [band ? 0.56 : 0.68, 0.9] : [1, 1];
+    const big = Math.min(((f.kind === "tall" ? 46 : 52) * u * kb) / 120, room / Math.max(1, this.banner.width));
+    const small = Math.min(((f.kind === "tall" ? 17 : 18) * u * kSub) / 44, room / Math.max(1, this.sub.width));
     const fieldTop = f.hud;
     const fieldBottom = f.height - f.deck;
-    const cy = this.bannerTop ? fieldTop + 70 * u : (fieldTop + fieldBottom) / 2 - 24 * u;
+    const cy = at === "end" ? fieldTop + 70 * u : at === "start" ? fieldTop + (fieldBottom - fieldTop) * (band ? 0.17 : 0.24) : at === "event" ? fieldTop + (band ? 26 : 52) * u : (fieldTop + fieldBottom) / 2 - 24 * u;
     this.banner.setScale(big).setPosition(f.width / 2, cy);
-    this.sub.setScale(small).setPosition(f.width / 2, cy + 46 * u);
+    this.sub.setScale(small).setPosition(f.width / 2, cy + (at === "event" ? 36 : 46) * u * kb);
     return big;
   }
 

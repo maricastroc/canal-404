@@ -430,13 +430,13 @@ export class ArenaScene extends Phaser.Scene {
     const hud = this.hud!;
     const p = this.player!;
     const arena = ARENAS[this.levelIndex];
-    hud.flash(this.text.ready, "#fbf5e6", 700, this.text.readySub);
+    hud.flash(this.text.ready, "#fbf5e6", 700, { sub: this.text.readySub, at: "start" });
     if (loadStats().matches < 2) {
       if (hud.hasTouch && this.compact) {
         hud.setTutorial("basics");
         this.tutorial = { moved: false, threw: false, step: "basics" };
       } else {
-        hud.hint(hud.hasTouch ? this.text.controlsTouch : this.text.controlsKeys, 4200);
+        hud.hint({ body: hud.hasTouch ? this.text.controlsTouch : this.text.controlsKeys }, 4200);
         this.mechanicDelay = 3400;
       }
     }
@@ -446,7 +446,7 @@ export class ArenaScene extends Phaser.Scene {
       if (this.mode !== "intro") return;
       this.mode = "play";
       this.engagedAt = this.t;
-      hud.flash(this.text.go, "#ffc83d", 520);
+      hud.flash(this.text.go, "#ffc83d", 380, { at: "start" });
       this.sfx("go", 0.9);
       this.showYou();
       this.introduceMechanic();
@@ -464,11 +464,11 @@ export class ArenaScene extends Phaser.Scene {
       if (!this.ctx.reducedMotion) this.time.delayedCall(60, () => this.sfx("spring", 0.6));
     }
     if (!markHint(arena.mechanic)) return;
-    const text = this.text.hints[arena.mechanic];
+    const hint = this.text.hints[arena.mechanic];
     this.time.delayedCall(this.mechanicDelay, () => {
       if (this.mode !== "play") return;
-      this.hud?.hint(text);
-      this.ctx.onEvent({ type: "announce", message: text });
+      this.hud?.hint(hint);
+      this.ctx.onEvent({ type: "announce", message: `${hint.title} ${hint.body}` });
     });
   }
 
@@ -1297,13 +1297,13 @@ export class ArenaScene extends Phaser.Scene {
     if (this.heatStage === 0 && this.matchTime >= ESCALATE.heat) {
       this.heatStage = 1;
       for (const f of this.fighters) f.regenScale = 1.7;
-      this.hud?.flash(this.text.heat, "#ff8a3d", 1500, this.text.heatSub);
+      this.hud?.flash(this.text.heat, "#ff8a3d", 1500, { sub: this.text.heatSub, at: "event" });
       this.sfx("alarm", 0.8);
       this.ctx.onEvent({ type: "announce", message: this.text.heatSay });
     } else if (this.heatStage === 1 && this.matchTime >= ESCALATE.final) {
       this.heatStage = 2;
       for (const f of this.fighters) f.regenScale = 0;
-      this.hud?.flash(this.text.final, "#ef4f43", 1600, this.text.finalSub);
+      this.hud?.flash(this.text.final, "#ef4f43", 1600, { sub: this.text.finalSub, at: "event" });
       this.sfx("alarm", 1);
       this.ctx.onEvent({ type: "announce", message: this.text.finalSay });
     }
@@ -1348,15 +1348,15 @@ export class ArenaScene extends Phaser.Scene {
         }
       }
       if (won) {
-        hud.flash(this.text.youWin, "#ffc83d", 1900, winShout(this.levelIndex, this.locale), true);
+        hud.flash(this.text.youWin, "#ffc83d", 1900, { sub: winShout(this.levelIndex, this.locale), at: "end" });
         this.starBurst();
         this.sfx("win", 1);
         this.time.delayedCall(350, () => this.sfx("cheer", 0.9));
       } else if (winner) {
-        hud.flash(this.text.kidWins(KID_INFO[winner.kid].name), "#fbf5e6", 1900, this.text.again, true);
+        hud.flash(this.text.kidWins(KID_INFO[winner.kid].name), "#fbf5e6", 1900, { sub: this.text.again, at: "end" });
         this.sfx("lose", 1);
       } else {
-        hud.flash(this.text.knockout, "#ef4f43", 1900, this.text.lost);
+        hud.flash(this.text.knockout, "#ef4f43", 1900, { sub: this.text.lost });
         this.sfx("lose", 1);
       }
     });
