@@ -28,6 +28,46 @@ import type { MissionState, MissionView } from "@/lib/missions/types";
 import { BoardLine, type BoardState } from "./BoardLine";
 import { MissionBrief, MissionLine } from "./MissionLine";
 
+const EDGE_FADE = 36;
+
+const SCROLL_FADE_CLASS =
+  "[-webkit-mask-image:var(--scroll-fade)] [mask-image:var(--scroll-fade)] focus-visible:[-webkit-mask-image:none] focus-visible:[mask-image:none]";
+
+function useScrollFade(el: HTMLElement | null) {
+  const [edges, setEdges] = useState({ top: false, bottom: false });
+  useEffect(() => {
+    if (!el) return;
+    const measure = () => {
+      const room = el.scrollHeight - el.clientHeight;
+      const scrollable = room > 1 && getComputedStyle(el).overflowY !== "visible";
+      const top = scrollable && el.scrollTop > 1;
+      const bottom = scrollable && el.scrollTop < room - 1;
+      setEdges((prev) => (prev.top === top && prev.bottom === bottom ? prev : { top, bottom }));
+    };
+    const observer = new ResizeObserver(measure);
+    const watch = () => {
+      observer.observe(el);
+      Array.from(el.children).forEach((child) => observer.observe(child));
+    };
+    const mutations = new MutationObserver(() => {
+      watch();
+      measure();
+    });
+    watch();
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    mutations.observe(el, { childList: true });
+    return () => {
+      el.removeEventListener("scroll", measure);
+      observer.disconnect();
+      mutations.disconnect();
+    };
+  }, [el]);
+  const top = edges.top ? `transparent, #000 ${EDGE_FADE}px` : "#000";
+  const bottom = edges.bottom ? `#000 calc(100% - ${EDGE_FADE}px), transparent` : "#000";
+  return { "--scroll-fade": edges.top || edges.bottom ? `linear-gradient(to bottom, ${top}, ${bottom})` : "none" } as CSSProperties;
+}
+
 function longestWord(text: string) {
   return Math.max(1, ...text.split(/\s+/).map((word) => word.length));
 }
@@ -555,6 +595,8 @@ export function IntroPanel({
   const adventure = narrow && progress && !mission && !missionPending && !picking ? progress : null;
   const sectioned = picking || Boolean(adventure);
   const confirmRef = useRef<HTMLDivElement>(null);
+  const [body, setBody] = useState<HTMLDivElement | null>(null);
+  const bodyFade = useScrollFade(body);
   useEffect(() => {
     if (confirming) confirmRef.current?.scrollIntoView({ block: "nearest", behavior: scrollMotion() });
   }, [confirming]);
@@ -613,10 +655,12 @@ export function IntroPanel({
       </div>
       <div
         data-testid="intro-body"
+        ref={setBody}
+        style={bodyFade}
         tabIndex={showHelp ? 0 : undefined}
         role={showHelp ? "region" : undefined}
         aria-label={showHelp ? copy.howTo : undefined}
-        className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun max-sm:overflow-visible flat:overflow-visible"
+        className={`-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-1 outline-none focus-visible:ring-4 focus-visible:ring-sun max-sm:overflow-visible flat:overflow-visible ${SCROLL_FADE_CLASS}`}
       >
         {missionNotice ? (
           <p role="status" className="mt-4 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 font-semibold leading-snug text-ink">

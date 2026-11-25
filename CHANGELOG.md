@@ -10,6 +10,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 - **Everywhere.** The tips use the kids' speech bubbles on desktop and the speech cards on phones, in pt-BR and English, and they are read to screen readers.
 - **Nothing else changes.** Levels, replays and boards stay the same.
 
+### Ao Vivo no 404: chuvisco em doses menores
+- **No more long blind stretches.** Balada do Chuvisco had runs of up to three "SEM SINAL" bars in a row, with weak signal around them, so near the end players tapped for about ten seconds without seeing a note reach the circle while the rhythm kept changing. A player who slipped a little had nowhere to find the beat again and was often cut by the crowd. Now the signal never drops for two bars in a row: 7 lost bars instead of 9, each between bars you can see, and placed where the rhythm is easiest to carry (steady beats, steady eighths or the song's main motif).
+- **Same song, same rules.** The notes, the judge and the boards don't change; the notes still fade out before the circle in the lost bars.
+
+### Lista de fases sem listras cortadas
+- **Soft edges.** When a game's level list scrolls inside the intro card, the cards cut at the top or bottom edge no longer show as dark stripes under the objective. The list fades out at whichever edge has more to scroll to, and the fade goes away while the list has keyboard focus so its focus ring stays visible.
+
 ### Férias Fora do Ar: Sr. Bigodes de corpo inteiro na festa
 - **No more floating bust.** The receptionist's sprites stop at the chest because a desk hides the rest in the lobby. At the closing party he stood in the open, so he looked like a torso on the floor. He now has a full-body party sprite: the same head and jacket, the rest of the bellhop uniform with gold buttons and stripes, trousers, shoes and a tail. He waves, blinks and bounces gently with the other guests.
 - **On the deck.** He moved from the grass in front of the juice bar onto the pool deck, under the lifeguard chair. On phones the camera now shows him whole when he speaks.
