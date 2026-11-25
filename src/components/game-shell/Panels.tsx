@@ -41,7 +41,7 @@ type LevelWord = NonNullable<GameMeta["levelWord"]>;
 
 const LEVEL: Record<LevelWord, string> = { fase: "level", arena: "arena", pista: "track", parte: "part", música: "song" };
 
-const PICK: Record<LevelWord, string> = { fase: "Pick a level", arena: "Pick an arena", pista: "Pick your track", parte: "Pick a part", música: "Pick a song" };
+const PICK: Record<LevelWord, string> = { fase: "Pick your level", arena: "Pick your arena", pista: "Pick your track", parte: "Pick your part", música: "Pick your song" };
 
 const COPY = localized({
   "pt-BR": {
@@ -50,8 +50,8 @@ const COPY = localized({
     howTo: "Como jogar",
     missionLink: "Ver a missão de hoje",
     tuning: "Sintonizando a missão…",
-    chooseLevel: (word: LevelWord) => (word === "pista" ? "Escolha sua pista" : `Escolha a ${word}`),
-    starsTotal: (word: LevelWord, count: number, total: number) => (word === "pista" ? `${count} de ${total} estrelas` : `Estrelas: ${count}/${total}`),
+    chooseLevel: (word: LevelWord) => `Escolha sua ${word}`,
+    starsTotal: (count: number, total: number) => `${count} de ${total} estrelas`,
     upNext: "A seguir",
     locked: (word: LevelWord): string => (word === "arena" ? "Vença a arena anterior" : word === "pista" ? "Chegue ao pódio na pista anterior para desbloquear." : word === "parte" ? "Termine a parte anterior" : word === "música" ? "Conclua a música anterior para desbloquear." : "Termine a fase anterior"),
     noStars: "Sem estrelas",
@@ -115,7 +115,7 @@ const COPY = localized({
     missionLink: "See today's mission",
     tuning: "Tuning in the mission…",
     chooseLevel: (word: LevelWord) => PICK[word],
-    starsTotal: (word: LevelWord, count: number, total: number) => (word === "pista" ? `${count} of ${total} stars` : `Stars: ${count}/${total}`),
+    starsTotal: (count: number, total: number) => `${count} of ${total} stars`,
     upNext: "Up next",
     locked: (word: LevelWord) => (word === "arena" ? "Win the previous arena" : word === "pista" ? "Make the podium on the previous track to unlock." : word === "parte" ? "Finish the previous part" : word === "música" ? "Finish the previous song to unlock." : "Finish the previous level"),
     noStars: "No stars",
@@ -671,7 +671,7 @@ export function IntroPanel({
         ) : null}
         {picking && !showHelp && game.levels && levels && (
           <div className="mt-5 shorter:mt-3">
-            <PickHeader title={copy.chooseLevel(word)} meta={copy.starsTotal(word, totalStars, game.levels.length * 3)} />
+            <PickHeader title={copy.chooseLevel(word)} meta={copy.starsTotal(totalStars, game.levels.length * 3)} />
             <ol className="mt-3 grid gap-x-2.5 gap-y-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
               {game.levels.map((level, i) => {
                 const locked = i > levels.unlocked;
