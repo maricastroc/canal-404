@@ -694,7 +694,7 @@ export class StageScene extends Phaser.Scene {
     this.ctx.onEvent({ type: "score", score: this.score });
   }
 
-  private hurt(fromX: number) {
+  private hurt(fromX: number, cause?: { word: string; say: (hearts: number) => string }) {
     if (this.t < this.invulnUntil || this.mode !== "play") return;
     this.hearts -= 1;
     this.hits += 1;
@@ -705,12 +705,12 @@ export class StageScene extends Phaser.Scene {
     this.hero.sprite.setTintFill(0xffffff);
     this.time.delayedCall(80, () => this.hero.sprite.clearTint());
     if (!this.ctx.reducedMotion) this.cameras.main.shake(140, 0.006);
-    this.word(this.copy.words.ouch[this.hits % this.copy.words.ouch.length], this.hero.x, this.hero.body.top - 40, "#ef4f43", 50);
+    this.word(cause?.word ?? this.copy.words.ouch[this.hits % this.copy.words.ouch.length], this.hero.x, this.hero.body.top - 40, cause ? "#f06ba8" : "#ef4f43", 50);
     if (this.hearts <= 0) {
       this.knockOut();
       return;
     }
-    this.announce(this.copy.say.heartsLeft(this.hearts));
+    this.announce(cause ? cause.say(this.hearts) : this.copy.say.heartsLeft(this.hearts));
   }
 
   private fell() {
@@ -1255,12 +1255,7 @@ export class StageScene extends Phaser.Scene {
   }
 
   private trip() {
-    if (this.t < this.invulnUntil) return;
-    this.invulnUntil = this.t + 700;
-    this.hero.knock(this.hero.x + this.hero.facing * 10, this.t, 300, 320);
-    this.word(this.copy.words.tripped, this.hero.x, this.hero.body.top - 40, "#f06ba8", 40);
-    this.sfx("land", 0.9);
-    this.announce(this.copy.say.tripped);
+    this.hurt(this.hero.x + this.hero.facing * 10, { word: this.copy.words.tripped, say: this.copy.say.tripped });
   }
 
   private nextHint(x: number): Hint | null {

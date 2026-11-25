@@ -48,7 +48,7 @@ export const COPY = localized({
     hintSpeech: {
       locker: "Armário tremendo abre com tudo. Pare antes da porta ou feche com uma espadada.",
       watcher: "Vigia à frente. Quando ele baixar o jornal, fique parado.",
-      rope: "Corda de pular à frente. Pule quando ela descer para bater no chão.",
+      rope: "Corda de pular à frente. Pule quando ela descer para bater no chão. Tropeçar custa um coração.",
       pad: "Colchonete à frente. Pule nele para ir bem alto.",
       light: "Luz do Inspetor. Passe quando ela estiver longe. Se ela parar em você, saia antes que fique vermelha.",
       shield: "Monitor da placa de PARE. De frente, a placa bloqueia. Ataque pelas costas ou quando ele baixar a placa.",
@@ -119,7 +119,7 @@ export const COPY = localized({
       snack: "Lanche! Mais um coração.",
       bellMission: "Sino tocado! Na missão, a fase vale do começo ao fim.",
       bellSaved: "Sino tocado! Se for pego, você volta daqui.",
-      tripped: "Tropeçou na corda! Pule quando ela descer.",
+      tripped: (n: number) => (n === 1 ? "Tropeçou na corda! Resta 1 coração. Pule quando ela descer." : `Tropeçou na corda! Restam ${n} corações. Pule quando ela descer.`),
     },
     result: {
       loseTitle: "Pego no flagra!",
@@ -186,7 +186,7 @@ export const COPY = localized({
     hintSpeech: {
       locker: "A shaking locker flies open. Stop before the door or slam it shut with your sword.",
       watcher: "Lookout ahead. When he lowers his newspaper, stand still.",
-      rope: "Jump rope ahead. Jump when it comes down to hit the ground.",
+      rope: "Jump rope ahead. Jump when it comes down to hit the ground. Tripping costs a heart.",
       pad: "Mat ahead. Jump on it to go really high.",
       light: "The Inspector's spotlight. Go past when it's far away. If it stops on you, get out before it turns red.",
       shield: "Monitor with a STOP sign. From the front, the sign blocks. Attack from behind or when he lowers the sign.",
@@ -257,7 +257,7 @@ export const COPY = localized({
       snack: "Snack! One more heart.",
       bellMission: "Bell rung! In today's mission, you play the level from start to finish.",
       bellSaved: "Bell rung! If you get caught, you'll restart from here.",
-      tripped: "Tripped on the rope! Jump when it comes down.",
+      tripped: (n: number) => (n === 1 ? "Tripped on the rope! 1 heart left. Jump when it comes down." : `Tripped on the rope! ${n} hearts left. Jump when it comes down.`),
     },
     result: {
       loseTitle: "Caught red-handed!",

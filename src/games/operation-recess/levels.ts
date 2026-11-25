@@ -102,7 +102,7 @@ export const LEVELS: LevelDef[] = [
       { kind: "sticker", col: 21, row: 8 },
       { kind: "sticker", col: 25, row: 5 },
       { kind: "snack", col: 48, row: 9 },
-      { kind: "sticker", col: 62, row: 5 },
+      { kind: "sticker", col: 51, row: 3 },
       { kind: "snack", col: 67, row: 9 },
     ],
     checkpoints: [50],

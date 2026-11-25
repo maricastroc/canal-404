@@ -4,6 +4,13 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Operação: Recreio: trilha, biblioteca, corda e colchonete
+- **Music.** The Silence Inspector fight has its own march, which speeds up when he gets angry, and every level ends with a short tune: a fanfare on "Passou!", the march in a major key on "Recreio liberado!" and the march slowed down on "Pego no flagra!". It stops on pause and follows the sound switch.
+- **A fourth level.** "Biblioteca vigiada" sits between the schoolyard and the office and mixes the other levels' gadgets: a wobbly shelf over a gap in sight of the lookout, the Inspector's spotlight over a stop-sign monitor, a book cart crossing a gap while a whistle monitor fires high and low waves, and a mat up to a mezzanine. Players who already beat the Inspector keep every level open.
+- **The rope counts.** Tripping on the schoolyard jump rope now costs a heart and counts as a hit, instead of only pushing Bruno back.
+- **The mat works.** The mat now throws Bruno as high as it was meant to, about twice a normal jump (a speed limit used to cut the bounce short). The schoolyard sticker that sat on the high bars moved up above the mat, where only the bounce reaches it.
+- **Boards.** Rules version 2. The schoolyard board starts empty, because runs that tripped now count more hits. The corridor, library and office play as before, so each player's best there carries over.
+
 ### Guerra do Pijama: cenários mais vivos
 - **Feet on the floor.** Every kid has a tighter shadow right under the feet, and the furniture and toys in all three arenas cast soft shadows on the floor, so nothing looks pasted on. Beds, the TV, the bookshelf and the mattress stack shade the wall behind them, and the sofa shades the mattresses, without darkening a kid who stands in between.
 - **Bedroom.** The round rug is a little less saturated so it stops competing with the kids. Moonlight from the window falls on the floor in the shape of the panes, with a faint beam and a few specks of dust. The beds look slept in, with pillows knocked askew and a turned-down blanket corner, and the string lights glow and dim each at its own pace.
