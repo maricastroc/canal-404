@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Sheet } from "../past-bedtime-art/kit";
 import { HOST_BOX } from "../../src/games/talent-show/scenes/figure";
 import { BUST_INSET, band } from "./band";
+import { juryFaces } from "./jury";
 import { studioSheet } from "./studio";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -48,7 +49,7 @@ for (const [kid, s] of Object.entries(BUST_INSET)) {
   }
 }
 
-const sheet: Sheet = { ...sources, ...band(), ...studioSheet() };
+const sheet: Sheet = { ...sources, ...juryFaces(sources), ...band(), ...studioSheet() };
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
