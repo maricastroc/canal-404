@@ -95,6 +95,8 @@ const ZOOM_MIN_AIR = 0.55;
 const FIRST_RACE: Record<CourseId, Record<Slot, number>> = { arlindo: { lina: 41, bruno: 48, mila: 44.5 }, feira: { lina: 43.5, bruno: 51, mila: 47 }, antena: { lina: 47.5, bruno: 55, mila: 51 } };
 const PACE: Record<Slot, number> = { lina: -1.2, bruno: 0.8, mila: -0.3 };
 
+const VROOM_GAP_MS = 1200;
+
 function tierOf(speed: number) {
   let t = 0;
   for (const limit of TIER_LIMITS) if (speed >= limit) t += 1;
@@ -179,6 +181,7 @@ export class RaceScene extends Phaser.Scene {
   private trend = 0;
   private lastSpeed = 0;
   private lastTier = 0;
+  private lastVroom = -Infinity;
   private rollT = 0;
   private windT = 0;
   private paddleT = 0;
@@ -837,10 +840,7 @@ export class RaceScene extends Phaser.Scene {
     }
     if (this.finishT > 0) {
       this.finishT -= dt;
-      if (this.finishT <= 0 && this.finished) {
-        this.music.stop();
-        this.bridge.onFinish(this.finished);
-      }
+      if (this.finishT <= 0 && this.finished) this.bridge.onFinish(this.finished);
     }
     this.renderFrame(dt, this.phase === "countdown" ? 1 : this.acc / DT);
   }
@@ -863,6 +863,7 @@ export class RaceScene extends Phaser.Scene {
       for (const r of this.rivals) r.view.react("go");
       this.goT = 0.5;
       this.sfx(DOWNHILL_SFX.go);
+      this.vroom(1);
       this.music.play();
       this.acc = 0;
     }
@@ -936,6 +937,13 @@ export class RaceScene extends Phaser.Scene {
 
   private toScreen(x: number, y: number) {
     return { x: (x - this.cam.x) * this.cam.zoom + this.vw / 2, y: (y - this.cam.y - this.cam.dip) * this.cam.zoom + this.vh / 2 };
+  }
+
+  private vroom(pitch: number) {
+    const now = this.time.now;
+    if (now - this.lastVroom < VROOM_GAP_MS) return;
+    this.lastVroom = now;
+    this.sfx(DOWNHILL_SFX.vroom, 1, pitch);
   }
 
   private sfx(recipe: SoundRecipe, volume = 1, pitch = 1) {
@@ -1216,8 +1224,6 @@ export class RaceScene extends Phaser.Scene {
     this.sectionMarks.push(this.sim.finishTime);
     this.announceSplit(this.track.sections.length - 1);
     this.ambient.finishLine();
-    this.sfx(DOWNHILL_SFX.finish);
-    this.music.finish();
     const form = this.bridge.form;
     const time = this.sim.finishTime;
     form.runs += 1;
@@ -1233,6 +1239,7 @@ export class RaceScene extends Phaser.Scene {
       };
     }
     const place = placeOf(time, this.rivals.map((r) => this.rivalTime(r)));
+    this.music.finale(place);
     if (place === 1) this.bridge.records.win(this.track.id, this.player);
     const list = this.standings();
     this.cart.react(place === 1 ? "win" : "lose");
@@ -1902,7 +1909,7 @@ export class RaceScene extends Phaser.Scene {
     const anchor = tall ? (above.y >= hudBottom + 60 * u ? above : this.toScreen(x - 60, y + 130)) : above.y >= 410 ? above : this.toScreen(x - 120, y + 170);
     const speed = this.phase === "countdown" ? 0 : sim.speed;
     const tier = tierOf(speed);
-    if (tier > this.lastTier && tier >= 2 && this.phase === "race") this.sfx(DOWNHILL_SFX.tier, 0.5 + tier * 0.2);
+    if (tier > this.lastTier && tier >= 2 && this.phase === "race") this.vroom(1 + (tier - 1) * 0.12);
     this.lastTier = tier;
     const time = sim.finished ? sim.finishTime : this.phase === "countdown" ? 0 : sim.step * DT;
     const step = this.phase === "countdown" ? 0 : sim.step;

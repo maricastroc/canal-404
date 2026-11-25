@@ -61,10 +61,44 @@ export const DOWNHILL_SONG: Track = {
   unlock: { type: "default" },
 };
 
-const LEVEL = { race: 0.7, paused: 0.3, finished: 0.35 };
+const SILENT = "................";
+
+const sting = (bpm: number, lead: string[], bass: string[], pad?: string[], vibrato?: number): Track => ({
+  id: "downhill",
+  station: DOWNHILL_SONG.station,
+  bpm,
+  lead: { wave: "pulse", gain: 0.09, notes: bars(...lead), vibrato },
+  bass: { wave: "triangle", gain: 0.2, notes: bars(...bass) },
+  pad: pad ? { wave: "sine", gain: 0.05, notes: bars(...pad) } : undefined,
+  drums: { gain: 0.4, kick: "x.......x.......", snare: SILENT, hat: SILENT },
+  unlock: { type: "default" },
+});
+
+const FINALE = {
+  win: sting(
+    152,
+    ["D5 . G5 . B5 . D6 - - . B5 . D6 - - .", "G6 - - - - - - - - - . . . . . ."],
+    ["G2 . G3 . G2 . G3 . D2 . D3 . D2 . D3 .", "G2 - - - - - - - - - . . . . . ."],
+    ["B4 - - - - - - - D5 - - - - - - -", "G5 - - - - - - - - - . . . . . ."],
+  ),
+  podium: sting(
+    152,
+    ["B4 . D5 . G5 - - . F#5 . G5 . A5 - - .", "G5 - - - - - - - . . . . . . . ."],
+    ["G2 . G3 . C3 . C3 . D2 . D3 . D2 . D3 .", "G2 - - - - - - - . . . . . . . ."],
+  ),
+  lose: sting(
+    112,
+    ["B4 - - . A#4 - - . A4 - - . G#4 - - -", "G4 - - - - - - - - - . . . . . ."],
+    ["G2 - - . F#2 - - . F2 - - . E2 - - -", "G2 - - - - - - - - - . . . . . ."],
+    undefined,
+    6,
+  ),
+};
+
+const LEVEL = { race: 0.7, paused: 0.3 };
 
 export class RaceMusic {
-  private wanted = false;
+  private mode: "off" | "race" | "finale" = "off";
   private level = LEVEL.race;
   private off: (() => void) | null;
 
@@ -73,7 +107,7 @@ export class RaceMusic {
   }
 
   play() {
-    this.wanted = true;
+    this.mode = "race";
     this.level = LEVEL.race;
     this.sync();
   }
@@ -86,12 +120,17 @@ export class RaceMusic {
     this.soften(LEVEL.race);
   }
 
-  finish() {
-    this.soften(LEVEL.finished);
+  finale(place: number) {
+    if (this.mode !== "race") return;
+    this.mode = "finale";
+    const audio = getAudio();
+    if (!audio.sfxOn) return;
+    audio.startMusic(place === 1 ? FINALE.win : place <= 3 ? FINALE.podium : FINALE.lose, { once: true });
+    audio.duckMusic(LEVEL.race);
   }
 
   stop() {
-    this.wanted = false;
+    this.mode = "off";
     if (this.ours()) getAudio().stopMusic();
   }
 
@@ -102,7 +141,7 @@ export class RaceMusic {
   }
 
   private soften(level: number) {
-    if (!this.wanted) return;
+    if (this.mode !== "race") return;
     this.level = level;
     if (this.ours()) getAudio().duckMusic(level);
   }
@@ -114,9 +153,9 @@ export class RaceMusic {
   private sync() {
     const audio = getAudio();
     const ours = this.ours();
-    if (this.wanted && audio.sfxOn && !ours) {
+    if (this.mode === "race" && audio.sfxOn && !ours) {
       audio.startMusic(DOWNHILL_SONG);
       audio.duckMusic(this.level);
-    } else if (ours && (!this.wanted || !audio.sfxOn)) audio.stopMusic();
+    } else if (ours && (this.mode === "off" || !audio.sfxOn)) audio.stopMusic();
   }
 }
