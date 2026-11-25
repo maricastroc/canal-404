@@ -2,13 +2,14 @@ import * as Phaser from "phaser";
 import type { Frame } from "../layout";
 import { INK_HEX } from "../../kit/ui";
 
-export type MarkTone = "warn" | "boss" | "shot";
+export type MarkTone = "warn" | "boss" | "open" | "shot";
 export type Mark = { side: -1 | 1; y: number; tone: MarkTone };
 
 type Pin = { root: Phaser.GameObjects.Container; disc: Phaser.GameObjects.Graphics; arrow: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; tone: MarkTone | null; side: number };
 
-const COLOR: Record<MarkTone, number> = { warn: 0xef4f43, boss: 0xf06ba8, shot: 0x9df0dc };
-const RANK: Record<MarkTone, number> = { warn: 3, boss: 2, shot: 1 };
+const COLOR: Record<MarkTone, number> = { warn: 0xef4f43, boss: 0xf06ba8, open: 0x93cf4c, shot: 0x9df0dc };
+const RANK: Record<MarkTone, number> = { open: 4, warn: 3, boss: 2, shot: 1 };
+const ICON: Record<MarkTone, string> = { warn: "mark-alert", boss: "mark-alert", open: "mark-open", shot: "mark-shot" };
 const R = 34;
 
 export class EdgeMarkers {
@@ -48,7 +49,7 @@ export class EdgeMarkers {
       if (pin.tone !== m.tone || pin.side !== m.side) this.draw(pin, m);
       const x = m.side < 0 ? frame.safe.left + 24 * u : frame.width - frame.safe.right - 24 * u;
       const y = Phaser.Math.Clamp(m.y, top + 30 * u, bottom - 30 * u);
-      const beat = this.reduced ? 1 : 1 + Math.max(0, Math.sin(this.pulse * (m.tone === "warn" ? 14 : 7))) * 0.14;
+      const beat = this.reduced ? 1 : 1 + Math.max(0, Math.sin(this.pulse * (m.tone === "warn" || m.tone === "open" ? 14 : 7))) * 0.14;
       pin.root.setVisible(true).setPosition(x, y).setScale(k * beat);
     });
   }
@@ -71,7 +72,7 @@ export class EdgeMarkers {
     a.fillTriangle(s * (R + 22), 0, s * (R - 6), -20, s * (R - 6), 20);
     a.fillStyle(COLOR[m.tone], 1);
     a.fillTriangle(s * (R + 12), 0, s * (R - 4), -12, s * (R - 4), 12);
-    pin.icon.setTexture(m.tone === "shot" ? "mark-shot" : "mark-alert");
+    pin.icon.setTexture(ICON[m.tone]);
   }
 
   hide() {

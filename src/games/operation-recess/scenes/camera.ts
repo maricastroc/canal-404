@@ -17,8 +17,8 @@ export const FRAME_CAM = {
   fightMargin: 24,
   grow: { tall: 1.06, band: 1, full: 1 },
   fightGrow: { tall: 1.2, band: 1, full: 1 },
-  arenaBase: { tall: 1.12, band: 1, full: 1 },
-  arenaGrow: { tall: 1.3, band: 1, full: 1 },
+  arenaBase: { tall: 1.3, band: 1, full: 1 },
+  arenaGrow: { tall: 1.85, band: 1, full: 1 },
   ahead: 1000,
   behind: 620,
   highAhead: 560,
@@ -75,7 +75,7 @@ export class FrameCamera {
     const w0 = Math.min(span, arena ? base * FRAME_CAM.arenaBase[kind] : base);
     const p = FRAME_CAM.edge;
     const back = FRAME_CAM.heroBack * hero.scale;
-    const front = FRAME_CAM.heroFront * hero.scale;
+    const front = arena ? back : FRAME_CAM.heroFront * hero.scale;
     const heroLo = hero.x - (hero.facing > 0 ? back : front);
     const heroHi = hero.x + (hero.facing > 0 ? front : back);
     const fights = focus.filter((f) => f.fight);

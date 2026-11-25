@@ -1099,7 +1099,7 @@ export class StageScene extends Phaser.Scene {
       }
       if (boss) {
         const side = out(boss.x);
-        if (side !== 0) marks.push({ side, y: sp(boss.x, boss.body.center.y)[1], tone: bossWarn ? "warn" : "boss" });
+        if (side !== 0) marks.push({ side, y: sp(boss.x, boss.body.center.y)[1], tone: boss.vulnerable ? "open" : bossWarn ? "warn" : "boss" });
       }
     }
     const f = this.frame;
