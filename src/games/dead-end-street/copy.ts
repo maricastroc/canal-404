@@ -3,6 +3,60 @@ import type { PhaseId, TargetName } from "./phases";
 
 type PhaseText = { title: string; goal: string; arlindo: string };
 
+export type TipLine = { who: "deco" | "lina"; text: string };
+
+type Tips = { debut: Partial<Record<PhaseId, TipLine[]>>; nudge: Record<PhaseId, string> };
+
+const tipsPt: Tips = {
+  debut: {
+    "surprise-bath": [
+      { who: "lina", text: "Tiro rápido corta corda. E balde que cai molha tudo!" },
+      { who: "deco", text: "Acerte a torneira e a água sai." },
+    ],
+    "blocked-path": [{ who: "lina", text: "Essa ponte só fica de pé por causa da corda." }],
+    counterattack: [
+      { who: "lina", text: "O soprador empurra os tiros. Tire ele do lugar que desliga!" },
+      { who: "deco", text: "E o portão vira toda vez que a gente lança." },
+    ],
+  },
+  nudge: {
+    "warm-up": "Um tiro mais reto pode passar pelos dois.",
+    "sharp-aim": "Passe por cima das caixas e deixe o tênis cair lá atrás.",
+    "up-high": "Lá no alto pede tiro em arco. O pneu pesado derruba a torre.",
+    domino: "Empurre os tijolos: o melão desce a rampa até a garagem.",
+    "surprise-bath": "O guarda-sol e o telhado protegem dois gnomos. Deixe as engenhocas molharem.",
+    "blocked-path": "Primeiro abra o caminho, depois empurre a bola.",
+    counterattack: "Cada lançamento vira o portão. Repare quando ele fica aberto.",
+    "free-for-all": "Corte a corda do balde: a água cuida do gnomo tomando sol.",
+    "grand-mess": "O Gnomão não cai com tiro direto. O saco de areia pode ajudar.",
+  },
+};
+
+const tipsEn: Tips = {
+  debut: {
+    "surprise-bath": [
+      { who: "lina", text: "A fast shot cuts a rope. And a falling bucket soaks everything!" },
+      { who: "deco", text: "Hit the faucet and out comes the water." },
+    ],
+    "blocked-path": [{ who: "lina", text: "That bridge only stands up because of the rope." }],
+    counterattack: [
+      { who: "lina", text: "The blower pushes our shots. Knock it out of place to switch it off!" },
+      { who: "deco", text: "And the gate flips every time we launch." },
+    ],
+  },
+  nudge: {
+    "warm-up": "A flatter shot can go through both.",
+    "sharp-aim": "Lob it over the crates and let the sneaker drop behind them.",
+    "up-high": "Up high needs an arc. The heavy tire topples the tower.",
+    domino: "Push the bricks: the melon rolls down the ramp into the garage.",
+    "surprise-bath": "The parasol and the roof shield two gnomes. Let the gadgets soak them.",
+    "blocked-path": "Clear the path first, then nudge the ball.",
+    counterattack: "Every launch flips the gate. Watch when it's open.",
+    "free-for-all": "Cut the bucket's rope: the water takes care of the sunbather.",
+    "grand-mess": "The Giant Gnome won't fall to a direct hit. The sandbag can help.",
+  },
+};
+
 const phasesPt: Record<PhaseId, PhaseText> = {
   "warm-up": { title: "Aquecimento", goal: "Derrube o gnomo e o flamingo", arlindo: "EI! QUE BARULHO É ESSE?" },
   "sharp-aim": { title: "Mira fina", goal: "O ouro está atrás das caixas", arlindo: "AGORA VOCÊS VÃO VER!" },
@@ -140,6 +194,7 @@ export const COPY = localized({
     },
     firstHint: "Puxe e solte! (ou setas + espaço)",
     swapHint: "Toque na munição para trocar",
+    tips: tipsPt,
     phaseOf: (n: number, total: number) => `FASE ${n} DE ${total}`,
     announce: {
       start: (n: number, total: number, title: string, goal: string) =>
@@ -274,6 +329,7 @@ export const COPY = localized({
     },
     firstHint: "Pull and let go! (or arrows + space)",
     swapHint: "Tap the ammo to swap",
+    tips: tipsEn,
     phaseOf: (n: number, total: number) => `LEVEL ${n} OF ${total}`,
     announce: {
       start: (n: number, total: number, title: string, goal: string) =>

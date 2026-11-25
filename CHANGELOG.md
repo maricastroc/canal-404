@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Rua Sem Saída: dicas da Lina e do Déco
+- **New gadgets get explained.** The first time you play a level that introduces a gadget, Lina and Déco say what it does right after Mr. Arlindo's line. Level 5 covers the rope, the bucket and the faucet. Level 6 covers the bridge held by the rope. Level 7 covers the leaf blower and the gate that flips on every launch. The tips explain the gadget, never the solution, and they don't come back once you've seen them or already cleared the level.
+- **A nudge when stuck.** After two losses in a row on the same level, Lina gives a hint about that level at the start of the next try, until you win. All nine levels have one.
+- **Everywhere.** The tips use the kids' speech bubbles on desktop and the speech cards on phones, in pt-BR and English, and they are read to screen readers.
+- **Nothing else changes.** Levels, replays and boards stay the same.
+
 ### Ao Vivo no 404: chuvisco em doses menores
 - **No more long blind stretches.** Balada do Chuvisco had runs of up to three "SEM SINAL" bars in a row, with weak signal around them, so near the end players tapped for about ten seconds without seeing a note reach the circle while the rhythm kept changing. A player who slipped a little had nowhere to find the beat again and was often cut by the crowd. Now the signal never drops for two bars in a row: 7 lost bars instead of 9, each between bars you can see, and placed where the rhythm is easiest to carry (steady beats, steady eighths or the song's main motif).
 - **Same song, same rules.** The notes, the judge and the boards don't change; the notes still fade out before the circle in the lost bars.
