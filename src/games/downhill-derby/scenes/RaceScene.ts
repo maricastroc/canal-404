@@ -182,6 +182,7 @@ export class RaceScene extends Phaser.Scene {
   private lastSpeed = 0;
   private lastTier = 0;
   private lastVroom = -Infinity;
+  private wasCrouching = false;
   private rollT = 0;
   private windT = 0;
   private paddleT = 0;
@@ -2010,6 +2011,9 @@ export class RaceScene extends Phaser.Scene {
     if (dt === 0 || this.phase === "countdown") return;
     const sim = this.sim;
     const speed = sim.speed;
+    const crouching = sim.crouch && sim.mode === "ground";
+    if (crouching && !this.wasCrouching && speed > 150 && this.phase === "race") this.vroom(0.95 + Math.min(1, speed / 2600) * 0.3);
+    this.wasCrouching = crouching;
     if (sim.mode !== "air" && speed > 40) {
       this.rollT -= dt;
       if (this.rollT <= 0) {

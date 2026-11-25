@@ -66,9 +66,9 @@ export const DOWNHILL_SFX = {
   },
   vroom: {
     layers: [
-      { kind: "tone", wave: "sawtooth", from: 68, to: 180, duration: 0.62, gain: 0.08, attack: 0.05, vibrato: { rate: 27, depth: 9 }, filter: { type: "lowpass", frequency: 900, q: 1.6 } },
-      { kind: "tone", wave: "square", from: 136, to: 360, duration: 0.55, gain: 0.022, attack: 0.06, vibrato: { rate: 27, depth: 16 }, filter: { type: "lowpass", frequency: 1500 } },
-      { kind: "noise", duration: 0.42, gain: 0.018, attack: 0.1, filter: { type: "bandpass", from: 300, to: 1300, q: 0.9 } },
+      { kind: "tone", wave: "sawtooth", from: 110, to: 300, duration: 0.7, gain: 0.11, attack: 0.04, vibrato: { rate: 30, depth: 14 }, filter: { type: "lowpass", frequency: 2400, q: 2 } },
+      { kind: "tone", wave: "square", from: 220, to: 600, duration: 0.6, gain: 0.04, attack: 0.05, vibrato: { rate: 30, depth: 24 }, filter: { type: "lowpass", frequency: 3000 } },
+      { kind: "noise", duration: 0.45, gain: 0.03, attack: 0.08, filter: { type: "bandpass", from: 600, to: 2400, q: 0.9 } },
     ],
   },
   tier: { layers: [{ kind: "noise", duration: 0.28, gain: 0.05, attack: 0.08, filter: { type: "bandpass", from: 600, to: 2600, q: 1.2 } }] },
