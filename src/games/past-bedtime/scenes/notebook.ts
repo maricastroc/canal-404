@@ -1,16 +1,22 @@
 import type * as Phaser from "phaser";
 import { glyphOffset, type Fonts } from "@/games/kit/ui";
 import type { NightCopy } from "../copy";
+import { partStars } from "../sim/score";
 import type { Action } from "../sim/types";
 import { ARROW_ICONS, iconKey, STAR_ORIGIN_Y, STAR_SPAN, type NightIcon } from "./icons";
 import { wobble, type Layout } from "./layout";
 
 const INK = 0x1d1830;
 const PENCIL = "#2f2944";
-const PENCIL_SOFT = "#776f93";
+export const PENCIL_SOFT = "#665e83";
+export const MARKER = 0xffe07a;
 export const COLORS = { info: "#2f2944", good: "#23794b", warn: "#a85d08", bad: "#c4352c" } as const;
 const LINE0 = 136;
 const STEP = 38;
+const TALLY_USED = 0x7d74a0;
+const TALLY_OVER = 0xe0893a;
+const BUTTON_ICONS: Partial<Record<ButtonId, NightIcon>> = { wait: "wait", undo: "undo", restart: "restart", hint: "hint", undoCaught: "undo" };
+const BUTTON_FILLS: Partial<Record<ButtonId, number>> = { undoCaught: 0xffe39a, undo: 0xf9e0b0, hint: 0xe4dbff };
 
 export type NoteKind = keyof typeof COLORS;
 
@@ -49,13 +55,13 @@ type Area = { x: number; y: number; w: number; h: number };
 type Spots = {
   title: { x: number; y: number };
   mission: { x: number; y: number };
-  tabs: Col & { y: number; rows: number };
+  tabs: Col & { y: number };
   act: Col & { line: number };
   heading: Col & { line: number };
   goal: Col & { line: number };
   stats: Col & { line: number };
   card: Area;
-  links: Col & { y: number };
+  links: Col & { y: number; h: number };
   win: Col & { line: number };
   page: Area;
   buttons: Col & { y: number; h: number };
@@ -68,16 +74,17 @@ function spotsFor(layout: Layout): Spots {
   const { w, h } = layout.notebook;
   const buttons = { x: 72, w: w - 98, y: h - 168, h: 146 };
   const col = { x: 74, w: w - 100 };
+  const linksH = 44;
   return {
-    title: { x: 74, y: 22 },
-    mission: { x: 76, y: 84 },
-    tabs: { x: 72, w: w - 98, y: 140, rows: 2 },
-    act: { ...col, line: 4 },
-    heading: { ...col, line: 5 },
-    goal: { ...col, line: 6 },
-    stats: { ...col, line: 9 },
-    card: { x: 64, y: lineY(10) + 22, w: w - 90, h: lineY(14) - lineY(10) - 14 },
-    links: { ...col, y: lineY(15) + 14 },
+    title: { x: 74, y: 28 },
+    mission: { x: 76, y: 80 },
+    tabs: { x: 72, w: w - 98, y: lineY(1) },
+    act: { ...col, line: 3 },
+    heading: { ...col, line: 4 },
+    goal: { ...col, line: 5 },
+    stats: { ...col, line: 8 },
+    card: { x: 64, y: lineY(10) + 26, w: w - 90, h: lineY(14) - lineY(10) - 10 },
+    links: { ...col, y: buttons.y - linksH - 26, h: linksH },
     win: { ...col, line: 11 },
     page: { x: 16, y: 118, w: w - 32, h: buttons.y - 132 },
     buttons,
@@ -149,16 +156,21 @@ function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: num
       break;
     case "light":
       g.fillStyle(0xffd66b, 0.95);
-      g.fillRoundedRect(x - 14, y - 13, 28, 26, 5);
+      g.fillRect(x - 14, y - 13, 28, 26);
+      g.lineStyle(5, INK, 0.5);
+      g.strokeRect(x - 14, y - 13, 28, 26);
       g.lineStyle(3, 0xffb43d, 1);
-      g.strokeRoundedRect(x - 14, y - 13, 28, 26, 5);
+      g.strokeRect(x - 14, y - 13, 28, 26);
       break;
     case "next":
       g.fillStyle(0xffe39a, 0.5);
       g.fillRect(x - 14, y - 13, 28, 26);
-      g.lineStyle(2, 0xd99a1e, 1);
-      for (let k = -2; k <= 2; k += 1) g.lineBetween(x - 14 + Math.max(0, k * 7), y + 13 - Math.max(0, -k * 7), x + 14 + Math.min(0, k * 7), y - 13 - Math.min(0, -k * 7));
-      g.strokeRect(x - 14, y - 13, 28, 26);
+      g.lineStyle(2.5, 0xd99a1e, 1);
+      for (let k = -1; k <= 1; k += 1) g.lineBetween(x - 14 + Math.max(0, k * 10), y + 13 - Math.max(0, -k * 10), x + 14 + Math.min(0, k * 10), y - 13 - Math.min(0, -k * 10));
+      for (const [ax, ay, bx, by] of [[-14, -13, 14, -13], [14, -13, 14, 13], [14, 13, -14, 13], [-14, 13, -14, -13]]) {
+        g.lineBetween(x + ax, y + ay, x + ax + (bx - ax) * 0.35, y + ay + (by - ay) * 0.35);
+        g.lineBetween(x + ax + (bx - ax) * 0.65, y + ay + (by - ay) * 0.65, x + bx, y + by);
+      }
       break;
     case "dog":
       g.fillStyle(0xd89a4e, 1);
@@ -232,6 +244,8 @@ export class Notebook implements NotebookView {
   private spots: Spots;
   private paper: Phaser.GameObjects.Graphics;
   private ink: Phaser.GameObjects.Graphics;
+  private tally: Phaser.GameObjects.Graphics;
+  private stars: Phaser.GameObjects.Image[];
   private texts: Record<string, Phaser.GameObjects.Text> = {};
   private card: Phaser.GameObjects.Container;
   private cardText: Phaser.GameObjects.Text;
@@ -241,6 +255,7 @@ export class Notebook implements NotebookView {
   private legend: LegendItem[] = [];
   private planActions: Action[] = [];
   private hints = 0;
+  private turns = 0;
   private par = 0;
   private tabs: Phaser.GameObjects.Container[] = [];
   private buttons: Phaser.GameObjects.Container[] = [];
@@ -262,18 +277,21 @@ export class Notebook implements NotebookView {
     const { x, y } = layout.notebook;
     this.paper = scene.add.graphics();
     this.ink = scene.add.graphics();
-    this.container = scene.add.container(x, y, [this.paper, this.ink]).setDepth(80);
+    this.tally = scene.add.graphics();
+    this.container = scene.add.container(x, y, [this.paper, this.ink, this.tally]).setDepth(80);
     this.drawPaper();
     const sp = this.spots;
-    this.texts.title = this.raw(sp.title.x, sp.title.y + 6, copy.notebookTitle, 34, PENCIL, undefined, "display");
-    this.texts.mission = this.raw(sp.mission.x, sp.mission.y - 2, copy.mission, 24, PENCIL_SOFT);
-    this.texts.act = this.onLine(sp.act.x, sp.act.line, "", 27, PENCIL_SOFT);
-    this.texts.heading = this.onLine(sp.heading.x, sp.heading.line, "", 42, PENCIL);
-    this.texts.goal = this.onLine(sp.goal.x, sp.goal.line, "", 30, PENCIL, sp.goal.w);
-    this.texts.moves = this.onLine(sp.stats.x, sp.stats.line, "", 40, PENCIL);
+    this.texts.title = this.raw(sp.title.x, sp.title.y, copy.notebookTitle, 29, PENCIL, undefined, "display");
+    this.texts.mission = this.raw(sp.mission.x, sp.mission.y, copy.mission, 22, PENCIL_SOFT);
+    this.texts.act = this.onLine(sp.act.x, sp.act.line, "", 25, PENCIL_SOFT, undefined, "round", "600", -6);
+    this.texts.heading = this.onLine(sp.heading.x, sp.heading.line, "", 48, PENCIL, undefined, "round", "700");
+    this.texts.goal = this.onLine(sp.goal.x, sp.goal.line, "", 31, PENCIL, sp.goal.w);
+    this.texts.moves = this.onLine(sp.stats.x, sp.stats.line, "", 40, PENCIL, undefined, "round", "700");
     this.texts.par = this.onLine(sp.stats.x + sp.stats.w, sp.stats.line, "", 30, PENCIL_SOFT).setOrigin(1, 0);
-    this.texts.starsAt = this.onLine(sp.stats.x + 120, sp.stats.line + 1, "", 22, PENCIL_SOFT);
-    for (let i = 0; i < 3; i += 1) this.container.add(starIcon(scene, sp.stats.x + 18 + i * 36, lineY(sp.stats.line + 1) - 14, 14, false));
+    this.texts.over = this.onLine(sp.stats.x, sp.stats.line + 1, "", 24, COLORS.warn, undefined, "round", "700");
+    this.texts.starsAt = this.onLine(sp.stats.x, sp.stats.line + 2, "", 22, PENCIL_SOFT);
+    this.stars = [0, 1, 2].map((i) => starIcon(scene, sp.stats.x + sp.stats.w - 86 + i * 34, lineY(sp.stats.line + 1) - 17, 13, false));
+    this.container.add(this.stars);
     const c = sp.card;
     const cardBg = scene.add.graphics();
     cardBg.fillStyle(INK, 0.85);
@@ -298,10 +316,10 @@ export class Notebook implements NotebookView {
     return this.fonts.round ?? this.fonts.body;
   }
 
-  private raw(x: number, y: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" = "round") {
+  private raw(x: number, y: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" = "round", weight = "600") {
     const t = this.scene.add.text(x, y, value, {
       fontFamily: family === "display" ? this.fonts.display : this.round,
-      fontStyle: family === "round" ? "600" : "normal",
+      fontStyle: family === "round" ? weight : "normal",
       fontSize: `${family === "round" ? Math.round(size * 0.88) : size}px`,
       color,
       padding: { x: 2, y: 3 },
@@ -311,13 +329,37 @@ export class Notebook implements NotebookView {
     return t;
   }
 
-  private onLine(x: number, line: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" = "round") {
-    const t = this.raw(x, 0, value || "Ág", size, color, wrap, family);
-    const metrics = t.style.getTextMetrics();
-    t.setLineSpacing(STEP - (metrics.ascent + metrics.descent));
-    t.setY(lineY(line) - 3 - metrics.ascent + Math.round(size * 0.1));
+  private onLine(x: number, line: number, value: string, size: number, color: string, wrap?: number, family: "round" | "display" = "round", weight = "600", lift = 0) {
+    const t = this.raw(x, 0, value || "Ág", size, color, wrap, family, weight);
+    t.setData("line", line);
+    this.seat(t, Math.round(size * 0.1) + lift);
     if (!value) t.setText("");
     return t;
+  }
+
+  private seat(t: Phaser.GameObjects.Text, drop = Math.round(parseFloat(String(t.style.fontSize)) * 0.114)) {
+    const keep = t.text;
+    if (!keep) t.setText("Ág");
+    const metrics = t.style.getTextMetrics();
+    t.setLineSpacing(STEP - (metrics.ascent + metrics.descent));
+    t.setY(lineY(t.getData("line") as number) - 3 - metrics.ascent + drop);
+    if (!keep) t.setText("");
+  }
+
+  private fitWidth(t: Phaser.GameObjects.Text, maxW: number, minPx: number) {
+    let px = parseFloat(String(t.style.fontSize));
+    while (t.width > maxW && px > minPx) {
+      px -= 1;
+      t.setFontSize(px);
+    }
+    this.seat(t);
+  }
+
+  private lineWidth(t: Phaser.GameObjects.Text, line: string) {
+    const probe = this.scene.add.text(0, 0, line, t.style.toJSON() as Phaser.Types.GameObjects.Text.TextStyle).setWordWrapWidth(0);
+    const w = probe.width;
+    probe.destroy();
+    return w;
   }
 
   private drawPaper() {
@@ -356,14 +398,19 @@ export class Notebook implements NotebookView {
   }
 
   setLevel(index: number, total: number, title: string, goal: string, par: number, progress: number[], legend: LegendItem[], acts: number[] = [], actLabel = "") {
-    this.texts.heading.setText(`${index + 1}. ${title}`);
+    const sp = this.spots;
+    this.texts.heading.setText(`${index + 1}. ${title}`).setFontSize(Math.round(48 * 0.88));
+    this.fitWidth(this.texts.heading, sp.heading.w, 30);
     this.texts.act.setText(actLabel);
     this.texts.goal.setText(goal);
     this.par = par;
+    this.turns = 0;
+    this.hints = 0;
     this.texts.starsAt.setText(this.copy.starsAt(par));
     this.texts.par.setText(`${this.copy.par}: ${par}`);
     this.legend = legend;
     this.drawInk(par);
+    this.drawTally();
     this.buildTabs(index, total, progress, acts);
     this.closePage();
     this.clearStamp();
@@ -379,13 +426,66 @@ export class Notebook implements NotebookView {
     const g = this.ink;
     const sp = this.spots;
     g.clear();
-    wobblyLine(g, sp.heading.x, lineY(sp.heading.line) + 4, sp.heading.x + Math.min(sp.heading.w, this.texts.heading.width + 16), 0xef4f43, 3.5, par * 7);
+    const goal = this.texts.goal;
+    goal.getWrappedText().forEach((line, i) => {
+      const w = this.lineWidth(goal, line.trimEnd());
+      if (w <= 4) return;
+      const base = lineY(sp.goal.line + i);
+      const tilt = (wobble(par * 3 + i) - 0.5) * 3;
+      g.fillStyle(MARKER, 0.62);
+      g.fillPoints(
+        [
+          { x: goal.x - 4, y: base - 24 + tilt },
+          { x: goal.x + w + 8, y: base - 26 - tilt },
+          { x: goal.x + w + 6, y: base - 3 - tilt },
+          { x: goal.x - 2, y: base - 1 + tilt },
+        ],
+        true,
+      );
+    });
+    wobblyLine(g, sp.heading.x, lineY(sp.heading.line) + 5, sp.heading.x + Math.min(sp.heading.w, this.texts.heading.width + 16), 0xef4f43, 4, par * 7);
+  }
+
+  private drawTally() {
+    const g = this.tally;
+    const sp = this.spots.stats;
+    g.clear();
+    const n = Math.max(1, this.par);
+    const over = Math.max(0, this.turns - this.par);
+    const starsLeft = sp.x + sp.w - 104;
+    const room = starsLeft - sp.x - (over > 0 ? 56 : 10);
+    const pitch = Math.min(26, room / n);
+    const bw = Math.max(4, pitch - Math.min(5, pitch * 0.3));
+    const bh = 20;
+    const cy = lineY(sp.line + 1) - 17;
+    for (let i = 0; i < n; i += 1) {
+      const x = sp.x + 2 + i * pitch;
+      const used = i < this.turns;
+      const y = cy - bh / 2 + (wobble(i * 7 + n) - 0.5) * 2;
+      g.fillStyle(used ? (over > 0 ? TALLY_OVER : TALLY_USED) : 0xffffff, used ? 0.95 : 0.75);
+      g.fillRoundedRect(x, y, bw, bh, 3);
+      g.lineStyle(2, INK, used ? 0.85 : 0.35);
+      g.strokeRoundedRect(x, y, bw, bh, 3);
+    }
+    this.texts.over.setText(over > 0 ? `+${over}` : "").setX(sp.x + 2 + n * pitch + 4);
+    const avail = partStars(this.par, this.turns, this.hints);
+    this.stars.forEach((star, i) => {
+      const on = i < avail;
+      star.setTexture(iconKey(on ? "star" : "starEmpty")).setAlpha(on ? 1 : 0.4);
+    });
+    if (this.hints > 0) {
+      const s = this.stars[2];
+      g.lineStyle(3, 0xc4352c, 0.85);
+      g.lineBetween(s.x - 15, s.y + 11, s.x + 15, s.y - 13);
+    }
   }
 
   setStats(turns: number, hints: number) {
     this.texts.moves.setText(`${this.copy.moves}: ${turns}`);
     this.hints = hints;
+    this.turns = turns;
     this.texts.starsAt.setText(hints > 0 ? this.copy.starsCapped : this.copy.starsAt(this.par));
+    this.drawTally();
     if (this.pageKind === "moves") this.openPage("moves");
     this.buildLinks();
   }
@@ -396,23 +496,24 @@ export class Notebook implements NotebookView {
     if (this.mode === "won" || this.pageKind) return;
     const sp = this.spots.links;
     const items: { kind: PageKind; label: string; fill: number }[] = [
-      { kind: "rules", label: this.copy.pages.rules, fill: 0xc8f0b4 },
-      { kind: "moves", label: `${this.copy.pages.moves} · ${this.planActions.length}`, fill: 0xf9d3e4 },
+      { kind: "rules", label: this.copy.pages.rules, fill: 0xdff5d2 },
+      { kind: "moves", label: `${this.copy.pages.moves} · ${this.planActions.length}`, fill: 0xfbe1ec },
     ];
     const gap = 12;
     const w = (sp.w - gap) / 2;
+    const h = sp.h;
     items.forEach((it, i) => {
       const g = this.scene.add.graphics();
-      g.fillStyle(INK, 1);
-      g.fillRoundedRect(3, 4, w, 50, 10);
+      g.fillStyle(INK, 0.8);
+      g.fillRoundedRect(2, 3, w, h, 10);
       g.fillStyle(it.fill, 1);
-      g.fillRoundedRect(0, 0, w, 50, 10);
-      g.lineStyle(2.5, INK, 1);
-      g.strokeRoundedRect(0, 0, w, 50, 10);
-      const t = this.scene.add.text(w / 2, 25, it.label, { fontFamily: this.round, fontStyle: "700", fontSize: "23px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
-      if (t.width > w - 24) t.setFontSize(Math.floor((23 * (w - 24)) / t.width));
+      g.fillRoundedRect(0, 0, w, h, 10);
+      g.lineStyle(2, INK, 0.9);
+      g.strokeRoundedRect(0, 0, w, h, 10);
+      const t = this.scene.add.text(w / 2, h / 2, it.label, { fontFamily: this.round, fontStyle: "700", fontSize: "21px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+      if (t.width > w - 24) t.setFontSize(Math.floor((21 * (w - 24)) / t.width));
       const c = this.scene.add.container(sp.x + i * (w + gap), sp.y, [g, t]).setAngle((wobble(i * 5 + 2) - 0.5) * 2);
-      this.makeClickable(c, w, 50, () => this.openPage(it.kind));
+      this.makeClickable(c, w, h, () => this.openPage(it.kind));
       this.container.add(c);
       this.links.push(c);
     });
@@ -671,36 +772,29 @@ export class Notebook implements NotebookView {
     this.tabs = [];
     const sp = this.spots.tabs;
     const actColors = [0xffe39a, 0xf9b6d4, 0xa9dcf7, 0xc8f0b4];
-    const perRow = Math.ceil(total / sp.rows);
-    const rowGroups = (from: number, to: number) => new Set(acts.slice(from, to)).size;
-    let maxGroups = 1;
-    for (let r0 = 0; r0 < total; r0 += perRow) maxGroups = Math.max(maxGroups, rowGroups(r0, Math.min(total, r0 + perRow)));
-    const gap = sp.rows > 1 ? 18 : 5;
-    const cell = Math.min(sp.rows > 1 ? 54 : 60, (sp.w - gap * Math.max(0, maxGroups - 1)) / perRow);
-    const r = Math.min(sp.rows > 1 ? 21 : 24, cell * 0.43);
-    const rowH = r * 2 + 12;
+    const groups = new Set(acts.slice(0, total)).size;
+    const gap = 12;
+    const cell = Math.min(46, (sp.w - gap * Math.max(0, groups - 1)) / total);
+    const r = Math.min(19, cell * 0.44);
     let x = sp.x + cell / 2;
     for (let i = 0; i < total; i += 1) {
-      const row = Math.floor(i / perRow);
-      if (i % perRow === 0) x = sp.x + cell / 2;
-      else if (acts[i] !== acts[i - 1]) x += gap;
-      const rowY = sp.y + 28 + row * rowH;
+      if (i > 0 && acts[i] !== acts[i - 1]) x += gap;
       const on = i === active;
       const got = progress[i] ?? 0;
       const g = this.scene.add.graphics();
-      const rr = on ? r * 1.18 : r;
-      g.fillStyle(INK, 1);
-      g.fillCircle(2, 3, rr);
+      const rr = on ? r * 1.22 : r;
+      g.fillStyle(INK, on ? 1 : 0.5);
+      g.fillCircle(on ? 2 : 1.5, on ? 3 : 2, rr);
       g.fillStyle(got >= 3 ? 0xffc83d : got > 0 ? 0xffe9b0 : actColors[(acts[i] ?? 0) % actColors.length], 1);
       g.fillCircle(0, 0, rr);
-      g.lineStyle(on ? 4 : 2.5, INK, 1);
+      g.lineStyle(on ? 4 : 2, INK, on ? 1 : 0.55);
       g.strokeCircle(0, 0, rr);
       for (let k = 0; k < got; k += 1) {
         g.fillStyle(0xc4352c, 1);
-        g.fillCircle((k - (got - 1) / 2) * rr * 0.42, rr * 0.82, rr * 0.13);
+        g.fillCircle((k - (got - 1) / 2) * rr * 0.42, rr * 0.82, Math.max(1.8, rr * 0.13));
       }
-      const label = this.scene.add.text(0, -1, String(i + 1), { fontFamily: this.round, fontStyle: "700", fontSize: `${Math.round(rr * 1.05)}px`, color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
-      const c = this.scene.add.container(x, rowY + (on ? -2 : 0), [g, label]).setAngle((wobble(i * 3) - 0.5) * 6);
+      const label = this.scene.add.text(0, -1, String(i + 1), { fontFamily: this.round, fontStyle: "700", fontSize: `${Math.round(rr * 1.05)}px`, color: on ? PENCIL : PENCIL_SOFT, padding: { x: 2, y: 2 } }).setOrigin(0.5);
+      const c = this.scene.add.container(x, sp.y + (on ? -2 : 0), [g, label]).setAngle((wobble(i * 3) - 0.5) * 6);
       this.container.add(c);
       this.tabs.push(c);
       x += cell;
@@ -736,9 +830,10 @@ export class Notebook implements NotebookView {
       hint: this.copy.buttons.hint,
       undoCaught: this.copy.buttons.undoCaught,
     };
-    const fills: Partial<Record<ButtonId, number>> = { undoCaught: 0xffe39a, undo: 0xf9e0b0 };
     const padX = 22;
     const avail = bw - padX * 2;
+    const iconSize = 26;
+    const iconGap = 10;
     const fit = (label: string) => {
       const probe = this.scene.add.text(0, 0, "", { fontFamily: this.round, fontStyle: "700", fontSize: "26px", padding: { x: 2, y: 2 }, align: "center" });
       let chosen = 19;
@@ -754,22 +849,38 @@ export class Notebook implements NotebookView {
       probe.destroy();
       return chosen;
     };
+    const withIcon = (label: string) => {
+      const probe = this.scene.add.text(0, 0, label, { fontFamily: this.round, fontStyle: "700", fontSize: "26px", padding: { x: 2, y: 2 } });
+      let size = 26;
+      while (size > 21 && probe.width + iconSize + iconGap > bw - 28) probe.setFontSize((size -= 1));
+      const fits = probe.width + iconSize + iconGap <= bw - 28;
+      probe.destroy();
+      return fits ? size : 0;
+    };
+    const shared = grid ? Math.min(...ids.map((id) => withIcon(labels[id]) || fit(labels[id]))) : 0;
     ids.forEach((id, i) => {
       const g = this.scene.add.graphics();
       g.fillStyle(INK, 1);
       g.fillRoundedRect(3, 5, bw, bh, 16);
-      g.fillStyle(fills[id] ?? 0xffffff, 1);
+      g.fillStyle(BUTTON_FILLS[id] ?? 0xffffff, 1);
       g.fillRoundedRect(0, 0, bw, bh, 16);
       g.lineStyle(3.5, INK, 1);
       g.strokeRoundedRect(0, 0, bw, bh, 16);
       g.lineStyle(3, 0xffffff, 0.7);
       g.lineBetween(14, 8, Math.min(bw * 0.4, 70), 8);
       const t = this.scene.add
-        .text(bw / 2, bh / 2 + 1, labels[id], { fontFamily: this.round, fontStyle: "700", fontSize: `${fit(labels[id])}px`, color: PENCIL, align: "center", padding: { x: 2, y: 2 }, wordWrap: { width: avail }, lineSpacing: -2 })
+        .text(bw / 2, bh / 2 + 1, labels[id], { fontFamily: this.round, fontStyle: "700", fontSize: `${shared || fit(labels[id])}px`, color: PENCIL, align: "center", padding: { x: 2, y: 2 }, wordWrap: { width: avail }, lineSpacing: -2 })
         .setOrigin(0.5);
+      const parts: Phaser.GameObjects.GameObject[] = [g, t];
+      const icon = BUTTON_ICONS[id];
+      if (icon && t.getWrappedText().length === 1 && t.width + iconSize + iconGap <= bw - 28) {
+        const left = (bw - (iconSize + iconGap + t.width)) / 2;
+        t.setOrigin(0, 0.5).setX(left + iconSize + iconGap);
+        parts.push(this.scene.add.image(left + iconSize / 2, bh / 2 + 1 - glyphOffset(t), iconKey(icon)).setDisplaySize(iconSize, iconSize));
+      }
       const col = i % cols;
       const row = Math.floor(i / cols);
-      const c = this.scene.add.container(sp.x + col * (bw + gap), top + row * (bh + gap), [g, t]).setAngle((wobble(i * 9 + ids.length) - 0.5) * 1.6);
+      const c = this.scene.add.container(sp.x + col * (bw + gap), top + row * (bh + gap), parts).setAngle((wobble(i * 9 + ids.length) - 0.5) * 1.6);
       this.makeClickable(c, bw, bh, () => this.onButton(id));
       this.container.add(c);
       this.buttons.push(c);

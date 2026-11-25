@@ -1,14 +1,14 @@
 import * as Phaser from "phaser";
 import type { Fonts } from "@/games/kit/ui";
 import type { NightCopy } from "../copy";
+import { partStars } from "../sim/score";
 import type { Action, Dir } from "../sim/types";
 import { iconKey, PAD_ICONS, STAR_ORIGIN_Y, STAR_SPAN, type NightIcon } from "./icons";
 import { wobble, type Hud, type Layout, type Rect } from "./layout";
-import { COLORS, legendIcon, moveIcon, runsOf, starIcon, wobblyLine, type ButtonId, type LegendItem, type NoteKind, type NotebookMode, type NotebookView, type PageKind } from "./notebook";
+import { COLORS, legendIcon, moveIcon, PENCIL_SOFT, runsOf, starIcon, wobblyLine, type ButtonId, type LegendItem, type NoteKind, type NotebookMode, type NotebookView, type PageKind } from "./notebook";
 
 const INK = 0x1d1830;
 const PENCIL = "#2f2944";
-const PENCIL_SOFT = "#776f93";
 const PAPER = 0xfbf5e6;
 const SHEET = 0xfffdf4;
 const NOTE = 0xfff1b8;
@@ -88,6 +88,7 @@ export class PhoneNotebook implements NotebookView {
   private legend: LegendItem[] = [];
   private planActions: Action[] = [];
   private hints = 0;
+  private turns = 0;
   private par = 0;
   private title = "";
   private actLabel = "";
@@ -324,12 +325,14 @@ export class PhoneNotebook implements NotebookView {
 
   private drawStars(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number) {
     const capped = this.hints > 0;
+    const avail = partStars(this.par, this.turns, this.hints);
     for (let i = 0; i < 3; i += 1) {
       const cx = x + i * r * 2;
       this.headerStars[i]
+        .setTexture(iconKey(i < avail ? "star" : "starEmpty"))
         .setPosition(cx, y)
         .setDisplaySize(r * STAR_SPAN, r * STAR_SPAN)
-        .setAlpha(capped && i === 2 ? 0.2 : 0.55);
+        .setAlpha(i < avail ? 1 : capped && i === 2 ? 0.2 : 0.4);
       if (capped && i === 2) {
         g.lineStyle(this.px(1.4), 0xc4352c, 0.8);
         g.lineBetween(cx - r, y + r * 0.8, cx + r, y - r * 0.8);
@@ -665,6 +668,8 @@ export class PhoneNotebook implements NotebookView {
     this.title = `${index + 1}. ${title}`;
     this.goal = goal;
     this.par = par;
+    this.turns = 0;
+    this.hints = 0;
     this.legend = legend;
     this.actLabel = actLabel;
     this.texts.moves.setText(`${this.copy.moves}: 0`);
@@ -681,6 +686,7 @@ export class PhoneNotebook implements NotebookView {
 
   setStats(turns: number, hints: number) {
     this.hints = hints;
+    this.turns = turns;
     this.texts.moves.setText(`${this.copy.moves}: ${turns}`);
     this.layoutStrip();
     if (this.page?.kind === "moves") this.openPage("moves");

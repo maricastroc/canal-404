@@ -9,6 +9,10 @@ export type DynamicLight = { x: number; y: number; r: number; strength: number }
 
 export type LitTile = { x: number; y: number };
 
+export type Pane = { x: number; y: number; w: number; h: number };
+
+const MOONLIT = 0xbcd4ff;
+
 function ensureTextures(scene: Phaser.Scene) {
   if (!scene.textures.exists(GLOW)) {
     const tex = scene.textures.createCanvas(GLOW, 256, 256);
@@ -58,6 +62,7 @@ export class NightLighting {
     private lights: LightDef[],
     private darkness: number,
     lamps: { owner: string; x: number; y: number }[],
+    private panes: Pane[] = [],
   ) {
     ensureTextures(scene);
     const b = layout.board;
@@ -66,6 +71,16 @@ export class NightLighting {
     this.softTile = scene.make.image({ key: SOFT, add: false });
     this.shape = scene.make.graphics({}, false);
     const s = layout.tile;
+    for (const p of panes) {
+      const img = scene.add
+        .image(layout.ox + (p.x + p.w / 2) * s, layout.oy + (p.y + p.h / 2) * s, GLOW)
+        .setTint(MOONLIT)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0.16)
+        .setDisplaySize(p.w * s * 1.7, p.h * s * 2.4)
+        .setDepth(6.5);
+      this.tints.push(img);
+    }
     for (const l of lights) {
       if (l.kind === "glow") {
         const img = scene.add
@@ -158,6 +173,10 @@ export class NightLighting {
         rt.erase(this.shape);
       }
     }
+    for (const p of this.panes) {
+      this.softTile.setDisplaySize(p.w * s, p.h * s).setAlpha(0.5).setPosition(this.layout.ox + (p.x + p.w / 2) * s - b.x, this.layout.oy + (p.y + p.h / 2) * s - b.y);
+      rt.erase(this.softTile);
+    }
     for (const d of dynamic) {
       this.glow.setScale((d.r * 2) / 256).setAlpha(d.strength).setPosition(d.x - b.x, d.y - b.y);
       rt.erase(this.glow);
@@ -167,10 +186,10 @@ export class NightLighting {
       this.softTile.setPosition(this.layout.ox + (t.x + 0.5) * s - b.x, this.layout.oy + (t.y + 0.5) * s - b.y);
       this.rt.erase(this.softTile);
     }
-    this.softTile.setScale((s * 1.1) / 128).setAlpha(0.85);
-    for (const t of lit) {
-      this.softTile.setPosition(this.layout.ox + (t.x + 0.5) * s - b.x, this.layout.oy + (t.y + 0.5) * s - b.y);
-      this.rt.erase(this.softTile);
-    }
+    if (!lit.length) return;
+    this.shape.clear();
+    this.shape.fillStyle(0xffffff, 0.78);
+    for (const t of lit) this.shape.fillRect(this.layout.ox + t.x * s - b.x, this.layout.oy + t.y * s - b.y, s, s);
+    rt.erase(this.shape);
   }
 }

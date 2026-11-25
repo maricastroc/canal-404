@@ -139,7 +139,8 @@ function fullLayout(grid: Grid): Layout {
   const vw = view.x1 - view.x0;
   const vh = view.y1 - view.y0;
   const fit = Math.min(map.w / vw, map.h / vh);
-  const tile = Math.floor(Math.min(MAX_TILE, Math.max(fit, MIN_TILE)));
+  const base = Math.floor(Math.min(MAX_TILE, Math.max(fit, MIN_TILE)));
+  const tile = vh * base < map.h ? Math.max(base, Math.floor(Math.min(map.h / vh, map.w / PHONE.tile.cols))) : base;
   return { kind: "full", W, H, map, view, tile, notebook, unit: 1, ui: 1, text: 0, small: 0, hud: null, ...placeBoard(map, view, tile) };
 }
 

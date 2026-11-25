@@ -1,5 +1,5 @@
 import type * as Phaser from "phaser";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleX, EighthNote, Eye, Hourglass, Lightbulb, ListOrdered, RotateCw, Star, Undo2, X, type IconNode } from "lucide";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleX, EighthNote, Eye, Hourglass, Lightbulb, ListOrdered, RotateCcw, RotateCw, Star, Undo2, X, type IconNode } from "lucide";
 import { loadIcons, type IconSpec } from "../../kit/icons";
 
 const TEXTURE = 96;
@@ -21,6 +21,7 @@ const ICONS = {
   wait: { icon: Hourglass, strokeWidth: 2.4, fill: SUN },
   undo: { icon: Undo2, strokeWidth: 2.8 },
   hint: { icon: Lightbulb, strokeWidth: 2.4, fill: "#ffc83d" },
+  restart: { icon: RotateCcw, strokeWidth: 2.8 },
   rules: { icon: BookOpen, strokeWidth: 2.4, fill: "#c8f0b4" },
   moves: { icon: ListOrdered, strokeWidth: 2.6 },
   view: { icon: Eye, strokeWidth: 2.6, fill: "#fbf5e6" },
