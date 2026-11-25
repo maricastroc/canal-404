@@ -8,6 +8,7 @@ import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { GameHowToPanel } from "@/components/art/GameHowTo";
 import { ArrowLeftIcon, ChevronRightIcon, PlayIcon } from "@/components/art/Icons";
 import { GameStats } from "@/components/catalog/GameStats";
+import { RecessAlbum } from "@/components/catalog/RecessAlbum";
 import { ChampionTicker } from "@/components/records/ChampionTicker";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
@@ -263,6 +264,8 @@ export default async function GamePage({ params }: PageProps<"/[lang]/games/[slu
           </div>
         </section>
       )}
+
+      {available && game.slug === "operation-recess" ? <RecessAlbum /> : null}
 
       <section aria-labelledby="cast" className="mt-12">
         <h2 id="cast" className="text-center font-display text-3xl uppercase tracking-wide text-cream [text-shadow:3px_4px_0_var(--color-ink)]">

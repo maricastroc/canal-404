@@ -95,6 +95,7 @@ export const COPY = localized({
       freeze: "ESTÁTUA!",
       sawYou: "TE VI!",
       caught: "FLAGRA!",
+      newSticker: "NOVA!",
     },
     banner: {
       backAtBell: "DE VOLTA AO SINO!",
@@ -120,6 +121,7 @@ export const COPY = localized({
       bellMission: "Sino tocado! Na missão, a fase vale do começo ao fim.",
       bellSaved: "Sino tocado! Se for pego, você volta daqui.",
       tripped: (n: number) => (n === 1 ? "Tropeçou na corda! Resta 1 coração. Pule quando ela descer." : `Tropeçou na corda! Restam ${n} corações. Pule quando ela descer.`),
+      newSticker: (name: string, n: number, total: number) => `Figurinha nova: ${name}! ${n} de ${total} no álbum.`,
     },
     result: {
       loseTitle: "Pego no flagra!",
@@ -138,6 +140,7 @@ export const COPY = localized({
       cleared: "Fase concluída",
       hearts: (n: number) => `Corações (${n})`,
       boss: "Inspetor vencido",
+      album: (n: number, total: number) => `Álbum: ${n} de ${total}.`,
     },
   },
   en: {
@@ -233,6 +236,7 @@ export const COPY = localized({
       freeze: "FREEZE!",
       sawYou: "SAW YOU!",
       caught: "GOTCHA!",
+      newSticker: "NEW!",
     },
     banner: {
       backAtBell: "BACK AT THE BELL!",
@@ -258,6 +262,7 @@ export const COPY = localized({
       bellMission: "Bell rung! In today's mission, you play the level from start to finish.",
       bellSaved: "Bell rung! If you get caught, you'll restart from here.",
       tripped: (n: number) => (n === 1 ? "Tripped on the rope! 1 heart left. Jump when it comes down." : `Tripped on the rope! ${n} hearts left. Jump when it comes down.`),
+      newSticker: (name: string, n: number, total: number) => `New sticker: ${name}! ${n} of ${total} in the album.`,
     },
     result: {
       loseTitle: "Caught red-handed!",
@@ -276,6 +281,7 @@ export const COPY = localized({
       cleared: "Level cleared",
       hearts: (n: number) => `Hearts (${n})`,
       boss: "Inspector defeated",
+      album: (n: number, total: number) => `Album: ${n} of ${total}.`,
     },
   },
 });

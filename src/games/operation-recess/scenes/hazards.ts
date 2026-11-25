@@ -1,8 +1,29 @@
 import * as Phaser from "phaser";
+import type { StickerId } from "../album";
 import { FLOOR_Y, TILE } from "../config";
 import type { LevelDef } from "../levels";
+import { INK_HEX } from "../../kit/ui";
 import type { StageApi } from "./enemies";
 import { cx, cy } from "./world";
+
+const STICKER_SIZE = 74;
+
+function makeOwnedBadge(scene: Phaser.Scene) {
+  if (scene.textures.exists("sticker-owned")) return;
+  const g = scene.make.graphics({}, false);
+  g.fillStyle(INK_HEX, 1);
+  g.fillCircle(17, 17, 17);
+  g.fillStyle(0x93cf4c, 1);
+  g.fillCircle(17, 17, 13);
+  g.lineStyle(5, INK_HEX, 1);
+  g.beginPath();
+  g.moveTo(10, 17);
+  g.lineTo(15, 23);
+  g.lineTo(25, 11);
+  g.strokePath();
+  g.generateTexture("sticker-owned", 34, 34);
+  g.destroy();
+}
 
 export class Ball {
   readonly img: Phaser.GameObjects.Image;
@@ -131,6 +152,7 @@ export class Item {
   readonly img: Phaser.GameObjects.Image;
   taken = false;
   private baseY: number;
+  private badge: Phaser.GameObjects.Image | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -138,15 +160,24 @@ export class Item {
     col: number,
     row: number,
     private reduced: boolean,
+    readonly sticker?: StickerId,
+    owned = false,
   ) {
     this.baseY = cy(row) + TILE / 2;
-    this.img = scene.add.image(cx(col) + TILE / 2, this.baseY, kind).setDepth(12);
+    this.img = scene.add.image(cx(col) + TILE / 2, this.baseY, sticker ? `sticker-${sticker}` : kind).setDepth(12);
+    if (!sticker) return;
+    this.img.setDisplaySize(STICKER_SIZE, STICKER_SIZE);
+    if (!owned) return;
+    this.img.setAlpha(0.5);
+    makeOwnedBadge(scene);
+    this.badge = scene.add.image(this.img.x + 24, this.img.y - 24, "sticker-owned").setDepth(12.1);
   }
 
   update(t: number) {
     if (this.taken || this.reduced) return;
     this.img.y = this.baseY + Math.sin(t / 260 + this.img.x) * 8;
     if (this.kind === "sticker") this.img.angle = Math.sin(t / 400 + this.img.x) * 12;
+    this.badge?.setPosition(this.img.x + 24, this.img.y - 24);
   }
 
   near(x: number, top: number, bottom: number) {
@@ -155,7 +186,8 @@ export class Item {
 
   take(scene: Phaser.Scene) {
     this.taken = true;
-    scene.tweens.add({ targets: this.img, y: this.img.y - 60, scale: 1.5, alpha: 0, duration: 280, onComplete: () => this.img.destroy() });
+    this.badge?.destroy();
+    scene.tweens.add({ targets: this.img, y: this.img.y - 60, scaleX: this.img.scaleX * 1.5, scaleY: this.img.scaleY * 1.5, alpha: 0, duration: 280, onComplete: () => this.img.destroy() });
   }
 }
 

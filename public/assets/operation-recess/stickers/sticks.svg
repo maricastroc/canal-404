@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+<g transform="rotate(-4 60 60)" stroke="#1d1830" stroke-linejoin="round" stroke-linecap="round">
+<rect x="7" y="7" width="106" height="106" rx="24" fill="#fffaf0" stroke-width="5"/>
+<rect x="15" y="15" width="90" height="90" rx="18" fill="#c6e8d4" stroke="none"/>
+<path d="M26 88 L92 34" fill="none" stroke-width="8"/><path d="M26 88 L92 34" fill="none" stroke="#ef4f43" stroke-width="4"/><path d="M30 36 L92 86" fill="none" stroke-width="8"/><path d="M30 36 L92 86" fill="none" stroke="#5cb9f0" stroke-width="4"/><path d="M60 22 L58 100" fill="none" stroke-width="8"/><path d="M60 22 L58 100" fill="none" stroke="#ffc83d" stroke-width="4"/><path d="M24 62 L98 58" fill="none" stroke-width="8"/><path d="M24 62 L98 58" fill="none" stroke="#93cf4c" stroke-width="4"/><path d="M40 26 L80 98" fill="none" stroke-width="8"/><path d="M40 26 L80 98" fill="none" stroke="#7b62c4" stroke-width="4"/><path d="M84 26 L38 96" fill="none" stroke-width="8"/><path d="M84 26 L38 96" fill="none" stroke="#f06ba8" stroke-width="4"/>
+<path d="M24 22 L46 22" stroke="#ffffff" stroke-width="5" opacity="0.7"/>
+</g>
+</svg>
