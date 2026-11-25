@@ -424,7 +424,7 @@ const TEXT = gameText({
       tagline: "Quatro amigos, quatro carrinhos improvisados e uma disputa pelas ladeiras do bairro.",
       description: "Déco, Lina, Bruno e Mila construíram seus próprios carrinhos e resolveram descobrir quem manda nas ladeiras do bairro. Ganhe velocidade nas descidas, salte pelas rampas e capriche nas manobras. Chegue na frente para subir ao pódio e faça bonito pelo caminho para somar pontos!",
       tags: ["Ação", "Corrida", "Manobras"],
-      objective: "Três ladeiras, três desafios. Chegue entre os três primeiros para desbloquear a próxima pista. E, se puder, deixe seus amigos comendo poeira!",
+      objective: "Três ladeiras, três desafios e uma disputa para ver quem chega primeiro! Fique entre os três primeiros para liberar a próxima pista. E deixe a turma comendo poeira!",
       howToIntro: "Corra pelas três ladeiras do bairro, cada uma mais desafiadora que a anterior. Chegue entre os três primeiros para avançar e tente deixar seus amigos para trás!",
       levels: [
         { title: "Ladeira do Seu Arlindo", goal: "Pule as lixeiras, encare as rampas e cuidado com o caminhão de lixo!" },
@@ -909,7 +909,7 @@ const TEXT = gameText({
       tagline: "Four friends, four homemade carts and a race for the neighborhood hills.",
       description: "Déco, Lina, Bruno and Mila built their own carts and set out to find out who rules the neighborhood hills. Build speed on the way down, fly off the ramps and pull off some tricks. Finish ahead to make the podium, and look good along the way to rack up points!",
       tags: ["Action", "Racing", "Tricks"],
-      objective: "Three hills, three challenges. Finish in the top three to unlock the next track. And if you can, leave your friends in the dust!",
+      objective: "Three hills, three challenges and a race to see who gets there first! Finish in the top three to unlock the next track. And leave the gang in the dust!",
       howToIntro: "Race down the three neighborhood hills, each tougher than the last. Finish in the top three to move on, and try to leave your friends behind!",
       levels: [
         { title: "Mr. Arlindo's Hill", goal: "Jump the trash cans, take on the ramps and watch out for the garbage truck!" },

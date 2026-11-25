@@ -47,7 +47,7 @@ const COPY = localized({
     missionNoSignal: "Sem sinal da missão agora. Dá para jogar normalmente, mas a partida não conta para a missão.",
     firstWinUnlocked: (word: LevelWord, next: number) => `Primeira vitória nesta ${word}. ${word[0].toUpperCase() + word.slice(1)} ${next} liberada!`,
     firstWin: (word: LevelWord) => `Primeira vitória nesta ${word}.`,
-    beatStars: (stars: number) => `Antes, seu melhor aqui era ${stars} ${stars === 1 ? "estrela" : "estrelas"}.`,
+    beatStars: (word: LevelWord, stars: number) => (word === "pista" ? `Seu recorde anterior era de ${stars} ${stars === 1 ? "estrela" : "estrelas"}.` : `Antes, seu melhor aqui era ${stars} ${stars === 1 ? "estrela" : "estrelas"}.`),
     sameStars: (stars: number) => `Mesmas ${stars} ${stars === 1 ? "estrela" : "estrelas"} de antes, com mais pontos.`,
     keptStars: (word: LevelWord, stars: number) => `Seu melhor nesta ${word} continua sendo ${stars} ${stars === 1 ? "estrela" : "estrelas"}.`,
     previousRecord: (score: number) => `Seu recorde anterior era ${formatNumber(score, "pt-BR")}.`,
@@ -73,7 +73,7 @@ const COPY = localized({
     missionNoSignal: "No signal from the mission right now. You can play as usual, but this round won't count for the mission.",
     firstWinUnlocked: (word: LevelWord, next: number) => `First win in this ${LEVEL[word].word}. ${LEVEL[word].Word} ${next} unlocked!`,
     firstWin: (word: LevelWord) => `First win in this ${LEVEL[word].word}.`,
-    beatStars: (stars: number) => `Your best here used to be ${countOf(stars, ["star", "stars"], "en")}.`,
+    beatStars: (word: LevelWord, stars: number) => (word === "pista" ? `Your previous best was ${countOf(stars, ["star", "stars"], "en")}.` : `Your best here used to be ${countOf(stars, ["star", "stars"], "en")}.`),
     sameStars: (stars: number) => `Same ${countOf(stars, ["star", "stars"], "en")} as before, with more points.`,
     keptStars: (word: LevelWord, stars: number) => `Your best in this ${LEVEL[word].word} is still ${countOf(stars, ["star", "stars"], "en")}.`,
     previousRecord: (score: number) => `Your previous record was ${formatNumber(score, "en")}.`,
@@ -389,7 +389,7 @@ export function GameShell({ slug }: { slug: string }) {
                         ? text.firstWinUnlocked(word, r.level.index + 2)
                         : text.firstWin(word)
                       : r.stars > saved.previous.stars
-                        ? text.beatStars(saved.previous.stars)
+                        ? text.beatStars(word, saved.previous.stars)
                         : isRecord
                           ? text.sameStars(r.stars)
                           : best > r.stars
