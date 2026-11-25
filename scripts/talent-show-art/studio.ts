@@ -1,4 +1,5 @@
 import { P } from "../../src/lib/palette";
+import { AMP, CROWD_SIGN } from "../../src/games/talent-show/scenes/figure";
 import { DESK_LIP, layoutFor, phoneStage, type Orientation, type StageLayout } from "../../src/games/talent-show/scenes/layout";
 import type { Sheet } from "../past-bedtime-art/kit";
 
@@ -34,7 +35,7 @@ function valance(w: number, h: number) {
   return `<path d="${edge}" fill="${P.tomato}"/>${folds}<path d="${edge}" fill="none" ${ink(6)}/><path d="M0 ${h - 18} L${w} ${h - 18}" stroke="${P.sun}" stroke-width="6" opacity="0.9"/>${fringe}`;
 }
 
-function digit(d: string, x: number, y: number, s: number) {
+function digit(d: string, x: number, y: number, s: number, color: string = P.sun, outline: string = P.ink) {
   const seg: Record<string, string> = {
     a: `M${x} ${y} L${x + s} ${y}`,
     b: `M${x + s} ${y} L${x + s} ${y + s}`,
@@ -46,7 +47,7 @@ function digit(d: string, x: number, y: number, s: number) {
   };
   const on: Record<string, string> = { "4": "fgbc", "0": "abcdef" };
   const path = [...on[d]].map((k) => seg[k]).join(" ");
-  return `<path d="${path}" fill="none" stroke="${P.ink}" stroke-width="${s * 0.42}" stroke-linecap="round" stroke-linejoin="round"/><path d="${path}" fill="none" stroke="${P.sun}" stroke-width="${s * 0.26}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return `<path d="${path}" fill="none" stroke="${outline}" stroke-width="${s * 0.42}" stroke-linecap="round" stroke-linejoin="round"/><path d="${path}" fill="none" stroke="${color}" stroke-width="${s * 0.26}" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 
 function sign(cx: number, cy: number, w: number, h: number) {
@@ -135,6 +136,58 @@ function podium(L: StageLayout) {
   return `<ellipse cx="${x + 8}" cy="${y + depth + 6}" rx="${rx + 6}" ry="${ry + 6}" fill="${P.ink}" opacity="0.35"/><path d="M${x - rx} ${y} L${x - rx} ${y + depth} A${rx} ${ry} 0 0 0 ${x + rx} ${y + depth} L${x + rx} ${y} Z" fill="${P.tomato}" ${ink(5)}/>${bulbs}<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${P.cream3}" ${ink(5)}/><ellipse cx="${x}" cy="${y}" rx="${rx - 18}" ry="${ry - 5}" fill="none" stroke="${P.sun}" stroke-width="5"/>`;
 }
 
+function digits(text: string, cx: number, cy: number, s: number, color: string = P.sun, outline: string = P.ink) {
+  const gap = s * 0.7;
+  const total = s * text.length + gap * (text.length - 1);
+  return [...text].map((d, i) => digit(d, cx - total / 2 + i * (s + gap), cy - s, s, color, outline)).join("");
+}
+
+function cable(L: StageLayout) {
+  const { x, y, scale } = L.amp;
+  const k = scale;
+  const jx = x + (AMP.jack[0] - AMP.w / 2) * k;
+  const jy = y - (AMP.h - AMP.jack[1]) * k;
+  const fy = L.stage.top + (L.stage.front - L.stage.top) * 0.62;
+  const end = L.performer.x + L.performer.podium * 0.92;
+  const ey = L.performer.y + L.performer.podium * 0.1;
+  const mid = (jx + end) / 2;
+  const d = `M${jx} ${jy} Q${jx - 26 * k} ${jy + 6 * k} ${jx - 30 * k} ${fy - 4} Q${mid + (jx - mid) * 0.4} ${fy + 14} ${mid} ${fy + 4} Q${mid - (mid - end) * 0.5} ${fy - 8} ${end} ${ey}`;
+  const tx = mid;
+  const ty = fy + 4;
+  const tw = Math.max(18, 36 * k);
+  const th = Math.max(8, 12 * k);
+  const tape = [-24, 24].map((a) => `<rect x="${tx - tw / 2}" y="${ty - th / 2}" width="${tw}" height="${th}" rx="2" fill="${P.cream2}" stroke="${P.ink}" stroke-width="2.5" transform="rotate(${a} ${tx} ${ty})"/>`).join("");
+  return `<path d="${d}" fill="none" stroke="${P.ink}" stroke-width="${Math.max(6, 11 * k)}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#3b3b4a" stroke-width="${Math.max(3, 6 * k)}" stroke-linecap="round"/>${tape}`;
+}
+
+function amp() {
+  const { w, h, cone } = AMP;
+  const crateTop = 158;
+  let crate = `<rect x="8" y="${crateTop}" width="${w - 16}" height="${h - crateTop - 4}" rx="6" fill="${P.woodDark}" ${ink(5)}/>`;
+  for (const [y0, y1] of [
+    [crateTop + 6, crateTop + 24],
+    [crateTop + 30, crateTop + 48],
+    [crateTop + 54, h - 10],
+  ])
+    crate += `<rect x="14" y="${y0}" width="${w - 28}" height="${y1 - y0}" rx="3" fill="${P.wood}" stroke="${P.ink}" stroke-width="3"/>`;
+  crate += `<rect x="8" y="${crateTop}" width="14" height="${h - crateTop - 4}" rx="4" fill="${P.woodDeep}" ${ink(4)}/><rect x="${w - 22}" y="${crateTop}" width="14" height="${h - crateTop - 4}" rx="4" fill="${P.woodDeep}" ${ink(4)}/>`;
+  crate += `<path d="M44 ${crateTop + 36} Q56 ${crateTop + 30} 68 ${crateTop + 37} M92 ${crateTop + 14} L112 ${crateTop + 16}" stroke="${P.woodDeep}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  const box = `<rect x="24" y="${crateTop - 6}" width="${w - 40}" height="10" rx="4" fill="${P.ink}" opacity="0.35"/><rect x="18" y="22" width="${w - 36}" height="${crateTop - 20}" rx="12" fill="#3b3b4a" ${ink(6)}/><rect x="28" y="32" width="${w - 56}" height="${crateTop - 40}" rx="8" fill="#2c2c38" stroke="#55556a" stroke-width="3"/>`;
+  const handle = `<rect x="58" y="10" width="44" height="16" rx="7" fill="#2c2c38" ${ink(4)}/>`;
+  const woofer = `<circle cx="${cone.x}" cy="${cone.y}" r="${cone.size / 2 + 8}" fill="#1f1f29" ${ink(4)}/><circle cx="${cone.x}" cy="${cone.y}" r="${cone.size / 2}" fill="#4a4a5c" stroke="${P.ink}" stroke-width="3"/><circle cx="${cone.x}" cy="${cone.y}" r="11" fill="#6a6a80" stroke="${P.ink}" stroke-width="3"/>`;
+  const tweeter = `<circle cx="${cone.x}" cy="48" r="9" fill="#1f1f29" stroke="${P.ink}" stroke-width="3"/><circle cx="${cone.x}" cy="48" r="4" fill="#6a6a80"/>`;
+  const knobs = [42, 118].map((kx) => `<circle cx="${kx}" cy="48" r="6" fill="${P.cream}" stroke="${P.ink}" stroke-width="3"/><path d="M${kx} 48 L${kx + 3} 44" stroke="${P.ink}" stroke-width="2" stroke-linecap="round"/>`).join("");
+  const sticker = `<g transform="rotate(-9 112 140)"><rect x="92" y="130" width="42" height="22" rx="4" fill="${P.sun}" stroke="${P.ink}" stroke-width="3"/>${digits("404", 113, 141, 6.2, P.ink, P.sun)}</g>`;
+  const tape = `<rect x="16" y="26" width="40" height="11" rx="2" fill="${P.cream2}" stroke="${P.ink}" stroke-width="2.5" transform="rotate(-34 36 32)"/>`;
+  const jack = `<circle cx="${AMP.jack[0]}" cy="${AMP.jack[1]}" r="6" fill="${P.sunDeep}" stroke="${P.ink}" stroke-width="3"/>`;
+  return svg(w, h, `${crate}${box}${handle}${woofer}${tweeter}${knobs}${sticker}${tape}${jack}`);
+}
+
+function ampCone() {
+  const r = AMP.cone.size / 2;
+  return svg(AMP.cone.size, AMP.cone.size, `<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="#4a4a5c" stroke="${P.ink}" stroke-width="3"/><circle cx="${r}" cy="${r}" r="${r * 0.62}" fill="none" stroke="#5c5c72" stroke-width="3"/><circle cx="${r}" cy="${r}" r="11" fill="#6a6a80" stroke="${P.ink}" stroke-width="3"/><circle cx="${r - 3}" cy="${r - 3}" r="3.5" fill="#8a8aa2"/>`);
+}
+
 function studio(L: StageLayout, curtainW: number) {
   const { W, H } = L;
   const floorTop = L.stage.top;
@@ -146,7 +199,7 @@ function studio(L: StageLayout, curtainW: number) {
   return svg(
     W,
     H,
-    `<rect width="${W}" height="${H}" fill="${P.plum900}"/>${wallPanels}${signArt}${riser(L)}${floor(W, floorTop, floorBottom)}<rect x="0" y="${floorBottom}" width="${W}" height="${H - floorBottom}" fill="${P.plum950}"/>${podium(L)}${curtain(0, 0, curtainW, floorTop, false)}${curtain(W - curtainW, 0, curtainW, floorTop, true)}${rig}${valance(W, L.valance)}`,
+    `<rect width="${W}" height="${H}" fill="${P.plum900}"/>${wallPanels}${signArt}${riser(L)}${floor(W, floorTop, floorBottom)}<rect x="0" y="${floorBottom}" width="${W}" height="${H - floorBottom}" fill="${P.plum950}"/>${cable(L)}${podium(L)}${curtain(0, 0, curtainW, floorTop, false)}${curtain(W - curtainW, 0, curtainW, floorTop, true)}${rig}${valance(W, L.valance)}`,
   );
 }
 
@@ -212,8 +265,27 @@ function crowd(variant: number) {
     ]
       .map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`)
       .join("")}<path d="M10 130 Q12 86 60 84 Q108 86 110 130 Z" fill="${fill}"/>`,
+    `<circle cx="60" cy="54" r="28" fill="${fill}"/><path d="M80 34 Q110 30 112 62 Q114 84 100 92 Q104 70 86 56 Z" fill="${fill}"/><path d="M12 130 Q14 86 60 84 Q106 86 108 130 Z" fill="${fill}"/>`,
+    `<circle cx="60" cy="58" r="27" fill="${fill}"/><path d="M33 52 L30 26 L44 38 L50 14 L60 34 L70 12 L76 36 L90 22 L88 52 Z" fill="${fill}"/><path d="M12 130 Q14 88 60 86 Q106 88 108 130 Z" fill="${fill}"/>`,
+    `<circle cx="60" cy="72" r="25" fill="${fill}"/><path d="M38 66 Q40 44 60 44 Q80 44 82 66 Q72 54 60 54 Q48 54 38 66 Z" fill="${fill}"/><path d="M20 130 Q22 102 60 100 Q98 102 100 130 Z" fill="${fill}"/>`,
+    `<circle cx="60" cy="58" r="28" fill="${fill}"/><path d="M30 54 Q28 24 60 22 Q92 24 90 54 Z" fill="${fill}"/><circle cx="60" cy="16" r="11" fill="${fill}"/><path d="M12 130 Q14 88 60 86 Q106 88 108 130 Z" fill="${fill}"/>`,
+    `<circle cx="60" cy="56" r="28" fill="${fill}"/><path d="M30 56 Q30 18 60 18 Q90 18 90 56" fill="none" stroke="${fill}" stroke-width="9"/><rect x="20" y="46" width="18" height="28" rx="8" fill="${fill}"/><rect x="82" y="46" width="18" height="28" rx="8" fill="${fill}"/><path d="M12 130 Q14 88 60 86 Q106 88 108 130 Z" fill="${fill}"/>`,
   ];
-  return svg(120, 130, `${heads[variant]}<path d="M34 34 Q60 18 86 34" stroke="${rim}" stroke-width="4" fill="none" stroke-linecap="round"/>`);
+  const rims = ["M34 34 Q60 18 86 34", "M34 34 Q60 18 86 34", "M34 34 Q60 18 86 34", "M34 34 Q60 18 86 34", "M34 34 Q60 18 86 34", "M34 34 Q60 18 86 34", "M38 36 Q60 22 80 32", "M38 40 Q50 32 58 36", "M42 56 Q60 46 78 56", "M36 38 Q60 22 84 38", "M38 26 Q60 14 82 26"];
+  return svg(120, 130, `${heads[variant]}<path d="${rims[variant]}" stroke="${rim}" stroke-width="4" fill="none" stroke-linecap="round"/>`);
+}
+
+function crowdSign(mark: "404" | "heart") {
+  const { w, h } = CROWD_SIGN;
+  const arm = `stroke="${P.plum800}" stroke-width="18" stroke-linecap="round" fill="none"`;
+  const top = 6;
+  const bottom = 78;
+  const board = `<rect x="8" y="${top}" width="${w - 16}" height="${bottom - top}" rx="10" fill="${P.plum700}" stroke="${P.plum500}" stroke-width="5"/>`;
+  const symbol =
+    mark === "404"
+      ? digits("404", w / 2, (top + bottom) / 2, 17, P.plum300, P.plum800)
+      : `<path d="M60 66 C30 46 30 22 46 22 C54 22 58 28 60 32 C62 28 66 22 74 22 C90 22 90 46 60 66 Z" fill="${P.plum300}" stroke="${P.plum800}" stroke-width="4" stroke-linejoin="round"/>`;
+  return svg(w, h, `<path d="M28 ${h - 34} L42 ${bottom - 2} M92 ${h - 34} L78 ${bottom - 2}" ${arm}/>${board}${symbol}`);
 }
 
 function crowdArms(pose: "up" | "wave") {
@@ -238,6 +310,15 @@ export function studioSheet(): Sheet {
     "crowd-3": { svg: crowd(3) },
     "crowd-4": { svg: crowd(4) },
     "crowd-5": { svg: crowd(5) },
+    "crowd-6": { svg: crowd(6) },
+    "crowd-7": { svg: crowd(7) },
+    "crowd-8": { svg: crowd(8) },
+    "crowd-9": { svg: crowd(9) },
+    "crowd-10": { svg: crowd(10) },
+    "crowd-sign-404": { svg: crowdSign("404") },
+    "crowd-sign-heart": { svg: crowdSign("heart") },
+    "stage-amp": { svg: amp() },
+    "amp-cone": { svg: ampCone() },
     "crowd-arms-up": { svg: crowdArms("up") },
     "crowd-arm-wave": { svg: crowdArms("wave") },
   };

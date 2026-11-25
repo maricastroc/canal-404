@@ -26,6 +26,7 @@ export type StageLayout = {
   performer: Spot & { podium: number };
   backline: { xs: number[]; y: number; scale: number };
   nameTag: { y: number };
+  amp: Spot;
 };
 
 export type Layout = StageLayout & {
@@ -84,13 +85,14 @@ export function phoneStage(): StageLayout {
     performer: { x: 540, y: 748, scale: 0.64, podium: 124 },
     backline: { xs: [292, 412, 668, 788], y: 676, scale: 0.42 },
     nameTag: { y: 772 },
+    amp: { x: 948, y: 766, scale: 0.46 },
   };
 }
 
 function placed(stage: StageLayout, x: number, y: number, k: number): StageLayout {
   const px = (v: number) => x + v * k;
   const py = (v: number) => y + v * k;
-  const { jury, riser, performer, host, backline } = stage;
+  const { jury, riser, performer, host, backline, amp } = stage;
   return {
     ...stage,
     spots: stage.spots.map((s) => ({ x: px(s.x), y: py(s.y) })),
@@ -103,6 +105,7 @@ function placed(stage: StageLayout, x: number, y: number, k: number): StageLayou
     performer: { x: px(performer.x), y: py(performer.y), scale: performer.scale * k, podium: performer.podium * k },
     backline: { xs: backline.xs.map(px), y: py(backline.y), scale: backline.scale * k },
     nameTag: { y: py(stage.nameTag.y) },
+    amp: { x: px(amp.x), y: py(amp.y), scale: amp.scale * k },
   };
 }
 
@@ -224,6 +227,7 @@ function landscapeLayout(): Layout {
     performer: { x: 775, y: 694, scale: 0.84, podium: 168 },
     backline: { xs: [468, 610, 940, 1082], y: 540, scale: 0.46 },
     nameTag: { y: 722 },
+    amp: { x: 1290, y: 698, scale: 0.7 },
     crowd: [centeredRow(1104, 0.88, 17, 114, W)],
     lane: { housing, track, hitX: 300, pxPerBeat: 340, r: 46, frame: IDENTITY, vertical: false },
     readout: { x: 262, y: housing.y - 68, max: 320 },
@@ -263,6 +267,7 @@ function portraitLayout(): Layout {
     performer: { x: 560, y: 918, scale: 0.72, podium: 132 },
     backline: { xs: [300, 420, 712, 840], y: 876, scale: 0.44 },
     nameTag: { y: 950 },
+    amp: { x: 958, y: 926, scale: 0.5 },
     crowd: [centeredRow(1480, 1, 9, 122, W), centeredRow(1610, 1.12, 8, 140, W), centeredRow(1736, 1.26, 7, 160, W)],
     lane: { housing, track, hitX: 196, pxPerBeat: 272, r: 56, frame: IDENTITY, vertical: false },
     readout: { x: 186, y: housing.y - 68, max: 230 },
