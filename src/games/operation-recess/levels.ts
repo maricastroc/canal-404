@@ -1,3 +1,5 @@
+import type { StickerId } from "./album";
+
 export type Theme = "corridor" | "yard" | "library" | "office";
 export type EnemyKind = "common" | "whistle" | "shield";
 export type EnemyStyle = "patrol" | "rush" | "guard" | "mixed";
@@ -12,7 +14,7 @@ export type LevelDef = {
   platforms: { col: number; row: number; w: number; art: "shelf" | "bench" | "bars" | "desk" | "books"; wobbly?: boolean }[];
   puddles: { col: number; w: number }[];
   enemies: { kind: EnemyKind; col: number; row?: number; style?: EnemyStyle }[];
-  items: { kind: "snack" | "sticker"; col: number; row: number }[];
+  items: ({ kind: "snack"; col: number; row: number } | { kind: "sticker"; col: number; row: number; id: StickerId })[];
   checkpoints: number[];
   balls?: { col: number; every: number; offset: number; wake: number }[];
   carts?: { from: number; to: number; speed: number }[];
@@ -57,11 +59,11 @@ export const LEVELS: LevelDef[] = [
       { kind: "common", col: 68, style: "rush" },
     ],
     items: [
-      { kind: "sticker", col: 14, row: 8 },
-      { kind: "sticker", col: 18, row: 6 },
-      { kind: "sticker", col: 31, row: 9 },
+      { kind: "sticker", col: 14, row: 8, id: "marbles" },
+      { kind: "sticker", col: 18, row: 6, id: "yoyo" },
+      { kind: "sticker", col: 31, row: 9, id: "top" },
       { kind: "snack", col: 43, row: 11 },
-      { kind: "sticker", col: 51, row: 6 },
+      { kind: "sticker", col: 51, row: 6, id: "bafo" },
     ],
     checkpoints: [44],
     exit: { col: 70, label: "PÁTIO" },
@@ -98,11 +100,11 @@ export const LEVELS: LevelDef[] = [
       { kind: "whistle", col: 75 },
     ],
     items: [
-      { kind: "sticker", col: 10, row: 9 },
-      { kind: "sticker", col: 21, row: 8 },
-      { kind: "sticker", col: 25, row: 5 },
+      { kind: "sticker", col: 10, row: 9, id: "ball" },
+      { kind: "sticker", col: 21, row: 8, id: "kite" },
+      { kind: "sticker", col: 25, row: 5, id: "peteca" },
       { kind: "snack", col: 48, row: 9 },
-      { kind: "sticker", col: 51, row: 3 },
+      { kind: "sticker", col: 51, row: 3, id: "hopscotch" },
       { kind: "snack", col: 67, row: 9 },
     ],
     checkpoints: [50],
@@ -141,13 +143,13 @@ export const LEVELS: LevelDef[] = [
       { kind: "common", col: 79, style: "guard" },
     ],
     items: [
-      { kind: "sticker", col: 10, row: 9 },
-      { kind: "sticker", col: 30, row: 8 },
+      { kind: "sticker", col: 10, row: 9, id: "can-phone" },
+      { kind: "sticker", col: 30, row: 8, id: "jacks" },
       { kind: "snack", col: 38, row: 11 },
-      { kind: "sticker", col: 41, row: 11 },
-      { kind: "sticker", col: 50, row: 8 },
+      { kind: "sticker", col: 41, row: 11, id: "hoop" },
+      { kind: "sticker", col: 50, row: 8, id: "sticks" },
       { kind: "snack", col: 63, row: 11 },
-      { kind: "sticker", col: 67, row: 5 },
+      { kind: "sticker", col: 67, row: 5, id: "rope" },
     ],
     checkpoints: [37, 62],
     carts: [{ from: 48, to: 51, speed: 180 }],
@@ -193,9 +195,9 @@ export const LEVELS: LevelDef[] = [
       { kind: "shield", col: 61 },
     ],
     items: [
-      { kind: "sticker", col: 13, row: 7 },
+      { kind: "sticker", col: 13, row: 7, id: "domino" },
       { kind: "snack", col: 25, row: 11 },
-      { kind: "sticker", col: 45, row: 9 },
+      { kind: "sticker", col: 45, row: 9, id: "pinwheel" },
       { kind: "snack", col: 41, row: 11 },
       { kind: "snack", col: 62, row: 11 },
     ],

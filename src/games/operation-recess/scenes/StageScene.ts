@@ -1,11 +1,13 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, GRAVITY, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
+import { STICKER_IDS, STICKER_NAMES, type StickerId } from "../album";
 import { COPY, levelCopy, type LevelCopy, type RecessCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import { LEVELS, type LevelDef, type Theme } from "../levels";
 import { recessStarHint, recessStars } from "../score";
 import { RecessMusic } from "../music";
+import { addSticker, loadSave, writeSave, type RecessSave } from "../save";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
@@ -66,6 +68,7 @@ export class StageScene extends Phaser.Scene {
   private shelves: WobblyShelf[] = [];
   private boss: Inspector | null = null;
   private music!: RecessMusic;
+  private album!: RecessSave;
   private arena = { left: 0, right: 0, entered: false };
   private gate: Phaser.GameObjects.Zone | null = null;
   private keys!: Record<"left" | "right" | "a" | "d" | "space" | "up" | "w", Phaser.Input.Keyboard.Key>;
@@ -212,7 +215,8 @@ export class StageScene extends Phaser.Scene {
       this.exitZone = new Phaser.Geom.Rectangle(ex - 50, FLOOR_Y - 250, 100, 250);
     }
     for (const c of this.level.carts ?? []) this.carts.push(new Cart(this, c));
-    for (const it of this.level.items) this.items.push(new Item(this, it.kind, it.col, it.row, reduced));
+    this.album = loadSave();
+    for (const it of this.level.items) this.items.push(it.kind === "sticker" ? new Item(this, it.kind, it.col, it.row, reduced, it.id, this.album.stickers.includes(it.id)) : new Item(this, it.kind, it.col, it.row, reduced));
     for (const col of this.level.checkpoints) this.bells.push(new Bell(this, col));
     for (const b of this.level.balls ?? []) this.spawners.push(new BallSpawner(this.api, b, (ball) => this.balls.push(ball)));
     makeGadgetTextures(this);
@@ -770,7 +774,7 @@ export class StageScene extends Phaser.Scene {
       level: { index: this.levelIndex, id: this.level.id, title: this.text.title, total: LEVELS.length },
       copy: { title: lose.loseTitle, text: cp ? lose.loseFromBell : lose.loseText },
       ...(cp ? { restartLabel: lose.restartFromBell } : {}),
-      summary: lose.loseSummary(this.kills, this.stickers),
+      summary: `${lose.loseSummary(this.kills, this.stickers)} ${lose.album(this.album.stickers.length, STICKER_IDS.length)}`,
     };
     this.time.delayedCall(1500, () => this.ctx.onEvent({ type: "finished", result }));
   }
@@ -835,7 +839,7 @@ export class StageScene extends Phaser.Scene {
       achievements,
       level: { index: this.levelIndex, id: this.level.id, title: this.text.title, total: LEVELS.length },
       copy: last ? { title: this.copy.result.finalTitle, text: this.copy.result.finalText } : { title: this.copy.result.passedTitle, text: this.copy.result.passedText(this.text.win) },
-      summary: this.copy.result.winSummary(this.kills, this.hits),
+      summary: `${this.copy.result.winSummary(this.kills, this.hits)} ${this.copy.result.album(this.album.stickers.length, STICKER_IDS.length)}`,
       ...(starHint ? { starHint } : {}),
     };
     if (last) {
@@ -1196,6 +1200,10 @@ export class StageScene extends Phaser.Scene {
         this.addScore(SCORE.sticker);
         this.sfx("coin", 0.8);
         this.word(`+${SCORE.sticker}`, it.img.x, it.img.y - 40, "#ffc83d", 36);
+        if (it.sticker && this.collect(it.sticker)) {
+          this.word(this.copy.words.newSticker, it.img.x, it.img.y - 96, "#f06ba8", 40);
+          this.announce(this.copy.say.newSticker(STICKER_NAMES[this.ctx.locale][it.sticker], this.album.stickers.length, STICKER_IDS.length));
+        }
       }
     }
     for (const bell of this.bells) {
@@ -1252,6 +1260,14 @@ export class StageScene extends Phaser.Scene {
     }
     for (const l of this.spotlights) if (l.update(t, dt, h, t < this.invulnUntil)) this.hurt(l.spotX);
     for (const s of this.shelves) s.update(t, h);
+  }
+
+  private collect(id: StickerId) {
+    const save = loadSave();
+    const added = addSticker(save, id);
+    if (added) writeSave(save);
+    this.album = save;
+    return added;
   }
 
   private trip() {

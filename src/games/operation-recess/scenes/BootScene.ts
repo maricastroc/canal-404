@@ -3,6 +3,7 @@ import { ArrowBigUp, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Flag, Hea
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { reportFailedLoads } from "../../kit/load";
+import { STICKER_IDS } from "../album";
 import { HERO_TEX } from "../config";
 
 const BASE = "/assets/operation-recess/";
@@ -151,6 +152,7 @@ export class BootScene extends Phaser.Scene {
     for (const k of KIDS) this.load.svg(`kid-${k}`, `${BASE}kid-${k}.svg`, { width: 150, height: 212 });
     for (const [key, width, height] of PROPS) this.load.svg(key, `${BASE}${key}.svg`, { width, height });
     for (const key of SCENERY) this.load.svg(key, `${BASE}${key}.svg`);
+    for (const id of STICKER_IDS) this.load.svg(`sticker-${id}`, `${BASE}stickers/${id}.svg`, { width: 96, height: 96 });
     loadIcons(this, [
       { key: "icon-left", icon: ChevronLeft, size: 80, strokeWidth: 3 },
       { key: "icon-right", icon: ChevronRight, size: 80, strokeWidth: 3 },
