@@ -25,6 +25,8 @@ const PUFF_MS = 3600;
 const MOON = { x: 740, y: 100, w: 340, h: 470 };
 const GLASS = { x0: 846, x1: 1044, y0: 112, y1: 306, mx: 945, my: 210, bar: 5 };
 const FLOOR = { near: 356, depth: 204, skew: 0.45 };
+const DOOR = { w: 500, h: 230, top: 24, near: 66, far: 214 };
+const SCREEN = { ox: 140, oy: 360, x0: 30, x1: 250, y0: 40, y1: 204, ground: 186, fence: 140, span: 74, hop: 48, cycle: 3600 };
 
 function hash(n: number) {
   const r = Math.sin(n * 12.9898 + 4.1414) * 43758.5453;
@@ -80,10 +82,56 @@ export function makeAmbientTextures(scene: Phaser.Scene) {
     g.fillStyle(0x5cb9f0, 1);
     g.fillCircle(38, 17, 5);
   });
+  gfx("sheep", 96, 72, (g) => {
+    g.fillStyle(INK_HEX, 1);
+    for (const x of [30, 40, 58, 68]) g.fillRoundedRect(x - 5, 46, 10, 22, 4);
+    g.fillStyle(0x3a3157, 1);
+    for (const x of [30, 40, 58, 68]) g.fillRoundedRect(x - 2.5, 48, 5, 18, 2);
+    const puffs: [number, number, number][] = [[18, 34, 6], [26, 42, 11], [34, 34, 15], [48, 28, 17], [62, 34, 15], [70, 42, 11], [40, 46, 12], [56, 46, 12]];
+    g.fillStyle(INK_HEX, 1);
+    for (const [x, y, r] of puffs) g.fillCircle(x, y, r + 3);
+    g.fillStyle(0xffffff, 1);
+    for (const [x, y, r] of puffs) g.fillCircle(x, y, r);
+    g.fillStyle(0xe6e1f5, 1);
+    g.fillCircle(44, 48, 8);
+    g.fillCircle(60, 46, 7);
+    g.fillStyle(INK_HEX, 1);
+    g.fillEllipse(80, 30, 26, 22);
+    g.fillEllipse(72, 21, 14, 9);
+    g.fillStyle(0x3a3157, 1);
+    g.fillEllipse(80, 30, 21, 17);
+    g.fillEllipse(72, 21, 10, 5.5);
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(84, 27, 3.4);
+    g.fillStyle(INK_HEX, 1);
+    g.fillCircle(85, 27, 1.8);
+  });
   gfx("scanlines", 4, 4, (g) => {
     g.fillStyle(0x0b0818, 0.3);
     g.fillRect(0, 2, 4, 2);
   });
+  if (!tex.exists("door-light")) {
+    const c = tex.createCanvas("door-light", DOOR.w, DOOR.h)!;
+    const ctx = c.getContext();
+    const off = 4000;
+    const cx = DOOR.w / 2;
+    const fade = ctx.createLinearGradient(0, DOOR.top, 0, DOOR.h - 10);
+    fade.addColorStop(0, "rgba(255,255,255,0.95)");
+    fade.addColorStop(0.45, "rgba(255,255,255,0.5)");
+    fade.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.shadowColor = "#ffffff";
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetX = off;
+    ctx.fillStyle = fade;
+    ctx.beginPath();
+    ctx.moveTo(cx - DOOR.near - off, DOOR.top);
+    ctx.lineTo(cx + DOOR.near - off, DOOR.top);
+    ctx.lineTo(cx + DOOR.far - off, DOOR.h - 10);
+    ctx.lineTo(cx - DOOR.far - off, DOOR.h - 10);
+    ctx.closePath();
+    ctx.fill();
+    c.refresh();
+  }
   if (!tex.exists("moonlight")) {
     const c = tex.createCanvas("moonlight", MOON.w, MOON.h)!;
     const ctx = c.getContext();
@@ -289,6 +337,80 @@ class TvShow {
   }
 }
 
+class ScreenShow {
+  private root: Phaser.GameObjects.Container;
+  private sheep: Img;
+  private count: Phaser.GameObjects.Text;
+  private beam: Phaser.GameObjects.Rectangle;
+  private specks: Phaser.GameObjects.Graphics;
+  private shown = -1;
+  private tick = -1;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private prop: Prop,
+    fonts: Fonts,
+    private reduced: boolean,
+  ) {
+    const at = (x: number, y: number) => [x - SCREEN.ox, y - SCREEN.oy] as const;
+    const [px, py] = at(SCREEN.x0, SCREEN.y0);
+    const w = SCREEN.x1 - SCREEN.x0;
+    const h = SCREEN.y1 - SCREEN.y0;
+    this.sheep = scene.add.image(0, 0, "sheep").setOrigin(0.5, 66 / 72).setScale(0.46);
+    this.count = cartoonText(scene, ...at(SCREEN.x0 + 14, SCREEN.y0 + 20), "", { size: 44, color: "#ffc83d", font: fonts.display, stroke: 0.22 }).setOrigin(0, 0.5).setScale(0.5).setVisible(false);
+    this.beam = scene.add.rectangle(px, py, w, h, 0xffffff, 1).setOrigin(0, 0).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+    this.specks = scene.add.graphics();
+    this.root = scene.add.container(prop.img.x, prop.img.y, [this.sheep, this.count, this.beam, this.specks]).setScale(prop.def.scale ?? 1).setDepth(prop.img.depth + 0.05);
+    if (reduced) {
+      this.place(SCREEN.fence, 0);
+      this.setCount(1);
+    }
+  }
+
+  private place(x: number, k: number) {
+    const lift = Math.sin(Math.PI * k) * SCREEN.hop;
+    const fade = Phaser.Math.Clamp((x - SCREEN.x0 - 6) / 12, 0, 1) * Phaser.Math.Clamp((SCREEN.x1 - 6 - x) / 12, 0, 1);
+    this.sheep.setPosition(x - SCREEN.ox, SCREEN.ground - lift - SCREEN.oy).setAngle(-14 * Math.sin(Math.PI * 2 * k)).setAlpha(fade);
+  }
+
+  private setCount(n: number) {
+    if (n === this.shown) return;
+    this.shown = n;
+    this.count.setText(String(n)).setVisible(n > 0);
+    if (!this.reduced && n > 0) this.scene.tweens.add({ targets: this.count, scale: { from: 0.78, to: 0.5 }, duration: 260, ease: "Back.easeOut" });
+  }
+
+  update(t: number) {
+    const img = this.prop.img;
+    this.root.setPosition(img.x, img.y).setAngle(img.angle);
+    if (this.reduced) return;
+    const loop = Math.floor(t / SCREEN.cycle);
+    const k = (t % SCREEN.cycle) / SCREEN.cycle;
+    const walk = Math.min(1, k / 0.9);
+    const x = SCREEN.x0 + 6 + walk * (SCREEN.x1 - SCREEN.x0 - 12);
+    const jump = Phaser.Math.Clamp((x - (SCREEN.fence - SCREEN.span / 2)) / SCREEN.span, 0, 1);
+    this.place(x, jump);
+    if (jump === 0 || jump === 1) this.sheep.y -= Math.abs(Math.sin(t / 80)) * 1.5;
+    if (k >= 0.9) this.sheep.setAlpha(0);
+    this.setCount(loop + (jump >= 0.5 ? 1 : 0));
+    const step = Math.floor(t / 90);
+    if (step === this.tick) return;
+    this.tick = step;
+    this.beam.setAlpha(0.02 + hash(step) * 0.05);
+    const g = this.specks;
+    g.clear();
+    if (hash(step + 7) < 0.3) {
+      g.fillStyle(INK_HEX, 0.45);
+      for (let i = 0; i < 3; i += 1) g.fillCircle(SCREEN.x0 + 8 + hash(step * 3 + i) * (SCREEN.x1 - SCREEN.x0 - 16) - SCREEN.ox, SCREEN.y0 + 8 + hash(step * 5 + i) * (SCREEN.y1 - SCREEN.y0 - 16) - SCREEN.oy, 0.9 + hash(step + i) * 1.1);
+    }
+    if (hash(step + 13) < 0.08) {
+      const sx = SCREEN.x0 + 10 + hash(step + 21) * (SCREEN.x1 - SCREEN.x0 - 20) - SCREEN.ox;
+      g.lineStyle(1, 0xffffff, 0.35);
+      g.lineBetween(sx, SCREEN.y0 + 4 - SCREEN.oy, sx + 2, SCREEN.y1 - 4 - SCREEN.oy);
+    }
+  }
+}
+
 export class Ambient {
   private sways: Sway[] = [];
   private flies: Fly[] = [];
@@ -300,7 +422,8 @@ export class Ambient {
   private fan: { g: Phaser.GameObjects.Graphics; x: number; y: number; top: number; angle: number; speed: number } | null = null;
   private clock: { g: Phaser.GameObjects.Graphics; x: number; y: number; ringAt: number; ringUntil: number } | null = null;
   private tv: TvShow | null = null;
-  private tent: { inner: Img; spill: Img[] } | null = null;
+  private screen: ScreenShow | null = null;
+  private tent: { inner: Img; spill: Img[]; base: number[] } | null = null;
   private grill: { prop: Prop; ember: Img; puffAt: number } | null = null;
   private swing: { prop: Prop; shadow: Img } | null = null;
   private moonlight: Img | null = null;
@@ -330,12 +453,15 @@ export class Ambient {
       if (key === "plant-big") this.sways.push({ prop: p, amp: 1.1, period: 1500, phase: p.def.x / 500, quietSince: 0, kind: "angle" });
       if (key === "tent") {
         this.sways.push({ prop: p, amp: 0.018, period: 900, phase: 0, quietSince: 0, kind: "breath" });
+        const door = scene.add.image(p.def.x, p.def.y - 32, "door-light").setOrigin(0.5, DOOR.top / DOOR.h).setTint(0xffbf66).setAlpha(0.62).setBlendMode(Phaser.BlendModes.ADD).setDepth(25.2);
         this.tent = {
-          inner: add(p.def.x, p.def.y - 84, 124, 176, 0xffd690, 0.22, p.img.depth + 0.05),
-          spill: [add(p.def.x, p.def.y - 20, 340, 84, WARM, 0.26, 25), add(p.def.x, p.def.y - 24, 180, 44, 0xffe2a6, 0.2, 25.1)],
+          inner: add(p.def.x, p.def.y - 84, 132, 184, 0xffd690, 0.3, p.img.depth + 0.05),
+          spill: [door, add(p.def.x, p.def.y - 18, 420, 110, WARM, 0.34, 25), add(p.def.x, p.def.y - 24, 210, 54, 0xffe2a6, 0.3, 25.1)],
+          base: [0.62, 0.34, 0.3],
         };
       }
       if (key === "boombox") this.boombox = p;
+      if (key === "screen") this.screen = new ScreenShow(scene, p, fonts, reduced);
       if (key === "lantern") this.pools.push({ img: add(p.def.x, p.def.y + 2, 170, 46, WARM, 0.17, 25), base: 0.17, phase: p.def.x / 97 });
       if (key === "grill") this.grill = { prop: p, ember: add(p.def.x, p.def.y, 128, 46, 0xffa04d, 0.5, p.img.depth + 0.1), puffAt: 900 };
       if (key === "lamp" || key === "floor-lamp") {
@@ -383,6 +509,7 @@ export class Ambient {
     this.updateFan(dt);
     this.updateClock(t);
     this.tv?.update(t);
+    this.screen?.update(t);
     this.updateNotes(t);
     this.updateLights(t);
     this.updateGrill(t);
@@ -445,9 +572,8 @@ export class Ambient {
     if (this.reduced) return;
     const lantern = 0.88 + 0.08 * Math.sin(t / 530) * Math.sin(t / 1270 + 1.3) + 0.04 * Math.sin(t / 173);
     if (this.tent) {
-      this.tent.inner.setAlpha(0.22 * lantern);
-      this.tent.spill[0].setAlpha(0.26 * lantern);
-      this.tent.spill[1].setAlpha(0.2 * lantern);
+      this.tent.inner.setAlpha(0.3 * lantern);
+      this.tent.spill.forEach((img, i) => img.setAlpha(this.tent!.base[i] * lantern));
     }
     for (const p of this.pools) p.img.setAlpha(p.base * (0.86 + 0.14 * Math.sin(t / 700 + p.phase) * Math.sin(t / 1900 + p.phase * 2)));
   }

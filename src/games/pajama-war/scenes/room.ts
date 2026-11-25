@@ -53,6 +53,29 @@ const BACKDROPS: Record<string, { at: Footprint; alpha: number; on?: string }> =
   bookshelf: { at: [140, 120, 320, 290], alpha: 0.3 },
 };
 
+const FLOWER_TINTS = [0xf3eee0, 0xffe39a, 0xd9c8f5];
+
+const YARD_DECOR: [kind: "tuft" | "flower", x: number, y: number, variant: number][] = [
+  ["tuft", 150, 352, 0],
+  ["tuft", 610, 346, 1],
+  ["flower", 640, 352, 1],
+  ["tuft", 1240, 348, 0],
+  ["tuft", 1630, 350, 1],
+  ["tuft", 142, 566, 1],
+  ["flower", 160, 586, 0],
+  ["flower", 176, 790, 2],
+  ["tuft", 136, 1000, 0],
+  ["flower", 268, 960, 1],
+  ["tuft", 1786, 540, 0],
+  ["flower", 1772, 700, 0],
+  ["tuft", 1790, 912, 1],
+  ["tuft", 430, 1036, 1],
+  ["flower", 452, 1040, 2],
+  ["flower", 1088, 1040, 0],
+  ["tuft", 1580, 1034, 0],
+  ["flower", 1604, 1040, 1],
+];
+
 const CROWNS: Record<string, { trunk: string; crown: string; pivot: [number, number] }> = {
   tree: { trunk: "tree-trunk", crown: "tree-crown", pivot: [241, 330] },
 };
@@ -185,6 +208,37 @@ export function makeTextures(scene: Phaser.Scene) {
     g.generateTexture(key, w, h);
     g.destroy();
   };
+  gfx("tuft", 44, 34, (g) => {
+    const blades: [number, number][] = [[-15, -16], [-7, -26], [1, -30], [9, -24], [16, -14]];
+    for (const [w, c] of [[5, 0x22381f], [2.4, 0x5d8f4c]] as const) {
+      g.lineStyle(w, c, 1);
+      for (const [dx, dy] of blades) {
+        g.beginPath();
+        g.moveTo(22 + dx * 0.25, 32);
+        g.lineTo(22 + dx * 0.7, 32 + dy * 0.55);
+        g.lineTo(22 + dx, 32 + dy);
+        g.strokePath();
+      }
+    }
+  });
+  gfx("flower", 22, 26, (g) => {
+    g.lineStyle(3, 0x22381f, 1);
+    g.lineBetween(11, 24, 11, 13);
+    g.lineStyle(1.6, 0x5d8f4c, 1);
+    g.lineBetween(11, 24, 11, 13);
+    g.fillStyle(0x22381f, 1);
+    g.fillEllipse(7, 21, 7, 4);
+    g.fillStyle(0x5d8f4c, 1);
+    g.fillEllipse(7, 21, 5, 2.4);
+    g.fillStyle(0x1d1830, 1);
+    for (let i = 0; i < 5; i += 1) g.fillCircle(11 + Math.cos((i / 5) * Math.PI * 2 - 1.57) * 4.4, 10 + Math.sin((i / 5) * Math.PI * 2 - 1.57) * 4.4, 3.9);
+    g.fillStyle(0xffffff, 1);
+    for (let i = 0; i < 5; i += 1) g.fillCircle(11 + Math.cos((i / 5) * Math.PI * 2 - 1.57) * 4.4, 10 + Math.sin((i / 5) * Math.PI * 2 - 1.57) * 4.4, 2.8);
+    g.fillStyle(0x1d1830, 1);
+    g.fillCircle(11, 10, 2.6);
+    g.fillStyle(0xffc83d, 1);
+    g.fillCircle(11, 10, 1.7);
+  });
   gfx("dust", 64, 48, (g) => {
     g.fillStyle(0xfbf5e6, 0.9);
     g.fillCircle(20, 28, 16);
@@ -609,6 +663,11 @@ export class Room {
     this.ceiling = ceiling;
     if (d.theme === "yard") {
       s.add.image(0, wb, "yard-patches").setOrigin(0, 0).setDisplaySize(W, floorEnd - wb).setDepth(0.55);
+      for (const [kind, x, y, v] of YARD_DECOR) {
+        const img = s.add.image(x, y, kind).setOrigin(0.5, 1).setDepth(20.4 + y / 1000).setFlipX(v % 2 === 1);
+        if (kind === "flower") img.setTint(FLOWER_TINTS[v]).setScale(0.9).setAlpha(0.9);
+        else img.setScale(0.8 + v * 0.15).setAlpha(0.85);
+      }
       s.add.tileSprite(0, wb - 136, W, 138, "fence").setOrigin(0, 0).setTileScale(0.8 / RES, 0.8 / RES).setDepth(3);
       this.skyGlow = s.add.image(W / 2, 0, "glow").setDisplaySize(W * 1.4, 520).setTint(0x3a4a8a).setAlpha(0.35).setDepth(0.6);
       g.fillStyle(0x140f26, 0.3);
