@@ -2,7 +2,7 @@ import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import type { Wave } from "./types";
 
-export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live";
+export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live" | "downhill";
 
 export type TrackUnlock =
   | { type: "default" }
@@ -47,6 +47,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       mood: "A banda da turma no grande show de calouros. Sim, aquilo é um balde.",
       unlock: "Termine o Pot-pourri do 404 em Ao Vivo no 404.",
     },
+    downhill: {
+      title: "Ladeira Abaixo (Chegada)",
+      mood: "A vinheta da linha de chegada. Do pódio ao trombone triste.",
+      unlock: "",
+    },
   },
   en: {
     theme: {
@@ -78,6 +83,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       title: "Live on 404 (Recording)",
       mood: "The kids' band at the big talent show. Yes, that's a bucket.",
       unlock: "Finish the 404 Medley in Live on 404.",
+    },
+    downhill: {
+      title: "Downhill Derby (Finish)",
+      mood: "The finish-line sting. From the podium to the sad trombone.",
+      unlock: "",
     },
   },
 });
