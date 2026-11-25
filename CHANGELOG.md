@@ -4,6 +4,15 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Guerra do Pijama: Sótão, a quarta arena
+- **A fourth arena.** "Sótão" / "Attic" comes after the backyard and closes the game. Players who already beat the backyard find it open.
+- **Blanket forts.** Four forts the kids built from attic junk: a broom tipi and a cardboard castle at the back (6 hits each), a sheet over two chairs and a tablecloth over a table at the front (7 hits each). They block pillows like the backyard tent, sag at half strength while still blocking, and cave in at zero. After that, pillows fly over them, but the debris, chairs and table still take up the same floor. They never rebuild, so the room opens up during the match. In bot runs the first fort falls around 20 s, three are down around 48 s, after ESQUENTOU!, and the last one falls around 63 s, just before SEM DESCANSO!.
+- **Damage you can see.** There are no health bars. Each hit shakes the fort, throws a few bits of its material and bends it a little more. It sags with a puff of dust, shivers at its last point and caves in with its own animation and sound: cloth slumping, cardboard crushing, brooms clattering to the floor. With reduced motion the states swap without animation.
+- **Tripping.** Anyone touching a fort when it caves in trips for 300 ms (OPA!). They can't move or throw, and they lose no energy. A kid who just tripped can't trip again for 1.5 s, and a trip never extends a stun that is already running.
+- **Bots with their own style.** Nico knocks down cover to expose whoever hides behind it, Bia alternates between direct throws and forts, and Lia looks for another angle. All three throw directly when they have a clear shot and step away from a fort that is about to fall.
+- **The room.** Sloped roof with rafters and cobwebs, a round window with a moonbeam and floating dust, a swinging bulb, an old trunk, stacked boxes, a dress form, a coat rack, suitcases, a rocking horse and a rag rug.
+- **Boards.** The attic gets its own board. The judge, the scores and the other three arenas don't change.
+
 ### Operação: Recreio: trilha, biblioteca, corda e colchonete
 - **Music.** The Silence Inspector fight has its own march, which speeds up when he gets angry, and every level ends with a short tune: a fanfare on "Passou!", the march in a major key on "Recreio liberado!" and the march slowed down on "Pego no flagra!". It stops on pause and follows the sound switch.
 - **A fourth level.** "Biblioteca vigiada" sits between the schoolyard and the office and mixes the other levels' gadgets: a wobbly shelf over a gap in sight of the lookout, the Inspector's spotlight over a stop-sign monitor, a book cart crossing a gap while a whistle monitor fires high and low waves, and a mat up to a mezzanine. Players who already beat the Inspector keep every level open.

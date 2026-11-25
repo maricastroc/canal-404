@@ -30,6 +30,7 @@ export const BODY = { rx: 48, ry: 32 };
 export const PILLOW = { speed: 1000, range: 860, windup: 130, lift: 96, radius: 26 };
 export const HIT = { stun: 230, invuln: 560, invulnPlayer: 850, knock: 300 };
 export const ESCALATE = { heat: 40000, final: 70000 };
+export const FORT = { trip: 300, immune: 1500, reachX: 120, reachY: 76 };
 
 export const SCORE = { hit: 100, ko: 250, win: 1000, hp: 50, second: 300 };
 

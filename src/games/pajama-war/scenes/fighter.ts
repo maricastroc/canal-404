@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { HIT, HP, KID_INFO, KID_SCALE, PILLOW, PILLOW_ANCHORS, SPRITE_ORIGIN_Y, STATS, type Dir, type KidId, type KidStats, type Pose } from "../config";
+import { FORT, HIT, HP, KID_INFO, KID_SCALE, PILLOW, PILLOW_ANCHORS, SPRITE_ORIGIN_Y, STATS, type Dir, type KidId, type KidStats, type Pose } from "../config";
 import { coast, drive, move } from "../motion";
 import { SPECIAL } from "../special";
 import type { PajamaSfx } from "../sounds";
@@ -36,6 +36,7 @@ export class Fighter {
   hurtBy: Fighter | null = null;
   lastHurtAt = -99999;
   stunUntil = 0;
+  tripSafeUntil = 0;
   invulnUntil = 0;
   readyAt = 0;
   regenScale = 1;
@@ -137,6 +138,32 @@ export class Fighter {
       this.sprite.setAngle(-this.facing * 10);
       this.scene.tweens.add({ targets: this.sprite, angle: 0, duration: 420, ease: "Back.easeOut" });
     }
+  }
+
+  trip(t: number, ms: number) {
+    if (!this.alive || t < this.tripSafeUntil || t < this.stunUntil) return false;
+    this.tripSafeUntil = t + FORT.immune;
+    this.windupUntil = 0;
+    this.stunUntil = t + ms;
+    this.vx *= 0.2;
+    this.vy *= 0.2;
+    this.setPose("hurt");
+    if (!this.reduced) {
+      const lurch = -this.facing * 16;
+      this.scene.tweens.killTweensOf(this.sprite);
+      this.sprite.setAngle(0);
+      this.scene.tweens.chain({
+        targets: this.sprite,
+        tweens: [
+          { angle: lurch, duration: ms * 0.3, ease: "Quad.easeOut" },
+          { angle: -lurch * 0.4, duration: ms * 0.35, ease: "Sine.easeInOut" },
+          { angle: 0, duration: ms * 0.35, ease: "Sine.easeOut" },
+        ],
+      });
+      this.squash = 1.12;
+      this.scene.tweens.add({ targets: this, squash: 1, lift: { from: 12, to: 0 }, duration: ms, ease: "Bounce.easeOut" });
+    }
+    return true;
   }
 
   hurt(t: number, dirX: number, dirY: number, by: Fighter | null, power = 1) {

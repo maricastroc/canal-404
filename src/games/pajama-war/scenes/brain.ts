@@ -1,11 +1,20 @@
 import type { ArenaDef } from "../arenas";
-import { BODY, HP, PILLOW, type KidId } from "../config";
-import { FLOOR_Y, lineBlocked, Navigator, SHOT_PAD, traceReaches, traceShot, type Box, type NavGrid, type Point, type SteerOut } from "../nav";
+import { BODY, FORT, HP, PILLOW, type KidId } from "../config";
+import { firstTallHit, FLOOR_Y, lineBlocked, Navigator, SHOT_PAD, traceReaches, traceShot, type Box, type NavGrid, type Point, type SteerOut } from "../nav";
 
-const STYLE: Record<KidId, { near: number; far: number; dodge: number; retreatAt: number; strafe: number; lead: number; bank: number; greed: number; backoff: number }> = {
+type Style = { near: number; far: number; dodge: number; retreatAt: number; strafe: number; lead: number; bank: number; greed: number; backoff: number };
+type FortStyle = { wreck: number; streak: number; expose: number; aware: number; patience: number };
+
+const STYLE: Record<KidId, Style> = {
   lia: { near: 280, far: 470, dodge: 0.62, retreatAt: 3, strafe: 0.9, lead: 0.5, bank: 0.3, greed: 1.3, backoff: 150 },
   nico: { near: 470, far: 690, dodge: 0.32, retreatAt: 3, strafe: 0.55, lead: 0.75, bank: 0.65, greed: 0.95, backoff: 40 },
   bia: { near: 360, far: 560, dodge: 0.38, retreatAt: 2, strafe: 0.65, lead: 0.6, bank: 0.4, greed: 1.1, backoff: 70 },
+};
+
+const FORT_STYLE: Record<KidId, FortStyle> = {
+  lia: { wreck: 0.15, streak: 1, expose: -0.25, aware: 1, patience: 600 },
+  nico: { wreck: 0.85, streak: 0.92, expose: 0.45, aware: 0.55, patience: 2200 },
+  bia: { wreck: 0.5, streak: 0.45, expose: 0.15, aware: 0.8, patience: 1200 },
 };
 
 export type BrainBody = {
@@ -55,6 +64,11 @@ export class Brain {
   mode: BrainMode = "roam";
   readonly nav: Navigator;
   bankShots = 0;
+  fortShots = 0;
+  fort: FortStyle;
+  private fortArena: boolean;
+  private wreckStreak = 0;
+  private dangerSeen = 0;
   private retargetAt = 0;
   private planAt = 0;
   private holdUntil = 0;
@@ -78,6 +92,8 @@ export class Brain {
     private rng: () => number = Math.random,
   ) {
     this.style = STYLE[me.kid];
+    this.fort = FORT_STYLE[me.kid];
+    this.fortArena = world.def.mechanic === "fort";
     this.nav = new Navigator(world.nav);
     this.hesitateUntil = 900 + rng() * 700;
     this.strafe = rng() < 0.5 ? -1 : 1;
@@ -89,6 +105,23 @@ export class Brain {
 
   private clearShot(ax: number, ay: number, bx: number, by: number, v: BrainView) {
     return !lineBlocked(v.room.boxes, ax, ay + 6, bx, by);
+  }
+
+  private fortInWay(ax: number, ay: number, bx: number, by: number, v: BrainView) {
+    const hit = firstTallHit(v.room.boxes, ax, ay + 6, bx, by);
+    return hit?.box.fort && hit.box.fort.hp > 0 ? hit.box : null;
+  }
+
+  private fortDanger(x: number, y: number, v: BrainView) {
+    let s = 0;
+    if (!this.fortArena) return 0;
+    for (const b of v.room.boxes) {
+      if (!b.fort || b.fort.hp <= 0 || b.fort.hp > 2) continue;
+      const dx = Math.max(b.x0 - x, 0, x - b.x1) / (FORT.reachX * 1.3);
+      const dy = Math.max(b.y0 - y, 0, y - b.y1) / (FORT.reachY * 1.3);
+      if (dx * dx + dy * dy < 1) s += (b.fort.hp === 1 ? 170 : 50) * this.fort.aware;
+    }
+    return s;
   }
 
   private pickTarget(t: number, v: BrainView) {
@@ -106,6 +139,10 @@ export class Brain {
       let piled = 0;
       for (const [who, tg] of v.targets) if (who !== me && tg === o) piled += 1;
       score -= piled * (o.isPlayer ? 1.7 : 1.25);
+      if (this.fortArena) {
+        const fort = this.fortInWay(me.x, me.y, o.x, o.y, v)?.fort;
+        if (fort) score += fort.hp <= fort.max / 2 ? this.fort.expose : this.fort.expose * 0.4;
+      }
       score += this.rng() * 0.7;
       if (score > bestScore) {
         bestScore = score;
@@ -162,8 +199,9 @@ export class Brain {
     const tg = this.target!;
     const d = Math.hypot(x - tg.x, y - tg.y);
     let s = d < near ? (near - d) * 2.2 : d > far ? (d - far) * 1.6 : 0;
-    if (!me.special && !this.clearShot(x, y, tg.x, tg.y, v)) s += 420;
+    if (!me.special && !this.clearShot(x, y, tg.x, tg.y, v)) s += this.fortArena && this.fortInWay(x, y, tg.x, tg.y, v) ? 420 * (1 - this.fort.wreck * 0.55) : 420;
     s += Math.hypot(x - me.x, y - me.y) * 0.55;
+    s += this.fortDanger(x, y, v);
     for (const o of v.fighters) {
       if (o === me || o === tg || !o.alive) continue;
       const od = Math.hypot(x - o.x, y - o.y);
@@ -181,7 +219,12 @@ export class Brain {
       const od = Math.hypot(x - o.x, y - o.y);
       if (od < 560) s += (560 - od) * 1.6;
       if (this.clearShot(o.x, o.y, x, y, v)) s += 140;
+      else if (this.fortArena) {
+        const fort = this.fortInWay(o.x, o.y, x, y, v)?.fort;
+        if (fort && fort.hp <= 2) s += 60 * (3 - fort.hp);
+      }
     }
+    s += this.fortDanger(x, y, v);
     s += this.edgeCost(x, y, v, 120, 2.6);
     s += Math.hypot(x - me.x, y - me.y) * 0.3;
     return s + this.rng() * 40;
@@ -293,8 +336,12 @@ export class Brain {
     const tg = this.target;
     if (tg && !v.hider) {
       if (!me.special && !this.clearShot(me.x, me.y, tg.x, tg.y, v)) {
-        if (this.blindSince < 0) this.blindSince = t;
-        if (t - this.blindSince > 1400) {
+        const behindFort = this.fortArena && this.fortInWay(me.x, me.y, tg.x, tg.y, v) !== null;
+        if (this.blindSince < 0) {
+          this.blindSince = t;
+          if (behindFort && this.fort.patience < 1000) this.planAt = Math.min(this.planAt, t + 150);
+        }
+        if (t - this.blindSince > (behindFort ? this.fort.patience : 1400)) {
           const alt = v.fighters.find((o) => o !== me && o !== tg && o.alive && Math.hypot(o.x - me.x, o.y - me.y) < PILLOW.range * 0.85 && this.clearShot(me.x, me.y, o.x, o.y, v));
           if (alt) {
             this.target = alt;
@@ -315,6 +362,17 @@ export class Brain {
     if (t >= this.strafeAt) {
       this.strafe = rng() < 0.5 ? -1 : 1;
       this.strafeAt = t + 1100 + rng() * 1500;
+    }
+    if (this.fortArena) {
+      let near = 0;
+      for (const b of v.room.boxes) {
+        if (!b.fort || b.fort.hp !== 1) continue;
+        const dx = Math.max(b.x0 - me.x, 0, me.x - b.x1) / (FORT.reachX * 1.3);
+        const dy = Math.max(b.y0 - me.y, 0, me.y - b.y1) / (FORT.reachY * 1.3);
+        if (dx * dx + dy * dy < 1) near += 1;
+      }
+      if (near > this.dangerSeen && rng() < this.fort.aware) this.planAt = 0;
+      this.dangerSeen = near;
     }
     if (t >= this.planAt || this.nav.blocked || this.nav.failed || (!this.nav.goal && t >= this.holdUntil)) this.plan(t, v);
 
@@ -441,15 +499,22 @@ export class Brain {
       angle = this.bankShot(px, py, v);
       banked = angle !== null;
     }
+    let wrecking = false;
+    if (angle === null && this.fortArena && this.fortInWay(me.x, me.y, px, py, v) && rng() < this.fort.wreck * (0.45 + skill * 0.6) * this.fort.streak ** this.wreckStreak) {
+      angle = Math.atan2((py - me.y) / FLOOR_Y, px - me.x);
+      wrecking = true;
+    }
     if (angle === null) {
       this.hesitateUntil = t + 160;
       return;
     }
     const ease = 1 - v.warm;
     const spread = victim.isPlayer ? ((1 - skill) * 0.44 + 0.06) * (1 + ease * 0.35) : (1 - skill) * 0.24 + 0.035;
-    this.out.angle = angle + (rng() * 2 - 1) * spread * (banked ? 0.5 : 1);
+    this.out.angle = angle + (rng() * 2 - 1) * spread * (banked || wrecking ? 0.5 : 1);
     this.out.target = victim;
     if (banked) this.bankShots += 1;
+    if (wrecking) this.fortShots += 1;
+    if (this.fortArena) this.wreckStreak = wrecking ? this.wreckStreak + 1 : 0;
     const opening = victim.readyAt > t + 280 || victim.stunUntil > t ? 0.6 : 1;
     const pause = (380 + rng() * 620) * (1.25 - skill * 0.6 - v.heat * 0.35) * (victim.isPlayer ? 1.15 + ease * 0.6 : 1) * opening * (me.special ? 0.6 : 1);
     this.hesitateUntil = t + me.stats.cooldown + Math.max(60, pause);

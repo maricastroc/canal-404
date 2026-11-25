@@ -18,13 +18,14 @@ export type PropDef = {
   react?: React;
   depth?: number;
   glow?: { dx: number; dy: number; r: number; color: number; alpha?: number };
+  fort?: number;
 };
 
 export type ArenaDef = {
   id: string;
   title: Localized<string>;
   goal: Localized<string>;
-  theme: "bedroom" | "living" | "yard";
+  theme: "bedroom" | "living" | "yard" | "attic";
   wallBottom: number;
   bounds: { x0: number; y0: number; x1: number; y1: number };
   spawns: [number, number][];
@@ -35,7 +36,7 @@ export type ArenaDef = {
   cat?: [number, number, number][];
   cushions?: { key: string; x: number; y: number; angle: number }[];
   fireflies?: number;
-  mechanic?: "ricochet" | "special";
+  mechanic?: "ricochet" | "special" | "fort";
   specialSpots?: [number, number][];
 };
 
@@ -176,6 +177,42 @@ export const ARENAS: ArenaDef[] = [
       [780, 700, 0xffd2e6, -12],
       [1160, 700, 0xfff3b0, 8],
       [430, 1000, 0xd9f7e2, -4],
+    ],
+  },
+  {
+    id: "attic",
+    title: localized({ "pt-BR": "Sótão", en: "Attic" }),
+    goal: localized({ "pt-BR": "As cabaninhas protegem, mas desabam.", en: "The blanket forts give cover, but they cave in." }),
+    theme: "attic",
+    wallBottom: 350,
+    bounds: { x0: 130, y0: 440, x1: 1790, y1: 1020 },
+    spawns: [
+      [960, 980],
+      [330, 650],
+      [1590, 650],
+    ],
+    ai: 0.76,
+    mechanic: "fort",
+    lights: [],
+    props: [
+      { key: "window-round", x: 960, y: 312, layer: "wall", glow: { dx: 0, dy: -134, r: 240, color: 0x8fa8ff, alpha: 0.2 } },
+      { key: "bulb-hang", x: 1250, y: -200, layer: "wall", react: "swing", glow: { dx: 0, dy: 402, r: 230, color: WARM, alpha: 0.36 } },
+      { key: "rag-rug", x: 960, y: 790, layer: "floor", scale: 1.15, origin: [0.5, 0.5] },
+      { key: "trunk", x: 290, y: 520, layer: "sort", scale: 0.9, block: { w: 190, h: 56 }, react: "bounce" },
+      { key: "dress-form", x: 500, y: 470, layer: "sort", scale: 0.95, react: "wobble" },
+      { key: "coat-rack", x: 1430, y: 470, layer: "sort", scale: 0.95, react: "wobble" },
+      { key: "box-stack", x: 1620, y: 510, layer: "sort", scale: 0.9, block: { w: 170, h: 50 }, react: "wobble" },
+      { key: "fort-tipi", x: 760, y: 610, layer: "sort", block: { w: 170, h: 50, tall: true }, fort: 6 },
+      { key: "fort-box", x: 1180, y: 610, layer: "sort", block: { w: 170, h: 50, tall: true }, fort: 6 },
+      { key: "fort-chairs", x: 520, y: 860, layer: "sort", block: { w: 250, h: 60, tall: true }, fort: 7 },
+      { key: "fort-table", x: 1400, y: 860, layer: "sort", block: { w: 220, h: 60, tall: true }, fort: 7 },
+      { key: "suitcases", x: 250, y: 1000, layer: "sort", scale: 0.85, block: { w: 160, h: 44 }, react: "bounce" },
+      { key: "rocking-horse", x: 1680, y: 995, layer: "sort", scale: 0.9, block: { w: 170, h: 40 }, react: "wobble" },
+    ],
+    floorPillows: [
+      [640, 720, 0xffd2e6, -10],
+      [1290, 740, 0xe6ddff, 8],
+      [960, 1000, 0xfff3b0, -4],
     ],
   },
 ];

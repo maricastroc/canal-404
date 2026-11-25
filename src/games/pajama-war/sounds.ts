@@ -125,6 +125,55 @@ export const PAJAMA_SFX = {
       { kind: "tone", wave: "sine", from: 150, to: 50, duration: 0.3, gain: 0.18 },
     ],
   },
+  cloth: {
+    layers: [{ kind: "noise", duration: 0.2, gain: 0.08, attack: 0.03, filter: { type: "bandpass", from: 1600, to: 700, q: 0.9 } }],
+  },
+  cardboard: {
+    layers: [
+      { kind: "noise", duration: 0.09, gain: 0.09, filter: { type: "bandpass", from: 2400, to: 900, q: 1.4 } },
+      { kind: "tone", wave: "triangle", from: 160, to: 90, duration: 0.08, gain: 0.06 },
+    ],
+  },
+  sag: {
+    layers: [
+      { kind: "noise", duration: 0.32, gain: 0.09, attack: 0.04, filter: { type: "lowpass", from: 1400, to: 300 } },
+      { kind: "tone", wave: "sine", from: 260, to: 140, duration: 0.26, gain: 0.07, glide: "exp" },
+    ],
+  },
+  crumple: {
+    layers: [
+      { kind: "noise", duration: 0.07, gain: 0.1, filter: { type: "bandpass", from: 2600, q: 1.6 } },
+      { kind: "noise", duration: 0.08, delay: 0.07, gain: 0.09, filter: { type: "bandpass", from: 1800, q: 1.6 } },
+      { kind: "noise", duration: 0.12, delay: 0.15, gain: 0.08, filter: { type: "bandpass", from: 1200, to: 600, q: 1.2 } },
+      { kind: "tone", wave: "sine", from: 150, to: 70, duration: 0.18, delay: 0.12, gain: 0.08 },
+    ],
+  },
+  clatter: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 520, to: 480, duration: 0.05, gain: 0.07 },
+      { kind: "tone", wave: "triangle", from: 430, to: 400, duration: 0.05, delay: 0.08, gain: 0.06 },
+      { kind: "noise", duration: 0.2, gain: 0.05, attack: 0.03, filter: { type: "lowpass", from: 1200, to: 300 } },
+    ],
+  },
+  broomfall: {
+    layers: [
+      { kind: "noise", duration: 0.3, gain: 0.08, attack: 0.03, filter: { type: "lowpass", from: 1600, to: 300 } },
+      { kind: "tone", wave: "triangle", from: 560, to: 520, duration: 0.05, delay: 0.12, gain: 0.08 },
+      { kind: "tone", wave: "triangle", from: 470, to: 440, duration: 0.05, delay: 0.21, gain: 0.07 },
+      { kind: "tone", wave: "triangle", from: 390, to: 370, duration: 0.06, delay: 0.29, gain: 0.06 },
+      { kind: "tone", wave: "sine", from: 140, to: 60, duration: 0.2, delay: 0.1, gain: 0.1 },
+    ],
+  },
+  trip: {
+    layers: [{ kind: "tone", wave: "triangle", from: 700, to: 380, duration: 0.14, gain: 0.05, glide: "exp" }],
+  },
+  cavein: {
+    layers: [
+      { kind: "noise", duration: 0.5, gain: 0.14, attack: 0.04, filter: { type: "lowpass", from: 1800, to: 220 } },
+      { kind: "tone", wave: "sine", from: 180, to: 60, duration: 0.34, delay: 0.08, gain: 0.14 },
+      { kind: "noise", duration: 0.3, delay: 0.16, gain: 0.04, filter: { type: "highpass", from: 2800 } },
+    ],
+  },
 } satisfies Record<string, SoundRecipe>;
 
 export type PajamaSfx = keyof typeof PAJAMA_SFX;
