@@ -19,6 +19,7 @@ import { DownhillSim, DT, IDLE, STEP_HZ, type SimEvent, type SimStats } from "..
 import type { Course, CourseId } from "../sim/course";
 import { buildCourse } from "../sim/courses";
 import { covers, heightAt } from "../sim/track";
+import { EngineHum } from "../engineHum";
 import { RaceMusic } from "../music";
 import { boing, DOWNHILL_SFX, PADDLE, rollGrain, windGrain } from "../sounds";
 import { CartView, INK } from "./cart";
@@ -94,8 +95,6 @@ const ZOOM_MIN_RIVAL = 1;
 const ZOOM_MIN_AIR = 0.55;
 const FIRST_RACE: Record<CourseId, Record<Slot, number>> = { arlindo: { lina: 41, bruno: 48, mila: 44.5 }, feira: { lina: 43.5, bruno: 51, mila: 47 }, antena: { lina: 47.5, bruno: 55, mila: 51 } };
 const PACE: Record<Slot, number> = { lina: -1.2, bruno: 0.8, mila: -0.3 };
-
-const VROOM_GAP_MS = 1200;
 
 function tierOf(speed: number) {
   let t = 0;
@@ -181,8 +180,7 @@ export class RaceScene extends Phaser.Scene {
   private trend = 0;
   private lastSpeed = 0;
   private lastTier = 0;
-  private lastVroom = -Infinity;
-  private wasCrouching = false;
+  private hum!: EngineHum;
   private rollT = 0;
   private windT = 0;
   private paddleT = 0;
@@ -301,12 +299,20 @@ export class RaceScene extends Phaser.Scene {
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.pointerUp(p));
     this.input.on("pointerupoutside", (p: Phaser.Input.Pointer) => this.pointerUp(p));
     this.music = new RaceMusic();
+    this.hum = new EngineHum();
     this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.removeAllListeners();
       this.music.destroy();
+      this.hum.destroy();
     });
-    this.events.on(Phaser.Scenes.Events.DESTROY, () => this.music.destroy());
-    this.events.on(Phaser.Scenes.Events.PAUSE, () => this.music.pause());
+    this.events.on(Phaser.Scenes.Events.DESTROY, () => {
+      this.music.destroy();
+      this.hum.destroy();
+    });
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => {
+      this.music.pause();
+      this.hum.silence();
+    });
     this.events.on(Phaser.Scenes.Events.RESUME, () => {
       this.releaseInput();
       this.music.resume();
@@ -631,6 +637,7 @@ export class RaceScene extends Phaser.Scene {
 
   restartRace() {
     this.music.stop();
+    this.hum.start();
     this.pickRivals();
     this.world = new RaceWorld(this.track, this.bridge.params, this.rivals.map((r) => r.frames), this.player);
     this.sim = this.world.player;
@@ -844,6 +851,8 @@ export class RaceScene extends Phaser.Scene {
       if (this.finishT <= 0 && this.finished) this.bridge.onFinish(this.finished);
     }
     this.renderFrame(dt, this.phase === "countdown" ? 1 : this.acc / DT);
+    const sim = this.sim;
+    this.hum.update({ speed: this.phase === "countdown" ? 0 : sim.speed, accel: this.trend, crouch: sim.crouch && sim.mode === "ground", air: sim.mode === "air", crash: sim.mode === "crash" || sim.tumbling });
   }
 
   private tickCountdown(dt: number) {
@@ -864,7 +873,7 @@ export class RaceScene extends Phaser.Scene {
       for (const r of this.rivals) r.view.react("go");
       this.goT = 0.5;
       this.sfx(DOWNHILL_SFX.go);
-      this.vroom(1);
+      this.sfx(DOWNHILL_SFX.vroom);
       this.music.play();
       this.acc = 0;
     }
@@ -938,13 +947,6 @@ export class RaceScene extends Phaser.Scene {
 
   private toScreen(x: number, y: number) {
     return { x: (x - this.cam.x) * this.cam.zoom + this.vw / 2, y: (y - this.cam.y - this.cam.dip) * this.cam.zoom + this.vh / 2 };
-  }
-
-  private vroom(pitch: number) {
-    const now = this.time.now;
-    if (now - this.lastVroom < VROOM_GAP_MS) return;
-    this.lastVroom = now;
-    this.sfx(DOWNHILL_SFX.vroom, 1, pitch);
   }
 
   private sfx(recipe: SoundRecipe, volume = 1, pitch = 1) {
@@ -1241,6 +1243,7 @@ export class RaceScene extends Phaser.Scene {
     }
     const place = placeOf(time, this.rivals.map((r) => this.rivalTime(r)));
     this.music.finale(place);
+    this.hum.stop();
     if (place === 1) this.bridge.records.win(this.track.id, this.player);
     const list = this.standings();
     this.cart.react(place === 1 ? "win" : "lose");
@@ -1910,7 +1913,6 @@ export class RaceScene extends Phaser.Scene {
     const anchor = tall ? (above.y >= hudBottom + 60 * u ? above : this.toScreen(x - 60, y + 130)) : above.y >= 410 ? above : this.toScreen(x - 120, y + 170);
     const speed = this.phase === "countdown" ? 0 : sim.speed;
     const tier = tierOf(speed);
-    if (tier > this.lastTier && tier >= 2 && this.phase === "race") this.vroom(1 + (tier - 1) * 0.12);
     this.lastTier = tier;
     const time = sim.finished ? sim.finishTime : this.phase === "countdown" ? 0 : sim.step * DT;
     const step = this.phase === "countdown" ? 0 : sim.step;
@@ -2011,9 +2013,6 @@ export class RaceScene extends Phaser.Scene {
     if (dt === 0 || this.phase === "countdown") return;
     const sim = this.sim;
     const speed = sim.speed;
-    const crouching = sim.crouch && sim.mode === "ground";
-    if (crouching && !this.wasCrouching && speed > 150 && this.phase === "race") this.vroom(0.95 + Math.min(1, speed / 2600) * 0.3);
-    this.wasCrouching = crouching;
     if (sim.mode !== "air" && speed > 40) {
       this.rollT -= dt;
       if (this.rollT <= 0) {

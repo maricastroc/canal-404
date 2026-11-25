@@ -24,6 +24,8 @@ export const DOWNHILL_SFX = {
     layers: [
       { kind: "tone", wave: "sine", from: 160, to: 70, duration: 0.12, gain: 0.16 },
       { kind: "noise", duration: 0.05, gain: 0.08, filter: { type: "lowpass", from: 1200 } },
+      { kind: "tone", wave: "triangle", from: 360, to: 150, duration: 0.09, gain: 0.1 },
+      { kind: "noise", duration: 0.07, gain: 0.07, filter: { type: "bandpass", from: 800, to: 300, q: 1.4 } },
       { kind: "tone", wave: "triangle", from: 880, duration: 0.07, delay: 0.03, gain: 0.05 },
       { kind: "tone", wave: "triangle", from: 1320, duration: 0.1, delay: 0.09, gain: 0.05 },
     ],
@@ -33,6 +35,9 @@ export const DOWNHILL_SFX = {
       { kind: "tone", wave: "sine", from: 140, to: 60, duration: 0.14, gain: 0.16 },
       { kind: "noise", duration: 0.09, gain: 0.08, filter: { type: "lowpass", from: 900 } },
       { kind: "tone", wave: "sawtooth", from: 190, to: 130, duration: 0.16, delay: 0.04, gain: 0.03, filter: { type: "lowpass", frequency: 900 } },
+      { kind: "tone", wave: "square", from: 280, to: 110, duration: 0.12, gain: 0.05, filter: { type: "lowpass", frequency: 1400 } },
+      { kind: "noise", duration: 0.1, gain: 0.08, filter: { type: "bandpass", from: 650, to: 250, q: 1.2 } },
+      { kind: "noise", duration: 0.05, delay: 0.05, gain: 0.03, filter: { type: "bandpass", from: 2500, q: 2 } },
     ],
   },
   crash: {
