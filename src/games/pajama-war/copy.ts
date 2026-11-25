@@ -41,8 +41,8 @@ export const COPY = localized({
       hitWords: ["POF!", "PAF!", "FLOF!", "TUF!"],
       taunts: ["ERROU!", "NEM PERTO!", "HA!"],
       hints: {
-        ricochet: "Use os móveis para fazer seus travesseiros ricochetearem!",
-        special: "Um travesseiro especial pode aparecer! Pegue antes dos outros!",
+        ricochet: { title: "RICOCHETE!", body: "Jogue nos móveis com mola." },
+        special: { title: "TRAVESSEIRO ESPECIAL!", body: "Pegue antes dos outros!" },
       },
       controlsTouch: "Arraste o polegar na esquerda para andar. Toque na direita para jogar.",
       controlsKeys: "WASD ou setas: andar. Mouse: mirar. Clique ou espaço: jogar.",
@@ -143,8 +143,8 @@ export const COPY = localized({
       hitWords: ["POW!", "WHAP!", "FLUMP!", "WHUMP!"],
       taunts: ["MISSED!", "NOT EVEN CLOSE!", "HA!"],
       hints: {
-        ricochet: "Bounce your pillows off the furniture!",
-        special: "A special pillow may show up! Grab it before the others do!",
+        ricochet: { title: "BOUNCE!", body: "Throw at the furniture with springs." },
+        special: { title: "SPECIAL PILLOW!", body: "Grab it before the others!" },
       },
       controlsTouch: "Drag your left thumb to move. Tap on the right to throw.",
       controlsKeys: "WASD or arrows: move. Mouse: aim. Click or space: throw.",

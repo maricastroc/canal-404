@@ -20,6 +20,7 @@ export class Fighter {
   readonly sprite: Phaser.GameObjects.Image;
   readonly held: Phaser.GameObjects.Image;
   readonly shadow: Phaser.GameObjects.Image;
+  readonly contact: Phaser.GameObjects.Image;
   readonly ring: Phaser.GameObjects.Graphics;
   readonly stats: KidStats;
   x: number;
@@ -69,7 +70,8 @@ export class Fighter {
     this.stats = STATS[kid];
     this.x = x;
     this.y = y;
-    this.shadow = scene.add.image(x, y, "blob").setDisplaySize(112, 32).setAlpha(0.7).setDepth(30);
+    this.shadow = scene.add.image(x, y, "blob").setDisplaySize(118, 34).setAlpha(0.52).setDepth(30);
+    this.contact = scene.add.image(x, y, "shade").setDisplaySize(80, 20).setAlpha(0.66).setDepth(30.5);
     this.ring = scene.add.graphics().setDepth(31);
     this.drawRing();
     this.sprite = scene.add.image(x, y, `kid-${kid}-idle-f`).setOrigin(0.5, SPRITE_ORIGIN_Y).setScale(BASE);
@@ -309,7 +311,9 @@ export class Fighter {
     this.sprite.setPosition(this.x, this.y - this.lift - hop).setDepth(this.y);
     this.sprite.setAlpha(this.alive && t < this.invulnUntil && t > this.stunUntil ? (Math.floor(t / 70) % 2 ? 0.55 : 1) : 1);
     const lift = Phaser.Math.Clamp(this.lift / 160, 0, 1);
-    this.shadow.setPosition(this.x, this.y + 2).setDisplaySize(112 * (1 - lift * 0.45), 32 * (1 - lift * 0.3)).setAlpha(0.66 - lift * 0.3);
+    const lying = this.pose === "ko";
+    this.shadow.setPosition(this.x, this.y + 2).setDisplaySize((lying ? 150 : 118) * (1 - lift * 0.45), 34 * (1 - lift * 0.3)).setAlpha(0.52 - lift * 0.24);
+    this.contact.setPosition(this.x + (lying ? this.facing * 6 : 0), this.y + 1).setDisplaySize((lying ? 132 : 80) * (1 - lift * 0.6), (lying ? 24 : 20) * (1 - lift * 0.5)).setAlpha(0.66 * (1 - lift * 0.85));
     this.ring.setPosition(this.x, this.y + 2);
     const anchor = PILLOW_ANCHORS[this.pose];
     const show = this.alive && !!anchor && (t >= this.readyAt || this.pose.startsWith("windup")) && this.pose !== "hurt";
@@ -344,6 +348,7 @@ export class Fighter {
     this.sprite.destroy();
     this.held.destroy();
     this.shadow.destroy();
+    this.contact.destroy();
     this.ring.destroy();
   }
 }
