@@ -58,7 +58,7 @@ const BASE = {
   "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"], orientation: "any" },
   "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], orientation: "upright" },
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
-  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "office"], orientation: "any" },
+  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "library", "office"], orientation: "any" },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1", orientation: "any" },
   "downhill-derby": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "lina", "bruno", "mila"], levelIds: ["arlindo", "feira", "antena"], levelWord: "pista", orientation: "any" },
   "past-bedtime": {
@@ -337,6 +337,7 @@ const TEXT = gameText({
       levels: [
         { title: "Corredor proibido", goal: "Cuidado com os armários e com o vigia." },
         { title: "Pátio ocupado", goal: "Pule a corda e desvie dos apitos." },
+        { title: "Biblioteca vigiada", goal: "Passe pelo vigia sem parar na prateleira bamba." },
         { title: "Caminho da direção", goal: "Vença o Inspetor do Silêncio." },
       ],
       tips: [
@@ -351,6 +352,7 @@ const TEXT = gameText({
         "Na corda, pule quando ela descer. Tropeçar te joga para trás.",
         "A luz do Inspetor parou em você? Saia antes de ela ficar vermelha.",
         "Prateleira bamba não aguenta ninguém parado.",
+        "Na biblioteca, espere o vigia voltar ao jornal antes de pular na prateleira bamba.",
         "Lanche devolve um coração. Sino salva o caminho.",
         "Acerte o Inspetor quando ele ficar tonto, cansado ou com a prancheta presa.",
       ],
@@ -819,6 +821,7 @@ const TEXT = gameText({
       levels: [
         { title: "Forbidden hallway", goal: "Watch out for the lockers and the lookout." },
         { title: "Occupied schoolyard", goal: "Jump the rope and dodge the whistles." },
+        { title: "Guarded library", goal: "Get past the lookout without stopping on the wobbly shelf." },
         { title: "Road to the office", goal: "Beat the Silence Inspector." },
       ],
       tips: [
@@ -833,6 +836,7 @@ const TEXT = gameText({
         "On the jump rope, jump when it comes down. Tripping knocks you back.",
         "The Inspector's spotlight stopped on you? Get out before it turns red.",
         "Wobbly shelves can't hold anyone who stands still.",
+        "In the library, wait for the lookout to go back to his newspaper before you jump on the wobbly shelf.",
         "Snacks give back a heart. Bells save your progress.",
         "Hit the Inspector when he's dizzy, tired or has his clipboard stuck.",
       ],

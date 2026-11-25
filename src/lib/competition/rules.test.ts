@@ -360,7 +360,7 @@ describe("Operação: Recreio", () => {
   });
 
   it("gives the third star only for knocking out every monitor of the level", () => {
-    expect(RECESS_MONITORS).toEqual({ corridor: 6, yard: 9, office: 9 });
+    expect(RECESS_MONITORS).toEqual({ corridor: 6, yard: 9, library: 8, office: 9 });
     const runner = recess("corridor", { hits: 0, kills: 0, killPoints: 0 });
     expect(ok(judgeRun("operation-recess", "corridor", runner)).stars).toBe(2);
     expect(judgeRun("operation-recess", "corridor", { ...runner, stars: 3 })).toMatchObject({ ok: false, reason: "score_mismatch" });

@@ -31,7 +31,7 @@ function drawGround(scene: Phaser.Scene, level: LevelDef, width: number) {
   }
 }
 
-const PLATFORM_ART = { shelf: 0xb06c3f, bench: 0xb06c3f, bars: 0xef4f43, desk: 0xb06c3f };
+const PLATFORM_ART = { shelf: 0xb06c3f, bench: 0xb06c3f, bars: 0xef4f43, desk: 0xb06c3f, books: 0x55301e };
 
 
 function contact(scene: Phaser.Scene, x: number, w: number) {
@@ -46,6 +46,39 @@ function wallShadow(scene: Phaser.Scene, x: number, y: number, w: number) {
   g.fillRoundedRect(x + 12, y, w - 24, 16, 8);
 }
 
+function drawBalcony(scene: Phaser.Scene, x: number, y: number, w: number) {
+  wallShadow(scene, x, y + 30, w);
+  const rail = scene.add.graphics().setDepth(3.95);
+  rail.lineStyle(9, INK_HEX, 1);
+  for (let bx = x + 14; bx <= x + w - 14; bx += 28) rail.lineBetween(bx, y - 58, bx, y);
+  rail.lineStyle(4, 0xb06c3f, 1);
+  for (let bx = x + 14; bx <= x + w - 14; bx += 28) rail.lineBetween(bx, y - 56, bx, y - 2);
+  rail.fillStyle(INK_HEX, 1);
+  rail.fillRoundedRect(x - 2, y - 70, w + 4, 18, 7);
+  rail.fillStyle(0x9c5832, 1);
+  rail.fillRoundedRect(x + 2, y - 67, w - 4, 12, 5);
+  rail.fillStyle(0xffffff, 0.25);
+  rail.fillRect(x + 8, y - 65, w - 16, 3);
+  const g = scene.add.graphics().setDepth(4);
+  for (const bx of [x + 18, x + w - 18]) {
+    const d = bx < x + w / 2 ? 1 : -1;
+    g.fillStyle(INK_HEX, 1);
+    g.fillTriangle(bx - d * 4, y + 24, bx + d * 34, y + 24, bx - d * 4, y + 66);
+    g.fillStyle(0x7d4526, 1);
+    g.fillTriangle(bx + d * 1, y + 28, bx + d * 22, y + 28, bx + d * 1, y + 52);
+  }
+  g.fillStyle(INK_HEX, 1);
+  g.fillRoundedRect(x - 6, y - 5, w + 12, 34, 8);
+  g.fillStyle(0x55301e, 1);
+  g.fillRoundedRect(x - 2, y - 1, w + 4, 26, 6);
+  g.fillStyle(0x9c5832, 1);
+  g.fillRoundedRect(x - 2, y - 1, w + 4, 9, { tl: 6, tr: 6, bl: 0, br: 0 });
+  g.fillStyle(0xffc83d, 1);
+  g.fillRect(x + 4, y + 15, w - 8, 4);
+  g.fillStyle(0xffffff, 0.3);
+  g.fillRect(x + 8, y + 1, w - 16, 3);
+}
+
 function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
   const x = cx(pl.col);
   const y = cy(pl.row);
@@ -58,6 +91,15 @@ function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
   if (pl.art === "desk" && FLOOR_Y - y < 220) {
     contact(scene, x + w / 2, w);
     scene.add.image(x + w / 2, y - 8, "desk").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, FLOOR_Y - y + 10);
+    return;
+  }
+  if (pl.art === "books" && FLOOR_Y - y < 220) {
+    contact(scene, x + w / 2, w);
+    scene.add.image(x + w / 2, y - 8, "bookcase-low").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, FLOOR_Y - y + 10);
+    return;
+  }
+  if (pl.art === "books") {
+    drawBalcony(scene, x, y, w);
     return;
   }
   const dark = pl.art === "desk";

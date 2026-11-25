@@ -3,7 +3,7 @@ import type { GameHostContext, GameResult } from "@/games/types";
 import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, GRAVITY, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
 import { COPY, levelCopy, type LevelCopy, type RecessCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
-import { LEVELS, type LevelDef } from "../levels";
+import { LEVELS, type LevelDef, type Theme } from "../levels";
 import { recessStarHint, recessStars } from "../score";
 import { RecessMusic } from "../music";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
@@ -39,6 +39,7 @@ const TAP_RISE = 140;
 const HOLD_RISE = 230;
 const FULL_RISE = (JUMP_V * JUMP_V) / (2 * GRAVITY);
 const LESSON_GAP = 800;
+const DOOR_KID: Record<Theme, string> = { corridor: "deco", yard: "lina", library: "mila", office: "lina" };
 const learned = new Set<Lesson>();
 
 export class StageScene extends Phaser.Scene {
@@ -273,7 +274,7 @@ export class StageScene extends Phaser.Scene {
     this.cameras.main.centerOn(this.hero.rect.x + 400, H - H / ZOOM / 2);
 
     this.buildingHud = true;
-    const vignette = { corridor: 0.32, yard: 0.18, office: 0.5 }[this.level.theme];
+    const vignette = { corridor: 0.32, yard: 0.18, library: 0.42, office: 0.5 }[this.level.theme];
     this.vignette = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setScrollFactor(0).setDepth(50).setAlpha(vignette);
     this.hud = new RecessHud(this, this.ctx.fonts, this.text.title, this.levelIndex, LEVELS.length, reduced, this.ctx.locale, (a) => this.onPad(a));
     this.deck = new TouchDeck(this, this.ctx.fonts, this.copy.deck, this.level.theme, this.hud.touch, (a) => this.onPad(a), reduced);
@@ -853,7 +854,7 @@ export class StageScene extends Phaser.Scene {
   private kidAtDoor() {
     if (!this.level.exit) return;
     const ex = cx(this.level.exit.col) + TILE / 2;
-    const name = this.levelIndex === 0 ? "deco" : "lina";
+    const name = DOOR_KID[this.level.theme];
     const kid = this.add.image(ex, FLOOR_Y, `kid-${name}-a`).setOrigin(0.5, 1).setDepth(3.5).setScale(KID_SCALE);
     this.word(this.copy.words.letsGo, ex + 60, FLOOR_Y - 270, "#ffc83d", 40);
     this.time.addEvent({ delay: 200, repeat: 6, callback: () => kid.setTexture(kid.texture.key.endsWith("-a") ? `kid-${name}-b` : `kid-${name}-a`) });

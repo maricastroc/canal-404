@@ -16,6 +16,12 @@ export const COPY = localized({
         intro: "Os monitores do apito tomaram o pátio. Pule as ondas!",
         win: "O pátio é da criançada de novo.",
       },
+      library: {
+        title: "Biblioteca vigiada",
+        goal: "Atravesse a biblioteca sem ser visto.",
+        intro: "Os monitores tomaram a biblioteca. Fique de olho no vigia e na luz do Inspetor.",
+        win: "A biblioteca ficou para trás!",
+      },
       office: {
         title: "Caminho da direção",
         goal: "Chegue à diretoria.",
@@ -147,6 +153,12 @@ export const COPY = localized({
         goal: "Cross the schoolyard without getting whistled at.",
         intro: "Whistle monitors took the schoolyard. Jump the waves!",
         win: "The schoolyard belongs to the kids again.",
+      },
+      library: {
+        title: "Guarded library",
+        goal: "Cross the library without being seen.",
+        intro: "The monitors took over the library. Keep an eye on the lookout and the Inspector's spotlight.",
+        win: "The library is behind you!",
       },
       office: {
         title: "Road to the office",

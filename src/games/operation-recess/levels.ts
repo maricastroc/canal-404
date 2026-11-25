@@ -1,4 +1,4 @@
-export type Theme = "corridor" | "yard" | "office";
+export type Theme = "corridor" | "yard" | "library" | "office";
 export type EnemyKind = "common" | "whistle" | "shield";
 export type EnemyStyle = "patrol" | "rush" | "guard" | "mixed";
 
@@ -9,7 +9,7 @@ export type LevelDef = {
   start: number;
   ground: [number, number][];
   blocks: { col: number; row: number; w: number; h: number; art: "bin" | "boxes" | "cabinet" }[];
-  platforms: { col: number; row: number; w: number; art: "shelf" | "bench" | "bars" | "desk"; wobbly?: boolean }[];
+  platforms: { col: number; row: number; w: number; art: "shelf" | "bench" | "bars" | "desk" | "books"; wobbly?: boolean }[];
   puddles: { col: number; w: number }[];
   enemies: { kind: EnemyKind; col: number; row?: number; style?: EnemyStyle }[];
   items: { kind: "snack" | "sticker"; col: number; row: number }[];
@@ -107,9 +107,55 @@ export const LEVELS: LevelDef[] = [
     ],
     checkpoints: [50],
     balls: [{ col: 41, every: 2600, offset: 400, wake: 1200 }],
-    exit: { col: 78, label: "DIREÇÃO" },
+    exit: { col: 78, label: "BIBLIOTECA" },
     ropes: [{ col: 13, w: 4, period: 1400 }],
     pads: [52],
+  },
+  {
+    id: "library",
+    theme: "library",
+    length: 86,
+    start: 2,
+    ground: [
+      [0, 21],
+      [28, 47],
+      [54, 85],
+    ],
+    blocks: [],
+    platforms: [
+      { col: 9, row: 10, w: 3, art: "books" },
+      { col: 74, row: 10, w: 3, art: "books" },
+      { col: 24, row: 10, w: 3, art: "books", wobbly: true },
+      { col: 29, row: 9, w: 3, art: "books" },
+      { col: 66, row: 7, w: 3, art: "books" },
+    ],
+    puddles: [],
+    enemies: [
+      { kind: "common", col: 12, style: "guard" },
+      { kind: "common", col: 16, style: "rush" },
+      { kind: "shield", col: 43 },
+      { kind: "common", col: 46, style: "guard" },
+      { kind: "whistle", col: 57, style: "mixed" },
+      { kind: "common", col: 60, style: "rush" },
+      { kind: "shield", col: 71 },
+      { kind: "common", col: 79, style: "guard" },
+    ],
+    items: [
+      { kind: "sticker", col: 10, row: 9 },
+      { kind: "sticker", col: 30, row: 8 },
+      { kind: "snack", col: 38, row: 11 },
+      { kind: "sticker", col: 41, row: 11 },
+      { kind: "sticker", col: 50, row: 8 },
+      { kind: "snack", col: 63, row: 11 },
+      { kind: "sticker", col: 67, row: 5 },
+    ],
+    checkpoints: [37, 62],
+    carts: [{ from: 48, to: 51, speed: 180 }],
+    exit: { col: 84, label: "DIREÇÃO" },
+    lockers: [6],
+    watchers: [{ col: 33, look: 1400 }],
+    pads: [65],
+    lights: [{ col: 42, span: 3, period: 2600 }],
   },
   {
     id: "office",

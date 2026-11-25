@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { FLOOR_Y, H, TILE, W } from "../config";
-import type { LevelDef } from "../levels";
+import type { LevelDef, Theme } from "../levels";
 import { INK_HEX } from "../../kit/ui";
 
 export type ReactKind = "locker" | "bin" | "swing" | "plant" | "metal";
@@ -21,7 +21,11 @@ type Pile = { x: number; y: number; at: number };
 const D = { far: 0.1, mid: 0.4, wall: 0.6, back: 0.8, floor: 0.9, front: 52 };
 const REST_SCROLL_Y = (H - H / 1.22) / 2;
 const MARGIN = 1400;
-const CEILING = { corridor: { base: 0x3f3170, beam: 0x2b2150, step: 320, beamX: 150, beamW: 20 }, office: { base: 0x3a2014, beam: 0x2b170e, step: 240, beamX: 110, beamW: 20 } };
+const CEILING = {
+  corridor: { base: 0x3f3170, beam: 0x2b2150, step: 320, beamX: 150, beamW: 20 },
+  library: { base: 0x24423a, beam: 0x172b26, step: 300, beamX: 140, beamW: 22 },
+  office: { base: 0x3a2014, beam: 0x2b170e, step: 240, beamX: 110, beamW: 20 },
+};
 
 function canvasTexture(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) {
   if (scene.textures.exists(key)) return;
@@ -164,6 +168,52 @@ function makeWallTextures(scene: Phaser.Scene) {
     g.fillStyle(0x2b170e, 1);
     g.fillRect(0, 984, 240, 16);
   });
+  gfxTexture(scene, "wall-library", 320, 1000, (g) => {
+    g.fillStyle(0x2f6b55, 1);
+    g.fillRect(0, 0, 320, 1000);
+    g.fillStyle(0x2a6150, 1);
+    for (let x = 20; x < 320; x += 40) g.fillRect(x, 140, 14, 500);
+    g.fillStyle(0xffc83d, 0.18);
+    for (let y = 190; y < 620; y += 80) for (let x = 0; x < 320; x += 80) g.fillCircle(x + ((y / 80) % 2 ? 40 : 0) + 7, y, 4);
+    g.fillStyle(0x24423a, 1);
+    g.fillRect(0, 0, 320, 130);
+    g.fillStyle(0x55301e, 1);
+    g.fillRect(0, 126, 320, 16);
+    g.fillStyle(0xb06c3f, 1);
+    g.fillRect(0, 128, 320, 5);
+    g.fillStyle(0x55301e, 1);
+    g.fillRect(0, 624, 320, 18);
+    g.fillStyle(0xb06c3f, 1);
+    g.fillRect(0, 626, 320, 6);
+    g.fillStyle(0x6b3a22, 1);
+    g.fillRect(0, 642, 320, 342);
+    g.lineStyle(5, 0x4a2816, 1);
+    g.strokeRect(16, 666, 128, 296);
+    g.strokeRect(176, 666, 128, 296);
+    g.lineStyle(3, 0x8a4f2e, 1);
+    g.strokeRect(26, 676, 108, 276);
+    g.strokeRect(186, 676, 108, 276);
+    g.fillStyle(0x2b170e, 1);
+    g.fillRect(0, 984, 320, 16);
+  });
+  gfxTexture(scene, "floor-library", 160, 120, (g) => {
+    g.fillStyle(0x34478f, 1);
+    g.fillRect(0, 0, 160, 120);
+    g.fillStyle(0x3e54a3, 1);
+    for (let y = 34; y < 120; y += 40) for (let x = 0; x < 160; x += 80) {
+      const ox = x + ((y - 34) / 40) % 2 * 40 + 20;
+      g.fillTriangle(ox, y - 14, ox + 14, y, ox, y + 14);
+      g.fillTriangle(ox, y - 14, ox - 14, y, ox, y + 14);
+    }
+    g.fillStyle(0xffc83d, 0.5);
+    for (let y = 34; y < 120; y += 40) for (let x = 0; x < 160; x += 80) g.fillCircle(x + ((y - 34) / 40) % 2 * 40 + 20, y, 3);
+    g.fillStyle(0x55301e, 1);
+    g.fillRect(0, 0, 160, 14);
+    g.fillStyle(0xb06c3f, 1);
+    g.fillRect(0, 2, 160, 4);
+    g.fillStyle(0x7b62c4, 1);
+    g.fillRect(0, 14, 160, 5);
+  });
   gfxTexture(scene, "floor-corridor", 160, 120, (g) => {
     g.fillStyle(0xe6dcc4, 1);
     g.fillRect(0, 0, 160, 120);
@@ -230,6 +280,7 @@ export class Scenery {
     makeWallTextures(scene);
     if (level.theme === "corridor") this.corridor();
     else if (level.theme === "yard") this.yard();
+    else if (level.theme === "library") this.library();
     else {
       this.office();
       if (level.boss) this.spotlight = this.arena(level.boss.arena * TILE);
@@ -268,7 +319,7 @@ export class Scenery {
     return out;
   }
 
-  private drawCeiling(theme: "corridor" | "office") {
+  private drawCeiling(theme: Exclude<Theme, "yard">) {
     const c = CEILING[theme];
     const key = `ceiling-${theme}`;
     gfxTexture(this.scene, key, c.step, 200, (g) => {
@@ -424,8 +475,8 @@ export class Scenery {
     }
   }
 
-  private pile(x: number) {
-    this.img("paper-pile", x, FLOOR_Y + 6, D.floor + 0.2);
+  private pile(x: number, key = "paper-pile") {
+    this.img(key, x, FLOOR_Y + 6, D.floor + 0.2);
     this.piles.push({ x, y: FLOOR_Y - 10, at: -9999 });
   }
 
@@ -509,6 +560,84 @@ export class Scenery {
       const f = this.scene.add.image(p.x, p.y, "flag").setOrigin(0.5, 0).setDepth(D.back + 0.04).setTint(colors[i % colors.length]).setScale(0.7);
       if (!this.reduced) this.scene.tweens.add({ targets: f, angle: { from: -8, to: 8 }, duration: 700 + (i % 4) * 120, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     }
+  }
+
+  private library() {
+    const s = this.scene;
+    s.add.tileSprite(0, 0, this.width, FLOOR_Y, "wall-library").setOrigin(0, 0).setDepth(0);
+    s.add.image(0, 130, "shade-top").setOrigin(0, 0).setDisplaySize(this.width, 300).setDepth(0.35).setAlpha(0.55);
+    this.floor("floor-library");
+    for (const x of [1020, 2120, 2780, 4100, 4760, 5520, 6260]) {
+      if (x > this.width - 100) continue;
+      this.img("lamp-warm", x, 120, D.wall + 0.12, [0.5, 0]).setScale(0.75);
+      this.cone(x, 200, 0.22, 1.15).setTint(0xfff1b8);
+    }
+    const shelves: [string, number][] = [
+      ["bookcase-tall-a", 860],
+      ["bookcase-tall-b", 1180],
+      ["bookcase-tall-c", 1500],
+      ["bookcase-tall-c", 3060],
+      ["bookcase-tall-b", 4520],
+      ["bookcase-tall-a", 4840],
+      ["bookcase-tall-c", 5400],
+      ["bookcase-tall-b", 6260],
+    ];
+    for (const [key, x] of shelves) this.grounded(this.react(this.img(key, x, FLOOR_Y, D.wall + 0.1), "metal"), 0.95);
+    const plan: [string, number][] = [
+      ["desk", 250],
+      ["window", 2000],
+      ["poster-quiet", 2680],
+      ["clock", 2960],
+      ["table", 3280],
+      ["globe", 3470],
+      ["table", 3640],
+      ["window", 4080],
+      ["ladder", 4690],
+      ["catalog", 5080],
+      ["poster-read", 5760],
+      ["table", 5880],
+      ["globe", 6520],
+    ];
+    for (const [kind, x] of plan) this.libraryModule(kind, x);
+    this.react(this.img("banner-silence", 4080, 150, D.back + 0.02, [0.5, 0]).setScale(0.8), "swing");
+    for (const x of [1180, 4840]) this.img("clock", x, 300, D.wall + 0.15, [0.5, 0.5]).setScale(0.8);
+    this.pile(1320, "book-pile");
+    this.pile(4620, "book-pile");
+    this.pile(6120, "book-pile");
+  }
+
+  private libraryModule(kind: string, x: number) {
+    if (kind === "desk") {
+      this.grounded(this.img("librarian-desk", x, FLOOR_Y, D.back).setScale(0.9));
+      this.react(this.img("sign-library", x + 320, 290, D.back + 0.02, [0.5, 0]).setScale(0.85), "swing");
+      return;
+    }
+    if (kind === "window") {
+      this.img("window-tall", x, 640, D.back, [0.5, 1]).setScale(0.82);
+      this.shaft(x - 120, 260, 0.22);
+      return;
+    }
+    if (kind.startsWith("poster")) {
+      this.react(this.img(kind, x, 470, D.back, [0.5, 0.5]).setScale(0.9), "swing");
+      return;
+    }
+    if (kind === "clock") {
+      this.img("clock", x, 300, D.back, [0.5, 0.5]).setScale(0.9);
+      return;
+    }
+    if (kind === "table") {
+      this.grounded(this.img("reading-table", x, FLOOR_Y, D.back).setScale(0.9), 0.9);
+      return;
+    }
+    if (kind === "globe") {
+      this.grounded(this.react(this.img("globe", x, FLOOR_Y, D.back + 0.01).setScale(0.9), "plant"), 0.6);
+      return;
+    }
+    if (kind === "ladder") {
+      this.img("ladder", x, FLOOR_Y + 4, D.wall + 0.15).setScale(0.95);
+      return;
+    }
+    if (kind === "catalog") this.grounded(this.react(this.img("card-catalog", x, FLOOR_Y, D.back), "metal"));
   }
 
   private office() {
@@ -755,6 +884,12 @@ export class Scenery {
       for (let i = 0; i < 3; i += 1) {
         const leaf = this.scene.add.image(view.x + Phaser.Math.Between(100, view.width - 100), view.y - 20, "leaf").setDepth(D.front - 1);
         this.scene.tweens.add({ targets: leaf, y: FLOOR_Y - 10, x: leaf.x - Phaser.Math.Between(80, 260), angle: Phaser.Math.Between(-360, 360), duration: Phaser.Math.Between(3200, 4600), ease: "Sine.easeIn", delay: i * 300, onComplete: () => this.scene.tweens.add({ targets: leaf, alpha: 0, duration: 600, onComplete: () => leaf.destroy() }) });
+      }
+    } else if (this.level.theme === "library") {
+      for (let i = 0; i < 5; i += 1) {
+        const mote = this.scene.add.circle(view.x + Phaser.Math.Between(80, view.width - 80), view.y + view.height * Phaser.Math.FloatBetween(0.3, 0.8), Phaser.Math.Between(2, 4), 0xfff1c8, 0).setDepth(D.back + 0.5);
+        this.scene.tweens.add({ targets: mote, alpha: { from: 0, to: 0.7 }, duration: 900, yoyo: true, hold: 1800, delay: i * 260, onComplete: () => mote.destroy() });
+        this.scene.tweens.add({ targets: mote, x: mote.x + Phaser.Math.Between(-60, 60), y: mote.y - Phaser.Math.Between(40, 110), duration: 3600, delay: i * 260, ease: "Sine.easeInOut" });
       }
     } else if (this.level.theme === "corridor") {
       const p = this.scene.add.image(view.right + 40, view.y + view.height * 0.45, "paper").setDepth(D.back + 0.5).setScale(0.6).setAlpha(0.9);
