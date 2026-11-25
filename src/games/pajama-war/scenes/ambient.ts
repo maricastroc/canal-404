@@ -14,6 +14,8 @@ type Mote = { img: Img; x: number; y: number; vx: number; vy: number; phase: num
 type Pool = { img: Img; base: number; phase: number };
 
 const TV = { x0: 238, y0: 299, x1: 396, y1: 411 };
+const BEAM = { x: 960, top: 178, h: 560, w0: 150, w1: 330 };
+const BULB_DROP = 402;
 const BARS = [0xfbf5e6, 0xffc83d, 0x63d6c1, 0x8fd16a, 0xf06ba8, 0xef4f43, 0x5cb9f0];
 const SHOW_MS = 6200;
 const STATIC_MS = 260;
@@ -61,6 +63,23 @@ export function makeAmbientTextures(scene: Phaser.Scene) {
     g.generateTexture(key, w, h);
     g.destroy();
   };
+  if (!tex.exists("attic-beam")) {
+    const c = tex.createCanvas("attic-beam", BEAM.w1, BEAM.h)!;
+    const ctx = c.getContext();
+    const grad = ctx.createLinearGradient(0, 0, 0, BEAM.h);
+    grad.addColorStop(0, "rgba(255,255,255,0.55)");
+    grad.addColorStop(0.55, "rgba(255,255,255,0.22)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo((BEAM.w1 - BEAM.w0) / 2, 0);
+    ctx.lineTo((BEAM.w1 + BEAM.w0) / 2, 0);
+    ctx.lineTo(BEAM.w1, BEAM.h);
+    ctx.lineTo(0, BEAM.h);
+    ctx.closePath();
+    ctx.fill();
+    c.refresh();
+  }
   gfx("note", 30, 40, (g) => {
     g.fillStyle(INK_HEX, 1);
     g.fillEllipse(10, 31, 18, 13);
@@ -419,6 +438,8 @@ export class Ambient {
   private pools: Pool[] = [];
   private puffs: Puff[] = [];
   private motes: Mote[] = [];
+  private beamMotes: Mote[] = [];
+  private bulb: { prop: Prop; glow: Img | null } | null = null;
   private fan: { g: Phaser.GameObjects.Graphics; x: number; y: number; top: number; angle: number; speed: number } | null = null;
   private clock: { g: Phaser.GameObjects.Graphics; x: number; y: number; ringAt: number; ringUntil: number } | null = null;
   private tv: TvShow | null = null;
@@ -461,6 +482,12 @@ export class Ambient {
         };
       }
       if (key === "boombox") this.boombox = p;
+      if (key === "bulb-hang") {
+        this.sways.push({ prop: p, amp: 1.6, period: 1700, phase: 0.8, quietSince: 0, kind: "angle" });
+        this.bulb = { prop: p, glow: room.glows.get(p) ?? null };
+        const pool = add(p.def.x, 560, 420, 120, WARM, 0.2, 24);
+        this.lamps.push({ x: p.def.x, y: 560, imgs: this.bulb.glow ? [this.bulb.glow, pool] : [pool], tint: WARM, at: -99999 });
+      }
       if (key === "screen") this.screen = new ScreenShow(scene, p, fonts, reduced);
       if (key === "lantern") this.pools.push({ img: add(p.def.x, p.def.y + 2, 170, 46, WARM, 0.17, 25), base: 0.17, phase: p.def.x / 97 });
       if (key === "grill") this.grill = { prop: p, ember: add(p.def.x, p.def.y, 128, 46, 0xffa04d, 0.5, p.img.depth + 0.1), puffAt: 900 };
@@ -482,6 +509,17 @@ export class Ambient {
         const x = left + hash(i + 60) * (right - left);
         const img = scene.add.image(x, y, "glow").setDisplaySize(7, 7).setTint(0xe6ecff).setBlendMode(Phaser.BlendModes.ADD).setDepth(21.5).setAlpha(0.3);
         this.motes.push({ img, x, y, vx: (hash(i + 80) - 0.5) * 6, vy: -3 - hash(i + 90) * 5, phase: i * 1.7 });
+      }
+    }
+    if (theme === "attic") {
+      const beam = scene.add.image(BEAM.x, BEAM.top, "attic-beam").setOrigin(0.5, 0).setTint(0xb4c4ff).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.42).setDepth(21);
+      if (!reduced) scene.tweens.add({ targets: beam, alpha: 0.3, duration: 4600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      for (let i = 0; i < 12; i += 1) {
+        const y = BEAM.top + 60 + hash(i + 140) * (BEAM.h - 90);
+        const half = this.beamHalf(y);
+        const x = BEAM.x - half + hash(i + 160) * half * 2;
+        const img = scene.add.image(x, y, "glow").setDisplaySize(8, 8).setTint(0xe6ecff).setBlendMode(Phaser.BlendModes.ADD).setDepth(21.5).setAlpha(0.3);
+        this.beamMotes.push({ img, x, y, vx: (hash(i + 180) - 0.5) * 8, vy: -4 - hash(i + 190) * 6, phase: i * 1.3 });
       }
     }
     if (theme === "living") {
@@ -514,7 +552,40 @@ export class Ambient {
     this.updateLights(t);
     this.updateGrill(t);
     this.updateMotes(t, dt);
+    this.updateBeam(t, dt);
+    this.updateBulb();
     this.updateSwing();
+  }
+
+  private beamHalf(y: number) {
+    return (BEAM.w0 + ((y - BEAM.top) / BEAM.h) * (BEAM.w1 - BEAM.w0)) / 2;
+  }
+
+  private updateBeam(t: number, dt: number) {
+    for (const m of this.beamMotes) {
+      if (!this.reduced) {
+        m.x += (m.vx + Math.sin(t / 1500 + m.phase) * 5) * dt;
+        m.y += m.vy * dt;
+        if (m.y < BEAM.top + 40) {
+          m.y = BEAM.top + BEAM.h - 40;
+          m.x = BEAM.x + (hash(t + m.phase) - 0.5) * this.beamHalf(m.y) * 1.6;
+        }
+      }
+      const half = this.beamHalf(m.y);
+      const inside = Math.min(1, Math.max(0, (half - Math.abs(m.x - BEAM.x)) / 30));
+      const fade = Math.min(1, (BEAM.top + BEAM.h - m.y) / 120);
+      const twinkle = this.reduced ? 0.7 : 0.55 + 0.45 * Math.sin(t / 800 + m.phase * 3);
+      m.img.setPosition(m.x, m.y).setAlpha(inside * fade * twinkle * 0.5);
+    }
+  }
+
+  private updateBulb() {
+    const b = this.bulb;
+    if (!b?.glow) return;
+    const img = b.prop.img;
+    const reach = BULB_DROP * (b.prop.def.scale ?? 1);
+    const a = Phaser.Math.DegToRad(img.angle);
+    b.glow.setPosition(img.x - Math.sin(a) * reach, img.y + Math.cos(a) * reach);
   }
 
   private swayProps(t: number) {

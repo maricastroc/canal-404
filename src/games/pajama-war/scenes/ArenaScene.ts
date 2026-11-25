@@ -3,17 +3,18 @@ import type { GameHostContext, GameResult } from "@/games/types";
 import type { Locale } from "@/i18n/locales";
 import { getGameRecord } from "@/lib/progress/store";
 import { ARENAS } from "../arenas";
-import { BODY, ESCALATE, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, type KidId } from "../config";
+import { BODY, ESCALATE, FORT, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, type KidId } from "../config";
 import { COPY, resultCopy, winShout, type PajamaCopy } from "../copy";
 import { matchScore } from "../score";
 import { HEAD_MIN, LIP, WALL_EXT, type Frame } from "../layout";
-import { firstTallHit, FLOOR_Y, pointOnTrace, resolveBody, separateBodies, traceShot, type Point } from "../nav";
+import { firstTallHit, FLOOR_Y, pointOnTrace, resolveBody, separateBodies, traceShot, type Box, type Point } from "../nav";
 import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
 import { SPECIAL, SpecialSpawner } from "../special";
 import { loadStats, markHint, saveStats } from "../storage";
 import { cartoonText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
 import { Brain, type BrainView } from "./brain";
+import { fortStage } from "./forts";
 import { Fighter } from "./fighter";
 import { currentFrame, watchFrame } from "./frame";
 import { PajamaHud, type Offscreen } from "./hud";
@@ -462,6 +463,9 @@ export class ArenaScene extends Phaser.Scene {
         if (!this.ctx.reducedMotion) this.time.delayedCall(i * 90, () => this.word("BOING!", p.springs[0].x, p.springs[0].y - 60, "#ffc83d", 30));
       });
       if (!this.ctx.reducedMotion) this.time.delayedCall(60, () => this.sfx("spring", 0.6));
+    }
+    if (arena.mechanic === "fort") {
+      this.room.forts.forEach(({ view }, i) => view.wiggle(i * 140, (n, v) => this.sfx(n, v, 90)));
     }
     if (!markHint(arena.mechanic)) return;
     const hint = this.text.hints[arena.mechanic];
@@ -1157,6 +1161,7 @@ export class ArenaScene extends Phaser.Scene {
           this.feathers(bx, by - p.z, 6, 60);
           this.sfx("thud", 0.6, 60);
           this.room.blockOf(blk.box.index)?.prop?.poke(0.9, Math.sign(p.vx) || 1, (n, v) => this.sfx(n, v, 120));
+          if (blk.box.fort) this.hitFort(blk.box, p);
           this.room.impact(bx, by, 0.7, (n, v) => this.sfx(n, v, 120));
           p.stop(bx, by, p.z);
           this.missed(p);
@@ -1192,6 +1197,42 @@ export class ArenaScene extends Phaser.Scene {
     }
     this.truce = hiding;
     return hiding ? p : null;
+  }
+
+  private hitFort(box: Box, p: Pillow) {
+    const fort = box.fort!;
+    if (this.attract || fort.hp <= 0) return;
+    const before = fortStage(fort);
+    fort.hp -= 1;
+    if (p.owner.isPlayer) this.engagedAt = this.t;
+    const view = this.room.forts.find((f) => f.box === box)?.view;
+    const dir = Math.sign(p.vx) || 1;
+    const sfx = (n: PajamaSfx, v?: number) => this.sfx(n, (v ?? 1) * (p.owner.isPlayer ? 1 : 0.7), 60);
+    if (fort.hp <= 0) this.caveIn(box, dir);
+    else if (fortStage(fort) !== before) view?.sag(dir, sfx);
+    else view?.hit(dir, sfx);
+  }
+
+  private caveIn(box: Box, dir = 1) {
+    box.tall = false;
+    const cx = (box.x0 + box.x1) / 2;
+    const cy = box.y1;
+    this.room.forts.find((f) => f.box === box)?.view.collapse(dir, (n, v) => this.sfx(n, v));
+    this.word(this.text.caveIn, cx, cy - 170, "#ffc83d", 44);
+    this.room.impact(cx, cy, 0.9, (n, v) => this.sfx(n, v, 120));
+    let playerTripped = false;
+    for (const f of this.fighters) {
+      if (!f.alive) continue;
+      const dx = Math.max(box.x0 - f.x, 0, f.x - box.x1) / FORT.reachX;
+      const dy = Math.max(box.y0 - f.y, 0, f.y - box.y1) / FORT.reachY;
+      if (dx * dx + dy * dy > 1) continue;
+      if (!f.trip(this.t, FORT.trip)) continue;
+      this.word(this.text.tripped, f.x, f.top - 20, f.isPlayer ? "#fbf5e6" : KID_INFO[f.kid].css, 32);
+      this.sfx("trip", f.isPlayer ? 0.9 : 0.5);
+      if (f.isPlayer) playerTripped = true;
+    }
+    if (playerTripped && !this.ctx.reducedMotion) this.cameras.main.shake(110, 0.0035);
+    this.ctx.onEvent({ type: "announce", message: playerTripped ? this.text.youTripped : this.text.fortDown, transient: !playerTripped });
   }
 
   private missed(p: Pillow) {

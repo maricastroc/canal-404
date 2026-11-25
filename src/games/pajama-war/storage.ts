@@ -3,7 +3,7 @@ import { KIDS, type KidId } from "./config";
 
 const KEY = "canal404:pajama-war:v1";
 
-export const HINTS = ["ricochet", "special"] as const;
+export const HINTS = ["ricochet", "special", "fort"] as const;
 export type HintId = (typeof HINTS)[number];
 
 export type PajamaStats = { wins: Record<KidId, number>; matches: number; bestTime: number; lastKid: KidId | null; hints: HintId[] };

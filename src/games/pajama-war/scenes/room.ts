@@ -6,6 +6,7 @@ import { arenaBoxes, NavGrid, solidBoxes, type Box } from "../nav";
 import type { PajamaSfx } from "../sounds";
 import type { Fonts } from "../../kit/ui";
 import { Ambient } from "./ambient";
+import { FortView, makeFortTextures } from "./forts";
 
 const RES = 1.25;
 const BULB_COLORS = [0xffd36b, 0xff8fc4, 0x8ff0d8, 0x9fd4ff, 0xffb36b];
@@ -40,6 +41,16 @@ const SHADOWS: Record<string, Footprint> = {
   stump: [65, 91, 128, 26],
   gnome: [45, 127, 84, 20],
   lantern: [40, 105, 66, 16],
+  trunk: [110, 164, 214, 40],
+  "box-stack": [100, 226, 196, 38],
+  "dress-form": [65, 266, 96, 22],
+  "coat-rack": [80, 296, 120, 24],
+  "rocking-horse": [105, 172, 196, 30],
+  suitcases: [95, 146, 186, 32],
+  "fort-tipi": [101, 208, 192, 34],
+  "fort-box": [94, 186, 182, 32],
+  "fort-chairs": [150, 182, 302, 38],
+  "fort-table": [135, 172, 276, 38],
 };
 
 const WALL_SHADE_DEPTH = 5.5;
@@ -85,7 +96,10 @@ const THEMES: Record<ArenaDef["theme"], Theme> = {
   bedroom: { wall: [0x5b3f9c, 0x4a3286, 0x6e52b4], floor: [0xb8774a, 0x9a5f38, 0xcf9262], side: 0x3b2870, base: 0x7c4527, dots: 0xffe39a },
   living: { wall: [0xc8704a, 0xa85a3c, 0xdc8a5c], floor: [0x8c5a3c, 0x734630, 0xa66c48], side: 0x8a4a34, base: 0x55301e, dots: 0xffd18a },
   yard: { wall: [0x1c2a52, 0x16213f, 0x24346a], floor: [0x3f6a3a, 0x335a30, 0x4f7d44], side: 0x16213f, base: 0x2b3d26, dots: 0xffffff },
+  attic: { wall: [0x56676b, 0x47575b, 0x647679], floor: [0x8d7862, 0x77644f, 0xa38d75], side: 0x3a464a, base: 0x3e3530, dots: 0xd9e4e6 },
 };
+
+export const FORT_STAGES = ["", "-sag", "-down"] as const;
 
 function seeded(seed: number) {
   let s = seed >>> 0;
@@ -298,7 +312,13 @@ export function makeTextures(scene: Phaser.Scene) {
       g.fillStyle(t.wall[2], 0.35);
       g.fillRect(0, 0, 80, 160);
       g.fillStyle(t.dots, name === "yard" ? 0.9 : 0.35);
-      if (name === "yard") {
+      if (name === "attic") {
+        g.lineStyle(4, t.wall[1], 1);
+        for (const x of [0, 40, 80, 120]) g.lineBetween(x, 0, x, 160);
+        g.fillStyle(t.wall[1], 0.8);
+        g.fillCircle(20, 30, 3);
+        g.fillCircle(100, 110, 3);
+      } else if (name === "yard") {
         g.fillCircle(30, 40, 2);
         g.fillCircle(118, 22, 1.6);
         g.fillCircle(92, 110, 2.2);
@@ -414,6 +434,11 @@ export class Prop {
 
   get sway() {
     return this.crown ?? this.img;
+  }
+
+  setStage(stage: number) {
+    const key = `${this.def.key}${FORT_STAGES[stage] ?? ""}`;
+    if (this.img.texture.key !== key) this.img.setTexture(key);
   }
 
   get swayBase() {
@@ -538,6 +563,7 @@ export class Room {
   readonly solid: Box[];
   readonly nav: NavGrid;
   readonly props: Prop[] = [];
+  readonly forts: { box: Box; prop: Prop; view: FortView }[] = [];
   readonly glows = new Map<Prop, Phaser.GameObjects.Image>();
   readonly ambient: Ambient;
   private lights: { bulbs: Phaser.GameObjects.Image[]; halos: Phaser.GameObjects.Image[]; cores: Phaser.GameObjects.Image[]; pts: { x: number; y: number }[]; cur: { x: number; y: number }[]; wire: Phaser.GameObjects.Graphics; kick: number; def: ArenaDef["lights"][number] }[] = [];
@@ -555,6 +581,7 @@ export class Room {
     fonts: Fonts,
   ) {
     makeTextures(scene);
+    makeFortTextures(scene);
     this.theme = THEMES[def.theme];
     this.drawShell();
     for (const p of def.props) {
@@ -585,6 +612,7 @@ export class Room {
     this.boxes = arenaBoxes(def);
     this.solid = solidBoxes(this.boxes);
     for (const b of this.boxes) this.blocks.push({ ...b, prop: this.props[b.index] ?? null });
+    for (const b of this.boxes) if (b.fort && this.props[b.index]) this.forts.push({ box: b, prop: this.props[b.index], view: new FortView(scene, this.props[b.index], b.fort, reduced) });
     this.nav = new NavGrid(def.bounds, this.solid);
     for (const l of def.lights) this.makeLights(l);
     if (def.cat) this.cat = new Cat(scene, def.cat, reduced);
@@ -696,6 +724,48 @@ export class Room {
     side.lineBetween(W - inset, wb, W, wb + 150);
     const shade = s.add.image(W / 2, wb + 10, "glow").setDisplaySize(W * 1.6, 120).setTint(0x140f26).setAlpha(0.35).setDepth(1.5);
     void shade;
+    if (d.theme === "attic") this.drawRoof(sky);
+  }
+
+  private drawRoof(sky: number) {
+    const s = this.scene;
+    const g = s.add.graphics().setDepth(3);
+    const ridge = 760;
+    const eave = { x: 120, y: 230 };
+    const dir = { x: eave.x - ridge, y: eave.y - sky };
+    const v = (x: number, y: number) => new Phaser.Math.Vector2(x, y);
+    for (const side of [1, -1]) {
+      const X = (x: number) => (side === 1 ? x : W - x);
+      g.fillStyle(0x3b3440, 1);
+      g.fillPoints([v(X(0), sky), v(X(ridge), sky), v(X(eave.x), eave.y), v(X(0), eave.y + 70)], true);
+      g.fillStyle(0x2c2733, 0.6);
+      g.fillPoints([v(X(0), sky), v(X(ridge - 260), sky), v(X(0), eave.y - 120)], true);
+      for (let i = 1; i <= 4; i += 1) {
+        const x0 = ridge - i * 150;
+        const k = x0 / -dir.x;
+        const x1 = Math.max(0, x0 + dir.x * k);
+        const y1 = sky + dir.y * k;
+        g.lineStyle(22, 0x1d1830, 1);
+        g.lineBetween(X(x0), sky, X(x1), y1);
+        g.lineStyle(14, 0x6a5444, 1);
+        g.lineBetween(X(x0), sky, X(x1), y1);
+      }
+      g.lineStyle(40, 0x1d1830, 1);
+      g.lineBetween(X(ridge), sky, X(eave.x), eave.y);
+      g.lineStyle(30, 0x7d6450, 1);
+      g.lineBetween(X(ridge), sky, X(eave.x), eave.y);
+      g.lineStyle(8, 0x9c8068, 1);
+      g.lineBetween(X(ridge) - side * 8, sky, X(eave.x) - side * 8, eave.y - 4);
+      g.lineStyle(3, 0xd9e4e6, 0.35);
+      const cx = X(eave.x + 40);
+      const cy = eave.y - 10;
+      for (let i = 0; i < 4; i += 1) g.lineBetween(cx, cy, cx + side * (30 + i * 14), cy - 70 + i * 22);
+      for (const r of [22, 40, 58]) {
+        g.beginPath();
+        g.arc(cx, cy, r, side === 1 ? -1.25 : Math.PI + 0.1, side === 1 ? -0.1 : Math.PI + 1.25);
+        g.strokePath();
+      }
+    }
   }
 
   private makeLights(l: ArenaDef["lights"][number]) {
@@ -781,6 +851,7 @@ export class Room {
     }
     this.cat?.update(t, dt, feet, sfx);
     this.ambient.update(t, dt);
+    for (const f of this.forts) f.view.update(t);
     for (const fp of this.floorPillows) {
       for (const f of feet) {
         const dx = fp.img.x - f.x;

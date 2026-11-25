@@ -3,7 +3,8 @@ import { FOOT, H, W } from "./config";
 
 export type Point = { x: number; y: number };
 export type Rect = { x0: number; y0: number; x1: number; y1: number };
-export type Box = Rect & { tall: boolean; bouncy: boolean; solid: boolean; index: number };
+export type Fort = { hp: number; max: number };
+export type Box = Rect & { tall: boolean; bouncy: boolean; solid: boolean; index: number; fort?: Fort };
 export type Body = { x: number; y: number; vx: number; vy: number };
 
 export const CELL = 20;
@@ -21,7 +22,7 @@ export function arenaBoxes(def: ArenaDef): Box[] {
     if (!b) return;
     const cx = p.x + (b.dx ?? 0);
     const by = p.y + (b.dy ?? 0);
-    boxes.push({ x0: cx - b.w / 2, x1: cx + b.w / 2, y0: by - b.h, y1: by, tall: Boolean(b.tall), bouncy: Boolean(p.bounce), solid: true, index });
+    boxes.push({ x0: cx - b.w / 2, x1: cx + b.w / 2, y0: by - b.h, y1: by, tall: Boolean(b.tall), bouncy: Boolean(p.bounce), solid: true, index, ...(p.fort ? { fort: { hp: p.fort, max: p.fort } } : {}) });
   });
   return boxes;
 }
