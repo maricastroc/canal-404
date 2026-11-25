@@ -1,20 +1,7 @@
-import { getAudio } from "@/lib/audio/engine";
-import type { Track } from "@/lib/audio/tracks";
+import { StingPlayer, stingTrack, type StingNotes } from "../kit/sting";
 
-const bars = (...parts: string[]) => parts.join(" ");
-
-const SILENT = "................";
-
-const sting = (bpm: number, lead: string[], bass: string[], pad?: string[], vibrato?: number): Track => ({
-  id: "downhill",
-  station: "FM 98.2",
-  bpm,
-  lead: { wave: "pulse", gain: 0.09, notes: bars(...lead), vibrato },
-  bass: { wave: "triangle", gain: 0.2, notes: bars(...bass) },
-  pad: pad ? { wave: "sine", gain: 0.05, notes: bars(...pad) } : undefined,
-  drums: { gain: 0.4, kick: "x.......x.......", snare: SILENT, hat: SILENT },
-  unlock: { type: "default" },
-});
+const sting = (bpm: number, lead: string[], bass: string[], pad?: string[], vibrato?: number) =>
+  stingTrack("downhill", "FM 98.2", { bpm, lead, bass, pad, vibrato } satisfies StingNotes);
 
 const FINALE = {
   win: sting(
@@ -37,35 +24,18 @@ const FINALE = {
   ),
 };
 
-const STING_LEVEL = 0.7;
-
 export class RaceMusic {
-  private off: (() => void) | null;
-
-  constructor() {
-    this.off = getAudio().subscribe(() => {
-      if (this.ours() && !getAudio().sfxOn) getAudio().stopMusic();
-    });
-  }
+  private player = new StingPlayer("downhill");
 
   finale(place: number) {
-    const audio = getAudio();
-    if (!audio.sfxOn) return;
-    audio.startMusic(place === 1 ? FINALE.win : place <= 3 ? FINALE.podium : FINALE.lose, { once: true });
-    audio.duckMusic(STING_LEVEL);
+    this.player.play(place === 1 ? FINALE.win : place <= 3 ? FINALE.podium : FINALE.lose);
   }
 
   stop() {
-    if (this.ours()) getAudio().stopMusic();
+    this.player.stop();
   }
 
   destroy() {
-    this.stop();
-    this.off?.();
-    this.off = null;
-  }
-
-  private ours() {
-    return getAudio().currentTrackId === "downhill";
+    this.player.destroy();
   }
 }

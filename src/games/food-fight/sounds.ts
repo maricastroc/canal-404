@@ -104,15 +104,6 @@ export const LUNCH_SFX = {
       { kind: "noise", duration: 1.1, gain: 0.04, filter: { type: "bandpass", from: 3000, q: 4 } },
     ],
   },
-  win: {
-    layers: [
-      { kind: "tone", wave: "pulse", from: 523, duration: 0.1, gain: 0.1 },
-      { kind: "tone", wave: "pulse", from: 659, duration: 0.1, delay: 0.1, gain: 0.1 },
-      { kind: "tone", wave: "pulse", from: 784, duration: 0.1, delay: 0.2, gain: 0.1 },
-      { kind: "tone", wave: "pulse", from: 1047, duration: 0.4, delay: 0.3, gain: 0.1 },
-      { kind: "tone", wave: "triangle", from: 262, duration: 0.7, delay: 0.3, gain: 0.12 },
-    ],
-  },
   lose: {
     layers: [
       { kind: "tone", wave: "sine", from: 900, to: 200, duration: 0.8, gain: 0.14, glide: "linear", vibrato: { rate: 6, depth: 12 } },
