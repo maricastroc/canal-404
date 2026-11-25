@@ -19,6 +19,7 @@ import { DownhillSim, DT, IDLE, STEP_HZ, type SimEvent, type SimStats } from "..
 import type { Course, CourseId } from "../sim/course";
 import { buildCourse } from "../sim/courses";
 import { covers, heightAt } from "../sim/track";
+import { RaceMusic } from "../music";
 import { boing, DOWNHILL_SFX, PADDLE, rollGrain, windGrain } from "../sounds";
 import { CartView, INK } from "./cart";
 import { WorldFx } from "./fx";
@@ -167,6 +168,7 @@ export class RaceScene extends Phaser.Scene {
   private goT = 0;
   private finishT = -1;
   private finished: RaceFinish | null = null;
+  private music!: RaceMusic;
   private shownShow = 0;
   private acc = 0;
   private prev = { x: 0, y: 0, angle: 0 };
@@ -294,8 +296,17 @@ export class RaceScene extends Phaser.Scene {
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => this.pointerMove(p));
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.pointerUp(p));
     this.input.on("pointerupoutside", (p: Phaser.Input.Pointer) => this.pointerUp(p));
-    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => this.input.removeAllListeners());
-    this.events.on(Phaser.Scenes.Events.RESUME, () => this.releaseInput());
+    this.music = new RaceMusic();
+    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.removeAllListeners();
+      this.music.destroy();
+    });
+    this.events.on(Phaser.Scenes.Events.DESTROY, () => this.music.destroy());
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => this.music.pause());
+    this.events.on(Phaser.Scenes.Events.RESUME, () => {
+      this.releaseInput();
+      this.music.resume();
+    });
     watchFrame(this, (frame) => this.applyFrame(frame));
     this.restartRace();
   }
@@ -615,6 +626,7 @@ export class RaceScene extends Phaser.Scene {
   }
 
   restartRace() {
+    this.music.stop();
     this.pickRivals();
     this.world = new RaceWorld(this.track, this.bridge.params, this.rivals.map((r) => r.frames), this.player);
     this.sim = this.world.player;
@@ -825,7 +837,10 @@ export class RaceScene extends Phaser.Scene {
     }
     if (this.finishT > 0) {
       this.finishT -= dt;
-      if (this.finishT <= 0 && this.finished) this.bridge.onFinish(this.finished);
+      if (this.finishT <= 0 && this.finished) {
+        this.music.stop();
+        this.bridge.onFinish(this.finished);
+      }
     }
     this.renderFrame(dt, this.phase === "countdown" ? 1 : this.acc / DT);
   }
@@ -848,6 +863,7 @@ export class RaceScene extends Phaser.Scene {
       for (const r of this.rivals) r.view.react("go");
       this.goT = 0.5;
       this.sfx(DOWNHILL_SFX.go);
+      this.music.play();
       this.acc = 0;
     }
   }
@@ -1201,6 +1217,7 @@ export class RaceScene extends Phaser.Scene {
     this.announceSplit(this.track.sections.length - 1);
     this.ambient.finishLine();
     this.sfx(DOWNHILL_SFX.finish);
+    this.music.finish();
     const form = this.bridge.form;
     const time = this.sim.finishTime;
     form.runs += 1;
