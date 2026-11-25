@@ -161,6 +161,7 @@ export class Hero {
   }
 
   bounce(v: number) {
+    this.body.maxVelocity.y = Math.max(MAX_FALL, v);
     this.body.setVelocityY(-v);
     this.jumping = false;
   }
@@ -221,6 +222,7 @@ export class Hero {
       this.jumping = false;
     }
     b.setGravityY(b.velocity.y > 0 ? GRAVITY * (FALL_MULT - 1) : 0);
+    if (b.velocity.y >= 0 && b.maxVelocity.y !== MAX_FALL) b.maxVelocity.y = MAX_FALL;
 
     this.animate(t, dt, ground);
   }
