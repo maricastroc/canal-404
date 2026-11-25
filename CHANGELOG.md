@@ -12,6 +12,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 - **Smaller banners.** PRONTOS? and JÁ! sit higher and smaller and JÁ! leaves faster, so they no longer cover the sofa. ESQUENTOU! and SEM DESCANSO! show near the top. The arena tips are a title and one line: "TRAVESSEIRO ESPECIAL! Pegue antes dos outros!" and "RICOCHETE! Jogue nos móveis com mola." Win and knockout banners stay as they were.
 - **Nothing else changes.** Rules, hitboxes, AI, scores and boards are the same. With reduced motion the scenery stays still.
 
+### Ao Vivo no 404: chocalho do Bruno no tempo
+- **On the beat.** In Rua Sem Saída and in Bruno's part of the Pot-pourri, the shaker you hear when you hit a note now plays with the music, at the note's exact time. Before, it only sounded once the tap arrived, and the device's audio delay (about 40 ms on a Mac, more with Bluetooth) put it almost half a sixteenth late at 148 bpm, against a bass and hi-hat that play every sixteenth.
+- **Mistakes still sound like mistakes.** A miss or a tap between notes silences Bruno's shaker until your next hit, and a tap between notes still shakes right away so you hear it.
+- **Same song, same rules.** The notes, the judge, the boards and the other kids' tap sounds don't change.
+
 ### Compartilhar resultado e canal de origem
 - **Share your result.** Every game's end-of-run screen has a Compartilhar / Share link next to Voltar à sala. On phones and browsers with a share sheet it opens the sheet; elsewhere it copies the text and link and says "Link copiado!". The text names the game, the stars (or the points when there are none) and the level, track, arena, part or song, followed by the game's page in the player's language with `?utm_source=share`.
 - **Know where visitors come from.** Links in social bios can carry `?utm_source=tiktok`, `reels`, `shorts` and so on, and Umami now records that tag. Before, the tracker dropped the whole query string, and in-app browsers often send no referrer, so those visits showed up as direct.

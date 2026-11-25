@@ -135,14 +135,6 @@ export const RECESS_SFX = {
       { kind: "tone", wave: "pulse", from: 1047, duration: 0.22, delay: 0.45, gain: 0.08 },
     ],
   },
-  win: {
-    layers: [
-      { kind: "tone", wave: "pulse", from: 523, duration: 0.1, gain: 0.09 },
-      { kind: "tone", wave: "pulse", from: 659, duration: 0.1, delay: 0.1, gain: 0.09 },
-      { kind: "tone", wave: "pulse", from: 784, duration: 0.1, delay: 0.2, gain: 0.09 },
-      { kind: "tone", wave: "pulse", from: 1047, duration: 0.35, delay: 0.3, gain: 0.09 },
-    ],
-  },
   cheer: {
     layers: [
       { kind: "noise", duration: 1.2, gain: 0.12, attack: 0.1, filter: { type: "bandpass", from: 700, to: 1400, q: 0.7 } },

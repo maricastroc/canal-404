@@ -246,3 +246,110 @@ export function keysOn(stage: Stage, bus: AudioNode, time: number, freq: number)
   window.setTimeout(() => stop(), 8000);
   return stop;
 }
+
+export type Cheer = { mood: "cheer" | "aww"; shouts: number; claps: number; seconds: number; whistles: number; level: number };
+
+const VOWEL: Record<Cheer["mood"], readonly (readonly [number, number, number])[]> = {
+  cheer: [
+    [480, 5, 1],
+    [2150, 8, 0.7],
+    [2950, 9, 0.3],
+  ],
+  aww: [
+    [560, 5, 1],
+    [900, 7, 0.75],
+    [2500, 9, 0.12],
+  ],
+};
+
+function whistle(stage: Stage, bus: AudioNode, time: number) {
+  const { ctx } = stage;
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1500, time);
+  osc.frequency.exponentialRampToValueAtTime(2600, time + 0.14);
+  osc.frequency.setValueAtTime(1700, time + 0.22);
+  osc.frequency.exponentialRampToValueAtTime(2800, time + 0.36);
+  osc.frequency.exponentialRampToValueAtTime(1900, time + 0.6);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(0.05, time + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.16);
+  gain.gain.setValueAtTime(0.0001, time + 0.22);
+  gain.gain.exponentialRampToValueAtTime(0.05, time + 0.25);
+  gain.gain.setValueAtTime(0.05, time + 0.42);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.62);
+  osc.connect(gain);
+  gain.connect(bus);
+  osc.start(time);
+  osc.stop(time + 0.65);
+  osc.onended = release([gain]);
+}
+
+export function crowd(stage: Stage, bus: AudioNode, time: number, cheer: Cheer) {
+  const { ctx } = stage;
+  const rise = cheer.mood === "cheer";
+  const out = ctx.createGain();
+  out.gain.value = cheer.level;
+  out.connect(bus);
+  const throat = ctx.createGain();
+  const shared: AudioNode[] = [out, throat];
+  for (const [freq, q, level] of VOWEL[cheer.mood]) {
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.frequency.value = freq;
+    band.Q.value = q;
+    const gain = ctx.createGain();
+    gain.gain.value = level;
+    throat.connect(band);
+    band.connect(gain);
+    gain.connect(out);
+    shared.push(band, gain);
+  }
+  for (let i = 0; i < cheer.shouts; i += 1) {
+    const start = time + Math.random() * 0.25;
+    const length = cheer.seconds * (0.55 + Math.random() * 0.45);
+    const base = 240 + Math.random() * 320;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(base * (rise ? 0.78 : 1.12), start);
+    osc.frequency.exponentialRampToValueAtTime(base, start + 0.16);
+    osc.frequency.exponentialRampToValueAtTime(base * (rise ? 1.06 : 0.72), start + length);
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 4.5 + Math.random() * 2.5;
+    const depth = ctx.createGain();
+    depth.gain.value = base * 0.022;
+    lfo.connect(depth);
+    depth.connect(osc.frequency);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.11, start + 0.08);
+    gain.gain.setValueAtTime(0.11, start + length * 0.7);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+    osc.connect(gain);
+    gain.connect(throat);
+    osc.start(start);
+    lfo.start(start);
+    osc.stop(start + length + 0.05);
+    lfo.stop(start + length + 0.05);
+    osc.onended = release([gain, depth, lfo]);
+  }
+  const air = ctx.createBufferSource();
+  air.buffer = stage.noise;
+  air.loop = true;
+  const breath = ctx.createGain();
+  breath.gain.setValueAtTime(0.0001, time);
+  breath.gain.exponentialRampToValueAtTime(0.26, time + 0.2);
+  breath.gain.setValueAtTime(0.26, time + cheer.seconds * 0.6);
+  breath.gain.exponentialRampToValueAtTime(0.0001, time + cheer.seconds);
+  air.connect(breath);
+  breath.connect(throat);
+  air.start(time);
+  air.stop(time + cheer.seconds + 0.6);
+  air.onended = release([breath, ...shared]);
+  for (let i = 0; i < cheer.claps; i += 1) {
+    const k = Math.pow(Math.random(), 1.6);
+    noiseHit(stage, out, time + 0.04 + k * cheer.seconds, 0.018 + Math.random() * 0.02, 0.34 * (1 - k * 0.55), "bandpass", 1000 + Math.random() * 1600, 1.2);
+  }
+  for (let w = 0; w < cheer.whistles; w += 1) whistle(stage, out, time + 0.3 + w * 0.55 + Math.random() * 0.2);
+}

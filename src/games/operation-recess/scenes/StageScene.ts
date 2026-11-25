@@ -5,6 +5,7 @@ import { COPY, levelCopy, type LevelCopy, type RecessCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import { LEVELS, type LevelDef } from "../levels";
 import { recessStarHint, recessStars } from "../score";
+import { RecessMusic } from "../music";
 import { RECESS_SFX, type RecessSfx } from "../sounds";
 import { INK_HEX, cartoonText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
@@ -63,6 +64,7 @@ export class StageScene extends Phaser.Scene {
   private spotlights: Searchlight[] = [];
   private shelves: WobblyShelf[] = [];
   private boss: Inspector | null = null;
+  private music!: RecessMusic;
   private arena = { left: 0, right: 0, entered: false };
   private gate: Phaser.GameObjects.Zone | null = null;
   private keys!: Record<"left" | "right" | "a" | "d" | "space" | "up" | "w", Phaser.Input.Keyboard.Key>;
@@ -285,9 +287,14 @@ export class StageScene extends Phaser.Scene {
 
     this.events.on(Phaser.Scenes.Events.POST_UPDATE, this.syncVisual, this);
     this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
+    this.events.on(Phaser.Scenes.Events.PAUSE, this.onPause, this);
+    this.music = new RecessMusic();
     watchFrame(this, (frame) => this.applyFrame(frame));
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.music.destroy());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.music.destroy();
       this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
+      this.events.off(Phaser.Scenes.Events.PAUSE, this.onPause, this);
       this.events.off(Phaser.Scenes.Events.POST_UPDATE, this.syncVisual, this);
       this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, this.route, this);
       this.uiCam = null;
@@ -404,6 +411,11 @@ export class StageScene extends Phaser.Scene {
 
   private onResume() {
     this.deck.release();
+    this.music.release();
+  }
+
+  private onPause() {
+    this.music.hold();
   }
 
   private sfx(name: RecessSfx, volume = 1, throttleMs = 0) {
@@ -728,6 +740,7 @@ export class StageScene extends Phaser.Scene {
 
   private knockOut() {
     this.mode = "ko";
+    this.music.quiet();
     this.clearShots();
     this.hero.dizzy();
     this.burst(this.hero.x, this.hero.body.top - 20, 6, "star");
@@ -741,6 +754,7 @@ export class StageScene extends Phaser.Scene {
     this.setControls(false);
     this.hero.body.setVelocityX(0);
     this.sfx("lose", 1);
+    this.time.delayedCall(950, () => this.music.finale("caught"));
     const cp = this.registry.get("checkpoint") as Checkpoint | null;
     if (cp) cp.hits = this.hits;
     const lose = this.copy.result;
@@ -829,7 +843,7 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     this.sfx("door", 1);
-    this.time.delayedCall(420, () => this.sfx("win", 1));
+    this.time.delayedCall(420, () => this.music.finale("clear"));
     this.hud.flash(this.copy.banner.passed, "#93cf4c", 1100, this.copy.banner.next);
     this.kidAtDoor();
     this.announce(this.copy.say.passed(this.text.title));
@@ -858,6 +872,7 @@ export class StageScene extends Phaser.Scene {
     const reduced = this.ctx.reducedMotion;
     this.sfx("bell", 1);
     this.time.delayedCall(300, () => this.sfx("cheer", 1));
+    this.time.delayedCall(700, () => this.music.finale("recess"));
     this.hud.flash(this.copy.banner.recess, "#93cf4c", 2800, this.copy.banner.recessSub);
     this.announce(this.copy.say.recess);
     const left = this.arena.left;
@@ -1130,6 +1145,7 @@ export class StageScene extends Phaser.Scene {
     const view = this.heroView();
     for (const e of this.enemies) e.update(t, dt, view);
     this.boss?.update(t, dt, view);
+    if (this.boss?.fighting && this.arena.entered) this.music.fight(this.boss.angry);
     for (const s of this.spawners) s.update(dt, view.x);
     for (const w of this.waves) w.update(dt);
     for (const b of this.balls) b.update(dt);
@@ -1376,6 +1392,7 @@ export class StageScene extends Phaser.Scene {
   }
 
   private bossDown() {
+    this.music.quiet();
     this.sfx("crash", 1);
     if (!this.ctx.reducedMotion) {
       this.cameras.main.shake(400, 0.012);

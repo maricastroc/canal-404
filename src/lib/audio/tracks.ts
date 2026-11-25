@@ -2,7 +2,7 @@ import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import type { Wave } from "./types";
 
-export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live" | "downhill";
+export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live" | "downhill" | "lunch" | "inspector";
 
 export type TrackUnlock =
   | { type: "default" }
@@ -52,6 +52,16 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       mood: "A vinheta da linha de chegada. Do pódio ao trombone triste.",
       unlock: "",
     },
+    lunch: {
+      title: "Guerra de Lanche (Sinal)",
+      mood: "A vinheta do fim do recreio. Da comemoração ao coro de deboche.",
+      unlock: "",
+    },
+    inspector: {
+      title: "Operação: Recreio (Inspetor)",
+      mood: "A marcha do Inspetor do Silêncio. Da sala da diretoria ao sinal do recreio.",
+      unlock: "",
+    },
   },
   en: {
     theme: {
@@ -87,6 +97,16 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
     downhill: {
       title: "Downhill Derby (Finish)",
       mood: "The finish-line sting. From the podium to the sad trombone.",
+      unlock: "",
+    },
+    lunch: {
+      title: "Food Fight (Bell)",
+      mood: "The end-of-lunch sting. From the victory dance to the playground taunt.",
+      unlock: "",
+    },
+    inspector: {
+      title: "Operation: Recess (The Inspector)",
+      mood: "The Silence Inspector's march. From the principal's office to the recess bell.",
       unlock: "",
     },
   },

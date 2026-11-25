@@ -34,8 +34,10 @@ import {
 import { COPY, type FoodFightCopy } from "../copy";
 import { LANDSCAPE_FRAME, SCENERY, frameFor, frameX, landscapeX, walkScale, type Frame } from "../layout";
 import { LUNCH_SFX, type LunchSfx } from "../sounds";
+import { LUNCH_FINALE } from "../music";
 import { Bubble, cartoonText } from "../../kit/ui";
 import { eachKeyOnce } from "../../kit/keys";
+import { StingPlayer } from "../../kit/sting";
 import { Cook, LunchLady, Rival, type Reaction } from "./actors";
 import { LunchHud } from "./hud";
 
@@ -182,6 +184,7 @@ export class LunchScene extends Phaser.Scene {
   private ourMaskShape!: Phaser.GameObjects.Graphics;
   private props: Phaser.GameObjects.Image[] = [];
   private napkins: Phaser.GameObjects.Image[] = [];
+  private music!: StingPlayer;
 
   constructor() {
     super("lunch");
@@ -324,6 +327,9 @@ export class LunchScene extends Phaser.Scene {
     this.hud.setTimer(ROUND_MS, ROUND_MS, false);
 
     this.setupInput();
+    this.music = new StingPlayer("lunch");
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.music.destroy());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.music.destroy());
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this));
     this.onResize();
@@ -1610,7 +1616,7 @@ export class LunchScene extends Phaser.Scene {
     this.mila.setTexture("mila-cheer");
     this.milaUntil = 0;
     this.sfx("bell", 1);
-    this.time.delayedCall(800, () => this.sfx("win", 1));
+    this.time.delayedCall(650, () => this.music.play(LUNCH_FINALE.win));
     if (!this.ctx.reducedMotion) {
       this.tweens.add({ targets: this.bell, angle: { from: -12, to: 12 }, duration: 60, yoyo: true, repeat: 9, onComplete: () => this.bell.setAngle(0) });
       this.tweens.add({ targets: [this.deco, this.mila], y: "-=30", duration: 180, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
@@ -1629,6 +1635,7 @@ export class LunchScene extends Phaser.Scene {
     this.setPose("splat");
     this.mila.setTexture("mila-shout");
     this.sfx("lose", 1);
+    this.time.delayedCall(700, () => this.music.play(LUNCH_FINALE.lose));
     this.hud.flash(this.copy.lose.title, "#ef4f43", 1500, this.copy.lose.sub, "headline");
     this.gloat();
     this.announce(this.copy.lose.announce);

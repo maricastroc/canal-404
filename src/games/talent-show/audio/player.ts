@@ -1,15 +1,30 @@
 import { parseNotes } from "@/lib/audio/tracks";
-import { beatMsAt, STEPS_PER_BAR, timeOf, type CompiledSong, type Signal, type TapSound } from "../song/notation";
-import { agogo, bucket, click, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Stage } from "./voices";
+import { beatMsAt, STEPS_PER_BAR, timeOf, type ChartNote, type CompiledSong, type Signal, type TapSound } from "../song/notation";
+import { agogo, bucket, click, crowd, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Cheer, type Stage } from "./voices";
 
 const LOOKAHEAD = 0.2;
 const SIGNAL_CUTOFF: Record<Signal, number> = { clear: 5200, weak: 2000, lost: 1300 };
 const SIGNAL_HISS: Record<Signal, number> = { clear: 0, weak: 0.035, lost: 0.09 };
+const CHEERS: readonly Cheer[] = [
+  { mood: "aww", shouts: 8, claps: 10, seconds: 1.6, whistles: 0, level: 0.85 },
+  { mood: "cheer", shouts: 5, claps: 40, seconds: 2, whistles: 0, level: 1.1 },
+  { mood: "cheer", shouts: 14, claps: 100, seconds: 2.6, whistles: 1, level: 0.95 },
+  { mood: "cheer", shouts: 22, claps: 150, seconds: 3.2, whistles: 2, level: 1 },
+];
 
 type Cue = { at: number; play: (time: number) => void; skippable: boolean };
+type Shake = { at: number; gain: GainNode; on: boolean };
 
 export function pitched(sound: TapSound): sound is "keys" | "fridge" {
   return sound === "keys" || sound === "fridge";
+}
+
+export function onBeatSound(sound: TapSound) {
+  return sound === "shaker";
+}
+
+export function onBeat(compiled: CompiledSong, note: ChartNote) {
+  return note.kind === "tap" && onBeatSound(compiled.song.segments[compiled.segmentOfBar[note.bar]].tap);
 }
 
 export function toneFreq(midi: number | null) {
@@ -28,6 +43,9 @@ export class SongPlayer {
   private timer: ReturnType<typeof setInterval> | null = null;
   private t0 = 0;
   private held: (() => void) | null = null;
+  private readonly shakes = new Map<number, Shake>();
+  private live = true;
+  private from = 0;
 
   constructor(
     private readonly stage: Stage,
@@ -76,6 +94,9 @@ export class SongPlayer {
         if (bell === "h" || bell === "l") this.cues.push({ at, skippable: true, play: (t) => agogo(stage, this.music, t, level, bell === "h") });
       }
     }
+    for (const n of this.compiled.notes) {
+      if (onBeat(this.compiled, n)) this.cues.push({ at: n.at / 1000, skippable: true, play: (t) => this.shake(n.index, t) });
+    }
     for (const call of this.compiled.calls) {
       const freq = toneFreq(this.compiled.tones[call.step]);
       this.cues.push({ at: call.at / 1000, skippable: true, play: (t) => fridge(stage, this.sfx, t, freq) });
@@ -95,6 +116,7 @@ export class SongPlayer {
     this.t0 = ctx.currentTime + extraLead + beat * 4 - fromMs / 1000;
     for (let k = 1; k <= 4; k += 1) click(this.stage, this.sfx, this.t0 + fromMs / 1000 - k * beat, k === 4);
     const from = fromMs / 1000 - 0.001;
+    this.from = from;
     this.next = 0;
     while (this.next < this.cues.length && this.cues[this.next].at < from) {
       const cue = this.cues[this.next];
@@ -123,6 +145,39 @@ export class SongPlayer {
     }
   }
 
+  private shake(index: number, time: number) {
+    const { ctx } = this.stage;
+    const gain = ctx.createGain();
+    gain.gain.value = this.live ? 1 : 0;
+    gain.connect(this.sfx);
+    shaker(this.stage, gain, time, 1);
+    for (const [i, old] of this.shakes) if (old.at < ctx.currentTime - 1) this.shakes.delete(i);
+    this.shakes.set(index, { at: time, gain, on: this.live });
+    window.setTimeout(() => gain.disconnect(), (time - ctx.currentTime + 0.5) * 1000);
+  }
+
+  private setLive(on: boolean) {
+    if (this.live === on) return;
+    this.live = on;
+    const now = this.stage.ctx.currentTime;
+    for (const s of this.shakes.values()) {
+      if (s.at <= now || s.on === on) continue;
+      s.on = on;
+      s.gain.gain.setValueAtTime(on ? 1 : 0, now);
+    }
+  }
+
+  hitOnBeat(note: ChartNote) {
+    this.lift();
+    this.setLive(true);
+    const s = this.shakes.get(note.index);
+    return s ? s.on : note.at / 1000 >= this.from;
+  }
+
+  missOnBeat() {
+    this.setLive(false);
+  }
+
   press(sound: TapSound, freq: number) {
     const now = this.stage.ctx.currentTime;
     this.held?.();
@@ -141,6 +196,10 @@ export class SongPlayer {
   sting(notes: number[], stepSeconds: number) {
     const now = this.stage.ctx.currentTime + 0.05;
     notes.forEach((midi, i) => note(this.stage, this.sfx, midiToFreq(midi), now + i * stepSeconds, stepSeconds * 1.6, "triangle", 0.14, 5));
+  }
+
+  cheer(stars: number) {
+    crowd(this.stage, this.sfx, this.stage.ctx.currentTime + 0.08, CHEERS[Math.max(0, Math.min(CHEERS.length - 1, stars))]);
   }
 
   stop(fade = 0.15) {
