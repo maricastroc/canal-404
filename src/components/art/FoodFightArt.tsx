@@ -147,10 +147,7 @@ function OurTable({ foods }: { foods: (Food | null)[] }) {
   );
 }
 
-const DUCK = localized({
-  "pt-BR": { idle: "ABAIXAR", held: "ABAIXADO" },
-  en: { idle: "DUCK", held: "DUCKING" },
-});
+const DUCK = localized({ "pt-BR": "ABAIXAR", en: "DUCK" });
 
 function DuckButton({ held, locale }: { held: boolean; locale: Locale }) {
   const c = { x: 150, y: 938 };
@@ -160,7 +157,7 @@ function DuckButton({ held, locale }: { held: boolean; locale: Locale }) {
       <circle cx={c.x} cy={c.y + (held ? 4 : 0)} r={74} fill={held ? P.mint : P.sun} {...ink} strokeWidth={10} />
       <ArrowBigDown x={c.x - 30} y={c.y + (held ? 4 : 0) - 50} width={60} height={60} fill={P.cream} stroke={P.ink} strokeWidth={2.6} />
       <text x={c.x} y={c.y + (held ? 4 : 0) + 36} textAnchor="middle" fontSize={20} fill={P.ink} style={display}>
-        {held ? DUCK[locale].held : DUCK[locale].idle}
+        {DUCK[locale]}
       </text>
     </g>
   );
