@@ -4,6 +4,8 @@ import { attemptBonus, labScore, starsFor } from "@/games/bad-ideas-lab/levels";
 import { resortResult } from "@/games/off-air-vacation/config";
 import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
+import { traceFor } from "@/games/operation-recess/testing";
+import type { RecessReplay } from "@/games/types";
 import { recessStars } from "@/games/operation-recess/score";
 import { STEP_MS, type ProjectileId } from "@/games/dead-end-street/config";
 import { SOLUTIONS as STREET } from "@/games/dead-end-street/solutions";
@@ -98,7 +100,7 @@ function recess(level: string, overrides: Partial<Record<string, number>> = {}, 
   const hits = overrides.hits ?? 1;
   const s = { kills: 3, killPoints: 300, stickers: 2, extras: 0, hits, hearts: won ? Math.max(1, 5 - hits) : 0, resumed: 0, boss: 0, timeMs: 95_000, ...overrides } as Record<string, number>;
   const score = s.killPoints + s.stickers * 50 + s.extras * 10 + (won ? 500 + (s.resumed ? 0 : s.hearts * 100) + (s.boss ? 1500 : 0) : 0);
-  return { won, score, stars: recessStars({ won, hits: s.hits, kills: s.kills, monitors: RECESS_MONITORS[level] }), stats: s };
+  return { won, score, stars: recessStars({ won, hits: s.hits, kills: s.kills, monitors: RECESS_MONITORS[level] }), stats: s, replay: traceFor(level, s, won) };
 }
 
 function pajama(overrides: Partial<Record<string, number>> = {}): RunClaim {
@@ -357,6 +359,21 @@ describe("Operação: Recreio", () => {
     expect(v.evidence).toEqual({ bumps: 0, resumed: 0, stickersLeft: 0, monitorsLeft: 0, won: 1, score: v.score });
     const left = ok(judgeRun("operation-recess", "corridor", recess("corridor")));
     expect(left.evidence).toMatchObject({ bumps: 1, stickersLeft: 2, monitorsLeft: 3 });
+  });
+
+  it("needs a timeline of the run that fits the level", () => {
+    const run = recess("corridor", { kills: 6, killPoints: 600, hits: 0, hearts: 5 });
+    ok(judgeRun("operation-recess", "corridor", run));
+    const trace = run.replay as RecessReplay;
+    const rejected = (replay: Partial<RecessReplay> | undefined) => judgeRun("operation-recess", "corridor", { ...run, replay: replay && { ...trace, ...replay } });
+    expect(rejected(undefined)).toMatchObject({ ok: false, reason: "bad_trace" });
+    expect(rejected({ kills: [[1000, 5], ...trace.kills.slice(0, 5)] })).toMatchObject({ ok: false, reason: "bad_trace", detail: "monitor cedo demais" });
+    expect(rejected({ kills: trace.kills.map(([t]) => [t, 0] as [number, number]) })).toMatchObject({ ok: false, reason: "bad_trace" });
+    expect(rejected({ hits: [3000] })).toMatchObject({ ok: false, reason: "bad_trace", detail: "batidas não conferem" });
+    expect(rejected({ bells: [] })).toMatchObject({ ok: false, reason: "bad_trace", detail: "sino pulado" });
+    const boss = recess("office", { kills: 6, killPoints: 800, stickers: 1, hits: 3, hearts: 3, boss: 1, timeMs: 150_000 });
+    ok(judgeRun("operation-recess", "office", boss));
+    expect(judgeRun("operation-recess", "office", { ...boss, replay: { ...(boss.replay as RecessReplay), arena: 148_000 } })).toMatchObject({ ok: false, reason: "bad_trace", detail: "chefe vencido rápido demais" });
   });
 
   it("gives the third star only for knocking out every monitor of the level", () => {

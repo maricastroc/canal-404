@@ -17,6 +17,7 @@ const REJECTIONS_EN: Record<string, string> = {
   bad_moves: "The moves you sent don't fit a Past Bedtime part.",
   moves_failed: "The channel replayed your moves and Bruno didn't get there that way.",
   bad_taps: "The taps you sent don't fit a Live on 404 song.",
+  bad_trace: "This run's timeline doesn't fit an Operation: Recess level. If the game was just updated, reload the page.",
   too_fast: "This run ended too fast to be true.",
 };
 

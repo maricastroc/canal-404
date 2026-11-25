@@ -13,7 +13,9 @@ export type BedtimeReplay = { kind: "bedtime-moves"; version: 1; moves: string }
 
 export type TalentReplay = { kind: "talent-taps"; version: 2; song: string; offset: number; assist: boolean; taps: number[]; ups: (number | null)[] };
 
-export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 2; launches: LaunchReplay[] } | DownhillReplay | BedtimeReplay | TalentReplay;
+export type RecessReplay = { kind: "recess-trace"; version: 1; kills: [number, number][]; items: [number, number][]; hits: number[]; bells: number[]; arena: number | null };
+
+export type GameReplay = { kind: "lab-placements"; version: 1; parts: PlacedPartReplay[] } | { kind: "street-launches"; version: 2; launches: LaunchReplay[] } | DownhillReplay | BedtimeReplay | TalentReplay | RecessReplay;
 
 export type ResultStanding = { name: string; value: string; detail?: string; you?: boolean; avatar?: string; color?: string };
 
