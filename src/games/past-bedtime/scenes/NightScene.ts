@@ -87,6 +87,7 @@ export class NightScene extends Phaser.Scene {
   private notebook!: NotebookView;
   private lightGfx!: Phaser.GameObjects.Graphics;
   private forecast!: Phaser.GameObjects.Graphics;
+  private steps!: Phaser.GameObjects.Graphics;
   private routeMarks!: Phaser.GameObjects.Graphics;
   private watchSpots: { x: number; y: number }[] = [];
   private hover!: Phaser.GameObjects.Graphics;
@@ -258,7 +259,9 @@ export class NightScene extends Phaser.Scene {
       for (let i = 0; i < grid.tiles.length; i += 1) if (grid.tiles[i] === "h") rows.add(Math.floor(i / grid.w));
       for (const row of rows) drawHides(props, this.add.graphics().setDepth(this.hideDepth(row)), grid, L, hideStyleFor(level.id), row);
     }
-    this.lighting = new NightLighting(this, L, decor.lights, decor.darkness, decor.lamps);
+    const panes = decor.wall.filter((w) => w.kind === "window").map((w) => ({ x: w.x, y: w.y, w: w.w ?? 1, h: w.h ?? 1 }));
+    this.lighting = new NightLighting(this, L, decor.lights, decor.darkness, decor.lamps, panes);
+    this.contactShadows(this.add.graphics().setDepth(0.9));
     const marks = this.add.graphics().setDepth(7);
     drawCreakMarks(marks, grid, L);
     const target = this.copy.levels[level.id]?.target ?? "";
@@ -267,6 +270,7 @@ export class NightScene extends Phaser.Scene {
     if (level.id === "living") this.vcrClock(L);
     this.lightGfx = this.add.graphics().setDepth(10);
     this.forecast = this.add.graphics().setDepth(12);
+    this.steps = this.add.graphics().setDepth(12.5);
     this.routeMarks = this.add.graphics().setDepth(36);
     this.hover = this.add.graphics().setDepth(13);
     this.hintLayer = this.add.graphics().setDepth(39.5);
@@ -324,7 +328,7 @@ export class NightScene extends Phaser.Scene {
     this.notebook.intro(text.intro);
     this.story = new StoryBox(this.ui, L, this.bridge.fonts, charArt, this.copy.speaker, () => this.focusBruno());
     this.setupCamera();
-    if (story) this.time.delayedCall(350, () => this.history.length === 0 && this.state.status === "playing" && this.story?.show(text.story, [...this.avoidBoxes().map((b) => this.toScreen(b)), ...(this.viewChip ? [this.viewChip.box] : [])]));
+    if (story) this.time.delayedCall(350, () => this.history.length === 0 && this.state.status === "playing" && this.showStory(text.story));
     this.syncViews(false);
     this.refreshOverlays();
     this.ambient = this.time.addEvent({ delay: 1400, loop: true, callback: () => this.ambientTick() });
@@ -417,6 +421,23 @@ export class NightScene extends Phaser.Scene {
       this.artHides = true;
     }
     return props;
+  }
+
+  private contactShadows(g: Phaser.GameObjects.Graphics) {
+    const grid = this.sim.grid;
+    const L = this.layout;
+    const s = L.tile;
+    const band = s * 0.16;
+    const strips = 5;
+    for (let y = 1; y < grid.h; y += 1) {
+      for (let x = 0; x < grid.w; x += 1) {
+        if (isWall(grid, x, y) || !isWall(grid, x, y - 1)) continue;
+        for (let i = 0; i < strips; i += 1) {
+          g.fillStyle(NIGHT.ink, 0.24 * (1 - i / strips));
+          g.fillRect(L.ox + x * s, L.oy + y * s + (band / strips) * i, s, band / strips + 0.5);
+        }
+      }
+    }
   }
 
   private drawFrame() {
@@ -553,6 +574,7 @@ export class NightScene extends Phaser.Scene {
     }
     this.clearHint();
     this.hover.clear();
+    this.steps.clear();
     this.history.push(this.state);
     this.actions.push(action);
     const prev = this.state;
@@ -782,6 +804,19 @@ export class NightScene extends Phaser.Scene {
       out.push({ x: c.x - s * 0.5, y: c.y - s * 0.7, w: s, h: s * 1.2 });
     }
     return out;
+  }
+
+  private showStory(line: string) {
+    const L = this.layout;
+    const s = L.tile;
+    const grid = this.sim.grid;
+    const st = this.state;
+    const tiles = new Set<number>(this.ahead?.striped ?? []);
+    st.agents.forEach((_a, i) => watchedTiles(grid, st.agents, i).forEach((t) => tiles.add(t)));
+    const lit = [...tiles].map((idx) => ({ x: L.ox + (idx % grid.w) * s, y: L.oy + Math.floor(idx / grid.w) * s, w: s, h: s }));
+    const avoid = [...this.avoidBoxes(), ...lit].map((b) => this.toScreen(b));
+    if (this.viewChip) avoid.push(this.viewChip.box);
+    this.story?.show(line, avoid, this.toScreen(L.board));
   }
 
   private hush() {
@@ -1061,8 +1096,9 @@ export class NightScene extends Phaser.Scene {
     const grid = this.sim.grid;
     const L = this.layout;
     const s = L.tile;
-    const lit: { x: number; y: number }[] = [];
     const dynamic: DynamicLight[] = [];
+    const danger = new Set<number>();
+    const covered = new Set<number>();
     st.agents.forEach((a, i) => {
       const def = grid.level.agents[i];
       if (a.kind === "sleeper") this.lighting.setLamp(def.id, a.awake > 0);
@@ -1072,31 +1108,160 @@ export class NightScene extends Phaser.Scene {
       }
       if (a.kind === "patrol") {
         const c = tileCenter(L, a.x, a.y);
-        dynamic.push({ x: c.x + DX[a.facing] * s * 1.2, y: c.y + DY[a.facing] * s * 1.2, r: s * 1.7, strength: 0.55 });
+        dynamic.push({ x: c.x + DX[a.facing] * s * 0.42, y: c.y + DY[a.facing] * s * 0.42, r: s * 0.62, strength: 0.5 });
       }
-      const tiles = watchedTiles(grid, st.agents, i);
-      for (const idx of tiles) {
-        lit.push({ x: idx % grid.w, y: Math.floor(idx / grid.w) });
-        const r = this.tileRect(g, idx, 3);
-        g.fillStyle(NIGHT.light, 0.34);
-        g.fillRoundedRect(r.x, r.y, r.s, r.s, 10);
-        g.lineStyle(4, NIGHT.lightEdge, 0.95);
-        g.strokeRoundedRect(r.x, r.y, r.s, r.s, 10);
-        if (isHiding(grid, idx % grid.w, Math.floor(idx / grid.w))) continue;
-        const span = r.s * 0.31;
-        this.litEyes.push(this.add.image(r.x + r.s * 0.2, r.y + r.s * 0.2, iconKey("watched")).setDisplaySize(span, span).setDepth(10));
+      const peeking = isPeeking(grid, st.agents, i);
+      for (const idx of watchedTiles(grid, st.agents, i)) {
+        if (!peeking && isHiding(grid, idx % grid.w, Math.floor(idx / grid.w))) covered.add(idx);
+        else danger.add(idx);
       }
     });
+    for (const idx of danger) covered.delete(idx);
+    for (const idx of covered) {
+      const r = this.tileRect(g, idx, 4);
+      g.fillStyle(NIGHT.light, 0.16);
+      g.fillRoundedRect(r.x, r.y, r.s, r.s, 10);
+      g.lineStyle(2.5, NIGHT.lightEdge, 0.55);
+      this.dashedRect(g, r.x, r.y, r.s, r.s);
+    }
+    for (const idx of danger) {
+      const r = this.tileRect(g, idx);
+      g.fillStyle(NIGHT.light, 0.36);
+      g.fillRect(r.x, r.y, r.s, r.s);
+    }
+    this.outlineRegion(g, danger, Math.max(9, s * 0.055), NIGHT.ink, 0.5);
+    this.outlineRegion(g, danger, Math.max(5, s * 0.03), NIGHT.lightEdge, 1);
+    for (const first of this.regionStarts(danger)) {
+      const r = this.tileRect(g, first);
+      const span = Math.max(28, s * 0.3);
+      this.litEyes.push(this.add.image(r.x + span * 0.72, r.y + span * 0.68, iconKey("watched")).setDisplaySize(span, span).setDepth(10));
+    }
     const soft: { x: number; y: number }[] = [];
     for (let y = 0; y < grid.h; y += 1) for (let x = 0; x < grid.w; x += 1) if (isCreaky(grid, x, y)) soft.push({ x, y });
     soft.push(grid.goal);
+    const lit = [...danger, ...covered].map((idx) => ({ x: idx % grid.w, y: Math.floor(idx / grid.w) }));
     this.lighting.render(dynamic, lit, soft);
+  }
+
+  private regionStarts(tiles: Set<number>) {
+    const w = this.sim.grid.w;
+    const seen = new Set<number>();
+    const starts: number[] = [];
+    for (const idx of [...tiles].sort((a, b) => a - b)) {
+      if (seen.has(idx)) continue;
+      starts.push(idx);
+      const queue = [idx];
+      seen.add(idx);
+      while (queue.length) {
+        const cur = queue.pop()!;
+        const x = cur % w;
+        for (const next of [cur - w, cur + w, x > 0 ? cur - 1 : -1, x < w - 1 ? cur + 1 : -1]) {
+          if (next < 0 || seen.has(next) || !tiles.has(next)) continue;
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    return starts;
+  }
+
+  private outlineRegion(g: Phaser.GameObjects.Graphics, tiles: Set<number>, width: number, color: number, alpha: number, dashed = false) {
+    const L = this.layout;
+    const w = this.sim.grid.w;
+    const s = L.tile;
+    const half = width / 2;
+    g.lineStyle(width, color, alpha);
+    for (const idx of tiles) {
+      const tx = idx % w;
+      const ty = Math.floor(idx / w);
+      const x0 = L.ox + tx * s;
+      const y0 = L.oy + ty * s;
+      const x1 = x0 + s;
+      const y1 = y0 + s;
+      const has = (dx: number, dy: number) => tx + dx >= 0 && tx + dx < w && tiles.has(idx + dy * w + dx);
+      const edges: [number, number, number, number][] = [];
+      if (!has(0, -1)) edges.push([x0 - half, y0, x1 + half, y0]);
+      if (!has(0, 1)) edges.push([x0 - half, y1, x1 + half, y1]);
+      if (!has(-1, 0)) edges.push([x0, y0 - half, x0, y1 + half]);
+      if (!has(1, 0)) edges.push([x1, y0 - half, x1, y1 + half]);
+      for (const [ax, ay, bx, by] of edges) {
+        if (dashed) this.dashedLine(g, ax, ay, bx, by);
+        else g.lineBetween(ax, ay, bx, by);
+      }
+    }
+  }
+
+  private dashedLine(g: Phaser.GameObjects.Graphics, ax: number, ay: number, bx: number, by: number) {
+    const len = Math.hypot(bx - ax, by - ay);
+    const dash = Math.max(10, this.layout.tile * 0.09);
+    const count = Math.max(1, Math.round(len / (dash * 1.7)));
+    const step = len / count;
+    const ux = (bx - ax) / len;
+    const uy = (by - ay) / len;
+    for (let i = 0; i < count; i += 1) {
+      const a = i * step + (step - dash) / 2;
+      g.lineBetween(ax + ux * a, ay + uy * a, ax + ux * (a + dash), ay + uy * (a + dash));
+    }
+  }
+
+  private dashedRect(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number) {
+    this.dashedLine(g, x, y, x + w, y);
+    this.dashedLine(g, x + w, y, x + w, y + h);
+    this.dashedLine(g, x + w, y + h, x, y + h);
+    this.dashedLine(g, x, y + h, x, y);
+  }
+
+  private drawSteps(st: State) {
+    const g = this.steps;
+    g.clear();
+    if (st.status !== "playing") return;
+    const L = this.layout;
+    const s = L.tile;
+    const x0 = L.ox + st.x * s;
+    const y0 = L.oy + st.y * s;
+    const m = s * 0.07;
+    const k = s * 0.17;
+    const corners: [number, number, number, number][] = [
+      [x0 + m, y0 + m, 1, 1],
+      [x0 + s - m, y0 + m, -1, 1],
+      [x0 + m, y0 + s - m, 1, -1],
+      [x0 + s - m, y0 + s - m, -1, -1],
+    ];
+    for (const [width, color, alpha] of [
+      [Math.max(7, s * 0.045), NIGHT.ink, 0.4],
+      [Math.max(3.5, s * 0.022), 0xfbf5e6, 0.8],
+    ] as const) {
+      g.lineStyle(width, color, alpha);
+      for (const [cx, cy, sx, sy] of corners) {
+        g.lineBetween(cx, cy, cx + sx * k, cy);
+        g.lineBetween(cx, cy, cx, cy + sy * k);
+      }
+    }
+    const a = s * 0.11;
+    for (const d of [0, 1, 2, 3] as Dir[]) {
+      if (!canMove(this.sim, st, d)) continue;
+      const c = tileCenter(L, st.x + DX[d], st.y + DY[d]);
+      const bx = c.x - DX[d] * s * 0.36;
+      const by = c.y - DY[d] * s * 0.36;
+      const px = -DY[d];
+      const py = DX[d];
+      const pts = [
+        { x: bx + DX[d] * a * 0.6, y: by + DY[d] * a * 0.6 },
+        { x: bx - DX[d] * a * 0.4 + px * a * 0.6, y: by - DY[d] * a * 0.4 + py * a * 0.6 },
+        { x: bx - DX[d] * a * 0.4 - px * a * 0.6, y: by - DY[d] * a * 0.4 - py * a * 0.6 },
+      ];
+      g.fillStyle(0xfbf5e6, 0.72);
+      g.fillTriangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y);
+      g.lineStyle(Math.max(2.5, s * 0.016), NIGHT.ink, 0.6);
+      g.strokeTriangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y);
+    }
   }
 
   private drawForecast() {
     const g = this.forecast;
     g.clear();
     this.routeMarks.clear();
+    this.steps.clear();
     this.watchSpots = [];
     for (const b of this.badges) b.destroy();
     this.badges = [];
@@ -1109,6 +1274,7 @@ export class NightScene extends Phaser.Scene {
     const now = new Set<number>();
     st.agents.forEach((_a, i) => watchedTiles(grid, st.agents, i).forEach((t) => now.add(t)));
     this.boardMarks(st);
+    this.drawSteps(st);
     const predicted = step(this.sim, st, "wait");
     if (predicted) {
       const calm = step(this.sim, { ...st, agents: st.agents.map((a) => (a.kind === "sleeper" || a.kind === "dog" ? { ...a, stir: 0 } : a)) }, "wait") ?? predicted;
@@ -1116,22 +1282,28 @@ export class NightScene extends Phaser.Scene {
       const striped = new Set<number>();
       nextAgents.forEach((_a, i) => watchedTiles(grid, nextAgents, i).forEach((t) => !now.has(t) && striped.add(t)));
       this.ahead = { result: predicted, striped };
+      const stripe = Math.max(4, s * 0.026);
       for (const idx of striped) {
-        const r = this.tileRect(g, idx, 6);
-        g.fillStyle(0xffe39a, 0.07);
-        g.fillRoundedRect(r.x, r.y, r.s, r.s, 8);
-        g.lineStyle(2.5, 0xffe39a, 0.42);
-        for (let k = -3; k <= 3; k += 1) {
-          const off = (k * r.s) / 4;
-          const x0 = Math.max(r.x, r.x + off);
-          const y0 = Math.min(r.y + r.s, r.y + r.s + off);
-          const x1 = Math.min(r.x + r.s, r.x + r.s + off);
-          const y1 = Math.max(r.y, r.y + off);
-          if (x1 > x0) g.lineBetween(x0, y0, x1, y1);
+        const r = this.tileRect(g, idx, 3);
+        g.fillStyle(0xffe39a, 0.1);
+        g.fillRect(r.x, r.y, r.s, r.s);
+        for (const [width, color, alpha] of [
+          [stripe + 3, NIGHT.ink, 0.28],
+          [stripe, 0xffe39a, 0.62],
+        ] as const) {
+          g.lineStyle(width, color, alpha);
+          for (let k = -2; k <= 2; k += 1) {
+            const off = (k * r.s) / 2.6;
+            const x0 = Math.max(r.x, r.x + off);
+            const y0 = Math.min(r.y + r.s, r.y + r.s + off);
+            const x1 = Math.min(r.x + r.s, r.x + r.s + off);
+            const y1 = Math.max(r.y, r.y + off);
+            if (x1 - x0 > stripe) g.lineBetween(x0, y0, x1, y1);
+          }
         }
-        g.lineStyle(3, 0xffd66b, 0.62);
-        g.strokeRoundedRect(r.x, r.y, r.s, r.s, 8);
       }
+      this.outlineRegion(g, striped, Math.max(6, s * 0.036), NIGHT.ink, 0.35, true);
+      this.outlineRegion(g, striped, Math.max(3.5, s * 0.022), 0xffd66b, 0.95, true);
       st.agents.forEach((a, i) => {
         const b = nextAgents[i];
         if (a.kind === "patrol" && b.kind === "patrol" && (a.x !== b.x || a.y !== b.y)) this.pencilArrow(g, a.x, a.y, b.x, b.y);
@@ -1677,7 +1849,7 @@ export class NightScene extends Phaser.Scene {
   private overviewCenter() {
     const L = this.layout;
     const x = L.board.x + L.board.w / 2;
-    if (L.kind !== "tall") return { x, y: L.board.y + L.board.h / 2 };
+    if (L.kind === "band") return { x, y: L.board.y + L.board.h / 2 };
     return { x, y: L.board.y + Math.max(L.board.h, L.frame.h / L.overview) / 2 };
   }
 

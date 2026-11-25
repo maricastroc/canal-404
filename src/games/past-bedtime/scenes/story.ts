@@ -1,12 +1,40 @@
 import * as Phaser from "phaser";
 import type { Fonts } from "@/games/kit/ui";
 import { BrunoView } from "./actors";
+import type { Box } from "./fx";
 import { iconKey } from "./icons";
 import type { Layout } from "./layout";
 
 const INK = 0x1d1830;
 const CREAM = 0xfbf5e6;
 const SKY = 0x5cb9f0;
+const SCENE_WEIGHT = 0.12;
+
+function overlap(a: Box, b: Box) {
+  const ow = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const oh = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return ow > 0 && oh > 0 ? ow * oh : 0;
+}
+
+export function placeStory(bounds: Box, w: number, h: number, margin: number, avoid: Box[], scene: Box | null, tag = 0) {
+  const xs = [bounds.x + (bounds.w - w) / 2, bounds.x + margin, bounds.x + bounds.w - w - margin];
+  const ys = [bounds.y + bounds.h - h - margin * 0.66, bounds.y + margin * 1.25];
+  let best = { x: xs[0], y: ys[0], covered: 0 };
+  let bestScore = Infinity;
+  ys.forEach((y, j) => {
+    xs.forEach((x, i) => {
+      const box = { x, y: y - tag, w, h: h + tag };
+      let covered = 0;
+      for (const a of avoid) covered += overlap(box, a);
+      const score = (i + j * 2) * 10 + covered + (scene ? overlap(box, scene) * SCENE_WEIGHT : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        best = { x, y, covered };
+      }
+    });
+  });
+  return best;
+}
 
 export class StoryBox {
   private root: Phaser.GameObjects.Container;
@@ -58,7 +86,7 @@ export class StoryBox {
     this.root = scene.add.container(0, 0, [this.panel, this.portrait, this.nameTag, this.text, this.more]).setDepth(70).setVisible(false);
   }
 
-  show(line: string, avoid: { x: number; y: number; w: number; h: number }[] = []) {
+  show(line: string, avoid: Box[] = [], scene: Box | null = null) {
     const k = this.k;
     const b = this.layout.kind === "full" ? this.layout.frame : this.layout.map;
     const phone = this.layout.kind !== "full";
@@ -68,25 +96,8 @@ export class StoryBox {
     const left = portraitR * 2 + 56 * k;
     const right = phone ? 44 * k : 70 * k;
     this.text.setWordWrapWidth(w - left - right).setText(line);
-    const h = Math.max(portraitR * 2 + 44 * k, this.text.height + 80 * k);
-    const xs = [b.x + (b.w - w) / 2, b.x + 24 * k, b.x + b.w - w - 24 * k];
-    const ys = [b.y + b.h - h - 22 * k, b.y + 30 * k];
-    let best = { x: xs[0], y: ys[0] };
-    let bestScore = Infinity;
-    ys.forEach((cy, j) => {
-      xs.forEach((cx, i) => {
-        let score = (i + j * 2) * 10;
-        for (const a of avoid) {
-          const ow = Math.min(cx + w, a.x + a.w) - Math.max(cx, a.x);
-          const oh = Math.min(cy + h, a.y + a.h) - Math.max(cy, a.y);
-          if (ow > 0 && oh > 0) score += ow * oh;
-        }
-        if (score < bestScore) {
-          bestScore = score;
-          best = { x: cx, y: cy };
-        }
-      });
-    });
+    const h = Math.max(portraitR * 2 + 44 * k, this.text.height + 66 * k);
+    const best = placeStory(b, w, h, 24 * k, avoid, scene, 28 * k);
     const x = Math.round(best.x);
     const y = Math.round(best.y);
     const g = this.panel;
