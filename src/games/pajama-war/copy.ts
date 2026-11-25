@@ -43,7 +43,7 @@ export const COPY = localized({
       hints: {
         ricochet: { title: "RICOCHETE!", body: "Jogue nos móveis com mola." },
         special: { title: "TRAVESSEIRO ESPECIAL!", body: "Pegue antes dos outros!" },
-        fort: { title: "CABANINHA!", body: "Segura travesseiros, mas desaba se apanhar demais." },
+        fort: { title: "CABANINHAS!", body: "Elas seguram travesseiradas,\nmas desabam depois de muitos acertos!" },
       },
       controlsTouch: "Arraste o polegar na esquerda para andar. Toque na direita para jogar.",
       controlsKeys: "WASD ou setas: andar. Mouse: mirar. Clique ou espaço: jogar.",
@@ -150,7 +150,7 @@ export const COPY = localized({
       hints: {
         ricochet: { title: "BOUNCE!", body: "Throw at the furniture with springs." },
         special: { title: "SPECIAL PILLOW!", body: "Grab it before the others!" },
-        fort: { title: "BLANKET FORT!", body: "It stops pillows, but it caves in if it takes too many." },
+        fort: { title: "BLANKET FORTS!", body: "They stop pillows,\nbut they cave in after too many hits!" },
       },
       controlsTouch: "Drag your left thumb to move. Tap on the right to throw.",
       controlsKeys: "WASD or arrows: move. Mouse: aim. Click or space: throw.",

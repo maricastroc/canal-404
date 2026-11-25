@@ -11,7 +11,7 @@ export type PropDef = {
   flip?: boolean;
   angle?: number;
   origin?: [number, number];
-  block?: { w: number; h: number; dx?: number; dy?: number; tall?: boolean };
+  block?: { w: number; h: number; dx?: number; dy?: number; tall?: boolean; shot?: number };
   bounce?: boolean;
   surface?: { x0: number; x1: number; y: number };
   spring?: [number, number, number][];
@@ -198,16 +198,16 @@ export const ARENAS: ArenaDef[] = [
       { key: "window-round", x: 960, y: 312, layer: "wall", glow: { dx: 0, dy: -134, r: 240, color: 0x8fa8ff, alpha: 0.2 } },
       { key: "bulb-hang", x: 1250, y: -200, layer: "wall", react: "swing", glow: { dx: 0, dy: 402, r: 230, color: WARM, alpha: 0.36 } },
       { key: "rag-rug", x: 960, y: 790, layer: "floor", scale: 1.15, origin: [0.5, 0.5] },
-      { key: "trunk", x: 290, y: 520, layer: "sort", scale: 0.9, block: { w: 190, h: 56 }, react: "bounce" },
-      { key: "dress-form", x: 500, y: 470, layer: "sort", scale: 0.95, react: "wobble" },
-      { key: "coat-rack", x: 1430, y: 470, layer: "sort", scale: 0.95, react: "wobble" },
-      { key: "box-stack", x: 1620, y: 510, layer: "sort", scale: 0.9, block: { w: 170, h: 50 }, react: "wobble" },
-      { key: "fort-tipi", x: 760, y: 610, layer: "sort", block: { w: 170, h: 50, tall: true }, fort: 6 },
-      { key: "fort-box", x: 1180, y: 610, layer: "sort", block: { w: 170, h: 50, tall: true }, fort: 6 },
-      { key: "fort-chairs", x: 520, y: 860, layer: "sort", block: { w: 250, h: 60, tall: true }, fort: 7 },
-      { key: "fort-table", x: 1400, y: 860, layer: "sort", block: { w: 220, h: 60, tall: true }, fort: 7 },
-      { key: "suitcases", x: 250, y: 1000, layer: "sort", scale: 0.85, block: { w: 160, h: 44 }, react: "bounce" },
-      { key: "rocking-horse", x: 1680, y: 995, layer: "sort", scale: 0.9, block: { w: 170, h: 40 }, react: "wobble" },
+      { key: "trunk", x: 236, y: 506, layer: "sort", scale: 0.9, block: { w: 190, h: 56 }, react: "bounce", depth: 431.5 },
+      { key: "dress-form", x: 500, y: 470, layer: "sort", scale: 0.95, block: { w: 70, h: 24 }, react: "wobble", depth: 427.5 },
+      { key: "coat-rack", x: 1430, y: 470, layer: "sort", scale: 0.95, block: { w: 64, h: 24 }, react: "wobble", depth: 427.5 },
+      { key: "box-stack", x: 1620, y: 510, layer: "sort", scale: 0.9, block: { w: 170, h: 50 }, react: "wobble", depth: 441.5 },
+      { key: "fort-tipi", x: 760, y: 610, layer: "sort", block: { w: 170, h: 50, tall: true, shot: 110 }, fort: 6, depth: 541.5 },
+      { key: "fort-box", x: 1180, y: 610, layer: "sort", block: { w: 170, h: 50, tall: true }, fort: 6, depth: 541.5 },
+      { key: "fort-chairs", x: 520, y: 860, layer: "sort", block: { w: 250, h: 60, tall: true }, fort: 7, depth: 781.5 },
+      { key: "fort-table", x: 1400, y: 860, layer: "sort", block: { w: 220, h: 60, tall: true }, fort: 7, depth: 781.5 },
+      { key: "suitcases", x: 216, y: 1008, layer: "sort", scale: 0.85, block: { w: 160, h: 44 }, react: "bounce", depth: 945.5 },
+      { key: "rocking-horse", x: 1680, y: 975, layer: "sort", scale: 0.9, block: { w: 186, h: 40 }, react: "wobble", depth: 916.5 },
     ],
     floorPillows: [
       [640, 720, 0xffd2e6, -10],
