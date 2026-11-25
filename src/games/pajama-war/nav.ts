@@ -22,7 +22,13 @@ export function arenaBoxes(def: ArenaDef): Box[] {
     if (!b) return;
     const cx = p.x + (b.dx ?? 0);
     const by = p.y + (b.dy ?? 0);
-    boxes.push({ x0: cx - b.w / 2, x1: cx + b.w / 2, y0: by - b.h, y1: by, tall: Boolean(b.tall), bouncy: Boolean(p.bounce), solid: true, index, ...(p.fort ? { fort: { hp: p.fort, max: p.fort } } : {}) });
+    const fort = p.fort ? { fort: { hp: p.fort, max: p.fort } } : {};
+    if (b.tall && b.shot !== undefined) {
+      boxes.push({ x0: cx - b.w / 2, x1: cx + b.w / 2, y0: by - b.h, y1: by, tall: false, bouncy: false, solid: true, index });
+      boxes.push({ x0: cx - b.shot / 2, x1: cx + b.shot / 2, y0: by - b.h, y1: by, tall: true, bouncy: Boolean(p.bounce), solid: false, index, ...fort });
+      return;
+    }
+    boxes.push({ x0: cx - b.w / 2, x1: cx + b.w / 2, y0: by - b.h, y1: by, tall: Boolean(b.tall), bouncy: Boolean(p.bounce), solid: true, index, ...fort });
   });
   return boxes;
 }

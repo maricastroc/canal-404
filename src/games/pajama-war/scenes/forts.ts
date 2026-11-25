@@ -191,6 +191,7 @@ export class FortView {
           duration: 300,
           ease: "Back.easeOut",
           onStart: () => {
+            this.ghost(dir);
             this.prop.setStage(2);
             this.bits(m === "cloth" ? 7 : 8, dir, 1.6);
             this.debris(dir);
@@ -201,6 +202,21 @@ export class FortView {
       ],
       onComplete: () => (this.settling = false),
     });
+  }
+
+  private ghost(dir: number) {
+    const img = this.img;
+    const m = this.kind.material;
+    const g = this.scene.add.image(img.x, img.y, img.texture.key).setOrigin(img.originX, img.originY).setScale(img.scaleX, img.scaleY).setAngle(img.angle).setDepth(img.depth + 0.05);
+    const fall =
+      m === "brooms"
+        ? { angle: img.angle + dir * 26, scaleY: img.scaleY * 0.55, y: img.y + 10 }
+        : m === "cardboard"
+          ? { scaleY: img.scaleY * 0.2, scaleX: img.scaleX * 1.12, y: img.y + 4 }
+          : { scaleY: img.scaleY * 0.28, scaleX: img.scaleX * 1.06, y: img.y + 8 };
+    this.scene.tweens.add({ targets: g, ...fall, alpha: 0, duration: 200, ease: "Quad.easeIn", onComplete: () => g.destroy() });
+    img.setAlpha(0.2);
+    this.scene.tweens.add({ targets: img, alpha: 1, duration: 160, ease: "Quad.easeOut" });
   }
 
   update(t: number) {
