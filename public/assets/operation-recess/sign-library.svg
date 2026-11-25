@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 150" width="330" height="150">
+<g stroke="#1d1830" stroke-linejoin="round" stroke-linecap="round">
+<path d="M70 4 L96 50 M260 4 L234 50" stroke-width="5" fill="none"/>
+<path d="M70 4 L96 50 M260 4 L234 50" stroke="#9aa6b8" stroke-width="2" fill="none"/>
+<rect x="10.0" y="48.0" width="310.0" height="92.0" rx="10" fill="#55301e" stroke-width="6"/>
+<rect x="22.0" y="60.0" width="286.0" height="68.0" rx="6" fill="#b06c3f" stroke-width="4"/>
+<text x="165.0" y="108" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="34" fill="#fbf5e6" stroke="#1d1830" stroke-width="5" paint-order="stroke">BIBLIOTECA</text>
+<circle cx="34" cy="94" r="5" fill="#ffc83d" stroke-width="2.5"/>
+<circle cx="296" cy="94" r="5" fill="#ffc83d" stroke-width="2.5"/>
+</g>
+</svg>

@@ -10,7 +10,7 @@ type Button = { role: "jump" | "attack"; x: number; y: number; r: number; color:
 
 export type DeckLabels = { move: string; jump: string; attack: string };
 
-const LIP: Record<string, number> = { corridor: 0x7b62c4, yard: 0x93cf4c, office: 0xc4352c };
+const LIP: Record<string, number> = { corridor: 0x7b62c4, yard: 0x93cf4c, library: 0x3e8f6a, office: 0xc4352c };
 const SIZE = { r: 39, gap: 14, margin: 14, lip: 9, label: 12.5, labelGap: 8, slack: 7, reach: 22 };
 const glyphs = new Map<string, [number, number]>();
 

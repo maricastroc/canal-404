@@ -69,6 +69,18 @@ const SCENERY = [
   "honor-roll",
   "door-plain",
   "pennants",
+  "bookcase-tall-a",
+  "bookcase-tall-b",
+  "bookcase-tall-c",
+  "bookcase-low",
+  "reading-table",
+  "librarian-desk",
+  "card-catalog",
+  "globe",
+  "book-pile",
+  "ladder",
+  "sign-library",
+  "poster-read",
 ];
 
 const HERO = ["idle", "run-a", "run-b", "run-c", "run-d", "jump", "fall", "attack-a", "attack-b", "attack-c", "hurt", "cheer"];
