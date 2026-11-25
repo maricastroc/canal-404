@@ -1,10 +1,16 @@
 import { parseNotes } from "@/lib/audio/tracks";
 import { beatMsAt, STEPS_PER_BAR, timeOf, type CompiledSong, type Signal, type TapSound } from "../song/notation";
-import { agogo, bucket, click, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Stage } from "./voices";
+import { agogo, bucket, click, crowd, fridge, hat, hiss, keysOn, kick, midiToFreq, note, shaker, snare, type Cheer, type Stage } from "./voices";
 
 const LOOKAHEAD = 0.2;
 const SIGNAL_CUTOFF: Record<Signal, number> = { clear: 5200, weak: 2000, lost: 1300 };
 const SIGNAL_HISS: Record<Signal, number> = { clear: 0, weak: 0.035, lost: 0.09 };
+const CHEERS: readonly Cheer[] = [
+  { mood: "aww", shouts: 8, claps: 10, seconds: 1.6, whistles: 0, level: 0.85 },
+  { mood: "cheer", shouts: 5, claps: 40, seconds: 2, whistles: 0, level: 1.1 },
+  { mood: "cheer", shouts: 14, claps: 100, seconds: 2.6, whistles: 1, level: 0.95 },
+  { mood: "cheer", shouts: 22, claps: 150, seconds: 3.2, whistles: 2, level: 1 },
+];
 
 type Cue = { at: number; play: (time: number) => void; skippable: boolean };
 
@@ -141,6 +147,10 @@ export class SongPlayer {
   sting(notes: number[], stepSeconds: number) {
     const now = this.stage.ctx.currentTime + 0.05;
     notes.forEach((midi, i) => note(this.stage, this.sfx, midiToFreq(midi), now + i * stepSeconds, stepSeconds * 1.6, "triangle", 0.14, 5));
+  }
+
+  cheer(stars: number) {
+    crowd(this.stage, this.sfx, this.stage.ctx.currentTime + 0.08, CHEERS[Math.max(0, Math.min(CHEERS.length - 1, stars))]);
   }
 
   stop(fade = 0.15) {
