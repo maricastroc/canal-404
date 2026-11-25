@@ -158,8 +158,8 @@ function DuckButton({ held, locale }: { held: boolean; locale: Locale }) {
     <g>
       <circle cx={c.x + 6} cy={c.y + (held ? 6 : 12)} r={74} fill={P.ink} />
       <circle cx={c.x} cy={c.y + (held ? 4 : 0)} r={74} fill={held ? P.mint : P.sun} {...ink} strokeWidth={10} />
-      <ArrowBigDown x={c.x - 38} y={c.y + (held ? 4 : 0) - 53} width={76} height={76} fill={P.cream} stroke={P.ink} strokeWidth={2.6} />
-      <text x={c.x} y={c.y + (held ? 4 : 0) + 46} textAnchor="middle" fontSize={26} fill={P.ink} style={display}>
+      <ArrowBigDown x={c.x - 30} y={c.y + (held ? 4 : 0) - 50} width={60} height={60} fill={P.cream} stroke={P.ink} strokeWidth={2.6} />
+      <text x={c.x} y={c.y + (held ? 4 : 0) + 36} textAnchor="middle" fontSize={20} fill={P.ink} style={display}>
         {held ? DUCK[locale].held : DUCK[locale].idle}
       </text>
     </g>
