@@ -20,25 +20,42 @@ export function stingTrack(id: TrackId, station: string, notes: StingNotes): Tra
 
 export class StingPlayer {
   private off: (() => void) | null;
+  private looped: { track: Track; level: number } | null = null;
 
   constructor(
     private id: TrackId,
     private level = 0.7,
   ) {
     this.off = getAudio().subscribe(() => {
-      if (this.ours() && !getAudio().sfxOn) getAudio().stopMusic();
+      const audio = getAudio();
+      if (!audio.sfxOn) {
+        if (this.ours()) audio.stopMusic();
+        return;
+      }
+      if (this.looped && !audio.musicPlaying) this.start(this.looped.track, false, this.looped.level);
     });
   }
 
   play(track: Track) {
-    const audio = getAudio();
-    if (!audio.sfxOn) return;
-    audio.startMusic(track, { once: true });
-    audio.duckMusic(this.level);
+    this.looped = null;
+    this.start(track, true, this.level);
+  }
+
+  loop(track: Track, level = this.level) {
+    this.looped = { track, level };
+    this.start(track, false, level);
   }
 
   stop() {
+    this.looped = null;
     if (this.ours()) getAudio().stopMusic();
+  }
+
+  private start(track: Track, once: boolean, level: number) {
+    const audio = getAudio();
+    if (!audio.sfxOn) return;
+    audio.startMusic(track, { once });
+    audio.duckMusic(level);
   }
 
   destroy() {

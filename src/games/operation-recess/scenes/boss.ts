@@ -62,6 +62,10 @@ export class Inspector {
     return this.hp <= this.maxHp / 2;
   }
 
+  get fighting() {
+    return this.state !== "wait" && this.state !== "intro" && this.state !== "beaten";
+  }
+
   get vulnerable() {
     return this.state === "tired" || this.state === "dizzy" || this.state === "stuck";
   }
