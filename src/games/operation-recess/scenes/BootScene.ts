@@ -91,13 +91,14 @@ const SCENERY = [
   "frame-reader",
   "returns-body",
   "returns-door",
+  "recess-clock",
 ];
 
 const HERO = ["idle", "run-a", "run-b", "run-c", "run-d", "jump", "fall", "attack-a", "attack-b", "attack-c", "hurt", "cheer"];
 const MON: Record<string, string[]> = {
   common: ["walk-a", "walk-b", "windup", "attack", "hurt", "point"],
   whistle: ["walk-a", "walk-b", "puff", "blow", "hurt"],
-  shield: ["walk-a", "walk-b", "block", "bash", "open", "hurt"],
+  shield: ["walk-a", "walk-b", "block", "bash", "open", "hurt", "order"],
 };
 const FACES = ["watch", "spot", "lost"];
 const CAST: Record<string, { h: number; poses: string[] }> = {
@@ -144,6 +145,8 @@ const PROPS: [key: string, width: number, height: number][] = [
   ["big-wave", 150, 220],
   ["shock", 200, 90],
   ["confetti", 20, 12],
+  ["order-pare", 120, 120],
+  ["order-siga", 120, 120],
   ["spark", 30, 30],
 ];
 

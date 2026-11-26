@@ -150,6 +150,18 @@ export const RECESS_SFX = {
       { kind: "noise", duration: 0.3, delay: 0.7, gain: 0.12, filter: { type: "lowpass", from: 1400, to: 200 } },
     ],
   },
+  creak: {
+    layers: [
+      { kind: "tone", wave: "sawtooth", from: 150, to: 96, duration: 0.3, gain: 0.05, vibrato: { rate: 24, depth: 16 }, filter: { type: "lowpass", frequency: 800 } },
+      { kind: "noise", duration: 0.12, gain: 0.04, delay: 0.05, filter: { type: "bandpass", from: 1200, q: 2 } },
+    ],
+  },
+  go: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 659, duration: 0.07, gain: 0.08 },
+      { kind: "tone", wave: "triangle", from: 988, duration: 0.16, delay: 0.07, gain: 0.08 },
+    ],
+  },
   alert: {
     layers: [{ kind: "tone", wave: "square", from: 880, to: 990, duration: 0.07, gain: 0.04, filter: { type: "lowpass", frequency: 2400 } }],
   },
