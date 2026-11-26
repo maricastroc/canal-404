@@ -924,26 +924,26 @@ export class Scenery {
     s.add.tileSprite(0, 0, this.width, FLOOR_Y, "wall-office").setOrigin(0, 0).setDepth(0);
     s.add.image(0, 130, "shade-top").setOrigin(0, 0).setDisplaySize(this.width, 300).setDepth(0.35).setAlpha(0.6);
     this.floor("floor-office");
-    for (const x of [300, 1030, 1740, 2290, 3020, 3760]) this.img("column", x, FLOOR_Y, D.wall + 0.1);
-    for (const x of [700, 1400, 2120, 2800, 3450, 4200]) {
+    for (const x of [300, 880, 2290, 3760]) this.img("column", x, FLOOR_Y, D.wall + 0.1);
+    for (let x = 350; x < arenaX - 200; x += 700) {
       this.img("lamp-warm", x, 120, D.wall + 0.12, [0.5, 0]).setScale(0.8);
       this.cone(x, 210, 0.24, 1.2);
     }
     const plan: [string, number][] = [
+      ["door-admin-b", 100],
       ["window", 670],
       ["gallery", 1400],
-      ["banner-order", 1890],
-      ["door-admin-a", 2120],
-      ["bust", 2480],
+      ["banner-order", 1900],
+      ["door-admin-a", 2520],
       ["window", 2800],
-      ["banner-obey", 3170],
+      ["bust", 3310],
+      ["banner-obey", 3350],
       ["stairs", 3450],
       ["gallery", 4200],
-      ["door-admin-b", 4580],
-      ["signpost", 4790],
+      ["signpost", 4810],
     ];
     for (const [kind, x] of plan) this.officeModule(kind, x);
-    for (const x of [1180, 2680, 3900]) this.grounded(this.react(this.img("plant-big", x, FLOOR_Y, D.back).setScale(0.85), "plant"));
+    for (const x of [1180, 3900]) this.grounded(this.react(this.img("plant-big", x, FLOOR_Y, D.back).setScale(0.85), "plant"));
     this.img("office-door", arenaX - 120, FLOOR_Y, D.back);
   }
 
@@ -959,9 +959,9 @@ export class Scenery {
         ["principal-b", 0],
         ["principal-c", 200],
       ] as const) {
-        const p = this.react(this.img(k, x + dx, 420, D.back, [0.5, 0.5]).setScale(0.9), "swing");
-        this.img("hall-light", x + dx, 300, D.back + 0.01, [0.5, 0.5]).setScale(0.6);
-        this.scene.add.image(x + dx, 430, "spot").setDepth(D.back - 0.01).setScale(1.3).setAlpha(0.7);
+        const p = this.react(this.img(k, x + dx, 360, D.back, [0.5, 0.5]).setScale(0.9), "swing");
+        this.img("hall-light", x + dx, 240, D.back + 0.01, [0.5, 0.5]).setScale(0.6);
+        this.scene.add.image(x + dx, 370, "spot").setDepth(D.back - 0.01).setScale(1.3).setAlpha(0.7);
         p.setData("frame", true);
       }
       return;
@@ -983,7 +983,7 @@ export class Scenery {
       this.img("stairs-office", x, FLOOR_Y, D.back - 0.05).setScale(0.9);
       return;
     }
-    if (kind === "signpost") this.react(this.img("signpost", x, FLOOR_Y, D.back).setScale(0.6), "swing");
+    if (kind === "signpost") this.react(this.img("signpost", x, FLOOR_Y, D.back).setScale(0.5), "swing");
   }
 
   private arena(left: number) {
@@ -995,8 +995,8 @@ export class Scenery {
     const banner = this.img("banner-discipline", cx, 170, D.back, [0.5, 0]).setScale(0.95);
     const board = this.img("rules-board", left + 470, 520, D.back, [0.5, 0.5]).setScale(0.9);
     const shelf = this.img("trophy-shelf", left + W - 470, 520, D.back, [0.5, 0.5]).setScale(0.9);
-    const p1 = this.img("portrait", cx - 300, 520, D.back, [0.5, 0.5]);
-    const p2 = this.img("principal-c", cx + 300, 520, D.back, [0.5, 0.5]);
+    const p1 = this.img("portrait", left + 720, 520, D.back, [0.5, 0.5]);
+    const p2 = this.img("principal-c", left + W - 720, 520, D.back, [0.5, 0.5]);
     const desk = this.grounded(this.img("big-desk", cx, FLOOR_Y - 4, D.wall + 0.15).setScale(0.86).setTint(0xd6cbe0), 0.95);
     this.img("file-cabinet", left + W - 300, FLOOR_Y, D.floor).setScale(0.9);
     this.img("plant-big", left + 300, FLOOR_Y, D.floor).setScale(0.9);
