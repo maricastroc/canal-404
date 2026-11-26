@@ -18,14 +18,18 @@ const BANDS = 16;
 
 export const SKIES: Record<CourseId, Sky> = {
   arlindo: {
-    stops: [0x76c2ec, 0xc8e7f2, 0xffdba6],
-    span: 0.42,
-    sun: { x: 620, y: 380, r: 100, color: 0xffe39a, halo: { r: 180, color: 0xfff3c8, alpha: 0.6 } },
-    clouds: 0xfff0e4,
-    wash: { color: 0xffe9a8, alpha: 0.05 },
+    stops: [0x8ccbef, 0xf3d8e2, 0xffd497],
+    span: 0.3,
+    sun: { x: 520, y: 170, r: 90, color: 0xffdf86, halo: { r: 210, color: 0xfff0c2, alpha: 0.55 } },
+    clouds: 0xffe0d4,
+    layers: 0xffe6c8,
+    grass: 0xfff0c2,
+    wash: { color: 0xffc97a, alpha: 0.07 },
   },
   feira: {
-    sun: { x: 1120, y: 120, r: 96, color: 0xfff1a8 },
+    stops: [0x37a2ec, 0x74c4f3, 0xaee2fa],
+    span: 0.4,
+    sun: { x: 1120, y: 120, r: 84, color: 0xfffbe6, halo: { r: 150, color: 0xfff4b0, alpha: 0.5 } },
   },
   antena: {
     stops: [0x8f7ad8, 0xffb48a],

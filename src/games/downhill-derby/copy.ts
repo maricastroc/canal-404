@@ -54,7 +54,7 @@ export type RaceCopy = {
   stairs: string;
   cidinha: string;
   vendorCalls: readonly string[];
-  feira: { fair: string; fruit: string; greens: string; pastel: string; flowers: string; plaza: string; sale: string };
+  feira: { fair: string; fruit: string; greens: string; pastel: string; flowers: string; plaza: string; sale: string; ahead: string; soon: string };
   loopDone: string;
   loopSign: string;
   manhole: string;
@@ -178,7 +178,7 @@ export const RACE_COPY = localized<RaceCopy>({
     stairs: "Escadaria: agache para chacoalhar menos",
     cidinha: "MEU CARRINHO!",
     vendorCalls: ["OLHA A LARANJA!", "PASTEL QUENTINHO!", "FREGUESA!", "É DA HORTA!"],
-    feira: { fair: "FEIRA LIVRE", fruit: "FRUTAS", greens: "VERDURAS", pastel: "PASTEL", flowers: "FLORES", plaza: "PRAÇA DA MATRIZ", sale: "HORA DA XEPA" },
+    feira: { fair: "FEIRA LIVRE", fruit: "FRUTAS", greens: "VERDURAS", pastel: "PASTEL", flowers: "FLORES", plaza: "PRAÇA DA MATRIZ", sale: "HORA DA XEPA", ahead: "A FEIRA É LÁ EMBAIXO!", soon: "JÁ VAI TER XEPA!" },
     loopDone: "LOOPING!",
     loopSign: "VELOCIDADE MÍNIMA: VOANDO BAIXO",
     manhole: "Bueiro!",
@@ -355,7 +355,7 @@ export const RACE_COPY = localized<RaceCopy>({
     stairs: "Stairs: crouch to rattle less",
     cidinha: "MY TROLLEY!",
     vendorCalls: ["FRESH ORANGES!", "HOT PASTRIES!", "OVER HERE!", "FRESH FROM THE FARM!"],
-    feira: { fair: "STREET MARKET", fruit: "FRUIT", greens: "VEGGIES", pastel: "PASTRIES", flowers: "FLOWERS", plaza: "MAIN SQUARE", sale: "LAST-CALL DEALS" },
+    feira: { fair: "STREET MARKET", fruit: "FRUIT", greens: "VEGGIES", pastel: "PASTRIES", flowers: "FLOWERS", plaza: "MAIN SQUARE", sale: "LAST-CALL DEALS", ahead: "MARKET'S DOWN THE HILL!", soon: "LAST CALL'S COMING!" },
     loopDone: "LOOP!",
     loopSign: "MINIMUM SPEED: FLYING LOW",
     manhole: "Manhole!",

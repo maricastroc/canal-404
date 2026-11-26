@@ -6,7 +6,7 @@ import { heightAt, obstacleActive, type Obstacle } from "../sim/track";
 import { INK } from "./cart";
 import { CastPlanner, type Extra } from "./cast";
 import { MIXER_X } from "./antena";
-import { awningGaps, CIDINHA, trolleyRamp } from "./feira";
+import { awningGaps, CIDINHA, streetStops, trolleyRamp } from "./feira";
 import { NEIGHBORS, SAMPLE_RES, type SampleSpots } from "./sample";
 import { BLEACHER_ROWS, BLEACHER_SEATS, BLEACHER_W, LANE_OFFSETS, LANES, STALL_W, STREET_SPOTS, VENDOR_SPOTS, type Builder, type Zone } from "./terrain";
 
@@ -125,6 +125,19 @@ export class Ambient {
     this.feirante(set.fruit[0].crate + 250, VENDORS[1], this.copy.vendorCalls[3]);
     this.feirante(set.fruit[1].crate + 250, VENDORS[0], this.copy.vendorCalls[0]);
     this.cidinha(track, set);
+    const calls = [this.copy.feira.ahead, this.copy.feira.soon];
+    let called = 0;
+    for (const stop of streetStops(track)) {
+      if (stop.vendor !== null) {
+        this.feirante(stop.x + 40, VENDORS[stop.vendor], calls[called % calls.length]);
+        called += 1;
+        continue;
+      }
+      const x = stop.x + 170;
+      const e = this.cast.take("full", x);
+      if (e) this.fan(x, this.b.backY(x) + 8, e, -11.5);
+      this.b.taken.push([x - 80, x + 80]);
+    }
     for (const i of [2, 4, 6, 7]) {
       const x = (gaps[i][0] + gaps[i][1]) / 2;
       const e = this.cast.take("full", x);
