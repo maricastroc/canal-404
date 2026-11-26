@@ -326,9 +326,9 @@ const TEXT = gameText({
     "operation-recess": {
       title: "Operação: Recreio",
       tagline: "Os monitores acabaram com o recreio. Bruno não vai deixar barato!",
-      description: "Os monitores proibiram as brincadeiras e transformaram a escola numa zona de silêncio. Agora, Bruno precisa atravessar os corredores, enfrentar os monitores com sua espada de papelão e chegar à diretoria para salvar o recreio.",
+      description: "Os monitores proibiram as brincadeiras e transformaram a escola numa zona de silêncio. Agora, Bruno precisa atravessar os corredores, enfrentar os monitores com sua espada de papelão e chegar à diretoria para salvar o recreio. Pelo caminho, ele resgata as figurinhas das brincadeiras proibidas para completar o álbum.",
       tags: ["Ação", "Plataforma", "Aventura"],
-      objective: "Atravesse a escola com a espada de papelão, escape dos monitores e derrote o Inspetor do Silêncio. O recreio depende de você!",
+      objective: "Atravesse a escola com a espada de papelão, escape dos monitores, resgate as figurinhas das brincadeiras proibidas e derrote o Inspetor do Silêncio. O recreio depende de você!",
       controls: [
         { input: "← → ou A D", action: "Andar", on: "keys" },
         { input: "Espaço, ↑ ou W", action: "Pular (segure para ir mais alto)", on: "keys" },
@@ -341,7 +341,7 @@ const TEXT = gameText({
       howTo: [
         { title: "Corra", text: "Poça escorrega e buraco derruba. Na corda, pule quando ela descer. Armário tremeu? Pare ou feche com uma espadada." },
         { title: "Ataque", text: "Use a espada para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
-        { title: "Avance", text: "Se a luz do Inspetor parar em você, saia dela. Toque os sinos para salvar o caminho até a diretoria." },
+        { title: "Avance", text: "Se a luz do Inspetor parar em você, saia dela. Toque os sinos para salvar o caminho e pegue as figurinhas: cada uma vai para o seu álbum." },
       ],
       levels: [
         { title: "Corredor proibido", goal: "Cuidado com os armários e com o vigia." },
@@ -819,9 +819,9 @@ const TEXT = gameText({
     "operation-recess": {
       title: "Operation: Recess",
       tagline: "The hall monitors canceled recess. Bruno isn't letting that slide!",
-      description: "The hall monitors banned every game and turned the school into a quiet zone. Now Bruno has to make it through the hallways, take on the monitors with his cardboard sword and reach the principal's office to save recess.",
+      description: "The hall monitors banned every game and turned the school into a quiet zone. Now Bruno has to make it through the hallways, take on the monitors with his cardboard sword and reach the principal's office to save recess. Along the way, he rescues the stickers of the banned games to complete his album.",
       tags: ["Action", "Platformer", "Adventure"],
-      objective: "Cross the school with your cardboard sword, get past the monitors and defeat the Silence Inspector. Recess is counting on you!",
+      objective: "Cross the school with your cardboard sword, get past the monitors, rescue the stickers of the banned games and defeat the Silence Inspector. Recess is counting on you!",
       controls: [
         { input: "← → or A D", action: "Move", on: "keys" },
         { input: "Space, ↑ or W", action: "Jump (hold to go higher)", on: "keys" },
@@ -834,7 +834,7 @@ const TEXT = gameText({
       howTo: [
         { title: "Run", text: "Puddles are slippery and holes make you fall. On the jump rope, jump when it comes down. Locker shaking? Stop, or slam it shut with your sword." },
         { title: "Attack", text: "Use your sword to hit the monitors. Take down every monitor in a level to earn the 3rd star. The stop sign (PARE) blocks from the front: attack from behind or when he lowers it." },
-        { title: "Advance", text: "If the Inspector's spotlight lands on you, get out of it. Ring the bells to save your progress on the way to the principal's office." },
+        { title: "Advance", text: "If the Inspector's spotlight lands on you, get out of it. Ring the bells to save your progress and grab the stickers: each one goes into your album." },
       ],
       levels: [
         { title: "Forbidden hallway", goal: "Watch out for the lockers and the lookout." },
