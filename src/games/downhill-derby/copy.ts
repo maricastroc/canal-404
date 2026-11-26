@@ -6,6 +6,8 @@ import type { CrashReason, TrickKind } from "./sim/sim";
 
 export type GhostState = "on" | "off" | "later";
 
+export type VoiceMoment = "pass" | "passed" | "crash" | "tease";
+
 export type RaceCopy = {
   you: string;
   time: string;
@@ -60,6 +62,7 @@ export type RaceCopy = {
   dusty: string;
   hitBag: string;
   mila: string;
+  voices: Record<CartId, Record<VoiceMoment, string>>;
   croak: string;
   live: string;
   secret: string;
@@ -183,6 +186,12 @@ export const RACE_COPY = localized<RaceCopy>({
     dusty: "Branco de cimento!",
     hitBag: "Saco de cimento!",
     mila: "POR AQUI!",
+    voices: {
+      lina: { pass: "Turbina ligada!", passed: "Ei! Volta aqui!", crash: "É um recurso!", tease: "Quer fita adesiva?" },
+      bruno: { pass: "Conforme o plano.", passed: "Isso não estava nos cálculos.", crash: "Tô bem! Tô bem!", tease: "Eu avisei." },
+      mila: { pass: "Com licença.", passed: "Interessante.", crash: "Foi de propósito.", tease: "Anotado." },
+      deco: { pass: "Sai da frente!", passed: "Ô! Espera!", crash: "De novo não!", tease: "Essa doeu!" },
+    },
     croak: "CROAC!",
     live: "AO VIVO",
     secret: "ANÃO DOURADO!",
@@ -354,6 +363,12 @@ export const RACE_COPY = localized<RaceCopy>({
     dusty: "Covered in cement!",
     hitBag: "Cement bag!",
     mila: "THIS WAY!",
+    voices: {
+      lina: { pass: "Turbo on!", passed: "Hey! Get back here!", crash: "It's a feature!", tease: "Need some tape?" },
+      bruno: { pass: "Right on plan.", passed: "That wasn't in my notes.", crash: "I'm fine! I'm fine!", tease: "I did warn you." },
+      mila: { pass: "Excuse me.", passed: "Interesting.", crash: "Meant to do that.", tease: "Noted." },
+      deco: { pass: "Coming through!", passed: "Hey! Wait up!", crash: "Not again!", tease: "That one hurt!" },
+    },
     croak: "RIBBIT!",
     live: "LIVE",
     secret: "GOLDEN GNOME!",

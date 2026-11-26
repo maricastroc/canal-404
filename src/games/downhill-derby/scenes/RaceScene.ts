@@ -38,6 +38,7 @@ import { FEIRA_FILES } from "./feira";
 import { dressGaps } from "./props";
 import { SAMPLE_RES } from "./sample";
 import { LANE_OFFSETS, LANES, buildTerrain, zonesOf, type Chunk, type LipView, type ObstacleView, type SignView } from "./terrain";
+import { RivalVoice } from "./voice";
 
 export type Ghost = { frames: RunFrames; time: number };
 
@@ -209,6 +210,7 @@ export class RaceScene extends Phaser.Scene {
   private camSpeed = 0;
   private world!: RaceWorld;
   private ambient!: Ambient;
+  private voice!: RivalVoice;
   private rollCycle = new Map<ObstacleView, number>();
   private helmetOn = false;
   private surfaceTips = new Set<string>();
@@ -254,6 +256,7 @@ export class RaceScene extends Phaser.Scene {
     this.lipViews = terrain.lips;
     this.signs = terrain.signs;
     this.ambient = new Ambient(terrain.builder, this.worldLayer, this.track, terrain.zones, this.copy);
+    this.voice = new RivalVoice(this, this.worldLayer, this.bridge.fonts.display);
     this.ambient.waiting(dressGaps(terrain.builder, terrain.zones, this.track));
     this.trailG = this.add.graphics();
     this.trailG.setDepth(8.5);
@@ -651,6 +654,7 @@ export class RaceScene extends Phaser.Scene {
     this.surfaceTips.clear();
     this.rollCycle.clear();
     this.ambient.reset();
+    this.voice.clear();
     this.showLineup();
     this.recorder = new InputRecorder();
     this.record = this.bridge.records.load(this.track.id);
@@ -909,16 +913,12 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private handleWorld(e: WorldEvent) {
-    const s = this.sim;
     const r = this.rivalAt(e.racer);
     const ev = e.event;
     if (ev.type === "land" && ev.quality !== "touch") r.view.react(ev.quality === "perfect" ? "perfect" : "ok");
     if (ev.type === "land" && ev.quality !== "touch") r.view.land(Math.min(1, ev.air / 1.2 + 0.2));
     if (ev.type === "takeoff") r.view.takeoff(ev.popped ? 0.8 : 0.2);
-    if (ev.type === "manhole" && r.id === "mila") {
-      const rx = this.world.sample(this.world.rivals[e.racer - 1], "x");
-      if (Math.abs(rx - s.x) < 1800) this.ambient.bubble(this.copy.mila, rx, heightAt(this.track.surfaces[0], rx) + r.lane - 300, 30);
-    }
+    if (ev.type === "manhole" && r.id === "mila") this.voice.say(r.id, this.copy.mila, true);
     if (ev.type === "hit" && ev.penalized) {
       r.view.react("hit");
       const o = this.obstacles.find((q) => q.index === ev.index && q.lane === r.laneIndex);
@@ -934,6 +934,20 @@ export class RaceScene extends Phaser.Scene {
   private shout(key: string, text: string, opts: { priority: number; color: string; size?: number; sub?: string; life?: number }) {
     if (opts.priority < 4 && this.sim.x > this.track.finish - 1900) this.hud.tag(key, text, opts.color);
     else this.hud.shout(key, text, opts);
+  }
+
+  private tease() {
+    let best: Rival | null = null;
+    let gap = 1100;
+    for (let i = 0; i < this.world.rivals.length; i += 1) {
+      const t = this.world.rivals[i];
+      const d = Math.abs(this.world.sample(t, "x") - this.sim.x);
+      if (d < gap && !t.finished) {
+        gap = d;
+        best = this.rivals[i];
+      }
+    }
+    if (best) this.voice.say(best.id, this.copy.voices[best.id].tease);
   }
 
   private alignTip() {
@@ -1012,6 +1026,7 @@ export class RaceScene extends Phaser.Scene {
         this.fx.debris(s.x, s.y, s.speed, [0xd9954f, 0xe8433a, 0x2c2640]);
         this.fx.impact(s.x, s.y, 1, 0xc9a77c);
         this.shout("crash", c.crash, { priority: 4, color: "#ff7a4a", size: 66, sub: c.crashReason[e.reason], life: 1.7 });
+        this.tease();
         if (e.reason === "barrier") this.hud.tip(c.tips.barrier);
         else if (e.reason === "loop") this.hud.tip(this.touchActive ? c.tips.loopTouch : c.tips.loop);
         else this.alignTip();
@@ -1345,6 +1360,7 @@ export class RaceScene extends Phaser.Scene {
       if (crashing && r.crashStart < 0) {
         r.crashStart = t.head;
         r.view.react("crash");
+        if (this.phase === "race") this.voice.say(r.id, this.copy.voices[r.id].crash, true);
       }
       if (!crashing && r.crashStart >= 0) {
         r.crashStart = -1;
@@ -1352,7 +1368,8 @@ export class RaceScene extends Phaser.Scene {
       }
       const crashU = crashing ? Math.min(0.99, Math.max(0.01, (t.head - r.crashStart) / (DEFAULT_PARAMS.crashTime * CART_RULES[r.id].crashTime * STEP_HZ))) : 0;
       const near = Math.abs(fx - x) < 1500;
-      r.alpha += ((near ? 1 : 0.55) - r.alpha) * damp(4, dt);
+      const crowded = Math.abs(fx - x) < 240 && Math.abs(fy + r.lane - y) < 220;
+      r.alpha += ((crowded ? 0.7 : near ? 1 : 0.55) - r.alpha) * damp(4, dt);
       r.view.setAlpha(r.alpha);
       r.view.update(
         { x: fx, y: fy + r.lane, angle: fa, speed: this.world.sample(t, "speed"), crouch: (flags & FRAME_CROUCH) !== 0, charge: 0, air: (flags & FRAME_AIR) !== 0, spin: 0, accel: 0, bigAir: false, brace: false, paddling: (flags & FRAME_PADDLE) !== 0, distance: fx, crash: crashU, time: this.elapsed, countdown: this.phase === "countdown" },
@@ -1379,6 +1396,10 @@ export class RaceScene extends Phaser.Scene {
       const covered = lx !== null && this.underCallout(lx, ly, l.r.label, ls);
       l.r.label.setAlpha(this.phase === "countdown" || lx === null ? 0 : covered ? 0.2 : Math.abs(l.x - x) > 120 ? 1 : 0.85);
     }
+    const spots = new Map<CartId, { x: number; y: number }>();
+    for (const l of labels) if (this.phase === "race" && l.r.label.alpha > 0) spots.set(l.r.id, { x: l.r.label.x, y: l.r.label.y });
+    this.voice.update(dt, spots, ls);
+    for (const l of labels) if (this.voice.speaking(l.r.id)) l.r.label.setAlpha(0);
     const ghost = this.bridge.form.ghost;
     const showGhost = !!ghost && this.bridge.ghost;
     this.ghostView.setVisible(showGhost);
@@ -1946,11 +1967,13 @@ export class RaceScene extends Phaser.Scene {
               r.flash = 1;
               this.playerFlash = 1;
               if (ahead) {
+                this.voice.say(r.id, this.copy.voices[r.id].pass);
                 this.shout(`pass-${r.id}`, this.copy.passedBy[r.id], { priority: 3, color: "#ffb08a", size: 50 });
                 this.sfx(DOWNHILL_SFX.passDown);
                 this.cart.react("passedBy");
                 r.view.react("passed");
               } else {
+                this.voice.say(r.id, this.copy.voices[r.id].passed);
                 this.shout(`pass-${r.id}`, this.copy.passed[r.id], { priority: 3, color: "#7fe0c4", size: 54 });
                 this.sfx(DOWNHILL_SFX.passUp);
                 this.cart.react("passed");
