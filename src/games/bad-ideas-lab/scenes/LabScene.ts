@@ -344,12 +344,19 @@ export class LabScene extends Phaser.Scene {
     this.announce(this.copy.scene.intro(intro, how));
     const tall = this.hud.kind === "tall";
     const establish = tall && !this.ctx.reducedMotion;
-    if (establish) {
-      this.camera.set(this.camera.overviewPose());
+    const lookAtGoal = tall && Boolean(this.goal.point);
+    if (establish) this.camera.set(this.camera.overviewPose());
+    if (lookAtGoal) {
+      this.introCam = this.time.delayedCall(establish ? 900 : 300, () => {
+        this.camera.animateTo(this.goalPose(), 750);
+        this.introCam = this.time.delayedCall(3700, () => this.camera.animateTo(this.camera.base, 750));
+      });
+    } else if (establish) {
       this.introCam = this.time.delayedCall(900, () => this.camera.animateTo(this.camera.base, 750));
     }
     this.talkingUntil = Number.POSITIVE_INFINITY;
-    this.time.delayedCall(establish ? 1500 : 350, () => this.say(this.storyLine(this.hud.kind), 4600, level.guide ? 20 : 24));
+    const storyAt = lookAtGoal ? (establish ? 1700 : 400) : establish ? 1500 : 350;
+    this.time.delayedCall(storyAt, () => this.tellStory(4600));
     if (tall && !level.guide && !this.registry.get("cameraTip")) {
       this.time.delayedCall(6400, () => {
         if (this.mode !== "build" || this.registry.get("cameraTip") || this.carry) return;
@@ -748,7 +755,17 @@ export class LabScene extends Phaser.Scene {
 
   private repeatStory() {
     if (this.mode !== "build") return;
-    this.say(this.storyLine(this.hud.kind), 5200, this.level.guide ? 20 : 24);
+    this.tellStory(5200);
+  }
+
+  private tellStory(ms: number) {
+    this.say(this.storyLine(this.hud.kind), ms, this.level.guide ? 20 : 24);
+    this.goal.point?.();
+  }
+
+  private goalPose(): Pose {
+    const z = this.zone;
+    return { x: z.x + z.w / 2, y: z.y + z.h / 2, zoom: this.camera.base.zoom };
   }
 
   private say(text: string, duration = 2400, wrap = 30) {
@@ -2145,8 +2162,7 @@ export class LabScene extends Phaser.Scene {
       this.lina.set("yay");
     }
     if (this.frame.kind === "tall") {
-      const z = this.zone;
-      this.camera.animateTo(level.goal.type === "button" ? this.camera.overviewPose() : { x: z.x + z.w / 2, y: z.y + z.h / 2, zoom: this.camera.base.zoom }, 450);
+      this.camera.animateTo(level.goal.type === "button" ? this.camera.overviewPose() : this.goalPose(), 450);
     } else {
       this.say(this.text.cheer ?? this.text.win, 2600, 26);
     }

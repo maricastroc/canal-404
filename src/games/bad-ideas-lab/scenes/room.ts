@@ -4,6 +4,7 @@ import type { LabCopy } from "../copy";
 import { LEVELS } from "../levels";
 import type { LabSfx } from "../sounds";
 import { Bubble, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
+import { HOPPER_ORIGIN_X } from "./world";
 
 type Memento = "target" | "pixel" | "toaster" | "juice" | "tv" | "bell" | "pet" | "record" | "pins";
 
@@ -131,9 +132,9 @@ export class RoomView {
     if (this.has("pet") && at.pet !== undefined) {
       const x = at.pet;
       this.floorShadow(x, 250);
-      s.add.image(x - 92, FLOOR_Y + 2, "hopper").setOrigin(0.5, 1).setScale(0.55).setDepth(DEPTH.item);
-      s.add.image(x - 14, FLOOR_Y - 18, "kibble-full").setScale(0.62).setDepth(DEPTH.item);
-      s.add.image(x - 14, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setScale(0.78).setDepth(DEPTH.item + 0.01);
+      s.add.image(x - 92, FLOOR_Y + 2, "hopper").setOrigin(HOPPER_ORIGIN_X, 1).setScale(0.55).setDepth(DEPTH.item);
+      s.add.image(x - 24, FLOOR_Y - 23, "kibble-full").setScale(0.72, 0.62).setDepth(DEPTH.item);
+      s.add.image(x - 24, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setScale(0.78).setDepth(DEPTH.item + 0.01);
       this.cat = s.add.image(x + 74, FLOOR_Y + 4, "cat-sleep").setOrigin(0.5, 1).setScale(0.85).setFlipX(true).setDepth(DEPTH.front);
       const zzz = cartoonText(s, x + 64, FLOOR_Y - 76, this.text.zzz, { size: 24, color: "#fbf5e6", font: this.fonts.display, stroke: 0.18 }).setDepth(DEPTH.front);
       if (!this.reduced) {
