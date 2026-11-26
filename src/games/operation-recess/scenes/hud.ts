@@ -107,7 +107,7 @@ export class RecessHud {
     rule.lineStyle(3, INK_HEX, 0.15);
     rule.lineBetween(18, 68, 362, 68);
     rule.lineBetween(18, 116, 362, 116);
-    const head = scene.add.image(36, 92, "mon-face-watch").setOrigin(MON_HEAD.x, MON_HEAD.y).setScale(36 / MON_HEAD.h);
+    const head = scene.add.image(36, 92, "mon-common-face-watch").setOrigin(MON_HEAD.x, MON_HEAD.y).setScale(36 / MON_HEAD.h);
     const label = cartoonText(scene, 62, 92, this.copy.monitors, { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
     this.monitorLabel = label;
     this.monitorText = cartoonText(scene, 364, 92, "0/0", { size: 26, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(1, 0.5);
@@ -174,7 +174,7 @@ export class RecessHud {
     for (let i = 0; i < HEARTS; i += 1) hearts.push(scene.add.image(0, 0, "hud-heart-on"));
     const score = cartoonText(scene, 0, 0, "0", { size: ROW.score * D, color: "#ffc83d", font: fonts.display, stroke: 0.2 }).setOrigin(1, 0.5);
     const countBg = scene.add.graphics();
-    const countIcon = scene.add.image(0, 0, "mon-face-watch").setOrigin(MON_HEAD.x, MON_HEAD.y);
+    const countIcon = scene.add.image(0, 0, "mon-common-face-watch").setOrigin(MON_HEAD.x, MON_HEAD.y);
     const count = cartoonText(scene, 0, 0, "0/0", { size: 16 * D, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5, 0.5);
     const trackBg = scene.add.graphics();
     const track = scene.add.graphics();

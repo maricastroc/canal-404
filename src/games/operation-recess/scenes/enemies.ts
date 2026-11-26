@@ -34,7 +34,9 @@ export type HitResult = "hit" | "block" | "kill" | "dodge" | null;
 const MON_SCALE = 0.9;
 const OVERHEAD = { x: 120, y: 160 };
 const TURN_SLACK = 24;
-const FACE_POSES = new Set(["walk-a", "walk-b", "point"]);
+const FACE_POSES = new Set(["walk-a", "walk-b", "point", "cross"]);
+const HEAD_TOP: Record<string, number> = { common: 3, guard: 14, runner: 3 };
+const STYLE_ART: Record<EnemyStyle, string> = { patrol: "common", mixed: "common", guard: "guard", rush: "runner" };
 const SAY_EVERY = 3200;
 const LOST_MS = 900;
 let slot = 0;
@@ -78,6 +80,7 @@ export abstract class Enemy {
     x: number,
     feet: number,
     public hp: number,
+    protected art: string = kind,
   ) {
     const scene = api.scene;
     this.spawnX = x;
@@ -86,9 +89,9 @@ export abstract class Enemy {
     this.body = this.rect.body as Phaser.Physics.Arcade.Body;
     this.body.setMaxVelocity(700, 1500);
     const depth = 15 + (slot++ % 400) * 0.002;
-    this.sprite = scene.add.image(x, feet, `mon-${kind}-walk-a`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth);
+    this.sprite = scene.add.image(x, feet, `mon-${art}-walk-a`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth);
     this.shadow = scene.add.image(x, feet + 2, "blob").setDepth(14).setDisplaySize(150, 30);
-    if (kind === "common") this.face = scene.add.image(x, feet, "mon-face-watch").setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth + 0.001).setVisible(false);
+    if (kind === "common") this.face = scene.add.image(x, feet, `mon-${art}-face-watch`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth + 0.001).setVisible(false);
   }
 
   protected express(face: Expression, ms: number) {
@@ -98,7 +101,7 @@ export abstract class Enemy {
 
   protected bark(pool: readonly string[], force = false) {
     if (!force && this.t - this.saidAt < SAY_EVERY) return;
-    if (this.api.say(pick(pool), () => (this.dead ? null : { x: this.x, y: this.body.top - 26 - this.lift }))) this.saidAt = this.t;
+    if (this.api.say(pick(pool), () => (this.dead ? null : { x: this.x, y: this.headTop + 12 }))) this.saidAt = this.t;
   }
 
   protected hop(px: number) {
@@ -136,6 +139,10 @@ export abstract class Enemy {
     return this.body.blocked.down || this.body.touching.down;
   }
 
+  get headTop() {
+    return this.body.bottom + 2 - this.lift - (this.sprite.height - (HEAD_TOP[this.art] ?? 4)) * MON_SCALE;
+  }
+
   bounds() {
     const b = this.body;
     return new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height);
@@ -147,7 +154,7 @@ export abstract class Enemy {
   }
 
   private applyTex() {
-    const key = `mon-${this.kind}-${this.pose}${this.mirrored && this.facing < 0 ? "-l" : ""}`;
+    const key = `mon-${this.art}-${this.pose}${this.mirrored && this.facing < 0 ? "-l" : ""}`;
     if (this.sprite.texture.key !== key) this.sprite.setTexture(key);
   }
 
@@ -327,7 +334,7 @@ export abstract class Enemy {
     f.setVisible(show);
     if (!show) return;
     const s = this.sprite;
-    const key = `mon-face-${face}`;
+    const key = `mon-${this.art}-face-${face}`;
     if (f.texture.key !== key) f.setTexture(key);
     f.setPosition(s.x, s.y).setScale(s.scaleX, s.scaleY).setAngle(s.angle).setFlipX(s.flipX).setAlpha(s.alpha);
     if (s.isTinted) f.setTint(s.tintTopLeft);
@@ -361,7 +368,7 @@ export class CommonMonitor extends Enemy {
     feet: number,
     private style: EnemyStyle = "patrol",
   ) {
-    super(api, "common", x, feet, 2);
+    super(api, "common", x, feet, 2, STYLE_ART[style]);
     this.tune = COMMON[style];
     this.state = style === "guard" ? "wait" : "patrol";
     this.mood = "watch";
@@ -422,7 +429,7 @@ export class CommonMonitor extends Enemy {
     this.tex("windup");
     this.telegraph(this.tune.windup);
     this.api.sfx("shout", 0.7);
-    this.alarm = this.api.warn(this.x, this.body.top - 70, this.tune.windup);
+    this.alarm = this.api.warn(this.x, this.headTop - 30, this.tune.windup);
   }
 
   protected think(t: number, dt: number, h: HeroView) {
@@ -457,7 +464,7 @@ export class CommonMonitor extends Enemy {
         return;
       case "wait": {
         this.body.setVelocityX(0);
-        this.tex(t < this.pointUntil ? "point" : "walk-a");
+        this.tex(t < this.pointUntil ? "point" : this.art === "guard" ? "cross" : "walk-a");
         if (Math.abs(dx) < 760 && level) {
           this.faceHero(h, TURN_SLACK);
           if (!this.called) {

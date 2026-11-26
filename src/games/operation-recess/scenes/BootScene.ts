@@ -91,6 +91,10 @@ const MON: Record<string, string[]> = {
   shield: ["walk-a", "walk-b", "block", "bash", "open", "hurt"],
 };
 const FACES = ["watch", "spot", "lost"];
+const CAST: Record<string, { h: number; poses: string[] }> = {
+  guard: { h: 256, poses: ["walk-a", "walk-b", "windup", "attack", "hurt", "point", "cross"] },
+  runner: { h: 278, poses: ["walk-a", "walk-b", "windup", "attack", "hurt", "point"] },
+};
 const BOSS = ["idle", "puff", "blow", "stomp", "charge", "raise", "slam", "dizzy", "hurt", "beaten"];
 const KIDS = ["deco-a", "deco-b", "mila-a", "mila-b", "lina-a", "lina-b"];
 
@@ -149,7 +153,8 @@ export class BootScene extends Phaser.Scene {
         if (kind === "shield") this.load.svg(`mon-${kind}-${p}-l`, `${BASE}mon-${kind}-${p}-l.svg`, { width: 260, height: 256 });
       }
     }
-    for (const f of FACES) this.load.svg(`mon-face-${f}`, `${BASE}mon-face-${f}.svg`, { width: 260, height: 256 });
+    for (const [art, { h, poses }] of Object.entries(CAST)) for (const p of poses) this.load.svg(`mon-${art}-${p}`, `${BASE}mon-${art}-${p}.svg`, { width: 260, height: h });
+    for (const art of ["common", ...Object.keys(CAST)]) for (const f of FACES) this.load.svg(`mon-${art}-face-${f}`, `${BASE}mon-${art}-face-${f}.svg`, { width: 260, height: CAST[art]?.h ?? 256 });
     for (const p of BOSS) this.load.svg(`boss-${p}`, `${BASE}boss-${p}.svg`, { width: 380, height: 446 });
     for (const k of KIDS) this.load.svg(`kid-${k}`, `${BASE}kid-${k}.svg`, { width: 150, height: 212 });
     for (const [key, width, height] of PROPS) this.load.svg(key, `${BASE}${key}.svg`, { width, height });

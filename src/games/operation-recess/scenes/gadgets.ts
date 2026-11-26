@@ -242,7 +242,7 @@ export class Watcher {
     const scene = api.scene;
     this.x = cx(col) + TILE / 2;
     this.sprite = scene.add.image(this.x, WATCH_SIT, "mon-common-walk-a").setOrigin(0.5, 1).setScale(0.86).setDepth(4.95);
-    this.face = scene.add.image(this.x, WATCH_SIT, "mon-face-watch").setOrigin(0.5, 1).setScale(0.86).setDepth(4.951).setVisible(false);
+    this.face = scene.add.image(this.x, WATCH_SIT, "mon-common-face-watch").setOrigin(0.5, 1).setScale(0.86).setDepth(4.951).setVisible(false);
     const booth = scene.add.graphics().setDepth(8.7);
     booth.fillStyle(INK_HEX, 1);
     booth.fillRoundedRect(this.x - 92, FLOOR_Y - 118, 184, 120, 10);
@@ -368,7 +368,7 @@ export class Watcher {
 
   private showFace(face: "watch" | "spot" | null) {
     this.face.setVisible(face !== null).setFlipX(this.sprite.flipX);
-    if (face) this.face.setTexture(`mon-face-${face}`);
+    if (face) this.face.setTexture(`mon-common-face-${face}`);
   }
 
   private stand(y: number) {
