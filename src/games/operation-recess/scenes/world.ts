@@ -80,6 +80,29 @@ function drawBalcony(scene: Phaser.Scene, x: number, y: number, w: number) {
   g.fillRect(x + 8, y + 1, w - 16, 3);
 }
 
+function benchBase(scene: Phaser.Scene, x: number, top: number, w: number) {
+  const h = Math.round(FLOOR_Y - top + 4);
+  const key = `bench-base-${w}-${h}`;
+  if (!scene.textures.exists(key)) {
+    const g = scene.make.graphics({}, false);
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(0, 0, w, h, { tl: 6, tr: 6, bl: 0, br: 0 });
+    g.fillStyle(0xcfc6b0, 1);
+    g.fillRoundedRect(4, 4, w - 8, h - 4, { tl: 4, tr: 4, bl: 0, br: 0 });
+    g.fillStyle(0xe6dfcc, 1);
+    g.fillRect(4, 4, w - 8, 10);
+    g.fillStyle(0xa99f86, 1);
+    g.fillRect(4, 14, w - 8, 4);
+    g.lineStyle(3, 0xa99f86, 1);
+    for (const fx of [0.33, 0.67]) g.lineBetween(Math.round(w * fx), 22, Math.round(w * fx), h - 4);
+    g.fillStyle(0xa99f86, 0.5);
+    for (const [px, py] of [[0.12, 0.55], [0.5, 0.7], [0.82, 0.45]]) g.fillCircle(w * px, 18 + (h - 22) * py, 3);
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+  scene.add.image(x, top - 2, key).setOrigin(0, 0).setDepth(3.98);
+}
+
 function drawShelf(scene: Phaser.Scene, x: number, y: number, w: number) {
   wallShadow(scene, x, y + 22, w);
   const key = `shelf-${w}`;
@@ -126,8 +149,11 @@ function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
     return;
   }
   if (pl.art === "bench" && pl.w === 3) {
-    contact(scene, x + w / 2, w * 0.95);
-    scene.add.image(x + w / 2, y - 6, "bench").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w, 100 * (w / 250));
+    const k = w / 250;
+    const legs = y - 6 + 96 * k;
+    benchBase(scene, x - 12, legs, w + 24);
+    contact(scene, x + w / 2, w + 40);
+    scene.add.image(x + w / 2, y - 6, "bench").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w, 100 * k);
     return;
   }
   if (pl.art === "desk" && FLOOR_Y - y < 220) {
