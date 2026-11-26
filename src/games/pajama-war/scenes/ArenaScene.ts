@@ -837,7 +837,7 @@ export class ArenaScene extends Phaser.Scene {
 
     if (active) {
       const warm = this.mode === "play" ? Phaser.Math.Clamp(this.matchTime / 15000, 0, 1) : 1;
-      const view: BrainView = { fighters: this.fighters, pillows: this.pillows, room: this.room, heat, warm, playerSafeUntil: this.playerSafeUntil, targets: this.targets, hider: this.watchHiding(t), special: this.spawner?.spot ?? null };
+      const view: BrainView = { fighters: this.fighters, pillows: this.pillows, room: this.room, heat, warm, windup: this.attract ? PILLOW.windup : this.aiWindup, playerSafeUntil: this.playerSafeUntil, targets: this.targets, hider: this.watchHiding(t), special: this.spawner?.spot ?? null };
       for (const f of this.fighters) {
         if (!f.alive) {
           f.update(t, dt, 0, 0);

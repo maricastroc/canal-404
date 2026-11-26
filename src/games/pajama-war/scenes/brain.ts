@@ -2,13 +2,14 @@ import type { ArenaDef } from "../arenas";
 import { BODY, FORT, HP, PILLOW, type KidId } from "../config";
 import { firstTallHit, FLOOR_Y, lineBlocked, Navigator, SHOT_PAD, traceReaches, traceShot, type Box, type NavGrid, type Point, type SteerOut } from "../nav";
 
-type Style = { near: number; far: number; dodge: number; retreatAt: number; strafe: number; lead: number; bank: number; greed: number; backoff: number };
+type Style = { near: number; far: number; dodge: number; retreatAt: number; strafe: number; lead: number; bank: number; greed: number; backoff: number; burst: number; hold: number };
 type FortStyle = { wreck: number; streak: number; expose: number; aware: number; patience: number };
+type Beat = "burst" | "steady" | "hold";
 
 const STYLE: Record<KidId, Style> = {
-  lia: { near: 280, far: 470, dodge: 0.62, retreatAt: 3, strafe: 0.9, lead: 0.5, bank: 0.3, greed: 1.3, backoff: 150 },
-  nico: { near: 470, far: 690, dodge: 0.32, retreatAt: 3, strafe: 0.55, lead: 0.75, bank: 0.65, greed: 0.95, backoff: 40 },
-  bia: { near: 360, far: 560, dodge: 0.38, retreatAt: 2, strafe: 0.65, lead: 0.6, bank: 0.4, greed: 1.1, backoff: 70 },
+  lia: { near: 280, far: 470, dodge: 0.62, retreatAt: 3, strafe: 0.9, lead: 0.5, bank: 0.3, greed: 1.3, backoff: 150, burst: 0.25, hold: 0.3 },
+  nico: { near: 470, far: 690, dodge: 0.32, retreatAt: 3, strafe: 0.55, lead: 0.75, bank: 0.65, greed: 0.95, backoff: 40, burst: 0.38, hold: 0.22 },
+  bia: { near: 360, far: 560, dodge: 0.38, retreatAt: 2, strafe: 0.65, lead: 0.6, bank: 0.4, greed: 1.1, backoff: 70, burst: 0.32, hold: 0.26 },
 };
 
 const FORT_STYLE: Record<KidId, FortStyle> = {
@@ -46,6 +47,7 @@ export type BrainView = {
   room: BrainWorld;
   heat: number;
   warm: number;
+  windup: number;
   playerSafeUntil: number;
   targets: Map<BrainBody, BrainBody | null>;
   hider: BrainBody | null;
@@ -68,6 +70,11 @@ export class Brain {
   fort: FortStyle;
   private fortArena: boolean;
   private wreckStreak = 0;
+  private beat: Beat = "steady";
+  private beatRun = 0;
+  private shift = false;
+  private rest = 0;
+  private ready = true;
   private dangerSeen = 0;
   private retargetAt = 0;
   private planAt = 0;
@@ -233,6 +240,8 @@ export class Brain {
   private plan(t: number, v: BrainView) {
     const me = this.me;
     const grid = v.room.nav;
+    const shift = this.shift;
+    this.shift = false;
     this.holdUntil = 0;
     if (this.mode === "grab" && v.special) {
       this.nav.setGoal(v.special.x, v.special.y, t, 6);
@@ -244,7 +253,8 @@ export class Brain {
     const { near, far } = this.band(t, v);
     const best = { x: 0, y: 0, score: Infinity };
     const consider = (x: number, y: number, bonus = 0) => {
-      const s = (this.mode === "cover" ? this.scoreCover(x, y, v) : this.mode === "roam" ? this.scoreRoam(x, y, v) : this.scoreEngage(x, y, v, near, far)) + bonus;
+      let s = (this.mode === "cover" ? this.scoreCover(x, y, v) : this.mode === "roam" ? this.scoreRoam(x, y, v) : this.scoreEngage(x, y, v, near, far)) + bonus;
+      if (shift && Math.hypot(x - me.x, y - me.y) < 100) s += 220;
       if (s < best.score) {
         best.score = s;
         best.x = x;
@@ -265,7 +275,7 @@ export class Brain {
         if (c >= 0) consider(grid.centerX(c), grid.centerY(c));
       }
     }
-    if (goal && !this.nav.blocked) consider(goal.x, goal.y, -70);
+    if (goal && !this.nav.blocked && !shift) consider(goal.x, goal.y, -70);
     consider(me.x, me.y, this.nav.blocked ? 300 : 30);
     if (best.score < Infinity) {
       if (Math.hypot(best.x - me.x, best.y - me.y) < 26) this.nav.clear();
@@ -466,7 +476,13 @@ export class Brain {
     const pace = 0.82 + skill * 0.18;
     this.validate(mx * pace, my * pace, v);
 
-    if (tg && me.canThrow(t) && t >= this.hesitateUntil) this.aim(t, v, skill);
+    const ready = me.canThrow(t);
+    if (ready && !this.ready) {
+      this.hesitateUntil = Math.max(this.hesitateUntil, t + this.rest);
+      this.rest = 0;
+    }
+    this.ready = ready;
+    if (tg && ready && t >= this.hesitateUntil) this.aim(t, v, skill);
     return out;
   }
 
@@ -516,8 +532,27 @@ export class Brain {
     if (wrecking) this.fortShots += 1;
     if (this.fortArena) this.wreckStreak = wrecking ? this.wreckStreak + 1 : 0;
     const opening = victim.readyAt > t + 280 || victim.stunUntil > t ? 0.6 : 1;
-    const pause = (380 + rng() * 620) * (1.25 - skill * 0.6 - v.heat * 0.35) * (victim.isPlayer ? 1.15 + ease * 0.6 : 1) * opening * (me.special ? 0.6 : 1);
-    this.hesitateUntil = t + me.stats.cooldown + Math.max(60, pause);
+    const press = (1.25 - skill * 0.6 - v.heat * 0.35) * (victim.isPlayer ? 1.15 + ease * 0.6 : 1) * opening * (me.special ? 0.6 : 1);
+    this.rest = this.nextPause(press, v);
+  }
+
+  private nextPause(press: number, v: BrainView) {
+    const rng = this.rng;
+    const burst = this.style.burst + v.heat * 0.2;
+    const hold = this.style.hold * (1 - v.heat * 0.3);
+    const roll = rng();
+    let beat: Beat = roll < burst ? "burst" : roll < burst + hold ? "hold" : "steady";
+    if (beat === this.beat && this.beatRun >= (beat === "hold" ? 1 : 2)) beat = beat !== "steady" ? "steady" : rng() < burst / (burst + hold) ? "burst" : "hold";
+    this.beatRun = beat === this.beat ? this.beatRun + 1 : 1;
+    this.beat = beat;
+    const base = Math.max(0, 690 * press - v.windup) / (burst * 0.12 + hold * 2 + (1 - burst - hold));
+    if (beat === "burst") return base * rng() * 0.24;
+    if (beat === "steady") return Math.max(0, base * (0.6 + rng() * 0.8) - 50) + rng() * 140;
+    if (rng() < 0.5) {
+      this.shift = true;
+      this.planAt = 0;
+    }
+    return Math.max(200 + rng() * 160, base * (1.6 + rng() * 0.8));
   }
 
   private bankShot(px: number, py: number, v: BrainView) {
