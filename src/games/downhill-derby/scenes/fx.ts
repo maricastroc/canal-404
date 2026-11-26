@@ -79,6 +79,11 @@ export class WorldFx {
     }
   }
 
+  drip(x: number, y: number, speed: number) {
+    const life = 0.35 + this.rnd() * 0.25;
+    this.push({ x: x + (this.rnd() - 0.5) * 90, y, vx: -speed * (0.05 + this.rnd() * 0.08), vy: 40 + this.rnd() * 80, life, max: life, size: 8 + this.rnd() * 6, color: 0x6fc3ef, kind: "puff", spin: 0, rot: 0, gravity: 900 });
+  }
+
   sparks(x: number, y: number, speed: number) {
     for (let i = 0; i < 2; i += 1) {
       const life = 0.18 + this.rnd() * 0.12;

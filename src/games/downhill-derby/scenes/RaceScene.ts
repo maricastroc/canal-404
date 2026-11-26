@@ -214,6 +214,7 @@ export class RaceScene extends Phaser.Scene {
   private surfaceTips = new Set<string>();
   private awningTips = 0;
   private dustyOn = false;
+  private wet = 0;
 
   constructor() {
     super("race");
@@ -646,6 +647,7 @@ export class RaceScene extends Phaser.Scene {
     this.cart.setDusty(false);
     this.helmetOn = false;
     this.dustyOn = false;
+    this.wet = 0;
     this.surfaceTips.clear();
     this.rollCycle.clear();
     this.ambient.reset();
@@ -1039,7 +1041,10 @@ export class RaceScene extends Phaser.Scene {
         }
         const kind = e.kind;
         this.sfx(kind === "cone" ? DOWNHILL_SFX.cone : kind === "line" || kind === "hose" ? DOWNHILL_SFX.line : DOWNHILL_SFX.crate);
-        if (kind === "hose") this.fx.impact(s.x, s.y - 40, 0.8, 0x8fd4f7);
+        if (kind === "hose") {
+          this.fx.impact(s.x, s.y - 40, 0.8, 0x8fd4f7);
+          if (e.penalized) this.wet = 3;
+        }
         if (e.penalized) this.cart.react("hit");
         const heavy = kind === "barrier" || kind === "truck" || kind === "fence";
         if (e.bounced) {
@@ -1414,6 +1419,10 @@ export class RaceScene extends Phaser.Scene {
     this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, this.vw / (2 * this.cam.zoom));
     this.updateSigns(x);
     this.drawTrail(dt, x, y, angle, speed);
+    if (this.wet > 0 && dt > 0) {
+      this.wet = Math.max(0, this.wet - dt);
+      if (Math.random() < dt * 34 * Math.min(1, this.wet)) this.fx.drip(x - Math.cos(angle) * 20, y - 60, speed);
+    }
     this.drawLips(x, speed);
     this.drawOverlay(x, y, land);
     if (sim.mode === "crash" && dt > 0 && crash > 0.55 && Math.random() < dt * 6) this.fx.stars(x + 20, y - 150);

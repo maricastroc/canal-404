@@ -40,7 +40,7 @@ export function placed(b: Builder, key: string, x: number, scale: number, depth:
   return { img, w, y };
 }
 
-export function facadeRow(b: Builder, x0: number, x1: number, blocked: [number, number][]) {
+export function facadeRow(b: Builder, x0: number, x1: number, blocked: [number, number][], sequence: readonly string[] = SEQUENCE) {
   let x = x0;
   let i = 0;
   let seed = 977;
@@ -49,7 +49,7 @@ export function facadeRow(b: Builder, x0: number, x1: number, blocked: [number, 
     return seed / 4294967296;
   };
   while (x < x1) {
-    const key = `s-${SEQUENCE[i % SEQUENCE.length]}`;
+    const key = `s-${sequence[i % sequence.length]}`;
     const src = b.scene.textures.get(key).getSourceImage();
     const w = ((src.width || 300) / SAMPLE_RES - SIDE * 2) * FACADE_SCALE;
     const hit = blocked.find(([a, c]) => x + w + 30 > a && x - 30 < c);
