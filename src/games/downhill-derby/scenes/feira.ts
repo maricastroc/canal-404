@@ -38,6 +38,20 @@ export const CIDINHA: Extra = { id: "cidinha", kind: "full", idle: "f-dona-cidin
 
 const STALL_SCALE = 0.84;
 const STALLS = ["banca-frutas", "banca-verduras", "banca-pastel", "banca-flores"] as const;
+const MARKET_STREET = ["facade-mercadinho-pessego", "facade-sobrado-agua", "facade-puxadinho-ceu", "facade-terrea-lilas", "facade-mercadinho-pessego", "facade-sobrado-rosa", "facade-terrea-amarelo"];
+
+export type StreetStop = { x: number; vendor: 0 | 1 | null; trolley: boolean };
+
+export function streetStops(course: Course): StreetStop[] {
+  const set = course.set as FeiraSet;
+  return [
+    { x: course.start + 3600, vendor: 0, trolley: false },
+    { x: course.start + 8600, vendor: null, trolley: true },
+    { x: set.market.x1 + 2400, vendor: 1, trolley: false },
+    { x: set.fruit[1].x1 + 2600, vendor: null, trolley: true },
+  ];
+}
+
 const CLOTH: [number, number][] = [
   [0xffc83d, 0xfffaf0],
   [0x63d6c1, 0xfffaf0],
@@ -71,8 +85,8 @@ export function dressFeira(b: Builder, course: Course, copy: RaceCopy): SampleSp
   ];
   for (const x0 of set.awnings) blocked.push([x0 - 40, x0 + AWNING.length + 40]);
   const gaps = awningGaps(set);
-  facadeRow(b, road.x0 + 600, set.stairs.x0 - 200, blocked.filter(([a]) => a < set.market.x0 || a > set.market.x1).concat([[set.market.x0 - 100, set.market.x1 + 300]]));
-  facadeRow(b, set.market.x0 - 100, set.market.x1 + 300, [[set.crateRamp.x0 - 300, set.crateRamp.x1 + 100]]);
+  facadeRow(b, road.x0 + 600, set.stairs.x0 - 200, blocked.filter(([a]) => a < set.market.x0 || a > set.market.x1).concat([[set.market.x0 - 100, set.market.x1 + 300]]), MARKET_STREET);
+  facadeRow(b, set.market.x0 - 100, set.market.x1 + 300, [[set.crateRamp.x0 - 300, set.crateRamp.x1 + 100]], MARKET_STREET);
   poleLine(b, road.x0 + 1500, set.market.x0 - 200);
   poleLine(b, set.market.x1 + 400, set.stairs.x0 - 300);
   for (const tx of [course.start + 3000, course.start + 7800, set.market.x1 + 1400, set.stairs.x0 - 1500]) if (!blocked.some(([a, c]) => tx + 140 > a && tx - 140 < c)) placed(b, "s-ipe", tx, 0.72, -7.4, "center", 6);
@@ -80,20 +94,45 @@ export function dressFeira(b: Builder, course: Course, copy: RaceCopy): SampleSp
   placed(b, "s-lixeira", set.market.x1 + 900, 0.72, -7.2, "center", 6);
   for (const f of set.fruit) placed(b, "f-caixotes-tombados", f.crate, 0.62, -7, "center", 4);
   drawFrontWall(b, road.x0, road.x1);
+  for (const stop of streetStops(course)) sidewalkStall(b, stop);
+  bunting(b, course.start + 1500, set.fruit[0].x0 - 300);
   bunting(b, set.market.x0 + 600, set.market.x1 - 300);
+  bunting(b, set.market.x1 + 600, set.market.x1 + 3300);
+  bunting(b, set.fruit[1].x1 + 500, set.stairs.x0 - 1200);
   gate(b, set.market.x0 + 260, copy.feira.fair, 0x2fa996);
   closingTime(b, course, copy);
   stairsWall(b, course, set.stairs.x0 - 200, set.stairs.x1 + 600);
   plaza(b, course, set.plaza, copy);
   for (const [a, c] of gaps) b.taken.push([a + 40, c - 40]);
-  return {
-    neighbors: [
-      { who: "zeze", x: gaps[3][0] + 160 },
-      { who: "tonho", x: gaps[5][0] + 360 },
-      { who: "juninho", x: set.market.x1 + 2200 },
-    ],
-    kite: null,
+  return { neighbors: [], kite: null };
+}
+
+function sidewalkStall(b: Builder, stop: StreetStop) {
+  const x = stop.x;
+  const crate = (key: string, cx: number, scale: number, depth: number, lift = 0) => {
+    const { img } = placed(b, key, cx, scale, depth, "center", 4);
+    img.setY(img.y - lift);
+    return img;
   };
+  crate("f-caixote-laranja", x - 150, 0.78, -7.3);
+  crate("f-caixote", x - 10, 0.8, -7.32);
+  crate("f-caixote", x - 18, 0.8, -7.31, 62);
+  crate("f-caixote-laranja", x + 120, 0.78, -7.3);
+  if (stop.trolley) {
+    const tx = x + 290;
+    const y = b.floorY(tx - 60, tx + 60) + 4;
+    const img = b.add(b.chunkFor(tx), b.scene.add.image(tx, y, "f-carrinho-feira"));
+    const h = img.texture.getSourceImage().height || 285;
+    img.setOrigin(0.5, 1 - (10 * SAMPLE_RES) / h).setScale(108 / (h - 20 * SAMPLE_RES)).setDepth(-7.28);
+  } else {
+    for (const [dx, lift] of [[250, 0], [300, 0], [275, 38]] as const) {
+      const mx = x + dx;
+      const img = b.add(b.chunkFor(mx), b.scene.add.image(mx, b.floorY(mx - 30, mx + 30) + 2 - lift, "f-melancia"));
+      const h = img.texture.getSourceImage().height || 108;
+      img.setOrigin(0.5, 1 - (6 * SAMPLE_RES) / h).setScale(46 / (h - 12 * SAMPLE_RES)).setDepth(-7.29);
+    }
+  }
+  b.taken.push([x - 240, x + 360]);
 }
 
 function closingTime(b: Builder, course: Course, copy: RaceCopy) {
