@@ -82,7 +82,7 @@ test.describe("scoreboard with the backend", () => {
     const first = await (await submitted).json();
     expect(first.run).toMatchObject({ verification: "replayed", eligible: true });
     expect(first.board).toMatchObject({ position: expect.any(Number), best: { metrics: [1, expect.any(Number)] } });
-    await expect(board.getByRole("status")).toContainText(/Você entrou no placar|Novo recorde pessoal!|Recorde do canal!|Placar inaugurado/, { timeout: simTime(15_000) });
+    await expect(board.getByRole("status")).toContainText(/Você entrou no placar|Novo recorde pessoal!|Você empatou com o recorde do canal!|Recorde do canal!|Placar inaugurado/, { timeout: simTime(15_000) });
     await expect(board.getByRole("link", { name: "Ver o fliperama de recordes" })).toHaveAttribute("href", "/records?game=bad-ideas-lab&level=pixel");
 
     await result.getByRole("button", { name: "Refazer fase" }).click();
