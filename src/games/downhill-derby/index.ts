@@ -1,8 +1,9 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { DEFAULT_CAMERA, InputState } from "./input";
+import { settleGoals } from "./goals";
 import { raceResult } from "./result";
-import { addWin, isUnlocked, loadSave, updateSave } from "./save";
+import { addWin, isUnlocked, loadSave, updateSave, writeSave } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { GarageScene, type GarageData, type GarageHost } from "./scenes/GarageScene";
@@ -88,8 +89,10 @@ function mount(ctx: GameHostContext): GameInstance {
     },
     onShow: (points) => ctx.onEvent({ type: "score", score: points }),
     onFinish: (finish: RaceFinish) => {
-      const wins = loadSave().wins;
-      const result = raceResult(finish, ctx.locale, unlockedNow, RACE_COURSES.every((id) => Object.keys(wins[id] ?? {}).length > 0));
+      const save = loadSave();
+      const goals = settleGoals(save, finish.course, finish.cart, finish.stats, finish.time);
+      writeSave(save);
+      const result = raceResult(finish, ctx.locale, unlockedNow, RACE_COURSES.every((id) => Object.keys(save.wins[id] ?? {}).length > 0), goals);
       unlockedNow = null;
       ctx.onEvent({ type: "score", score: result.score });
       ctx.onEvent({ type: "finished", result });

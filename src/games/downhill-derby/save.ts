@@ -9,10 +9,20 @@ export type TrackRecord = { time: number; show: number; splits: number[] };
 
 export type TrackWins = Partial<Record<CartId, number>>;
 
-export type DerbySave = { cart: CartId; ghost: boolean; unlocked: CartId[]; tracks: Partial<Record<CourseId, TrackRecord>>; wins: Partial<Record<CourseId, TrackWins>> };
+export type FeatId = "gnome" | "clean" | "awnings" | "pigeons" | "loop" | "pipe";
+
+export const FEATS: Readonly<Record<CourseId, readonly FeatId[]>> = {
+  arlindo: ["gnome", "clean"],
+  feira: ["awnings", "pigeons"],
+  antena: ["loop", "pipe"],
+};
+
+export type GoalBook = { feats: Partial<Record<CourseId, FeatId[]>>; champions: Partial<Record<CourseId, CartId[]>> };
+
+export type DerbySave = GoalBook & { cart: CartId; ghost: boolean; unlocked: CartId[]; tracks: Partial<Record<CourseId, TrackRecord>>; wins: Partial<Record<CourseId, TrackWins>> };
 
 export function emptySave(): DerbySave {
-  return { cart: "deco", ghost: false, unlocked: [], tracks: {}, wins: {} };
+  return { cart: "deco", ghost: false, unlocked: [], tracks: {}, wins: {}, feats: {}, champions: {} };
 }
 
 function normalizeRecord(value: unknown): TrackRecord | null {
@@ -48,6 +58,20 @@ function normalizeSave(value: Json): DerbySave {
     for (const course of RACE_COURSES) {
       const wins = normalizeWins(value.wins[course]);
       if (wins) save.wins[course] = wins;
+    }
+  }
+  if (isRecord(value.feats)) {
+    for (const course of RACE_COURSES) {
+      const list = value.feats[course];
+      const feats = Array.isArray(list) ? FEATS[course].filter((f) => list.includes(f)) : [];
+      if (feats.length > 0) save.feats[course] = feats;
+    }
+  }
+  if (isRecord(value.champions)) {
+    for (const course of RACE_COURSES) {
+      const list = value.champions[course];
+      const carts = Array.isArray(list) ? CART_IDS.filter((c) => list.includes(c)) : [];
+      if (carts.length > 0) save.champions[course] = carts;
     }
   }
   if (!isUnlocked(save, save.cart)) save.cart = "deco";

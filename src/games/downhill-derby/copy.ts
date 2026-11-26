@@ -1,5 +1,6 @@
 import { localized } from "@/i18n/copy";
 import type { SignKey } from "./sim/track";
+import type { FeatId } from "./save";
 import type { CartId } from "./sim/carts";
 import type { CrashReason, TrickKind } from "./sim/sim";
 
@@ -93,6 +94,8 @@ export type RaceCopy = {
     wonBy: Record<CartId, (seconds: string) => string>;
     behind: Record<CartId, (seconds: string) => string>;
     facts: { perfect: string; crashes: string; combo: string; hits: string };
+    goals: Record<FeatId, string>;
+    champion: (time: string) => string;
   };
   garage: {
     title: string;
@@ -253,6 +256,8 @@ export const RACE_COPY = localized<RaceCopy>({
       headline: { win: "Ninguém segurou você!", close: "Quase!", second: "Dá pra buscar!", third: "Terceiro, mas inteiro!", fourth: "Quarto. Próxima é sua!" },
       record: (time) => `Recorde: ${time}`,
       facts: { perfect: "Pousos perfeitos", crashes: "Capotadas", combo: "Melhor combo", hits: "Trombadas" },
+      goals: { gnome: "Pegar o anão dourado", clean: "Descer sem trombar", awnings: "Quicar nos 9 toldos", pigeons: "Voar sobre os pombos", loop: "Fechar o looping", pipe: "Atalho do bueiro" },
+      champion: (time) => `Menos de ${time}`,
       newRecord: "Novo recorde da pista!",
       again: "Correr de novo",
       alt: "Trocar carrinho",
@@ -423,6 +428,8 @@ export const RACE_COPY = localized<RaceCopy>({
       record: (time) => `Best: ${time}`,
       newRecord: "New track record!",
       facts: { perfect: "Perfect landings", crashes: "Crashes", combo: "Best combo", hits: "Bumps" },
+      goals: { gnome: "Grab the golden gnome", clean: "No bumps at all", awnings: "Bounce on all 9 awnings", pigeons: "Fly over the pigeons", loop: "Make it round the loop", pipe: "Sewer shortcut" },
+      champion: (time) => `Under ${time}`,
       again: "Race again",
       alt: "Change cart",
       unlocked: (cart) => `${cart} is waiting for you in the garage!`,

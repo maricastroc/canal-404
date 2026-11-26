@@ -4,8 +4,8 @@ import { emptySave, loadSave, SAVE_KEY, writeSave } from "./save";
 const backups = () => Object.keys(window.localStorage).filter((k) => k.startsWith(`${SAVE_KEY}:backup:`));
 
 describe("Ladeira Abaixo save", () => {
-  it("saves and loads the garage, the track records and the wins", () => {
-    const save = { cart: "lina" as const, ghost: true, unlocked: ["lina" as const], tracks: { feira: { time: 36.5, show: 8200, splits: [3.1, 4.2, Number.NaN] } }, wins: { feira: { deco: 3, lina: 1 } } };
+  it("saves and loads the garage, the track records, the wins and the track goals", () => {
+    const save = { cart: "lina" as const, ghost: true, unlocked: ["lina" as const], tracks: { feira: { time: 36.5, show: 8200, splits: [3.1, 4.2, Number.NaN] } }, wins: { feira: { deco: 3, lina: 1 } }, feats: { feira: ["awnings" as const] }, champions: { arlindo: ["deco" as const, "lina" as const] } };
     writeSave(save);
     expect(loadSave()).toEqual(save);
   });
@@ -24,8 +24,17 @@ describe("Ladeira Abaixo save", () => {
   it("drops unknown values and never hands out a locked cart", () => {
     window.localStorage.setItem(
       SAVE_KEY,
-      JSON.stringify({ version: 1, cart: "mila", ghost: "yes", unlocked: ["deco", "skate", "lina"], tracks: { arlindo: { time: -3, show: 10 }, feira: { time: 40, show: -5, splits: "x" }, test: { time: 30 } }, wins: { arlindo: { deco: -2, skate: 4 }, antena: { bruno: 2.7, mila: "3" }, test: { deco: 9 } } }),
+      JSON.stringify({
+        version: 1,
+        cart: "mila",
+        ghost: "yes",
+        unlocked: ["deco", "skate", "lina"],
+        tracks: { arlindo: { time: -3, show: 10 }, feira: { time: 40, show: -5, splits: "x" }, test: { time: 30 } },
+        wins: { arlindo: { deco: -2, skate: 4 }, antena: { bruno: 2.7, mila: "3" }, test: { deco: 9 } },
+        feats: { arlindo: ["loop", "gnome", "gnome"], feira: "awnings", test: ["gnome"] },
+        champions: { antena: ["skate", "mila"], feira: [] },
+      }),
     );
-    expect(loadSave()).toEqual({ cart: "deco", ghost: false, unlocked: ["lina"], tracks: { feira: { time: 40, show: 0, splits: [] } }, wins: { antena: { bruno: 2 } } });
+    expect(loadSave()).toEqual({ cart: "deco", ghost: false, unlocked: ["lina"], tracks: { feira: { time: 40, show: 0, splits: [] } }, wins: { antena: { bruno: 2 } }, feats: { arlindo: ["gnome"] }, champions: { antena: ["mila"] } });
   });
 });
