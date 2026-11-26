@@ -57,6 +57,7 @@ export class RecessHud {
   private hearts: Phaser.GameObjects.Image[] = [];
   private scoreText: Phaser.GameObjects.Text;
   private monitorText: Phaser.GameObjects.Text;
+  private monitorLabel: Phaser.GameObjects.Text;
   private monitorsDone = false;
   private progress: Phaser.GameObjects.Container;
   private progressBar: Phaser.GameObjects.Graphics;
@@ -108,7 +109,7 @@ export class RecessHud {
     rule.lineBetween(18, 116, 362, 116);
     const head = scene.add.image(36, 92, "mon-face-watch").setOrigin(MON_HEAD.x, MON_HEAD.y).setScale(36 / MON_HEAD.h);
     const label = cartoonText(scene, 62, 92, this.copy.monitors, { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
-    fitText(label, 230, 20, 14);
+    this.monitorLabel = label;
     this.monitorText = cartoonText(scene, 364, 92, "0/0", { size: 26, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(1, 0.5);
     const stage = cartoonText(scene, 18, 136, `${this.copy.level(index + 1, total)} · ${title.toUpperCase()}`, { size: 18, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
     fitText(stage, 344, 18, 12);
@@ -459,8 +460,10 @@ export class RecessHud {
 
   setMonitors(kills: number, total: number, changed = false) {
     const done = total > 0 && kills >= total;
-    const label = done ? this.copy.allMonitors(kills, total) : `${kills}/${total}`;
+    const label = `${kills}/${total}`;
     this.monitorText.setText(label).setColor(done ? "#2fa996" : INK);
+    this.monitorLabel.setText(done ? this.copy.allMonitors : this.copy.monitors).setColor(done ? "#2fa996" : "#7b62c4");
+    fitText(this.monitorLabel, this.monitorText.x - this.monitorText.width - 14 - this.monitorLabel.x, 20, 12);
     const c = this.compact;
     c.count.setText(label).setColor(done ? "#2fa996" : INK);
     fitText(c.count, ROW.count * D - 38 * D, 16 * D, 8 * D);
