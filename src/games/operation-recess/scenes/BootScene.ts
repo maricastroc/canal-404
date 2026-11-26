@@ -154,7 +154,7 @@ export class BootScene extends Phaser.Scene {
       }
     }
     for (const [art, { h, poses }] of Object.entries(CAST)) for (const p of poses) this.load.svg(`mon-${art}-${p}`, `${BASE}mon-${art}-${p}.svg`, { width: 260, height: h });
-    for (const art of ["common", ...Object.keys(CAST)]) for (const f of FACES) this.load.svg(`mon-${art}-face-${f}`, `${BASE}mon-${art}-face-${f}.svg`, { width: 260, height: CAST[art]?.h ?? 256 });
+    for (const art of ["common", "whistle", ...Object.keys(CAST)]) for (const f of FACES) this.load.svg(`mon-${art}-face-${f}`, `${BASE}mon-${art}-face-${f}.svg`, { width: 260, height: CAST[art]?.h ?? 256 });
     for (const p of BOSS) this.load.svg(`boss-${p}`, `${BASE}boss-${p}.svg`, { width: 380, height: 446 });
     for (const k of KIDS) this.load.svg(`kid-${k}`, `${BASE}kid-${k}.svg`, { width: 150, height: 212 });
     for (const [key, width, height] of PROPS) this.load.svg(key, `${BASE}${key}.svg`, { width, height });

@@ -33,7 +33,7 @@ type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx:
 type Hint = { lesson: Lesson; anchor: Anchor; past: number };
 type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
 type Warning = { text: Phaser.GameObjects.Text; x: number; y: number };
-type Speech = { box: Phaser.GameObjects.Container; anchor: Anchor; at: { x: number; y: number }; half: number; lift: number };
+type Speech = { box: Phaser.GameObjects.Container; tail: Phaser.GameObjects.Graphics; anchor: Anchor; at: { x: number; y: number }; w: number; h: number; half: number; lift: number };
 
 const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
@@ -526,16 +526,18 @@ export class StageScene extends Phaser.Scene {
     const g = this.add.graphics();
     g.fillStyle(INK_HEX, 0.9);
     g.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, 16);
-    g.fillTriangle(-14, h / 2 - 2, 10, h / 2 - 2, -8, h / 2 + 22);
     g.fillStyle(0xfbf5e6, 1);
     g.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
     g.lineStyle(3, INK_HEX, 1);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
-    g.fillStyle(0xfbf5e6, 1);
-    g.fillTriangle(-10, h / 2 - 3, 5, h / 2 - 3, -7, h / 2 + 13);
+    const tail = this.add.graphics();
+    tail.fillStyle(INK_HEX, 1);
+    tail.fillTriangle(-12, h / 2 - 3, 12, h / 2 - 3, 0, h / 2 + 22);
+    tail.fillStyle(0xfbf5e6, 1);
+    tail.fillTriangle(-8, h / 2 - 4, 8, h / 2 - 4, 0, h / 2 + 13);
     const k = this.chipScale();
-    const box = this.add.container(at.x, at.y, [g, label]).setDepth(42).setScale(k);
-    const speech: Speech = { box, anchor, at, half: (h / 2 + 22) * k, lift: 0 };
+    const box = this.add.container(at.x, at.y, [g, tail, label]).setDepth(42).setScale(k);
+    const speech: Speech = { box, tail, anchor, at, w, h, half: (h / 2 + 22) * k, lift: 0 };
     this.speech.push(speech);
     const done = () => {
       box.destroy();
@@ -558,12 +560,28 @@ export class StageScene extends Phaser.Scene {
     if (!this.speech.length) return;
     const view = this.cameras.main.worldView;
     const field = this.compact ? this.frameCam.playTop(this.frame) : view.y;
+    const hb = this.hero.body;
     for (const sp of this.speech) {
       const at = sp.anchor() ?? sp.at;
       sp.at = at;
-      const x = Phaser.Math.Clamp(at.x, view.x + 170, view.right - 170);
+      const k = sp.box.scaleX || 1;
+      const halfW = (sp.w / 2) * k;
+      const reach = halfW - 26 * k;
       const y = Math.max(at.y - sp.half - sp.lift, field + sp.half + 12);
+      let x = at.x;
+      const top = y - (sp.h / 2) * k - 6;
+      const bottom = y + sp.half;
+      const covers = (bx: number) => bottom > hb.top - 30 && top < hb.bottom && bx + halfW > hb.left - 16 && bx - halfW < hb.right + 16;
+      if (covers(x)) {
+        const side = Math.sign(at.x - hb.center.x) || 1;
+        const clear = side > 0 ? hb.right + 16 + halfW : hb.left - 16 - halfW;
+        x = Phaser.Math.Clamp(clear, at.x - reach, at.x + reach);
+      }
+      x = Phaser.Math.Clamp(x, view.x + halfW + 12, view.right - halfW - 12);
+      const dim = covers(x) ? 0.45 : 1;
+      for (const part of sp.box.list) (part as unknown as Phaser.GameObjects.Components.Alpha).setAlpha(dim);
       sp.box.setPosition(x, y);
+      sp.tail.setX(Phaser.Math.Clamp((at.x - x) / k, -sp.w / 2 + 24, sp.w / 2 - 24));
     }
   }
 

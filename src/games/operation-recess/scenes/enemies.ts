@@ -91,7 +91,7 @@ export abstract class Enemy {
     const depth = 15 + (slot++ % 400) * 0.002;
     this.sprite = scene.add.image(x, feet, `mon-${art}-walk-a`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth);
     this.shadow = scene.add.image(x, feet + 2, "blob").setDepth(14).setDisplaySize(150, 30);
-    if (kind === "common") this.face = scene.add.image(x, feet, `mon-${art}-face-watch`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth + 0.001).setVisible(false);
+    if (kind === "common" || kind === "whistle") this.face = scene.add.image(x, feet, `mon-${art}-face-watch`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth + 0.001).setVisible(false);
   }
 
   protected express(face: Expression, ms: number) {
@@ -596,6 +596,8 @@ export class WhistleMonitor extends Enemy {
   private nextShot = 0;
   private hopReady = 0;
   private shots = 0;
+  private engagedBefore = false;
+  private spottedAt = -1e9;
 
   constructor(
     api: StageApi,
@@ -607,6 +609,26 @@ export class WhistleMonitor extends Enemy {
     this.knockback = { x: 440, y: 360 };
     this.state = "watch";
     this.nextShot = 900;
+    this.mood = "watch";
+  }
+
+  private track(t: number, engaged: boolean, h: HeroView) {
+    if (engaged && !this.engagedBefore) {
+      if (t - this.spottedAt > 2500) {
+        this.express("spot", 520);
+        this.hop(14);
+        this.bark(this.api.barks.whistle);
+      }
+      this.spottedAt = t;
+      this.mood = null;
+    } else if (!engaged && this.engagedBefore) {
+      this.mood = "watch";
+      if (h.feet < this.feet - 140 && Math.abs(h.x - this.x) < 860) {
+        this.express("lost", 900);
+        this.bark(this.api.barks.lost);
+      }
+    }
+    this.engagedBefore = engaged;
   }
 
   protected onHurt(dir: number, t: number) {
@@ -621,6 +643,7 @@ export class WhistleMonitor extends Enemy {
     const dx = h.x - this.x;
     const dist = Math.abs(dx);
     const engaged = dist < 860 && Math.abs(h.feet - this.feet) < 140;
+    if (this.state === "watch") this.track(t, engaged, h);
     switch (this.state) {
       case "watch": {
         if (!engaged) {

@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { FLOOR_Y, H, TILE, W } from "../config";
 import type { LevelDef, Theme } from "../levels";
 import { INK_HEX } from "../../kit/ui";
+import { cx } from "./world";
 
 export type ReactKind = "locker" | "bin" | "swing" | "plant" | "metal";
 export type RoomEvent = "intro" | "stomp" | "crash" | "slam" | "whistle" | "hit" | "angry" | "defeat";
@@ -647,16 +648,20 @@ export class Scenery {
     }
     for (const x of [620, 1500, 2900, 3900]) this.layer(this.img("hoop", x, 860, D.mid + 0.12).setScrollFactor(0.65, 0).setScale(0.8));
     this.floor("floor-yard");
-    for (const x of [260, 2560, 4380, 5980]) this.img("tree-big", x, FLOOR_Y + 8, D.back);
+    if (this.level.exit) this.facade(cx(this.level.exit.col) + TILE / 2);
+    for (const x of [260, 2560, 4380, 5860]) this.img("tree-big", x, FLOOR_Y + 8, D.back);
     this.img("kiosk", 3060, FLOOR_Y, D.back);
-    for (const x of [520, 3380, 5640]) this.img("picnic-table", x, FLOOR_Y, D.floor);
-    const posts = [1060, 1760, 3600, 4300, 5180, 6040];
-    for (const x of posts) this.img("lamp-post", x, FLOOR_Y, D.back + 0.02).setScale(0.9);
-    this.strung(1060, 1760, 640);
-    this.strung(3600, 4300, 640);
-    this.bunting(4300, 5180, 600);
-    this.bunting(5180, 6040, 600);
-    for (const x of [2340, 4100, 6200]) this.react(this.img("protest-sign", x, FLOOR_Y + 4, D.floor), "swing");
+    for (const [x, k] of [
+      [520, 1],
+      [2688, 0.85],
+      [5690, 0.85],
+    ])
+      this.img("picnic-table", x, FLOOR_Y, D.floor).setScale(k);
+    for (const x of [1090, 1560, 3540, 4300, 5200, 6040]) this.img("lamp-post", x, FLOOR_Y, D.back + 0.02).setScale(0.9);
+    this.strung(1090, 1560, 600);
+    this.bunting(3540, 4300, 560, 30);
+    this.bunting(5200, 6040, 560, 30);
+    for (const x of [120, 3650]) this.react(this.img("protest-sign", x, FLOOR_Y + 4, D.floor), "swing");
     this.img("backpack", 940, FLOOR_Y + 4, D.floor + 0.1).setScale(0.8);
     this.img("jump-rope", 1520, FLOOR_Y + 6, D.floor + 0.1);
     this.img("backpack", 4660, FLOOR_Y + 4, D.floor + 0.1).setScale(0.7).setFlipX(true);
@@ -681,11 +686,57 @@ export class Scenery {
     this.react(banner, "swing");
   }
 
-  private bunting(x0: number, x1: number, y: number) {
+  private facade(door: number) {
+    const s = this.scene;
+    const x0 = door - 176;
+    const top = 430;
+    gfxTexture(s, "yard-facade", 640, FLOOR_Y - top, (g) => {
+      const h = FLOOR_Y - top;
+      g.fillStyle(0xf3e6c4, 1);
+      g.fillRect(0, 0, 640, h);
+      g.fillStyle(0xeadbb4, 1);
+      for (let y = 70; y < h - 120; y += 44) g.fillRect(0, y, 640, 4);
+      g.fillStyle(0xc4352c, 1);
+      g.fillRect(0, 0, 640, 44);
+      g.fillStyle(0x9c2a23, 1);
+      g.fillRect(0, 36, 640, 8);
+      g.fillStyle(INK_HEX, 1);
+      g.fillRect(0, 44, 640, 5);
+      g.fillStyle(0x8a5a2c, 1);
+      g.fillRect(0, h - 90, 640, 90);
+      g.fillStyle(0x6e4522, 1);
+      for (let y = h - 80; y < h; y += 22) for (let x = (y / 22) % 2 ? 0 : 20; x < 640; x += 40) g.fillRect(x, y, 34, 16);
+      g.fillStyle(INK_HEX, 1);
+      g.fillRect(0, h - 94, 640, 5);
+      g.fillStyle(0x5cb9f0, 1);
+      g.fillRect(460, 120, 84, 110);
+      g.fillStyle(0xbfe6fb, 1);
+      g.fillRect(466, 126, 34, 46);
+      g.fillRect(506, 126, 32, 46);
+      g.fillRect(466, 178, 34, 46);
+      g.fillRect(506, 178, 32, 46);
+      g.lineStyle(5, INK_HEX, 1);
+      g.strokeRect(460, 120, 84, 110);
+      g.fillStyle(0xd8c59a, 1);
+      g.fillRect(452, 228, 100, 10);
+      g.lineStyle(3, INK_HEX, 1);
+      g.strokeRect(452, 228, 100, 10);
+    });
+    const wall = s.add.tileSprite(x0, top, this.width + MARGIN - x0, FLOOR_Y - top, "yard-facade").setOrigin(0, 0).setDepth(D.back - 0.05);
+    const edge = s.add.graphics().setDepth(D.back - 0.04);
+    edge.fillStyle(INK_HEX, 0.12);
+    edge.fillRect(x0 - 18, top + 50, 18, FLOOR_Y - top - 50);
+    edge.lineStyle(6, INK_HEX, 1);
+    edge.lineBetween(x0, top, x0, FLOOR_Y);
+    edge.lineBetween(x0, top, wall.x + wall.width, top);
+    this.img("poster-read", door, 560, D.back - 0.03, [0.5, 0.5]).setScale(0.62);
+    this.scene.add.image(door, FLOOR_Y + 18, "spot").setDepth(5.3).setDisplaySize(300, 50).setAlpha(0.25).setTint(0x2b2150);
+  }
+
+  private bunting(x0: number, x1: number, y: number, sag = 60) {
     const colors = [0xef4f43, 0xffc83d, 0x63d6c1, 0x5cb9f0, 0xf06ba8, 0x93cf4c];
     const g = this.scene.add.graphics().setDepth(D.back + 0.03);
     g.lineStyle(3, INK_HEX, 1);
-    const sag = 60;
     const pts: Phaser.Math.Vector2[] = [];
     for (let i = 0; i <= 20; i += 1) {
       const k = i / 20;
