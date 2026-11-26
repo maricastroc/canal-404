@@ -6,7 +6,11 @@ export const FORM_RUNS = 5;
 
 export const RIVAL_SPREAD = 0.4;
 
-export const LINA_FLOOR: Readonly<Record<CourseId, number>> = { arlindo: 50, feira: 56, antena: 67 };
+export const RIVAL_FLOOR: Readonly<Record<CourseId, Readonly<Record<CartId, number>>>> = {
+  arlindo: { deco: 49.5, bruno: 48, lina: 38.4, mila: 43.5 },
+  feira: { deco: 50.6, bruno: 48.9, lina: 43.9, mila: 48.2 },
+  antena: { deco: 49.6, bruno: 51.2, lina: 46.6, mila: 48.6 },
+};
 
 export const LINA_TOP: Readonly<Record<CourseId, Readonly<Record<CartId, number>>>> = {
   arlindo: { deco: 34.6, bruno: 34.5, lina: 34.45, mila: 34.25 },
@@ -36,18 +40,21 @@ function nearest(fitas: readonly RivalFita[], target: number, allow: (time: numb
 
 export function pickFitas(course: CourseId, cart: CartId, ladders: Readonly<Record<RivalSlot, readonly RivalFita[]>>, targets: Readonly<Record<RivalSlot, number>>) {
   const any = () => true;
-  const mila = Math.max(0, nearest(ladders.mila, targets.mila, any));
+  const floor = RIVAL_FLOOR[course][cart];
+  let mila = nearest(ladders.mila, targets.mila, (t) => t <= floor - RIVAL_SPREAD);
+  if (mila < 0) mila = Math.max(0, nearest(ladders.mila, targets.mila, any));
   const milaTime = ladders.mila[mila].time;
-  const inRange = (t: number) => t >= LINA_TOP[course][cart] && t <= LINA_FLOOR[course];
+  const inRange = (t: number) => t >= LINA_TOP[course][cart] && t <= floor - 2 * RIVAL_SPREAD;
   let lina = nearest(ladders.lina, targets.lina, inRange);
   if (lina < 0) lina = nearest(ladders.lina, targets.lina, any);
   if (ladders.lina[lina].time > milaTime - RIVAL_SPREAD) {
     const ahead = nearest(ladders.lina, targets.lina, (t) => inRange(t) && t <= milaTime - RIVAL_SPREAD);
     if (ahead >= 0) lina = ahead;
   }
-  let bruno = nearest(ladders.bruno, targets.bruno, any);
+  let bruno = nearest(ladders.bruno, targets.bruno, (t) => t <= floor);
+  if (bruno < 0) bruno = nearest(ladders.bruno, targets.bruno, any);
   if (ladders.bruno[bruno].time < milaTime + RIVAL_SPREAD) {
-    const behind = nearest(ladders.bruno, targets.bruno, (t) => t >= milaTime + RIVAL_SPREAD);
+    const behind = nearest(ladders.bruno, targets.bruno, (t) => t >= milaTime + RIVAL_SPREAD && t <= floor);
     if (behind >= 0) bruno = behind;
   }
   return { lina, bruno, mila } satisfies Record<RivalSlot, number>;
