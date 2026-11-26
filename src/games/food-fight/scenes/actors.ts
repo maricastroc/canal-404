@@ -45,6 +45,7 @@ export class Rival {
   shielded = false;
   brawl = false;
   x: number;
+  private dy = 0;
 
   constructor(
     private scene: Phaser.Scene,
@@ -83,14 +84,43 @@ export class Rival {
     return this.slot.scale * this.def.size;
   }
 
-  placeAt(x: number, now: number) {
+  placeAt(x: number, dy: number, now: number) {
+    const shift = dy - this.dy;
     this.x = x;
+    this.dy = dy;
     this.container.setX(x);
+    if (shift) this.shiftY(shift);
     this.syncAttachments(now);
   }
 
+  private shiftY(shift: number) {
+    for (const target of [this.container, this.pudding]) {
+      target.y += shift;
+      for (const tween of this.scene.tweens.getTweensOf(target)) {
+        const parts = tween instanceof Phaser.Tweens.TweenChain ? (tween.data as Phaser.Tweens.Tween[]) : [tween];
+        for (const part of parts) {
+          for (const data of part.data) {
+            if (!(data instanceof Phaser.Tweens.TweenData) || data.key !== "y") continue;
+            data.start += shift;
+            data.end += shift;
+            data.current += shift;
+            data.previous += shift;
+          }
+        }
+      }
+    }
+  }
+
+  get upY() {
+    return this.slot.upY + this.dy;
+  }
+
+  get tableY() {
+    return this.slot.tableY + this.dy;
+  }
+
   get hiddenY() {
-    return this.slot.upY + SPRITE_H * this.slot.scale * this.def.size + 10;
+    return this.upY + SPRITE_H * this.slot.scale * this.def.size + 10;
   }
 
   get visible() {
@@ -185,7 +215,7 @@ export class Rival {
     const duration = kind === "speedy" ? 150 : 230;
     this.scene.tweens.add({
       targets: this.container,
-      y: this.slot.upY,
+      y: this.upY,
       duration,
       ease: "Cubic.easeOut",
       onComplete: () => {
@@ -334,13 +364,13 @@ export class Rival {
     this.shape(kind === "slip" ? [[0.92, 1.1, 90, "Quad.easeOut"], [1.1, 0.9, 150, "Quad.easeIn"], [1, 1, 220, "Back.easeOut"]] : [[1.1, 0.9, 80, "Quad.easeOut"], [1, 1, 240, "Back.easeOut"]]);
     this.scene.tweens.killTweensOf(this.container);
     if (this.reduced) {
-      this.container.setY(this.slot.upY);
+      this.container.setY(this.upY);
       return;
     }
-    const settle = Math.abs(this.container.y - this.slot.upY) > 1 ? [{ y: this.slot.upY, duration: 80, ease: "Quad.easeOut" }] : [];
+    const settle = Math.abs(this.container.y - this.upY) > 1 ? [{ y: this.upY, duration: 80, ease: "Quad.easeOut" }] : [];
     const wobble =
       kind === "slip"
-        ? { angle: { from: 0, to: -22 }, y: this.slot.upY + 34 * this.scale, duration: 150, yoyo: true, ease: "Quad.easeOut" }
+        ? { angle: { from: 0, to: -22 }, y: this.upY + 34 * this.scale, duration: 150, yoyo: true, ease: "Quad.easeOut" }
         : { angle: { from: 9, to: 0 }, duration: 300, ease: "Back.easeOut" };
     this.scene.tweens.chain({ targets: this.container, tweens: [...settle, wobble] });
   }
@@ -529,7 +559,7 @@ export class Rival {
   }
 
   taunt(text: string) {
-    const top = this.state === "rising" ? this.slot.upY - 228 * this.scale : this.top();
+    const top = this.state === "rising" ? this.upY - 228 * this.scale : this.top();
     const t = cartoonText(this.scene, this.x, top - 30, text, {
       size: this.slot.row === "back" ? 30 : 36,
       color: "#fbf5e6",
@@ -591,13 +621,14 @@ export class LunchLady {
   private exitX = LUNCH_LADY.exitX;
   private stretch = 1;
   private ranting = false;
+  private baseY: number = LUNCH_LADY.y;
 
   constructor(
     private scene: Phaser.Scene,
     private reduced: boolean,
   ) {
-    this.shadow = scene.add.ellipse(-300, LUNCH_LADY.y + 4, 120, 20, 0x1d1830, 0.22).setDepth(4.9).setVisible(false);
-    this.img = scene.add.image(-300, LUNCH_LADY.y, "lady-walk-0").setOrigin(0.5, 1).setScale(LUNCH_LADY.scale).setDepth(5).setVisible(false);
+    this.shadow = scene.add.ellipse(-300, this.baseY + 4, 120, 20, 0x1d1830, 0.22).setDepth(4.9).setVisible(false);
+    this.img = scene.add.image(-300, this.baseY, "lady-walk-0").setOrigin(0.5, 1).setScale(LUNCH_LADY.scale).setDepth(5).setVisible(false);
     this.marker = scene.add.image(-300, 420, "icon-ban").setDepth(15).setAlpha(0.92).setVisible(false);
   }
 
@@ -610,7 +641,7 @@ export class LunchLady {
     this.exitX = exitX;
     this.stretch = stretch;
     this.ranting = false;
-    this.img.setTexture("lady-walk-0").setPosition(enterX, LUNCH_LADY.y).setAngle(0).setScale(LUNCH_LADY.scale).setVisible(true);
+    this.img.setTexture("lady-walk-0").setPosition(enterX, this.baseY).setAngle(0).setScale(LUNCH_LADY.scale).setVisible(true);
     this.shadow.setVisible(true);
     this.marker.setVisible(true);
     this.place();
@@ -631,10 +662,14 @@ export class LunchLady {
     const frame = Math.floor(this.walked / stride) % 4;
     this.img.setTexture(`${this.angry ? "lady-angry" : "lady-walk"}-${frame}`);
     const lift = frame % 2 === 1 ? 7 : 0;
-    this.img.setY(LUNCH_LADY.y - (this.reduced ? 0 : lift));
+    this.img.setY(this.baseY - (this.reduced ? 0 : lift));
     if (!this.reduced) this.img.setAngle(frame === 1 ? -1.5 : frame === 3 ? 1.5 : 0);
-    this.shadow.setPosition(this.img.x + 4, LUNCH_LADY.y + 4).setScale(lift ? 0.88 : 1, 1);
-    this.marker.setPosition(this.img.x, LUNCH_LADY.y - this.img.displayHeight - 34 - lift);
+    this.shadow.setPosition(this.img.x + 4, this.baseY + 4).setScale(lift ? 0.88 : 1, 1);
+    this.marker.setPosition(this.img.x, this.baseY - this.img.displayHeight - 34 - lift);
+  }
+
+  setBaseY(y: number) {
+    this.baseY = y;
   }
 
   retarget(x: number, exitX: number, stretch: number, stopX: number | null = null) {
@@ -689,7 +724,7 @@ export class LunchLady {
     if (!this.active) {
       this.active = true;
       this.walked = 0;
-      this.img.setPosition(enterX, LUNCH_LADY.y).setScale(LUNCH_LADY.scale).setAngle(0).setVisible(true);
+      this.img.setPosition(enterX, this.baseY).setScale(LUNCH_LADY.scale).setAngle(0).setVisible(true);
       this.shadow.setVisible(true);
     } else {
       stopX = this.img.x;
@@ -722,8 +757,8 @@ export class LunchLady {
 
   private rant() {
     const s = LUNCH_LADY.scale;
-    this.img.setTexture("lady-scold").setY(LUNCH_LADY.y).setAngle(0).setScale(s);
-    this.shadow.setPosition(this.img.x + 4, LUNCH_LADY.y + 4).setScale(1);
+    this.img.setTexture("lady-scold").setY(this.baseY).setAngle(0).setScale(s);
+    this.shadow.setPosition(this.img.x + 4, this.baseY + 4).setScale(1);
     if (this.reduced) return;
     this.scene.tweens.chain({
       targets: this.img,
