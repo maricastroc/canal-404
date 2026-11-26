@@ -5,5 +5,5 @@
 <path d="M4 178 Q20 148 60 154 Q100 136 140 150 Q180 134 220 150 Q258 148 266 178 Z" fill="#e0645a" stroke="#1d1830" stroke-width="6" stroke-linejoin="round"/>
 <g clip-path="url(#c)" fill="#fbf5e6" opacity="0.32"><rect x="40" y="120" width="16" height="70" transform="rotate(-20 48 160)"/><rect x="100" y="120" width="16" height="70" transform="rotate(14 108 160)"/><rect x="170" y="120" width="16" height="70" transform="rotate(-10 178 160)"/><rect x="0" y="160" width="270" height="12" transform="rotate(-3 135 166)"/></g>
 <path d="M50 164 Q90 152 120 166 M150 156 Q180 166 214 158" stroke="#b8443c" stroke-width="5" fill="none" stroke-linecap="round"/>
-<g transform="rotate(-14 224 166)"><rect x="200" y="148" width="50" height="34" rx="14" fill="#8a6fd6" stroke="#1d1830" stroke-width="5"/><circle cx="225" cy="165" r="5" fill="#ffc83d" stroke="#1d1830" stroke-width="2.5"/></g>
+<g transform="translate(0 -10) rotate(-14 224 166)"><rect x="200" y="148" width="50" height="34" rx="14" fill="#8a6fd6" stroke="#1d1830" stroke-width="5"/><circle cx="225" cy="165" r="5" fill="#ffc83d" stroke="#1d1830" stroke-width="2.5"/></g>
 </svg>

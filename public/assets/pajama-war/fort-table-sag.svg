@@ -8,5 +8,5 @@
 <path d="M60 58 Q100 100 116 168 M130 52 Q168 92 188 166 M220 60 Q236 100 240 160" stroke="#b8443c" stroke-width="5" fill="none" stroke-linecap="round"/>
 <path d="M60 166 Q74 174 88 166 Q102 174 116 166 Q130 174 144 166 Q158 174 172 166 Q186 174 200 166 M226 168 Q240 176 254 168 Q262 172 268 168" stroke="#fbf5e6" stroke-width="5" fill="none"/>
 <path d="M118 172 L120 112 Q142 98 164 112 L166 172 Z" fill="#2a2040" stroke="#1d1830" stroke-width="5" stroke-linejoin="round"/>
-<g transform="rotate(26 132 156)"><rect x="108" y="128" width="50" height="54" rx="16" fill="#8a6fd6" stroke="#1d1830" stroke-width="5"/><circle cx="133" cy="155" r="5" fill="#ffc83d" stroke="#1d1830" stroke-width="2.5"/></g>
+<g transform="translate(0 -14) rotate(26 132 156)"><rect x="108" y="128" width="50" height="54" rx="16" fill="#8a6fd6" stroke="#1d1830" stroke-width="5"/><circle cx="133" cy="155" r="5" fill="#ffc83d" stroke="#1d1830" stroke-width="2.5"/></g>
 </svg>
