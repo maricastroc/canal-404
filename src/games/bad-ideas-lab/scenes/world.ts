@@ -100,7 +100,13 @@ export function drawBlock(scene: Phaser.Scene, b: Block) {
   return scene.add.container(b.x, b.y, [g]).setAngle(b.angle ?? 0).setDepth(3);
 }
 
-export function drawBuildArea(scene: Phaser.Scene, r: Rect, fonts: Fonts, text: string) {
+function overlapArea(a: Rect, b: Rect) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+export function drawBuildArea(scene: Phaser.Scene, r: Rect, fonts: Fonts, text: string, avoid: Rect[] = []) {
   const g = scene.add.graphics();
   g.fillStyle(0xffffff, 0.14);
   g.fillRoundedRect(r.x, r.y, r.w, r.h, 18);
@@ -131,6 +137,17 @@ export function drawBuildArea(scene: Phaser.Scene, r: Rect, fonts: Fonts, text: 
       padding: { x: 4, y: 2 },
     })
     .setAlpha(0.95);
+  const lw = label.width;
+  const lh = label.height;
+  const spots = [
+    { x: r.x + 16, y: r.y + 10 },
+    { x: r.x + r.w - 16 - lw, y: r.y + 10 },
+    { x: r.x + 16, y: r.y + r.h - 10 - lh },
+    { x: r.x + r.w - 16 - lw, y: r.y + r.h - 10 - lh },
+  ];
+  const cost = (p: { x: number; y: number }) => avoid.reduce((sum, a) => sum + overlapArea({ x: p.x, y: p.y, w: lw, h: lh }, a), 0);
+  const spot = spots.reduce((best, p) => (cost(p) < cost(best) ? p : best), spots[0]);
+  label.setPosition(spot.x, spot.y);
   return scene.add.container(0, 0, [g, label]).setDepth(7);
 }
 
@@ -148,6 +165,8 @@ export type GoalView = {
 };
 
 export const HOPPER_ORIGIN_X = 55 / 150;
+export const PIXEL_SCALE = 1.1;
+export const BOWL_SCALE = 0.7;
 const GLOW = { fill: 0xffc83d, rings: [0.34, 0.2, 0.1], spread: 9 };
 
 function union(...rects: Rect[]): Rect {
@@ -164,13 +183,13 @@ export function goalZone(level: LevelDef): Rect {
   const floor = (cx: number, w: number, h: number): Rect => ({ x: cx - w / 2, y: FLOOR_Y - h, w, h });
   switch (goal.type) {
     case "bell":
-      return level.decor.includes("cat") ? union(keep, floor(goal.x + 130, 140, 110)) : keep;
+      return level.decor.includes("cat") ? union(keep, floor(goal.x + 130, 160, 120)) : keep;
     case "remote":
       return level.decor.includes("tv") ? union(keep, floor(goal.x - 60, 230, 190)) : keep;
     case "toaster":
       return union(keep, { x: goal.x - 60, y: goal.y - 290, w: 130, h: 150 });
     case "feeder":
-      return union({ x: goal.x - 76, y: goal.y - 64, w: 152, h: 72 }, floor(goal.x - 153, 150, 200), floor(goal.x + 70, 120, 110));
+      return union({ x: goal.x - 76, y: goal.y - 64, w: 152, h: 72 }, floor(goal.x - 153, 150, 200), floor(goal.x + 70, 130, 120));
     case "pins":
       return union(keep, { x: goal.x - 120, y: goal.y - 220, w: 260, h: 220 });
     default:
@@ -248,12 +267,12 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
       let cat: Phaser.GameObjects.Image | null = null;
       let zzz: Phaser.GameObjects.Text | null = null;
       if (level.decor.includes("cat")) {
-        cat = scene.add.image(goal.x + 130, FLOOR_Y + 4, "cat-sleep").setOrigin(0.5, 1).setDepth(13);
-        zzz = cartoonText(scene, goal.x + 100, FLOOR_Y - 90, fx.text.zzz, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setDepth(13);
+        cat = scene.add.image(goal.x + 130, FLOOR_Y + 4, "cat-sleep").setOrigin(0.5, 1).setScale(PIXEL_SCALE).setDepth(13);
+        zzz = cartoonText(scene, goal.x + 100, FLOOR_Y - 96, fx.text.zzz, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setDepth(13);
         layers.push(cat, zzz);
         if (!fx.reduced) {
           scene.tweens.add({ targets: zzz, y: FLOOR_Y - 120, alpha: { from: 1, to: 0.2 }, duration: 1800, repeat: -1 });
-          scene.tweens.add({ targets: cat, scaleY: 0.96, duration: 1400, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+          scene.tweens.add({ targets: cat, scaleY: PIXEL_SCALE * 0.96, duration: 1400, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
         }
       }
       return {
@@ -270,7 +289,7 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
             scene.time.delayedCall(350, () => {
               zzz?.destroy();
               scene.tweens.killTweensOf(c);
-              c.setTexture("cat-scared").setScale(1);
+              c.setTexture("cat-scared").setScale(PIXEL_SCALE);
               fx.sfx("meow", 0.9);
               fx.word(fx.text.meow, c.x, c.y - 140, "#f06ba8", 48);
               if (!fx.reduced) scene.tweens.add({ targets: c, y: c.y - 60, duration: 180, yoyo: true, ease: "Quad.easeOut" });
@@ -418,7 +437,7 @@ type At = { x: number; y: number };
 
 function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers): GoalView {
   const hopperX = goal.x - 175;
-  const bowlX = goal.x - 80;
+  const bowlX = goal.x - 72;
   const cable = scene.add.graphics().setDepth(2.4);
   cable.lineStyle(9, INK_HEX, 1);
   const cableTop = { x: goal.x - 46, y: goal.y - 6 };
@@ -433,8 +452,8 @@ function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers)
   cable.lineStyle(4, 0xef4f43, 1);
   curve.draw(cable, 24);
   const hopper = scene.add.image(hopperX, FLOOR_Y + 2, "hopper").setOrigin(HOPPER_ORIGIN_X, 198 / 200).setDepth(2.5);
-  const bowl = scene.add.image(bowlX, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setDepth(2.6);
-  const food = scene.add.image(bowlX, FLOOR_Y - 28, "kibble-full").setOrigin(0.5, 0.5).setScale(1.15, 1).setDepth(2.55).setVisible(false);
+  const bowl = scene.add.image(bowlX, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setScale(BOWL_SCALE).setDepth(2.6);
+  const food = scene.add.image(bowlX, FLOOR_Y - 18, "kibble-full").setOrigin(0.5, 0.5).setScale(0.8, 0.7).setDepth(2.55).setVisible(false);
   const glow = (draw: (g: Phaser.GameObjects.Graphics, grow: number) => void) => {
     const g = scene.add.graphics().setDepth(2.3).setAlpha(0).setVisible(false);
     GLOW.rings.forEach((alpha, i) => {
@@ -446,7 +465,7 @@ function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers)
   const padGlow = glow((g, d) => g.fillEllipse(goal.x, goal.y - 26, 150 + d * 2, 70 + d * 2));
   const feederGlow = glow((g, d) => {
     g.fillRoundedRect(hopperX - 52 - d, FLOOR_Y - 208 - d, 104 + d * 2, 214 + d, 42 + d);
-    g.fillEllipse(bowlX, FLOOR_Y - 22, 160 + d * 2, 64 + d * 2);
+    g.fillEllipse(bowlX, FLOOR_Y - 16, 120 + d * 2, 50 + d * 2);
   });
   const spark = scene.add.circle(cableTop.x, cableTop.y, 8, GLOW.fill).setStrokeStyle(3, INK_HEX).setDepth(4.6).setVisible(false);
   const pulse = (g: Phaser.GameObjects.Graphics, delay: number) => {
@@ -460,7 +479,7 @@ function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers)
     g.setAlpha(0);
     scene.tweens.add({ targets: g, alpha: 1, delay, duration: 280, yoyo: true, hold: 120, repeat: 1, ease: "Sine.easeInOut", onComplete: () => g.setVisible(false) });
   };
-  const cat = scene.add.image(goal.x + 70, FLOOR_Y + 4, "cat-grumpy").setOrigin(0.5, 1).setDepth(13);
+  const cat = scene.add.image(goal.x + 70, FLOOR_Y + 4, "cat-grumpy").setOrigin(0.5, 1).setScale(PIXEL_SCALE).setDepth(13);
   const pad = scene.add.image(goal.x, goal.y + 2, "feeder").setOrigin(0.5, 1).setDepth(4);
   const layers: Phaser.GameObjects.GameObject[] = [padGlow, feederGlow, cable, hopper, bowl, food, cat, pad, spark];
   return {
@@ -497,16 +516,16 @@ function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers)
         fx.sfx("kibble", 0.9);
         food.setVisible(true);
         if (!fx.reduced) {
-          food.setScale(0.3, 0.1);
-          scene.tweens.add({ targets: food, scaleX: 1, scaleY: 1, duration: 420, ease: "Back.easeOut" });
+          food.setScale(0.24, 0.07);
+          scene.tweens.add({ targets: food, scaleX: 0.8, scaleY: 0.7, duration: 420, ease: "Back.easeOut" });
           scene.tweens.add({ targets: hopper, scaleY: 0.96, duration: 90, yoyo: true, repeat: 2 });
         }
         fx.burst(bowlX, FLOOR_Y - 40, 6, "spark");
       });
       scene.time.delayedCall(700, () => {
         cat.setTexture("cat-sleep").setFlipX(true);
-        if (fx.reduced) cat.setX(bowlX + 86);
-        else scene.tweens.add({ targets: cat, x: bowlX + 86, duration: 360, ease: "Quad.easeOut" });
+        if (fx.reduced) cat.setX(bowlX + 104);
+        else scene.tweens.add({ targets: cat, x: bowlX + 104, duration: 360, ease: "Quad.easeOut" });
         fx.sfx("crunch", 0.9);
         fx.word(fx.text.kibble, bowlX + 40, FLOOR_Y - 120, "#ffc83d", 44);
       });
