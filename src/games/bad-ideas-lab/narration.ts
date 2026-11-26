@@ -9,13 +9,14 @@ import {
   polyBox,
   rectPoly,
   sceneBlocks,
+  sensorGap,
   sensorPoly,
   type Box,
   type Conflict,
   type Poly,
   type Vec,
 } from "./geometry";
-import type { Block, LevelDef, Rect } from "./levels";
+import { actOf, type Block, type LevelDef, type Rect } from "./levels";
 
 export type { Noun };
 
@@ -139,11 +140,6 @@ function distanceToRect(p: Vec, r: Rect) {
   const dx = Math.max(r.x - p.x, 0, p.x - (r.x + r.w));
   const dy = Math.max(r.y - p.y, 0, p.y - (r.y + r.h));
   return Math.hypot(dx, dy);
-}
-
-function distanceToSensor(p: Vec, poly: Poly) {
-  const b = polyBox(poly);
-  return Math.max(0, distanceToRect(p, { x: b.left, y: b.top, w: b.right - b.left, h: b.bottom - b.top }) - BALL_R);
 }
 
 export function partLandmark(id: number, type: PartType, x: number, y: number, rot: number, name: Noun): Landmark {
@@ -414,6 +410,15 @@ export class Narrator {
       case "juicer":
         text = this.t.juicerGoal(region, ball);
         break;
+      case "pins":
+        text = this.t.pinsGoal(region, this.supportOf(box, landmarks.filter((l) => l.role !== "goal-part")), ball);
+        break;
+      case "record": {
+        const bodyBox = body ? polyBox(body.poly) : box;
+        const support = this.supportOf(bodyBox, landmarks.filter((l) => l.role !== "goal-part"));
+        text = this.t.leverGoal(this.regionText(bodyBox), support, centerX(box) < centerX(bodyBox) ? "left" : "right");
+        break;
+      }
       default: {
         const bodyBox = body ? polyBox(body.poly) : box;
         const support = this.supportOf(bodyBox, landmarks.filter((l) => l.role !== "goal-part"));
@@ -483,7 +488,7 @@ export class Narrator {
     const scene = sceneOrder(level, landmarks)
       .map((lm) => this.describeLandmark(lm, info))
       .join(" ");
-    return this.t.level(index + 1, total, text.title, text.goal, scene, inventory);
+    return this.t.level(index + 1, total, actOf(index), text.title, text.goal, scene, inventory);
   }
 
   referenceRelation(poly: Poly, center: Vec, info: SceneInfo, reference: Reference, skipId: string) {
@@ -602,7 +607,7 @@ export class Narrator {
         break;
     }
     if (goal && log.outcome !== "success") {
-      const closest = Math.min(...densify(path).map((p) => distanceToSensor(p, goal.poly)));
+      const closest = Math.min(...densify(path).map((p) => sensorGap(p, goal.poly)));
       out.push(t.closest(goal.noun, steps(closest)));
     }
     return out.join(" ");

@@ -3,12 +3,12 @@ import type { Vec } from "../geometry";
 import { TALL, type Frame } from "../layout";
 import { CREAM_HEX, INK, INK_HEX, cartoonText } from "../../kit/ui";
 import { setIcon } from "../icons";
-import type { HudSetup, Mood, ViewState } from "./hud";
+import type { HudSetup, Mood, StarReveal, ViewState } from "./hud";
+import { LINA_TEXTURES } from "./lina";
 import { DEPTH, PANEL_FILL, TouchHud, type RailButton } from "./touchHud";
 
 const SIZE = { pad: 8, gap: 8, chip: 30, chipW: 92, starsW: 54, usedW: 66, slotMax: 104, smallMin: 52, smallMax: 70, cam: 40, text: 15, portrait: 54, cardPad: 10 };
 
-const LINA_TEX: Record<Mood, string> = { idle: "lina", yay: "lina-yay", oops: "lina-oops" };
 
 const FACE = { x: 14, y: 8, size: 116 };
 
@@ -48,6 +48,7 @@ export class DockHud extends TouchHud {
   private coachHit: Phaser.GameObjects.Rectangle;
   private coachTimer?: Phaser.Time.TimerEvent;
   private lastSay: { text: string; focus: Vec | null } | null = null;
+  private bannerUntil = 0;
 
   constructor(setup: HudSetup) {
     super(setup);
@@ -259,11 +260,17 @@ export class DockHud extends TouchHud {
     this.coachHit.setSize(w, h);
     this.coachHit.input?.hitArea.setTo(0, 0, w, h);
     const camRoom = (SIZE.cam + SIZE.gap) * k;
-    const low = Boolean(focus && focus.y < st.y + st.h * 0.42);
+    const low = this.scene.time.now < this.bannerUntil || Boolean(focus && focus.y < st.y + st.h * 0.42);
     this.coach.setPosition(st.x + pad, low ? st.y + st.h - pad - camRoom - h : st.y + pad);
   }
 
+  celebrate(stars: number, onStar: StarReveal) {
+    this.bannerUntil = this.scene.time.now + 2100;
+    if (this.coach.visible && this.lastSay) this.placeCoach(this.lastSay.focus);
+    super.celebrate(stars, onStar);
+  }
+
   mood(kind: Mood) {
-    this.coachLina.setTexture(LINA_TEX[kind]).setCrop(FACE.x, FACE.y, FACE.size, FACE.size);
+    this.coachLina.setTexture(LINA_TEXTURES[kind]).setCrop(FACE.x, FACE.y, FACE.size, FACE.size);
   }
 }
