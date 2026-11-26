@@ -40,11 +40,12 @@ const STYLE_ART: Record<EnemyStyle, string> = { patrol: "common", mixed: "common
 const SAY_EVERY = 3200;
 const LOST_MS = 900;
 let slot = 0;
-let line = 0;
+const turns = new WeakMap<readonly string[], number>();
 
 function pick(pool: readonly string[]) {
-  line += 1;
-  return pool[line % pool.length];
+  const turn = (turns.get(pool) ?? 0) + 1;
+  turns.set(pool, turn);
+  return pool[turn % pool.length];
 }
 
 export abstract class Enemy {
@@ -91,7 +92,7 @@ export abstract class Enemy {
     const depth = 15 + (slot++ % 400) * 0.002;
     this.sprite = scene.add.image(x, feet, `mon-${art}-walk-a`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth);
     this.shadow = scene.add.image(x, feet + 2, "blob").setDepth(14).setDisplaySize(150, 30);
-    if (kind === "common" || kind === "whistle") this.face = scene.add.image(x, feet, `mon-${art}-face-watch`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth + 0.001).setVisible(false);
+    this.face = scene.add.image(x, feet, kind === "shield" ? "mon-shield-face-watch-a" : `mon-${art}-face-watch`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth + 0.001).setVisible(false);
   }
 
   protected express(face: Expression, ms: number) {
@@ -102,6 +103,28 @@ export abstract class Enemy {
   protected bark(pool: readonly string[], force = false) {
     if (!force && this.t - this.saidAt < SAY_EVERY) return;
     if (this.api.say(pick(pool), () => (this.dead ? null : { x: this.x, y: this.headTop + 12 }))) this.saidAt = this.t;
+  }
+
+  private engagedBefore = false;
+  private engagedAt = -1e9;
+
+  protected track(t: number, engaged: boolean, h: HeroView, pool: readonly string[]) {
+    if (engaged && !this.engagedBefore) {
+      if (t - this.engagedAt > 2500) {
+        this.express("spot", 520);
+        this.hop(14);
+        this.bark(pool);
+      }
+      this.engagedAt = t;
+      this.mood = null;
+    } else if (!engaged && this.engagedBefore) {
+      this.mood = "watch";
+      if (h.feet < this.feet - 140 && Math.abs(h.x - this.x) < 860) {
+        this.express("lost", 900);
+        this.bark(this.api.barks.lost);
+      }
+    }
+    this.engagedBefore = engaged;
   }
 
   protected hop(px: number) {
@@ -334,7 +357,7 @@ export abstract class Enemy {
     f.setVisible(show);
     if (!show) return;
     const s = this.sprite;
-    const key = `mon-${this.art}-face-${face}`;
+    const key = this.kind === "shield" ? `mon-shield-face-${face}-${this.pose === "walk-b" ? "b" : "a"}${this.facing < 0 ? "-l" : ""}` : `mon-${this.art}-face-${face}`;
     if (f.texture.key !== key) f.setTexture(key);
     f.setPosition(s.x, s.y).setScale(s.scaleX, s.scaleY).setAngle(s.angle).setFlipX(s.flipX).setAlpha(s.alpha);
     if (s.isTinted) f.setTint(s.tintTopLeft);
@@ -596,8 +619,6 @@ export class WhistleMonitor extends Enemy {
   private nextShot = 0;
   private hopReady = 0;
   private shots = 0;
-  private engagedBefore = false;
-  private spottedAt = -1e9;
 
   constructor(
     api: StageApi,
@@ -612,24 +633,7 @@ export class WhistleMonitor extends Enemy {
     this.mood = "watch";
   }
 
-  private track(t: number, engaged: boolean, h: HeroView) {
-    if (engaged && !this.engagedBefore) {
-      if (t - this.spottedAt > 2500) {
-        this.express("spot", 520);
-        this.hop(14);
-        this.bark(this.api.barks.whistle);
-      }
-      this.spottedAt = t;
-      this.mood = null;
-    } else if (!engaged && this.engagedBefore) {
-      this.mood = "watch";
-      if (h.feet < this.feet - 140 && Math.abs(h.x - this.x) < 860) {
-        this.express("lost", 900);
-        this.bark(this.api.barks.lost);
-      }
-    }
-    this.engagedBefore = engaged;
-  }
+
 
   protected onHurt(dir: number, t: number) {
     this.api.sfx("whistle", 0.35);
@@ -643,7 +647,7 @@ export class WhistleMonitor extends Enemy {
     const dx = h.x - this.x;
     const dist = Math.abs(dx);
     const engaged = dist < 860 && Math.abs(h.feet - this.feet) < 140;
-    if (this.state === "watch") this.track(t, engaged, h);
+    if (this.state === "watch") this.track(t, engaged, h, this.api.barks.whistle);
     switch (this.state) {
       case "watch": {
         if (!engaged) {
@@ -738,6 +742,7 @@ export class ShieldMonitor extends Enemy {
     this.knockback = { x: 240, y: 200 };
     this.mirrored = true;
     this.state = "advance";
+    this.mood = "watch";
   }
 
   protected backstep(speed: number, dt: number) {
@@ -810,6 +815,7 @@ export class ShieldMonitor extends Enemy {
     switch (this.state) {
       case "advance":
       case "guard": {
+        this.track(t, near && !this.overhead(h), h, this.api.barks.shield);
         if (this.state === "guard") {
           this.body.setVelocityX(0);
           if (t < this.until) return;
