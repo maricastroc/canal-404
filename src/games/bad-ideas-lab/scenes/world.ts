@@ -144,7 +144,11 @@ export function drawPipe(scene: Phaser.Scene, level: LevelDef) {
 export type GoalView = {
   celebrate: (ball: Phaser.GameObjects.Image) => number;
   layers: Phaser.GameObjects.GameObject[];
+  point?: () => void;
 };
+
+export const HOPPER_ORIGIN_X = 55 / 150;
+const GLOW = { fill: 0xffc83d, rings: [0.34, 0.2, 0.1], spread: 9 };
 
 function union(...rects: Rect[]): Rect {
   const x = Math.min(...rects.map((r) => r.x));
@@ -166,7 +170,7 @@ export function goalZone(level: LevelDef): Rect {
     case "toaster":
       return union(keep, { x: goal.x - 60, y: goal.y - 290, w: 130, h: 150 });
     case "feeder":
-      return union(keep, floor(goal.x - 175, 120, 200), floor(goal.x + 70, 120, 110));
+      return union({ x: goal.x - 76, y: goal.y - 64, w: 152, h: 72 }, floor(goal.x - 153, 150, 200), floor(goal.x + 70, 120, 110));
     case "pins":
       return union(keep, { x: goal.x - 120, y: goal.y - 220, w: 260, h: 220 });
     default:
@@ -414,7 +418,7 @@ type At = { x: number; y: number };
 
 function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers): GoalView {
   const hopperX = goal.x - 175;
-  const bowlX = goal.x - 62;
+  const bowlX = goal.x - 80;
   const cable = scene.add.graphics().setDepth(2.4);
   cable.lineStyle(9, INK_HEX, 1);
   const cableTop = { x: goal.x - 46, y: goal.y - 6 };
@@ -428,14 +432,62 @@ function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers)
   curve.draw(cable, 24);
   cable.lineStyle(4, 0xef4f43, 1);
   curve.draw(cable, 24);
-  const hopper = scene.add.image(hopperX, FLOOR_Y + 2, "hopper").setOrigin(0.5, 198 / 200).setDepth(2.5);
+  const hopper = scene.add.image(hopperX, FLOOR_Y + 2, "hopper").setOrigin(HOPPER_ORIGIN_X, 198 / 200).setDepth(2.5);
   const bowl = scene.add.image(bowlX, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setDepth(2.6);
-  const food = scene.add.image(bowlX, FLOOR_Y - 26, "kibble-full").setOrigin(0.5, 0.5).setDepth(2.55).setVisible(false);
+  const food = scene.add.image(bowlX, FLOOR_Y - 28, "kibble-full").setOrigin(0.5, 0.5).setScale(1.15, 1).setDepth(2.55).setVisible(false);
+  const glow = (draw: (g: Phaser.GameObjects.Graphics, grow: number) => void) => {
+    const g = scene.add.graphics().setDepth(2.3).setAlpha(0).setVisible(false);
+    GLOW.rings.forEach((alpha, i) => {
+      g.fillStyle(GLOW.fill, alpha);
+      draw(g, i * GLOW.spread);
+    });
+    return g;
+  };
+  const padGlow = glow((g, d) => g.fillEllipse(goal.x, goal.y - 26, 150 + d * 2, 70 + d * 2));
+  const feederGlow = glow((g, d) => {
+    g.fillRoundedRect(hopperX - 52 - d, FLOOR_Y - 208 - d, 104 + d * 2, 214 + d, 42 + d);
+    g.fillEllipse(bowlX, FLOOR_Y - 22, 160 + d * 2, 64 + d * 2);
+  });
+  const spark = scene.add.circle(cableTop.x, cableTop.y, 8, GLOW.fill).setStrokeStyle(3, INK_HEX).setDepth(4.6).setVisible(false);
+  const pulse = (g: Phaser.GameObjects.Graphics, delay: number) => {
+    scene.tweens.killTweensOf(g);
+    g.setVisible(true);
+    if (fx.reduced) {
+      g.setAlpha(1);
+      scene.time.delayedCall(delay + 1700, () => g.setVisible(false));
+      return;
+    }
+    g.setAlpha(0);
+    scene.tweens.add({ targets: g, alpha: 1, delay, duration: 280, yoyo: true, hold: 120, repeat: 1, ease: "Sine.easeInOut", onComplete: () => g.setVisible(false) });
+  };
   const cat = scene.add.image(goal.x + 70, FLOOR_Y + 4, "cat-grumpy").setOrigin(0.5, 1).setDepth(13);
   const pad = scene.add.image(goal.x, goal.y + 2, "feeder").setOrigin(0.5, 1).setDepth(4);
-  const layers: Phaser.GameObjects.GameObject[] = [cable, hopper, bowl, food, cat, pad];
+  const layers: Phaser.GameObjects.GameObject[] = [padGlow, feederGlow, cable, hopper, bowl, food, cat, pad, spark];
   return {
     layers,
+    point: () => {
+      pulse(padGlow, 0);
+      pulse(feederGlow, fx.reduced ? 0 : 900);
+      if (fx.reduced) return;
+      const along = { t: 0 };
+      scene.tweens.killTweensOf(along);
+      spark.setVisible(true).setPosition(cableTop.x, cableTop.y);
+      scene.tweens.add({
+        targets: along,
+        t: 1,
+        delay: 250,
+        duration: 650,
+        ease: "Sine.easeInOut",
+        onUpdate: () => {
+          const p = curve.getPoint(along.t);
+          spark.setPosition(p.x, p.y);
+        },
+        onComplete: () => {
+          spark.setVisible(false);
+          fx.burst(cableEnd.x, cableEnd.y, 4, "spark");
+        },
+      });
+    },
     celebrate: () => {
       fx.sfx("click", 1);
       fx.word(fx.text.click, goal.x, goal.y - 90, "#9df0dc", 50);
@@ -453,8 +505,8 @@ function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers)
       });
       scene.time.delayedCall(700, () => {
         cat.setTexture("cat-sleep").setFlipX(true);
-        if (fx.reduced) cat.setX(bowlX + 70);
-        else scene.tweens.add({ targets: cat, x: bowlX + 70, duration: 360, ease: "Quad.easeOut" });
+        if (fx.reduced) cat.setX(bowlX + 86);
+        else scene.tweens.add({ targets: cat, x: bowlX + 86, duration: 360, ease: "Quad.easeOut" });
         fx.sfx("crunch", 0.9);
         fx.word(fx.text.kibble, bowlX + 40, FLOOR_Y - 120, "#ffc83d", 44);
       });

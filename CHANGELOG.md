@@ -4,6 +4,12 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Laboratório de Péssimas Ideias: Pazes com o Pixel mais claro
+- **A feeder that looks like one.** The kibble dispenser has a cat-ear lid, a paw badge and a chute that pours into Pixel's bowl, which is bigger and has his name on it. The button on the shelf is now red, like the cable that runs from it to the feeder. Levels 8 to 10 show the same feeder in the corner.
+- **Lina explains the deal.** Her line now says why Pixel is mad, what the button does and why it helps: "O Pixel não me perdoou pelo sino. O botão da patinha liga o comedouro, e ração resolve tudo." / "Pixel is still mad about the bell. The paw button turns on his feeder. Food fixes everything!" It fits in fewer, longer lines.
+- **Look here.** When she says it, and whenever she repeats it, the button glows, a spark runs down the cable and the feeder glows. On phones in portrait the camera shows the feeder first, then moves to the build area. With reduced motion the glow stays still and there's no spark.
+- **Same puzzle.** Physics, parts, solutions and boards don't change.
+
 ### Laboratório de Péssimas Ideias: segundo ato
 - **Four new levels.** After "A pior ideia de todas", Act 2 asks for machines that combine parts instead of one part per problem. "Pazes com o Pixel" / "Making up with Pixel": the ball rolls the wrong way and a belt has to bring it back under the shelf to the feeder. "Música lá no alto" / "Music up high": the ball drops down a chimney, a spring throws it back up and wind or a ramp steers it to the record player at the top. "Strike!": a fan gives the ball a run-up and a ramp at the end of the counter turns into a ski jump over the gap. "A máquina de tudo" / "The everything machine": belt, spring and fan (or ramp) in a row, to press the big red button through a window. No single part solves any of them, and no pair solves the last one; every level has hundreds or thousands of working machines, so there is room to experiment.
 - **The garage remembers.** Each level keeps what the previous ones left behind: the target leaning on the wall, a grumpy Pixel until he gets his kibble (then asleep by his bowl), a burnt toast on a shelf, a juice stain, the TV still on 404, the bell on the floor, the record player and the bowling pins. Nothing new sits in the build area or has collision. A cloud crosses the window and an LED blinks on the pegboard, both off with reduced motion.
