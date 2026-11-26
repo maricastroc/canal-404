@@ -755,20 +755,17 @@ export class Scenery {
     s.add.tileSprite(0, 0, this.width, FLOOR_Y, "wall-library").setOrigin(0, 0).setDepth(0);
     s.add.image(0, 130, "shade-top").setOrigin(0, 0).setDisplaySize(this.width, 300).setDepth(0.35).setAlpha(0.55);
     this.floor("floor-library");
-    for (const x of [1020, 2120, 2780, 4100, 4760, 5520, 6260]) {
-      if (x > this.width - 100) continue;
+    for (let x = 350; x < this.width - 100; x += 700) {
       this.img("lamp-warm", x, 120, D.wall + 0.12, [0.5, 0]).setScale(0.75);
       this.cone(x, 200, 0.22, 1.15).setTint(0xfff1b8);
     }
     const shelves: [string, number][] = [
-      ["bookcase-tall-a", 860],
       ["bookcase-tall-b", 1180],
       ["bookcase-tall-c", 1500],
       ["bookcase-tall-c", 3060],
       ["bookcase-tall-b", 4520],
       ["bookcase-tall-a", 4840],
-      ["bookcase-tall-c", 5400],
-      ["bookcase-tall-b", 6260],
+      ["bookcase-tall-b", 6330],
     ];
     for (const [key, x] of shelves) this.grounded(this.react(this.img(key, x, FLOOR_Y, D.wall + 0.1), "metal"), 0.95);
     const plan: [string, number][] = [
@@ -783,11 +780,11 @@ export class Scenery {
       ["ladder", 4690],
       ["catalog", 5080],
       ["poster-read", 5760],
-      ["table", 5880],
-      ["globe", 6520],
+      ["table", 5640],
+      ["globe", 6540],
     ];
     for (const [kind, x] of plan) this.libraryModule(kind, x);
-    this.react(this.img("banner-silence", 4080, 150, D.back + 0.02, [0.5, 0]).setScale(0.8), "swing");
+    this.react(this.img("banner-silence", 1450, 150, D.back + 0.02, [0.5, 0]).setScale(0.8), "swing");
     for (const x of [1180, 4840]) this.img("clock", x, 300, D.wall + 0.15, [0.5, 0.5]).setScale(0.8);
     this.pile(1320, "book-pile");
     this.pile(4620, "book-pile");

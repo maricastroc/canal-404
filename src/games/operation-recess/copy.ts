@@ -78,6 +78,7 @@ export const COPY = localized({
       lost: ["UÉ? CADÊ?", "SUMIU?!"],
       caught: ["DIRETO PRA DIRETORIA!", "PEGUEI!"],
       whistle: ["PRIIII! PARADO AÍ!", "NADA DE BAGUNÇA!", "OLHA O APITO!"],
+      shield: ["PARE! FISCALIZAÇÃO!", "NEM VEM QUE NÃO TEM!", "SEM AUTORIZAÇÃO NÃO PASSA!"],
     },
     words: {
       ouch: ["AI!", "UI!", "OPA!"],
@@ -228,6 +229,7 @@ export const COPY = localized({
       lost: ["HUH? WHERE'D HE GO?", "VANISHED?!"],
       caught: ["STRAIGHT TO THE OFFICE!", "GOTCHA!"],
       whistle: ["FWEEET! FREEZE!", "NO MESSING AROUND!", "WATCH THE WHISTLE!"],
+      shield: ["STOP! INSPECTION!", "DON'T EVEN TRY!", "NO PERMIT, NO PASSING!"],
     },
     words: {
       ouch: ["OW!", "OOF!", "WHOA!"],
