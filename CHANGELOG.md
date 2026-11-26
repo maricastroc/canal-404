@@ -4,6 +4,11 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Ladeira Abaixo: cara própria no meio das pistas
+- **Dia de Feira: hora da xepa.** The second descent now reads as the end of the fair, with a "HORA DA XEPA" gate, bunting and stalls along the stretch where the fruit rolls.
+- **Morro da Antena: obra no morro.** The hillside uses more puxadinhos, and the building site goes on after the sewer exit with scaffolding, bricks, cement bags and a crane.
+- **Seu Arlindo's hose.** Getting soaked leaves the cart dripping for a few seconds.
+
 ### Operação: Recreio: Corredor proibido mais vivo
 - **Feet on the ground.** Bruno stood about 6 px above every floor, shelf and box; his feet now touch them, and he hops when he cheers at the yard door. Shadows land on whatever is below, so they drop to the floor as soon as you step off a shelf instead of hanging in the air. The trash can you jump over is drawn at its real collision size (Bruno used to sink into the lid), and the box pile has a flat top all the way across.
 - **Nothing behind you on the shelves.** The posters and the bulletin board no longer hang right where Bruno stands on the high shelves, and the shelves have sturdier brackets. The watcher sits behind his newspaper and stands up to look, his head clearly in front of the shelf, and his big eye moves above Bruno instead of covering him. The water fountain is no longer hidden behind the trick locker.

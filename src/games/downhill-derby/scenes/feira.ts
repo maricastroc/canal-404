@@ -80,8 +80,9 @@ export function dressFeira(b: Builder, course: Course, copy: RaceCopy): SampleSp
   placed(b, "s-lixeira", set.market.x1 + 900, 0.72, -7.2, "center", 6);
   for (const f of set.fruit) placed(b, "f-caixotes-tombados", f.crate, 0.62, -7, "center", 4);
   drawFrontWall(b, road.x0, road.x1);
-  bunting(b, set);
-  marketGate(b, set, copy);
+  bunting(b, set.market.x0 + 600, set.market.x1 - 300);
+  gate(b, set.market.x0 + 260, copy.feira.fair, 0x2fa996);
+  closingTime(b, course, copy);
   stairsWall(b, course, set.stairs.x0 - 200, set.stairs.x1 + 600);
   plaza(b, course, set.plaza, copy);
   for (const [a, c] of gaps) b.taken.push([a + 40, c - 40]);
@@ -95,9 +96,23 @@ export function dressFeira(b: Builder, course: Course, copy: RaceCopy): SampleSp
   };
 }
 
-function bunting(b: Builder, set: FeiraSet) {
+function closingTime(b: Builder, course: Course, copy: RaceCopy) {
+  const set = course.set as FeiraSet;
+  const fruit = set.fruit[1];
+  const start = course.sections.find((s) => s.key === "descent2")?.x ?? fruit.x0 - 900;
+  gate(b, start + 260, copy.feira.sale, 0xef4f43);
+  bunting(b, start + 700, fruit.x1);
+  STALLS.forEach((key, i) => {
+    if (i === 2) return;
+    const x = fruit.x0 + 520 + i * 1050;
+    const { w } = placed(b, `f-${key}`, x, STALL_SCALE * 0.92, -12.2);
+    b.taken.push([x - 20, x + w + 20]);
+  });
+}
+
+function bunting(b: Builder, from: number, to: number) {
   const colors = [0xef4f43, 0xffc83d, 0x63d6c1, 0xf06ba8, 0x5cb9f0, 0x93cf4c];
-  for (let x = set.market.x0 + 600; x < set.market.x1 - 300; x += 900) {
+  for (let x = from; x < to; x += 900) {
     const x1 = x + 900;
     const y0 = b.backY(x) - 330;
     const y1 = b.backY(x1) - 330;
@@ -116,11 +131,10 @@ function bunting(b: Builder, set: FeiraSet) {
   }
 }
 
-function marketGate(b: Builder, set: FeiraSet, copy: RaceCopy) {
-  const x = set.market.x0 + 260;
+function gate(b: Builder, x: number, text: string, color: number) {
   const c = b.chunkFor(x);
   const y = b.backY(x);
-  const label = b.add(c, b.scene.add.text(x, y - 330, copy.feira.fair, { fontFamily: b.fonts.display, fontSize: "40px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 9 }));
+  const label = b.add(c, b.scene.add.text(x, y - 330, text, { fontFamily: b.fonts.display, fontSize: "40px", color: "#fbf5e6", stroke: "#1d1830", strokeThickness: 9 }));
   label.setOrigin(0.5).setDepth(-10.9);
   const w = label.width + 70;
   const g = b.add(c, b.scene.add.graphics());
@@ -129,7 +143,7 @@ function marketGate(b: Builder, set: FeiraSet, copy: RaceCopy) {
   g.fillRect(x - w / 2 + 10, y - 330, 14, 334);
   g.fillRect(x + w / 2 - 24, y - 330, 14, 334);
   g.fillRoundedRect(x - w / 2 - 6, y - 368, w + 12, 76, 14);
-  g.fillStyle(0x2fa996, 1);
+  g.fillStyle(color, 1);
   g.fillRoundedRect(x - w / 2, y - 362, w, 64, 10);
   b.taken.push([x - w / 2 - 20, x + w / 2 + 20]);
 }
