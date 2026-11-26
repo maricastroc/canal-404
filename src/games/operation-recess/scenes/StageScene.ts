@@ -28,7 +28,7 @@ import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
 
 type Mode = "attract" | "play" | "ko" | "won";
-type Lesson = "walk" | "jump" | "hold" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "tower" | "high" | "sticker";
+type Lesson = "walk" | "jump" | "hold" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "order" | "wobbly" | "tower" | "high" | "sticker";
 type Anchor = () => { x: number; y: number } | null;
 type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean; anchor?: Anchor; tip?: Phaser.GameObjects.Graphics; at?: { x: number; y: number } };
 type Hint = { lesson: Lesson; anchor: Anchor; past: number };
@@ -220,6 +220,8 @@ export class StageScene extends Phaser.Scene {
       surface: (x, y) => this.surface(x, y),
       impact: (x, power) => this.scenery.impact(x, power),
       say: (text, anchor) => this.say(text, anchor),
+      orderClear: (self) => this.orderClear(self),
+      ordered: (self) => this.ordered(self),
     };
 
     if (this.level.exit) {
@@ -265,7 +267,7 @@ export class StageScene extends Phaser.Scene {
     this.level.enemies.forEach((e, index) => {
       if (resume && e.col < startCol + 4) return;
       const feet = cy((e.row ?? 11) + 1);
-      const enemy = makeEnemy(this.api, e.kind, cx(e.col) + TILE / 2, feet, e.style);
+      const enemy = makeEnemy(this.api, e.kind, cx(e.col) + TILE / 2, feet, e.style, e.orders);
       this.enemies.push(enemy);
       this.enemyIndex.set(enemy, index);
     });
@@ -283,6 +285,7 @@ export class StageScene extends Phaser.Scene {
       land: (x, drop) => {
         if (!reduced) this.world.flex(x, this.hero.feet, 0.25 + drop / 500);
         if (drop > HARD_LANDING) this.scenery.impact(x, Math.min(1, drop / 600));
+        if (Math.abs(this.hero.feet - FLOOR_Y) < 8 && this.scenery.crumble(x, Math.min(1, drop / 400))) this.sfx("creak", 0.5);
       },
       leave: (x, feet) => !reduced && this.world.flex(x, feet, 0.2),
       surface: (x, y) => this.surface(x, y),
@@ -366,6 +369,25 @@ export class StageScene extends Phaser.Scene {
     const side = Math.sign(self.x - hx);
     const gap = Math.abs(self.x - hx);
     return this.enemies.some((o) => o !== self && !o.dead && o.kind !== "whistle" && Math.sign(o.x - hx) === side && Math.abs(o.x - hx) < gap && Math.abs(o.x - hx) < 340 && Math.abs(o.feet - self.feet) < 60);
+  }
+
+  private orderClear(self: Enemy) {
+    if (this.mode !== "play" || this.arena.entered || !this.hero) return false;
+    const h = this.hero;
+    if (this.enemies.some((o) => o !== self && !o.dead && Math.abs(o.x - h.x) < 620 && Math.abs(o.feet - h.feet) < 240)) return false;
+    return !this.waves.some((w) => w.alive && Math.abs(w.img.x - h.x) < 820);
+  }
+
+  private ordered(self: Enemy) {
+    if (learned.has("order") || this.shown.has("order") || this.mode !== "play") return;
+    if (this.lesson) this.endLesson();
+    this.shown.add("order");
+    learned.add("order");
+    this.lesson = "order";
+    this.lessonUntil = this.t + 4200;
+    this.lessonPast = Infinity;
+    this.showChip(this.copy.hints.order, [], () => (self.dead ? null : { x: self.x, y: self.body.top - 260 }));
+    this.announce(this.copy.hintSpeech.order);
   }
 
   private route(obj: Phaser.GameObjects.GameObject) {
@@ -793,7 +815,7 @@ export class StageScene extends Phaser.Scene {
 
   private heroView(): HeroView {
     const b = this.hero.body;
-    return { x: b.center.x, feet: b.bottom, top: b.top, grounded: this.hero.grounded };
+    return { x: b.center.x, feet: b.bottom, top: b.top, grounded: this.hero.grounded, vx: b.velocity.x };
   }
 
   private heroRect() {
@@ -1143,7 +1165,9 @@ export class StageScene extends Phaser.Scene {
     const below = under.length ? Math.max(...under) : null;
     const scale = this.arena.entered ? ARENA_GROW : 1;
     const b = h.body;
-    this.frameCam.update(dt, this.frame, { x: h.x, top: h.top, feet: h.feet, facing: h.facing, vy: b.velocity.y, grounded: h.grounded, scale }, this.focusPoints(), this.highPoints(), bounds, this.arena.entered, below);
+    const boss = this.arena.entered && this.boss?.state === "intro" ? this.boss : null;
+    const subject = boss ? { x: boss.x - 140, top: boss.body.top, feet: boss.body.bottom, facing: -1, vy: 0, grounded: true, scale } : { x: h.x, top: h.top, feet: h.feet, facing: h.facing, vy: b.velocity.y, grounded: h.grounded, scale };
+    this.frameCam.update(dt, this.frame, subject, this.focusPoints(), this.highPoints(), bounds, this.arena.entered, below);
     this.scenery.frameSky(this.cameras.main);
   }
 

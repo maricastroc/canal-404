@@ -6,6 +6,8 @@ type BossState = "wait" | "intro" | "guard" | "puff" | "blow" | "tired" | "stomp
 type Move = "wave" | "charge" | "slam";
 
 const SCALE = 0.82;
+const WHISTLE = { x: 52, y: 225 };
+const INTRO = { stomp: 420, inhale: 460, blast: 820, guard: 380, shortStomp: 260, shortBlast: 520, shortGuard: 250 };
 
 export class Inspector {
   readonly rect: Phaser.GameObjects.Rectangle;
@@ -83,13 +85,42 @@ export class Inspector {
     this.state = "intro";
     this.introStep = 0;
     this.introShort = short;
-    this.until = t + (short ? 260 : 520);
+    this.until = t + (short ? INTRO.shortStomp : INTRO.stomp);
     this.facing = -1;
     this.tex("stomp");
     this.api.sfx("stomp", 1);
     this.api.dust(this.x, FLOOR_Y, 0);
     this.api.room("intro");
     if (!this.api.reduced) this.api.scene.cameras.main.shake(160, 0.006);
+  }
+
+  private inhale() {
+    this.tex("puff");
+    this.api.sfx("puff", 0.9);
+    if (this.api.reduced) return;
+    this.api.scene.tweens.add({ targets: this.sprite, scaleX: SCALE * 1.1, scaleY: SCALE * 1.05, duration: INTRO.inhale - 60, ease: "Quad.easeIn" });
+  }
+
+  private blast() {
+    const scene = this.api.scene;
+    this.tex("blow");
+    this.api.sfx("bigWhistle", 1);
+    this.api.word(this.api.words.silence, this.x - 40, this.body.top - 70, "#f06ba8", this.introShort ? 52 : 72);
+    this.api.room("silence", -1);
+    if (this.api.reduced) {
+      this.sprite.setScale(SCALE);
+      return;
+    }
+    scene.tweens.killTweensOf(this.sprite);
+    this.sprite.setScale(SCALE * 0.94, SCALE * 1.04);
+    scene.tweens.add({ targets: this.sprite, scaleX: SCALE, scaleY: SCALE, duration: 260, ease: "Back.easeOut" });
+    scene.cameras.main.shake(this.introShort ? 160 : 260, this.introShort ? 0.005 : 0.009);
+    const x = this.x + this.facing * WHISTLE.x;
+    const y = FLOOR_Y - WHISTLE.y;
+    for (let i = 0; i < (this.introShort ? 1 : 2); i += 1) {
+      const ring = scene.add.image(x, y, "shock-ring").setDepth(17.5).setScale(0.15).setAlpha(0.95);
+      scene.tweens.add({ targets: ring, scale: 3.4, alpha: 0, delay: i * 140, duration: 560, ease: "Quad.easeOut", onComplete: () => ring.destroy() });
+    }
   }
 
   private stateTex() {
@@ -127,17 +158,19 @@ export class Inspector {
       case "intro":
         b.setVelocityX(0);
         if (t < this.until) return;
-        if (this.introStep === 0) {
+        if (this.introStep === 0 && !this.introShort) {
           this.introStep = 1;
-          this.until = t + (this.introShort ? 520 : 1000);
-          this.tex("blow");
-          this.api.sfx("bigWhistle", 1);
-          this.api.word(this.api.words.silence, this.x - 40, b.top - 70, "#f06ba8", this.introShort ? 52 : 68);
-          this.api.room("whistle", -1);
-          if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.sprite, scaleX: SCALE * 1.06, scaleY: SCALE * 0.96, duration: 140, yoyo: true, repeat: 1 });
+          this.until = t + INTRO.inhale;
+          this.inhale();
           return;
         }
-        this.guard(t, this.introShort ? 250 : 450);
+        if (this.introStep < 2) {
+          this.introStep = 2;
+          this.until = t + (this.introShort ? INTRO.shortBlast : INTRO.blast);
+          this.blast();
+          return;
+        }
+        this.guard(t, this.introShort ? INTRO.shortGuard : INTRO.guard);
         return;
       case "guard": {
         b.setVelocityX(0);

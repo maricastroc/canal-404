@@ -13,7 +13,7 @@ export type LevelDef = {
   blocks: { col: number; row: number; w: number; h: number; art: "bin" | "boxes" | "cabinet" }[];
   platforms: { col: number; row: number; w: number; art: "shelf" | "bench" | "bars" | "desk" | "books"; wobbly?: boolean }[];
   puddles: { col: number; w: number }[];
-  enemies: { kind: EnemyKind; col: number; row?: number; style?: EnemyStyle }[];
+  enemies: { kind: EnemyKind; col: number; row?: number; style?: EnemyStyle; orders?: boolean }[];
   items: ({ kind: "snack"; col: number; row: number } | { kind: "sticker"; col: number; row: number; id: StickerId })[];
   checkpoints: number[];
   balls?: { col: number; every: number; offset: number; wake: number }[];
@@ -186,15 +186,15 @@ export const LEVELS: LevelDef[] = [
     ],
     puddles: [],
     enemies: [
-      { kind: "shield", col: 10 },
+      { kind: "shield", col: 10, orders: true },
       { kind: "common", col: 15, style: "rush" },
       { kind: "common", col: 27, style: "guard" },
-      { kind: "shield", col: 31 },
+      { kind: "shield", col: 31, orders: true },
       { kind: "common", col: 43 },
-      { kind: "shield", col: 47 },
+      { kind: "shield", col: 47, orders: true },
       { kind: "whistle", col: 51, style: "mixed" },
       { kind: "common", col: 56 },
-      { kind: "shield", col: 61 },
+      { kind: "shield", col: 61, orders: true },
     ],
     items: [
       { kind: "sticker", col: 13, row: 7, id: "domino" },

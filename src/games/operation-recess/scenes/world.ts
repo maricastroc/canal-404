@@ -27,12 +27,13 @@ function drawGround(scene: Phaser.Scene, level: LevelDef, width: number) {
   for (let x = 0; x < width; x += 140) pit.fillRect(x, FLOOR_Y + 40, 70, 8);
   const g = scene.add.graphics().setDepth(5.2);
   g.lineStyle(6, INK_HEX, 1);
+  const broken = level.theme === "office";
   for (const [a, b] of level.ground) {
     const x0 = cx(a);
     const x1 = cx(b + 1);
     g.lineBetween(x0, FLOOR_Y, x1, FLOOR_Y);
-    if (a > 0) g.lineBetween(x0, FLOOR_Y, x0, H);
-    if (b + 1 < level.length) g.lineBetween(x1, FLOOR_Y, x1, H);
+    if (a > 0 && !broken) g.lineBetween(x0, FLOOR_Y, x0, H);
+    if (b + 1 < level.length && !broken) g.lineBetween(x1, FLOOR_Y, x1, H);
   }
 }
 

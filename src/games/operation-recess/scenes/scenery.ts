@@ -2,11 +2,12 @@ import * as Phaser from "phaser";
 import { FLOOR_Y, H, TILE, W } from "../config";
 import type { LevelDef, Theme } from "../levels";
 import { INK_HEX, type Fonts } from "../../kit/ui";
+import { OfficeSet } from "./officeArt";
 import { cx } from "./world";
 import { makeYardTextures, YARD_SECTORS, yardSector, type YardSector } from "./yardArt";
 
 export type ReactKind = "locker" | "bin" | "swing" | "plant" | "metal";
-export type RoomEvent = "intro" | "stomp" | "crash" | "slam" | "whistle" | "hit" | "angry" | "defeat";
+export type RoomEvent = "intro" | "silence" | "stomp" | "crash" | "slam" | "whistle" | "hit" | "angry" | "defeat";
 type ArenaRefs = {
   banner: Phaser.GameObjects.Image;
   board: Phaser.GameObjects.Image;
@@ -340,6 +341,7 @@ export class Scenery {
   private sky: Phaser.GameObjects.Image | null = null;
   private ceiling: Phaser.GameObjects.GameObject[] = [];
   private compact = false;
+  private set: OfficeSet | null = null;
   readonly spotlight: Phaser.GameObjects.Image | null = null;
 
   constructor(
@@ -921,6 +923,7 @@ export class Scenery {
   private office() {
     const s = this.scene;
     const arenaX = this.level.boss ? this.level.boss.arena * TILE : this.width;
+    this.set = new OfficeSet(s, this.level, this.reduced);
     s.add.tileSprite(0, 0, this.width, FLOOR_Y, "wall-office").setOrigin(0, 0).setDepth(0);
     s.add.image(0, 130, "shade-top").setOrigin(0, 0).setDisplaySize(this.width, 300).setDepth(0.35).setAlpha(0.6);
     this.floor("floor-office");
@@ -963,6 +966,7 @@ export class Scenery {
         this.img("hall-light", x + dx, 240, D.back + 0.01, [0.5, 0.5]).setScale(0.6);
         this.scene.add.image(x + dx, 370, "spot").setDepth(D.back - 0.01).setScale(1.3).setAlpha(0.7);
         p.setData("frame", true);
+        this.set?.watch(p, k);
       }
       return;
     }
@@ -997,6 +1001,8 @@ export class Scenery {
     const shelf = this.img("trophy-shelf", left + W - 470, 520, D.back, [0.5, 0.5]).setScale(0.9);
     const p1 = this.img("portrait", left + 720, 520, D.back, [0.5, 0.5]);
     const p2 = this.img("principal-c", left + W - 720, 520, D.back, [0.5, 0.5]);
+    this.set?.watch(p2, "principal-c");
+    this.set?.clock(cx, 500, 230);
     const desk = this.grounded(this.img("big-desk", cx, FLOOR_Y - 4, D.wall + 0.15).setScale(0.86).setTint(0xd6cbe0), 0.95);
     this.img("file-cabinet", left + W - 300, FLOOR_Y, D.floor).setScale(0.9);
     this.img("plant-big", left + 300, FLOOR_Y, D.floor).setScale(0.9);
@@ -1127,7 +1133,14 @@ export class Scenery {
     }
   }
 
+  crumble(x: number, power: number) {
+    return this.set?.crumble(x, power) ?? false;
+  }
+
   room(event: RoomEvent, dir = 0) {
+    if (event === "silence") this.set?.silence();
+    if (event === "hit") this.set?.advance();
+    if (event === "defeat") this.set?.ring();
     const r = this.refs;
     if (!r || this.reduced) return;
     const nearSide = dir < 0 ? 0 : 1;
@@ -1136,6 +1149,14 @@ export class Scenery {
         this.shake(r.desk, 0.7);
         this.shake(r.shelf, 0.6);
         this.deskPapers(2);
+        return;
+      case "silence":
+        this.billow(r.curtains[0], dir || -1);
+        this.billow(r.curtains[1], dir || -1);
+        this.swing(r.banner, 0.7);
+        for (const f of r.frames) this.swing(f, 0.6);
+        this.shake(r.shelf, 0.8);
+        this.deskPapers(4, dir);
         return;
       case "stomp":
         this.shake(r.shelf, 0.5);
@@ -1192,6 +1213,7 @@ export class Scenery {
   }
 
   update(t: number, hero: SceneryHero, view: Phaser.Geom.Rectangle) {
+    this.set?.update(t, hero, view);
     if (!this.reduced && Math.abs(hero.vx) > 120) {
       const now = this.scene.time.now;
       for (const r of this.reactive) {

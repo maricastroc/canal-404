@@ -4,7 +4,7 @@ import type { EnemyKind, EnemyStyle } from "../levels";
 import type { RecessSfx } from "../sounds";
 import type { RoomEvent } from "./scenery";
 
-export type HeroView = { x: number; feet: number; top: number; grounded: boolean };
+export type HeroView = { x: number; feet: number; top: number; grounded: boolean; vx: number };
 export type Expression = "watch" | "spot" | "lost";
 type Anchor = () => { x: number; y: number } | null;
 
@@ -27,6 +27,8 @@ export type StageApi = {
   surface: (x: number, y: number) => number | null;
   impact: (x: number, power: number) => void;
   say: (text: string, anchor: Anchor) => boolean;
+  orderClear: (self: Enemy) => boolean;
+  ordered: (self: Enemy) => void;
 };
 
 export type HitResult = "hit" | "block" | "kill" | "dodge" | null;
@@ -772,16 +774,164 @@ export class WhistleMonitor extends Enemy {
   }
 }
 
+const ORDER = { min: 250, max: 620, reach: 780, level: 60, raise: 620, hold: 1100, go: 1250, fine: 420, rush: 1000, speed: 560, still: 45, slack: 130, rest: 4600, notice: 450 };
+const PLATE = { x: 82, y: 286, scale: 0.86 };
+
 export class ShieldMonitor extends Enemy {
   private turnAt = 0;
   private blocksAt: number[] = [];
+  private plate: Phaser.GameObjects.Image | null = null;
+  private orderReady = 0;
+  private seenAt = -1;
+  private moved = 0;
+  private wasGrounded = true;
+  private rushTo = 0;
+  private plateOut = true;
+  private dustAt = 0;
 
-  constructor(api: StageApi, x: number, feet: number) {
+  constructor(
+    api: StageApi,
+    x: number,
+    feet: number,
+    readonly orders = false,
+  ) {
     super(api, "shield", x, feet, 3);
     this.knockback = { x: 240, y: 200 };
     this.mirrored = true;
     this.state = "advance";
     this.mood = "watch";
+    if (orders) this.plate = api.scene.add.image(x, feet, "order-pare").setScale(PLATE.scale).setVisible(false);
+  }
+
+  private canOrder(t: number, h: HeroView, dx: number) {
+    if (!this.orders || t < this.orderReady || !this.grounded) return false;
+    if (this.seenAt < 0 || t - this.seenAt < ORDER.notice) return false;
+    const gap = dx * this.facing;
+    if (gap < ORDER.min || gap > ORDER.max || Math.abs(h.feet - this.feet) > ORDER.level) return false;
+    if (h.vx * this.facing > -ORDER.still) return false;
+    return this.api.orderClear(this);
+  }
+
+  private startOrder(t: number, h: HeroView) {
+    this.state = "order-up";
+    this.until = t + ORDER.raise;
+    this.moved = 0;
+    this.wasGrounded = h.grounded;
+    this.body.setVelocityX(0);
+    this.tex("order");
+    this.api.sfx("whistle", 0.75);
+    this.api.word(this.api.words.stop, this.x + this.facing * 190, this.feet - 250, "#ef4f43", 52);
+    this.api.ordered(this);
+    const plate = this.plate!;
+    this.plateOut = false;
+    plate.setTexture("order-pare").setVisible(true).setAlpha(1).setAngle(0);
+    if (this.api.reduced) {
+      plate.setScale(PLATE.scale);
+      return;
+    }
+    this.api.scene.tweens.killTweensOf(plate);
+    plate.setScale(PLATE.scale * 0.4);
+    this.api.scene.tweens.add({ targets: plate, scale: PLATE.scale, duration: 220, ease: "Back.easeOut" });
+    this.api.scene.tweens.add({ targets: plate, angle: { from: -10, to: 0 }, duration: 420, ease: "Elastic.easeOut" });
+  }
+
+  private holdOrder(t: number) {
+    this.state = "order";
+    this.until = t + ORDER.hold;
+    if (this.api.reduced || !this.plate) return;
+    this.api.scene.tweens.add({ targets: this.plate, scale: PLATE.scale * 1.08, duration: 180, yoyo: true, repeat: Math.floor(ORDER.hold / 360) - 1, ease: "Sine.easeInOut" });
+  }
+
+  private watchOrder(t: number, dt: number, h: HeroView) {
+    const dx = h.x - this.x;
+    const inside = dx * this.facing > 0 && Math.abs(dx) < ORDER.reach && Math.abs(h.feet - this.feet) < ORDER.level;
+    const leapt = this.wasGrounded && !h.grounded;
+    this.wasGrounded = h.grounded;
+    if (!inside) return false;
+    if (leapt) return true;
+    if (h.grounded && Math.abs(h.vx) > ORDER.still) this.moved += dt * 1000;
+    return this.moved > ORDER.slack;
+  }
+
+  private release(t: number) {
+    this.state = "go";
+    this.until = t + ORDER.go;
+    this.mood = null;
+    this.api.sfx("go", 0.8);
+    this.api.word(this.api.words.go, this.x + this.facing * 190, this.feet - 250, "#63d6a0", 52);
+    const plate = this.plate;
+    if (!plate) return;
+    const scene = this.api.scene;
+    scene.tweens.killTweensOf(plate);
+    plate.setScale(PLATE.scale);
+    if (this.api.reduced) {
+      plate.setTexture("order-siga");
+      return;
+    }
+    scene.tweens.add({
+      targets: plate,
+      scaleX: 0,
+      duration: 90,
+      ease: "Quad.easeIn",
+      onComplete: () => {
+        plate.setTexture("order-siga");
+        scene.tweens.add({ targets: plate, scaleX: PLATE.scale, duration: 140, ease: "Back.easeOut" });
+      },
+    });
+  }
+
+  private bust(t: number, h: HeroView) {
+    this.state = "fine";
+    this.until = t + ORDER.fine;
+    this.rushTo = h.x + this.facing * 70;
+    this.hidePlate();
+    this.tex("block");
+    this.telegraph(ORDER.fine);
+    this.api.sfx("bigWhistle", 0.65);
+    this.api.word(this.api.words.busted, this.x + this.facing * 170, this.feet - 290, "#ef4f43", 50);
+    this.alarm = this.api.warn(this.x, this.body.top - 70, ORDER.fine);
+    this.api.dust(this.x - this.facing * 40, this.feet, -this.facing);
+  }
+
+  private hidePlate() {
+    const plate = this.plate;
+    if (!plate || this.plateOut) return;
+    this.plateOut = true;
+    this.api.scene.tweens.killTweensOf(plate);
+    if (this.api.reduced) {
+      plate.setVisible(false);
+      return;
+    }
+    this.api.scene.tweens.add({ targets: plate, alpha: 0, y: plate.y + 30, duration: 160, onComplete: () => plate.setVisible(false).setAlpha(1) });
+  }
+
+  private endOrder(t: number) {
+    this.orderReady = t + ORDER.rest;
+    this.hidePlate();
+  }
+
+  destroy() {
+    super.destroy();
+    if (!this.plate) return;
+    this.api.scene.tweens.killTweensOf(this.plate);
+    this.plate.destroy();
+  }
+
+  leave() {
+    this.hidePlate();
+    super.leave();
+  }
+
+  sync() {
+    super.sync();
+    const plate = this.plate;
+    if (!plate || this.plateOut) return;
+    if (this.dead) {
+      this.hidePlate();
+      return;
+    }
+    const k = this.sprite.scaleY;
+    plate.setPosition(this.sprite.x + this.facing * PLATE.x * k, this.sprite.y - PLATE.y * k).setDepth(this.sprite.depth + 0.002);
   }
 
   protected backstep(speed: number, dt: number) {
@@ -798,7 +948,7 @@ export class ShieldMonitor extends Enemy {
   }
 
   protected blocks(fromX: number) {
-    if (this.state === "open" || this.state === "recover") return false;
+    if (this.state === "open" || this.state === "recover" || this.state === "go") return false;
     const fromFront = (fromX - this.x) * this.facing > 0;
     return fromFront;
   }
@@ -831,6 +981,7 @@ export class ShieldMonitor extends Enemy {
   }
 
   protected onHurt(dir: number, t: number) {
+    if (this.plate && !this.plateOut) this.endOrder(t);
     const fromBehind = dir === this.facing;
     if (!fromBehind) return;
     this.api.word(this.api.words.huh, this.x, this.body.top - 50, "#fbf5e6", 36);
@@ -862,6 +1013,7 @@ export class ShieldMonitor extends Enemy {
         }
         if (!near || this.overhead(h)) {
           this.turnAt = 0;
+          this.seenAt = -1;
           this.hold();
           return;
         }
@@ -874,6 +1026,11 @@ export class ShieldMonitor extends Enemy {
           }
           this.turnAt = 0;
           this.faceHero(h);
+        }
+        if (this.seenAt < 0) this.seenAt = t;
+        if (this.canOrder(t, h, dx)) {
+          this.startOrder(t, h);
+          return;
         }
         if (Math.abs(dx) < 175 && Math.abs(h.feet - this.feet) < OVERHEAD.y) {
           this.state = "windup";
@@ -888,6 +1045,58 @@ export class ShieldMonitor extends Enemy {
           return;
         }
         this.walk(100, dt);
+        return;
+      }
+      case "order-up":
+        this.body.setVelocityX(0);
+        this.wasGrounded = h.grounded;
+        if (t >= this.until) this.holdOrder(t);
+        return;
+      case "order":
+        this.body.setVelocityX(0);
+        if (this.watchOrder(t, dt, h)) {
+          this.bust(t, h);
+          return;
+        }
+        if (t >= this.until) this.release(t);
+        return;
+      case "go":
+        this.body.setVelocityX(0);
+        if (t >= this.until) {
+          this.endOrder(t);
+          this.state = "advance";
+          this.mood = "watch";
+          this.tex("walk-a");
+        }
+        return;
+      case "fine":
+        this.body.setVelocityX(0);
+        if (t >= this.until) {
+          this.state = "rush";
+          this.until = t + ORDER.rush;
+          this.tex("bash");
+          this.api.sfx("charge", 0.7);
+          this.endOrder(t);
+        }
+        return;
+      case "rush": {
+        const ahead = this.api.groundAt(this.x + this.facing * 60);
+        const blocked = this.facing > 0 ? this.body.blocked.right : this.body.blocked.left;
+        const past = (this.x - this.rushTo) * this.facing >= 0;
+        if (!ahead || blocked || past || t >= this.until) {
+          this.state = "open";
+          this.until = t + 1000;
+          this.body.setVelocityX(0);
+          this.tex("open");
+          this.api.dust(this.x + this.facing * 70, this.feet, -this.facing);
+          this.api.sfx("land", 0.7);
+          return;
+        }
+        this.body.setVelocityX(this.facing * ORDER.speed);
+        if (t > this.dustAt) {
+          this.dustAt = t + 130;
+          this.api.dust(this.x - this.facing * 40, this.feet, this.facing);
+        }
         return;
       }
       case "windup":
@@ -930,7 +1139,7 @@ export class ShieldMonitor extends Enemy {
   }
 
   attackBox() {
-    if (this.dead || this.state !== "bash") return null;
+    if (this.dead || (this.state !== "bash" && this.state !== "rush")) return null;
     const b = this.body;
     const x0 = this.facing > 0 ? b.center.x : b.center.x - 150;
     return new Phaser.Geom.Rectangle(x0, b.top + 10, 150, b.height - 30);
@@ -974,8 +1183,8 @@ export class Wave {
   }
 }
 
-export function makeEnemy(api: StageApi, kind: EnemyKind, x: number, feet: number, style?: EnemyStyle): Enemy {
+export function makeEnemy(api: StageApi, kind: EnemyKind, x: number, feet: number, style?: EnemyStyle, orders = false): Enemy {
   if (kind === "whistle") return new WhistleMonitor(api, x, feet, style === "mixed");
-  if (kind === "shield") return new ShieldMonitor(api, x, feet);
+  if (kind === "shield") return new ShieldMonitor(api, x, feet, orders);
   return new CommonMonitor(api, x, feet, style);
 }
