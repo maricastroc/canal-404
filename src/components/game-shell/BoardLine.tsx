@@ -19,7 +19,11 @@ import { boardNickname } from "@/lib/competition/nickname";
 
 export type BoardState = { phase: "sending" } | { phase: "join"; waiting: number } | { phase: "done"; outcome: SubmitOutcome; joined?: boolean };
 
-type Line = { headline?: string; text: string; rival?: string; href?: string; live?: boolean; offline?: boolean; record?: boolean; stamp?: boolean };
+type Mark = { best: string; place?: string };
+
+type Rival = { name: string; tag: string; best: string };
+
+type Line = { headline?: string; text?: string; you?: Mark; rival?: Rival; href?: string; live?: boolean; offline?: boolean; record?: boolean; tie?: boolean; stamp?: boolean };
 
 const COPY = localized({
   "pt-BR": {
@@ -40,20 +44,20 @@ const COPY = localized({
     inhuman: "Esses toques ficaram precisos demais para uma pessoa e não entraram no placar.",
     noPoints: "Sem pontos, sem placar. Fica para a próxima!",
     place: (position: string, total: number) => `${position} de ${formatNumber(total, "pt-BR")}`,
-    rival: (name: string, best: string) => `Recorde do canal: ${name} · ${best}.`,
-    notWonBest: (here: string, best: string, place: string) => `Só vitórias entram no placar ${here}. Seu melhor continua ${best}, ${place}.`,
+    yours: "Seu recorde",
+    yourPlace: (place: string) => `Sua posição: ${place}`,
+    channelBest: "Melhor resultado do canal",
+    tieTitle: "Você empatou com o recorde do canal!",
+    tieOrder: "No empate, fica na frente quem chegou primeiro.",
     notWon: (here: string) => `Só vitórias entram no placar ${here}.`,
     openedTitle: "Placar inaugurado",
     opened: (mark: string) => `Você inaugurou o placar! Agora é esperar alguém tentar superar ${mark}.`,
     recordTitle: "Recorde do canal!",
     record: (best: string, total: number) => `${best}. Você passou na frente de todo mundo: 1º de ${formatNumber(total, "pt-BR")}.`,
     joinedTitle: "Você entrou no placar",
-    joined: (best: string, place: string) => `${best}. Você está em ${place}.`,
     personalTitle: "Novo recorde pessoal!",
-    personal: (best: string, place: string) => `${best}. Agora você está em ${place}.`,
-    aloneBest: (best: string, here: string) => `Seu melhor continua ${best}. O placar ${here} segue só seu: ninguém apareceu para tentar superar.`,
+    alone: (here: string) => `O placar ${here} segue só seu: ninguém apareceu para tentar superar.`,
     holder: "O recorde do canal continua com você.",
-    stillBest: (best: string, place: string) => `Seu melhor continua ${best}, ${place}.`,
     registered: "Resultado registrado no placar.",
     points: (points: number) => `seus ${formatNumber(points, "pt-BR")} ${points === 1 ? "ponto" : "pontos"}`,
     mark: (best: string) => `sua marca: ${best}`,
@@ -93,20 +97,20 @@ const COPY = localized({
     inhuman: "These taps were too precise for a person, so they didn't go on the board.",
     noPoints: "No points, no board. Better luck next time!",
     place: (position: string, total: number) => `${position} of ${formatNumber(total, "en")}`,
-    rival: (name: string, best: string) => `Channel record: ${name} · ${best}.`,
-    notWonBest: (here: string, best: string, place: string) => `Only wins go on the board ${here}. Your best is still ${best}, ${place}.`,
+    yours: "Your record",
+    yourPlace: (place: string) => `Your position: ${place}`,
+    channelBest: "Channel best",
+    tieTitle: "You tied the channel record!",
+    tieOrder: "In a tie, whoever got there first stays ahead.",
     notWon: (here: string) => `Only wins go on the board ${here}.`,
     openedTitle: "Board opened",
     opened: (mark: string) => `You opened the board! Now wait for someone to try to beat ${mark}.`,
     recordTitle: "Channel record!",
     record: (best: string, total: number) => `${best}. You got ahead of everyone: 1st of ${formatNumber(total, "en")}.`,
     joinedTitle: "You made the board",
-    joined: (best: string, place: string) => `${best}. You're in ${place}.`,
     personalTitle: "New personal record!",
-    personal: (best: string, place: string) => `${best}. Now you're in ${place}.`,
-    aloneBest: (best: string, here: string) => `Your best is still ${best}. The board ${here} is still all yours: nobody has shown up to try to beat it.`,
+    alone: (here: string) => `The board ${here} is still all yours: nobody has shown up to try to beat it.`,
     holder: "The channel record is still yours.",
-    stillBest: (best: string, place: string) => `Your best is still ${best}, ${place}.`,
     registered: "Result recorded on the board.",
     points: (points: number) => `your ${formatNumber(points, "en")} ${points === 1 ? "point" : "points"}`,
     mark: (best: string) => `your mark: ${best}`,
@@ -175,27 +179,39 @@ export function describeBoard(game: GameMeta, outcome: SubmitOutcome, locale: Lo
         if (board.best) return { text: copy.alreadyFinished(finishDate(board.best.achievedAt, locale)), href, live: true };
         return { text: copy.registered, href, live: true };
       }
-      const best = board.best && slug ? formatBest(slug, board.best.metrics, locale) : "";
-      const place = board.position ? copy.place(ordinal(board.position, locale), board.total) : "";
+      const leader = board.leader && !board.leader.you ? board.leader : null;
+      const shown = slug ? shownMetrics(slug, board.best?.metrics, leader?.metrics) : 2;
+      const best = board.best && slug ? formatBest(slug, board.best.metrics, locale, shown) : "";
+      const place = board.position ? copy.place(ordinal(board.position, locale), board.total) : undefined;
       const alone = board.position === 1 && board.total === 1;
       const href = slug ? recordsHref(slug, levelOfBoard(board.id)) : undefined;
-      const leader = board.leader;
-      const rival = leader && !leader.you && slug ? copy.rival(`${boardNickname(leader.nickname)} #${leader.tag}`, formatBest(slug, leader.metrics, locale)) : undefined;
-      if (run.ineligible === "not_won") {
-        return { text: board.best ? copy.notWonBest(here, best, place) : copy.notWon(here), rival, href };
-      }
+      const rival = leader && slug ? { name: boardNickname(leader.nickname), tag: `#${leader.tag}`, best: formatBest(slug, leader.metrics, locale, shown) } : undefined;
+      const you = board.best ? { best, place } : undefined;
+      if (run.ineligible === "not_won") return { text: copy.notWon(here), you, rival, href };
       if (board.improved && board.position) {
         if (alone) return { headline: copy.openedTitle, text: copy.opened(markToBeat(slug, board.best?.metrics ?? [], best, copy)), href, live: true, record: true };
         if (board.position === 1) return { headline: copy.recordTitle, text: copy.record(best, board.total), href, live: true, record: true, stamp: true };
-        if (!board.previous) return { headline: copy.joinedTitle, text: copy.joined(best, place), rival, href, live: true };
-        return { headline: copy.personalTitle, text: copy.personal(best, place), rival, href, live: true, record: true };
       }
-      if (board.best && alone) return { text: copy.aloneBest(best, here), href, live: true };
-      const holder = leader?.you ? copy.holder : undefined;
-      if (board.best) return { text: copy.stillBest(best, place), rival: rival ?? holder, href, live: true };
+      if (slug && board.best && leader && sameRank(slug, board.best.metrics, leader.metrics)) return { headline: copy.tieTitle, text: copy.tieOrder, you, rival, href, live: true, tie: true };
+      if (board.improved && board.position) {
+        if (!board.previous) return { headline: copy.joinedTitle, you, rival, href, live: true };
+        return { headline: copy.personalTitle, you, rival, href, live: true, record: true };
+      }
+      if (board.best && alone) return { text: copy.alone(here), you: { best }, href, live: true };
+      if (board.best) return { text: board.leader?.you ? copy.holder : undefined, you, rival, href, live: true };
       return { text: copy.registered, rival, href, live: true };
     }
   }
+}
+
+function sameRank(slug: GameSlug, mine: number[], theirs: number[]) {
+  return BOARD_META[slug].metrics.every((_, i) => (mine[i] ?? 0) === (theirs[i] ?? 0));
+}
+
+function shownMetrics(slug: GameSlug, mine: number[] | undefined, theirs: number[] | undefined) {
+  if (!mine || !theirs) return 2;
+  const split = BOARD_META[slug].metrics.findIndex((_, i) => (mine[i] ?? 0) !== (theirs[i] ?? 0));
+  return Math.max(2, split + 1);
 }
 
 function markToBeat(slug: GameSlug | null, metrics: number[], best: string, copy: Copy) {
@@ -222,6 +238,34 @@ function RecordStamp() {
     >
       <TrophyIcon className="size-4" /> {copy.stamp}
     </motion.span>
+  );
+}
+
+const LABEL = "font-display text-xs uppercase leading-5 tracking-wider text-cream-2";
+
+function Standings({ you, rival }: { you?: Mark; rival?: Rival }) {
+  const copy = useCopy(COPY);
+  const paired = Boolean(you && rival);
+  const column = `flex min-w-0 flex-col ${paired ? "@md:row-span-3 @md:grid @md:grid-rows-subgrid" : ""}`;
+  return (
+    <dl className={`mt-1.5 grid gap-x-4 gap-y-2 ${paired ? "@md:grid-cols-2 @md:grid-rows-[auto_auto_auto] @md:gap-y-0" : ""}`}>
+      {you ? (
+        <div className={column}>
+          <dt className={LABEL}>{copy.yours}</dt>
+          <dd className={`copy font-semibold ${paired ? "@md:row-start-3" : ""}`}>{you.best}</dd>
+          {you.place ? <dd className={`copy-sm text-cream-2 ${paired ? "@md:row-start-2 @md:self-center" : ""}`}>{copy.yourPlace(you.place)}</dd> : null}
+        </div>
+      ) : null}
+      {rival ? (
+        <div className={`${column} ${paired ? "border-t-2 border-dashed border-cream/30 pt-2 @md:border-l-2 @md:border-t-0 @md:pl-4 @md:pt-0" : ""}`}>
+          <dt className={LABEL}>{copy.channelBest}</dt>
+          <dd className="break-words font-display text-base uppercase leading-6 tracking-wide text-sun">
+            {rival.name} <span className="font-body text-xs font-semibold normal-case tracking-normal text-cream-2">{rival.tag}</span>
+          </dd>
+          <dd className="copy font-semibold">{rival.best}</dd>
+        </div>
+      ) : null}
+    </dl>
   );
 }
 
@@ -267,15 +311,15 @@ export function BoardLine({ game, state, onJoin }: { game: GameMeta; state: Boar
       ) : (
         <div className="mt-1.5 flex items-start gap-3">
           {line?.record || line?.offline ? <Mascot404 expression={line.record ? "excited" : "static"} className="w-14 shrink-0" /> : null}
-          <div role="status" className="min-w-0 flex-1 leading-snug">
+          <div role="status" className="@container min-w-0 flex-1 leading-snug">
             {line?.headline ? (
-              <p className={`flex flex-wrap items-center gap-2 font-display text-lg uppercase tracking-wide ${line.record ? "text-sun" : "text-cream"}`}>
+              <p className={`flex flex-wrap items-center gap-2 font-display text-lg uppercase tracking-wide ${line.record || line.tie ? "text-sun" : "text-cream"}`}>
                 {line.headline}
                 {line.stamp ? <RecordStamp /> : null}
               </p>
             ) : null}
-            <p className="copy font-semibold">{line?.text}</p>
-            {line?.rival ? <p className="copy-sm mt-1 text-cream-2">{line.rival}</p> : null}
+            {line?.text ? <p className={line.headline && (line.you || line.rival) ? "copy-sm text-cream-2" : "copy font-semibold"}>{line.text}</p> : null}
+            {line?.you || line?.rival ? <Standings you={line.you} rival={line.rival} /> : null}
           </div>
         </div>
       )}
