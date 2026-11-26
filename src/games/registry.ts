@@ -55,7 +55,7 @@ const BASE = {
     levelIds: ["warm-up", "sharp-aim", "up-high", "domino", "surprise-bath", "blocked-path", "counterattack", "free-for-all", "grand-mess"],
     orientation: "any",
   },
-  "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale"], orientation: "any" },
+  "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale", "kibble", "vinyl", "strike", "chain"], orientation: "any" },
   "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], orientation: "upright" },
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard", "attic"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
   "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "library", "office"], orientation: "any" },
@@ -154,7 +154,7 @@ const TEXT = gameText({
       tagline: "Monte máquinas malucas para resolver problemas bobos.",
       description: "A Lina acha que todo problema se resolve com uma máquina, de preferência a mais complicada possível. Acordar o gato, ligar a torradeira, achar o controle remoto: na garagem dela, tudo vira engenhoca. Monte rampas, molas, ventiladores e esteiras e faça a bolinha chegar lá.",
       tags: ["Puzzle", "Construção", "Física"],
-      objective: "Toda grande invenção começa com uma ideia duvidosa. Monte sua máquina, leve a bolinha até o alvo e tente resolver cada desafio usando o mínimo de peças.",
+      objective: "Toda grande invenção começa com uma ideia duvidosa. São dez fases em dois atos: primeiro você aprende cada peça, depois combina todas em engenhocas cada vez mais absurdas. Leve a bolinha até o alvo usando o mínimo de peças.",
       controls: [
         { input: "Arrastar com o mouse", action: "Tirar uma peça da caixa ou mudar uma peça de lugar", on: "keys" },
         { input: "Clicar numa peça", action: "Mostrar os botões de girar e guardar", on: "keys" },
@@ -195,6 +195,10 @@ const TEXT = gameText({
         { title: "Suco de laranja", goal: "Leve a laranja até o espremedor." },
         { title: "Cadê o controle?", goal: "Faça a bolinha apertar o botão do controle." },
         { title: "A pior ideia de todas", goal: "Faça a bolinha tocar o sino atrás do muro." },
+        { title: "Pazes com o Pixel", goal: "Faça a bolinha apertar o botão do comedouro." },
+        { title: "Música lá no alto", goal: "Faça a bolinha bater na alavanca da vitrola." },
+        { title: "Strike!", goal: "Derrube os pinos do outro lado do vão." },
+        { title: "A máquina de tudo", goal: "Faça a bolinha apertar o botão vermelho." },
       ],
       tips: [
         "Não deu certo? Mude uma peça de lugar e tente de novo.",
@@ -642,7 +646,7 @@ const TEXT = gameText({
       tagline: "Build wacky machines to solve silly problems.",
       description: "Lina thinks every problem can be solved with a machine, ideally the most complicated one possible. Waking the cat, starting the toaster, finding the remote: in her garage, everything turns into a contraption. Set up ramps, springs, fans and conveyor belts and get the ball where it needs to go.",
       tags: ["Puzzle", "Building", "Physics"],
-      objective: "Every great invention starts with a questionable idea. Build your machine, get the ball to the target and try to solve each challenge with as few parts as possible.",
+      objective: "Every great invention starts with a questionable idea. Ten levels in two acts: first you learn each part, then you combine them into ever more absurd contraptions. Get the ball to the target with as few parts as possible.",
       controls: [
         { input: "Drag with the mouse", action: "Take a part out of the box or move a placed part", on: "keys" },
         { input: "Click a part", action: "Show the rotate and put-away buttons", on: "keys" },
@@ -683,6 +687,10 @@ const TEXT = gameText({
         { title: "Orange juice", goal: "Get the orange to the juicer." },
         { title: "Where's the remote?", goal: "Make the ball press the button on the remote." },
         { title: "The worst idea of all", goal: "Make the ball ring the bell behind the wall." },
+        { title: "Making up with Pixel", goal: "Make the ball press the feeder button." },
+        { title: "Music up high", goal: "Make the ball hit the record player's lever." },
+        { title: "Strike!", goal: "Knock down the pins across the gap." },
+        { title: "The everything machine", goal: "Make the ball press the big red button." },
       ],
       tips: [
         "Didn't work? Move a part and try again.",

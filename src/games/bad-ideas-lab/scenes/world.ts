@@ -1,7 +1,9 @@
 import * as Phaser from "phaser";
 import { FLOOR_Y } from "../config";
 import type { LabCopy } from "../copy";
+import { goalLayout } from "../geometry";
 import type { Block, LevelDef, Rect } from "../levels";
+import type { LabSfx } from "../sounds";
 import { INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 
 const WOOD = 0xf2c48a;
@@ -144,10 +146,40 @@ export type GoalView = {
   layers: Phaser.GameObjects.GameObject[];
 };
 
+function union(...rects: Rect[]): Rect {
+  const x = Math.min(...rects.map((r) => r.x));
+  const y = Math.min(...rects.map((r) => r.y));
+  const right = Math.max(...rects.map((r) => r.x + r.w));
+  const bottom = Math.max(...rects.map((r) => r.y + r.h));
+  return { x, y, w: right - x, h: bottom - y };
+}
+
+export function goalZone(level: LevelDef): Rect {
+  const goal = level.goal;
+  const keep = goalLayout(goal).keepOut;
+  const floor = (cx: number, w: number, h: number): Rect => ({ x: cx - w / 2, y: FLOOR_Y - h, w, h });
+  switch (goal.type) {
+    case "bell":
+      return level.decor.includes("cat") ? union(keep, floor(goal.x + 130, 140, 110)) : keep;
+    case "remote":
+      return level.decor.includes("tv") ? union(keep, floor(goal.x - 60, 230, 190)) : keep;
+    case "toaster":
+      return union(keep, { x: goal.x - 60, y: goal.y - 290, w: 130, h: 150 });
+    case "feeder":
+      return union(keep, floor(goal.x - 175, 120, 200), floor(goal.x + 70, 120, 110));
+    case "pins":
+      return union(keep, { x: goal.x - 120, y: goal.y - 220, w: 260, h: 220 });
+    default:
+      return keep;
+  }
+}
+
 type FxHelpers = {
   word: (text: string, x: number, y: number, color: string, size?: number) => void;
   burst: (x: number, y: number, count: number, tex?: string) => void;
-  sfx: (name: "ding" | "toaster" | "squish" | "click" | "tvOn" | "meow", volume?: number) => void;
+  sfx: (name: LabSfx, volume?: number) => void;
+  notes: (x: number, y: number, count: number) => void;
+  chain?: () => number;
   reduced: boolean;
   text: LabCopy["world"];
 };
@@ -367,5 +399,170 @@ export function buildGoal(scene: Phaser.Scene, level: LevelDef, fonts: Fonts, fx
         },
       };
     }
+    case "feeder":
+      return buildFeeder(scene, goal, fonts, fx);
+    case "record":
+      return buildRecord(scene, goal, fx);
+    case "pins":
+      return buildPins(scene, goal, fx);
+    case "button":
+      return buildButton(scene, goal, fonts, fx);
   }
+}
+
+type At = { x: number; y: number };
+
+function buildFeeder(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers): GoalView {
+  const hopperX = goal.x - 175;
+  const bowlX = goal.x - 62;
+  const cable = scene.add.graphics().setDepth(2.4);
+  cable.lineStyle(9, INK_HEX, 1);
+  const cableTop = { x: goal.x - 46, y: goal.y - 6 };
+  const cableEnd = { x: hopperX + 30, y: FLOOR_Y - 160 };
+  const curve = new Phaser.Curves.CubicBezier(
+    new Phaser.Math.Vector2(cableTop.x, cableTop.y),
+    new Phaser.Math.Vector2(cableTop.x - 30, cableTop.y + 80),
+    new Phaser.Math.Vector2(cableEnd.x + 60, cableEnd.y - 10),
+    new Phaser.Math.Vector2(cableEnd.x, cableEnd.y),
+  );
+  curve.draw(cable, 24);
+  cable.lineStyle(4, 0xef4f43, 1);
+  curve.draw(cable, 24);
+  const hopper = scene.add.image(hopperX, FLOOR_Y + 2, "hopper").setOrigin(0.5, 198 / 200).setDepth(2.5);
+  const bowl = scene.add.image(bowlX, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setDepth(2.6);
+  const food = scene.add.image(bowlX, FLOOR_Y - 26, "kibble-full").setOrigin(0.5, 0.5).setDepth(2.55).setVisible(false);
+  const cat = scene.add.image(goal.x + 70, FLOOR_Y + 4, "cat-grumpy").setOrigin(0.5, 1).setDepth(13);
+  const pad = scene.add.image(goal.x, goal.y + 2, "feeder").setOrigin(0.5, 1).setDepth(4);
+  const layers: Phaser.GameObjects.GameObject[] = [cable, hopper, bowl, food, cat, pad];
+  return {
+    layers,
+    celebrate: () => {
+      fx.sfx("click", 1);
+      fx.word(fx.text.click, goal.x, goal.y - 90, "#9df0dc", 50);
+      pad.setScale(1.08, 0.86);
+      if (!fx.reduced) scene.tweens.add({ targets: pad, scaleX: 1, scaleY: 1, duration: 260, ease: "Back.easeOut" });
+      scene.time.delayedCall(300, () => {
+        fx.sfx("kibble", 0.9);
+        food.setVisible(true);
+        if (!fx.reduced) {
+          food.setScale(0.3, 0.1);
+          scene.tweens.add({ targets: food, scaleX: 1, scaleY: 1, duration: 420, ease: "Back.easeOut" });
+          scene.tweens.add({ targets: hopper, scaleY: 0.96, duration: 90, yoyo: true, repeat: 2 });
+        }
+        fx.burst(bowlX, FLOOR_Y - 40, 6, "spark");
+      });
+      scene.time.delayedCall(700, () => {
+        cat.setTexture("cat-sleep").setFlipX(true);
+        if (fx.reduced) cat.setX(bowlX + 70);
+        else scene.tweens.add({ targets: cat, x: bowlX + 70, duration: 360, ease: "Quad.easeOut" });
+        fx.sfx("crunch", 0.9);
+        fx.word(fx.text.kibble, bowlX + 40, FLOOR_Y - 120, "#ffc83d", 44);
+      });
+      scene.time.delayedCall(1400, () => {
+        fx.sfx("purr", 0.8);
+        cartoonFloat(scene, fonts, fx, fx.text.purr, bowlX + 120, FLOOR_Y - 110);
+      });
+      return 2100;
+    },
+  };
+}
+
+function cartoonFloat(scene: Phaser.Scene, fonts: Fonts, fx: FxHelpers, text: string, x: number, y: number) {
+  const t = cartoonText(scene, x, y, text, { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.18 }).setDepth(13).setOrigin(0.5);
+  if (fx.reduced) {
+    scene.time.delayedCall(1200, () => t.destroy());
+    return;
+  }
+  scene.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 1600, ease: "Sine.easeOut", onComplete: () => t.destroy() });
+}
+
+function buildRecord(scene: Phaser.Scene, goal: At, fx: FxHelpers): GoalView {
+  const player = scene.add.image(goal.x, goal.y + 2, "record").setOrigin(90 / 160, 1).setDepth(4);
+  const shine = scene.add.graphics().setDepth(4.1).setVisible(false);
+  const center = { x: goal.x - 4, y: goal.y - 82 };
+  const spin = { a: 0 };
+  const drawShine = () => {
+    shine.clear();
+    shine.lineStyle(4, 0x8f7fd1, 1);
+    const a = spin.a;
+    shine.beginPath();
+    for (let i = 0; i <= 8; i += 1) {
+      const t = a + (i / 8) * 1.1;
+      const px = center.x + Math.cos(t) * 36;
+      const py = center.y + Math.sin(t) * 8;
+      if (i === 0) shine.moveTo(px, py);
+      else shine.lineTo(px, py);
+    }
+    shine.strokePath();
+  };
+  return {
+    layers: [player, shine],
+    celebrate: () => {
+      fx.sfx("click", 0.9);
+      fx.sfx("tune", 1);
+      fx.word(fx.text.music, goal.x, goal.y - 170, "#f06ba8", 50);
+      shine.setVisible(true);
+      drawShine();
+      if (!fx.reduced) {
+        scene.tweens.add({ targets: spin, a: Math.PI * 10, duration: 2200, ease: "Linear", onUpdate: drawShine });
+        scene.tweens.add({ targets: player, scaleY: 0.96, duration: 230, yoyo: true, repeat: 3, ease: "Sine.easeInOut" });
+      }
+      fx.notes(goal.x + 10, goal.y - 110, 5);
+      return 2100;
+    },
+  };
+}
+
+function buildPins(scene: Phaser.Scene, goal: At, fx: FxHelpers): GoalView {
+  const deck = scene.add.image(goal.x + 46, goal.y + 2, "pin-deck").setOrigin(0.5, 1).setDepth(3.6);
+  const spots = [-44, -16, 12];
+  const pins = spots.map((dx, i) => scene.add.image(goal.x + dx, goal.y + 2 - (i === 1 ? 4 : 0), "pin").setOrigin(0.5, 1).setDepth(i === 1 ? 3.9 : 4));
+  return {
+    layers: [deck, ...pins],
+    celebrate: () => {
+      fx.sfx("strike", 1);
+      fx.word(fx.text.strike, goal.x - 10, goal.y - 180, "#ffc83d", 64);
+      fx.burst(goal.x - 16, goal.y - 60, 10, "star");
+      pins.forEach((pin, i) => {
+        const dir = i === 0 ? -1 : 1;
+        const land = { x: pin.x + dir * (30 + i * 26), y: goal.y - 10 };
+        if (fx.reduced) {
+          pin.setPosition(land.x, land.y).setAngle(dir * 90);
+          return;
+        }
+        pin.setOrigin(0.5, 0.5).setY(pin.y - 46);
+        scene.tweens.add({ targets: pin, angle: dir * (300 + i * 80), duration: 700, ease: "Quad.easeOut" });
+        scene.tweens.add({ targets: pin, x: land.x, duration: 700, ease: "Linear" });
+        scene.tweens.add({
+          targets: pin,
+          y: pin.y - 120 - i * 30,
+          duration: 320,
+          ease: "Quad.easeOut",
+          onComplete: () => scene.tweens.add({ targets: pin, y: land.y, duration: 380, ease: "Bounce.easeOut", onComplete: () => pin.setAngle(dir * 90) }),
+        });
+      });
+      return 1900;
+    },
+  };
+}
+
+function buildButton(scene: Phaser.Scene, goal: At, fonts: Fonts, fx: FxHelpers): GoalView {
+  const panel = scene.add.image(goal.x + 30, goal.y + 2, "panel").setOrigin(86 / 130, 1).setDepth(4);
+  const label = cartoonText(scene, goal.x + 30, goal.y - 238, fx.text.button, { size: 26, color: "#ffc83d", font: fonts.display, stroke: 0.22 }).setOrigin(0.5).setDepth(4.2);
+  const lamp = scene.add.circle(goal.x + 30, goal.y - 194, 16, 0xffc83d, 0.9).setDepth(4.1).setVisible(false);
+  if (!fx.reduced) scene.tweens.add({ targets: label, scale: 1.06, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  return {
+    layers: [panel, label, lamp],
+    celebrate: () => {
+      fx.sfx("button", 1);
+      panel.setScale(0.94, 1);
+      lamp.setVisible(true);
+      if (!fx.reduced) {
+        scene.tweens.add({ targets: panel, scaleX: 1, duration: 300, ease: "Back.easeOut" });
+        scene.tweens.add({ targets: lamp, alpha: 0.2, duration: 160, yoyo: true, repeat: 7 });
+      }
+      fx.word(fx.text.allOn, goal.x - 170, goal.y - 150, "#ffc83d", 58);
+      return Math.max(1900, fx.chain?.() ?? 0);
+    },
+  };
 }

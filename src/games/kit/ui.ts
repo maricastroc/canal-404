@@ -75,6 +75,8 @@ export function darkPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, 
   g.strokeRoundedRect(x, y, w, h, 22);
 }
 
+export type BubbleSide = "above" | "right";
+
 export class Bubble {
   readonly container: Phaser.GameObjects.Container;
   private gfx: Phaser.GameObjects.Graphics;
@@ -117,12 +119,24 @@ export class Bubble {
     this.text.setWordWrapWidth(width);
   }
 
-  say(text: string, x: number, y: number, duration = 1400) {
+  private layout(text: string, x: number, y: number, side: BubbleSide) {
     this.text.setText(text);
     const w = this.text.width + 40;
     const h = this.text.height + 20;
-    const left = this.tail === "left" ? -34 : -(w - 34);
-    const top = -h - 24;
+    const left = side === "right" ? 30 : this.tail === "left" ? -34 : -(w - 34);
+    const top = side === "right" ? -h / 2 : -h - 24;
+    const s = this.baseScale;
+    const cx = Phaser.Math.Clamp(x, this.bounds.left + 12 - left * s, this.bounds.right - 12 - (left + w) * s);
+    const cy = Math.max(y, this.bounds.top + 12 - top * s);
+    return { w, h, left, top, cx, cy, rect: { x: cx + left * s, y: cy + top * s, w: w * s, h: (h + (side === "right" ? 0 : 24)) * s } };
+  }
+
+  box(text: string, x: number, y: number, side: BubbleSide = "above") {
+    return this.layout(text, x, y, side).rect;
+  }
+
+  say(text: string, x: number, y: number, duration = 1400, side: BubbleSide = "above") {
+    const { w, h, left, top, cx, cy } = this.layout(text, x, y, side);
     const g = this.gfx;
     g.clear();
     g.fillStyle(INK_HEX, 1);
@@ -132,13 +146,17 @@ export class Bubble {
     g.lineStyle(5, INK_HEX, 1);
     g.strokeRoundedRect(left, top, w, h, 18);
     g.fillStyle(CREAM_HEX, 1);
-    g.fillTriangle(-14, -27, 14, -27, 0, 0);
-    g.lineBetween(-14, -24, 0, 0);
-    g.lineBetween(14, -24, 0, 0);
+    if (side === "right") {
+      g.fillTriangle(left + 3, -14, left + 3, 14, 0, 0);
+      g.lineBetween(left, -14, 0, 0);
+      g.lineBetween(left, 14, 0, 0);
+    } else {
+      g.fillTriangle(-14, -27, 14, -27, 0, 0);
+      g.lineBetween(-14, -24, 0, 0);
+      g.lineBetween(14, -24, 0, 0);
+    }
     this.text.setPosition(left + w / 2, top + h / 2);
     const s = this.baseScale;
-    const cx = Phaser.Math.Clamp(x, this.bounds.left + 12 - left * s, this.bounds.right - 12 - (left + w) * s);
-    const cy = Math.max(y, this.bounds.top + 12 - top * s);
     this.container.setPosition(cx, cy);
     this.container.setVisible(true).setAlpha(1).setScale(s * 0.4);
     this.scene.tweens.killTweensOf(this.container);

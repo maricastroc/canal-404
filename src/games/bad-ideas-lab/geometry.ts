@@ -1,4 +1,4 @@
-import { FLOOR_Y, PARTS, partAngle, type PartType } from "./config";
+import { BALL_R, FLOOR_Y, PARTS, partAngle, type PartType } from "./config";
 import type { Block, Goal, Rect } from "./levels";
 
 export type Vec = { x: number; y: number };
@@ -106,10 +106,29 @@ export function goalLayout(goal: Goal): { blocks: Block[]; sensor: Sensor; keepO
         keepOut: { x: goal.x - 100, y: goal.y - 80, w: 200, h: 200 },
       };
     case "remote":
+    case "feeder":
       return {
         blocks: [{ x: goal.x, y: goal.y - 12, w: 100, h: 24, kind: "metal" }],
         sensor: { kind: "rect", x: goal.x - 60, y: goal.y - 64, w: 140, h: 64 },
         keepOut: { x: goal.x - 70, y: goal.y - 120, w: 180, h: 120 },
+      };
+    case "record":
+      return {
+        blocks: [{ x: goal.x, y: goal.y - 45, w: 120, h: 90, kind: "metal" }],
+        sensor: { kind: "rect", x: goal.x - 82, y: goal.y - 92, w: 34, h: 92 },
+        keepOut: { x: goal.x - 110, y: goal.y - 140, w: 190, h: 140 },
+      };
+    case "pins":
+      return {
+        blocks: [{ x: goal.x + 46, y: goal.y - 60, w: 20, h: 120, kind: "metal" }],
+        sensor: { kind: "rect", x: goal.x - 64, y: goal.y - 104, w: 100, h: 104 },
+        keepOut: { x: goal.x - 100, y: goal.y - 150, w: 180, h: 150 },
+      };
+    case "button":
+      return {
+        blocks: [{ x: goal.x + 30, y: goal.y - 80, w: 60, h: 160, kind: "metal" }],
+        sensor: { kind: "rect", x: goal.x - 40, y: goal.y - 110, w: 44, h: 110 },
+        keepOut: { x: goal.x - 90, y: goal.y - 200, w: 190, h: 200 },
       };
   }
 }
@@ -163,6 +182,15 @@ export function columnSpan(poly: Poly, x: number): { top: number; bottom: number
 
 export function sensorPoly(s: Sensor): Poly {
   return s.kind === "circle" ? rectPoly(s.x, s.y, s.r * 2, s.r * 2) : rectAsPoly(s);
+}
+
+export const NEAR_MISS = BALL_R * 2;
+
+export function sensorGap(p: Vec, poly: Poly) {
+  const b = polyBox(poly);
+  const dx = Math.max(b.left - p.x, 0, p.x - b.right);
+  const dy = Math.max(b.top - p.y, 0, p.y - b.bottom);
+  return Math.max(0, Math.hypot(dx, dy) - BALL_R);
 }
 
 export function sceneBlocks(level: { blocks: Block[]; goal: Goal }): Block[] {

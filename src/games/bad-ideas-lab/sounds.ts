@@ -172,6 +172,70 @@ export const LAB_SFX = {
       { kind: "tone", wave: "sine", from: 1320, duration: 0.2, delay: 0.1, gain: 0.08 },
     ],
   },
+  crunch: {
+    layers: [
+      { kind: "noise", duration: 0.06, gain: 0.14, filter: { type: "bandpass", from: 2600, q: 1.8 } },
+      { kind: "noise", duration: 0.06, delay: 0.13, gain: 0.13, filter: { type: "bandpass", from: 2200, q: 1.8 } },
+      { kind: "noise", duration: 0.06, delay: 0.26, gain: 0.12, filter: { type: "bandpass", from: 2800, q: 1.8 } },
+      { kind: "tone", wave: "triangle", from: 240, to: 180, duration: 0.05, delay: 0.26, gain: 0.08 },
+    ],
+  },
+  kibble: {
+    layers: [
+      { kind: "noise", duration: 0.55, gain: 0.1, attack: 0.03, filter: { type: "bandpass", from: 3200, to: 1800, q: 2.4 } },
+      { kind: "tone", wave: "square", from: 1500, to: 1300, duration: 0.02, delay: 0.1, gain: 0.03 },
+      { kind: "tone", wave: "square", from: 1700, to: 1500, duration: 0.02, delay: 0.22, gain: 0.03 },
+      { kind: "tone", wave: "square", from: 1400, to: 1200, duration: 0.02, delay: 0.34, gain: 0.03 },
+    ],
+  },
+  tune: {
+    layers: [
+      { kind: "noise", duration: 0.2, gain: 0.04, filter: { type: "highpass", from: 3000 } },
+      { kind: "tone", wave: "pulse", from: 392, duration: 0.14, delay: 0.15, gain: 0.08 },
+      { kind: "tone", wave: "pulse", from: 523, duration: 0.14, delay: 0.32, gain: 0.08 },
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.14, delay: 0.49, gain: 0.08 },
+      { kind: "tone", wave: "pulse", from: 587, duration: 0.14, delay: 0.66, gain: 0.08 },
+      { kind: "tone", wave: "pulse", from: 784, duration: 0.42, delay: 0.83, gain: 0.08, vibrato: { rate: 6, depth: 8 } },
+      { kind: "tone", wave: "triangle", from: 131, duration: 0.3, delay: 0.15, gain: 0.1 },
+      { kind: "tone", wave: "triangle", from: 196, duration: 0.3, delay: 0.49, gain: 0.1 },
+      { kind: "tone", wave: "triangle", from: 131, duration: 0.5, delay: 0.83, gain: 0.1 },
+    ],
+  },
+  strike: {
+    layers: [
+      { kind: "noise", duration: 0.5, gain: 0.22, attack: 0.005, filter: { type: "bandpass", from: 1600, to: 500, q: 0.8 } },
+      { kind: "tone", wave: "triangle", from: 520, to: 300, duration: 0.08, gain: 0.12 },
+      { kind: "tone", wave: "triangle", from: 640, to: 360, duration: 0.08, delay: 0.09, gain: 0.1 },
+      { kind: "tone", wave: "triangle", from: 460, to: 260, duration: 0.08, delay: 0.17, gain: 0.1 },
+      { kind: "tone", wave: "triangle", from: 700, to: 420, duration: 0.07, delay: 0.27, gain: 0.08 },
+    ],
+  },
+  button: {
+    layers: [
+      { kind: "tone", wave: "square", from: 160, to: 90, duration: 0.14, gain: 0.12, filter: { type: "lowpass", frequency: 900 } },
+      { kind: "noise", duration: 0.1, gain: 0.14, filter: { type: "lowpass", from: 1200 } },
+      { kind: "tone", wave: "sawtooth", from: 220, to: 660, duration: 0.5, delay: 0.16, gain: 0.07, filter: { type: "lowpass", frequency: 2000 } },
+    ],
+  },
+  fanfare: {
+    layers: [
+      { kind: "tone", wave: "pulse", from: 392, duration: 0.12, gain: 0.1 },
+      { kind: "tone", wave: "pulse", from: 523, duration: 0.12, delay: 0.13, gain: 0.1 },
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.12, delay: 0.26, gain: 0.1 },
+      { kind: "tone", wave: "pulse", from: 784, duration: 0.24, delay: 0.39, gain: 0.1 },
+      { kind: "tone", wave: "pulse", from: 659, duration: 0.12, delay: 0.66, gain: 0.1 },
+      { kind: "tone", wave: "pulse", from: 1047, duration: 0.7, delay: 0.8, gain: 0.1, vibrato: { rate: 6, depth: 10 } },
+      { kind: "tone", wave: "triangle", from: 131, duration: 0.4, gain: 0.12 },
+      { kind: "tone", wave: "triangle", from: 196, duration: 0.4, delay: 0.39, gain: 0.12 },
+      { kind: "tone", wave: "triangle", from: 262, duration: 0.8, delay: 0.8, gain: 0.12 },
+    ],
+  },
+  purr: {
+    layers: [{ kind: "noise", duration: 0.7, gain: 0.07, attack: 0.1, filter: { type: "lowpass", from: 260, to: 180 } }],
+  },
+  gasp: {
+    layers: [{ kind: "noise", duration: 0.22, gain: 0.08, attack: 0.04, filter: { type: "bandpass", from: 900, to: 1800, q: 1.2 } }],
+  },
 } satisfies Record<string, SoundRecipe>;
 
 export type LabSfx = keyof typeof LAB_SFX;

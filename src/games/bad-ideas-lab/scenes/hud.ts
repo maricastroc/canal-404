@@ -3,9 +3,10 @@ import { H, PARTS, W, type PartType } from "../config";
 import type { LabCopy, LevelText } from "../copy";
 import type { Vec } from "../geometry";
 import type { Frame, FrameKind } from "../layout";
-import type { LevelDef } from "../levels";
+import { actOf, type LevelDef } from "../levels";
 import { INK, INK_HEX, cartoonText, centerGlyphs, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
 import { addIcon, setIcon, type IconName } from "../icons";
+import type { Mood } from "./lina";
 
 export type HudHandlers = {
   onSlotDown: (type: PartType, pointer: Phaser.Input.Pointer) => void;
@@ -34,7 +35,7 @@ export type HudSetup = {
   mount?: (obj: Phaser.GameObjects.GameObject) => void;
 };
 
-export type Mood = "idle" | "yay" | "oops";
+export type { Mood };
 
 export type ViewState = { away: boolean; overview: boolean };
 
@@ -169,7 +170,7 @@ export class DeskHud implements LabHudView {
     const cardW = LEVEL_CARD_W;
     const cardH = CARD_H;
     paper(lg, 0, 0, cardW, cardH, 22);
-    const kicker = cartoonText(scene, 22, 12, copy.hud.level(index + 1, total), { size: 24, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
+    const kicker = cartoonText(scene, 22, 12, copy.hud.level(index + 1, total, actOf(index)), { size: 24, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
     const title = cartoonText(scene, 20, 40, text.title.toUpperCase(), { size: 42, color: INK, font: fonts.display, stroke: 0, shadow: false });
     title.setShadow(3, 3, "#dcc394", 0, false, true);
     fitText(title, cardW - 40, 42, 26);

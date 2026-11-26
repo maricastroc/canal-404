@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "./geometry";
 import { LEVELS, type LevelDef } from "./levels";
 import { LabSim, simulateLab, type SimOutcome } from "./sim";
-import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "./solutions";
+import { SOLUTIONS, GOLDEN_STEPS } from "./solutions";
 
 type Trace = { outcome: SimOutcome; steps: number; samples: number[] };
 
@@ -23,9 +23,9 @@ function sameBits(a: Trace, b: Trace) {
 }
 
 describe("Laboratório simulation", () => {
-  it("solves every level with the known machine in the same number of steps as the game before the extraction", () => {
+  it("solves every level with the known machine in its golden number of steps", () => {
     for (const level of LEVELS) {
-      expect(simulateLab(level, SOLUTIONS[level.id]), level.id).toMatchObject({ outcome: "success", steps: STEPS_BEFORE_EXTRACTION[level.id] });
+      expect(simulateLab(level, SOLUTIONS[level.id]), level.id).toMatchObject({ outcome: "success", steps: GOLDEN_STEPS[level.id] });
     }
   });
 

@@ -14,7 +14,11 @@ export type Goal =
   | { type: "bell"; x: number; y: number; stand: "pole" | "hook" }
   | { type: "toaster"; x: number; y: number }
   | { type: "juicer"; x: number; y: number }
-  | { type: "remote"; x: number; y: number };
+  | { type: "remote"; x: number; y: number }
+  | { type: "feeder"; x: number; y: number }
+  | { type: "record"; x: number; y: number }
+  | { type: "pins"; x: number; y: number }
+  | { type: "button"; x: number; y: number };
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
@@ -116,7 +120,77 @@ export const LEVELS: LevelDef[] = [
     par: 3,
     decor: [],
   },
+  {
+    id: "kibble",
+    ball: "marble",
+    pipe: { x: 190, y: 270, vx: 2.5, vy: 0 },
+    blocks: [
+      { x: 640, y: 370, w: 1000, h: 26, angle: 5, kind: "shelf" },
+      { x: 520, y: 800, w: 300, h: 26, kind: "shelf" },
+    ],
+    goal: { type: "feeder", x: 470, y: 787 },
+    build: { x: 620, y: 420, w: 980, h: 510 },
+    inventory: { belt: 1, ramp: 1 },
+    par: 2,
+    decor: [],
+  },
+  {
+    id: "vinyl",
+    ball: "marble",
+    pipe: { x: 560, y: 420, vx: 1, vy: 0 },
+    blocks: [
+      { x: 545, y: 640, w: 24, h: 300, kind: "metal" },
+      { x: 655, y: 640, w: 24, h: 300, kind: "metal" },
+      { x: 1250, y: 440, w: 700, h: 30, kind: "counter" },
+      { x: 930, y: 690, w: 60, h: 470, kind: "cabinet" },
+    ],
+    goal: { type: "record", x: 1450, y: 425 },
+    build: { x: 300, y: 140, w: 600, h: 790 },
+    inventory: { spring: 1, ramp: 1, fan: 1 },
+    par: 2,
+    decor: [],
+  },
+  {
+    id: "strike",
+    ball: "marble",
+    pipe: { x: 190, y: 300, vx: 2.5, vy: 0 },
+    blocks: [
+      { x: 330, y: 390, w: 360, h: 24, angle: 6, kind: "shelf" },
+      { x: 760, y: 760, w: 760, h: 30, kind: "counter" },
+      { x: 1620, y: 715, w: 520, h: 30, kind: "counter" },
+      { x: 1400, y: 830, w: 60, h: 200, kind: "cabinet" },
+    ],
+    goal: { type: "pins", x: 1720, y: 700 },
+    build: { x: 380, y: 580, w: 980, h: 350 },
+    inventory: { fan: 1, ramp: 2 },
+    par: 2,
+    decor: [],
+  },
+  {
+    id: "chain",
+    ball: "marble",
+    pipe: { x: 190, y: 230, vx: 2.5, vy: 0 },
+    blocks: [
+      { x: 290, y: 320, w: 240, h: 24, angle: 10, kind: "shelf" },
+      { x: 480, y: 760, w: 560, h: 26, angle: 4, kind: "shelf" },
+      { x: 820, y: 560, w: 380, h: 26, kind: "metal" },
+      { x: 1150, y: 615, w: 30, h: 630, kind: "metal" },
+      { x: 1150, y: -95, w: 30, h: 390, kind: "metal" },
+      { x: 1430, y: 315, w: 530, h: 30, kind: "counter" },
+    ],
+    goal: { type: "button", x: 1460, y: 300 },
+    build: { x: 640, y: 140, w: 500, h: 790 },
+    inventory: { ramp: 1, spring: 1, fan: 1, belt: 1 },
+    par: 3,
+    decor: [],
+  },
 ];
+
+export const ACT_TWO = LEVELS.findIndex((l) => l.id === "kibble");
+
+export function actOf(index: number) {
+  return index >= ACT_TWO ? 2 : 1;
+}
 
 export function starsFor(used: number, par: number) {
   return used <= par ? 3 : used === par + 1 ? 2 : 1;

@@ -101,7 +101,37 @@ export const COPY = localized({
         goal: "Faça a bolinha tocar o sino atrás do muro.",
         story: "O sino está atrás do muro. Vale usar tudo o que tem na caixa!",
         hint: "Use a mola para passar por cima do muro. Depois, uma esteira leva a bolinha até o sino.",
-        win: "DING! A máquina mais inútil do mundo funcionou.",
+        win: "DING! A máquina mais inútil do mundo funcionou. Fim do primeiro ato... mas a Lina já tem ideias piores.",
+        result: "Fim do primeiro ato!",
+      },
+      kibble: {
+        title: "Pazes com o Pixel",
+        goal: "Faça a bolinha apertar o botão do comedouro.",
+        story: "O Pixel está bravo desde o sino. O comedouro fica embaixo da prateleira, e a bolinha rola para o outro lado.",
+        hint: "Uma esteira com as setas para a esquerda traz a bolinha de volta por baixo da prateleira.",
+        win: "O Pixel aceitou as desculpas. E a ração.",
+      },
+      vinyl: {
+        title: "Música lá no alto",
+        goal: "Faça a bolinha bater na alavanca da vitrola.",
+        story: "A vitrola mora lá no alto, longe do Pixel. A bolinha cai pela chaminé e precisa subir de volta.",
+        hint: "Uma mola no fundo da chaminé joga a bolinha para cima. Lá em cima, um vento ou uma rampa empurra ela até a vitrola.",
+        win: "Música no laboratório! O Pixel não aprovou.",
+      },
+      strike: {
+        title: "Strike!",
+        goal: "Derrube os pinos do outro lado do vão.",
+        story: "Boliche no laboratório! Só que a bolinha chega devagar demais para atravessar o vão.",
+        hint: "O ventilador dá embalo na bancada. No fim dela, uma rampa apontando para cima vira trampolim.",
+        win: "STRIKE! A Lina acaba de inventar o boliche de garagem.",
+      },
+      chain: {
+        title: "A máquina de tudo",
+        goal: "Faça a bolinha apertar o botão vermelho.",
+        story: "O botão vermelho liga todas as invenções de uma vez. Ele fica lá no alto, depois da janela.",
+        hint: "Uma mola embaixo da chaminé joga a bolinha para cima. Para chegar até ela, a bolinha precisa voltar. Lá em cima, um empurrão leva ela pela janela.",
+        win: "Tudo ligado ao mesmo tempo. A Lina chama isso de sucesso.",
+        result: "Laboratório concluído!",
       },
     },
     parts: {
@@ -111,7 +141,7 @@ export const COPY = localized({
       belt: { noun: noun("esteira", true), plural: "esteiras" },
     } satisfies Record<PartType, { noun: Noun; plural: string }>,
     hud: {
-      level: (n: number, total: number) => `FASE ${n} DE ${total}`,
+      level: (n: number, total: number, act: number) => `ATO ${act} · FASE ${n} DE ${total}`,
       parts: "PEÇAS",
       hint: "DICA",
       clear: "LIMPAR",
@@ -137,6 +167,13 @@ export const COPY = localized({
       toast: "PLIM!",
       juice: "SPLOSH!",
       click: "CLIQUE!",
+      kibble: "CROC CROC!",
+      music: "TÁ TOCANDO!",
+      strike: "STRIKE!",
+      button: "LIGA TUDO",
+      allOn: "LIGOU TUDO!",
+      purr: "RRRRR",
+      bruno: "Segundo meus cálculos... ah, deixa pra lá.",
     },
     scene: {
       issue: {
@@ -144,7 +181,10 @@ export const COPY = localized({
         blocked: "Já tem algo nesse lugar",
         crowded: "Muito perto de outra peça",
       },
-      failLines: ["Quase!", "Opa! Não foi dessa vez.", "Faltou pouco!", "Hmm... mais um ajuste."],
+      nearLines: ["Quase!", "Passou raspando!", "Faltou um tiquinho!"],
+      missLines: ["Opa! Não foi dessa vez.", "Hmm... mais um ajuste.", "Nada ainda. Vamos de novo!"],
+      bounceSay: "Cama elástica infinita! Desliguei antes que a bolinha chegasse na lua.",
+      bounceReport: (ball: Noun) => `A ${ball.word} ficou pulando sem sair do lugar na mesma mola, então a máquina desligou sozinha.`,
       keyRange: (n: number) => (n === 1 ? "1" : `de 1 a ${n}`),
       howGuided:
         "Uma marca tracejada mostra onde vai a rampa. Arraste a rampa até a marca. No teclado, aperte 1: a rampa já aparece em cima da marca. Depois aperte Enter para colocar e espaço para ligar a máquina.",
@@ -231,8 +271,28 @@ export const COPY = localized({
         ball: noun("bolinha", true),
         orange: noun("laranja", true),
         juicerStand: noun("pé do espremedor"),
-        goal: { target: noun("alvo"), bell: noun("sino"), toaster: noun("botão da torradeira"), juicer: noun("espremedor"), remote: noun("botão do controle") },
-        goalBody: { target: noun("poste do alvo"), bell: noun("poste do sino"), toaster: noun("torradeira", true), juicer: noun("espremedor"), remote: noun("controle") },
+        goal: {
+          target: noun("alvo"),
+          bell: noun("sino"),
+          toaster: noun("botão da torradeira"),
+          juicer: noun("espremedor"),
+          remote: noun("botão do controle"),
+          feeder: noun("botão do comedouro"),
+          record: noun("alavanca da vitrola", true),
+          pins: noun("trio de pinos"),
+          button: noun("botão vermelho"),
+        },
+        goalBody: {
+          target: noun("poste do alvo"),
+          bell: noun("poste do sino"),
+          toaster: noun("torradeira", true),
+          juicer: noun("espremedor"),
+          remote: noun("controle"),
+          feeder: noun("comedouro"),
+          record: noun("vitrola", true),
+          pins: noun("tábua dos pinos", true),
+          button: noun("painel"),
+        },
         blocks: { shelf: noun("prateleira", true), counter: noun("bancada", true), cabinet: noun("armário"), crate: noun("caixote"), pole: noun("poste"), wall: noun("muro"), metalShelf: noun("prateleira de metal", true) },
       },
       ranked: (word: string, rank: Rank) => `${word} ${RANK_P[rank]}`,
@@ -315,6 +375,10 @@ export const COPY = localized({
       bellGoal: (region: string, pole: boolean) => `O sino é o objetivo. Fica ${region}, ${pole ? "em cima de um poste" : "pendurado num gancho"}.`,
       targetGoal: (region: string) => `O alvo é o objetivo. Fica ${region}, em cima de um poste.`,
       juicerGoal: (region: string, ball: Noun) => `O espremedor é o objetivo: a ${ball.word} tem que cair dentro do copo dele. Fica ${region}, em cima de um pé.`,
+      pinsGoal: (region: string, support: Noun | null, ball: Noun) =>
+        `Os pinos de boliche são o objetivo: a ${ball.word} tem que bater neles. Ficam ${region}${support ? `, em cima ${ofP(support)}` : ""}.`,
+      leverGoal: (region: string, support: Noun | null, side: Side) =>
+        `A alavanca da vitrola é o objetivo. A vitrola fica ${region}${support ? `, em cima ${ofP(support)}` : ""}; a alavanca sai do lado ${sideP(side)} dela.`,
       buttonGoal: (goal: Noun, owner: Noun, region: string, support: Noun | null, where: ButtonSide) =>
         `${nameP(goal)} é o objetivo. ${nameP(owner)} fica ${region}${support ? `, em cima ${ofP(support)}` : ""}; o botão fica ${BUTTON_P[where]} ${owner.female ? "dela" : "dele"}.`,
       area: (l: HZone, r: HZone, t: VZone, d: VZone, width: number, height: number) => {
@@ -330,8 +394,8 @@ export const COPY = localized({
       placedPart: (n: Noun, region: string, near: string | null) => `${capitalize(n.word)} montad${n.female ? "a" : "o"} fica ${region}${near ? `, ${near}` : ""}.`,
       stop: (ball: Noun, support: Noun | null, where: string, goal: string | null) =>
         `Na última tentativa, a ${ball.word} parou ${support ? `${inP(support)}, ` : ""}${where}${goal ? `, ${goal}` : ""}.`,
-      level: (n: number, total: number, title: string, goal: string, scene: string, inventory: string) =>
-        `Fase ${n} de ${total}: ${/[.!?]$/.test(title) ? title : `${title}.`} ${goal} Cenário, a partir do cano: ${scene} Na caixa: ${inventory}.`,
+      level: (n: number, total: number, act: number, title: string, goal: string, scene: string, inventory: string) =>
+        `Ato ${act}, fase ${n} de ${total}: ${/[.!?]$/.test(title) ? title : `${title}.`} ${goal} Cenário, a partir do cano: ${scene} Na caixa: ${inventory}.`,
       inArea: (coords: string) => `fica ${coords}`,
       direction: (dir: Direction) => DIRECTION_P[dir],
       moveSteps: (n: number) => `, ${n} passos`,
@@ -409,7 +473,37 @@ export const COPY = localized({
         goal: "Make the ball ring the bell behind the wall.",
         story: "The bell is behind the wall. Everything in the box is fair game!",
         hint: "Use the spring to get over the wall. Then a belt takes the ball to the bell.",
-        win: "DING! The most useless machine in the world works.",
+        win: "DING! The most useless machine in the world works. End of act one... but Lina already has worse ideas.",
+        result: "End of act one!",
+      },
+      kibble: {
+        title: "Making up with Pixel",
+        goal: "Make the ball press the feeder button.",
+        story: "Pixel has been mad since the bell. The feeder is under the shelf, and the ball rolls the other way.",
+        hint: "A belt with the arrows pointing left brings the ball back under the shelf.",
+        win: "Pixel accepted the apology. And the food.",
+      },
+      vinyl: {
+        title: "Music up high",
+        goal: "Make the ball hit the record player's lever.",
+        story: "The record player lives up high, away from Pixel. The ball drops down the chimney and has to come back up.",
+        hint: "A spring at the bottom of the chimney throws the ball up. Up top, some wind or a ramp pushes it to the record player.",
+        win: "Music in the lab! Pixel does not approve.",
+      },
+      strike: {
+        title: "Strike!",
+        goal: "Knock down the pins across the gap.",
+        story: "Bowling in the lab! Except the ball is way too slow to get across the gap.",
+        hint: "The fan gives the ball a run-up on the counter. At the end of it, a ramp pointing up becomes a ski jump.",
+        win: "STRIKE! Lina just invented garage bowling.",
+      },
+      chain: {
+        title: "The everything machine",
+        goal: "Make the ball press the big red button.",
+        story: "The big red button turns on every invention at once. It's up high, past the window.",
+        hint: "A spring under the chimney throws the ball up. To get there, the ball has to come back. Up top, a push sends it through the window.",
+        win: "Everything on at the same time. Lina calls that a success.",
+        result: "Lab complete!",
       },
     },
     parts: {
@@ -419,7 +513,7 @@ export const COPY = localized({
       belt: { noun: noun("belt"), plural: "belts" },
     },
     hud: {
-      level: (n: number, total: number) => `LEVEL ${n} OF ${total}`,
+      level: (n: number, total: number, act: number) => `ACT ${act} · LEVEL ${n} OF ${total}`,
       parts: "PARTS",
       hint: "HINT",
       clear: "CLEAR",
@@ -445,6 +539,13 @@ export const COPY = localized({
       toast: "POP!",
       juice: "SPLOSH!",
       click: "CLICK!",
+      kibble: "CRUNCH!",
+      music: "NOW PLAYING!",
+      strike: "STRIKE!",
+      button: "ALL ON",
+      allOn: "EVERYTHING'S ON!",
+      purr: "PRRRR",
+      bruno: "According to my calculations... oh, never mind.",
     },
     scene: {
       issue: {
@@ -452,7 +553,10 @@ export const COPY = localized({
         blocked: "Something's already there",
         crowded: "Too close to another part",
       },
-      failLines: ["Almost!", "Oops! Not this time.", "So close!", "Hmm... one more tweak."],
+      nearLines: ["Almost!", "So close!", "Just a hair off!"],
+      missLines: ["Oops! Not this time.", "Hmm... one more tweak.", "Nothing yet. Again!"],
+      bounceSay: "Infinite trampoline! I turned it off before the ball reached the moon.",
+      bounceReport: (ball: Noun) => `The ${ball.word} kept bouncing in place on the same spring, so the machine turned itself off.`,
       keyRange: (n: number) => (n === 1 ? "1" : `a key from 1 to ${n}`),
       howGuided:
         "A dashed outline shows where the ramp goes. Drag the ramp onto the outline. On the keyboard, press 1: the ramp shows up right on the outline. Then press Enter to place it and Space to start the machine.",
@@ -539,8 +643,28 @@ export const COPY = localized({
         ball: noun("ball"),
         orange: noun("orange"),
         juicerStand: noun("juicer stand"),
-        goal: { target: noun("target"), bell: noun("bell"), toaster: noun("toaster button"), juicer: noun("juicer"), remote: noun("button on the remote") },
-        goalBody: { target: noun("target post"), bell: noun("bell post"), toaster: noun("toaster"), juicer: noun("juicer"), remote: noun("remote") },
+        goal: {
+          target: noun("target"),
+          bell: noun("bell"),
+          toaster: noun("toaster button"),
+          juicer: noun("juicer"),
+          remote: noun("button on the remote"),
+          feeder: noun("feeder button"),
+          record: noun("record player lever"),
+          pins: noun("bowling pins"),
+          button: noun("big red button"),
+        },
+        goalBody: {
+          target: noun("target post"),
+          bell: noun("bell post"),
+          toaster: noun("toaster"),
+          juicer: noun("juicer"),
+          remote: noun("remote"),
+          feeder: noun("feeder"),
+          record: noun("record player"),
+          pins: noun("pin board"),
+          button: noun("panel"),
+        },
         blocks: { shelf: noun("shelf"), counter: noun("counter"), cabinet: noun("cabinet"), crate: noun("crate"), pole: noun("post"), wall: noun("wall"), metalShelf: noun("metal shelf") },
       },
       ranked: (word: string, rank: Rank) => `${rank} ${word}`,
@@ -616,6 +740,10 @@ export const COPY = localized({
       bellGoal: (region: string, pole: boolean) => `The bell is the goal. It is ${region}, ${pole ? "on top of a post" : "hanging from a hook"}.`,
       targetGoal: (region: string) => `The target is the goal. It is ${region}, on top of a post.`,
       juicerGoal: (region: string, ball: Noun) => `The juicer is the goal: the ${ball.word} has to drop into its cup. It is ${region}, on a stand.`,
+      pinsGoal: (region: string, support: Noun | null, ball: Noun) =>
+        `The bowling pins are the goal: the ${ball.word} has to hit them. They are ${region}${support ? `, on top of ${theE(support)}` : ""}.`,
+      leverGoal: (region: string, support: Noun | null, side: Side) =>
+        `The record player's lever is the goal. The record player is ${region}${support ? `, on top of ${theE(support)}` : ""}; the lever sticks out of its ${side} side.`,
       buttonGoal: (goal: Noun, owner: Noun, region: string, support: Noun | null, where: ButtonSide) =>
         `${nameE(goal)} is the goal. ${nameE(owner)} is ${region}${support ? `, on top of ${theE(support)}` : ""}; the button is ${where === "top" ? "on top of it" : `on its ${where} side`}.`,
       area: (l: HZone, r: HZone, t: VZone, d: VZone, width: number, height: number) => {
@@ -631,8 +759,8 @@ export const COPY = localized({
       placedPart: (n: Noun, region: string, near: string | null) => `${capitalize(n.word)} is placed ${region}${near ? `, ${near}` : ""}.`,
       stop: (ball: Noun, support: Noun | null, where: string, goal: string | null) =>
         `On the last attempt, the ${ball.word} stopped ${support ? `on ${theE(support)}, ` : ""}${where}${goal ? `, ${goal}` : ""}.`,
-      level: (n: number, total: number, title: string, goal: string, scene: string, inventory: string) =>
-        `Level ${n} of ${total}: ${/[.!?]$/.test(title) ? title : `${title}.`} ${goal} The scene, starting from the pipe: ${scene} In the box: ${inventory}.`,
+      level: (n: number, total: number, act: number, title: string, goal: string, scene: string, inventory: string) =>
+        `Act ${act}, level ${n} of ${total}: ${/[.!?]$/.test(title) ? title : `${title}.`} ${goal} The scene, starting from the pipe: ${scene} In the box: ${inventory}.`,
       inArea: (coords: string) => coords,
       direction: (dir: Direction) => DIRECTION_E[dir],
       moveSteps: (n: number) => `, ${n} steps`,
@@ -669,7 +797,7 @@ export const COPY = localized({
 
 export type LabCopy = (typeof COPY)[Locale];
 
-export type LevelText = { title: string; goal: string; story: string; hint: string; win: string; cheer?: string };
+export type LevelText = { title: string; goal: string; story: string; hint: string; win: string; cheer?: string; result?: string };
 
 export function levelText(copy: LabCopy, id: string): LevelText {
   return copy.levels[id as keyof LabCopy["levels"]];

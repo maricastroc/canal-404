@@ -3,6 +3,7 @@ import { PARTS, type PartType } from "../config";
 import type { LabCopy } from "../copy";
 import type { Vec } from "../geometry";
 import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
+import { actOf } from "../levels";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
 import { addIcon, setIcon, type IconName } from "../icons";
 import { WIN_STAR, WIN_STAR_POP, centerGlyphs, type HudHandlers, type HudSetup, type LabHudView, type Mood, type StarReveal, type ToolbarAnchor, type ViewState } from "./hud";
@@ -143,7 +144,7 @@ export abstract class TouchHud implements LabHudView {
     this.banner = this.fix(cartoonText(scene, 0, 0, "", { size: 44, color: "#ffc83d", font: fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(DEPTH.banner).setVisible(false));
 
     this.goalBg = this.fix(scene.add.graphics());
-    this.goalKicker = this.fix(cartoonText(scene, 0, 0, copy.hud.level(index + 1, total), { size: 11, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }));
+    this.goalKicker = this.fix(cartoonText(scene, 0, 0, copy.hud.level(index + 1, total, actOf(index)), { size: 11, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }));
     this.goalTitle = this.fix(cartoonText(scene, 0, 0, text.title.toUpperCase(), { size: 18, color: INK, font: fonts.display, stroke: 0, shadow: false }));
     this.goalText = this.fix(scene.add.text(0, 0, text.goal, { fontFamily: fonts.hand, fontSize: "14px", color: "#3a3157", padding: { x: 1, y: 1 } }));
     this.goalPar = this.fix(scene.add.text(0, 0, copy.hud.par(level.par), { fontFamily: fonts.hand, fontSize: "12px", color: "#7b62c4", padding: { x: 1, y: 1 } }));

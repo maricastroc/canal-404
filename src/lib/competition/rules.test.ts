@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { PlacedPart } from "@/games/bad-ideas-lab/geometry";
-import { attemptBonus, labScore, starsFor } from "@/games/bad-ideas-lab/levels";
+import { attemptBonus, labScore, LEVELS as LAB_LEVELS, starsFor } from "@/games/bad-ideas-lab/levels";
 import { resortResult } from "@/games/off-air-vacation/config";
-import { SOLUTIONS, STEPS_BEFORE_EXTRACTION } from "@/games/bad-ideas-lab/solutions";
+import { SOLUTIONS, GOLDEN_STEPS } from "@/games/bad-ideas-lab/solutions";
 import { LEVELS as RECESS_LEVELS } from "@/games/operation-recess/levels";
 import { traceFor } from "@/games/operation-recess/testing";
 import type { RecessReplay } from "@/games/types";
@@ -65,13 +65,13 @@ function derby(run: KnownRun, rivals = [0, 0, 0], tape = run.tape, claim: Partia
 }
 
 function lab(level: string, parts: { type: string; x: number; y: number; rot: number }[], steps: number, runs = 2): RunClaim {
-  const inventory: Record<string, number> = { test: 1, pixel: 2, toast: 2, juice: 2, remote: 3, finale: 5 };
-  const par: Record<string, number> = { test: 1, pixel: 1, toast: 1, juice: 1, remote: 2, finale: 3 };
+  const def = LAB_LEVELS.find((l) => l.id === level)!;
+  const inventory = Object.values(def.inventory).reduce((a, b) => a + (b ?? 0), 0);
   return {
     won: true,
-    score: labScore(inventory[level], parts.length, runs),
-    stars: starsFor(parts.length, par[level]),
-    stats: { parts: parts.length, inventory: inventory[level], par: par[level], runs, steps },
+    score: labScore(inventory, parts.length, runs),
+    stars: starsFor(parts.length, def.par),
+    stats: { parts: parts.length, inventory, par: def.par, runs, steps },
     replay: { kind: "lab-placements", version: 1, parts },
   };
 }
@@ -195,9 +195,9 @@ describe("Laboratório", () => {
 
   it("replays the known solution of every level on the server", () => {
     for (const [level, parts] of Object.entries(SOLUTIONS)) {
-      const verdict = ok(judgeRun("bad-ideas-lab", level, lab(level, parts, STEPS_BEFORE_EXTRACTION[level])));
+      const verdict = ok(judgeRun("bad-ideas-lab", level, lab(level, parts, GOLDEN_STEPS[level])));
       expect(verdict).toMatchObject({ verification: "replayed", flags: [] });
-      expect(verdict.rank[1]).toBe(-STEPS_BEFORE_EXTRACTION[level]);
+      expect(verdict.rank[1]).toBe(-GOLDEN_STEPS[level]);
     }
   });
 

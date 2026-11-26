@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import {
+  BALL_R,
   FLOOR_Y,
   GRID,
   H,
@@ -11,8 +12,8 @@ import {
   partAngle,
   type PartType,
 } from "../config";
-import { attemptBonus, LAB_SCORE, labScore, LEVELS, starsFor, type LevelDef } from "../levels";
-import { goalLayout, partPoly, placementConflict, sceneBlocks, type Conflict, type PlacedPart, type Vec } from "../geometry";
+import { attemptBonus, LAB_SCORE, labScore, LEVELS, starsFor, type LevelDef, type Rect } from "../levels";
+import { blockPoly, goalLayout, NEAR_MISS, partPoly, polyBox, placementConflict, sceneBlocks, sensorGap, sensorPoly, type Conflict, type PlacedPart, type Poly, type Vec } from "../geometry";
 import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { COPY, levelText, type LabCopy, type LevelText } from "../copy";
 import { Narrator, partLandmark, pathRelation, sceneOrder, type Direction, type Landmark, type Noun, type RunOutcome, type SceneInfo } from "../narration";
@@ -24,11 +25,13 @@ import { eachKeyOnce } from "../../kit/keys";
 import { LabCamera, type Pose } from "./camera";
 import { DockHud } from "./dockHud";
 import { currentFrame, watchFrame } from "./frame";
-import { DeskHud, type HudHandlers, type LabHudView, type Mood } from "./hud";
+import { DeskHud, type HudHandlers, type LabHudView } from "./hud";
+import { LinaView, type Mood } from "./lina";
 import { PartView } from "./parts";
 import { RailHud } from "./railHud";
 import { MOUSE, TOUCH, distanceToPoly, halfHeight } from "./touch";
-import { buildGoal, drawBlock, drawBuildArea, drawPipe, type GoalView } from "./world";
+import { RoomView } from "./room";
+import { buildGoal, drawBlock, drawBuildArea, drawPipe, goalZone, type GoalView } from "./world";
 
 type Mode = "attract" | "build" | "running" | "done";
 
@@ -75,6 +78,8 @@ const CONFETTI = [0xffc83d, 0xf06ba8, 0x63d6c1, 0x7b62c4, 0xff8a3d, 0x8fd4f7];
 const RESET_MS = 900;
 const UNDO_LIMIT = 40;
 const RUNS_KEY = "labRuns";
+const TRAMPOLINE = 4;
+const OFF_TOP = -30;
 
 function wrapLines(text: string, max = 30) {
   const lines: string[] = [];
@@ -90,6 +95,17 @@ function wrapLines(text: string, max = 30) {
   }
   if (line) lines.push(line);
   return lines.join("\n");
+}
+
+function overlap(a: Rect, b: Rect) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+function pipeZone(level: LevelDef): Rect {
+  const left = level.pipe.flip ? level.pipe.x - 10 : level.pipe.x - 186;
+  return { x: left, y: level.pipe.y - 400, w: 196, h: 450 };
 }
 
 function snap(v: number) {
@@ -135,7 +151,15 @@ export class LabScene extends Phaser.Scene {
   private fails = 0;
   private runs = 0;
   private resetTimer: Phaser.Time.TimerEvent | null = null;
-  private lina!: Phaser.GameObjects.Image;
+  private lina!: LinaView;
+  private room!: RoomView;
+  private zone!: Rect;
+  private goalPoly: Poly = [];
+  private closest: { gap: number; x: number; y: number } | null = null;
+  private launches: { part: number; x: number }[] = [];
+  private bounced = false;
+  private hidden = false;
+  private skipEnding: (() => void) | null = null;
   private bubble!: Bubble;
   private slotTypes: PartType[] = [];
   private lastSound = new Map<string, number>();
@@ -152,7 +176,6 @@ export class LabScene extends Phaser.Scene {
   private demoTimer?: Phaser.Time.TimerEvent;
   private idleTimer?: Phaser.Time.TimerEvent;
   private runNudgeTimer?: Phaser.Time.TimerEvent;
-  private moodTimer?: Phaser.Time.TimerEvent;
   private bulb!: Phaser.GameObjects.Image;
   private landmarks: Landmark[] = [];
   private ball!: Noun;
@@ -212,6 +235,11 @@ export class LabScene extends Phaser.Scene {
     this.gesture = null;
     this.lastTap = { t: -1e9, x: 0, y: 0 };
     this.preRun = null;
+    this.closest = null;
+    this.launches = [];
+    this.bounced = false;
+    this.hidden = false;
+    this.skipEnding = null;
   }
 
   create() {
@@ -230,14 +258,32 @@ export class LabScene extends Phaser.Scene {
     const fonts = this.ctx.fonts;
 
     this.add.image(0, 0, "lab-bg").setOrigin(0).setDepth(0);
+    this.room = new RoomView(this, this.levelIndex, fonts, reduced, this.copy.world);
+    this.zone = goalZone(level);
     for (const b of level.blocks) drawBlock(this, b);
     const layout = goalLayout(level.goal);
+    this.goalPoly = sensorPoly(layout.sensor);
     if (level.goal.type === "bell" || level.goal.type === "target") for (const b of layout.blocks) drawBlock(this, b);
     this.pipe = drawPipe(this, level);
     this.goal = buildGoal(this, level, fonts, {
       word: (text, x, y, color, size) => this.word(text, x, y, color, size),
       burst: (x, y, count, tex) => this.burst(x, y, count, tex),
       sfx: (name, volume) => this.sfx(name, volume),
+      notes: (x, y, count) => this.notes(x, y, count),
+      chain: () =>
+        this.room.chain({
+          sfx: (name, volume) => this.sfx(name, volume),
+          word: (text, x, y, color, size) => this.word(text, x, y, color, size),
+          burst: (x, y, count, tex) => this.burst(x, y, count, tex),
+          notes: (x, y, count) => this.notes(x, y, count),
+          confetti: (count) => this.confetti(count),
+          lina: (kind) => this.lina.set(kind),
+          bubble: (b) => {
+            const f = this.frame;
+            b.setBaseScale(this.hud.textScale);
+            b.setBounds(f.stage.x + f.scrollX, f.stage.x + f.stage.w + f.scrollX, f.stage.y + f.scrollY);
+          },
+        }),
       reduced,
       text: this.copy.world,
     });
@@ -249,8 +295,7 @@ export class LabScene extends Phaser.Scene {
     this.ballImg = this.add.image(level.pipe.x - 8 * dir, level.pipe.y, level.ball).setDepth(11);
     if (level.ball === "orange") this.ballImg.setOrigin(0.5, 31 / 56);
 
-    this.lina = this.add.image(96, FLOOR_Y + 4, "lina").setOrigin(0.5, 1).setDepth(14);
-    if (!reduced) this.tweens.add({ targets: this.lina, scaleY: 0.97, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.lina = new LinaView(this, 96, FLOOR_Y + 4, reduced, (kind) => this.hud.mood(kind));
     this.bubble = new Bubble(this, fonts, "left", 32, 16);
     this.bulb = this.add.image(this.lina.x - 56, this.lina.y - 226, "bulb").setDepth(15).setVisible(false);
 
@@ -325,14 +370,7 @@ export class LabScene extends Phaser.Scene {
   }
 
   private mood(kind: Mood, ms = 0) {
-    this.moodTimer?.remove();
-    this.lina.setTexture(kind === "yay" ? "lina-yay" : kind === "oops" ? "lina-oops" : "lina");
-    this.hud.mood(kind);
-    if (ms)
-      this.moodTimer = this.time.delayedCall(ms, () => {
-        this.lina.setTexture("lina");
-        this.hud.mood("idle");
-      });
+    this.lina.set(kind, ms);
   }
 
   private showBulb() {
@@ -702,7 +740,34 @@ export class LabScene extends Phaser.Scene {
 
   private say(text: string, duration = 2400, wrap = 30) {
     if (this.hud.say(text, duration, this.focusPoint())) return;
-    this.bubble.say(wrapLines(text, wrap), this.lina.x + 34, this.lina.y - 214, duration);
+    const spot = this.bubbleSpot(text, wrap);
+    this.bubble.say(spot.text, spot.x, spot.y, duration, spot.side);
+  }
+
+  private bubbleSpot(text: string, wrap: number) {
+    const head = { x: this.lina.x + 34, y: this.lina.y - 214 };
+    const beside = { x: this.lina.x + 66, y: this.lina.y - 150 };
+    const above = [wrap, 24, 19, 15].filter((w, i, all) => w <= wrap && all.indexOf(w) === i);
+    const options = [
+      ...above.map((w) => ({ text: wrapLines(text, w), ...head, side: "above" as const })),
+      ...[Math.min(wrap, 26), 20].map((w) => ({ text: wrapLines(text, w), ...beside, side: "right" as const })),
+    ];
+    const blocks = sceneBlocks(this.level).map((b) => {
+      const box = polyBox(blockPoly(b));
+      return { x: box.left, y: box.top, w: box.right - box.left, h: box.bottom - box.top };
+    });
+    const cost = (r: Rect) =>
+      overlap(r, this.zone) * 6 + overlap(r, this.level.build) * 2 + blocks.reduce((a, b) => a + overlap(r, b), 0) + overlap(r, pipeZone(this.level));
+    let best = options[0];
+    let bestCost = Infinity;
+    options.forEach((o, i) => {
+      const c = cost(this.bubble.box(o.text, o.x, o.y, o.side)) + i;
+      if (c < bestCost) {
+        best = o;
+        bestCost = c;
+      }
+    });
+    return best;
   }
 
   private word(text: string, x: number, y: number, color: string, size = 52) {
@@ -731,6 +796,33 @@ export class LabScene extends Phaser.Scene {
         duration: this.ctx.reducedMotion ? 500 : Phaser.Math.Between(600, 950),
         ease: "Quad.easeOut",
         onComplete: () => img.destroy(),
+      });
+    }
+  }
+
+  private notes(x: number, y: number, count: number) {
+    const glyphs = ["♪", "♫"];
+    const colors = ["#f06ba8", "#ffc83d", "#63d6c1", "#9df0dc"];
+    for (let i = 0; i < count; i += 1) {
+      const t = cartoonText(this, x + Phaser.Math.Between(-30, 30), y, glyphs[i % 2], { size: 40, color: colors[i % colors.length], font: this.ctx.fonts.display, stroke: 0.2 })
+        .setOrigin(0.5)
+        .setDepth(15)
+        .setAlpha(0);
+      if (this.ctx.reducedMotion) {
+        t.setAlpha(1).setY(y - 40 - i * 24);
+        this.time.delayedCall(1200, () => t.destroy());
+        continue;
+      }
+      this.tweens.add({
+        targets: t,
+        delay: i * 220,
+        alpha: { from: 1, to: 0 },
+        y: y - Phaser.Math.Between(120, 190),
+        x: t.x + Phaser.Math.Between(-60, 60),
+        angle: Phaser.Math.Between(-20, 20),
+        duration: 1300,
+        ease: "Sine.easeOut",
+        onComplete: () => t.destroy(),
       });
     }
   }
@@ -1519,6 +1611,10 @@ export class LabScene extends Phaser.Scene {
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.onPointerUp(p));
     this.input.on("pointerupoutside", (p: Phaser.Input.Pointer) => this.onPointerUp(p));
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (this.skipEnding) {
+        this.skipEnding();
+        return;
+      }
       if (this.mode === "done" && this.resetTimer && !this.finishing) {
         this.resetAfterFail();
         return;
@@ -1563,7 +1659,10 @@ export class LabScene extends Phaser.Scene {
     if (this.mode === "attract") return;
     if (!event.repeat && this.query(key, event.shiftKey)) return;
     if (this.mode === "done") {
-      if (this.resetTimer && !this.finishing) this.resetAfterFail();
+      if (this.skipEnding && (key === " " || key === "enter")) {
+        event.preventDefault();
+        this.skipEnding();
+      } else if (this.resetTimer && !this.finishing) this.resetAfterFail();
       return;
     }
     if (key === " " || key === "spacebar") {
@@ -1695,6 +1794,11 @@ export class LabScene extends Phaser.Scene {
     const part = this.simParts[index];
     const v = part.view;
     this.track.launches.push(`part-${part.id}`);
+    this.lina.flinch();
+    const x = this.sim?.x ?? v.x;
+    this.launches.push({ part: index, x });
+    const last = this.launches.slice(-TRAMPOLINE);
+    if (last.length === TRAMPOLINE && last.every((l) => l.part === index && Math.abs(l.x - last[0].x) <= 4)) this.bounced = true;
     v.squash();
     this.sfx("boing", 1, 120);
     this.word(this.copy.scene.boing, v.x + nx * 60, v.y + ny * 60 - 30, "#f06ba8", 46);
@@ -1740,6 +1844,12 @@ export class LabScene extends Phaser.Scene {
     this.preRun = this.camera.pose;
     this.introCam?.remove();
     this.mode = "running";
+    this.closest = null;
+    this.launches = [];
+    this.bounced = false;
+    this.hidden = false;
+    this.lina.setBase("watch");
+    this.lina.set("watch");
     this.runs += 1;
     this.registry.set(RUNS_KEY, { level: this.level.id, runs: this.runs });
     this.guideGfx?.setVisible(false);
@@ -1825,6 +1935,8 @@ export class LabScene extends Phaser.Scene {
       this.ballImg.setScale(1);
     }
     this.mode = "build";
+    this.lina.lookAt(null);
+    this.lina.setBase("idle");
     this.hud.setRunning(false);
     this.refreshHud();
     this.refreshGuide();
@@ -1853,9 +1965,9 @@ export class LabScene extends Phaser.Scene {
     }
   }
 
-  private confetti() {
+  private confetti(count = 30) {
     if (this.ctx.reducedMotion) return;
-    for (let i = 0; i < 30; i += 1) {
+    for (let i = 0; i < count; i += 1) {
       const x = Phaser.Math.Between(40, W - 40);
       const piece = this.add
         .rectangle(x, Phaser.Math.Between(-160, -20), Phaser.Math.Between(10, 18), Phaser.Math.Between(16, 26), CONFETTI[i % CONFETTI.length])
@@ -1885,6 +1997,49 @@ export class LabScene extends Phaser.Scene {
       g.fillStyle(0xfbf5e6, 0.8);
       g.fillCircle(x, y, 5);
     });
+    const c = this.closest;
+    if (!c || c.gap <= 0) return;
+    const r = BALL_R + 10;
+    g.lineStyle(8, 0x1d1830, 0.45);
+    g.strokeCircle(c.x + 2, c.y + 3, r);
+    g.lineStyle(5, c.gap <= NEAR_MISS ? 0xffc83d : 0xfbf5e6, 0.95);
+    g.strokeCircle(c.x, c.y, r);
+  }
+
+  private spotlight(ms: number) {
+    if (this.frame.kind === "tall") return;
+    const z = this.zone;
+    const cx = z.x + z.w / 2;
+    const cy = z.y + z.h / 2;
+    const r = Math.max(170, Math.hypot(z.w, z.h) / 2 + 50);
+    const shade = this.add.rectangle(-200, -200, W + 400, H + 400, 0x1d1830, 0.34).setOrigin(0).setDepth(10.5).setAlpha(0);
+    const hole = this.make.graphics({}, false);
+    hole.fillStyle(0xffffff, 1);
+    hole.fillCircle(cx, cy, r);
+    const mask = hole.createGeometryMask();
+    mask.setInvertAlpha(true);
+    shade.setMask(mask);
+    const ring = this.add.circle(cx, cy, r).setStrokeStyle(6, 0xfbf5e6, 0.5).setDepth(10.6).setAlpha(0);
+    const done = () => {
+      shade.destroy();
+      ring.destroy();
+      hole.destroy();
+    };
+    if (this.ctx.reducedMotion) {
+      shade.setAlpha(1);
+      ring.setAlpha(1);
+      this.time.delayedCall(Math.min(ms, 1400), done);
+      return;
+    }
+    this.tweens.add({ targets: [shade, ring], alpha: 1, duration: 220, delay: 80 });
+    this.tweens.add({ targets: [shade, ring], alpha: 0, delay: Math.min(ms, 1600), duration: 320, onComplete: done });
+  }
+
+  private pulseClosest() {
+    const c = this.closest;
+    if (!c || this.ctx.reducedMotion) return;
+    const ring = this.add.circle(c.x, c.y, BALL_R + 10).setStrokeStyle(6, 0xffc83d, 1).setDepth(6.5);
+    this.tweens.add({ targets: ring, scale: { from: 2.2, to: 1 }, alpha: { from: 0, to: 1 }, duration: 380, ease: "Quad.easeOut", onComplete: () => this.tweens.add({ targets: ring, alpha: 0, delay: 500, duration: 300, onComplete: () => ring.destroy() }) });
   }
 
   private stepRun() {
@@ -1893,27 +2048,33 @@ export class LabScene extends Phaser.Scene {
     const outcome = sim.step();
     if (this.mode !== "running" || this.sim !== sim) return;
     if (sim.steps % 3 === 0) this.trail.push([sim.x, sim.y]);
+    const gap = sensorGap({ x: sim.x, y: sim.y }, this.goalPoly);
+    if (!this.closest || gap < this.closest.gap) this.closest = { gap, x: sim.x, y: sim.y };
     if (outcome === "success") this.success();
     else if (outcome) this.fail(outcome);
+    else if (this.bounced) this.fail("timeout", true);
   }
 
-  private fail(outcome: "out" | "stopped" | "timeout") {
+  private fail(outcome: "out" | "stopped" | "timeout", bounced = false) {
     if (this.mode !== "running") return;
     const s = this.copy.scene;
     const out = outcome === "out";
+    const near = !bounced && this.closest !== null && this.closest.gap <= NEAR_MISS;
     const reason = s.failReason(this.ball, outcome);
-    const report = this.runReport(outcome);
+    const report = bounced ? `${this.runReport("cancelled")} ${s.bounceReport(this.ball)}` : this.runReport(outcome);
     this.mode = "done";
     this.fails += 1;
     this.sfx("slide", 0.9);
-    this.mood("oops", 2200);
+    this.mood(out ? "cover" : near ? "close" : "oops", 2200);
+    if (near) this.time.delayedCall(200, () => this.pulseClosest());
     this.hud.flash(s.nope, "#ef4f43", 650);
     for (const p of this.parts) p.view.shake();
     const level = this.level;
     const offGuide = level.guide && !this.parts.some((p) => this.atGuide(p));
-    const line = s.failLines[(this.fails - 1) % s.failLines.length];
+    const lines = near ? s.nearLines : s.missLines;
+    const line = bounced ? s.bounceSay : lines[(this.fails - 1) % lines.length];
     const showHint = !offGuide && this.fails === 2;
-    const lineText = offGuide ? s.offGuideSay : showHint ? s.psst(this.text.hint) : `${line} ${reason}`;
+    const lineText = offGuide ? s.offGuideSay : showHint ? s.psst(this.text.hint) : bounced ? line : `${line} ${reason}`;
     this.say(lineText, showHint || offGuide ? 5200 : 2400);
     if (showHint) this.showBulb();
     const advice = offGuide ? s.offGuideAdvice : showHint ? s.hint(this.text.hint) : s.tryAgain;
@@ -1957,18 +2118,30 @@ export class LabScene extends Phaser.Scene {
     for (const p of this.parts) p.view.setRunning(false);
     this.guideGfx?.setVisible(false);
     this.guideArrow?.setVisible(false);
+    const used = this.parts.length;
     const hold = this.goal.celebrate(this.ballImg);
     this.time.delayedCall(260, () => this.sfx("success", 1));
     this.time.delayedCall(620, () => this.sfx("party", 0.8));
-    this.mood("yay");
-    this.say(this.text.cheer ?? this.text.win, 2600, 26);
+    this.lina.lookAt(null);
+    this.lina.setBase("yay");
+    if (used < level.par) {
+      this.lina.set("wow", 700);
+    } else {
+      this.lina.set("yay");
+    }
+    if (this.frame.kind === "tall") {
+      const z = this.zone;
+      this.camera.animateTo(level.goal.type === "button" ? this.camera.overviewPose() : { x: z.x + z.w / 2, y: z.y + z.h / 2, zoom: this.camera.base.zoom }, 450);
+    } else {
+      this.say(this.text.cheer ?? this.text.win, 2600, 26);
+    }
+    if (level.goal.type !== "button") this.spotlight(Math.max(hold, 1500));
     this.time.delayedCall(this.ctx.reducedMotion ? 0 : 300, () => this.confetti());
     if (!this.ctx.reducedMotion) {
-      this.tweens.add({ targets: this.lina, y: this.lina.y - 36, duration: 180, yoyo: true, repeat: 3, ease: "Quad.easeOut" });
+      this.lina.hop();
       this.cameras.main.shake(120, 0.003);
     }
 
-    const used = this.parts.length;
     const total = Object.values(level.inventory).reduce((a, b) => a + (b ?? 0), 0);
     const saved = total - used;
     const stars = starsFor(used, level.par);
@@ -2000,11 +2173,26 @@ export class LabScene extends Phaser.Scene {
       replay: { kind: "lab-placements", version: 1, parts: replay },
       achievements,
       level: { index: this.levelIndex, id: level.id, title: this.text.title, total: LEVELS.length },
-      copy: { title: r.title, text: this.text.win },
+      copy: { title: this.text.result ?? r.title, text: this.text.win },
       summary: r.summary(used),
       ...(stars < 3 ? { starHint: r.starHint(level.par) } : {}),
     };
-    this.time.delayedCall(Math.max(hold, 1500) + 600, () => this.ctx.onEvent({ type: "finished", result }));
+    let sent = false;
+    const finish = () => {
+      if (sent) return;
+      sent = true;
+      this.skipEnding = null;
+      this.ctx.onEvent({ type: "finished", result });
+    };
+    const timer = this.time.delayedCall(Math.max(hold, 1500) + 600, finish);
+    if (hold > 2600)
+      this.time.delayedCall(900, () => {
+        if (!sent)
+          this.skipEnding = () => {
+            timer.remove();
+            finish();
+          };
+      });
   }
 
   private liftCarry(delta: number) {
@@ -2020,6 +2208,7 @@ export class LabScene extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     for (const p of this.parts) p.view.update(delta);
+    this.lina.update();
     this.liftCarry(delta);
     const ball = (this.mode === "running" || this.mode === "done") && this.ballImg.visible ? { x: this.ballImg.x, y: this.ballImg.y } : null;
     if (this.camera.update(delta, this.time.now, ball, this.finishing) && this.selected) this.placeToolbar(this.selected);
@@ -2040,6 +2229,14 @@ export class LabScene extends Phaser.Scene {
     const sim = this.sim;
     if (sim && this.mode === "running") {
       this.ballImg.setPosition(sim.x, sim.y).setRotation(sim.angle);
+      this.lina.lookAt({ x: sim.x, y: sim.y });
+      if (!this.hidden && sim.y < OFF_TOP) {
+        this.hidden = true;
+        this.lina.set("cover");
+      } else if (this.hidden && sim.y > -OFF_TOP) {
+        this.hidden = false;
+        this.lina.set("watch");
+      }
     }
   }
 }

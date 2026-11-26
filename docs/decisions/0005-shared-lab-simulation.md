@@ -3,6 +3,8 @@
 > Since [decision 0007](0007-essential-tests-only.md), `sim.test.ts` keeps only the golden step counts and the repeatability check, and `trig.test.ts` only the locked output bits. The one-time equivalence run against Phaser's Matter was removed.
 >
 > Since [decision 0009](0009-street-replay.md), `trig.ts` and the Matter patches live in `src/lib/physics/`, shared with Rua Sem Saída.
+>
+> Since [decision 0017](0017-lab-second-act.md), the golden step counts are called `GOLDEN_STEPS` and also hold the four Act 2 machines, measured with this simulation. The six numbers below are unchanged.
 
 ## Context
 
