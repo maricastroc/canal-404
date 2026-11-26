@@ -2,6 +2,7 @@ import type { GameResult } from "@/games/types";
 import { formatNumber, ordinal } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
 import { RACE_COPY } from "./copy";
+import { championTime, type GoalState } from "./goals";
 import type { RaceFinish } from "./scenes/RaceScene";
 import { formatSeconds, formatTime } from "./scenes/hud";
 import type { CartId } from "./sim/carts";
@@ -11,7 +12,7 @@ export const REPLAY_KIND = "downhill-run";
 
 const RACER_COLORS: Record<CartId, string> = { deco: "#ffc83d", lina: "#f27aa8", bruno: "#56c7a0", mila: "#a98bef" };
 
-export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | null, sweep: boolean): GameResult {
+export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | null, sweep: boolean, goals: GoalState[]): GameResult {
   const copy = RACE_COPY[locale];
   const r = copy.results;
   const stars = placeStars(f.place);
@@ -64,5 +65,6 @@ export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | nul
       { label: r.facts.hits, value: formatNumber(f.stats.hits, locale) },
       { label: r.facts.crashes, value: formatNumber(f.stats.crashes, locale) },
     ],
+    goals: goals.map((g) => ({ label: g.feat ? r.goals[g.feat] : r.champion(formatTime(championTime(f.course, f.cart), locale)), done: g.done, fresh: g.fresh })),
   };
 }

@@ -21,6 +21,8 @@ export type ResultStanding = { name: string; value: string; detail?: string; you
 
 export type ResultFact = { label: string; value: string };
 
+export type ResultGoal = { label: string; done: boolean; fresh: boolean };
+
 export type GameResult = {
   won: boolean;
   score: number;
@@ -38,6 +40,7 @@ export type GameResult = {
   restartLabel?: string;
   standings?: ResultStanding[];
   facts?: ResultFact[];
+  goals?: ResultGoal[];
 };
 
 export type MatchSetup = { character?: string };

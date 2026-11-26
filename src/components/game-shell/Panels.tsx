@@ -15,7 +15,7 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { KeyText } from "@/components/ui/KeyText";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
-import type { GameResult, IntroProgress, ResultFact, ResultStanding } from "@/games/types";
+import type { GameResult, IntroProgress, ResultFact, ResultGoal, ResultStanding } from "@/games/types";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber, ordinal } from "@/i18n/format";
@@ -135,6 +135,9 @@ const COPY = localized({
     newRecord: "Novo recorde!",
     standings: "Classificação",
     facts: "Sua corrida",
+    goals: "Desafios da pista",
+    goalDone: "Cumprido",
+    goalNew: "Novo!",
     levelOf: (word: LevelWord, n: number, total: number, title: string) => `${word[0].toUpperCase() + word.slice(1)} ${n} de ${total} · ${title}`,
     total: "Total",
     retryMission: "Tentar a missão de novo",
@@ -204,6 +207,9 @@ const COPY = localized({
     newRecord: "New record!",
     standings: "Standings",
     facts: "Your run",
+    goals: "Track challenges",
+    goalDone: "Done",
+    goalNew: "New!",
     levelOf: (word: LevelWord, n: number, total: number, title: string) => `${LEVEL[word][0].toUpperCase() + LEVEL[word].slice(1)} ${n} of ${total} · ${title}`,
     total: "Total",
     retryMission: "Try the mission again",
@@ -1090,6 +1096,7 @@ export function ResultPanel({
         <div className="wideshort:mt-4">
           {result.standings?.length ? <Standings rows={result.standings} label={copy.standings} /> : null}
           {result.facts?.length ? <Facts facts={result.facts} label={copy.facts} /> : null}
+          {result.goals?.length ? <Goals goals={result.goals} label={copy.goals} done={copy.goalDone} fresh={copy.goalNew} /> : null}
           <dl className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 px-4 pt-1 max-sm:mt-3 max-sm:px-3 wideshort:mt-3">
             {result.breakdown.map((row, i) => (
               <motion.div
@@ -1162,6 +1169,36 @@ function Facts({ facts, label }: { facts: ResultFact[]; label: string }) {
         </motion.div>
       ))}
     </dl>
+  );
+}
+
+function Goals({ goals, label, done, fresh }: { goals: ResultGoal[]; label: string; done: string; fresh: string }) {
+  return (
+    <div className="mt-3">
+      <p className="font-display text-sm uppercase tracking-wide text-ink-soft">{label}</p>
+      <ul className="mt-1 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${goals.length}, minmax(0, 1fr))` }}>
+        {goals.map((goal, i) => (
+          <motion.li
+            key={goal.label}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 + i * 0.08 }}
+            className={`relative flex min-w-0 items-center gap-1.5 rounded-lg border-2 px-2 py-1.5 ${goal.fresh ? "border-ink bg-sun" : goal.done ? "border-ink bg-mint" : "border-dashed border-ink/25"}`}
+          >
+            <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full border-2 ${goal.done ? "border-ink bg-cream text-ink" : "border-ink/30"}`}>
+              {goal.done ? <CheckIcon className="size-3" /> : null}
+            </span>
+            <span className={`min-w-0 text-[11px] font-bold leading-tight sm:text-xs ${goal.done ? "text-ink" : "text-ink-soft"}`}>
+              {goal.label}
+              {goal.done ? <span className="sr-only">{` · ${done}`}</span> : null}
+            </span>
+            {goal.fresh ? (
+              <span className="absolute -right-1.5 -top-2.5 rotate-6 rounded-md border-2 border-ink bg-bubblegum px-1 font-display text-[11px] uppercase leading-tight text-ink">{fresh}</span>
+            ) : null}
+          </motion.li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
