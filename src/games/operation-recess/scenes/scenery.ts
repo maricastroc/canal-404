@@ -27,6 +27,7 @@ const YARD_FLOOR: Record<YardSector, string> = { court: "floor-court", canteen: 
 const HALF_VIEW = W / 2;
 const at = (worldX: number, f: number) => HALF_VIEW + f * (worldX - HALF_VIEW);
 const MARGIN = 1400;
+const RECEDE = 0xcfc8e2;
 const HALL = { pillar: 760, bay: 1180, pillarW: 76, joist: 295, lamp: 465 };
 const CEILING = {
   corridor: { base: 0x3f3170, beam: 0x2b2150, step: HALL.joist, beamX: (HALL.pillar % HALL.joist) - 10, beamW: 20 },
@@ -838,27 +839,29 @@ export class Scenery {
       this.cone(x, 200, 0.22, 1.15).setTint(0xfff1b8);
     }
     const shelves: [string, number][] = [
-      ["bookcase-tall-b", 1180],
-      ["bookcase-tall-c", 1500],
-      ["bookcase-tall-c", 3060],
-      ["bookcase-tall-b", 4520],
-      ["bookcase-tall-a", 4840],
-      ["bookcase-tall-b", 6330],
+      ["bookcase-tall-a", 1180],
+      ["bookcase-tall-e", 1500],
+      ["bookcase-tall-c", 2930],
+      ["bookcase-tall-d", 4520],
+      ["bookcase-mid", 4840],
+      ["bookcase-tall-f", 6330],
     ];
     for (const [key, x] of shelves) this.grounded(this.react(this.img(key, x, FLOOR_Y, D.wall + 0.1), "metal"), 0.95);
     const plan: [string, number][] = [
       ["desk", 250],
+      ["reader", 250],
       ["window", 2000],
       ["poster-quiet", 2680],
       ["clock", 2960],
-      ["table", 3280],
-      ["globe", 3470],
-      ["table", 3640],
+      ["table", 3480],
+      ["globe", 3700],
+      ["notices", 3800],
       ["window", 4080],
       ["ladder", 4690],
       ["catalog", 5080],
       ["poster-read", 5760],
-      ["table", 5640],
+      ["table", 5800],
+      ["hours", 6040],
       ["globe", 6540],
     ];
     for (const [kind, x] of plan) this.libraryModule(kind, x);
@@ -871,7 +874,7 @@ export class Scenery {
 
   private libraryModule(kind: string, x: number) {
     if (kind === "desk") {
-      this.grounded(this.img("librarian-desk", x, FLOOR_Y, D.back).setScale(0.9));
+      this.grounded(this.img("librarian-desk", x, FLOOR_Y, D.back).setScale(0.9).setTint(RECEDE));
       this.react(this.img("sign-library", x + 320, 290, D.back + 0.02, [0.5, 0]).setScale(0.85), "swing");
       return;
     }
@@ -889,18 +892,30 @@ export class Scenery {
       return;
     }
     if (kind === "table") {
-      this.grounded(this.img("reading-table", x, FLOOR_Y, D.back).setScale(0.9), 0.9);
+      this.grounded(this.img("reading-table", x, FLOOR_Y, D.back).setScale(0.85).setTint(RECEDE), 0.9);
       return;
     }
     if (kind === "globe") {
-      this.grounded(this.react(this.img("globe", x, FLOOR_Y, D.back + 0.01).setScale(0.9), "plant"), 0.6);
+      this.grounded(this.react(this.img("globe", x, FLOOR_Y, D.back + 0.01).setScale(0.9).setTint(RECEDE), "plant"), 0.6);
+      return;
+    }
+    if (kind === "reader") {
+      this.react(this.img("frame-reader", x, 400, D.back, [0.5, 0]).setScale(0.8), "swing");
+      return;
+    }
+    if (kind === "notices") {
+      this.react(this.img("board-notices", x, 330, D.back, [0.5, 0]).setScale(0.8), "swing");
+      return;
+    }
+    if (kind === "hours") {
+      this.react(this.img("board-hours", x, 290, D.back, [0.5, 0]).setScale(0.8), "swing");
       return;
     }
     if (kind === "ladder") {
       this.img("ladder", x, FLOOR_Y + 4, D.wall + 0.15).setScale(0.95);
       return;
     }
-    if (kind === "catalog") this.grounded(this.react(this.img("card-catalog", x, FLOOR_Y, D.back), "metal"));
+    if (kind === "catalog") this.grounded(this.react(this.img("card-catalog", x, FLOOR_Y, D.back).setTint(RECEDE), "metal"));
   }
 
   private office() {

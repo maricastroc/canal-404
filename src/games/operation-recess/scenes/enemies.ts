@@ -297,6 +297,27 @@ export abstract class Enemy {
     scene.tweens.add({ targets: this.sprite, angle: dir * 380, alpha: 0, delay: 150, duration: 550, onComplete: () => this.destroy() });
   }
 
+  crush(dir: number) {
+    if (this.dead) return false;
+    this.dead = true;
+    this.alarm?.destroy();
+    this.alarm = null;
+    this.face?.setVisible(false);
+    this.body.enable = false;
+    this.tex("hurt");
+    const scene = this.api.scene;
+    scene.tweens.killTweensOf(this.sprite);
+    scene.tweens.add({ targets: this.shadow, alpha: 0, duration: 500 });
+    if (this.api.reduced) {
+      scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 300, duration: 400, onComplete: () => this.destroy() });
+      return true;
+    }
+    this.sprite.setAngle(dir * 10);
+    scene.tweens.add({ targets: this.sprite, scaleX: MON_SCALE * 1.18, scaleY: MON_SCALE * 0.5, duration: 160, ease: "Quad.easeOut" });
+    scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 700, duration: 380, onComplete: () => this.destroy() });
+    return true;
+  }
+
   destroy() {
     this.rect.destroy();
     this.sprite.destroy();

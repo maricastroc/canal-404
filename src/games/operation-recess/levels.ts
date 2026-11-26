@@ -25,6 +25,7 @@ export type LevelDef = {
   ropes?: { col: number; w: number; period: number }[];
   pads?: number[];
   lights?: { col: number; span: number; period: number }[];
+  towers?: number[];
 };
 
 export const LEVELS: LevelDef[] = [
@@ -158,6 +159,7 @@ export const LEVELS: LevelDef[] = [
     watchers: [{ col: 33, look: 1400 }],
     pads: [65],
     lights: [{ col: 42, span: 3, period: 2600 }],
+    towers: [39.5, 69.5],
   },
   {
     id: "office",

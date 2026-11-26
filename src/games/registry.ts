@@ -340,7 +340,7 @@ const TEXT = gameText({
       ],
       howTo: [
         { title: "Corra", text: "Poça escorrega e buraco derruba. Na corda, pule quando ela descer. Armário tremeu? Pare ou feche com uma espadada." },
-        { title: "Ataque", text: "Use a espada para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa." },
+        { title: "Ataque", text: "Use a espada para acertar os monitores. Derrube todos da fase para ganhar a 3ª estrela. A placa de PARE bloqueia de frente: ataque por trás ou quando ele baixar a placa. Na biblioteca, uma espadada numa pilha de livros derruba tudo em cima do monitor." },
         { title: "Avance", text: "Se a luz do Inspetor parar em você, saia dela. Toque os sinos para salvar o caminho até a diretoria." },
       ],
       levels: [
@@ -833,7 +833,7 @@ const TEXT = gameText({
       ],
       howTo: [
         { title: "Run", text: "Puddles are slippery and holes make you fall. On the jump rope, jump when it comes down. Locker shaking? Stop, or slam it shut with your sword." },
-        { title: "Attack", text: "Use your sword to hit the monitors. Take down every monitor in a level to earn the 3rd star. The stop sign (PARE) blocks from the front: attack from behind or when he lowers it." },
+        { title: "Attack", text: "Use your sword to hit the monitors. Take down every monitor in a level to earn the 3rd star. The stop sign (PARE) blocks from the front: attack from behind or when he lowers it. In the library, one hit on a book tower drops it right on the monitor." },
         { title: "Advance", text: "If the Inspector's spotlight lands on you, get out of it. Ring the bells to save your progress on the way to the principal's office." },
       ],
       levels: [

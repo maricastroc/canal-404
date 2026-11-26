@@ -19,6 +19,8 @@
 <path d="M24 539.0 L276 539.0" stroke="#ffffff" stroke-width="2.5" opacity="0.3"/>
 <rect x="0.0" y="8.0" width="300.0" height="34.0" rx="5" fill="#55301e" stroke-width="6"/>
 <path d="M10 18 L290 18" stroke="#d99558" stroke-width="3" opacity="0.6"/>
+<rect x="95.0" y="13.0" width="110.0" height="24.0" rx="4" fill="#ffc83d" stroke-width="3"/>
+<text x="150" y="31" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="15" fill="#1d1830" stroke="none">CIÊNCIAS</text>
 <rect x="14.0" y="546.0" width="272.0" height="46.0" rx="4" fill="#55301e" stroke-width="5"/>
 <rect x="116.0" y="558.0" width="68.0" height="22.0" rx="3" fill="#ffc83d" stroke-width="3"/>
 <path d="M128.0 569 L172.0 569" stroke-width="2.5"/>
