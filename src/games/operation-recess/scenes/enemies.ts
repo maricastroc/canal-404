@@ -5,11 +5,14 @@ import type { RecessSfx } from "../sounds";
 import type { RoomEvent } from "./scenery";
 
 export type HeroView = { x: number; feet: number; top: number; grounded: boolean };
+export type Expression = "watch" | "spot" | "lost";
+type Anchor = () => { x: number; y: number } | null;
 
 export type StageApi = {
   scene: Phaser.Scene;
   reduced: boolean;
   words: RecessCopy["words"];
+  barks: RecessCopy["barks"];
   sfx: (name: RecessSfx, volume?: number) => void;
   warn: (x: number, y: number, ms: number) => Phaser.GameObjects.Text;
   word: (text: string, x: number, y: number, color: string, size?: number) => void;
@@ -21,6 +24,9 @@ export type StageApi = {
   room: (event: RoomEvent, dir?: number) => void;
   busy: (self: Enemy) => boolean;
   clang: (x: number, y: number) => void;
+  surface: (x: number, y: number) => number | null;
+  impact: (x: number, power: number) => void;
+  say: (text: string, anchor: Anchor) => boolean;
 };
 
 export type HitResult = "hit" | "block" | "kill" | "dodge" | null;
@@ -28,12 +34,27 @@ export type HitResult = "hit" | "block" | "kill" | "dodge" | null;
 const MON_SCALE = 0.9;
 const OVERHEAD = { x: 120, y: 160 };
 const TURN_SLACK = 24;
+const FACE_POSES = new Set(["walk-a", "walk-b", "point"]);
+const SAY_EVERY = 3200;
+const LOST_MS = 900;
+let slot = 0;
+let line = 0;
+
+function pick(pool: readonly string[]) {
+  line += 1;
+  return pool[line % pool.length];
+}
 
 export abstract class Enemy {
   readonly rect: Phaser.GameObjects.Rectangle;
   readonly body: Phaser.Physics.Arcade.Body;
   readonly sprite: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
+  private face: Phaser.GameObjects.Image | null = null;
+  protected mood: Expression | null = null;
+  private flashFace: Expression | null = null;
+  private flashUntil = 0;
+  private saidAt = -1e9;
   facing = -1;
   dead = false;
   protected state = "idle";
@@ -64,8 +85,25 @@ export abstract class Enemy {
     scene.physics.add.existing(this.rect);
     this.body = this.rect.body as Phaser.Physics.Arcade.Body;
     this.body.setMaxVelocity(700, 1500);
-    this.sprite = scene.add.image(x, feet, `mon-${kind}-walk-a`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(15);
+    const depth = 15 + (slot++ % 400) * 0.002;
+    this.sprite = scene.add.image(x, feet, `mon-${kind}-walk-a`).setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth);
     this.shadow = scene.add.image(x, feet + 2, "blob").setDepth(14).setDisplaySize(150, 30);
+    if (kind === "common") this.face = scene.add.image(x, feet, "mon-face-watch").setOrigin(0.5, 1).setScale(MON_SCALE).setDepth(depth + 0.001).setVisible(false);
+  }
+
+  protected express(face: Expression, ms: number) {
+    this.flashFace = face;
+    this.flashUntil = this.t + ms;
+  }
+
+  protected bark(pool: readonly string[], force = false) {
+    if (!force && this.t - this.saidAt < SAY_EVERY) return;
+    if (this.api.say(pick(pool), () => (this.dead ? null : { x: this.x, y: this.body.top - 26 - this.lift }))) this.saidAt = this.t;
+  }
+
+  protected hop(px: number) {
+    if (this.api.reduced) return;
+    this.api.scene.tweens.add({ targets: this, lift: px, duration: 110, yoyo: true, ease: "Quad.easeOut" });
   }
 
   protected telegraph(ms: number) {
@@ -76,7 +114,7 @@ export abstract class Enemy {
     if (this.dead) return;
     const scene = this.api.scene;
     this.tex(this.kind === "whistle" ? "blow" : this.kind === "shield" ? "block" : "windup");
-    this.api.word("HAHA!", this.x, this.body.top - 60, "#fbf5e6", 40);
+    this.bark(this.api.barks.caught, true);
     this.api.sfx("whistle", 0.6);
     if (!this.api.reduced) scene.tweens.add({ targets: this, lift: 40, duration: 160, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
   }
@@ -200,6 +238,8 @@ export abstract class Enemy {
 
   private die(dir: number) {
     this.dead = true;
+    this.face?.setVisible(false);
+    this.api.impact(this.x, 0.55);
     this.api.scene.tweens.add({ targets: this.shadow, alpha: 0, duration: 300 });
     this.tex("hurt");
     this.body.enable = false;
@@ -219,11 +259,13 @@ export abstract class Enemy {
     this.rect.destroy();
     this.sprite.destroy();
     this.shadow.destroy();
+    this.face?.destroy();
   }
 
   leave() {
     if (this.dead) return;
     this.dead = true;
+    this.face?.setVisible(false);
     this.body.enable = false;
     this.api.scene.tweens.add({ targets: [this.sprite, this.shadow], alpha: 0, duration: this.api.reduced ? 150 : 400, onComplete: () => this.destroy() });
   }
@@ -254,8 +296,12 @@ export abstract class Enemy {
     if (this.dead) return;
     const b = this.body;
     this.sprite.setPosition(b.center.x, b.bottom + 2 - this.lift);
-    const air = this.grounded ? 0 : Math.min(1, Math.abs(b.velocity.y) / 900);
-    this.shadow.setPosition(b.center.x, b.bottom + 3).setAlpha(1 - air * 0.6);
+    const floor = this.grounded ? b.bottom : this.api.surface(b.center.x, b.bottom - 6);
+    if (floor === null) this.shadow.setVisible(false);
+    else {
+      const k = Phaser.Math.Clamp((floor - b.bottom + this.lift) / 320, 0, 1);
+      this.shadow.setVisible(true).setPosition(b.center.x, floor + 3).setDisplaySize(150 * (1 - k * 0.5), 30 * (1 - k * 0.4)).setAlpha(1 - k * 0.6);
+    }
     if (!this.flashing) {
       if (this.t < this.telegraphUntil) {
         if (Math.floor(this.t / 90) % 2 === 0) this.sprite.setTint(0xff9b8a);
@@ -270,6 +316,22 @@ export abstract class Enemy {
       this.applyTex();
       this.sprite.setFlipX(false);
     } else this.sprite.setFlipX(this.facing < 0);
+    this.syncFace();
+  }
+
+  private syncFace() {
+    const f = this.face;
+    if (!f) return;
+    const face = this.t < this.flashUntil ? this.flashFace : this.mood;
+    const show = !this.dead && face !== null && FACE_POSES.has(this.pose);
+    f.setVisible(show);
+    if (!show) return;
+    const s = this.sprite;
+    const key = `mon-face-${face}`;
+    if (f.texture.key !== key) f.setTexture(key);
+    f.setPosition(s.x, s.y).setScale(s.scaleX, s.scaleY).setAngle(s.angle).setFlipX(s.flipX).setAlpha(s.alpha);
+    if (s.isTinted) f.setTint(s.tintTopLeft);
+    else f.clearTint();
   }
 }
 
@@ -288,6 +350,10 @@ export class CommonMonitor extends Enemy {
   private dustAt = 0;
   private called = false;
   private turnedAt = -1e9;
+  private pointUntil = 0;
+  private spottedAt = -1e9;
+  private lostFacing = 1;
+  private lostNext: "home" | "patrol" = "patrol";
 
   constructor(
     api: StageApi,
@@ -298,6 +364,29 @@ export class CommonMonitor extends Enemy {
     super(api, "common", x, feet, 2);
     this.tune = COMMON[style];
     this.state = style === "guard" ? "wait" : "patrol";
+    this.mood = "watch";
+  }
+
+  private notice(t: number, hop: boolean) {
+    if (t - this.spottedAt > 2500) {
+      this.express("spot", 520);
+      if (hop) this.hop(16);
+      this.bark(this.style === "rush" ? this.api.barks.rush : this.api.barks.spot);
+    }
+    this.spottedAt = t;
+    this.mood = null;
+  }
+
+  private lose(t: number, h: HeroView) {
+    const away = Math.abs(h.feet - this.feet) < 280;
+    this.state = "lost";
+    this.lostNext = this.style === "guard" ? "home" : "patrol";
+    this.lostFacing = this.facing;
+    this.until = t + LOST_MS;
+    this.mood = away ? null : "lost";
+    this.body.setVelocityX(0);
+    this.tex("walk-a");
+    this.bark(away ? this.api.barks.away : this.api.barks.lost);
   }
 
   hitBy(attackId: number, fromX: number, t: number): HitResult {
@@ -342,15 +431,16 @@ export class CommonMonitor extends Enemy {
     const near = Math.abs(dx) < this.tune.sight && level;
     switch (this.state) {
       case "patrol":
+        this.mood = "watch";
         if (near) {
           if (this.style === "rush") {
             this.state = "alert";
             this.until = t + 300;
             this.faceHero(h);
             this.body.setVelocity(0, this.grounded ? -260 : this.body.velocity.y);
-            this.tex("windup");
-            this.api.word(this.api.words.hey, this.x, this.body.top - 50, "#ffc83d", 38);
+            this.tex("point");
           } else this.state = "chase";
+          this.notice(t, this.style !== "rush");
           this.api.sfx("shout", 0.5);
           return;
         }
@@ -367,17 +457,21 @@ export class CommonMonitor extends Enemy {
         return;
       case "wait": {
         this.body.setVelocityX(0);
-        this.tex("walk-a");
+        this.tex(t < this.pointUntil ? "point" : "walk-a");
         if (Math.abs(dx) < 760 && level) {
           this.faceHero(h, TURN_SLACK);
           if (!this.called) {
             this.called = true;
-            this.api.word(this.api.words.come, this.x, this.body.top - 50, "#fbf5e6", 36);
+            this.mood = null;
+            this.pointUntil = t + 700;
+            this.spottedAt = t;
+            this.bark(this.api.barks.guard);
             if (!this.api.reduced) this.api.scene.tweens.add({ targets: this, lift: 18, duration: 140, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
           }
-        }
+        } else if (!this.called) this.mood = "watch";
         if (near) {
           this.state = "chase";
+          this.mood = null;
           this.api.sfx("shout", 0.5);
         }
         return;
@@ -393,7 +487,7 @@ export class CommonMonitor extends Enemy {
           return;
         }
         if (!near) {
-          this.state = this.style === "guard" ? "home" : "patrol";
+          this.lose(t, h);
           return;
         }
         if (this.overhead(h)) {
@@ -412,9 +506,26 @@ export class CommonMonitor extends Enemy {
         }
         return;
       }
-      case "home": {
+      case "lost": {
+        this.body.setVelocityX(0);
+        this.tex("walk-a");
         if (near) {
           this.state = "chase";
+          this.notice(t, true);
+          return;
+        }
+        if (this.mood === "lost") this.facing = Math.floor((t - this.until + LOST_MS) / 300) === 1 ? -this.lostFacing : this.lostFacing;
+        if (t >= this.until) {
+          this.state = this.lostNext;
+          this.mood = "watch";
+        }
+        return;
+      }
+      case "home": {
+        this.mood = "watch";
+        if (near) {
+          this.state = "chase";
+          this.notice(t, true);
           return;
         }
         if (Math.abs(this.x - this.spawnX) < 30) {

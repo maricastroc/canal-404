@@ -13,6 +13,10 @@ const LOCKER_DEMO_MS = 900;
 const LIGHT_TOP = 150;
 const LIGHT_LOCK_MS = 600;
 const LIGHT_ORANGE = 0xff9b3d;
+const WATCH_SIT = FLOOR_Y + 24;
+const WATCH_UP = FLOOR_Y - 34;
+const EYE_Y = FLOOR_Y - 330;
+const PAPER_DROP = 56;
 
 export function makeGadgetTextures(scene: Phaser.Scene) {
   const tex = scene.textures;
@@ -167,6 +171,7 @@ export class Locker {
         this.swing.setAlpha(0.7);
         this.api.scene.tweens.add({ targets: this.swing, alpha: 0, delay: 200, duration: 260, onComplete: () => this.swing.setVisible(false) });
         this.api.sfx("door", 0.9);
+        this.api.impact(this.x, 1);
         this.api.word("BAM!", this.hinge - 50, FLOOR_Y - 230, "#ffc83d", 44);
         if (this.api.reduced) this.door.setScale(-1, 1);
         else this.api.scene.tweens.add({ targets: this.door, scaleX: -1, duration: 110, ease: "Quad.easeOut" });
@@ -209,6 +214,7 @@ export class Locker {
       this.api.scene.tweens.add({ targets: this.lock, scale: 1, alpha: 1, duration: 180, ease: "Back.easeOut" });
     }
     this.api.sfx("block", 0.9);
+    this.api.impact(this.x, 0.7);
     this.api.word("BLAM!", this.x, FLOOR_Y - 250, "#9df0dc", 42);
     return true;
   }
@@ -217,6 +223,7 @@ export class Locker {
 export class Watcher {
   readonly x: number;
   private sprite: Phaser.GameObjects.Image;
+  private face: Phaser.GameObjects.Image;
   private paper: Phaser.GameObjects.Container;
   private eye: Phaser.GameObjects.Image;
   private phase: "asleep" | "read" | "peek" | "look" = "asleep";
@@ -234,7 +241,8 @@ export class Watcher {
   ) {
     const scene = api.scene;
     this.x = cx(col) + TILE / 2;
-    this.sprite = scene.add.image(this.x, FLOOR_Y - 8, "mon-common-walk-a").setOrigin(0.5, 1).setScale(0.86).setDepth(8.6);
+    this.sprite = scene.add.image(this.x, WATCH_SIT, "mon-common-walk-a").setOrigin(0.5, 1).setScale(0.86).setDepth(4.95);
+    this.face = scene.add.image(this.x, WATCH_SIT, "mon-face-watch").setOrigin(0.5, 1).setScale(0.86).setDepth(4.951).setVisible(false);
     const booth = scene.add.graphics().setDepth(8.7);
     booth.fillStyle(INK_HEX, 1);
     booth.fillRoundedRect(this.x - 92, FLOOR_Y - 118, 184, 120, 10);
@@ -252,7 +260,7 @@ export class Watcher {
     plaqueBg.fillStyle(0xffc83d, 1);
     plaqueBg.fillRoundedRect(this.x - 48, FLOOR_Y - 86, 96, 32, 6);
     cartoonText(scene, this.x, FLOOR_Y - 70, "VIGIA", { size: 22, color: "#1d1830", font, stroke: 0, shadow: false }).setOrigin(0.5).setDepth(8.8);
-    this.paperY = FLOOR_Y - 162;
+    this.paperY = FLOOR_Y - 140;
     const pg = scene.add.graphics();
     pg.fillStyle(INK_HEX, 1);
     pg.fillRoundedRect(-66, -48, 132, 96, 6);
@@ -269,7 +277,7 @@ export class Watcher {
       pg.fillRect(8, y, 44, 4);
     }
     this.paper = scene.add.container(this.x, this.paperY, [pg]).setDepth(8.9);
-    this.eye = scene.add.image(this.x, FLOOR_Y - 330, "eye-big").setDepth(41).setVisible(false);
+    this.eye = scene.add.image(this.x, EYE_Y, "eye-big").setDepth(41).setVisible(false);
   }
 
   get watching() {
@@ -284,7 +292,13 @@ export class Watcher {
     return this.phase === "peek" || this.phase === "look";
   }
 
+  private eyeY(h: HeroState) {
+    const under = Math.abs(h.x - this.x) < 120 && h.top < EYE_Y + 40 && h.feet > EYE_Y - 40;
+    return under ? h.top - 50 : EYE_Y;
+  }
+
   update(t: number, h: HeroState) {
+    if (this.eye.visible) this.eye.setY(Phaser.Math.Linear(this.eye.y, this.eyeY(h), 0.25));
     const near = Math.abs(h.x - this.x) < 1150;
     if (this.phase === "asleep") {
       if (!near) return;
@@ -301,7 +315,7 @@ export class Watcher {
       this.phase = "peek";
       this.until = t + 760;
       this.api.sfx("alert", 0.45);
-      this.api.word("HMM...", this.x, FLOOR_Y - 290, "#fbf5e6", 34);
+      this.api.say("HMM...", () => ({ x: this.x, y: this.paper.y - 56 }));
       if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.paper, angle: { from: -6, to: 6 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => this.paper.setAngle(0) });
       return;
     }
@@ -310,22 +324,27 @@ export class Watcher {
       this.phase = "look";
       this.until = t + this.look;
       this.caught = false;
-      this.eye.setVisible(true).setScale(0.4);
+      this.eye.setVisible(true).setScale(0.4).setY(this.eyeY(h));
+      this.showFace("watch");
       if (this.api.reduced) {
         this.eye.setScale(1);
-        this.paper.setY(this.paperY + 78);
+        this.paper.setY(this.paperY + PAPER_DROP);
+        this.stand(WATCH_UP);
       } else {
         this.api.scene.tweens.add({ targets: this.eye, scale: 1, duration: 160, ease: "Back.easeOut" });
-        this.api.scene.tweens.add({ targets: this.paper, y: this.paperY + 78, duration: 150, ease: "Quad.easeOut" });
+        this.api.scene.tweens.add({ targets: this.paper, y: this.paperY + PAPER_DROP, duration: 150, ease: "Quad.easeOut" });
+        this.api.scene.tweens.add({ targets: [this.sprite, this.face], y: WATCH_UP, duration: 170, ease: "Back.easeOut" });
       }
-      this.api.word(this.api.words.freeze, this.x, FLOOR_Y - 400, "#ffc83d", 40);
+      this.api.word(this.api.words.freeze, this.x, this.eye.y - 70, "#ffc83d", 40);
       return;
     }
     if (!this.caught && Math.abs(h.x - this.x) < 780 && (Math.abs(h.vx) > 45 || !h.grounded)) {
       this.caught = true;
       const dir = Math.sign(h.x - this.x) || 1;
       this.eye.setTint(0xff9b8a);
-      this.api.word(this.api.words.sawYou, this.x, FLOOR_Y - 400, "#ef4f43", 48);
+      this.sprite.setTexture("mon-common-point").setFlipX(dir < 0);
+      this.showFace("spot");
+      this.api.word(this.api.words.sawYou, this.x, this.eye.y - 70, "#ef4f43", 48);
       this.api.sfx("bigWhistle", 0.8);
       this.api.scene.time.delayedCall(320, () => this.onCaught(this.x + dir * 90, dir));
     }
@@ -334,13 +353,27 @@ export class Watcher {
     this.turn += 1;
     this.until = t + [2600, 2100, 3000][this.turn % 3];
     this.eye.clearTint();
+    this.sprite.setTexture("mon-common-walk-a").setFlipX(false);
+    this.showFace(null);
     if (this.api.reduced) {
       this.eye.setVisible(false);
       this.paper.setY(this.paperY);
+      this.stand(WATCH_SIT);
       return;
     }
     this.api.scene.tweens.add({ targets: this.eye, scale: 0.3, duration: 120, onComplete: () => this.eye.setVisible(false) });
     this.api.scene.tweens.add({ targets: this.paper, y: this.paperY, duration: 180, ease: "Quad.easeIn" });
+    this.api.scene.tweens.add({ targets: [this.sprite, this.face], y: WATCH_SIT, duration: 260, ease: "Sine.easeInOut" });
+  }
+
+  private showFace(face: "watch" | "spot" | null) {
+    this.face.setVisible(face !== null).setFlipX(this.sprite.flipX);
+    if (face) this.face.setTexture(`mon-face-${face}`);
+  }
+
+  private stand(y: number) {
+    this.sprite.setY(y);
+    this.face.setY(y);
   }
 }
 

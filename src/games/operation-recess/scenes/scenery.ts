@@ -14,15 +14,17 @@ type ArenaRefs = {
   desk: Phaser.GameObjects.Image;
   left: number;
 };
-type Reactive = { img: Phaser.GameObjects.Image; kind: ReactKind; lastHit: number };
+type Reactive = { img: Phaser.GameObjects.Image; kind: ReactKind; lastHit: number; lastShake: number };
 type Layer = { obj: Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Transform; y: number };
-type Pile = { x: number; y: number; at: number };
+type Pile = { x: number; y: number; at: number; img: Phaser.GameObjects.Image };
+export type SceneryHero = { x: number; top: number; feet: number; vx: number; grounded: boolean };
 
 const D = { far: 0.1, mid: 0.4, wall: 0.6, back: 0.8, floor: 0.9, front: 52 };
 const REST_SCROLL_Y = (H - H / 1.22) / 2;
 const MARGIN = 1400;
+const HALL = { pillar: 760, bay: 1180, pillarW: 76, joist: 295, lamp: 465 };
 const CEILING = {
-  corridor: { base: 0x3f3170, beam: 0x2b2150, step: 320, beamX: 150, beamW: 20 },
+  corridor: { base: 0x3f3170, beam: 0x2b2150, step: HALL.joist, beamX: (HALL.pillar % HALL.joist) - 10, beamW: 20 },
   library: { base: 0x24423a, beam: 0x172b26, step: 300, beamX: 140, beamW: 22 },
   office: { base: 0x3a2014, beam: 0x2b170e, step: 240, beamX: 110, beamW: 20 },
 };
@@ -129,7 +131,6 @@ function makeWallTextures(scene: Phaser.Scene) {
     g.fillRect(0, 0, 320, 140);
     g.fillStyle(0x2b2150, 1);
     g.fillRect(0, 132, 320, 14);
-    g.fillRect(150, 0, 20, 140);
     g.fillStyle(0x63d6c1, 1);
     g.fillRect(0, 690, 320, 300);
     g.lineStyle(4, 0x2fa996, 1);
@@ -256,6 +257,71 @@ function makeWallTextures(scene: Phaser.Scene) {
   });
 }
 
+function makeDrawingTextures(scene: Phaser.Scene) {
+  const paper = (g: Phaser.GameObjects.Graphics, w: number, h: number, tint: number) => {
+    g.fillStyle(INK_HEX, 1);
+    g.fillRect(2, 6, w - 4, h - 8);
+    g.fillStyle(tint, 1);
+    g.fillRect(5, 9, w - 10, h - 14);
+    g.fillStyle(0xe8d3a8, 0.92);
+    g.fillPoints([new Phaser.Math.Vector2(4, 2), new Phaser.Math.Vector2(26, 6), new Phaser.Math.Vector2(23, 16), new Phaser.Math.Vector2(1, 12)], true);
+    g.fillPoints([new Phaser.Math.Vector2(w - 26, 6), new Phaser.Math.Vector2(w - 4, 2), new Phaser.Math.Vector2(w - 1, 12), new Phaser.Math.Vector2(w - 23, 16)], true);
+  };
+  gfxTexture(scene, "drawing-0", 100, 84, (g) => {
+    paper(g, 100, 84, 0xfffaf0);
+    g.fillStyle(0xffc83d, 1);
+    g.fillCircle(24, 30, 9);
+    g.lineStyle(3, 0xffc83d, 1);
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2;
+      g.lineBetween(24 + Math.cos(a) * 12, 30 + Math.sin(a) * 12, 24 + Math.cos(a) * 17, 30 + Math.sin(a) * 17);
+    }
+    g.fillStyle(0xef4f43, 1);
+    g.fillRect(48, 44, 30, 24);
+    g.fillStyle(0x5cb9f0, 1);
+    g.fillTriangle(44, 46, 82, 46, 63, 28);
+    g.fillStyle(0xffc83d, 1);
+    g.fillRect(58, 54, 9, 14);
+    g.lineStyle(4, 0x4c9a43, 1);
+    g.lineBetween(9, 70, 91, 70);
+  });
+  gfxTexture(scene, "drawing-1", 104, 80, (g) => {
+    paper(g, 104, 80, 0xfdf0c2);
+    g.lineStyle(4, 0x4c9a43, 1);
+    g.lineBetween(9, 66, 95, 66);
+    g.lineStyle(3, INK_HEX, 1);
+    for (const [hx, arm] of [
+      [30, -1],
+      [74, 1],
+    ]) {
+      g.strokeCircle(hx, 30, 7);
+      g.lineBetween(hx, 37, hx, 52);
+      g.lineBetween(hx, 52, hx - 7, 64);
+      g.lineBetween(hx, 52, hx + 7, 64);
+      g.lineBetween(hx, 42, hx + arm * 12, 34);
+      g.lineBetween(hx, 42, hx - arm * 10, 48);
+    }
+    g.fillStyle(0xef4f43, 1);
+    g.fillCircle(52, 24, 7);
+    g.lineStyle(2, INK_HEX, 1);
+    g.strokeCircle(52, 24, 7);
+  });
+  gfxTexture(scene, "drawing-2", 92, 84, (g) => {
+    paper(g, 92, 84, 0xe8f6ff);
+    const colors = [0xef4f43, 0xffc83d, 0x63d6c1, 0x5cb9f0];
+    colors.forEach((c, i) => {
+      g.lineStyle(5, c, 1);
+      g.beginPath();
+      g.arc(46, 70, 34 - i * 6, Math.PI, 0, false);
+      g.strokePath();
+    });
+    g.fillStyle(0xf06ba8, 1);
+    for (let i = 0; i < 5; i += 1) g.fillCircle(22 + Math.cos((i / 5) * Math.PI * 2) * 6, 62 + Math.sin((i / 5) * Math.PI * 2) * 6, 4);
+    g.fillStyle(0xffc83d, 1);
+    g.fillCircle(22, 62, 3);
+  });
+}
+
 export class Scenery {
   private reactive: Reactive[] = [];
   private piles: Pile[] = [];
@@ -299,7 +365,7 @@ export class Scenery {
       obj.setY(compact ? y + REST_SCROLL_Y : y);
       obj.setScrollFactor(obj.scrollFactorX, compact ? 1 : 0);
     }
-    if (compact && !this.ceiling.length) this.ceiling = [...this.drawMargins(), ...(this.level.theme === "yard" ? [] : this.drawCeiling(this.level.theme))];
+    if (compact && !this.ceiling.length) this.ceiling = [...this.drawMargins(), ...(this.level.theme === "yard" ? [] : this.drawCeiling(this.level.theme)), ...(this.level.theme === "corridor" ? this.drawColumns() : [])];
     for (const o of this.ceiling) (o as Phaser.GameObjects.Image).setVisible(compact);
     if (!compact) this.sky?.setOrigin(0, 0).setPosition(0, 0).setDisplaySize(W * 1.4, H * 1.4);
   }
@@ -341,6 +407,10 @@ export class Scenery {
     return [t, g, shade];
   }
 
+  private drawColumns() {
+    return this.pillars().map((x) => this.scene.add.rectangle(x, 0, HALL.pillarW + 8, 1200, CEILING.corridor.beam).setOrigin(0.5, 1).setDepth(0.015));
+  }
+
   private img(key: string, x: number, y: number, depth: number, origin: [number, number] = [0.5, 1]) {
     return this.scene.add.image(x, y, key).setOrigin(origin[0], origin[1]).setDepth(depth);
   }
@@ -351,7 +421,7 @@ export class Scenery {
   }
 
   private react(img: Phaser.GameObjects.Image, kind: ReactKind) {
-    this.reactive.push({ img, kind, lastHit: -1 });
+    this.reactive.push({ img, kind, lastHit: -1, lastShake: -1e9 });
     return img;
   }
 
@@ -371,59 +441,102 @@ export class Scenery {
     }
   }
 
+  private pillars() {
+    const out: number[] = [];
+    for (let x = HALL.pillar; x < this.width - 200; x += HALL.bay) out.push(x);
+    return out;
+  }
+
   private corridor() {
     const s = this.scene;
     s.add.tileSprite(0, 0, this.width, FLOOR_Y, "wall-corridor").setOrigin(0, 0).setDepth(0);
+    gfxTexture(s, "hall-joist", HALL.joist, 140, (g) => {
+      g.fillStyle(0x2b2150, 1);
+      g.fillRect((HALL.pillar % HALL.joist) - 10, 0, 20, 140);
+    });
+    s.add.tileSprite(0, 0, this.width, 140, "hall-joist").setOrigin(0, 0).setDepth(0.02);
     s.add.image(0, 140, "shade-top").setOrigin(0, 0).setDisplaySize(this.width, 260).setDepth(0.35).setAlpha(0.45);
     this.floor("floor-corridor");
-    for (const x of [762, 2192, 3392, 4386]) {
-      const g = s.add.graphics().setDepth(0.3);
-      g.fillStyle(0xe8d8b0, 1);
-      g.fillRect(x, 140, 76, FLOOR_Y - 140);
-      g.fillStyle(0xd8c59a, 1);
-      g.fillRect(x + 56, 140, 20, FLOOR_Y - 140);
-      g.lineStyle(5, INK_HEX, 1);
-      g.strokeRect(x, 140, 76, FLOOR_Y - 140);
-    }
-    for (const x of [300, 1000, 1600, 2500, 3000, 3800, 4250, 4900, 5450]) {
-      if (x > this.width - 100) continue;
+    for (const x of this.pillars()) this.pillar(x);
+    for (let x = HALL.lamp; x < this.width - 100; x += HALL.bay / 2) {
       this.img("ceiling-lamp", x, 130, D.wall + 0.1, [0.5, 0]);
       this.cone(x, 186, 0.28, 1.1).setTint(0xfff1b8);
     }
+    makeDrawingTextures(s);
     const plan: [string, number][] = [
-      ["door-class-a", 240],
-      ["lockers-a", 560],
-      ["poster-norun", 560],
+      ["door-class-a", 220],
+      ["lockers-a", 530],
+      ["poster-norun", 530],
       ["window", 1000],
       ["lockers-b", 1450],
-      ["lockers-d", 1735],
-      ["poster-virtue", 1590],
-      ["door-class-b", 2060],
+      ["lockers-d", 1760],
+      ["poster-virtue", 1760],
+      ["door-class-b", 2090],
+      ["poster-obey", 2090],
+      ["plant", 2250],
       ["honor", 2420],
-      ["fountain", 2780],
-      ["banner", 3060],
-      ["lockers-c", 3250],
-      ["poster-obey", 3560],
-      ["window", 3800],
-      ["mop", 4030],
-      ["board", 4250],
-      ["door-class-c", 4560],
-      ["lockers-a", 4980],
-      ["poster-laugh", 4880],
-      ["trophies", 5330],
+      ["banner", 2800],
+      ["fountain", 2930],
+      ["window", 3400],
+      ["board", 3800],
+      ["inspector", 4120],
+      ["mop", 4170],
+      ["door-class-c", 4540],
+      ["poster-laugh", 4540],
+      ["drawings", 4830],
+      ["lockers-c", 5040],
+      ["trophies", 5300],
+      ["daylight", 5640],
     ];
-    for (const [kind, x] of plan) this.corridorModule(kind, x);
+    for (const [kind, x] of plan) if (x < this.width) this.corridorModule(kind, x);
     for (const [x, y] of [
       [380, 420],
-      [1900, 330],
-      [3460, 380],
-      [4700, 320],
+      [1560, 300],
+      [3620, 610],
+      [5110, 620],
     ])
       this.img("crack", x, y, D.wall, [0.5, 0.5]).setAlpha(0.8);
-    for (const x of [1180, 2900, 4100]) this.img("vent", x, 260, D.wall, [0.5, 0.5]);
-    for (const x of [760, 2060, 3530, 5080]) this.img("clock", x, 290, D.wall, [0.5, 0.5]).setScale(0.9);
-    this.img("pennants", 5330, 300, D.wall, [0.5, 0]);
-    for (const x of [1250, 2980, 4440]) this.pile(x);
+    for (const x of [1350, 3710, 4890]) this.img("vent", x, 260, D.wall, [0.5, 0.5]);
+    const pillars = this.pillars();
+    for (const i of [0, 2, 4]) if (pillars[i]) this.img("clock", pillars[i], 300, D.wall + 0.02, [0.5, 0.5]).setScale(0.68);
+    if (pillars[2]) this.img("extinguisher", pillars[2], 760, D.wall + 0.02, [0.5, 0.5]).setScale(0.9);
+    for (const x of [1250, 2980, 3690]) this.pile(x);
+  }
+
+  private pillar(x: number) {
+    const w = HALL.pillarW;
+    const pad = 9;
+    const shadow = 40;
+    gfxTexture(this.scene, "hall-pillar", w + pad * 2 + shadow, FLOOR_Y, (g) => {
+      const l = pad;
+      g.fillStyle(0x2b2150, 1);
+      g.fillRect(l - 4, 0, w + 8, 140);
+      g.fillStyle(INK_HEX, 0.09);
+      g.fillRect(l + w, 152, 26, FLOOR_Y - 152 - 16);
+      g.fillStyle(INK_HEX, 0.06);
+      g.fillRect(l + w + 26, 152, 14, FLOOR_Y - 152 - 16);
+      g.fillStyle(0xe8d8b0, 1);
+      g.fillRect(l, 140, w, FLOOR_Y - 140);
+      g.fillStyle(0xd8c59a, 1);
+      g.fillRect(l + w - 20, 140, 20, FLOOR_Y - 140);
+      g.fillStyle(0xfff6dc, 0.7);
+      g.fillRect(l + 6, 150, 6, FLOOR_Y - 190);
+      g.lineStyle(5, INK_HEX, 1);
+      g.strokeRect(l, 140, w, FLOOR_Y - 140);
+      g.fillStyle(INK_HEX, 1);
+      g.fillRoundedRect(l - 9, 126, w + 18, 26, 5);
+      g.fillStyle(0xf3e6c4, 1);
+      g.fillRoundedRect(l - 5, 130, w + 10, 18, 3);
+      g.fillStyle(0xd8c59a, 1);
+      g.fillRect(l - 5, 142, w + 10, 6);
+      g.fillStyle(INK_HEX, 1);
+      g.fillRoundedRect(l - 9, FLOOR_Y - 38, w + 18, 40, { tl: 5, tr: 5, bl: 0, br: 0 });
+      g.fillStyle(0x3f3170, 1);
+      g.fillRect(l - 5, FLOOR_Y - 34, w + 10, 34);
+      g.fillStyle(0x5a46a0, 1);
+      g.fillRect(l - 5, FLOOR_Y - 34, w + 10, 7);
+    });
+    this.img("hall-pillar", x - w / 2 - pad, 0, 0.3, [0, 0]);
   }
 
   private corridorModule(kind: string, x: number) {
@@ -433,6 +546,10 @@ export class Scenery {
     }
     if (kind.startsWith("door-class")) {
       this.grounded(this.img(kind, x, FLOOR_Y, D.back), 0.9);
+      return;
+    }
+    if (kind === "poster-recess") {
+      this.react(this.img(kind, x, 480, D.back, [0.5, 0.5]).setScale(0.85), "swing");
       return;
     }
     if (kind.startsWith("poster")) {
@@ -445,39 +562,59 @@ export class Scenery {
     }
     if (kind === "window") {
       this.img("window-yard", x, 440, D.back, [0.5, 0.5]);
-      this.img("plant", x + 90, 548, D.back + 0.01).setScale(0.6);
+      this.react(this.img("plant", x + 90, 548, D.back + 0.01).setScale(0.6), "plant");
       this.shaft(x - 150, 340, 0.26);
       return;
     }
+    if (kind === "plant") {
+      this.grounded(this.react(this.img("plant", x, FLOOR_Y, D.back + 0.01).setScale(0.85), "plant"), 0.7);
+      return;
+    }
     if (kind === "board") {
-      this.react(this.img("board", x, 470, D.back, [0.5, 0.5]), "swing");
-      this.grounded(this.img("bench-hall", x, FLOOR_Y, D.back));
+      this.react(this.img("board", x, 440, D.back, [0.5, 0.5]), "swing");
+      return;
+    }
+    if (kind === "inspector") {
+      this.react(this.img("portrait", x, 305, D.back, [0.5, 0.5]).setScale(0.8), "swing");
       return;
     }
     if (kind === "fountain") {
       this.grounded(this.img("fountain", x, FLOOR_Y, D.back));
-      this.grounded(this.react(this.img("bin", x + 120, FLOOR_Y, D.back), "bin"));
-      this.img("extinguisher", x - 120, 760, D.back, [0.5, 0.5]);
+      this.grounded(this.react(this.img("bin", x + 100, FLOOR_Y, D.back).setScale(0.8), "bin"));
       return;
     }
     if (kind === "banner") {
-      this.react(this.img("banner-silence", x, 290, D.back + 0.02, [0.5, 0]), "swing");
+      this.react(this.img("banner-silence", x, 290, D.back + 0.02, [0.5, 0]).setScale(0.85), "swing");
       return;
     }
     if (kind === "mop") {
       this.grounded(this.img("mop-cart", x, FLOOR_Y, D.back));
       return;
     }
+    if (kind === "drawings") {
+      const pins: [number, number, number][] = [
+        [-110, 470, -5],
+        [0, 452, 3],
+        [110, 474, -2],
+      ];
+      pins.forEach(([dx, y, angle], i) => this.react(this.img(`drawing-${i}`, x + dx, y, D.back, [0.5, 0.1]).setAngle(angle), "swing"));
+      return;
+    }
     if (kind === "trophies") {
       this.grounded(this.react(this.img("trophy-case", x, FLOOR_Y, D.back), "metal"));
-      this.img("portrait", x + 210, 430, D.back, [0.5, 0.5]).setScale(0.85);
-      this.grounded(this.react(this.img("plant", x - 170, FLOOR_Y, D.back), "plant"));
+      this.img("pennants", x - 40, 300, D.wall, [0.5, 0]).setScale(0.8);
+      this.corridorModule("poster-recess", x);
+      return;
+    }
+    if (kind === "daylight") {
+      this.scene.add.image(x, FLOOR_Y + 26, "spot").setDepth(5.3).setDisplaySize(560, 90).setAlpha(0.5).setTint(0xfff1b8);
+      this.scene.add.image(x, FLOOR_Y - 150, "spot").setDepth(D.wall).setDisplaySize(420, 360).setAlpha(0.28);
     }
   }
 
   private pile(x: number, key = "paper-pile") {
-    this.img(key, x, FLOOR_Y + 6, D.floor + 0.2);
-    this.piles.push({ x, y: FLOOR_Y - 10, at: -9999 });
+    const img = this.img(key, x, FLOOR_Y + 6, D.floor + 0.2);
+    this.piles.push({ x, y: FLOOR_Y - 10, at: -9999, img });
   }
 
   private yard() {
@@ -746,24 +883,69 @@ export class Scenery {
 
   private wobble(img: Phaser.GameObjects.Image, kind: ReactKind) {
     if (this.reduced) return;
-    this.scene.tweens.killTweensOf(img);
-    const base = img.angle;
     if (kind === "swing") {
-      this.scene.tweens.add({ targets: img, angle: { from: base - 10, to: base }, duration: 700, ease: "Elastic.easeOut" });
+      this.tilt(img, -10, 700);
       return;
     }
     if (kind === "plant") {
-      this.scene.tweens.add({ targets: img, angle: { from: base - 6, to: base }, duration: 500, ease: "Elastic.easeOut" });
+      this.tilt(img, -6, 500);
       return;
     }
-    const x = img.x;
-    this.scene.tweens.add({ targets: img, x: x + 5, duration: 40, yoyo: true, repeat: 3, onComplete: () => img.setX(x) });
+    this.jiggle(img, 5);
+  }
+
+  private tilt(img: Phaser.GameObjects.Image, by: number, ms: number) {
+    const base = (img.getData("baseAngle") as number | undefined) ?? img.angle;
+    img.setData("baseAngle", base);
+    this.scene.tweens.killTweensOf(img);
+    img.setX((img.getData("baseX") as number | undefined) ?? img.x);
+    this.scene.tweens.add({ targets: img, angle: { from: base + by, to: base }, duration: ms, ease: "Elastic.easeOut" });
+  }
+
+  private jiggle(img: Phaser.GameObjects.Image, px: number) {
+    const base = (img.getData("baseX") as number | undefined) ?? img.x;
+    img.setData("baseX", base);
+    this.scene.tweens.killTweensOf(img);
+    img.setAngle((img.getData("baseAngle") as number | undefined) ?? img.angle);
+    this.scene.tweens.add({ targets: img, x: { from: base + px, to: base }, duration: 45, yoyo: true, repeat: 3, onComplete: () => img.setX(base) });
+  }
+
+  impact(x: number, power: number) {
+    if (this.reduced) return;
+    const now = this.scene.time.now;
+    const reach = 140 + 340 * power;
+    for (const r of this.reactive) {
+      const d = Math.abs(r.img.x - x);
+      if (d > reach || now - r.lastShake < 450) continue;
+      r.lastShake = now;
+      const k = power * (1 - (d / reach) * 0.6);
+      if (r.kind === "swing") this.tilt(r.img, (r.img.x < x ? -1 : 1) * 5 * k, 900);
+      else if (r.kind === "plant") this.tilt(r.img, (r.img.x < x ? -1 : 1) * 7 * k, 800);
+      else this.jiggle(r.img, 2 + 3 * k);
+    }
+    for (const p of this.piles) if (Math.abs(p.x - x) < 120 + 140 * power) this.skim(p, 0, 2);
+  }
+
+  private skim(p: Pile, dir: number, n: number) {
+    if (!this.reduced) this.scene.tweens.add({ targets: p.img, scaleY: { from: 0.75, to: 1 }, duration: 260, ease: "Back.easeOut" });
+    const count = this.reduced ? 1 : n;
+    for (let i = 0; i < count; i += 1) {
+      const side = dir || (i % 2 ? 1 : -1);
+      const sheet = this.scene.add.image(p.x + Phaser.Math.Between(-18, 18), FLOOR_Y - 6, "paper").setDepth(13).setScale(0.6).setAngle(Phaser.Math.Between(-30, 30));
+      if (this.reduced) {
+        this.scene.tweens.add({ targets: sheet, alpha: 0, delay: 300, duration: 300, onComplete: () => sheet.destroy() });
+        continue;
+      }
+      this.scene.tweens.add({ targets: sheet, x: sheet.x + side * Phaser.Math.Between(70, 150), angle: sheet.angle + side * Phaser.Math.Between(90, 220), duration: 760, ease: "Quad.easeOut" });
+      this.scene.tweens.add({ targets: sheet, y: FLOOR_Y - Phaser.Math.Between(26, 48), duration: 210, yoyo: true, ease: "Quad.easeOut" });
+      this.scene.tweens.add({ targets: sheet, alpha: 0, delay: 520, duration: 300, onComplete: () => sheet.destroy() });
+    }
   }
 
   papers(x: number, y: number, n: number) {
     if (this.reduced) n = Math.min(n, 1);
     for (let i = 0; i < n; i += 1) {
-      const p = this.scene.add.image(x + Phaser.Math.Between(-30, 30), y, "paper").setDepth(D.front - 2).setScale(0.8).setAngle(Phaser.Math.Between(-40, 40));
+      const p = this.scene.add.image(x + Phaser.Math.Between(-30, 30), y, "paper").setDepth(13).setScale(0.8).setAngle(Phaser.Math.Between(-40, 40));
       const dx = Phaser.Math.Between(-220, 220);
       this.scene.tweens.add({ targets: p, x: p.x + dx, duration: 1400, ease: "Sine.easeOut" });
       this.scene.tweens.add({ targets: p, y: y - Phaser.Math.Between(80, 180), duration: 500, ease: "Quad.easeOut", yoyo: true, hold: 120 });
@@ -868,12 +1050,22 @@ export class Scenery {
     if (this.paperFrom && this.level.boss) this.papers(this.paperFrom.x + Phaser.Math.Between(-200, 200), this.paperFrom.y, Math.round(2 + power * 2));
   }
 
-  update(t: number, heroX: number, heroVx: number, grounded: boolean, view: Phaser.Geom.Rectangle) {
-    if (grounded && Math.abs(heroVx) > 320) {
+  update(t: number, hero: SceneryHero, view: Phaser.Geom.Rectangle) {
+    if (!this.reduced && Math.abs(hero.vx) > 120) {
+      const now = this.scene.time.now;
+      for (const r of this.reactive) {
+        if (r.kind !== "plant" || now - r.lastShake < 900) continue;
+        const b = r.img.getBounds();
+        if (hero.x + 34 < b.x || hero.x - 34 > b.right || hero.feet < b.y + 10 || hero.top > b.bottom) continue;
+        r.lastShake = now;
+        this.tilt(r.img, Math.sign(hero.vx) * 8, 800);
+      }
+    }
+    if (hero.grounded && Math.abs(hero.vx) > 320) {
       for (const p of this.piles) {
-        if (Math.abs(p.x - heroX) < 70 && t - p.at > 2500) {
+        if (Math.abs(p.x - hero.x) < 70 && Math.abs(hero.feet - FLOOR_Y) < 8 && t - p.at > 2500) {
           p.at = t;
-          this.papers(p.x, p.y, 4);
+          this.skim(p, Math.sign(hero.vx), 3);
           return true;
         }
       }

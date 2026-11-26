@@ -8,12 +8,15 @@ import { COPY, type RecessCopy } from "../copy";
 
 export type TouchState = { left: boolean; right: boolean; jump: boolean; attack: boolean };
 type PadAction = keyof TouchState;
+export type ProgressMark = { at: number; rung: boolean };
 type Pad = { action: PadAction; bg: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; hit: Phaser.GameObjects.Arc; r: number; color: number; x: number; y: number; base: number };
 
 const BAR_W = 520;
 const CARD_H = 156;
 const D = 3;
 const ROW = { h: 40, card: 166, count: 76, gap: 7, margin: 8, top: 7, track: 64, trackMax: 340, heart: 16, heartGap: 1.2, score: 17 };
+const MON_HEAD = { x: 137 / 260, y: 64 / 256, h: 124 };
+const HERO_HEAD = { x: 136, y: 12, w: 112, h: 112 };
 
 type Compact = {
   root: Phaser.GameObjects.Container;
@@ -21,10 +24,12 @@ type Compact = {
   hearts: Phaser.GameObjects.Image[];
   score: Phaser.GameObjects.Text;
   countBg: Phaser.GameObjects.Graphics;
-  countLabel: Phaser.GameObjects.Text;
+  countIcon: Phaser.GameObjects.Image;
   count: Phaser.GameObjects.Text;
   trackBg: Phaser.GameObjects.Graphics;
   track: Phaser.GameObjects.Graphics;
+  bells: Phaser.GameObjects.Image[];
+  you: Phaser.GameObjects.Image;
   flag: Phaser.GameObjects.Image;
   bossLabel: Phaser.GameObjects.Text;
   bossBar: Phaser.GameObjects.Graphics;
@@ -55,6 +60,8 @@ export class RecessHud {
   private monitorsDone = false;
   private progress: Phaser.GameObjects.Container;
   private progressBar: Phaser.GameObjects.Graphics;
+  private progressBells: Phaser.GameObjects.Image[] = [];
+  private progressYou: Phaser.GameObjects.Image;
   private progressBounds = new Phaser.Geom.Rectangle(W / 2 - 300, 10, 600, 90);
   private bossBox: Phaser.GameObjects.Container;
   private bossBar: Phaser.GameObjects.Graphics;
@@ -68,7 +75,7 @@ export class RecessHud {
   private frame: Frame = FULL_FRAME;
   private compact: Compact;
   private progressK = 0;
-  private progressMarks: number[] = [];
+  private progressMarks: ProgressMark[] = [];
   private bossHp: [number, number] = [1, 1];
   private bossOn = false;
   private topOn = true;
@@ -82,34 +89,39 @@ export class RecessHud {
     private reduced: boolean,
     private locale: Locale,
     private onPress: (action: PadAction) => void,
+    bells: number,
   ) {
     this.copy = COPY[locale].hud;
     const g = scene.add.graphics();
     paper(g, 0, 0, 380, CARD_H, 20);
-    const kicker = cartoonText(scene, 18, 10, this.copy.level(index + 1, total), { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false });
-    const name = cartoonText(scene, 16, 32, title.toUpperCase(), { size: 28, color: INK, font: fonts.display, stroke: 0, shadow: false });
-    fitText(name, 350, 28, 18);
-    const items: Phaser.GameObjects.GameObject[] = [g, kicker, name];
+    const items: Phaser.GameObjects.GameObject[] = [g];
     for (let i = 0; i < HEARTS; i += 1) {
-      const img = scene.add.image(36 + i * 46, 92, "icon-heart-on");
+      const img = scene.add.image(36 + i * 46, 38, "icon-heart-on");
       this.hearts.push(img);
       items.push(img);
     }
-    this.scoreText = cartoonText(scene, 364, 92, "0", { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.2 }).setOrigin(1, 0.5);
+    this.scoreText = cartoonText(scene, 364, 38, "0", { size: 32, color: "#ffc83d", font: fonts.display, stroke: 0.2 }).setOrigin(1, 0.5);
     items.push(this.scoreText);
     const rule = scene.add.graphics();
     rule.lineStyle(3, INK_HEX, 0.15);
-    rule.lineBetween(18, 118, 362, 118);
-    const label = cartoonText(scene, 18, 137, this.copy.monitors, { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
-    this.monitorText = cartoonText(scene, 364, 137, "0/0", { size: 24, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(1, 0.5);
-    items.push(rule, label, this.monitorText);
+    rule.lineBetween(18, 68, 362, 68);
+    rule.lineBetween(18, 116, 362, 116);
+    const head = scene.add.image(36, 92, "mon-face-watch").setOrigin(MON_HEAD.x, MON_HEAD.y).setScale(36 / MON_HEAD.h);
+    const label = cartoonText(scene, 62, 92, this.copy.monitors, { size: 20, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+    fitText(label, 230, 20, 14);
+    this.monitorText = cartoonText(scene, 364, 92, "0/0", { size: 26, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(1, 0.5);
+    const stage = cartoonText(scene, 18, 136, `${this.copy.level(index + 1, total)} · ${title.toUpperCase()}`, { size: 18, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+    fitText(stage, 344, 18, 12);
+    items.push(rule, head, label, this.monitorText, stage);
     this.card = scene.add.container(20, 10, items).setDepth(60).setScrollFactor(0, 0, true);
 
     const pg = scene.add.graphics();
     darkPanel(pg, -300, 0, 600, 70);
     this.progressBar = scene.add.graphics();
     const flag = scene.add.image(262, 35, "icon-flag");
-    this.progress = scene.add.container(W / 2, 12, [pg, this.progressBar, flag]).setDepth(60).setScrollFactor(0, 0, true);
+    this.progressYou = this.heroHead();
+    this.progressBells = this.bellIcons(bells);
+    this.progress = scene.add.container(W / 2, 12, [pg, this.progressBar, flag, ...this.progressBells, this.progressYou]).setDepth(60).setScrollFactor(0, 0, true);
 
     const bg = scene.add.graphics();
     darkPanel(bg, -320, 0, 640, 96);
@@ -128,7 +140,7 @@ export class RecessHud {
       .setScrollFactor(0)
       .setVisible(false);
 
-    this.compact = this.makeCompact(fonts);
+    this.compact = this.makeCompact(fonts, bells);
 
     this.makePad("left", "icon-left", 80, 0xfbf5e6);
     this.makePad("right", "icon-right", 80, 0xfbf5e6);
@@ -139,22 +151,39 @@ export class RecessHud {
     this.showTouch(false);
   }
 
-  private makeCompact(fonts: Fonts): Compact {
+  private heroHead() {
+    const img = this.scene.add.image(0, 0, "hero-idle").setOrigin(0, 0).setCrop(HERO_HEAD.x, HERO_HEAD.y, HERO_HEAD.w, HERO_HEAD.h);
+    img.setData("size", 0);
+    return img;
+  }
+
+  private placeHead(img: Phaser.GameObjects.Image, x: number, y: number, size: number) {
+    const k = size / HERO_HEAD.h;
+    img.setScale(k).setPosition(x - (HERO_HEAD.x + HERO_HEAD.w / 2) * k, y - (HERO_HEAD.y + HERO_HEAD.h / 2) * k);
+  }
+
+  private bellIcons(n: number) {
+    return Array.from({ length: n }, () => this.scene.add.image(0, 0, "icon-bell-off"));
+  }
+
+  private makeCompact(fonts: Fonts, bellCount: number): Compact {
     const scene = this.scene;
     const card = scene.add.graphics();
     const hearts: Phaser.GameObjects.Image[] = [];
     for (let i = 0; i < HEARTS; i += 1) hearts.push(scene.add.image(0, 0, "hud-heart-on"));
     const score = cartoonText(scene, 0, 0, "0", { size: ROW.score * D, color: "#ffc83d", font: fonts.display, stroke: 0.2 }).setOrigin(1, 0.5);
     const countBg = scene.add.graphics();
-    const countLabel = cartoonText(scene, 0, 0, this.copy.monitors, { size: 9.5 * D, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5, 0.5);
+    const countIcon = scene.add.image(0, 0, "mon-face-watch").setOrigin(MON_HEAD.x, MON_HEAD.y);
     const count = cartoonText(scene, 0, 0, "0/0", { size: 16 * D, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5, 0.5);
     const trackBg = scene.add.graphics();
     const track = scene.add.graphics();
     const flag = scene.add.image(0, 0, "icon-flag");
+    const you = this.heroHead();
+    const bells = this.bellIcons(bellCount);
     const bossLabel = cartoonText(scene, 0, 0, this.copy.boss, { size: 11 * D, color: "#f06ba8", font: fonts.display, stroke: 0.18 }).setOrigin(0.5, 0.5).setVisible(false);
     const bossBar = scene.add.graphics().setVisible(false);
-    const root = scene.add.container(0, 0, [card, ...hearts, score, countBg, countLabel, count, trackBg, track, flag, bossLabel, bossBar]).setDepth(60).setScrollFactor(0, 0, true).setVisible(false);
-    return { root, card, hearts, score, countBg, countLabel, count, trackBg, track, flag, bossLabel, bossBar, trackX: 0, trackW: 0, countX: 0, bounds: new Phaser.Geom.Rectangle() };
+    const root = scene.add.container(0, 0, [card, ...hearts, score, countBg, countIcon, count, trackBg, track, flag, ...bells, you, bossLabel, bossBar]).setDepth(60).setScrollFactor(0, 0, true).setVisible(false);
+    return { root, card, hearts, score, countBg, countIcon, count, trackBg, track, bells, you, flag, bossLabel, bossBar, trackX: 0, trackW: 0, countX: 0, bounds: new Phaser.Geom.Rectangle() };
   }
 
   private layoutCompact(f: Frame) {
@@ -186,9 +215,9 @@ export class RecessHud {
 
     c.countBg.clear();
     plate(c.countBg, c.countX, 0, countW, h, 0xfbf5e6);
-    c.countLabel.setPosition(c.countX + countW / 2, 11 * D);
-    c.count.setPosition(c.countX + countW / 2, 26 * D);
-    fitText(c.count, countW - 10 * D, 16 * D, 9 * D);
+    c.countIcon.setPosition(c.countX + 17 * D, h / 2 + 1 * D).setScale((24 * D) / MON_HEAD.h);
+    c.count.setPosition(c.countX + countW / 2 + 12 * D, h / 2);
+    fitText(c.count, countW - 38 * D, 16 * D, 8 * D);
 
     c.trackBg.clear();
     plate(c.trackBg, c.trackX, 0, trackW, h, 0x2b2150);
@@ -219,16 +248,20 @@ export class RecessHud {
     g.fillRoundedRect(x0, y - 4 * D, w, 8 * D, 4 * D);
     g.fillStyle(0x63d6c1, 1);
     g.fillRoundedRect(x0, y - 4 * D, Math.max(8 * D, w * k), 8 * D, 4 * D);
-    for (const m of this.progressMarks) {
-      g.fillStyle(0xffc83d, 1);
-      g.fillCircle(x0 + w * m, y, 4 * D);
-      g.lineStyle(1.4 * D, INK_HEX, 1);
-      g.strokeCircle(x0 + w * m, y, 4 * D);
-    }
+    c.bells.forEach((img, i) => {
+      const m = this.progressMarks[i];
+      img.setVisible(Boolean(m) && c.track.visible);
+      if (!m) return;
+      const key = m.rung ? "icon-bell-on" : "icon-bell-off";
+      if (img.texture.key !== key) img.setTexture(key);
+      img.setPosition(x0 + w * m.at, y).setScale((13 * D) / 40);
+    });
     g.fillStyle(0x5cb9f0, 1);
-    g.fillCircle(x0 + w * k, y, 7 * D);
+    g.fillCircle(x0 + w * k, y, 9 * D);
     g.lineStyle(2 * D, INK_HEX, 1);
-    g.strokeCircle(x0 + w * k, y, 7 * D);
+    g.strokeCircle(x0 + w * k, y, 9 * D);
+    this.placeHead(c.you, x0 + w * k, y - 1 * D, 17 * D);
+    c.you.setVisible(c.track.visible);
   }
 
   private drawCompactBoss() {
@@ -256,6 +289,8 @@ export class RecessHud {
     const c = this.compact;
     c.track.setVisible(compact && this.topOn && !this.bossOn);
     c.flag.setVisible(compact && this.topOn && !this.bossOn);
+    c.you.setVisible(c.track.visible);
+    for (const b of c.bells) b.setVisible(c.track.visible);
     c.trackBg.setVisible(compact && (this.topOn || this.bossOn));
     c.bossLabel.setVisible(compact && this.bossOn);
     c.bossBar.setVisible(compact && this.bossOn);
@@ -428,7 +463,7 @@ export class RecessHud {
     this.monitorText.setText(label).setColor(done ? "#2fa996" : INK);
     const c = this.compact;
     c.count.setText(label).setColor(done ? "#2fa996" : INK);
-    fitText(c.count, ROW.count * D - 10 * D, 16 * D, 9 * D);
+    fitText(c.count, ROW.count * D - 38 * D, 16 * D, 8 * D);
     const first = done && !this.monitorsDone;
     this.monitorsDone = done;
     if (!changed || this.reduced) return;
@@ -451,27 +486,31 @@ export class RecessHud {
     }
   }
 
-  setProgress(k: number, checkpoints: number[]) {
+  setProgress(k: number, marks: ProgressMark[]) {
     this.progressK = k;
-    this.progressMarks = checkpoints;
+    this.progressMarks = marks;
     this.drawTrack();
     const g = this.progressBar;
     g.clear();
     const x0 = -250;
+    const at = x0 + 480 * Phaser.Math.Clamp(k, 0, 1);
     g.fillStyle(0x140f26, 1);
     g.fillRoundedRect(x0, 27, 480, 16, 8);
     g.fillStyle(0x63d6c1, 1);
     g.fillRoundedRect(x0, 27, Math.max(16, 480 * Phaser.Math.Clamp(k, 0, 1)), 16, 8);
-    for (const c of checkpoints) {
-      g.fillStyle(0xffc83d, 1);
-      g.fillCircle(x0 + 480 * c, 35, 7);
-      g.lineStyle(3, INK_HEX, 1);
-      g.strokeCircle(x0 + 480 * c, 35, 7);
-    }
+    this.progressBells.forEach((img, i) => {
+      const m = marks[i];
+      img.setVisible(Boolean(m));
+      if (!m) return;
+      const key = m.rung ? "icon-bell-on" : "icon-bell-off";
+      if (img.texture.key !== key) img.setTexture(key);
+      img.setPosition(x0 + 480 * m.at, 35).setScale(0.68);
+    });
     g.fillStyle(0x5cb9f0, 1);
-    g.fillCircle(x0 + 480 * Phaser.Math.Clamp(k, 0, 1), 35, 13);
+    g.fillCircle(at, 35, 19);
     g.lineStyle(4, INK_HEX, 1);
-    g.strokeCircle(x0 + 480 * Phaser.Math.Clamp(k, 0, 1), 35, 13);
+    g.strokeCircle(at, 35, 19);
+    this.placeHead(this.progressYou, at, 33, 36);
   }
 
   showBoss(on: boolean) {

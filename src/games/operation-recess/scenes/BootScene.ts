@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowBigUp, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Flag, Heart, Sword, TriangleAlert, Waves } from "lucide";
+import { ArrowBigUp, ArrowLeft, ArrowRight, Bell, ChevronLeft, ChevronRight, Flag, Heart, Sword, TriangleAlert, Waves } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { reportFailedLoads } from "../../kit/load";
@@ -86,10 +86,11 @@ const SCENERY = [
 
 const HERO = ["idle", "run-a", "run-b", "run-c", "run-d", "jump", "fall", "attack-a", "attack-b", "attack-c", "hurt", "cheer"];
 const MON: Record<string, string[]> = {
-  common: ["walk-a", "walk-b", "windup", "attack", "hurt"],
+  common: ["walk-a", "walk-b", "windup", "attack", "hurt", "point"],
   whistle: ["walk-a", "walk-b", "puff", "blow", "hurt"],
   shield: ["walk-a", "walk-b", "block", "bash", "open", "hurt"],
 };
+const FACES = ["watch", "spot", "lost"];
 const BOSS = ["idle", "puff", "blow", "stomp", "charge", "raise", "slam", "dizzy", "hurt", "beaten"];
 const KIDS = ["deco-a", "deco-b", "mila-a", "mila-b", "lina-a", "lina-b"];
 
@@ -148,6 +149,7 @@ export class BootScene extends Phaser.Scene {
         if (kind === "shield") this.load.svg(`mon-${kind}-${p}-l`, `${BASE}mon-${kind}-${p}-l.svg`, { width: 260, height: 256 });
       }
     }
+    for (const f of FACES) this.load.svg(`mon-face-${f}`, `${BASE}mon-face-${f}.svg`, { width: 260, height: 256 });
     for (const p of BOSS) this.load.svg(`boss-${p}`, `${BASE}boss-${p}.svg`, { width: 380, height: 446 });
     for (const k of KIDS) this.load.svg(`kid-${k}`, `${BASE}kid-${k}.svg`, { width: 150, height: 212 });
     for (const [key, width, height] of PROPS) this.load.svg(key, `${BASE}${key}.svg`, { width, height });
@@ -161,6 +163,8 @@ export class BootScene extends Phaser.Scene {
       { key: "icon-heart-on", icon: Heart, size: 44, color: "#1d1830", fill: "#ef4f43", strokeWidth: 2.4 },
       { key: "icon-heart-off", icon: Heart, size: 44, color: "#9a8fbf", strokeWidth: 2.4 },
       { key: "icon-flag", icon: Flag, size: 40, color: "#ffc83d", strokeWidth: 2.6 },
+      { key: "icon-bell-off", icon: Bell, size: 40, color: "#9a8fbf", strokeWidth: 2.6 },
+      { key: "icon-bell-on", icon: Bell, size: 40, color: "#1d1830", fill: "#ffc83d", strokeWidth: 2.4 },
       { key: "chip-left", icon: ArrowLeft, size: 34, color: "#1d1830", strokeWidth: 3.2 },
       { key: "chip-right", icon: ArrowRight, size: 34, color: "#1d1830", strokeWidth: 3.2 },
       { key: "chip-pad-left", icon: ChevronLeft, size: 34, color: "#1d1830", strokeWidth: 3.4 },

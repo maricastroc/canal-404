@@ -9,6 +9,6 @@
 <path d="M90 34 L90 114" stroke="#1d1830" stroke-width="3"/>
 <rect x="46" y="128" width="88" height="28" rx="4" fill="#fffaf0" stroke="#1d1830" stroke-width="3.5"/>
 <text x="90" y="149" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="17" fill="#1d1830" >4º ANO</text>
-<circle cx="146" cy="186" r="9" fill="#ffc83d" stroke="#1d1830" stroke-width="3.5"/>
+<circle cx="146" cy="160" r="9" fill="#ffc83d" stroke="#1d1830" stroke-width="3.5"/>
 <path d="M30 230 L60 236 M110 250 L140 244" stroke="#9a5a32" stroke-width="3"/>
 </svg>
