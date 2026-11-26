@@ -4,6 +4,10 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ## Unreleased
 
+### Guerra do Pijama: bots com ritmo de criança
+- **No more metronome.** Late in a match, and above all when only one bot was left, the bots threw the moment their pillow came back, at the same interval every time. Their wait now starts when they can throw again, and each throw is followed by a quick follow-up, a normal beat that varies a lot or a breather in which the bot often runs to another spot first. The same beat never repeats more than twice in a row. Nico favors quick follow-ups, Lia moves more between throws and Bia sits in between, and the follow-ups get more frequent after ESQUENTOU!.
+- **Same pressure.** The average wait between throws is the same as before, within 5%, and in bot runs the win rate, energy left and match length stay the same in all four arenas. The boards don't change.
+
 ### Guerra do Pijama: Sótão, a quarta arena
 - **A fourth arena.** "Sótão" / "Attic" comes after the backyard and closes the game. Players who already beat the backyard find it open.
 - **Blanket forts.** Four forts the kids built from attic junk: a broom tipi and a cardboard castle at the back (6 hits each), a sheet over two chairs and a tablecloth over a table at the front (7 hits each). They block pillows like the backyard tent, sag at half strength while still blocking, and cave in at zero. After that, pillows fly over them, but the debris, chairs and table still take up the same floor. They never rebuild, so the room opens up during the match. Each fort blocks pillows only where it is drawn at pillow height, so the broom tipi is narrower cover than its base. In bot runs the first fort falls around 21 s, three are down around 56 s, after ESQUENTOU!, and the last one falls around 64 s, just before SEM DESCANSO!.
