@@ -39,7 +39,7 @@ export type Hint = { title?: string; body: string };
 
 export type FlashAt = "start" | "event" | "center" | "end";
 
-const STICK = { base: 104, knob: 54, leash: 64, dead: 12, full: 46 };
+const STICK = { base: 104, knob: 54, leash: 64, dead: 12 };
 const BUTTON_R = 112;
 const FIRE = { decide: 150, start: 9, steady: 5 };
 const FLOOR = 0.86;
@@ -778,10 +778,9 @@ export class PajamaHud {
       }
     }
     this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
-    const m = d / k;
-    const speed = m <= STICK.dead ? 0 : Math.min(1, (m - STICK.dead) / (STICK.full - STICK.dead));
-    this.touch.x = d > 0 ? (dx / d) * speed : 0;
-    this.touch.y = d > 0 ? (dy / d) * speed : 0;
+    const run = d / k > STICK.dead;
+    this.touch.x = run ? dx / d : 0;
+    this.touch.y = run ? dy / d : 0;
   }
 
   private up(p: Phaser.Input.Pointer) {
