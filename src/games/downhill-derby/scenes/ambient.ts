@@ -501,7 +501,7 @@ export class Ambient {
     return obj;
   }
 
-  bubble(text: string, x: number, y: number, size = 34) {
+  private bubble(text: string, x: number, y: number, size = 34) {
     const t = this.add(this.b.scene.add.text(x, y, text, { fontFamily: this.b.fonts.display, fontSize: `${size}px`, color: "#1d1830", backgroundColor: "#fbf5e6", padding: { x: 10, y: 4 } }));
     const scale = this.bubbleMin > size ? this.bubbleMin / size : 1;
     t.setOrigin(0.5, 1).setDepth(-1).setScale(scale);
