@@ -253,7 +253,7 @@ export function OverlayFrame({
   const present = useIsPresent();
   return (
     <div
-      className={`absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-plum-950/70 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-6 backdrop-blur-[1px] [scrollbar-gutter:stable] sm:p-6 ${present ? "" : "pointer-events-none"}`}
+      className={`absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-plum-950/70 p-3 pb-(--frame-pb) pt-6 [--frame-pb:max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-[1px] [scrollbar-gutter:stable] sm:p-6 ${present ? "" : "pointer-events-none"}`}
     >
       <motion.div
         role="dialog"
@@ -783,7 +783,7 @@ export function IntroPanel({
         {showHelp && !sectioned && !howFirst ? help : null}
       </div>
       <ActionBar
-        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 flat:sticky flat:-bottom-6 flat:z-10 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:rounded-b-[inherit] flat:border-t-[3px] flat:border-ink flat:px-4 flat:py-2.5 flat:paper max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-[15px] max-[380px]:[&>button>svg]:hidden max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:leading-tight max-[380px]:[&>button]:[text-wrap:balance] max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
+        className={`mt-5 flex shrink-0 flex-wrap items-center gap-3 shorter:mt-3 flat:sticky flat:-bottom-6 flat:z-10 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:rounded-b-[inherit] flat:border-t-[3px] flat:border-ink flat:px-4 flat:py-2.5 flat:paper max-sm:sticky max-sm:-bottom-(--frame-pb) max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-11 max-sm:[&>button]:px-2 max-sm:[&>button]:text-[15px] max-[380px]:[&>button>svg]:hidden max-sm:[&>button_svg]:size-5 max-sm:[&>p]:col-span-2 max-sm:[&>p]:justify-center max-[380px]:[&>button]:gap-1 max-[380px]:[&>button]:leading-tight max-[380px]:[&>button]:[text-wrap:balance] max-[380px]:[&>button]:text-sm max-[380px]:[&>button]:tracking-normal max-[380px]:[&_svg]:size-4 ${missionPending ? "invisible" : ""}`}
         actions={introActions}
         note={
           !leveled && !mission && !adventure && !howFirst ? (
@@ -837,7 +837,7 @@ export function PausePanel({
   const fade = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.18, ease: "easeOut" as const } };
   const label = showAlbum && album ? album.label : showHelp ? copy.helpLabel(game.title) : copy.pausedLabel;
   const footer =
-    "sticky z-10 mt-5 flex gap-3 rounded-b-[inherit] border-t-[3px] border-ink paper max-sm:-bottom-3 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:flex-col max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:[&>button]:min-h-12 max-sm:[&>button]:w-full sm:-bottom-6 sm:-mx-7 sm:-mb-7 sm:px-7 sm:py-4 flat:-bottom-6 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:px-4 flat:py-2.5";
+    "sticky z-10 mt-5 flex gap-3 rounded-b-[inherit] border-t-[3px] border-ink paper max-sm:-bottom-(--frame-pb) max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:flex-col max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:[&>button]:min-h-12 max-sm:[&>button]:w-full sm:-bottom-6 sm:-mx-7 sm:-mb-7 sm:px-7 sm:py-4 flat:-bottom-6 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:px-4 flat:py-2.5";
   if (showAlbum && album) {
     return (
       <OverlayFrame label={label} className="max-w-3xl p-5 sm:p-7 flat:p-4">
@@ -869,7 +869,7 @@ export function PausePanel({
       <div className="mt-4 border-t-[3px] border-dashed border-ink/30 pt-4 sm:mt-5">
         <ControlsList game={game} roomy />
       </div>
-      <div className="mt-5 flex max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-14 max-sm:[&>button]:w-full flat:sticky flat:-bottom-6 flat:z-10 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:rounded-b-[inherit] flat:border-t-[3px] flat:border-ink flat:px-4 flat:py-2.5 flat:paper [@media(max-height:420px)]:max-sm:-mb-3 [@media(max-height:420px)]:max-sm:[&>button]:min-h-11">
+      <div className="mt-5 flex max-sm:sticky max-sm:-bottom-(--frame-pb) max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>button]:min-h-14 max-sm:[&>button]:w-full flat:sticky flat:-bottom-6 flat:z-10 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:rounded-b-[inherit] flat:border-t-[3px] flat:border-ink flat:px-4 flat:py-2.5 flat:paper [@media(max-height:420px)]:max-sm:-mb-3 [@media(max-height:420px)]:max-sm:[&>button]:min-h-11">
         <InkButton tone="cream" onClick={onToggleHelp}>
           <ArrowLeftIcon className="size-5" /> {copy.backToPause}
         </InkButton>
@@ -890,7 +890,7 @@ export function PausePanel({
                 <p className="mt-1 text-pretty font-hand text-lg leading-snug text-ink-soft [@media(max-height:420px)]:mt-0">{copy.napping}</p>
               </div>
             </div>
-            <div className="sticky -bottom-3 z-10 -mx-5 -mb-5 mt-4 flex flex-col gap-2 rounded-b-[inherit] border-t-[3px] border-ink px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 paper [&>button]:min-h-14 [&>button]:py-2 [@media(max-height:420px)]:-mb-3 [@media(max-height:420px)]:mt-3 [@media(max-height:420px)]:grid [@media(max-height:420px)]:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] [@media(max-height:420px)]:pt-2 [@media(max-height:420px)]:[&>button]:min-h-11">
+            <div className="sticky -bottom-(--frame-pb) z-10 -mx-5 -mb-5 mt-4 flex flex-col gap-2 rounded-b-[inherit] border-t-[3px] border-ink px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 paper [&>button]:min-h-14 [&>button]:py-2 [@media(max-height:420px)]:-mb-3 [@media(max-height:420px)]:mt-3 [@media(max-height:420px)]:grid [@media(max-height:420px)]:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] [@media(max-height:420px)]:pt-2 [@media(max-height:420px)]:[&>button]:min-h-11">
               <InkButton ref={resumeRef} tone="sun" size="lg" onClick={onResume} className="w-full">
                 <PlayIcon className="size-7 text-ink" /> {copy.resume}
               </InkButton>
@@ -1050,7 +1050,7 @@ export function ResultPanel({
   ];
   const actions = (
     <ActionBar
-      className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-3 max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-[15px] max-[380px]:[&>button>svg]:hidden max-[380px]:[&>a>svg]:hidden max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:leading-tight max-[380px]:[&>*]:[text-wrap:balance] max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3"
+      className="mt-5 flex flex-wrap gap-3 max-sm:sticky max-sm:-bottom-(--frame-pb) max-sm:z-10 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2 max-sm:rounded-b-[inherit] max-sm:border-t-[3px] max-sm:border-ink max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:paper max-sm:[&>*]:min-h-11 max-sm:[&>*]:px-2 max-sm:[&>*]:text-[15px] max-[380px]:[&>button>svg]:hidden max-[380px]:[&>a>svg]:hidden max-[380px]:[&>*]:gap-1 max-[380px]:[&>*]:leading-tight max-[380px]:[&>*]:[text-wrap:balance] max-[380px]:[&>*]:text-sm max-[380px]:[&>*]:tracking-normal max-[380px]:[&_svg]:size-4 wideshort:mt-3"
       actions={resultActions}
       links={[
         <ShareResult key="share" game={game} result={result} />,
