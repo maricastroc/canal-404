@@ -6,7 +6,7 @@ Notable changes to Canal 404, newest first. Dates are in the release's own time 
 
 ### Laboratório de Péssimas Ideias: Pazes com o Pixel mais claro
 - **A feeder that looks like one.** The kibble dispenser has a cat-ear lid, a paw badge and a chute that pours into Pixel's bowl, which is bigger and has his name on it. The button on the shelf is now red, like the cable that runs from it to the feeder. Levels 8 to 10 show the same feeder in the corner.
-- **Lina explains the deal.** Her line now says why Pixel is mad, what the button does and why it helps: "O Pixel não me perdoou pelo sino. O botão da patinha liga o comedouro, e ração resolve tudo." / "Pixel is still mad about the bell. The paw button turns on his feeder. Food fixes everything!" It fits in fewer, longer lines.
+- **Lina explains the deal.** Her line now says why Pixel is mad, why food helps and which button to hit: "O Pixel ainda tá bravo comigo por causa do sino. Quem sabe um pouco de ração ajude? É só acertar o botão da patinha!" / "Pixel is still mad at me about the bell. Maybe a little food will help? Just hit the paw button!"
 - **Look here.** When she says it, and whenever she repeats it, the button glows, a spark runs down the cable and the feeder glows. On phones in portrait the camera shows the feeder first, then moves to the build area. With reduced motion the glow stays still and there's no spark.
 - **Same puzzle.** Physics, parts, solutions and boards don't change.
 
