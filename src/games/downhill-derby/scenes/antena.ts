@@ -11,6 +11,8 @@ const NAMES = ["antena-404", "guindaste", "saco-cimento", "betoneira-base", "bet
 
 export const ANTENA_FILES: [string, string][] = NAMES.map((n) => [`a-${n}`, n]);
 
+const HILLSIDE = ["facade-puxadinho-ceu", "muro-agua", "facade-terrea-lilas", "facade-puxadinho-ceu", "muro-rosa", "facade-sobrado-agua", "facade-terrea-amarelo"];
+
 export const TUNNEL = 330;
 export const MIXER_X = 1500;
 
@@ -34,13 +36,14 @@ export function dressAntena(b: Builder, course: Course, copy: RaceCopy): SampleS
     [set.hole - 300, set.hole + 300],
     [set.exit - 300, set.exit + 300],
   ];
-  facadeRow(b, road.x0 + 400, stairs0, blocked);
+  facadeRow(b, road.x0 + 400, stairs0, blocked, HILLSIDE);
   poleLine(b, course.start + 2000, set.works.x0 - 300);
   poleLine(b, set.works.x1 + 1400, stairs0 - 200);
   for (const tx of [course.start + 4200, set.works.x1 + 2600, set.exit + 2600]) if (!blocked.some(([a, c]) => tx + 140 > a && tx - 140 < c)) placed(b, "s-ipe", tx, 0.72, -7.4, "center", 6);
   placed(b, "a-antena-404", course.start + 700, 0.92, -24, "center", 6);
   drawFrontWall(b, road.x0, road.x1);
   works(b, set);
+  rebuild(b, set);
   stairsWall(b, course, set.stairs[0].x0 - 200, set.stairs[set.stairs.length - 1].x1 + 500);
   plaza(b, course, set.plaza, copy);
   loopSign(b, course, copy);
@@ -65,6 +68,17 @@ function works(b: Builder, set: AntenaSet) {
   placed(b, "a-andaime", set.bags[1] + 900, 0.9, -19, "left");
   placed(b, "a-tijolos", set.works.x1 - 300, 0.8, -8, "center");
   b.taken.push([x0, set.works.x1]);
+}
+
+function rebuild(b: Builder, set: AntenaSet) {
+  const x0 = set.exit;
+  placed(b, "a-andaime", x0 + 900, 0.9, -19, "left");
+  placed(b, "a-tijolos", x0 + 2100, 0.8, -8, "center");
+  placed(b, "a-guindaste", x0 + 3000, 0.85, -23, "left");
+  placed(b, "a-sacos-cimento", x0 + 3700, 0.8, -8, "center");
+  placed(b, "a-andaime", x0 + 5200, 0.9, -19, "left");
+  placed(b, "a-carrinho-de-mao", x0 + 6100, 0.8, -7.8, "center");
+  for (const x of [x0 + 2100, x0 + 3700, x0 + 6100]) b.taken.push([x - 140, x + 140]);
 }
 
 function loopSign(b: Builder, course: Course, copy: RaceCopy) {
