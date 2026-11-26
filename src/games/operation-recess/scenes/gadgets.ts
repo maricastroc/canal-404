@@ -378,6 +378,7 @@ export class Watcher {
 }
 
 const ROPE_HAND = { x: 45, y: 132 };
+const ROPE_TRAIL = 0.035;
 
 export class Rope {
   readonly x0: number;
@@ -390,6 +391,11 @@ export class Rope {
   private handY = FLOOR_Y - ROPE_HAND.y * KID_SCALE;
   private period: number;
   private curve: Phaser.Curves.QuadraticBezier;
+  private trail: Phaser.Curves.QuadraticBezier;
+  private streak = 0;
+  private hop = [0, 0];
+  private lift = { a: 0, b: 0 };
+  private flinch = 0;
 
   constructor(
     private api: StageApi,
@@ -403,9 +409,18 @@ export class Rope {
       scene.add.image(this.x0 - ROPE_HAND.x * KID_SCALE, FLOOR_Y, "kid-lina-a").setOrigin(0.5, 1).setDepth(8.6).setScale(KID_SCALE),
       scene.add.image(this.x1 + ROPE_HAND.x * KID_SCALE, FLOOR_Y, "kid-mila-a").setOrigin(0.5, 1).setDepth(8.6).setScale(KID_SCALE).setFlipX(true),
     ];
+    for (const kid of this.kids) scene.add.image(kid.x, FLOOR_Y + 3, "blob").setDepth(5.4).setDisplaySize(110, 22).setAlpha(0.55);
     this.shadow = scene.add.image((this.x0 + this.x1) / 2, FLOOR_Y - 4, "blob").setDepth(5.4).setDisplaySize(this.x1 - this.x0 + 40, 30).setAlpha(0);
     this.g = scene.add.graphics().setDepth(13);
-    this.curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(this.x0, this.handY), new Phaser.Math.Vector2((this.x0 + this.x1) / 2, this.handY), new Phaser.Math.Vector2(this.x1, this.handY));
+    const mid = (this.x0 + this.x1) / 2;
+    this.curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(this.x0, this.handY), new Phaser.Math.Vector2(mid, this.handY), new Phaser.Math.Vector2(this.x1, this.handY));
+    this.trail = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(this.x0, this.handY), new Phaser.Math.Vector2(mid, this.handY), new Phaser.Math.Vector2(this.x1, this.handY));
+  }
+
+  private ctrl(k: number) {
+    const low = Math.cos(k * Math.PI * 2);
+    const mid = this.handY + (FLOOR_Y - 6 - this.handY) * low;
+    return 2 * mid - this.handY;
   }
 
   update(t: number, h: HeroState) {
@@ -413,34 +428,85 @@ export class Rope {
     const a = k * Math.PI * 2;
     const low = Math.cos(a);
     const front = Math.sin(a) > 0;
-    const mid = this.handY + (FLOOR_Y - 6 - this.handY) * low;
-    const ctrl = 2 * mid - this.handY;
     const g = this.g;
     g.clear().setDepth(front ? 21 : 13);
-    const curve = this.curve;
-    curve.p1.y = ctrl;
+    if (!this.api.reduced) {
+      this.trail.p1.y = this.ctrl(k - ROPE_TRAIL);
+      g.lineStyle(5, front ? 0xf06ba8 : 0xc24f86, 0.28);
+      this.trail.draw(g, 20);
+    }
+    this.curve.p1.y = this.ctrl(k);
     g.lineStyle(9, INK_HEX, 1);
-    curve.draw(g, 24);
+    this.curve.draw(g, 24);
     g.lineStyle(4, front ? 0xf06ba8 : 0xc24f86, 1);
-    curve.draw(g, 24);
-    const pose = low > 0 ? "a" : "b";
-    this.kids[0].setTexture(`kid-lina-${pose}`);
-    this.kids[1].setTexture(`kid-mila-${pose}`);
+    this.curve.draw(g, 24);
+    this.poseKids(low);
     this.shadow.setAlpha(0.1 + 0.75 * Math.max(0, low) ** 3);
+    const mid = (this.x0 + this.x1) / 2;
+    const inside = h.x > this.x0 + 16 && h.x < this.x1 - 16;
+    if (Math.abs(h.x - mid) > (this.x1 - this.x0) / 2 + 260) this.streak = 0;
     const slap = Math.round(t / this.period);
     if (low > 0.97 && slap !== this.slapped) {
       this.slapped = slap;
-      const mid = (this.x0 + this.x1) / 2;
       if (Math.abs(h.x - mid) < 1100) {
         this.api.sfx("step", 0.7);
         if (!this.api.reduced) for (const x of [mid - 90, mid + 90]) this.api.dust(x, FLOOR_Y, x < mid ? 1 : -1);
       }
+      if (inside && h.feet < FLOOR_Y - 30) this.count(mid);
     }
-    if (low > 0.93 && slap !== this.swept && h.x > this.x0 + 16 && h.x < this.x1 - 16 && h.feet > FLOOR_Y - 30) {
+    if (low > 0.93 && slap !== this.swept && inside && h.feet > FLOOR_Y - 30) {
       this.swept = slap;
+      this.streak = 0;
+      this.startle();
       return true;
     }
     return false;
+  }
+
+  private poseKids(low: number) {
+    const pose = low > 0 ? "a" : "b";
+    const reduced = this.api.reduced;
+    this.kids.forEach((kid, i) => {
+      const key = `kid-${i === 0 ? "lina" : "mila"}-${pose}`;
+      if (kid.texture.key !== key) kid.setTexture(key);
+      if (reduced) return;
+      const lean = (i === 0 ? 1 : -1) * (2.5 * low - 7 * this.flinch);
+      const bob = 0.035 * Math.max(0, low);
+      kid.setAngle(lean).setScale(KID_SCALE * (1 + bob * 0.5), KID_SCALE * (1 - bob)).setY(FLOOR_Y - this.hop[i]);
+    });
+  }
+
+  private count(mid: number) {
+    this.streak += 1;
+    const n = this.streak;
+    const cheer = n % 3 === 0;
+    const kid = this.kids[n % 2];
+    if (cheer) this.api.word(this.api.words.ropeCheer, mid, FLOOR_Y - 280, "#ffc83d", 42);
+    else this.api.word(`${n}!`, kid.x, FLOOR_Y - 250, "#f06ba8", 38);
+    this.jump(cheer ? 2 : 1, cheer ? 22 : 12);
+  }
+
+  cheer() {
+    this.jump(2, 20);
+  }
+
+  private jump(times: number, px: number) {
+    if (this.api.reduced) return;
+    const scene = this.api.scene;
+    const lift = this.lift;
+    scene.tweens.killTweensOf(lift);
+    lift.a = 0;
+    lift.b = 0;
+    this.hop = [0, 0];
+    scene.tweens.add({ targets: lift, a: px, duration: 130, yoyo: true, repeat: times - 1, ease: "Quad.easeOut", onUpdate: () => (this.hop[0] = lift.a) });
+    scene.tweens.add({ targets: lift, b: px, delay: 70, duration: 130, yoyo: true, repeat: times - 1, ease: "Quad.easeOut", onUpdate: () => (this.hop[1] = lift.b), onComplete: () => (this.hop = [0, 0]) });
+  }
+
+  private startle() {
+    if (this.api.reduced) return;
+    const state = { f: 1 };
+    this.flinch = 1;
+    this.api.scene.tweens.add({ targets: state, f: 0, duration: 520, ease: "Quad.easeOut", onUpdate: () => (this.flinch = state.f) });
   }
 
   get mid() {

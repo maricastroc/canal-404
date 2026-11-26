@@ -41,6 +41,12 @@ export const STICKER_NAMES = localized<Record<StickerId, string>>({
   },
 });
 
+export const ALBUM_EVENT = "canal404:recess-album";
+
+export function notifyAlbum() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(ALBUM_EVENT));
+}
+
 export function stickerArt(id: StickerId) {
   return `/assets/operation-recess/stickers/${id}.svg`;
 }

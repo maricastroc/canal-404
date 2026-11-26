@@ -44,6 +44,7 @@ export const COPY = localized({
       shield: "A PLACA BLOQUEIA: ATAQUE POR TRÁS!",
       wobbly: "PRATELEIRA BAMBA: NÃO PARE!",
       high: "APITO ALTO? FIQUE NO CHÃO!",
+      sticker: "FIGURINHA! VAI PRO SEU ÁLBUM",
     },
     hintSpeech: {
       locker: "Armário tremendo abre com tudo. Pare antes da porta ou feche com uma espadada.",
@@ -54,6 +55,7 @@ export const COPY = localized({
       shield: "Monitor da placa de PARE. De frente, a placa bloqueia. Ataque pelas costas ou quando ele baixar a placa.",
       wobbly: "Prateleira bamba. Ela cai logo depois que você pisa.",
       high: "Este monitor solta apitos altos e baixos. Pule só os baixos.",
+      sticker: "Figurinha à frente. Pegue para guardar no seu álbum, no alto da tela.",
     },
     tutorial: {
       walk: "PARA ANDAR",
@@ -79,6 +81,7 @@ export const COPY = localized({
       caught: ["DIRETO PRA DIRETORIA!", "PEGUEI!"],
       whistle: ["PRIIII! PARADO AÍ!", "NADA DE BAGUNÇA!", "OLHA O APITO!"],
       shield: ["PARE! FISCALIZAÇÃO!", "NEM VEM QUE NÃO TEM!", "SEM AUTORIZAÇÃO NÃO PASSA!"],
+      fallen: ["EI! CAIU UM DOS NOSSOS!", "REFORÇO AQUI!", "ESSE MENINO DE NOVO?!"],
     },
     words: {
       ouch: ["AI!", "UI!", "OPA!"],
@@ -105,7 +108,8 @@ export const COPY = localized({
       freeze: "ESTÁTUA!",
       sawYou: "TE VI!",
       caught: "FLAGRA!",
-      newSticker: "NOVA!",
+      newSticker: "FIGURINHA NOVA!",
+      ropeCheer: "UHUU!",
     },
     banner: {
       backAtBell: "DE VOLTA AO SINO!",
@@ -195,6 +199,7 @@ export const COPY = localized({
       shield: "THE SIGN BLOCKS: HIT FROM BEHIND!",
       wobbly: "WOBBLY SHELF: KEEP MOVING!",
       high: "HIGH WHISTLE? DON'T JUMP!",
+      sticker: "A STICKER! IT GOES IN YOUR ALBUM",
     },
     hintSpeech: {
       locker: "A shaking locker flies open. Stop before the door or slam it shut with your sword.",
@@ -205,6 +210,7 @@ export const COPY = localized({
       shield: "Monitor with a STOP sign. From the front, the sign blocks. Attack from behind or when he lowers the sign.",
       wobbly: "Wobbly shelf. It falls right after you step on it.",
       high: "This monitor blows high and low whistles. Only jump the low ones.",
+      sticker: "Sticker ahead. Grab it to keep it in your album, at the top of the screen.",
     },
     tutorial: {
       walk: "TO WALK",
@@ -230,6 +236,7 @@ export const COPY = localized({
       caught: ["STRAIGHT TO THE OFFICE!", "GOTCHA!"],
       whistle: ["FWEEET! FREEZE!", "NO MESSING AROUND!", "WATCH THE WHISTLE!"],
       shield: ["STOP! INSPECTION!", "DON'T EVEN TRY!", "NO PERMIT, NO PASSING!"],
+      fallen: ["HEY! WE LOST ONE!", "BACKUP OVER HERE!", "THAT KID AGAIN?!"],
     },
     words: {
       ouch: ["OW!", "OOF!", "WHOA!"],
@@ -256,7 +263,8 @@ export const COPY = localized({
       freeze: "FREEZE!",
       sawYou: "SAW YOU!",
       caught: "GOTCHA!",
-      newSticker: "NEW!",
+      newSticker: "NEW STICKER!",
+      ropeCheer: "WOO-HOO!",
     },
     banner: {
       backAtBell: "BACK AT THE BELL!",

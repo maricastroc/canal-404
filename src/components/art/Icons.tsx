@@ -40,6 +40,7 @@ import {
   Smile,
   Star,
   Target,
+  Sticker,
   Timer,
   Trash2,
   Trophy,
@@ -96,6 +97,7 @@ export const ZoomIcon = make(ZoomIn);
 export const RewindIcon = make(Rewind, true);
 export const LanguageIcon = make(Languages);
 export const MissionIcon = make(Target);
+export const StickerIcon = make(Sticker);
 export const TimerIcon = make(Timer);
 export const TapeIcon = make(CassetteTape);
 export const DoneIcon = make(CircleCheckBig);

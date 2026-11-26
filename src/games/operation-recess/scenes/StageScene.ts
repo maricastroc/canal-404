@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameResult } from "@/games/types";
 import { ARENA_GROW, ARENA_ZOOM, EXTRAS_CAP, FLOOR_Y, GRAVITY, H, HEARTS, HIT_STOP_MS, INVULN_MS, JUMP_V, KID_SCALE, KNOCK_X, KNOCK_Y, SCORE, TILE, W, ZOOM } from "../config";
-import { STICKER_IDS, STICKER_NAMES, type StickerId } from "../album";
+import { notifyAlbum, STICKER_IDS, STICKER_NAMES, type StickerId } from "../album";
 import { COPY, levelCopy, type LevelCopy, type RecessCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import { LEVELS, type LevelDef, type Theme } from "../levels";
@@ -27,7 +27,7 @@ import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
 
 type Mode = "attract" | "play" | "ko" | "won";
-type Lesson = "walk" | "jump" | "hold" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "high";
+type Lesson = "walk" | "jump" | "hold" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "high" | "sticker";
 type Anchor = () => { x: number; y: number } | null;
 type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean; anchor?: Anchor; tip?: Phaser.GameObjects.Graphics; at?: { x: number; y: number } };
 type Hint = { lesson: Lesson; anchor: Anchor; past: number };
@@ -191,7 +191,7 @@ export class StageScene extends Phaser.Scene {
     this.cameras.main.setZoom(ZOOM);
     this.uiCam = this.cameras.add(0, 0, this.frame.width, this.frame.height).setName("ui");
     this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, this.route, this);
-    this.scenery = new Scenery(this, this.level, this.level.length * TILE, reduced);
+    this.scenery = new Scenery(this, this.level, this.level.length * TILE, reduced, this.ctx.fonts);
     this.world = buildWorld(this, this.level);
     const width = this.world.width;
     this.physics.world.setBounds(0, -400, width, H + 800);
@@ -234,7 +234,10 @@ export class StageScene extends Phaser.Scene {
     this.album = loadSave();
     for (const it of this.level.items) this.items.push(it.kind === "sticker" ? new Item(this, it.kind, it.col, it.row, reduced, it.id, this.album.stickers.includes(it.id)) : new Item(this, it.kind, it.col, it.row, reduced));
     for (const col of this.level.checkpoints) this.bells.push(new Bell(this, col));
-    for (const b of this.level.balls ?? []) this.spawners.push(new BallSpawner(this.api, b, (ball) => this.balls.push(ball)));
+    for (const b of this.level.balls ?? []) {
+      const near = (this.world.props.boxes ?? []).find((img) => Math.abs(img.x - (cx(b.col) + TILE)) < 200) ?? null;
+      this.spawners.push(new BallSpawner(this.api, b, (ball) => this.balls.push(ball), near));
+    }
     makeGadgetTextures(this);
     (this.level.lockers ?? []).forEach((col, i) => this.lockers.push(new Locker(this.api, col, i, i === 0 && !resume)));
     for (const w of this.level.watchers ?? []) this.watchers.push(new Watcher(this.api, w.col, w.look, this.ctx.fonts.display, (x, dir) => this.mode === "play" && this.waves.push(new Wave(this, x, FLOOR_Y, dir, true))));
@@ -273,7 +276,11 @@ export class StageScene extends Phaser.Scene {
     this.hero = new Hero(this, cx(startCol) + TILE / 2 + (resume ? 60 : 0), FLOOR_Y, {
       sfx: (name, volume) => this.sfx(name, volume, name === "step" ? 120 : 0),
       dust: (x, y, dir) => this.dust(x, y, dir),
-      land: (x, drop) => drop > HARD_LANDING && this.scenery.impact(x, Math.min(1, drop / 600)),
+      land: (x, drop) => {
+        if (!reduced) this.world.flex(x, this.hero.feet, 0.25 + drop / 500);
+        if (drop > HARD_LANDING) this.scenery.impact(x, Math.min(1, drop / 600));
+      },
+      leave: (x, feet) => !reduced && this.world.flex(x, feet, 0.2),
       surface: (x, y) => this.surface(x, y),
     });
     this.safe = { x: this.hero.rect.x, y: this.hero.rect.y };
@@ -1314,6 +1321,7 @@ export class StageScene extends Phaser.Scene {
         this.word(`+${SCORE.sticker}`, it.img.x, it.img.y - 40, "#ffc83d", 36);
         if (it.sticker && this.collect(it.sticker)) {
           this.word(this.copy.words.newSticker, it.img.x, it.img.y - 96, "#f06ba8", 40);
+          this.toAlbum(it.sticker, it.img.x, it.img.y);
           this.announce(this.copy.say.newSticker(STICKER_NAMES[this.ctx.locale][it.sticker], this.album.stickers.length, STICKER_IDS.length));
         }
       }
@@ -1378,9 +1386,21 @@ export class StageScene extends Phaser.Scene {
   private collect(id: StickerId) {
     const save = loadSave();
     const added = addSticker(save, id);
-    if (added) writeSave(save);
+    if (added) {
+      writeSave(save);
+      notifyAlbum();
+    }
     this.album = save;
     return added;
+  }
+
+  private toAlbum(id: StickerId, x: number, y: number) {
+    if (this.ctx.reducedMotion) return;
+    const view = this.cameras.main.worldView;
+    const card = this.add.image(x, y, `sticker-${id}`).setDepth(44).setDisplaySize(74, 74);
+    const k = card.scaleX;
+    this.tweens.add({ targets: card, scale: k * 1.5, angle: -10, duration: 180, ease: "Back.easeOut" });
+    this.tweens.add({ targets: card, x: view.right - 60, y: view.y - 40, scale: k * 0.5, angle: 20, delay: 260, duration: 620, ease: "Cubic.easeIn", onComplete: () => card.destroy() });
   }
 
   private trip() {
@@ -1410,6 +1430,8 @@ export class StageScene extends Phaser.Scene {
     if (shelf && fresh("wobbly")) return { lesson: "wobbly", anchor: fixed(shelf.x0 + shelf.w / 2, shelf.y - 150), past: shelf.x0 + shelf.w };
     const high = this.enemies.find((e) => !e.dead && e instanceof WhistleMonitor && e.mixed && seen(e.x) && Math.abs(e.x - x) < 900);
     if (high && fresh("high")) return { lesson: "high", anchor: follow(high), past: Infinity };
+    const sticker = this.items.find((it) => it.kind === "sticker" && !it.taken && !it.owned && seen(it.img.x) && it.img.x > x + 120);
+    if (sticker && fresh("sticker")) return { lesson: "sticker", anchor: () => (sticker.taken ? null : { x: sticker.img.x, y: sticker.img.y - 78 }), past: sticker.img.x + 40 };
     return null;
   }
 
@@ -1443,6 +1465,7 @@ export class StageScene extends Phaser.Scene {
       const top = e.body.top;
       this.onEnemyHit(e.x, top, e.body.bottom, res === "kill");
       if (res === "kill") {
+        this.stir(e);
         this.kills += 1;
         this.trace.kill(t, this.enemyIndex.get(e) ?? -1);
         this.hud.setMonitors(this.kills, this.level.enemies.length, true);
@@ -1483,6 +1506,13 @@ export class StageScene extends Phaser.Scene {
         this.word(this.copy.words.kick, b.img.x, b.img.y - 50, "#fbf5e6", 34);
       }
     }
+  }
+
+  private stir(fallen: Enemy) {
+    const x = fallen.x;
+    const near = this.enemies.filter((o) => o !== fallen && !o.dead && Math.abs(o.x - x) < 1000 && Math.abs(o.feet - fallen.feet) < 420).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x));
+    near.slice(0, 2).forEach((o, i) => this.time.delayedCall(260 + i * 220, () => o.startle(x)));
+    for (const r of this.ropes) if (Math.abs(r.mid - x) < 1000) this.time.delayedCall(200, () => r.cheer());
   }
 
   private onEnemyHit(x: number, top: number, bottom: number, kill: boolean, boss = false) {

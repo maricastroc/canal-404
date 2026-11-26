@@ -2,6 +2,9 @@ import * as Phaser from "phaser";
 import { FLOOR_Y, H, TILE, TOP } from "../config";
 import type { LevelDef } from "../levels";
 import { INK_HEX } from "../../kit/ui";
+import { BARS_ART, BENCH_ART, yardSector, type YardSector } from "./yardArt";
+
+type Perch = { x0: number; x1: number; y: number; top: Phaser.GameObjects.Image; poles: Phaser.GameObjects.Image; at: number };
 
 export type World = {
   width: number;
@@ -9,6 +12,8 @@ export type World = {
   oneWays: Phaser.GameObjects.Zone[];
   slips: [number, number][];
   groundAt: (x: number) => boolean;
+  props: Partial<Record<"boxes" | "bin" | "cabinet", Phaser.GameObjects.Image[]>>;
+  flex: (x: number, feet: number, power: number) => boolean;
 };
 
 export const cx = (col: number) => col * TILE;
@@ -31,7 +36,6 @@ function drawGround(scene: Phaser.Scene, level: LevelDef, width: number) {
   }
 }
 
-const PLATFORM_ART = { shelf: 0xb06c3f, bench: 0xb06c3f, bars: 0xef4f43, desk: 0xb06c3f, books: 0x55301e };
 const BIN_ART = { top: 7.5, bottom: 112.5, height: 116, width: 100 };
 
 
@@ -80,27 +84,114 @@ function drawBalcony(scene: Phaser.Scene, x: number, y: number, w: number) {
   g.fillRect(x + 8, y + 1, w - 16, 3);
 }
 
-function benchBase(scene: Phaser.Scene, x: number, top: number, w: number) {
+const BASE_ART: Record<YardSector | "plain", { body: number; lip: number; line: number; band?: number; bricks?: boolean; flowers?: boolean }> = {
+  plain: { body: 0xcfc6b0, lip: 0xe6dfcc, line: 0xa99f86 },
+  court: { body: 0xcfc6b0, lip: 0xe6dfcc, line: 0xa99f86, band: 0x3fa9a0 },
+  canteen: { body: 0xcfc6b0, lip: 0xe6dfcc, line: 0xa99f86 },
+  commons: { body: 0xcfc6b0, lip: 0xe6dfcc, line: 0xa99f86 },
+  garden: { body: 0xb8573f, lip: 0xe6dfcc, line: 0xd9a07c, bricks: true, flowers: true },
+};
+
+function benchBase(scene: Phaser.Scene, x: number, top: number, w: number, look: keyof typeof BASE_ART = "plain") {
   const h = Math.round(FLOOR_Y - top + 4);
-  const key = `bench-base-${w}-${h}`;
+  const art = BASE_ART[look];
+  const key = `bench-base-${look}-${w}-${h}`;
   if (!scene.textures.exists(key)) {
     const g = scene.make.graphics({}, false);
     g.fillStyle(INK_HEX, 1);
     g.fillRoundedRect(0, 0, w, h, { tl: 6, tr: 6, bl: 0, br: 0 });
-    g.fillStyle(0xcfc6b0, 1);
+    g.fillStyle(art.body, 1);
     g.fillRoundedRect(4, 4, w - 8, h - 4, { tl: 4, tr: 4, bl: 0, br: 0 });
-    g.fillStyle(0xe6dfcc, 1);
+    g.fillStyle(art.lip, 1);
     g.fillRect(4, 4, w - 8, 10);
-    g.fillStyle(0xa99f86, 1);
+    g.fillStyle(art.line, 1);
     g.fillRect(4, 14, w - 8, 4);
-    g.lineStyle(3, 0xa99f86, 1);
-    for (const fx of [0.33, 0.67]) g.lineBetween(Math.round(w * fx), 22, Math.round(w * fx), h - 4);
-    g.fillStyle(0xa99f86, 0.5);
-    for (const [px, py] of [[0.12, 0.55], [0.5, 0.7], [0.82, 0.45]]) g.fillCircle(w * px, 18 + (h - 22) * py, 3);
+    if (art.bricks) {
+      for (let y = 22, row = 0; y < h - 4; y += 16, row += 1) {
+        g.fillRect(4, y + 12, w - 8, 3);
+        for (let bx = row % 2 ? 22 : 44; bx < w - 8; bx += 44) g.fillRect(bx, y, 3, 12);
+      }
+    } else {
+      g.lineStyle(3, art.line, 1);
+      for (const fx of [0.33, 0.67]) g.lineBetween(Math.round(w * fx), 22, Math.round(w * fx), h - 4);
+      g.fillStyle(art.line, 0.5);
+      for (const [px, py] of [[0.12, 0.55], [0.5, 0.7], [0.82, 0.45]]) g.fillCircle(w * px, 18 + (h - 22) * py, 3);
+    }
+    if (art.band) {
+      g.fillStyle(art.band, 1);
+      g.fillRect(4, h - 18, w - 8, 10);
+      g.fillStyle(0xfbf5e6, 1);
+      for (let bx = 18; bx < w - 18; bx += 46) g.fillRect(bx, h - 18, 12, 10);
+    }
     g.generateTexture(key, w, h);
     g.destroy();
   }
   scene.add.image(x, top - 2, key).setOrigin(0, 0).setDepth(3.98);
+  if (!art.flowers) return;
+  const tufts: [number, number][] = [[-6, 0xf06ba8], [w + 6, 0xffc83d]];
+  for (const [dx, color] of tufts) flowerTuft(scene, x + dx, FLOOR_Y, color);
+}
+
+function flowerTuft(scene: Phaser.Scene, x: number, y: number, color: number) {
+  const key = `flower-tuft-${color.toString(16)}`;
+  if (!scene.textures.exists(key)) {
+    const g = scene.make.graphics({}, false);
+    g.fillStyle(INK_HEX, 1);
+    g.fillEllipse(36, 50, 74, 34);
+    g.fillStyle(0x4c9a43, 1);
+    g.fillEllipse(36, 50, 66, 26);
+    for (const [fx, fy] of [[18, 38], [36, 30], [54, 40]]) {
+      g.fillStyle(INK_HEX, 1);
+      g.fillCircle(fx, fy, 10);
+      g.fillStyle(color, 1);
+      g.fillCircle(fx, fy, 7);
+      g.fillStyle(0xfbf5e6, 1);
+      g.fillCircle(fx, fy, 2.5);
+    }
+    g.generateTexture(key, 72, 66);
+    g.destroy();
+  }
+  scene.add.image(x, y + 4, key).setOrigin(0.5, 1).setDepth(3.99);
+}
+
+function drawBars(scene: Phaser.Scene, x: number, y: number, w: number, look: (typeof BARS_ART)[YardSector]): Perch {
+  const poleTop = y + 10;
+  const poleH = Math.round(FLOOR_Y - poleTop);
+  const pk = `bars-poles-${w}-${poleH}-${look.pole.toString(16)}`;
+  if (!scene.textures.exists(pk)) {
+    const g = scene.make.graphics({}, false);
+    for (const px of [16, w - 16]) {
+      g.fillStyle(INK_HEX, 1);
+      g.fillRect(px - 5, 0, 10, poleH);
+      g.fillRoundedRect(px - 15, poleH - 8, 30, 12, 4);
+      g.fillStyle(look.pole, 1);
+      g.fillRect(px - 2.5, 0, 5, poleH - 4);
+      g.fillStyle(0x9aa6b8, 1);
+      g.fillRoundedRect(px - 11, poleH - 5, 22, 6, 2);
+    }
+    g.generateTexture(pk, w, poleH + 4);
+    g.destroy();
+  }
+  const tk = `bars-top-${w}-${look.top.toString(16)}`;
+  if (!scene.textures.exists(tk)) {
+    const g = scene.make.graphics({}, false);
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(0, 0, w + 8, 30, 8);
+    g.fillStyle(look.top, 1);
+    g.fillRoundedRect(4, 4, w, 22, 6);
+    g.fillStyle(look.shine, 1);
+    g.fillRect(10, 8, w - 12, 5);
+    g.fillStyle(INK_HEX, 0.25);
+    g.fillRect(8, 20, w - 8, 4);
+    g.generateTexture(tk, w + 8, 30);
+    g.destroy();
+  }
+  scene.add.image(x + w / 2, FLOOR_Y + 6, "blob").setDepth(5.1).setDisplaySize(w * 0.9, 18).setAlpha(0.22);
+  contact(scene, x + 16, 54);
+  contact(scene, x + w - 16, 54);
+  const poles = scene.add.image(x, poleTop, pk).setOrigin(0, 0).setDepth(4);
+  const top = scene.add.image(x - 4, y - 4, tk).setOrigin(0, 0).setDepth(4.01);
+  return { x0: x, x1: x + w, y, top, poles, at: -1e9 };
 }
 
 function drawShelf(scene: Phaser.Scene, x: number, y: number, w: number) {
@@ -140,56 +231,40 @@ function drawShelf(scene: Phaser.Scene, x: number, y: number, w: number) {
   scene.add.image(x - pad, y - 6, key).setOrigin(0, 0).setDepth(4);
 }
 
-function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
+function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number], yard: boolean): Perch | null {
   const x = cx(pl.col);
   const y = cy(pl.row);
   const w = pl.w * TILE;
+  const sector = yard ? yardSector(x + w / 2) : null;
   if (pl.art === "shelf") {
     drawShelf(scene, x, y, w);
-    return;
+    return null;
   }
   if (pl.art === "bench" && pl.w === 3) {
     const k = w / 250;
     const legs = y - 6 + 96 * k;
-    benchBase(scene, x - 12, legs, w + 24);
+    benchBase(scene, x - 12, legs, w + 24, sector ?? "plain");
     contact(scene, x + w / 2, w + 40);
-    scene.add.image(x + w / 2, y - 6, "bench").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w, 100 * k);
-    return;
+    scene.add.image(x + w / 2, y - 6, sector ? BENCH_ART[sector] : "bench").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w, 100 * k);
+    return null;
   }
+  if (pl.art === "bars") return drawBars(scene, x, y, w, BARS_ART[sector ?? "court"]);
   if (pl.art === "desk" && FLOOR_Y - y < 220) {
     contact(scene, x + w / 2, w);
     scene.add.image(x + w / 2, y - 8, "desk").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, FLOOR_Y - y + 10);
-    return;
+    return null;
   }
   if (pl.art === "books" && FLOOR_Y - y < 220) {
     contact(scene, x + w / 2, w);
     scene.add.image(x + w / 2, y - 8, "bookcase-low").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, FLOOR_Y - y + 10);
-    return;
+    return null;
   }
   if (pl.art === "books") {
     drawBalcony(scene, x, y, w);
-    return;
+    return null;
   }
   const dark = pl.art === "desk";
   const g = scene.add.graphics().setDepth(4);
-  const color = PLATFORM_ART[pl.art];
-  if (pl.art === "bars") {
-    contact(scene, x + 16, 54);
-    contact(scene, x + w - 16, 54);
-    g.lineStyle(10, INK_HEX, 1);
-    g.lineBetween(x + 16, y + 10, x + 16, FLOOR_Y);
-    g.lineBetween(x + w - 16, y + 10, x + w - 16, FLOOR_Y);
-    g.lineStyle(5, 0xffc83d, 1);
-    g.lineBetween(x + 16, y + 10, x + 16, FLOOR_Y);
-    g.lineBetween(x + w - 16, y + 10, x + w - 16, FLOOR_Y);
-    g.fillStyle(INK_HEX, 1);
-    g.fillRoundedRect(x - 4, y - 4, w + 8, 30, 8);
-    g.fillStyle(color, 1);
-    g.fillRoundedRect(x, y, w, 22, 6);
-    g.fillStyle(0xffffff, 0.25);
-    g.fillRect(x + 6, y + 4, w - 12, 5);
-    return;
-  }
   wallShadow(scene, x, y + 22, w);
   for (const bx of [x + 14, x + w - 14]) {
     const d = bx < x + w / 2 ? 1 : -1;
@@ -208,6 +283,21 @@ function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
   g.fillRect(x + 8, y + 1, w - 16, 3);
   g.lineStyle(2, INK_HEX, 0.35);
   g.lineBetween(x + 4, y + 9, x + w - 4, y + 9);
+  return null;
+}
+
+function flexPerch(scene: Phaser.Scene, p: Perch, power: number) {
+  const now = scene.time.now;
+  if (now - p.at < 160) return;
+  p.at = now;
+  const dip = 2 + 3 * power;
+  const baseY = p.y - 4;
+  scene.tweens.killTweensOf([p.top, p.poles]);
+  p.top.setY(baseY + dip);
+  scene.tweens.add({ targets: p.top, y: baseY, duration: 320 + 200 * power, ease: "Elastic.easeOut", easeParams: [1.2, 0.35] });
+  const px = p.x0;
+  p.poles.setX(px + dip * 0.5);
+  scene.tweens.add({ targets: p.poles, x: px, duration: 60, yoyo: true, repeat: 2, onComplete: () => p.poles.setX(px) });
 }
 
 export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {
@@ -221,6 +311,7 @@ export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {
     solids.push(z);
   };
   for (const [a, b] of level.ground) addSolid(cx(a), FLOOR_Y, cx(b + 1) - cx(a), 400);
+  const props: World["props"] = {};
   for (const bl of level.blocks) {
     const x = cx(bl.col);
     const y = cy(bl.row);
@@ -242,16 +333,18 @@ export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {
       g.fillRect(x + w / 2 - 12, y + h / 2 + 26, 24, 6);
     } else if (bl.art === "bin") {
       const k = (h - 8) / (BIN_ART.bottom - BIN_ART.top);
-      scene.add.image(x + w / 2, y + h + (BIN_ART.height - BIN_ART.bottom) * k, "bin").setOrigin(0.5, 1).setDepth(6).setDisplaySize(BIN_ART.width * k, BIN_ART.height * k);
+      (props.bin ??= []).push(scene.add.image(x + w / 2, y + h + (BIN_ART.height - BIN_ART.bottom) * k, "bin").setOrigin(0.5, 1).setDepth(6).setDisplaySize(BIN_ART.width * k, BIN_ART.height * k));
     } else {
-      scene.add.image(x + w / 2, y + h, bl.art).setOrigin(0.5, 1).setDepth(6).setDisplaySize(w + 10, 160 * ((w + 10) / 170));
+      (props.boxes ??= []).push(scene.add.image(x + w / 2, y + h, bl.art).setOrigin(0.5, 1).setDepth(6).setDisplaySize(w + 10, 160 * ((w + 10) / 170)));
     }
   }
 
   const oneWays: Phaser.GameObjects.Zone[] = [];
+  const perches: Perch[] = [];
   for (const pl of level.platforms) {
     if (pl.wobbly) continue;
-    drawPlatform(scene, pl);
+    const perch = drawPlatform(scene, pl, level.theme === "yard");
+    if (perch) perches.push(perch);
     const z = scene.add.zone(cx(pl.col) + (pl.w * TILE) / 2, cy(pl.row) + 10, pl.w * TILE, 20);
     scene.physics.add.existing(z, true);
     const body = z.body as Phaser.Physics.Arcade.StaticBody;
@@ -276,5 +369,11 @@ export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {
   }
 
   const groundAt = (x: number) => level.ground.some(([a, b]) => x >= cx(a) && x < cx(b + 1));
-  return { width, solids, oneWays, slips, groundAt };
+  const flex = (x: number, feet: number, power: number) => {
+    const p = perches.find((q) => x > q.x0 - 10 && x < q.x1 + 10 && Math.abs(feet - q.y) < 14);
+    if (!p) return false;
+    flexPerch(scene, p, Phaser.Math.Clamp(power, 0, 1));
+    return true;
+  };
+  return { width, solids, oneWays, slips, groundAt, props, flex };
 }
