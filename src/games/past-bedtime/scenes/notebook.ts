@@ -739,8 +739,9 @@ export class Notebook implements NotebookView {
     const verdict = this.onLine(sp.x, sp.line + 4, extra <= 0 ? (stars < 3 ? this.copy.wonWithHint : this.copy.wonPerfect) : this.copy.wonClose(extra), 27, PENCIL_SOFT, sp.w);
     const verdictLines = Math.max(1, verdict.getWrappedText().length);
     const quote = this.onLine(sp.x, sp.line + 4 + verdictLines, `“${line}”`, 30, PENCIL, sp.w);
+    const quoteLines = Math.max(1, quote.getWrappedText().length);
     this.stampObjects.push(title, ...earned, moves, verdict, quote);
-    if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 5 + verdictLines, this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
+    if (isLast) this.stampObjects.push(this.onLine(sp.x, sp.line + 4 + verdictLines + quoteLines, this.copy.lastLevel, 25, PENCIL_SOFT, sp.w));
     this.buildButtons([]);
   }
 
