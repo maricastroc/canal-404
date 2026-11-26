@@ -166,7 +166,7 @@ export type GoalView = {
 
 export const HOPPER_ORIGIN_X = 55 / 150;
 export const PIXEL_SCALE = 1.1;
-export const BOWL_SCALE = 0.7;
+export const BOWL_SCALE = 0.65;
 const GLOW = { fill: 0xffc83d, rings: [0.34, 0.2, 0.1], spread: 9 };
 
 function union(...rects: Rect[]): Rect {
