@@ -50,6 +50,8 @@ The reference machines are in `solutions.ts`, with their step counts in `GOLDEN_
 - Lina's opening line can be seen again: clicking or tapping her (or the "…" bubble beside her while she's quiet) repeats it, D repeats it along with the level description, and the touch layouts' level card shows it below the goal.
 - Lina's speech bubble picks the position that covers least of the goal, the build area, the blocks and the pipe. Phones in portrait move the coach dialog down while the win banner is up. On a win, they frame the goal's reaction instead of showing the cheer, which the result card repeats.
 - Wins on desktop and on landscape phones dim the room around the goal's reaction. The finale's chain reaction instead spans the room. It lasts about 5.6 s, and a tap, Space or Enter skips it after 0.9 s.
+- Scale follows Lina: her 204 px stand for 1.30 m. Decoration is drawn between 2× and 3× its real size at that scale (small things like the bowl up to 3.5×), a recurring object never comes back smaller than 60% of the size it had in its own level, and between neighbours the bigger object in real life is never the smaller one on screen. Pixel has one scale everywhere (`PIXEL_SCALE`). Goals are exempt: their collision fixes their size.
+- Things that rest on a surface touch it: the bottom of the drawing sits on the shelf or floor line, within its outline.
 - Reduced motion turns off the window cloud, the blinking LED, the tweens in the chain and the eye tracking. The pose changes stay.
 
 ## Consequences

@@ -81,7 +81,9 @@ const RUNS_KEY = "labRuns";
 const TRAMPOLINE = 4;
 const OFF_TOP = -30;
 
-function wrapLines(text: string, max = 30) {
+const BUBBLE = { emptyBuild: 0.3, busyBuild: 2, block: 2, line: 2500, lines: 3 };
+
+function greedyLines(text: string, max: number) {
   const lines: string[] = [];
   let line = "";
   for (const word of text.split(" ")) {
@@ -94,7 +96,19 @@ function wrapLines(text: string, max = 30) {
     }
   }
   if (line) lines.push(line);
-  return lines.join("\n");
+  return lines;
+}
+
+function wrapLines(text: string, max = 30) {
+  const spread = (lines: string[]) => Math.max(...lines.map((l) => l.length)) - Math.min(...lines.map((l) => l.length));
+  const first = greedyLines(text, max);
+  let best = first;
+  for (let width = max - 1; width > 6; width -= 1) {
+    const lines = greedyLines(text, width);
+    if (lines.length > first.length) break;
+    if (spread(lines) < spread(best)) best = lines;
+  }
+  return best.join("\n");
 }
 
 function overlap(a: Rect, b: Rect) {
@@ -289,7 +303,11 @@ export class LabScene extends Phaser.Scene {
       reduced,
       text: this.copy.world,
     });
-    this.buildArea = drawBuildArea(this, level.build, fonts, this.copy.world.buildHere);
+    const blockBoxes = sceneBlocks(level).map((b) => {
+      const box = polyBox(blockPoly(b));
+      return { x: box.left, y: box.top, w: box.right - box.left, h: box.bottom - box.top };
+    });
+    this.buildArea = drawBuildArea(this, level.build, fonts, this.copy.world.buildHere, [pipeZone(level), this.zone, ...blockBoxes]);
     this.trailGfx = this.add.graphics().setDepth(6);
     this.drawGuide();
 
@@ -759,7 +777,7 @@ export class LabScene extends Phaser.Scene {
   }
 
   private tellStory(ms: number) {
-    this.say(this.storyLine(this.hud.kind), ms, this.level.guide ? 20 : 24);
+    this.say(this.storyLine(this.hud.kind), ms, this.level.guide ? 20 : 28);
     this.goal.point?.();
   }
 
@@ -787,12 +805,18 @@ export class LabScene extends Phaser.Scene {
       const box = polyBox(blockPoly(b));
       return { x: box.left, y: box.top, w: box.right - box.left, h: box.bottom - box.top };
     });
-    const cost = (r: Rect) =>
-      overlap(r, this.zone) * 6 + overlap(r, this.level.build) * 2 + blocks.reduce((a, b) => a + overlap(r, b), 0) + overlap(r, pipeZone(this.level));
+    const building = this.parts.length > 0 || Boolean(this.carry);
+    const lineCost = BUBBLE.line * this.hud.textScale ** 2;
+    const cost = (r: Rect, lines: number) =>
+      overlap(r, this.zone) * 6 +
+      overlap(r, this.level.build) * (building ? BUBBLE.busyBuild : BUBBLE.emptyBuild) +
+      blocks.reduce((a, b) => a + overlap(r, b), 0) * BUBBLE.block +
+      overlap(r, pipeZone(this.level)) +
+      Math.max(0, lines - BUBBLE.lines) * lineCost;
     let best = options[0];
     let bestCost = Infinity;
     options.forEach((o, i) => {
-      const c = cost(this.bubble.box(o.text, o.x, o.y, o.side)) + i;
+      const c = cost(this.bubble.box(o.text, o.x, o.y, o.side), o.text.split("\n").length) + i;
       if (c < bestCost) {
         best = o;
         bestCost = c;

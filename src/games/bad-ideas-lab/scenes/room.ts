@@ -4,7 +4,7 @@ import type { LabCopy } from "../copy";
 import { LEVELS } from "../levels";
 import type { LabSfx } from "../sounds";
 import { Bubble, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
-import { HOPPER_ORIGIN_X } from "./world";
+import { BOWL_SCALE, HOPPER_ORIGIN_X, PIXEL_SCALE } from "./world";
 
 type Memento = "target" | "pixel" | "toaster" | "juice" | "tv" | "bell" | "pet" | "record" | "pins";
 
@@ -28,13 +28,14 @@ const LAYOUT: Record<string, Layout> = {
   juice: { target: 1830, pixel: 1680, shelf: { x: 1300, y: 560 } },
   remote: { target: 1855, pixel: 1745, juice: 1585, shelf: { x: 1600, y: 560 } },
   finale: { target: 1865, pixel: 1300, juice: 1450, tv: 1620, shelf: { x: 1300, y: 690 } },
-  kibble: { target: 1865, bell: 1772, tv: 1665, juice: 1700, shelf: { x: 1770, y: 600 } },
-  vinyl: { pet: 1150, tv: 1410, target: 1830, bell: 1730, juice: 1600, shelf: { x: 1790, y: 470 } },
-  strike: { target: 240, bell: 335, juice: 290, pet: 1560, tv: 1790, shelf: { x: 1580, y: 520 } },
-  chain: { target: 420, bell: 540, juice: 600, tv: 1250, pet: 1470, pins: 1700, shelf: { x: 1480, y: 620 }, bruno: 270 },
+  kibble: { target: 1868, bell: 1838, tv: 1688, juice: 1700, shelf: { x: 1770, y: 600 } },
+  vinyl: { pet: 1120, tv: 1410, target: 1830, bell: 1730, juice: 1600, shelf: { x: 1790, y: 470 } },
+  strike: { target: 240, bell: 335, juice: 290, pet: 1557, tv: 1829, shelf: { x: 1580, y: 520 } },
+  chain: { target: 420, bell: 540, juice: 600, tv: 1250, pet: 1455, pins: 1740, shelf: { x: 1480, y: 620 }, bruno: 270 },
 };
 
 const DEPTH = { back: 1.2, item: 1.6, front: 2.2 };
+const SCALE = { target: 0.8, tv: 0.8, record: 0.85, pin: 1, hopper: 0.7 };
 const BURNT = 0x9a6440;
 
 type Helpers = {
@@ -103,8 +104,8 @@ export class RoomView {
       g.fillCircle(x - 86, FLOOR_Y + 6, 6);
     }
     if (this.has("target") && at.target !== undefined) {
-      this.floorShadow(at.target, 92);
-      this.target = s.add.image(at.target, FLOOR_Y + 2, "target").setOrigin(0.5, 1).setScale(0.6).setAngle(-12).setDepth(DEPTH.item);
+      this.floorShadow(at.target, 112);
+      this.target = s.add.image(at.target, FLOOR_Y + 2, "target").setOrigin(0.5, 1).setScale(SCALE.target).setAngle(-12).setDepth(DEPTH.item);
     }
     if (this.has("bell") && at.bell !== undefined) {
       this.floorShadow(at.bell, 70);
@@ -112,11 +113,11 @@ export class RoomView {
     }
     if (this.has("pins") && at.pins !== undefined) {
       const x = at.pins;
-      this.floorShadow(x, 150);
-      this.pins = [-46, 4, 52].map((dx, i) =>
+      this.floorShadow(x, 210);
+      this.pins = [-64, 6, 72].map((dx, i) =>
         s.add
-          .image(x + dx, FLOOR_Y - 12 - (i === 1 ? 4 : 0), "pin")
-          .setScale(0.72)
+          .image(x + dx, FLOOR_Y - 15 - (i === 1 ? 5 : 0), "pin")
+          .setScale(SCALE.pin)
           .setAngle([88, -84, 96][i])
           .setDepth(DEPTH.item + i * 0.01),
       );
@@ -131,22 +132,22 @@ export class RoomView {
     const at = this.at;
     if (this.has("pet") && at.pet !== undefined) {
       const x = at.pet;
-      this.floorShadow(x, 250);
-      s.add.image(x - 92, FLOOR_Y + 2, "hopper").setOrigin(HOPPER_ORIGIN_X, 1).setScale(0.55).setDepth(DEPTH.item);
-      s.add.image(x - 24, FLOOR_Y - 23, "kibble-full").setScale(0.72, 0.62).setDepth(DEPTH.item);
-      s.add.image(x - 24, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setScale(0.78).setDepth(DEPTH.item + 0.01);
-      this.cat = s.add.image(x + 74, FLOOR_Y + 4, "cat-sleep").setOrigin(0.5, 1).setScale(0.85).setFlipX(true).setDepth(DEPTH.front);
-      const zzz = cartoonText(s, x + 64, FLOOR_Y - 76, this.text.zzz, { size: 24, color: "#fbf5e6", font: this.fonts.display, stroke: 0.18 }).setDepth(DEPTH.front);
+      this.floorShadow(x + 30, 300);
+      s.add.image(x - 86, FLOOR_Y + 2, "hopper").setOrigin(HOPPER_ORIGIN_X, 1).setScale(SCALE.hopper).setDepth(DEPTH.item);
+      s.add.image(x, FLOOR_Y - 18, "kibble-full").setScale(0.8, 0.7).setDepth(DEPTH.item);
+      s.add.image(x, FLOOR_Y + 2, "bowl").setOrigin(0.5, 1).setScale(BOWL_SCALE).setDepth(DEPTH.item + 0.01);
+      this.cat = s.add.image(x + 104, FLOOR_Y + 4, "cat-sleep").setOrigin(0.5, 1).setScale(PIXEL_SCALE).setFlipX(true).setDepth(DEPTH.front);
+      const zzz = cartoonText(s, x + 96, FLOOR_Y - 84, this.text.zzz, { size: 24, color: "#fbf5e6", font: this.fonts.display, stroke: 0.18 }).setDepth(DEPTH.front);
       if (!this.reduced) {
-        s.tweens.add({ targets: this.cat, scaleY: 0.82, duration: 1400, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-        s.tweens.add({ targets: zzz, y: FLOOR_Y - 100, alpha: { from: 1, to: 0.15 }, duration: 2000, repeat: -1 });
+        s.tweens.add({ targets: this.cat, scaleY: PIXEL_SCALE * 0.965, duration: 1400, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+        s.tweens.add({ targets: zzz, y: FLOOR_Y - 108, alpha: { from: 1, to: 0.15 }, duration: 2000, repeat: -1 });
       }
       return;
     }
     if (this.has("pixel") && at.pixel !== undefined && LEVELS[this.levelIndex].goal.type !== "feeder") {
-      this.floorShadow(at.pixel, 80);
-      this.cat = s.add.image(at.pixel, FLOOR_Y + 4, "cat-grumpy").setOrigin(0.5, 1).setScale(0.85).setDepth(DEPTH.front);
-      if (!this.reduced) s.tweens.add({ targets: this.cat, scaleY: 0.83, duration: 1700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      this.floorShadow(at.pixel, 100);
+      this.cat = s.add.image(at.pixel, FLOOR_Y + 4, "cat-grumpy").setOrigin(0.5, 1).setScale(PIXEL_SCALE).setDepth(DEPTH.front);
+      if (!this.reduced) s.tweens.add({ targets: this.cat, scaleY: PIXEL_SCALE * 0.976, duration: 1700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     }
   }
 
@@ -159,7 +160,7 @@ export class RoomView {
     if (this.has("juice")) items.push("jar");
     if (this.has("record")) items.push("record");
     if (!items.length) return;
-    const widths = { toaster: 100, jar: 90, record: 100 };
+    const widths = { toaster: 100, jar: 90, record: 136 };
     const gap = 14;
     const total = items.reduce((a, it) => a + widths[it], 0) + gap * (items.length - 1);
     const w = total + 40;
@@ -187,12 +188,12 @@ export class RoomView {
       } else if (it === "jar") {
         const juice = s.add.graphics().setDepth(DEPTH.item - 0.05);
         juice.fillStyle(0xffa733, 0.92);
-        juice.fillRect(cx - 28, spot.y - 34, 56, 26);
-        s.add.image(cx, spot.y - 58, "juicer").setOrigin(85 / 190, 14 / 130).setScale(0.45).setDepth(DEPTH.item);
-        this.jar = { x: cx, y: spot.y - 40 };
+        juice.fillRect(cx - 28, spot.y - 27, 56, 26);
+        s.add.image(cx, spot.y - 50, "juicer").setOrigin(85 / 190, 14 / 130).setScale(0.45).setDepth(DEPTH.item);
+        this.jar = { x: cx, y: spot.y - 33 };
       } else {
-        s.add.image(cx, spot.y + 2, "record").setOrigin(90 / 160, 1).setScale(0.6).setDepth(DEPTH.item);
-        this.record = { x: cx, y: spot.y - 50 };
+        s.add.image(cx, spot.y + 2, "record").setOrigin(90 / 160, 1).setScale(SCALE.record).setDepth(DEPTH.item);
+        this.record = { x: cx, y: spot.y - 70 };
       }
       x += widths[it] + gap;
     }
@@ -200,9 +201,9 @@ export class RoomView {
 
   private drawTv(x: number) {
     const s = this.scene;
-    const k = 0.62;
-    this.floorShadow(x, 130);
-    const img = s.add.image(x, FLOOR_Y + 4, "tv").setOrigin(0.5, 1).setScale(k).setDepth(DEPTH.item);
+    const k = SCALE.tv;
+    this.floorShadow(x, 170);
+    const img = s.add.image(x, FLOOR_Y + 2, "tv").setOrigin(0.5, 1).setScale(k).setDepth(DEPTH.item);
     const left = img.x - 110 * k;
     const top = img.y - 186 * k;
     const sx = left + 24 * k;
@@ -210,7 +211,7 @@ export class RoomView {
     const sw = 138 * k;
     const sh = 104 * k;
     const screen = s.add.graphics().setDepth(DEPTH.item + 0.01);
-    const label = cartoonText(s, sx + sw / 2, sy + sh * 0.42, "404", { size: 28, color: "#ffc83d", font: this.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(DEPTH.item + 0.02);
+    const label = cartoonText(s, sx + sw / 2, sy + sh * 0.42, "404", { size: Math.round(45 * k), color: "#ffc83d", font: this.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(DEPTH.item + 0.02);
     this.tv = { screen, label, x: sx, y: sy, w: sw, h: sh };
     this.paintTv(0);
     if (!this.reduced) {
@@ -311,7 +312,7 @@ export class RoomView {
       fx.sfx("ding", 0.5);
       const t = this.target;
       if (!t || reduced) return;
-      s.tweens.add({ targets: t, scaleX: { from: 0.6, to: -0.6 }, duration: 150, yoyo: true, repeat: 2, onComplete: () => t.setScale(0.6) });
+      s.tweens.add({ targets: t, scaleX: { from: SCALE.target, to: -SCALE.target }, duration: 150, yoyo: true, repeat: 2, onComplete: () => t.setScale(SCALE.target) });
     });
     at(2050, () => {
       fx.sfx("ding", 0.9);
@@ -325,7 +326,7 @@ export class RoomView {
       const c = this.cat;
       if (!c) return;
       s.tweens.killTweensOf(c);
-      c.setTexture("cat-scared").setScale(0.85);
+      c.setTexture("cat-scared").setScale(PIXEL_SCALE);
       fx.word(this.text.meow, c.x, c.y - 130, "#f06ba8", 40);
       if (!reduced) s.tweens.add({ targets: c, y: c.y - 70, duration: 200, yoyo: true, ease: "Quad.easeOut" });
       at(1500, () => c.setTexture("cat-grumpy"));
