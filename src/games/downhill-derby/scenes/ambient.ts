@@ -454,6 +454,8 @@ export class Ambient {
     const road = track.surfaces[0];
     const ex = set.exit;
     const ey = heightAt(road, ex) - 30;
+    const sewer = track.surfaces.find((q) => q.kind === "sewer");
+    const pipe = sewer ? heightAt(sewer, Math.min(ex, sewer.x1)) - ey : 36;
     const root = this.add(s.add.container(ex, ey));
     root.setDepth(7.3);
     const g = s.add.graphics();
@@ -471,8 +473,21 @@ export class Ambient {
       update: (dt, t) => {
         burst = Math.max(0, burst - dt);
         const h = 60 + burst * 520;
+        const k = Math.min(1, burst / 1.4);
         g.clear();
-        for (let i = 0; i < 9; i += 1) {
+        if (k > 0) {
+          const w = 44 + k * 56;
+          g.fillStyle(0x8fd4f7, 0.25 + k * 0.5);
+          g.fillRoundedRect(-w / 2, -h, w, h + pipe, w / 2);
+          g.fillStyle(0xe4f6fd, k * 0.7);
+          g.fillRoundedRect(-w / 6, -h + 14, w / 3, h + pipe - 20, w / 6);
+          for (let i = 0; i < 7; i += 1) {
+            const a = (i / 7) * Math.PI * 2 + t * 3;
+            g.fillStyle(0xbfe7f6, 0.8 * k);
+            g.fillCircle(Math.cos(a) * w * 0.7, -h + Math.sin(a) * 18, 10 + k * 8);
+          }
+        }
+        for (let i = 0; i < 9 + Math.round(k * 12); i += 1) {
           const a = t * 9 + i * 0.7;
           const y = -((t * 260 + i * 37) % h);
           g.fillStyle(0x8fd4f7, 0.85);

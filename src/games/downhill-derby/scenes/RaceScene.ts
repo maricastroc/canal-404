@@ -172,6 +172,8 @@ export class RaceScene extends Phaser.Scene {
   private finished: RaceFinish | null = null;
   private music!: RaceMusic;
   private shownShow = 0;
+  private freeze = 0;
+  private camRush = 0;
   private acc = 0;
   private prev = { x: 0, y: 0, angle: 0 };
   private dist = 0;
@@ -651,7 +653,6 @@ export class RaceScene extends Phaser.Scene {
     this.helmetOn = false;
     this.dustyOn = false;
     this.wet = 0;
-    this.surfaceTips.clear();
     this.rollCycle.clear();
     this.ambient.reset();
     this.voice.clear();
@@ -683,7 +684,8 @@ export class RaceScene extends Phaser.Scene {
     this.lastTier = 0;
     this.jumpedThisRun = false;
     this.spunThisFlight = false;
-    this.hitTips = 0;
+    this.freeze = 0;
+    this.camRush = 0;
     this.charged = false;
     this.trail = [];
     for (const r of this.rivals) {
@@ -831,8 +833,11 @@ export class RaceScene extends Phaser.Scene {
     this.elapsed += dt;
     if (this.phase === "countdown") this.tickCountdown(dt);
     else {
-      this.raceTime += dt;
-      this.acc += dt;
+      if (this.freeze > 0) this.freeze -= dt;
+      else {
+        this.raceTime += dt;
+        this.acc += dt;
+      }
       let n = 0;
       while (this.acc >= DT && n < 14) {
         this.stepOnce();
@@ -950,6 +955,17 @@ export class RaceScene extends Phaser.Scene {
     if (best) this.voice.say(best.id, this.copy.voices[best.id].tease);
   }
 
+  private hitStop(seconds: number) {
+    if (!this.bridge.reducedMotion) this.freeze = Math.max(this.freeze, seconds);
+  }
+
+  private celebrate() {
+    if (this.sim.show.mult !== 5 || this.sim.show.tricks < 2) return;
+    this.fx.confetti(this.sim.x, this.sim.y - 170, 16);
+    this.cart.react("perfect");
+    this.sfx(DOWNHILL_SFX.shortcut, 0.5, 1.2);
+  }
+
   private alignTip() {
     this.hud.tip(this.touchActive ? this.copy.tips.alignTouch : this.copy.tips.align);
   }
@@ -1005,7 +1021,10 @@ export class RaceScene extends Phaser.Scene {
           this.fx.impact(s.x, s.y, strength * 0.7);
           this.sfx(DOWNHILL_SFX.landPerfect, 0.8 + strength * 0.4);
           this.fx.sparkle(s.x, s.y);
-          if (e.flips > 0) this.shout("land", c.flip(e.flips), { priority: 3, color: "#f27aa8", size: 64, sub: c.perfect });
+          if (e.flips > 0) {
+            this.shout("land", c.flip(e.flips), { priority: 3, color: "#f27aa8", size: 64, sub: c.perfect });
+            this.hitStop(0.06 + Math.min(e.flips, 3) * 0.02);
+          }
           else this.shout("land", c.perfect, { priority: 2, color: "#ffcf3f", size: 56 });
           if (this.spunThisFlight) this.alignLessons += 1;
         } else {
@@ -1032,6 +1051,7 @@ export class RaceScene extends Phaser.Scene {
         else this.alignTip();
         this.hud.flashSpeed(Math.min(-1, s.crashFrom * this.bridge.params.crashKeep - speedBefore));
         if (!this.bridge.reducedMotion) this.cam.shake = 0.22;
+        this.hitStop(0.09);
         break;
       case "recover":
         this.sfx(DOWNHILL_SFX.recover);
@@ -1066,6 +1086,7 @@ export class RaceScene extends Phaser.Scene {
           this.hud.tag("hit", c.potholeBounce, "#7fe0c4");
           this.hud.flashSpeed(-speedBefore * e.loss);
         } else if (e.penalized && !heavy) {
+          this.hud.untag("near");
           const text = { cone: c.hitCone, line: c.hitLine, crate: c.hitCrate, pothole: c.hitPothole, bin: c.hitBin, gnome: c.hitGnome, hose: c.hitHose, melon: c.hitMelon, orange: c.hitOrange, stand: c.hitStand, bag: c.hitBag }[kind as "cone"] ?? c.hitCrate;
           this.hud.tag("hit", text, "#ff9f80");
           if (kind === "line") this.hud.tip(c.tips.duck);
@@ -1122,6 +1143,7 @@ export class RaceScene extends Phaser.Scene {
         break;
       case "jet":
         this.ambient.jetBurst();
+        this.camRush = 0.7;
         this.sfx(DOWNHILL_SFX.lip);
         this.sfx(DOWNHILL_SFX.flutter);
         this.fx.impact(s.x, s.y, 1, 0x8fd4f7);
@@ -1166,7 +1188,8 @@ export class RaceScene extends Phaser.Scene {
         const flips = e.points === 300 ? 1 : e.points === 800 ? 2 : 3 + Math.round((e.points - 1500) / 800);
         const label = e.kind === "flip" ? c.flip(flips) : e.kind === "pose" ? c.show.poses[2] : c.show.tricks[e.kind];
         if (e.kind !== "rail" || e.points > 0) this.hud.showTrickText(`${e.kind === "pose" ? c.show.label : label} +${formatNumber(e.points, this.bridge.locale)}${e.mult > 1 ? `  ×${e.mult}` : ""}`, e.mult >= 4 ? "#ffcf3f" : "#fbf5e6");
-        if (e.kind === "nearMiss") this.hud.tag("near", c.show.tricks.nearMiss, "#7fe0c4");
+        if (e.kind === "nearMiss" && !this.hud.hasTag("hit")) this.hud.tag("near", c.show.tricks.nearMiss, "#7fe0c4");
+        if (e.mult === 5 && e.kind !== "rail") this.celebrate();
         break;
       }
       case "bank":
@@ -1556,18 +1579,20 @@ export class RaceScene extends Phaser.Scene {
       if (this.trail.length > TRAIL) this.trail.shift();
     }
     if (this.trail.length < 2 || this.bridge.reducedMotion) return;
+    const mult = this.sim.show.tricks > 0 ? this.sim.show.mult : 1;
+    const color = mult >= 5 ? 0xffcf3f : mult >= 3 ? 0x7fe0c4 : 0xffffff;
     for (let i = 1; i < this.trail.length; i += 1) {
       const p = this.trail[i - 1];
       const q = this.trail[i];
       const k = i / this.trail.length;
       const alpha = k * k * 0.5 * q.a;
       if (alpha < 0.02) continue;
-      g.lineStyle(4 + k * 10, 0xffffff, alpha);
+      g.lineStyle(4 + k * 10, color, alpha);
       g.beginPath();
       g.moveTo(p.x, p.y);
       g.lineTo(q.x, q.y);
       g.strokePath();
-      g.lineStyle(2 + k * 4, 0xffffff, alpha * 0.8);
+      g.lineStyle(2 + k * 4, color, alpha * 0.8);
       g.beginPath();
       g.moveTo(p.x, p.y - 46);
       g.lineTo(q.x, q.y - 46);
@@ -1804,6 +1829,7 @@ export class RaceScene extends Phaser.Scene {
     const view = H / zoom;
     const roadLine = Math.min(0.74, Math.max(tune.roadLine, (0.9 * H - 190 * zoom) / H));
     let fy = y - (roadLine - 0.5) * view;
+    if (this.track.surfaces[sim.surface]?.kind === "sewer") fy = Math.min(fy, heightAt(this.track.surfaces[0], x) - (roadLine - 0.5) * view + 120);
     const aheadY = this.groundBelow(x + lead + (W / (2 * zoom)) * 0.6);
     const lowest = fy + 0.42 * view;
     if (aheadY + 30 > lowest) fy += aheadY + 30 - lowest;
@@ -1839,8 +1865,9 @@ export class RaceScene extends Phaser.Scene {
     }
     const bigAir = air && this.predictedAir > 0.9;
     if (dt > 0) {
+      this.camRush = Math.max(0, this.camRush - dt);
       this.cam.x += (fx - this.cam.x) * damp(6, dt);
-      this.cam.y += (fy - this.cam.y) * damp(bigAir ? 3.4 : air ? 2.6 : 3.4, dt);
+      this.cam.y += (fy - this.cam.y) * damp(this.camRush > 0 ? 9 : bigAir ? 3.4 : air ? 2.6 : 3.4, dt);
       this.cam.zoom += (zoom - this.cam.zoom) * damp(zoom < this.cam.zoom ? (bigAir ? 3.2 : 1.9) : 0.9, dt);
       this.cam.shake = Math.max(0, this.cam.shake - dt);
       this.cam.dipVel += (-this.cam.dip * 120 - this.cam.dipVel * 13) * dt;

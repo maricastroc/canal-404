@@ -56,6 +56,8 @@ export interface RaceHud {
   showDrop(text: string): void;
   shout(key: string, text: string, opts: ShoutOptions): void;
   tag(key: string, text: string, color: string): void;
+  hasTag(key: string): boolean;
+  untag(key: string): void;
   tip(text: string, life?: number): void;
   countdown(text: string | null): void;
   showLineup(entries: LineupEntry[]): void;
@@ -610,6 +612,17 @@ export class Hud implements RaceHud {
       const last = this.tags.pop();
       if (last) this.drop(last);
     }
+  }
+
+  hasTag(key: string) {
+    return this.tags.some((q) => q.key === key);
+  }
+
+  untag(key: string) {
+    const i = this.tags.findIndex((q) => q.key === key);
+    if (i < 0) return;
+    this.drop(this.tags[i]);
+    this.tags.splice(i, 1);
   }
 
   tip(text: string, life = 2.8) {
