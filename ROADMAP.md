@@ -1,6 +1,6 @@
 # Roadmap
 
-Canal 404 grows in small, verifiable deliveries. Player experience drives the order: a feature lands when it makes the games more fun to play, explore or share, and it is done only when it is tested in the real game. Decisions that shape the code are recorded in [`docs/decisions`](docs/decisions); shipped changes are listed in [`CHANGELOG.md`](CHANGELOG.md).
+Canal 404 grows in small, verifiable deliveries. Player experience drives the order: a feature lands when it makes the games more fun to play, explore or share, and it is done only when it is tested in the real game. Decisions that shape the code are recorded in [`docs/decisions`](docs/decisions).
 
 ## Stage 1: Polish and essential infrastructure
 
