@@ -159,6 +159,7 @@ export class CartView {
   private hold: { expr: Expression; pose: ArmPose } | null = null;
   private poseLevel = 0;
   private poseBlend = 0;
+  private flyBlend = 0;
   private shownExpr: Expression | null = null;
   private shownArm: ArmPose | null = null;
   private flyers: Flyer[] = [];
@@ -396,6 +397,7 @@ export class CartView {
     const crashing = pose.crash > 0;
     if (crashing && this.poseLevel > 0) this.poseLevel = 0;
     this.poseBlend += (POSE_LIFT[this.poseLevel] - this.poseBlend) * Math.min(1, dt * 12);
+    this.flyBlend += ((this.poseLevel === 3 ? 1 : 0) - this.flyBlend) * Math.min(1, dt * 8);
     if (crashing && !this.crashing) this.startCrash(pose.x, pose.y, pose.angle, pose.speed);
     if (!crashing && this.crashing) this.endCrash();
     if (this.crashing) this.updateFlyers(dt, pose.crash);
@@ -457,7 +459,8 @@ export class CartView {
     if (this.poseBlend > 0.5 && !crashing) {
       rx += this.poseBlend * Math.sin(angle);
       ry -= this.poseBlend * Math.cos(angle);
-      rr -= (this.poseBlend / POSE_LIFT[3]) * 0.32 - Math.sin(pose.time * 9) * 0.04 * (this.poseBlend / POSE_LIFT[3]);
+      const k = this.poseBlend / POSE_LIFT[3];
+      rr += this.flyBlend * 1.2 - (1 - this.flyBlend) * k * 0.32 + Math.sin(pose.time * 9) * 0.04 * k;
     }
     if (crashing) {
       const u = pose.crash;

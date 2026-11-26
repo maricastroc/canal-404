@@ -754,6 +754,17 @@ export class PhoneHud implements RaceHud {
     this.tags.push({ key, text: t, sub: null, life: TAG_LIFE, max: TAG_LIFE, priority: 0, fade: 0, rise: 0 });
   }
 
+  hasTag(key: string) {
+    return this.tags.some((q) => q.key === key);
+  }
+
+  untag(key: string) {
+    const i = this.tags.findIndex((q) => q.key === key);
+    if (i < 0) return;
+    this.drop(this.tags[i]);
+    this.tags.splice(i, 1);
+  }
+
   tip(text: string, life = 2.8) {
     this.fitDockText(this.tipText, text);
     this.tipLife = life;
