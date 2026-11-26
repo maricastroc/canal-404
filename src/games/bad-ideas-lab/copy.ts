@@ -107,7 +107,7 @@ export const COPY = localized({
       kibble: {
         title: "Pazes com o Pixel",
         goal: "Faça a bolinha apertar o botão do comedouro.",
-        story: "O Pixel não me perdoou pelo sino. O botão da patinha liga o comedouro, e ração resolve tudo.",
+        story: "O Pixel ainda tá bravo comigo por causa do sino. Quem sabe um pouco de ração ajude? É só acertar o botão da patinha!",
         hint: "Uma esteira com as setas para a esquerda traz a bolinha de volta por baixo da prateleira.",
         win: "O Pixel aceitou as desculpas. E a ração.",
       },
@@ -479,7 +479,7 @@ export const COPY = localized({
       kibble: {
         title: "Making up with Pixel",
         goal: "Make the ball press the feeder button.",
-        story: "Pixel is still mad about the bell. The paw button turns on his feeder. Food fixes everything!",
+        story: "Pixel is still mad at me about the bell. Maybe a little food will help? Just hit the paw button!",
         hint: "A belt with the arrows pointing left brings the ball back under the shelf.",
         win: "Pixel accepted the apology. And the food.",
       },
