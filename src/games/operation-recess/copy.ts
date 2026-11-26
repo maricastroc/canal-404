@@ -31,12 +31,12 @@ export const COPY = localized({
     },
     hud: {
       level: (n: number, total: number) => `FASE ${n} DE ${total}`,
-      monitors: "MONITORES",
+      monitors: "MONITORES VENCIDOS",
       allMonitors: (kills: number, total: number) => `TODOS! ${kills}/${total}`,
       boss: "INSPETOR DO SILÊNCIO",
     },
     hints: {
-      locker: "TREMEU? PARE OU DÊ UMA ESPADADA!",
+      locker: "ARMÁRIO TREMENDO? ESPERE OU FECHE COM A ESPADA!",
       watcher: "JORNAL ABAIXOU? ESTÁTUA!",
       rope: "PULE QUANDO A CORDA DESCER!",
       pad: "PULE NO COLCHONETE!",
@@ -70,6 +70,14 @@ export const COPY = localized({
       coach: { move: "SEGURE PARA ANDAR", jump: "TOQUE PARA PULAR", attack: "TOQUE PARA ATACAR" },
     },
     deck: { move: "ANDAR", jump: "PULAR", attack: "ESPADA" },
+    barks: {
+      spot: ["EI! NADA DE CORRER!", "ACHOU QUE EU NÃO IA VER?", "PARADO AÍ, MOCINHO!"],
+      rush: ["AGORA VOCÊ VAI VER!", "EI! NADA DE CORRER!"],
+      guard: ["NINGUÉM PASSA!", "DAQUI VOCÊ NÃO PASSA!"],
+      away: ["VOLTA AQUI, MOLEQUE!", "ISSO VAI PRA DIRETORIA!"],
+      lost: ["UÉ? CADÊ?", "SUMIU?!"],
+      caught: ["DIRETO PRA DIRETORIA!", "PEGUEI!"],
+    },
     words: {
       ouch: ["AI!", "UI!", "OPA!"],
       hits: ["POW!", "TOMA!", "PAF!", "BOING!"],
@@ -172,12 +180,12 @@ export const COPY = localized({
     },
     hud: {
       level: (n: number, total: number) => `LEVEL ${n} OF ${total}`,
-      monitors: "MONITORS",
+      monitors: "MONITORS BEATEN",
       allMonitors: (kills: number, total: number) => `ALL! ${kills}/${total}`,
       boss: "THE SILENCE INSPECTOR",
     },
     hints: {
-      locker: "SHAKING? STOP OR SLAM IT SHUT!",
+      locker: "SHAKING LOCKER? WAIT OR SLAM IT WITH YOUR SWORD!",
       watcher: "PAPER DOWN? FREEZE!",
       rope: "JUMP WHEN THE ROPE COMES DOWN!",
       pad: "JUMP ON THE MAT!",
@@ -211,6 +219,14 @@ export const COPY = localized({
       coach: { move: "HOLD TO MOVE", jump: "TAP TO JUMP", attack: "TAP TO ATTACK" },
     },
     deck: { move: "MOVE", jump: "JUMP", attack: "SWORD" },
+    barks: {
+      spot: ["HEY! NO RUNNING!", "THOUGHT I DIDN'T SEE YOU?", "HOLD IT RIGHT THERE!"],
+      rush: ["NOW YOU'RE IN FOR IT!", "HEY! NO RUNNING!"],
+      guard: ["NOBODY GETS PAST ME!", "NOT ON MY WATCH!"],
+      away: ["GET BACK HERE, KID!", "THIS GOES ON YOUR RECORD!"],
+      lost: ["HUH? WHERE'D HE GO?", "VANISHED?!"],
+      caught: ["STRAIGHT TO THE OFFICE!", "GOTCHA!"],
+    },
     words: {
       ouch: ["OW!", "OOF!", "WHOA!"],
       hits: ["POW!", "TAKE THAT!", "SMACK!", "BOING!"],

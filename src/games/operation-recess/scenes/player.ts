@@ -28,9 +28,13 @@ const RUN_FRAMES: Pose[] = ["run-a", "run-b", "run-c", "run-d"];
 export type HeroFx = {
   sfx: (name: "jump" | "land" | "swing" | "step", volume?: number) => void;
   dust: (x: number, y: number, dir: number) => void;
+  land: (x: number, drop: number) => void;
+  surface: (x: number, y: number) => number | null;
 };
 
 const SLASH_SCALE = 1.06;
+const SOLE = 8;
+const CHEER_SOLE = 25;
 
 export class Hero {
   readonly rect: Phaser.GameObjects.Rectangle;
@@ -38,8 +42,9 @@ export class Hero {
   readonly sprite: Phaser.GameObjects.Image;
   private slash: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
-  private groundY: number;
   private k = 1;
+  private hop = 0;
+  private peak = 0;
   facing = 1;
   attackId = 0;
   private attackAt = -9999;
@@ -70,7 +75,6 @@ export class Hero {
     this.sprite = scene.add.image(x, feet, "hero-idle").setOrigin(0.5, 1).setScale(HERO_SCALE / HERO_RES).setDepth(20);
     this.slash = scene.add.image(x, feet, "slash").setDepth(21).setVisible(false).setScale(SLASH_SCALE);
     this.shadow = scene.add.image(x, feet + 2, "blob").setDepth(14).setDisplaySize(122, 29);
-    this.groundY = feet;
   }
 
   private get sc() {
@@ -107,8 +111,12 @@ export class Hero {
     return this.body.bottom;
   }
 
+  private get sole() {
+    return (this.locked === "cheer" ? CHEER_SOLE : SOLE) * this.sc;
+  }
+
   get top() {
-    return this.body.bottom + 2 - this.sprite.displayHeight;
+    return this.body.bottom + 2 + this.sole - this.sprite.displayHeight;
   }
 
   get stunned() {
@@ -169,6 +177,8 @@ export class Hero {
   cheer() {
     this.locked = "cheer";
     this.setPose("cheer");
+    if (this.reduced) return;
+    this.scene.tweens.add({ targets: this, hop: 30, duration: 190, delay: 120, yoyo: true, repeat: 3, ease: "Quad.easeOut" });
   }
 
   update(t: number, dt: number, input: HeroInput, slippery: boolean, carry: number) {
@@ -187,10 +197,12 @@ export class Hero {
     }
     if (carry) this.rect.x += carry * dt;
 
+    if (!ground) this.peak = Math.min(this.peak, b.bottom);
     if (ground) {
       if (!this.wasGround && t - this.airSince > 120) {
         this.fx.sfx("land", 0.5);
         this.fx.dust(this.x, this.feet, 0);
+        this.fx.land(this.x, b.bottom - this.peak);
         if (!this.reduced) {
           this.sprite.setScale(this.sc * 1.1, this.sc * 0.88);
           this.scene.tweens.add({ targets: this.sprite, scaleX: this.sc, scaleY: this.sc, duration: 160, ease: "Back.easeOut" });
@@ -198,6 +210,7 @@ export class Hero {
       }
       this.lastGround = t;
       this.jumping = false;
+      this.peak = b.bottom;
     } else if (this.wasGround) {
       this.airSince = t;
     }
@@ -258,13 +271,16 @@ export class Hero {
 
   sync(t: number, invulnUntil: number) {
     const b = this.body;
-    this.sprite.setPosition(b.center.x, b.bottom + 2).setFlipX(this.facing < 0);
+    this.sprite.setPosition(b.center.x, b.bottom + 2 + this.sole - this.hop).setFlipX(this.facing < 0);
     this.slash.setPosition(b.center.x + this.facing * 104 * this.k, b.center.y + 4 - (this.k - 1) * 50);
     if (t < invulnUntil && !this.locked) this.sprite.setAlpha(Math.floor(t / 70) % 2 ? 0.35 : 1);
     else this.sprite.setAlpha(1);
-    if (this.grounded) this.groundY = b.bottom;
-    const lift = Phaser.Math.Clamp((this.groundY - b.bottom) / 320, 0, 1);
-    this.shadow.setPosition(b.center.x, this.groundY + 3).setDisplaySize(122 * this.k * (1 - lift * 0.5), 29 * this.k * (1 - lift * 0.4)).setAlpha(1 - lift * 0.6);
-    this.shadow.setVisible(b.bottom < this.groundY + 40);
+    const floor = this.grounded ? b.bottom : this.fx.surface(b.center.x, b.bottom - 6);
+    if (floor === null) {
+      this.shadow.setVisible(false);
+      return;
+    }
+    const lift = Phaser.Math.Clamp((floor - b.bottom + this.hop) / 320, 0, 1);
+    this.shadow.setVisible(true).setPosition(b.center.x, floor + 3).setDisplaySize(122 * this.k * (1 - lift * 0.5), 29 * this.k * (1 - lift * 0.4)).setAlpha(1 - lift * 0.6);
   }
 }

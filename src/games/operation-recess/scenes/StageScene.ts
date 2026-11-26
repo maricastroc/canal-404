@@ -33,6 +33,7 @@ type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx:
 type Hint = { lesson: Lesson; anchor: Anchor; past: number };
 type Checkpoint = { level: number; col: number; score: number; kills: number; killScore: number; stickers: number; extras: number; hits: number };
 type Warning = { text: Phaser.GameObjects.Text; x: number; y: number };
+type Speech = { box: Phaser.GameObjects.Container; anchor: Anchor; at: { x: number; y: number }; half: number; lift: number };
 
 const STEP_MAX_MS = 50;
 const FRAME_MAX_MS = 200;
@@ -42,6 +43,8 @@ const TAP_RISE = 140;
 const HOLD_RISE = 230;
 const FULL_RISE = (JUMP_V * JUMP_V) / (2 * GRAVITY);
 const LESSON_GAP = 800;
+const HARD_LANDING = 330;
+const SAY_GAP = 700;
 const DOOR_KID: Record<Theme, string> = { corridor: "deco", yard: "lina", library: "mila", office: "lina" };
 const learned = new Set<Lesson>();
 
@@ -112,6 +115,8 @@ export class StageScene extends Phaser.Scene {
   private markers!: EdgeMarkers;
   private vignette!: Phaser.GameObjects.Image;
   private warnings: Warning[] = [];
+  private speech: Speech[] = [];
+  private lastSay = -1e9;
   private controlsOn = false;
   private touchUi = coarsePointer();
   private lastDt = 0;
@@ -165,6 +170,8 @@ export class StageScene extends Phaser.Scene {
     this.exitZone = null;
     this.lastSound = new Map();
     this.warnings = [];
+    this.speech = [];
+    this.lastSay = -1e9;
     this.controlsOn = false;
   }
 
@@ -195,6 +202,7 @@ export class StageScene extends Phaser.Scene {
       scene: this,
       reduced,
       words: this.copy.words,
+      barks: this.copy.barks,
       sfx: (name, volume) => this.sfx(name, volume),
       warn: (x, y, ms) => this.warn(x, y, ms),
       word: (text, x, y, color, size) => this.word(text, x, y, color, size),
@@ -206,6 +214,9 @@ export class StageScene extends Phaser.Scene {
       room: (event, dir) => this.scenery.room(event, dir),
       busy: (self) => this.crowded(self),
       clang: (x, y) => this.clang(x, y),
+      surface: (x, y) => this.surface(x, y),
+      impact: (x, power) => this.scenery.impact(x, power),
+      say: (text, anchor) => this.say(text, anchor),
     };
 
     if (this.level.exit) {
@@ -262,6 +273,8 @@ export class StageScene extends Phaser.Scene {
     this.hero = new Hero(this, cx(startCol) + TILE / 2 + (resume ? 60 : 0), FLOOR_Y, {
       sfx: (name, volume) => this.sfx(name, volume, name === "step" ? 120 : 0),
       dust: (x, y, dir) => this.dust(x, y, dir),
+      land: (x, drop) => drop > HARD_LANDING && this.scenery.impact(x, Math.min(1, drop / 600)),
+      surface: (x, y) => this.surface(x, y),
     });
     this.safe = { x: this.hero.rect.x, y: this.hero.rect.y };
     this.hero.body.moves = false;
@@ -287,7 +300,7 @@ export class StageScene extends Phaser.Scene {
     this.buildingHud = true;
     const vignette = { corridor: 0.32, yard: 0.18, library: 0.42, office: 0.5 }[this.level.theme];
     this.vignette = this.add.image(0, 0, "vignette").setOrigin(0, 0).setDisplaySize(W, H).setScrollFactor(0).setDepth(50).setAlpha(vignette);
-    this.hud = new RecessHud(this, this.ctx.fonts, this.text.title, this.levelIndex, LEVELS.length, reduced, this.ctx.locale, (a) => this.onPad(a));
+    this.hud = new RecessHud(this, this.ctx.fonts, this.text.title, this.levelIndex, LEVELS.length, reduced, this.ctx.locale, (a) => this.onPad(a), this.level.checkpoints.length);
     this.deck = new TouchDeck(this, this.ctx.fonts, this.copy.deck, this.level.theme, this.hud.touch, (a) => this.onPad(a), reduced);
     this.markers = new EdgeMarkers(this, reduced);
     this.buildingHud = false;
@@ -320,6 +333,20 @@ export class StageScene extends Phaser.Scene {
       this.registry.set("autostart", false);
       this.begin(Boolean(resume));
     }
+  }
+
+  private surface(x: number, y: number) {
+    let best: number | null = null;
+    const check = (body: Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody | null | undefined) => {
+      if (!body || !body.enable || x < body.left || x > body.right || body.top < y) return;
+      if (best === null || body.top < best) best = body.top;
+    };
+    for (const z of this.world.solids) check(z.body as Phaser.Physics.Arcade.StaticBody);
+    for (const z of this.world.oneWays) check(z.body as Phaser.Physics.Arcade.StaticBody);
+    for (const p of this.pads) check(p.zone.body as Phaser.Physics.Arcade.StaticBody);
+    for (const sh of this.shelves) check(sh.zone.body as Phaser.Physics.Arcade.StaticBody);
+    for (const c of this.carts) check(c.img.body as Phaser.Physics.Arcade.Body);
+    return best;
   }
 
   private crowded(self: Enemy) {
@@ -486,6 +513,58 @@ export class StageScene extends Phaser.Scene {
     }
     this.time.delayedCall(Math.max(260, ms), () => t.destroy());
     return t;
+  }
+
+  private say(text: string, anchor: Anchor) {
+    const at = anchor();
+    const view = this.cameras.main.worldView;
+    if (!at || this.t - this.lastSay < SAY_GAP || at.x < view.x + 40 || at.x > view.right - 40) return false;
+    this.lastSay = this.t;
+    const label = this.add.text(0, 0, text, { fontFamily: this.ctx.fonts.display, fontSize: "26px", color: "#1d1830", align: "center", padding: { x: 2, y: 3 }, wordWrap: { width: 300 } }).setOrigin(0.5);
+    const w = label.width + 30;
+    const h = label.height + 16;
+    const g = this.add.graphics();
+    g.fillStyle(INK_HEX, 0.9);
+    g.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, 16);
+    g.fillTriangle(-14, h / 2 - 2, 10, h / 2 - 2, -8, h / 2 + 22);
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+    g.lineStyle(3, INK_HEX, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillTriangle(-10, h / 2 - 3, 5, h / 2 - 3, -7, h / 2 + 13);
+    const k = this.chipScale();
+    const box = this.add.container(at.x, at.y, [g, label]).setDepth(42).setScale(k);
+    const speech: Speech = { box, anchor, at, half: (h / 2 + 22) * k, lift: 0 };
+    this.speech.push(speech);
+    const done = () => {
+      box.destroy();
+      this.speech = this.speech.filter((sp) => sp !== speech);
+    };
+    if (this.ctx.reducedMotion) {
+      box.setAlpha(0);
+      this.tweens.add({ targets: box, alpha: 1, duration: 120 });
+      this.tweens.add({ targets: box, alpha: 0, delay: 1500, duration: 200, onComplete: done });
+      return true;
+    }
+    box.setScale(k * 0.5).setAlpha(0);
+    this.tweens.add({ targets: box, scale: k, alpha: 1, duration: 170, ease: "Back.easeOut" });
+    this.tweens.add({ targets: box, alpha: 0, delay: 1400, duration: 240, onComplete: done });
+    this.tweens.add({ targets: speech, lift: 14, delay: 1400, duration: 240 });
+    return true;
+  }
+
+  private placeSpeech() {
+    if (!this.speech.length) return;
+    const view = this.cameras.main.worldView;
+    const field = this.compact ? this.frameCam.playTop(this.frame) : view.y;
+    for (const sp of this.speech) {
+      const at = sp.anchor() ?? sp.at;
+      sp.at = at;
+      const x = Phaser.Math.Clamp(at.x, view.x + 170, view.right - 170);
+      const y = Math.max(at.y - sp.half - sp.lift, field + sp.half + 12);
+      sp.box.setPosition(x, y);
+    }
   }
 
   private teach(lesson: Lesson, past = Infinity) {
@@ -969,7 +1048,7 @@ export class StageScene extends Phaser.Scene {
   private updateProgress() {
     const end = this.level.exit ? cx(this.level.exit.col) : this.level.boss ? cx(this.level.boss.arena) : this.world.width;
     const k = (this.hero?.x ?? 0) / end;
-    this.hud.setProgress(k, this.level.checkpoints.map((c) => cx(c) / end));
+    this.hud.setProgress(k, this.level.checkpoints.map((c, i) => ({ at: cx(c) / end, rung: Boolean(this.bells[i]?.reached) })));
   }
 
   private attackLessonReach() {
@@ -1067,6 +1146,7 @@ export class StageScene extends Phaser.Scene {
     for (const e of this.enemies) e.sync();
     this.boss?.sync();
     this.placeChips();
+    this.placeSpeech();
     const cam = this.cameras.main;
     const v = cam.worldView;
     const z = cam.zoom;
@@ -1168,7 +1248,8 @@ export class StageScene extends Phaser.Scene {
     for (const b of this.balls) b.update(dt);
     for (const it of this.items) it.update(t);
     this.updateGadgets(t, dt);
-    if (this.scenery.update(t, this.hero.x, this.hero.body.velocity.x, this.hero.grounded, this.cameras.main.worldView)) this.sfx("swing", 0.3);
+    const hb = this.hero.body;
+    if (this.scenery.update(t, { x: hb.center.x, top: hb.top, feet: hb.bottom, vx: hb.velocity.x, grounded: this.hero.grounded }, this.cameras.main.worldView)) this.sfx("swing", 0.25);
 
     this.updateCamera(dt);
 

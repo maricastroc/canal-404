@@ -32,6 +32,7 @@ function drawGround(scene: Phaser.Scene, level: LevelDef, width: number) {
 }
 
 const PLATFORM_ART = { shelf: 0xb06c3f, bench: 0xb06c3f, bars: 0xef4f43, desk: 0xb06c3f, books: 0x55301e };
+const BIN_ART = { top: 7.5, bottom: 112.5, height: 116, width: 100 };
 
 
 function contact(scene: Phaser.Scene, x: number, w: number) {
@@ -79,10 +80,51 @@ function drawBalcony(scene: Phaser.Scene, x: number, y: number, w: number) {
   g.fillRect(x + 8, y + 1, w - 16, 3);
 }
 
+function drawShelf(scene: Phaser.Scene, x: number, y: number, w: number) {
+  wallShadow(scene, x, y + 22, w);
+  const key = `shelf-${w}`;
+  const pad = 20;
+  if (!scene.textures.exists(key)) {
+    const g = scene.make.graphics({}, false);
+    const v = (px: number, py: number) => new Phaser.Math.Vector2(px + pad, py + 6);
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(pad + 12, 24, w - 24, 13, 4);
+    g.fillStyle(0x7d4526, 1);
+    g.fillRoundedRect(pad + 15, 26, w - 30, 8, 3);
+    for (const bx of [32, w - 32]) {
+      g.fillStyle(INK_HEX, 1);
+      g.fillPoints([v(bx - 17, 16), v(bx + 17, 16), v(bx + 9, 70), v(bx - 9, 70)], true);
+      g.fillStyle(0x9c5832, 1);
+      g.fillPoints([v(bx - 13, 20), v(bx + 13, 20), v(bx + 6, 65), v(bx - 6, 65)], true);
+      g.fillStyle(0x7d4526, 1);
+      g.fillPoints([v(bx + 2, 20), v(bx + 13, 20), v(bx + 6, 65), v(bx + 2, 65)], true);
+      g.fillStyle(0xfbf5e6, 0.85);
+      g.fillCircle(pad + bx - 4, 56, 2.5);
+    }
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(pad - 4, 1, w + 8, 32, 8);
+    g.fillStyle(0x9c5832, 1);
+    g.fillRoundedRect(pad, 5, w, 24, 6);
+    g.fillStyle(0xd99558, 1);
+    g.fillRoundedRect(pad, 5, w, 10, { tl: 6, tr: 6, bl: 0, br: 0 });
+    g.fillStyle(0xffffff, 0.3);
+    g.fillRect(pad + 8, 7, w - 16, 3);
+    g.lineStyle(2, INK_HEX, 0.35);
+    g.lineBetween(pad + 4, 15, pad + w - 4, 15);
+    g.generateTexture(key, w + pad * 2, 80);
+    g.destroy();
+  }
+  scene.add.image(x - pad, y - 6, key).setOrigin(0, 0).setDepth(4);
+}
+
 function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number]) {
   const x = cx(pl.col);
   const y = cy(pl.row);
   const w = pl.w * TILE;
+  if (pl.art === "shelf") {
+    drawShelf(scene, x, y, w);
+    return;
+  }
   if (pl.art === "bench" && pl.w === 3) {
     contact(scene, x + w / 2, w * 0.95);
     scene.add.image(x + w / 2, y - 6, "bench").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w, 100 * (w / 250));
@@ -159,6 +201,7 @@ export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {
     const w = bl.w * TILE;
     const h = bl.h * TILE;
     addSolid(x + 6, y + 8, w - 12, h - 8);
+    contact(scene, x + w / 2, w * 0.95);
     if (bl.art === "cabinet") {
       const g = scene.add.graphics().setDepth(6);
       g.fillStyle(INK_HEX, 1);
@@ -171,8 +214,11 @@ export function buildWorld(scene: Phaser.Scene, level: LevelDef): World {
       g.fillStyle(0xffc83d, 1);
       g.fillRect(x + w / 2 - 12, y + 36, 24, 6);
       g.fillRect(x + w / 2 - 12, y + h / 2 + 26, 24, 6);
+    } else if (bl.art === "bin") {
+      const k = (h - 8) / (BIN_ART.bottom - BIN_ART.top);
+      scene.add.image(x + w / 2, y + h + (BIN_ART.height - BIN_ART.bottom) * k, "bin").setOrigin(0.5, 1).setDepth(6).setDisplaySize(BIN_ART.width * k, BIN_ART.height * k);
     } else {
-      scene.add.image(x + w / 2, y + h, bl.art).setOrigin(0.5, 1).setDepth(6).setDisplaySize(w + (bl.art === "bin" ? 14 : 10), (bl.art === "bin" ? 116 : 160) * ((w + 10) / (bl.art === "bin" ? 100 : 170)));
+      scene.add.image(x + w / 2, y + h, bl.art).setOrigin(0.5, 1).setDepth(6).setDisplaySize(w + 10, 160 * ((w + 10) / 170));
     }
   }
 
