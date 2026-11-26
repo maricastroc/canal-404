@@ -88,6 +88,8 @@ export abstract class TouchHud implements LabHudView {
   private goalKicker: Phaser.GameObjects.Text;
   private goalTitle: Phaser.GameObjects.Text;
   private goalText: Phaser.GameObjects.Text;
+  private goalSpeaker: Phaser.GameObjects.Text;
+  private goalStory: Phaser.GameObjects.Text;
   private goalPar: Phaser.GameObjects.Text;
   private goalHit: Phaser.GameObjects.Rectangle;
   private goalTimer?: Phaser.Time.TimerEvent;
@@ -101,7 +103,7 @@ export abstract class TouchHud implements LabHudView {
   protected undoOn = false;
   private statsY = 0;
 
-  constructor({ scene, fonts, level, text, copy, index, total, slotTypes, reduced, handlers, mount }: HudSetup) {
+  constructor({ scene, fonts, level, text, story, copy, index, total, slotTypes, reduced, handlers, mount }: HudSetup) {
     this.scene = scene;
     this.fonts = fonts;
     this.copy = copy;
@@ -147,10 +149,12 @@ export abstract class TouchHud implements LabHudView {
     this.goalKicker = this.fix(cartoonText(scene, 0, 0, copy.hud.level(index + 1, total, actOf(index)), { size: 11, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }));
     this.goalTitle = this.fix(cartoonText(scene, 0, 0, text.title.toUpperCase(), { size: 18, color: INK, font: fonts.display, stroke: 0, shadow: false }));
     this.goalText = this.fix(scene.add.text(0, 0, text.goal, { fontFamily: fonts.hand, fontSize: "14px", color: "#3a3157", padding: { x: 1, y: 1 } }));
+    this.goalSpeaker = this.fix(cartoonText(scene, 0, 0, copy.hud.speaker, { size: 10, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }));
+    this.goalStory = this.fix(scene.add.text(0, 0, story, { fontFamily: fonts.display, fontSize: "13px", color: INK, padding: { x: 1, y: 1 }, lineSpacing: -2 }));
     this.goalPar = this.fix(scene.add.text(0, 0, copy.hud.par(level.par), { fontFamily: fonts.hand, fontSize: "12px", color: "#7b62c4", padding: { x: 1, y: 1 } }));
     this.goalHit = this.fix(scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0).setOrigin(0).setInteractive());
     this.goalHit.on("pointerdown", () => this.hideGoal());
-    this.goal = this.fix(scene.add.container(0, 0, [this.goalBg, this.goalKicker, this.goalTitle, this.goalText, this.goalPar, this.goalHit]).setDepth(DEPTH.goal).setVisible(false));
+    this.goal = this.fix(scene.add.container(0, 0, [this.goalBg, this.goalKicker, this.goalTitle, this.goalText, this.goalSpeaker, this.goalStory, this.goalPar, this.goalHit]).setDepth(DEPTH.goal).setVisible(false));
 
     this.runArrow = this.fix(addIcon(scene, 0, 0, "arrow-down").setDepth(DEPTH.toolbar).setVisible(false));
   }
@@ -386,7 +390,10 @@ export abstract class TouchHud implements LabHudView {
     if (this.goalTitle.width > w - pad * 2) this.goalTitle.setScale((w - pad * 2) / this.goalTitle.width);
     const titleBottom = this.goalTitle.y + this.goalTitle.height * this.goalTitle.scaleY;
     this.goalText.setFontSize((small ? 12.5 : 14) * k).setWordWrapWidth(w - pad * 2).setPosition(pad, titleBottom + 1 * k);
-    this.goalPar.setFontSize((small ? 11 : 12) * k).setPosition(pad, this.goalText.y + this.goalText.height + 2 * k);
+    const rule = this.goalText.y + this.goalText.height + 5 * k;
+    this.goalSpeaker.setFontSize((small ? 9 : 10) * k).setPosition(pad, rule + 5 * k);
+    this.goalStory.setFontSize((small ? 12 : 13) * k).setWordWrapWidth(w - pad * 2, true).setPosition(pad, this.goalSpeaker.y + this.goalSpeaker.height - 1 * k);
+    this.goalPar.setFontSize((small ? 11 : 12) * k).setPosition(pad, this.goalStory.y + this.goalStory.height + 4 * k);
     const h = this.goalPar.y + this.goalPar.height + pad - 2 * k;
     const g = this.goalBg;
     g.clear();
@@ -396,6 +403,8 @@ export abstract class TouchHud implements LabHudView {
     g.fillRoundedRect(0, 0, w, h, 14 * k);
     g.lineStyle(3 * k, INK_HEX, 1);
     g.strokeRoundedRect(0, 0, w, h, 14 * k);
+    g.lineStyle(2 * k, INK_HEX, 0.15);
+    g.lineBetween(pad, rule, w - pad, rule);
     this.goalHit.setSize(w, h);
     this.goalHit.input?.hitArea.setTo(0, 0, w, h);
     this.goal.setPosition(st.x + 8 * k, st.y + 8 * k);

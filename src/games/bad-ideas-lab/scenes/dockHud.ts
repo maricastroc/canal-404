@@ -264,6 +264,11 @@ export class DockHud extends TouchHud {
     this.coach.setPosition(st.x + pad, low ? st.y + st.h - pad - camRoom - h : st.y + pad);
   }
 
+  protected showGoal() {
+    this.hideSay();
+    super.showGoal();
+  }
+
   celebrate(stars: number, onStar: StarReveal) {
     this.bannerUntil = this.scene.time.now + 2100;
     if (this.coach.visible && this.lastSay) this.placeCoach(this.lastSay.focus);

@@ -158,6 +158,7 @@ const TEXT = gameText({
       controls: [
         { input: "Arrastar com o mouse", action: "Tirar uma peça da caixa ou mudar uma peça de lugar", on: "keys" },
         { input: "Clicar numa peça", action: "Mostrar os botões de girar e guardar", on: "keys" },
+        { input: "Clicar na Lina", action: "Ver de novo o que ela disse no começo da fase", on: "keys" },
         { input: "1 a 4", action: "Pegar uma peça da caixa", on: "keys" },
         { input: "S", action: "Escolher uma peça já montada", on: "keys" },
         { input: "Setas", action: "Mover a peça", on: "keys" },
@@ -168,7 +169,7 @@ const TEXT = gameText({
         { input: "Z", action: "Desfazer a última mudança", on: "keys" },
         { input: "Espaço", action: "Ligar ou desligar a máquina", on: "keys" },
         { input: "H", action: "Pedir uma dica", on: "keys" },
-        { input: "D", action: "Ouvir a descrição da fase", on: "keys" },
+        { input: "D", action: "Ouvir a descrição da fase. A Lina repete o que disse no começo", on: "keys" },
         { input: "O (Shift+O volta)", action: "Ouvir os objetos da fase, um por vez. O último vira referência para a posição da peça", on: "keys" },
         { input: "I", action: "Ouvir onde a peça está e o que tem perto", on: "keys" },
         { input: "L", action: "Ouvir de novo o resultado do último teste", on: "keys" },
@@ -181,7 +182,7 @@ const TEXT = gameText({
         { input: "VER TUDO", action: "Mostrar a fase inteira. VOLTAR leva de novo para a área de montagem", on: "touch" },
         { input: "DESFAZER", action: "Voltar a última mudança, até um LIMPAR sem querer", on: "touch" },
         { input: "LIGAR", action: "Ligar ou desligar a máquina", on: "touch" },
-        { input: "FASE, no alto", action: "Mostrar de novo o objetivo da fase", on: "touch" },
+        { input: "FASE, no alto", action: "Mostrar de novo o objetivo da fase e o que a Lina disse", on: "touch" },
       ],
       howTo: [
         { title: "Monte", text: "Arraste uma peça da caixa até a área tracejada." },
@@ -650,6 +651,7 @@ const TEXT = gameText({
       controls: [
         { input: "Drag with the mouse", action: "Take a part out of the box or move a placed part", on: "keys" },
         { input: "Click a part", action: "Show the rotate and put-away buttons", on: "keys" },
+        { input: "Click Lina", action: "See what she said at the start of the level again", on: "keys" },
         { input: "1 to 4", action: "Take a part from the box", on: "keys" },
         { input: "S", action: "Select a part that's already placed", on: "keys" },
         { input: "Arrows", action: "Move the part", on: "keys" },
@@ -660,7 +662,7 @@ const TEXT = gameText({
         { input: "Z", action: "Undo the last change", on: "keys" },
         { input: "Space", action: "Turn the machine on or off", on: "keys" },
         { input: "H", action: "Ask for a hint", on: "keys" },
-        { input: "D", action: "Hear the level description", on: "keys" },
+        { input: "D", action: "Hear the level description. Lina repeats what she said at the start", on: "keys" },
         { input: "O (Shift+O goes back)", action: "Hear the level's objects one at a time. The last one becomes the reference for the part's position", on: "keys" },
         { input: "I", action: "Hear where the part is and what's nearby", on: "keys" },
         { input: "L", action: "Hear the result of the last test again", on: "keys" },
@@ -673,7 +675,7 @@ const TEXT = gameText({
         { input: "SEE ALL", action: "Show the whole level. BACK returns to the building area", on: "touch" },
         { input: "UNDO", action: "Take back the last change, even an accidental CLEAR", on: "touch" },
         { input: "START", action: "Turn the machine on or off", on: "touch" },
-        { input: "LEVEL, at the top", action: "Show the level goal again", on: "touch" },
+        { input: "LEVEL, at the top", action: "Show the level goal and what Lina said again", on: "touch" },
       ],
       howTo: [
         { title: "Build", text: "Drag a part from the box to the dashed area." },

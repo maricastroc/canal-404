@@ -26,6 +26,7 @@ export type HudSetup = {
   fonts: Fonts;
   level: LevelDef;
   text: LevelText;
+  story: string;
   copy: LabCopy;
   index: number;
   total: number;
