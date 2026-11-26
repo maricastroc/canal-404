@@ -29,6 +29,7 @@ export type HeroFx = {
   sfx: (name: "jump" | "land" | "swing" | "step", volume?: number) => void;
   dust: (x: number, y: number, dir: number) => void;
   land: (x: number, drop: number) => void;
+  leave: (x: number, feet: number) => void;
   surface: (x: number, y: number) => number | null;
 };
 
@@ -225,6 +226,7 @@ export class Hero {
       this.wasGround = false;
       this.fx.sfx("jump", 0.6);
       this.fx.dust(this.x, this.feet, 0);
+      this.fx.leave(this.x, this.feet);
       if (!this.reduced) {
         this.sprite.setScale(this.sc * 0.88, this.sc * 1.12);
         this.scene.tweens.add({ targets: this.sprite, scaleX: this.sc, scaleY: this.sc, duration: 200, ease: "Back.easeOut" });

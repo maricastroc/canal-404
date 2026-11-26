@@ -36,10 +36,12 @@ export type GameMeta = {
   resumable?: string;
   orientation: "upright" | "any";
   leanPhoneHeader?: boolean;
+  hudScore?: boolean;
+  album?: boolean;
   copy?: { winTitle: string; winText: string; loseTitle: string; loseText: string };
 };
 
-type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "orientation" | "leanPhoneHeader"> & { levelIds?: string[]; guestIds?: string[] };
+type GameBase = Pick<GameMeta, "category" | "status" | "accent" | "cast" | "levelWord" | "resumable" | "orientation" | "leanPhoneHeader" | "hudScore" | "album"> & { levelIds?: string[]; guestIds?: string[] };
 
 type GameText = Pick<GameMeta, "title" | "tagline" | "description" | "tags" | "production" | "objective" | "starRule" | "howToIntro" | "controls" | "howTo" | "tips" | "keyTips" | "touchTips" | "controlsSummary" | "copy"> & {
   levels?: { title: string; goal: string }[];
@@ -58,7 +60,7 @@ const BASE = {
   "bad-ideas-lab": { category: "puzzle", status: "available", accent: "plum", cast: ["lina", "bruno"], levelIds: ["test", "pixel", "toast", "juice", "remote", "finale", "kibble", "vinyl", "strike", "chain"], orientation: "any" },
   "food-fight": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "mila"], orientation: "upright" },
   "pajama-war": { category: "action", status: "available", accent: "bubblegum", cast: [], levelIds: ["bedroom", "living", "yard", "attic"], levelWord: "arena", guestIds: ["lia", "nico", "bia"], orientation: "any" },
-  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "library", "office"], orientation: "any" },
+  "operation-recess": { category: "action", status: "available", accent: "sky", cast: ["bruno", "deco", "lina"], levelIds: ["corridor", "yard", "library", "office"], orientation: "any", hudScore: true, album: true },
   "off-air-vacation": { category: "adventure", status: "available", accent: "mint", cast: ["deco", "404"], guestIds: ["bigodes", "marola", "tilt", "marisa", "psiu", "capi", "clique", "cavuca", "placar"], resumable: "canal404:off-air-vacation:v1", orientation: "any" },
   "downhill-derby": { category: "action", status: "available", accent: "tangerine", cast: ["deco", "lina", "bruno", "mila"], levelIds: ["arlindo", "feira", "antena"], levelWord: "pista", orientation: "any" },
   "past-bedtime": {
@@ -358,7 +360,7 @@ const TEXT = gameText({
         "Quando o vigia baixar o jornal, vire estátua.",
         "Na corda, pule quando ela descer. Tropeçar custa um coração.",
         "Figurinha lá no alto, fora do alcance? Procure um colchonete.",
-        "Cada figurinha fica no álbum, na página do jogo. São 15, uma para cada brincadeira proibida.",
+        "Cada figurinha vai para o álbum. Abra pelo botão de figurinha, no alto da tela. São 15, uma para cada brincadeira proibida.",
         "A luz do Inspetor parou em você? Saia antes de ela ficar vermelha.",
         "Prateleira bamba não aguenta ninguém parado.",
         "Na biblioteca, espere o vigia voltar ao jornal antes de pular na prateleira bamba.",
@@ -851,7 +853,7 @@ const TEXT = gameText({
         "When the lookout lowers his newspaper, freeze like a statue.",
         "On the jump rope, jump when it comes down. Tripping costs a heart.",
         "A sticker way up high, out of reach? Look for a mat.",
-        "Every sticker goes into the album on the game's page. There are 15, one for each banned game.",
+        "Every sticker goes into the album. Open it with the sticker button at the top of the screen. There are 15, one for each banned game.",
         "The Inspector's spotlight stopped on you? Get out before it turns red.",
         "Wobbly shelves can't hold anyone who stands still.",
         "In the library, wait for the lookout to go back to his newspaper before you jump on the wobbly shelf.",

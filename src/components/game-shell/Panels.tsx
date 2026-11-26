@@ -798,38 +798,63 @@ export function IntroPanel({
   );
 }
 
+export type PauseAlbum = { node: ReactNode; label: string; open: boolean; onToggle: () => void };
+
 export function PausePanel({
   game,
   onResume,
   onRestart,
   showHelp,
   onToggleHelp,
+  album,
 }: {
   game: GameMeta;
   onResume: () => void;
   onRestart?: () => void;
   showHelp: boolean;
   onToggleHelp: () => void;
+  album?: PauseAlbum;
 }) {
   const copy = useCopy(COPY);
   const narrow = useNarrowScreen();
   const resumeRef = useRef<HTMLButtonElement>(null);
   const howToRef = useRef<HTMLButtonElement>(null);
   const helpTitleRef = useRef<HTMLHeadingElement>(null);
+  const albumRef = useRef<HTMLDivElement>(null);
   const lastView = useRef<boolean | null>(null);
   const present = useIsPresent();
+  const showAlbum = Boolean(album?.open) && !showHelp;
   useEffect(() => {
     if (!present) return;
     const leavingHelp = lastView.current === true && !showHelp;
     lastView.current = showHelp;
     const id = window.setTimeout(() => {
-      const target = showHelp ? helpTitleRef.current : leavingHelp ? howToRef.current : resumeRef.current;
+      const target = showAlbum ? albumRef.current?.querySelector<HTMLElement>("h2") : showHelp ? helpTitleRef.current : leavingHelp ? howToRef.current : resumeRef.current;
       target?.focus({ preventScroll: true });
     }, 60);
     return () => window.clearTimeout(id);
-  }, [showHelp, present]);
+  }, [showHelp, showAlbum, present]);
   const fade = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.18, ease: "easeOut" as const } };
-  const label = showHelp ? copy.helpLabel(game.title) : copy.pausedLabel;
+  const label = showAlbum && album ? album.label : showHelp ? copy.helpLabel(game.title) : copy.pausedLabel;
+  const footer =
+    "sticky z-10 mt-5 flex gap-3 rounded-b-[inherit] border-t-[3px] border-ink paper max-sm:-bottom-3 max-sm:-mx-5 max-sm:-mb-5 max-sm:mt-4 max-sm:flex-col max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:[&>button]:min-h-12 max-sm:[&>button]:w-full sm:-bottom-6 sm:-mx-7 sm:-mb-7 sm:px-7 sm:py-4 flat:-bottom-6 flat:-mx-4 flat:-mb-4 flat:mt-3 flat:px-4 flat:py-2.5";
+  if (showAlbum && album) {
+    return (
+      <OverlayFrame label={label} className="max-w-3xl p-5 sm:p-7 flat:p-4">
+        <motion.div key="album" ref={albumRef} {...fade}>
+          {album.node}
+          <div className={footer}>
+            <InkButton tone="sun" onClick={onResume}>
+              <PlayIcon className="size-5 text-ink" /> {copy.resume}
+            </InkButton>
+            <InkButton tone="cream" onClick={album.onToggle}>
+              <ArrowLeftIcon className="size-5" /> {copy.backToPause}
+            </InkButton>
+          </div>
+        </motion.div>
+      </OverlayFrame>
+    );
+  }
   const help = (
     <motion.div key="help" {...fade}>
       <div className="flex items-center gap-3 sm:gap-4">

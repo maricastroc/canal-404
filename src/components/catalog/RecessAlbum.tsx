@@ -6,7 +6,8 @@ import { localized } from "@/i18n/copy";
 import { STICKER_IDS, STICKER_NAMES, stickerArt, type StickerId } from "@/games/operation-recess/album";
 import { COPY as GAME_COPY, levelCopy } from "@/games/operation-recess/copy";
 import { LEVELS } from "@/games/operation-recess/levels";
-import { parseSave, SAVE_KEY } from "@/games/operation-recess/save";
+import { parseSave } from "@/games/operation-recess/save";
+import { readAlbum, subscribeAlbum } from "./RecessAlbumButton";
 
 const COPY = localized({
   "pt-BR": {
@@ -29,19 +30,6 @@ const COPY = localized({
   },
 });
 
-const subscribe = (onChange: () => void) => {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-};
-
-function readRaw() {
-  try {
-    return window.localStorage.getItem(SAVE_KEY);
-  } catch {
-    return null;
-  }
-}
-
 const PAGES = LEVELS.map((level, i) => ({
   id: level.id,
   index: i,
@@ -50,23 +38,24 @@ const PAGES = LEVELS.map((level, i) => ({
 
 const TILT = ["-rotate-2", "rotate-1", "-rotate-1", "rotate-2"];
 
-export function RecessAlbum() {
+export function RecessAlbum({ inPanel = false }: { inPanel?: boolean }) {
   const locale = useLocale();
   const copy = COPY[locale];
   const names = STICKER_NAMES[locale];
-  const raw = useSyncExternalStore(subscribe, readRaw, () => null);
+  const raw = useSyncExternalStore(subscribeAlbum, readAlbum, () => null);
   const owned = useMemo(() => new Set<StickerId>(parseSave(raw).stickers), [raw]);
+  const id = inPanel ? "album-panel" : "album";
 
   return (
-    <section aria-labelledby="album" className="mt-12">
-      <h2 id="album" className="text-center font-display text-3xl uppercase tracking-wide text-cream [text-shadow:3px_4px_0_var(--color-ink)]">
+    <section aria-labelledby={id} className={inPanel ? "" : "mt-12"}>
+      <h2 id={id} tabIndex={inPanel ? -1 : undefined} className={`text-center font-display uppercase tracking-wide outline-none! ${inPanel ? "text-3xl leading-none text-ink sm:text-4xl" : "text-3xl text-cream [text-shadow:3px_4px_0_var(--color-ink)]"}`}>
         {copy.title}
       </h2>
-      <p className="mx-auto mt-2 max-w-xl text-center font-hand text-xl text-cream-2">{copy.intro}</p>
+      <p className={`mx-auto mt-2 max-w-xl text-center font-hand ${inPanel ? "text-lg leading-snug text-ink-soft" : "text-xl text-cream-2"}`}>{copy.intro}</p>
       <p className="mx-auto mt-3 w-fit rounded-lg border-[3px] border-ink bg-sun px-3 py-1 font-display text-sm uppercase tracking-wide text-ink shadow-[var(--shadow-ink-sm)] tabular-nums">
         {copy.count(owned.size, STICKER_IDS.length)}
       </p>
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
+      <div className={`grid md:grid-cols-2 ${inPanel ? "mt-4 gap-4" : "mt-6 gap-6"}`}>
         {PAGES.map((page) => {
           const got = page.stickers.filter((id) => owned.has(id)).length;
           return (

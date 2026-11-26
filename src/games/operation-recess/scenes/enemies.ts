@@ -38,6 +38,7 @@ const FACE_POSES = new Set(["walk-a", "walk-b", "point", "cross"]);
 const HEAD_TOP: Record<string, number> = { common: 3, guard: 14, runner: 3 };
 const STYLE_ART: Record<EnemyStyle, string> = { patrol: "common", mixed: "common", guard: "guard", rush: "runner" };
 const SAY_EVERY = 3200;
+const CALM = new Set(["patrol", "wait", "watch", "lost", "home"]);
 const LOST_MS = 900;
 let slot = 0;
 const turns = new WeakMap<readonly string[], number>();
@@ -107,6 +108,17 @@ export abstract class Enemy {
 
   private engagedBefore = false;
   private engagedAt = -1e9;
+  private startledAt = -1e9;
+
+  startle(fromX: number) {
+    if (this.dead || !CALM.has(this.state) || this.t - this.startledAt < 2500) return false;
+    this.startledAt = this.t;
+    if (this.state !== "patrol") this.facing = fromX >= this.x ? 1 : -1;
+    this.express("spot", 700);
+    this.hop(20);
+    this.bark(this.api.barks.fallen, true);
+    return true;
+  }
 
   protected track(t: number, engaged: boolean, h: HeroView, pool: readonly string[]) {
     if (engaged && !this.engagedBefore) {
@@ -619,6 +631,7 @@ export class WhistleMonitor extends Enemy {
   private nextShot = 0;
   private hopReady = 0;
   private shots = 0;
+  private glanceAt = 1800 + Math.random() * 1600;
 
   constructor(
     api: StageApi,
@@ -653,6 +666,11 @@ export class WhistleMonitor extends Enemy {
         if (!engaged) {
           this.body.setVelocityX(0);
           this.tex("walk-a");
+          if (t >= this.glanceAt) {
+            const back = this.facing !== (dx >= 0 ? 1 : -1);
+            this.facing = -this.facing;
+            this.glanceAt = t + (back ? 2400 + Math.random() * 1800 : 900);
+          }
           return;
         }
         if (this.nextShot === 900) this.nextShot = t + 700;

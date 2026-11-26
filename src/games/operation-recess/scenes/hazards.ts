@@ -25,19 +25,27 @@ function makeOwnedBadge(scene: Phaser.Scene) {
   g.destroy();
 }
 
+const BALL_R = 38;
+
 export class Ball {
-  readonly img: Phaser.GameObjects.Image;
+  readonly img: Phaser.GameObjects.Container;
   alive = true;
+  private spin: Phaser.GameObjects.Image;
+  private shadow: Phaser.GameObjects.Image;
   private age = 0;
   private vx = -400;
   private kicked = false;
   private vy = 0;
+  private squash = 0;
 
   constructor(
     private api: StageApi,
     x: number,
   ) {
-    this.img = api.scene.add.image(x, FLOOR_Y - 140, "ball").setDepth(17);
+    const scene = api.scene;
+    this.spin = scene.add.image(0, 0, "ball");
+    this.img = scene.add.container(x, FLOOR_Y - 140, [this.spin]).setDepth(17);
+    this.shadow = scene.add.image(x, FLOOR_Y + 3, "blob").setDepth(5.4).setAlpha(0);
     this.vy = -500;
   }
 
@@ -47,18 +55,38 @@ export class Ball {
     this.img.y += this.vy * dt;
     this.img.x += this.vx * dt;
     if (this.img.y > FLOOR_Y - 36 && this.vy > 0 && !this.kicked) {
+      const hard = Math.min(1, this.vy / 900);
       this.img.y = FLOOR_Y - 36;
       this.vy = -620;
+      this.squash = 0.6 + 0.4 * hard;
       this.api.sfx("boing", 0.35);
+      if (!this.api.reduced) for (const d of [-1, 1]) this.api.dust(this.img.x + d * 22, FLOOR_Y, -d);
     }
-    this.img.angle += (this.vx / 36) * dt * 57;
+    this.spin.angle += (this.vx / 36) * dt * 57;
+    this.shape(dt);
     if (this.age > 6 || this.img.y > 1300) this.kill();
+  }
+
+  private shape(dt: number) {
+    const height = Phaser.Math.Clamp((FLOOR_Y - 36 - this.img.y) / 300, 0, 1);
+    this.shadow.setPosition(this.img.x, FLOOR_Y + 3).setDisplaySize(84 * (1 - height * 0.45), 18 * (1 - height * 0.3)).setAlpha(this.kicked ? Math.max(0, 0.7 - this.age) : 0.75 - height * 0.45);
+    if (this.api.reduced) return;
+    this.squash = Math.max(0, this.squash - dt / 0.16);
+    const s = this.squash;
+    const stretch = Math.min(0.14, Math.abs(this.vy) / 6500) * (1 - s);
+    const sy = 1 - 0.32 * s + stretch;
+    const sx = 1 + 0.26 * s - stretch * 0.6;
+    this.img.setScale(sx, sy);
+    this.spin.setY((BALL_R * (1 - sy)) / sy);
   }
 
   kick(dir: number) {
     this.kicked = true;
     this.vx = dir * 900;
     this.vy = -900;
+    this.squash = 0;
+    this.img.setScale(1);
+    this.spin.setY(0);
     this.api.sfx("boing", 0.8);
   }
 
@@ -74,6 +102,7 @@ export class Ball {
     if (!this.alive) return;
     this.alive = false;
     this.img.destroy();
+    this.shadow.destroy();
   }
 }
 
@@ -87,6 +116,7 @@ export class BallSpawner {
     private api: StageApi,
     private def: NonNullable<LevelDef["balls"]>[number],
     private spawn: (b: Ball) => void,
+    private box: Phaser.GameObjects.Image | null = null,
   ) {
     this.x = cx(def.col) + TILE;
     this.nextAt = def.offset;
@@ -103,8 +133,32 @@ export class BallSpawner {
       this.nextAt += this.def.every;
       this.api.warn(this.x, FLOOR_Y - 260, 480);
       this.api.sfx("alert", 0.6);
-      this.api.scene.time.delayedCall(480, () => this.spawn(new Ball(this.api, this.x - 30)));
+      this.rattle();
+      this.api.scene.time.delayedCall(480, () => {
+        this.pop();
+        this.spawn(new Ball(this.api, this.x - 30));
+      });
     }
+  }
+
+  private rattle() {
+    const box = this.box;
+    if (!box || this.api.reduced) return;
+    const base = (box.getData("baseX") as number | undefined) ?? box.x;
+    box.setData("baseX", base);
+    this.api.scene.tweens.killTweensOf(box);
+    this.api.scene.tweens.add({ targets: box, x: { from: base + 3, to: base - 3 }, duration: 50, yoyo: true, repeat: 4, onComplete: () => box.setX(base) });
+  }
+
+  private pop() {
+    const box = this.box;
+    if (!box) return;
+    this.api.burst(this.x - 30, box.y - box.displayHeight + 6, 3, "dust");
+    if (this.api.reduced) return;
+    const sy = (box.getData("baseSy") as number | undefined) ?? box.scaleY;
+    box.setData("baseSy", sy);
+    box.setScale(box.scaleX, sy * 0.92);
+    this.api.scene.tweens.add({ targets: box, scaleY: sy, duration: 260, ease: "Back.easeOut" });
   }
 }
 
@@ -161,7 +215,7 @@ export class Item {
     row: number,
     private reduced: boolean,
     readonly sticker?: StickerId,
-    owned = false,
+    readonly owned = false,
   ) {
     this.baseY = cy(row) + TILE / 2;
     this.img = scene.add.image(cx(col) + TILE / 2, this.baseY, sticker ? `sticker-${sticker}` : kind).setDepth(12);

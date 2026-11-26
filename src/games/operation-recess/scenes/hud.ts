@@ -12,6 +12,7 @@ export type ProgressMark = { at: number; rung: boolean };
 type Pad = { action: PadAction; bg: Phaser.GameObjects.Graphics; icon: Phaser.GameObjects.Image; hit: Phaser.GameObjects.Arc; r: number; color: number; x: number; y: number; base: number };
 
 const BAR_W = 520;
+const TRACK = { w: 440, h: 52, x0: -186, len: 344, y: 26, bar: 12 };
 const CARD_H = 156;
 const D = 3;
 const ROW = { h: 40, card: 166, count: 76, gap: 7, margin: 8, top: 7, track: 64, trackMax: 340, heart: 16, heartGap: 1.2, score: 17 };
@@ -63,7 +64,8 @@ export class RecessHud {
   private progressBar: Phaser.GameObjects.Graphics;
   private progressBells: Phaser.GameObjects.Image[] = [];
   private progressYou: Phaser.GameObjects.Image;
-  private progressBounds = new Phaser.Geom.Rectangle(W / 2 - 300, 10, 600, 90);
+  private progressBounds = new Phaser.Geom.Rectangle(W / 2 - TRACK.w / 2, 10, TRACK.w, TRACK.h + 20);
+  private bossBounds = new Phaser.Geom.Rectangle(W / 2 - 320, 10, 640, 100);
   private bossBox: Phaser.GameObjects.Container;
   private bossBar: Phaser.GameObjects.Graphics;
   private banner: Phaser.GameObjects.Text;
@@ -117,9 +119,9 @@ export class RecessHud {
     this.card = scene.add.container(20, 10, items).setDepth(60).setScrollFactor(0, 0, true);
 
     const pg = scene.add.graphics();
-    darkPanel(pg, -300, 0, 600, 70);
+    darkPanel(pg, -TRACK.w / 2, 0, TRACK.w, TRACK.h);
     this.progressBar = scene.add.graphics();
-    const flag = scene.add.image(262, 35, "icon-flag");
+    const flag = scene.add.image(TRACK.x0 + TRACK.len + 26, TRACK.y, "icon-flag").setScale(0.78);
     this.progressYou = this.heroHead();
     this.progressBells = this.bellIcons(bells);
     this.progress = scene.add.container(W / 2, 12, [pg, this.progressBar, flag, ...this.progressBells, this.progressYou]).setDepth(60).setScrollFactor(0, 0, true);
@@ -400,7 +402,8 @@ export class RecessHud {
     this.cardBounds.setTo(20, 10, 380 * cs, CARD_H * cs);
     this.progress.setScale(Math.min(s, 1.2));
     this.bossBox.setScale(Math.min(s, 1.2));
-    this.progressBounds.setTo(W / 2 - 320 * Math.min(s, 1.2), 10, 640 * Math.min(s, 1.2), 100 * Math.min(s, 1.2));
+    this.progressBounds.setTo(W / 2 - (TRACK.w / 2 + 20) * Math.min(s, 1.2), 10, (TRACK.w + 40) * Math.min(s, 1.2), (TRACK.h + 30) * Math.min(s, 1.2));
+    this.bossBounds.setTo(W / 2 - 320 * Math.min(s, 1.2), 10, 640 * Math.min(s, 1.2), 100 * Math.min(s, 1.2));
     this.banner.setScale(Math.min(s, 1.2));
     this.sub.setScale(Math.min(s, 1.2)).setY(360 + 92 * Math.min(s, 1.2));
     const ps = Math.min(s, 1.35);
@@ -425,9 +428,8 @@ export class RecessHud {
     }
     const near = (r: Phaser.Geom.Rectangle) => sx > r.x - 60 && sx < r.right + 60 && sy > r.y - 60 && sy < r.bottom + 160;
     this.card.setAlpha(near(this.cardBounds) ? 0.35 : 1);
-    const pa = near(this.progressBounds) ? 0.35 : 1;
-    this.progress.setAlpha(pa);
-    this.bossBox.setAlpha(pa);
+    this.progress.setAlpha(near(this.progressBounds) ? 0.35 : 1);
+    this.bossBox.setAlpha(near(this.bossBounds) ? 0.35 : 1);
     if (!this.touchOn) return;
     for (const pad of this.pads) {
       const reach = pad.r * pad.base + 120;
@@ -495,25 +497,26 @@ export class RecessHud {
     this.drawTrack();
     const g = this.progressBar;
     g.clear();
-    const x0 = -250;
-    const at = x0 + 480 * Phaser.Math.Clamp(k, 0, 1);
+    const { x0, len, y, bar } = TRACK;
+    const kk = Phaser.Math.Clamp(k, 0, 1);
+    const at = x0 + len * kk;
     g.fillStyle(0x140f26, 1);
-    g.fillRoundedRect(x0, 27, 480, 16, 8);
+    g.fillRoundedRect(x0, y - bar / 2, len, bar, bar / 2);
     g.fillStyle(0x63d6c1, 1);
-    g.fillRoundedRect(x0, 27, Math.max(16, 480 * Phaser.Math.Clamp(k, 0, 1)), 16, 8);
+    g.fillRoundedRect(x0, y - bar / 2, Math.max(bar, len * kk), bar, bar / 2);
     this.progressBells.forEach((img, i) => {
       const m = marks[i];
       img.setVisible(Boolean(m));
       if (!m) return;
       const key = m.rung ? "icon-bell-on" : "icon-bell-off";
       if (img.texture.key !== key) img.setTexture(key);
-      img.setPosition(x0 + 480 * m.at, 35).setScale(0.68);
+      img.setPosition(x0 + len * m.at, y).setScale(0.58);
     });
     g.fillStyle(0x5cb9f0, 1);
-    g.fillCircle(at, 35, 19);
-    g.lineStyle(4, INK_HEX, 1);
-    g.strokeCircle(at, 35, 19);
-    this.placeHead(this.progressYou, at, 33, 36);
+    g.fillCircle(at, y, 16);
+    g.lineStyle(3.5, INK_HEX, 1);
+    g.strokeCircle(at, y, 16);
+    this.placeHead(this.progressYou, at, y - 2, 30);
   }
 
   showBoss(on: boolean) {

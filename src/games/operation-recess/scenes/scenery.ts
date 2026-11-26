@@ -1,8 +1,9 @@
 import * as Phaser from "phaser";
 import { FLOOR_Y, H, TILE, W } from "../config";
 import type { LevelDef, Theme } from "../levels";
-import { INK_HEX } from "../../kit/ui";
+import { INK_HEX, type Fonts } from "../../kit/ui";
 import { cx } from "./world";
+import { makeYardTextures, YARD_SECTORS, yardSector, type YardSector } from "./yardArt";
 
 export type ReactKind = "locker" | "bin" | "swing" | "plant" | "metal";
 export type RoomEvent = "intro" | "stomp" | "crash" | "slam" | "whistle" | "hit" | "angry" | "defeat";
@@ -22,6 +23,9 @@ export type SceneryHero = { x: number; top: number; feet: number; vx: number; gr
 
 const D = { far: 0.1, mid: 0.4, wall: 0.6, back: 0.8, floor: 0.9, front: 52 };
 const REST_SCROLL_Y = (H - H / 1.22) / 2;
+const YARD_FLOOR: Record<YardSector, string> = { court: "floor-court", canteen: "floor-canteen", commons: "floor-yard", garden: "floor-garden" };
+const HALF_VIEW = W / 2;
+const at = (worldX: number, f: number) => HALF_VIEW + f * (worldX - HALF_VIEW);
 const MARGIN = 1400;
 const HALL = { pillar: 760, bay: 1180, pillarW: 76, joist: 295, lamp: 465 };
 const CEILING = {
@@ -342,6 +346,7 @@ export class Scenery {
     private level: LevelDef,
     private width: number,
     private reduced: boolean,
+    private fonts: Fonts,
   ) {
     makeLightTextures(scene);
     makeWallTextures(scene);
@@ -381,7 +386,8 @@ export class Scenery {
     const out: Phaser.GameObjects.TileSprite[] = [];
     for (const x0 of [-MARGIN, this.width]) {
       if (theme !== "yard") out.push(this.scene.add.tileSprite(x0, 0, MARGIN, FLOOR_Y, `wall-${theme}`).setOrigin(0, 0).setDepth(0).setTilePosition(x0, 0));
-      out.push(this.scene.add.tileSprite(x0, FLOOR_Y, MARGIN, H - FLOOR_Y + 200, `floor-${theme}`).setOrigin(0, 0).setDepth(5).setTilePosition(x0, 0));
+      const floor = theme === "yard" ? YARD_FLOOR[yardSector(x0 + MARGIN / 2)] : `floor-${theme}`;
+      out.push(this.scene.add.tileSprite(x0, FLOOR_Y, MARGIN, H - FLOOR_Y + 200, floor).setOrigin(0, 0).setDepth(5).setTilePosition(x0, 0));
     }
     return out;
   }
@@ -620,59 +626,131 @@ export class Scenery {
 
   private yard() {
     const s = this.scene;
+    makeYardTextures(s);
     this.sky = s.add.image(0, 0, "sky").setOrigin(0, 0).setDisplaySize(W * 1.4, H * 1.4).setScrollFactor(0).setDepth(0);
     this.layer(s.add.circle(1500, 210, 74, 0xffe39a).setStrokeStyle(6, INK_HEX).setScrollFactor(0.04, 0).setDepth(D.far));
     for (let i = 0; i < 6; i += 1) this.layer(this.img("cloud", 200 + i * 520, 170 + (i % 3) * 70, D.far, [0.5, 0.5]).setScrollFactor(0.1, 0).setScale(0.8 + (i % 2) * 0.3));
     for (let i = 0; i < 3; i += 1) this.layer(this.img("trees-far", i * 1600, 840, D.far + 0.05, [0, 1]).setScrollFactor(0.2, 0).setScale(1.3));
-    const buildings: [string, number, number][] = [
-      ["building", 360, 0.85],
-      ["building-b", 1500, 0.9],
-      ["building", 2700, 0.8],
-      ["building-b", 3600, 0.85],
-    ];
-    for (const [key, x, sc] of buildings) this.layer(this.img(key, x, 860, D.mid, [0.5, 1]).setScrollFactor(0.4, 0).setScale(sc));
-    const near: [string, number, number][] = [
-      ["building-b", 700, 1.2],
-      ["building", 2100, 1.25],
-      ["building-b", 3300, 1.2],
-    ];
-    for (const [key, x, sc] of near) this.layer(this.img(key, x, 850, D.mid + 0.02, [0.5, 1]).setScrollFactor(0.5, 0).setScale(sc));
-    for (const [a, b] of [
-      [300, 1900],
-      [2500, 4400],
-    ]) {
-      this.layer(s.add.tileSprite(a, 620, b - a, 220, "fence-tile").setOrigin(0, 0).setScrollFactor(0.65, 0).setDepth(D.mid + 0.1));
-      const g = this.layer(s.add.graphics().setScrollFactor(0.65, 0).setDepth(D.mid + 0.05));
-      g.fillStyle(0xc9a06a, 1);
-      g.fillRect(a, 836, b - a, 30);
-    }
-    for (const x of [620, 1500, 2900, 3900]) this.layer(this.img("hoop", x, 860, D.mid + 0.12).setScrollFactor(0.65, 0).setScale(0.8));
-    this.floor("floor-yard");
+    this.layer(this.img("yard-hall", at(3120, 0.38), 862, D.mid, [0.5, 1]).setScrollFactor(0.38, 0).setScale(0.95));
+    this.plaque(at(3120, 0.38) - 10, 620, "REFEITÓRIO", { size: 26, fill: 0xffc83d, color: "#1d1830", depth: D.mid + 0.001, scroll: 0.38 });
+    this.layer(this.img("yard-annex", at(5800, 0.38), 862, D.mid, [0.5, 1]).setScrollFactor(0.38, 0).setScale(0.92));
+    this.layer(this.img("yard-haze", -W, 280, D.mid + 0.01, [0, 0]).setScrollFactor(0, 0).setDisplaySize(W * 4, 600));
+    this.layer(this.img("building-b", at(1270, 0.5), 852, D.mid + 0.02, [0.5, 1]).setScrollFactor(0.5, 0).setScale(1.15));
+    this.scoreboard(at(1270, 0.5) + 250, 364, 0.6, 432);
+    this.layer(this.img("building", at(4450, 0.5), 852, D.mid + 0.02, [0.5, 1]).setScrollFactor(0.5, 0).setScale(1.2));
+    this.backdrop();
+    this.yardFloor();
     if (this.level.exit) this.facade(cx(this.level.exit.col) + TILE / 2);
-    for (const x of [260, 2560, 4380, 5860]) this.img("tree-big", x, FLOOR_Y + 8, D.back);
-    this.img("kiosk", 3060, FLOOR_Y, D.back);
-    for (const [x, k] of [
-      [520, 1],
-      [2688, 0.85],
-      [5690, 0.85],
-    ])
-      this.img("picnic-table", x, FLOOR_Y, D.floor).setScale(k);
-    for (const x of [1090, 1560, 3540, 4300, 5200, 6040]) this.img("lamp-post", x, FLOOR_Y, D.back + 0.02).setScale(0.9);
-    this.strung(1090, 1560, 600);
-    this.bunting(3540, 4300, 560, 30);
-    this.bunting(5200, 6040, 560, 30);
-    for (const x of [120, 3650]) this.react(this.img("protest-sign", x, FLOOR_Y + 4, D.floor), "swing");
-    this.img("backpack", 940, FLOOR_Y + 4, D.floor + 0.1).setScale(0.8);
-    this.img("jump-rope", 1520, FLOOR_Y + 6, D.floor + 0.1);
-    this.img("backpack", 4660, FLOOR_Y + 4, D.floor + 0.1).setScale(0.7).setFlipX(true);
-    const chalk = s.add.graphics().setDepth(5.1);
-    chalk.lineStyle(4, 0xffffff, 0.75);
-    for (let i = 0; i < 5; i += 1) chalk.strokeRect(4180 + i * 64, FLOOR_Y + 30, 60, 40);
-    chalk.lineStyle(4, 0xf06ba8, 0.75);
-    chalk.strokeCircle(4560, FLOOR_Y + 50, 22);
-    for (let x = 120; x < this.width; x += 640) {
-      this.img("grass-tuft", x + (x % 3) * 40, H + 10, D.front).setScrollFactor(1.15, 1).setScale(1.2);
+    this.court();
+    this.canteen();
+    this.commons();
+    this.garden();
+    const tufts: [number, number, boolean][] = [[180, 1.2, false], [1260, 1.05, true], [4120, 1.2, false], [4760, 1, true], [5560, 1.25, false], [6040, 1.1, true], [6560, 1.2, false], [7060, 1, true]];
+    for (const [x, k, flip] of tufts) this.img("grass-tuft", x, H + 10, D.front).setScrollFactor(1.15, 1).setScale(k).setFlipX(flip);
+  }
+
+  private backdrop() {
+    const s = this.scene;
+    const f = 0.65;
+    const cut = YARD_SECTORS.slice(1).map((sec) => at(sec.from, f));
+    const strips: [string, number, number, number][] = [
+      ["fence-tile", -400, cut[0], 620],
+      ["yard-mural", cut[0], cut[1], 680],
+      ["yard-hedge", cut[1], cut[2], 712],
+      ["yard-railing", cut[2], at(this.width + MARGIN, f), 660],
+    ];
+    this.layer(s.add.rectangle(-400, 836, at(this.width + MARGIN, f) + 400, 30, 0xc9a06a).setOrigin(0, 0).setScrollFactor(f, 0).setDepth(D.mid + 0.05));
+    for (const [key, a, b, y] of strips) this.layer(s.add.tileSprite(a, y, b - a, s.textures.get(key).getSourceImage().height, key).setOrigin(0, 0).setScrollFactor(f, 0).setDepth(D.mid + 0.1));
+    for (const x of cut) this.layer(this.img("yard-pillar", x, 866, D.mid + 0.11, [0.5, 1]).setScrollFactor(f, 0));
+    for (const x of [at(700, f), at(2200, f)]) this.layer(this.img("hoop", x, 860, D.mid + 0.12).setScrollFactor(f, 0).setScale(0.8));
+  }
+
+  private scoreboard(x: number, y: number, k: number, roof: number) {
+    const depth = D.mid + 0.019;
+    const f = 0.5;
+    for (const dx of [-90, 90]) this.layer(this.img("yard-post", x + dx * k, roof, depth - 0.0005, [0.5, 1]).setScrollFactor(f, 0).setDisplaySize(14, roof - y));
+    this.layer(this.img("yard-scoreboard", x, y, depth, [0.5, 0.5]).setScrollFactor(f, 0).setScale(k));
+    const label = { fill: 0x2b2150, color: "#fbf5e6", depth: depth + 0.001, scroll: f, plain: true };
+    this.plaque(x - 83 * k, y - 52 * k, "RECREIO", { ...label, size: Math.round(21 * k) });
+    this.plaque(x + 83 * k, y - 52 * k, "REGRAS", { ...label, size: Math.round(21 * k) });
+    this.plaque(x - 83 * k, y + 13 * k, "0", { ...label, size: Math.round(64 * k), color: "#ffc83d" });
+    this.plaque(x + 83 * k, y + 13 * k, "10", { ...label, size: Math.round(64 * k), color: "#ff8a5c" });
+  }
+
+  private yardFloor() {
+    for (const [a, b] of this.level.ground) {
+      const x0 = a * TILE;
+      const x1 = (b + 1) * TILE;
+      for (const sec of YARD_SECTORS) {
+        const l = Math.max(x0, sec.from);
+        const r = Math.min(x1, sec.to);
+        if (r <= l) continue;
+        this.scene.add.tileSprite(l, FLOOR_Y, r - l, H - FLOOR_Y + 200, YARD_FLOOR[sec.id]).setOrigin(0, 0).setDepth(5).setTilePosition(l, 0);
+        if (sec.from > x0 && sec.from < x1) this.img("floor-seam", sec.from, FLOOR_Y - 2, 5.05, [0.5, 0]);
+      }
     }
+  }
+
+  private court() {
+    this.react(this.img("protest-sign", 120, FLOOR_Y + 4, D.floor), "swing");
+    this.img("tree-big", 260, FLOOR_Y + 8, D.back);
+    for (const x of [1090, 1560]) this.img("lamp-post", x, FLOOR_Y, D.back + 0.02).setScale(0.9);
+    this.strung(1090, 1560, 600);
+    this.react(this.img("backpack", 940, FLOOR_Y + 4, D.floor + 0.1).setScale(0.8), "plant");
+    this.img("jump-rope", 1520, FLOOR_Y + 6, D.floor + 0.1);
+  }
+
+  private canteen() {
+    this.img("tree-big", 2560, FLOOR_Y + 8, D.back).setFlipX(true).setScale(0.9);
+    this.img("kiosk", 3060, FLOOR_Y, D.back);
+    this.img("picnic-table", 2770, FLOOR_Y, D.floor).setScale(0.85);
+    this.grounded(this.img("yard-chalkboard", 2610, FLOOR_Y, D.floor + 0.02), 0.6);
+    this.plaque(2610, 878, "HOJE:\nSOPA DE\nSILÊNCIO", { size: 22, fill: 0x2f5d4a, color: "#f4f1e6", depth: D.floor + 0.03, plain: true, font: "hand" });
+    this.grounded(this.react(this.img("bin", 3322, FLOOR_Y, D.back + 0.01).setScale(0.7), "bin"), 0.7);
+    const tape = this.img("yard-tape", 3440, 872, 6.05, [0.5, 0.5]).setAngle(-7).setScale(0.82);
+    this.plaque(tape.x, tape.y, "CONFISCADAS", { size: 19, fill: 0xef4f43, color: "#fbf5e6", depth: 6.06, plain: true, angle: -7 });
+    for (const x of [3540, 4300]) this.img("lamp-post", x, FLOOR_Y, D.back + 0.02).setScale(0.9);
+    this.bunting(3540, 4300, 560, 30);
+  }
+
+  private commons() {
+    this.img("tree-ipe-yellow", 4380, FLOOR_Y + 8, D.back).setScale(0.88);
+    this.react(this.img("backpack", 4660, FLOOR_Y + 4, D.floor + 0.1).setScale(0.7).setFlipX(true), "plant");
+    this.img("yard-chalk", 4176, FLOOR_Y + 24, 5.1, [0, 0]);
+    this.scene.add.text(4930, FLOOR_Y + 46, "VOLTA, RECREIO!", { fontFamily: this.fonts.hand, fontSize: "30px", color: "#ffffff" }).setOrigin(0.5).setAlpha(0.72).setAngle(-3).setDepth(5.1);
+  }
+
+  private garden() {
+    this.img("tree-ipe-pink", 5860, FLOOR_Y + 8, D.back);
+    this.grounded(this.react(this.img("yard-bookdrop", 5700, FLOOR_Y, D.back + 0.01), "metal"), 0.7);
+    this.plaque(5700, 846, "DEVOLUÇÃO", { size: 15, fill: 0x3f6fb5, color: "#fbf5e6", depth: D.back + 0.02, plain: true });
+    const note = this.react(this.img("yard-note", 5708, 930, D.back + 0.03, [0.5, 0.5]).setAngle(5).setScale(0.62), "swing");
+    this.plaque(note.x, note.y, "E O RECREIO?", { size: 17, fill: 0xfdf0c2, color: "#c4352c", depth: D.back + 0.04, plain: true, font: "hand", angle: 5 });
+    this.grounded(this.img("yard-post", 5990, FLOOR_Y, D.back, [0.5, 1]).setDisplaySize(20, 330), 0.25);
+    const plate = this.react(this.img("yard-plate", 5990, 694, D.back + 0.01, [0.5, 0.5]), "swing");
+    this.plaque(plate.x, plate.y, "SILÊNCIO", { size: 32, fill: 0xfbf5e6, color: "#c4352c", depth: D.back + 0.02, plain: true });
+    const kid = this.img("yard-note", 6000, 760, D.back + 0.03, [0.5, 0.5]).setAngle(-4).setScale(0.78);
+    this.plaque(kid.x, kid.y, "SÓ LÁ DENTRO!", { size: 19, fill: 0xfdf0c2, color: "#2b2150", depth: D.back + 0.04, plain: true, font: "hand", angle: -4 });
+  }
+
+  private plaque(x: number, y: number, text: string, o: { size: number; fill: number; color: string; depth: number; scroll?: number; plain?: boolean; font?: "display" | "hand"; angle?: number }) {
+    const s = this.scene;
+    const t = s.add.text(x, y, text, { fontFamily: o.font === "hand" ? this.fonts.hand : this.fonts.display, fontSize: `${o.size}px`, color: o.color, align: "center", lineSpacing: -4, padding: { x: 2, y: 2 } }).setOrigin(0.5).setDepth(o.depth + 0.0005).setAngle(o.angle ?? 0);
+    if (o.scroll !== undefined) this.layer(t.setScrollFactor(o.scroll, 0));
+    if (o.plain) return t;
+    const w = Math.ceil(t.width + o.size * 0.9);
+    const h = Math.ceil(t.height + o.size * 0.3);
+    const key = `plaque-${w}-${h}-${o.fill.toString(16)}`;
+    gfxTexture(s, key, w + 8, h + 8, (g) => {
+      g.fillStyle(INK_HEX, 1);
+      g.fillRoundedRect(4, 6, w, h, 10);
+      g.fillRoundedRect(0, 0, w, h, 10);
+      g.fillStyle(o.fill, 1);
+      g.fillRoundedRect(4, 4, w - 8, h - 8, 7);
+    });
+    const plate = this.img(key, x + 4, y + 4, o.depth, [0.5, 0.5]).setAngle(o.angle ?? 0);
+    if (o.scroll !== undefined) this.layer(plate.setScrollFactor(o.scroll, 0));
+    return t;
   }
 
   private strung(x0: number, x1: number, y: number) {

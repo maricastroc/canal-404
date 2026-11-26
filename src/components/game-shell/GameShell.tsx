@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence } from "motion/react";
+import dynamic from "next/dynamic";
 import Link from "@/i18n/Link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeftIcon, MissionIcon, PauseIcon, PhoneIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
@@ -33,6 +34,9 @@ import { useAnnouncer } from "./useAnnouncer";
 import type { BoardState } from "./BoardLine";
 import { HeaderToast, useHeaderToast } from "./HeaderToast";
 import { ErrorPanel, IntroPanel, PausePanel, ResultPanel } from "./Panels";
+import { RecessAlbumButton } from "@/components/catalog/RecessAlbumButton";
+
+const RecessAlbum = dynamic(() => import("@/components/catalog/RecessAlbum").then((m) => m.RecessAlbum), { ssr: false });
 
 type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
 
@@ -60,6 +64,7 @@ const COPY = localized({
     mission: (title: string) => `Missão: ${title}`,
     points: (score: number) => `${formatNumber(score, "pt-BR")} pts`,
     howTo: "Como jogar",
+    album: "Álbum de figurinhas",
     restart: "Recomeçar partida",
     resume: "Continuar",
     pause: "Pausar",
@@ -86,6 +91,7 @@ const COPY = localized({
     mission: (title: string) => `Mission: ${title}`,
     points: (score: number) => `${formatNumber(score, "en")} pts`,
     howTo: "How to play",
+    album: "Sticker album",
     restart: "Restart game",
     resume: "Resume",
     pause: "Pause",
@@ -144,11 +150,15 @@ export function GameShell({ slug }: { slug: string }) {
   const stageStateRef = useRef<Stage>("loading");
   const [stage, setStageState] = useState<Stage>("loading");
   const [showHelp, setShowHelp] = useState(false);
+  const [showAlbum, setShowAlbum] = useState(false);
   const setStage = useCallback((next: Stage) => {
     stageStateRef.current = next;
     setStageState(next);
-    if (next === "playing") setShowHelp(false);
-  }, [setShowHelp]);
+    if (next === "playing") {
+      setShowHelp(false);
+      setShowAlbum(false);
+    }
+  }, [setShowHelp, setShowAlbum]);
   const [progress, setProgress] = useState(0.04);
   const [introProgress, setIntroProgress] = useState<IntroProgress | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -490,9 +500,10 @@ export function GameShell({ slug }: { slug: string }) {
     const since = performance.now();
     const onKey = (event: KeyboardEvent) => {
       if (event.timeStamp < since || event.repeat) return;
-      if (event.key === "Escape" && showHelp) {
+      if (event.key === "Escape" && (showHelp || showAlbum)) {
         event.preventDefault();
         setShowHelp(false);
+        setShowAlbum(false);
         return;
       }
       if (event.key === "Escape" || event.key.toLowerCase() === "p") {
@@ -504,7 +515,7 @@ export function GameShell({ slug }: { slug: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [stage, setStage, showHelp]);
+  }, [stage, setStage, showHelp, showAlbum]);
 
   const focusGame = () => window.setTimeout(() => stageRef.current?.focus(), 40);
 
@@ -643,18 +654,32 @@ export function GameShell({ slug }: { slug: string }) {
             <span className="truncate">{copy.mission(missionText(missionRun, locale).title)}</span>
           </p>
         ) : null}
-        <p className="ml-auto hidden shrink-0 whitespace-nowrap rounded-lg border-[3px] border-ink bg-plum-950 px-3 py-0.5 font-display text-sm tabular-nums text-cream sm:block" aria-hidden>
-          {copy.points(score)}
-        </p>
+        {game.hudScore ? null : (
+          <p className="ml-auto hidden shrink-0 whitespace-nowrap rounded-lg border-[3px] border-ink bg-plum-950 px-3 py-0.5 font-display text-sm tabular-nums text-cream sm:block" aria-hidden>
+            {copy.points(score)}
+          </p>
+        )}
+        {game.album ? (
+          <RecessAlbumButton
+            disabled={!canControl}
+            className="ml-auto"
+            onOpen={() => {
+              if (stage === "playing") pause();
+              setShowHelp(false);
+              setShowAlbum(true);
+            }}
+          />
+        ) : null}
         <button
           type="button"
           onClick={() => {
             if (stage === "playing") pause();
+            setShowAlbum(false);
             setShowHelp(true);
           }}
           disabled={!canControl}
           aria-label={copy.howTo}
-          className={`press ml-auto grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-cream shadow-[var(--shadow-ink-sm)] disabled:opacity-40 sm:ml-0 ${game.leanPhoneHeader ? "max-sm:hidden" : ""}`}
+          className={`press grid size-10 place-items-center rounded-lg border-[3px] border-ink bg-cream shadow-[var(--shadow-ink-sm)] disabled:opacity-40 ${game.album ? "" : game.hudScore ? "ml-auto" : "ml-auto sm:ml-0"} ${game.leanPhoneHeader ? "max-sm:hidden" : ""}`}
         >
           <QuestionIcon className="size-6" />
         </button>
@@ -721,6 +746,7 @@ export function GameShell({ slug }: { slug: string }) {
               onRestart={game.resumable ? undefined : restart}
               showHelp={showHelp}
               onToggleHelp={() => setShowHelp((v) => !v)}
+              album={game.album ? { node: <RecessAlbum inPanel />, label: copy.album, open: showAlbum, onToggle: () => setShowAlbum((v) => !v) } : undefined}
             />
           )}
           {stage === "result" && result && (
