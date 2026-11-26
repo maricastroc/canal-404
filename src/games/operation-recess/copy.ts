@@ -32,7 +32,7 @@ export const COPY = localized({
     hud: {
       level: (n: number, total: number) => `FASE ${n} DE ${total}`,
       monitors: "MONITORES VENCIDOS",
-      allMonitors: (kills: number, total: number) => `TODOS! ${kills}/${total}`,
+      allMonitors: "TODOS VENCIDOS!",
       boss: "INSPETOR DO SILÊNCIO",
     },
     hints: {
@@ -181,7 +181,7 @@ export const COPY = localized({
     hud: {
       level: (n: number, total: number) => `LEVEL ${n} OF ${total}`,
       monitors: "MONITORS BEATEN",
-      allMonitors: (kills: number, total: number) => `ALL! ${kills}/${total}`,
+      allMonitors: "ALL BEATEN!",
       boss: "THE SILENCE INSPECTOR",
     },
     hints: {
