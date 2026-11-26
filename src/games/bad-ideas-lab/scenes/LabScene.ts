@@ -129,6 +129,7 @@ export class LabScene extends Phaser.Scene {
   private frame: Frame = FULL_FRAME;
   private history: PlacedPart[][] = [];
   private hintPulsing = false;
+  private talkingUntil = 0;
   private runPulsing = false;
   private touchUi = false;
   private camera!: LabCamera;
@@ -229,6 +230,7 @@ export class LabScene extends Phaser.Scene {
     this.frame = FULL_FRAME;
     this.history = [];
     this.hintPulsing = false;
+    this.talkingUntil = 0;
     this.runPulsing = false;
     this.touchUi = false;
     this.uiCam = null;
@@ -296,6 +298,7 @@ export class LabScene extends Phaser.Scene {
     if (level.ball === "orange") this.ballImg.setOrigin(0.5, 31 / 56);
 
     this.lina = new LinaView(this, 96, FLOOR_Y + 4, reduced, (kind) => this.hud.mood(kind));
+    this.lina.onTap(() => this.repeatStory());
     this.bubble = new Bubble(this, fonts, "left", 32, 16);
     this.bulb = this.add.image(this.lina.x - 56, this.lina.y - 226, "bulb").setDepth(15).setVisible(false);
 
@@ -345,8 +348,8 @@ export class LabScene extends Phaser.Scene {
       this.camera.set(this.camera.overviewPose());
       this.introCam = this.time.delayedCall(900, () => this.camera.animateTo(this.camera.base, 750));
     }
-    const story = tall && level.guide ? this.copy.scene.coach.dragRamp : this.text.story;
-    this.time.delayedCall(establish ? 1500 : 350, () => this.say(story, 4600, level.guide ? 20 : 24));
+    this.talkingUntil = Number.POSITIVE_INFINITY;
+    this.time.delayedCall(establish ? 1500 : 350, () => this.say(this.storyLine(this.hud.kind), 4600, level.guide ? 20 : 24));
     if (tall && !level.guide && !this.registry.get("cameraTip")) {
       this.time.delayedCall(6400, () => {
         if (this.mode !== "build" || this.registry.get("cameraTip") || this.carry) return;
@@ -505,6 +508,7 @@ export class LabScene extends Phaser.Scene {
       fonts: this.ctx.fonts,
       level: this.level,
       text: this.text,
+      story: this.storyLine(kind),
       copy: this.copy,
       index: this.levelIndex,
       total: LEVELS.length,
@@ -738,7 +742,17 @@ export class LabScene extends Phaser.Scene {
     });
   }
 
+  private storyLine(kind: FrameKind) {
+    return kind === "tall" && this.level.guide ? this.copy.scene.coach.dragRamp : this.text.story;
+  }
+
+  private repeatStory() {
+    if (this.mode !== "build") return;
+    this.say(this.storyLine(this.hud.kind), 5200, this.level.guide ? 20 : 24);
+  }
+
   private say(text: string, duration = 2400, wrap = 30) {
+    this.talkingUntil = this.time.now + duration;
     if (this.hud.say(text, duration, this.focusPoint())) return;
     const spot = this.bubbleSpot(text, wrap);
     this.bubble.say(spot.text, spot.x, spot.y, duration, spot.side);
@@ -1564,6 +1578,7 @@ export class LabScene extends Phaser.Scene {
     switch (key) {
       case "d":
         this.describeLevelNow();
+        this.repeatStory();
         return true;
       case "o":
         this.browse(shift ? -1 : 1);
@@ -2209,6 +2224,7 @@ export class LabScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     for (const p of this.parts) p.view.update(delta);
     this.lina.update();
+    this.lina.setCue(this.mode === "build" && this.time.now >= this.talkingUntil);
     this.liftCarry(delta);
     const ball = (this.mode === "running" || this.mode === "done") && this.ballImg.visible ? { x: this.ballImg.x, y: this.ballImg.y } : null;
     if (this.camera.update(delta, this.time.now, ball, this.finishing) && this.selected) this.placeToolbar(this.selected);

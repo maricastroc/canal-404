@@ -47,6 +47,7 @@ The reference machines are in `solutions.ts`, with their step counts in `GOLDEN_
 - Bruno has one cameo, at the end of the finale's chain reaction, with his catchphrase. He stays in the cast without competing with Lina.
 - A near miss is geometric: the ball's edge got within one ball diameter (44 px) of the goal's sensor box. The screen reader measures the same distance in steps. "Quase!" lines only play then, and the trail marks the closest point.
 - A run where a spring launches the ball four times in a row from the same spot, within 4 px, is periodic and can never reach the goal. The scene turns it off. The simulation and the server don't change, because failed runs are never submitted.
+- Lina's opening line can be seen again: clicking or tapping her (or the "…" bubble beside her while she's quiet) repeats it, D repeats it along with the level description, and the touch layouts' level card shows it below the goal.
 - Lina's speech bubble picks the position that covers least of the goal, the build area, the blocks and the pipe. Phones in portrait move the coach dialog down while the win banner is up. On a win, they frame the goal's reaction instead of showing the cheer, which the result card repeats.
 - Wins on desktop and on landscape phones dim the room around the goal's reaction. The finale's chain reaction instead spans the room. It lasts about 5.6 s, and a tap, Space or Enter skips it after 0.9 s.
 - Reduced motion turns off the window cloud, the blinking LED, the tweens in the chain and the eye tracking. The pose changes stay.
