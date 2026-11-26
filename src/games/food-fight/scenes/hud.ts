@@ -10,11 +10,10 @@ const DUCK = { x: 150, y: H - 128, r: 86, press: 5, iconY: -16, iconSize: 88, la
 const TAP_SIZE = 120;
 const BANNER = { gap: 22, half: 58, sub: 84 };
 const TONES = { alert: 0.78, headline: 1 };
-const PORTRAIT_DUCK_CSS = 35;
 
 export type BannerTone = keyof typeof TONES;
 
-export type HudView = { frame: Frame; perCss: number; slotX: number[] };
+export type HudView = { frame: Frame; perCss: number; slotX: number[]; slotY: number[] };
 
 export class LunchHud {
   uiScale = 1;
@@ -165,10 +164,10 @@ export class LunchHud {
       this.scoreBox.setScale(s).setPosition(frame.width - 20, top);
       this.streak.setScale(Math.min(s, 1.3)).setPosition(frame.width - 34, top + 150 * s + 18);
       this.bannerTop = top + 141 * s;
-      const ds = Phaser.Math.Clamp((PORTRAIT_DUCK_CSS * perCss) / DUCK.r, 0.9, 1.6);
-      const r = DUCK.r * ds;
-      const margin = 18;
-      this.duck.setData("base", ds).setScale(ds).setPosition(frame.width - margin - r - 5, frame.top + frame.height - margin - r - 7);
+      if (frame.duck) {
+        const ds = frame.duck.r / DUCK.r;
+        this.duck.setData("base", ds).setScale(ds).setPosition(frame.duck.x - 5 * ds, frame.duck.y - 7 * ds);
+      }
     } else {
       this.uiScale = Phaser.Math.Clamp(perCss * 0.55, 1, 1.75);
       const s = this.uiScale;
@@ -184,7 +183,7 @@ export class LunchHud {
     this.banner.setX(cx);
     this.bannerSub.setX(cx);
     this.placeBanner(false);
-    SLOTS.forEach((slot, i) => this.tags[i].setX(view.slotX[i] ?? slot.x));
+    SLOTS.forEach((slot, i) => this.tags[i].setPosition(view.slotX[i] ?? slot.x, (view.slotY[i] ?? slot.tableY) + (slot.row === "back" ? 52 : 70)));
   }
 
   private bannerScale(text: Phaser.GameObjects.Text) {

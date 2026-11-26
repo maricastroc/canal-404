@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule } from "@/games/types";
 import { frameFor } from "./layout";
+import { insetsOf } from "../kit/insets";
 import { BootScene } from "./scenes/BootScene";
 import { LunchScene } from "./scenes/LunchScene";
 import { destroyGame } from "../kit/game";
@@ -8,7 +9,7 @@ import { destroyGame } from "../kit/game";
 function mount(ctx: GameHostContext): GameInstance {
   ctx.onProgress(0, "art");
   const bounds = ctx.parent.getBoundingClientRect();
-  const frame = frameFor(bounds.width, bounds.height);
+  const frame = frameFor(bounds.width, bounds.height, insetsOf(ctx.parent));
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.parent,

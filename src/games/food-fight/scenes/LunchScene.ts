@@ -32,10 +32,11 @@ import {
   type RivalKind,
 } from "../config";
 import { COPY, type FoodFightCopy } from "../copy";
-import { LANDSCAPE_FRAME, SCENERY, frameFor, frameX, landscapeX, walkScale, type Frame } from "../layout";
+import { LANDSCAPE_FRAME, SCENERY, frameFor, frameX, landscapeX, landscapeY, rowShift, walkScale, wallSplat, type Frame } from "../layout";
 import { LUNCH_SFX, type LunchSfx } from "../sounds";
 import { LUNCH_FINALE } from "../music";
 import { Bubble, cartoonText } from "../../kit/ui";
+import { insetsOf } from "../../kit/insets";
 import { eachKeyOnce } from "../../kit/keys";
 import { StingPlayer } from "../../kit/sting";
 import { Cook, LunchLady, Rival, type Reaction } from "./actors";
@@ -173,6 +174,7 @@ export class LunchScene extends Phaser.Scene {
   private slowShot: Projectile | null = null;
   private catchLesson = false;
   private tables: Phaser.GameObjects.Image[] = [];
+  private rowMasks = new Map<number, Phaser.GameObjects.Graphics>();
   private peels = new Map<number, Peel>();
   private ladyStop = 0;
   private ladyWasPaused = false;
@@ -240,6 +242,7 @@ export class LunchScene extends Phaser.Scene {
     this.brawlFillAt = 0;
     this.milaPriorityUntil = 0;
     this.tables = [];
+    this.rowMasks = new Map();
     this.props = [];
     this.napkins = [];
     this.peels = new Map();
@@ -293,7 +296,11 @@ export class LunchScene extends Phaser.Scene {
     const masks = new Map<number, Phaser.Display.Masks.GeometryMask>();
     for (const slot of SLOTS) {
       const back = slot.row === "back";
-      if (!masks.has(slot.maskBottom)) masks.set(slot.maskBottom, this.make.graphics({}, false).fillRect(-W, -H, W * 3, H + slot.maskBottom).createGeometryMask());
+      if (!masks.has(slot.maskBottom)) {
+        const shape = this.make.graphics({}, false).fillRect(-W, -H, W * 3, H + slot.maskBottom);
+        this.rowMasks.set(slot.maskBottom, shape);
+        masks.set(slot.maskBottom, shape.createGeometryMask());
+      }
       const table = this.add
         .image(slot.x, slot.tableY, "rival-table")
         .setOrigin(0.5, 0)
@@ -363,13 +370,14 @@ export class LunchScene extends Phaser.Scene {
   private onResize() {
     const parent = this.scale.parentSize;
     const game = this.scale.gameSize;
-    const frame = parent.width > 0 && parent.height > 0 ? frameFor(parent.width, parent.height) : frameFor(game.width, game.height);
+    const frame = parent.width > 0 && parent.height > 0 ? frameFor(parent.width, parent.height, insetsOf(this.ctx.parent)) : frameFor(game.width, game.height);
     const center = frame.kind === "portrait" ? Phaser.Scale.CENTER_HORIZONTALLY : Phaser.Scale.CENTER_BOTH;
     if (this.scale.autoCenter !== center) {
       this.scale.autoCenter = center;
       this.scale.updateCenter();
     }
     if (frame.width !== game.width || frame.height !== game.height) {
+      this.game.canvas.style.margin = "0px";
       this.scale.setGameSize(frame.width, frame.height);
       return;
     }
@@ -398,6 +406,7 @@ export class LunchScene extends Phaser.Scene {
       this.deco.setY(this.deco.y + dy - previous.drop);
       this.mila.setY(this.mila.y + dy - previous.drop);
     }
+    this.lunchLady.setBaseY(LUNCH_LADY.y + frame.back);
     this.lunchLady.retarget(frameX(frame, landscapeX(previous, this.lunchLady.img.x)), frameX(frame, LUNCH_LADY.exitX), walkScale(frame), this.ladyStopX(frame));
     this.topStrip.setY(frame.top > 0 ? frame.top - 40 : frame.top);
     this.drawExtension(frame);
@@ -405,17 +414,21 @@ export class LunchScene extends Phaser.Scene {
     this.clock.setPosition(scenery.clock.x, scenery.clock.y);
     this.bell.setPosition(scenery.bell.x, scenery.bell.y);
     this.updateClock();
+    for (const slot of SLOTS) this.rowMasks.get(slot.maskBottom)?.setY(rowShift(frame, slot));
     this.rivals.forEach((r, i) => {
       const x = portrait ? r.slot.portraitX : r.slot.x;
-      this.tables[i].setX(x);
-      r.placeAt(x, this.t);
+      this.tables[i].setPosition(x, r.slot.tableY + rowShift(frame, r.slot));
+      r.placeAt(x, rowShift(frame, r.slot), this.t);
     });
-    this.peels.forEach((peel, i) => peel.landed && peel.img.setX(this.rivals[i].x + peel.dx));
+    this.peels.forEach((peel, i) => {
+      const slot = this.rivals[i].slot;
+      if (peel.landed) peel.img.setPosition(this.rivals[i].x + peel.dx, peel.img.y + rowShift(frame, slot) - rowShift(previous, slot));
+    });
     if (this.tutorialRival) {
       const face = this.tutorialRival.face();
       this.hud.movePointer(face.x, face.y);
     }
-    this.hud.layout({ frame, perCss: this.scale.displayScale.x, slotX: this.rivals.map((r) => r.x) });
+    this.hud.layout({ frame, perCss: this.scale.displayScale.x, slotX: this.rivals.map((r) => r.x), slotY: this.rivals.map((r) => r.tableY) });
     const bubbleScale = Math.min(this.hud.uiScale, 1.5);
     this.bubble.setBaseScale(bubbleScale);
     this.sideBubble.setBaseScale(bubbleScale);
@@ -1094,7 +1107,7 @@ export class LunchScene extends Phaser.Scene {
         this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.phew) as string, 1100, "peek");
       }
     }
-    const splat = SCENERY[this.frame.kind].splat;
+    const splat = wallSplat(this.frame);
     const spread = this.frame.kind === "portrait" ? 0.4 : 1;
     const to = { x: splat.x + Phaser.Math.Between(-60, 60) * spread, y: splat.y + Phaser.Math.Between(-80, 40) * spread };
     this.launch(img, { x: img.x, y: img.y }, to, 220, 20, img.scaleX * 0.9, () => {
@@ -1168,7 +1181,7 @@ export class LunchScene extends Phaser.Scene {
     const r = this.rivals.find((x) => x.slot.key === key);
     if (!r) return;
     if (r.targetable) this.tryThrow({ kind: "rival", rival: r });
-    else this.tryThrow({ kind: "point", x: r.x, y: r.slot.tableY - 40 * r.slot.scale });
+    else this.tryThrow({ kind: "point", x: r.x, y: r.tableY - 40 * r.slot.scale });
   }
 
   private throwAtPoint(x: number, y: number) {
@@ -1233,14 +1246,15 @@ export class LunchScene extends Phaser.Scene {
       scaleTo = 0.55;
     } else {
       to = { x: target.x, y: target.y };
-      scaleTo = target.y < 700 ? 0.55 : 0.75;
+      scaleTo = landscapeY(this.frame, target.y) < 700 ? 0.55 : 0.75;
     }
     const flip = this.frame.kind === "portrait" && to.x < DECO.x;
     this.deco.setFlipX(flip);
     const from = { x: flip ? 2 * DECO.x - DECO.hand.x : DECO.hand.x, y: DECO.hand.y + this.frame.drop };
     const dist = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
     const fairX = target.kind === "rival" ? target.rival.slot.x : landscapeX(this.frame, to.x);
-    const fair = Phaser.Math.Distance.Between(DECO.hand.x, DECO.hand.y, fairX, to.y);
+    const fairY = target.kind === "rival" ? to.y - rowShift(this.frame, target.rival.slot) : target.kind === "point" ? landscapeY(this.frame, to.y) : to.y;
+    const fair = Phaser.Math.Distance.Between(DECO.hand.x, DECO.hand.y, fairX, fairY);
     const img = this.add.image(from.x, from.y, food).setDepth(13).setScale(0.9);
     this.launch(img, from, to, 240 + fair * 0.2, 90 + dist * 0.08, scaleTo, () => this.foodArrives(img, target, to, food));
   }
@@ -1316,8 +1330,8 @@ export class LunchScene extends Phaser.Scene {
     this.rivals.forEach((r, i) => {
       const back = r.slot.row === "back";
       const halfW = back ? 133 : 180;
-      if (Math.abs(at.x - r.x) >= halfW || at.y < r.slot.upY - 240 * r.slot.scale || at.y > r.slot.tableY + (back ? 112 : 150)) return;
-      const d = Phaser.Math.Distance.Between(at.x, at.y, r.x, r.slot.tableY);
+      if (Math.abs(at.x - r.x) >= halfW || at.y < r.upY - 240 * r.slot.scale || at.y > r.tableY + (back ? 112 : 150)) return;
+      const d = Phaser.Math.Distance.Between(at.x, at.y, r.x, r.tableY);
       if (d < bestD) {
         bestD = d;
         best = i;
@@ -1334,7 +1348,7 @@ export class LunchScene extends Phaser.Scene {
     const tableScale = back ? 0.7 : 0.95;
     const dx = Phaser.Math.Clamp(at.x - r.x, -90, 90) * tableScale;
     const scale = back ? 0.8 : 1.02;
-    const to = { x: r.x + dx, y: r.slot.tableY + 22 * tableScale };
+    const to = { x: r.x + dx, y: r.tableY + 22 * tableScale };
     const img = this.add.image(at.x, at.y, "banana").setDepth(13).setScale(back ? 0.5 : 0.65);
     const peel: Peel = { img, dx, landed: false, armed: false };
     this.peels.set(i, peel);
@@ -1393,11 +1407,11 @@ export class LunchScene extends Phaser.Scene {
     if (food === "banana" && this.mode === "playing" && this.dropPeel(at, near)) return;
     let depth = 1.5;
     let scale = 0.7;
-    for (const { slot, x } of this.rivals) {
+    for (const { slot, x, tableY } of this.rivals) {
       const back = slot.row === "back";
       const halfW = back ? 133 : 180;
-      const bottom = slot.tableY + (back ? 112 : 150);
-      if (Math.abs(at.x - x) < halfW && at.y > slot.tableY - 20 && at.y < bottom) {
+      const bottom = tableY + (back ? 112 : 150);
+      if (Math.abs(at.x - x) < halfW && at.y > tableY - 20 && at.y < bottom) {
         depth = back ? 4.2 : 7.2;
         scale = back ? 0.5 : 0.65;
       }
@@ -1413,7 +1427,7 @@ export class LunchScene extends Phaser.Scene {
     const back = r.slot.row === "back";
     this.word(this.copy.tray.word, r.x, r.top() - 40, "#fbf5e6", back ? 34 : 42);
     const img = this.add.image(at.x, at.y, food).setDepth(13).setScale(back ? 0.5 : 0.65);
-    const to = { x: at.x + Phaser.Math.Between(-110, 110), y: r.slot.tableY + 6 };
+    const to = { x: at.x + Phaser.Math.Between(-110, 110), y: r.tableY + 6 };
     this.launch(img, at, to, 420, 70, back ? 0.45 : 0.6, () => {
       img.destroy();
       this.decal("splat-food", to.x, to.y, back ? 4.2 : 7.2, back ? 0.45 : 0.6);
