@@ -19,6 +19,7 @@ import { TouchDeck } from "./deck";
 import { makeEnemy, ShieldMonitor, Wave, WhistleMonitor, type Enemy, type HeroView, type StageApi } from "./enemies";
 import { Ball, BallSpawner, Bell, Cart, Item } from "./hazards";
 import { currentFrame, watchFrame } from "./frame";
+import { BookTower } from "./bookTower";
 import { Locker, makeGadgetTextures, Pad, Rope, Searchlight, Watcher, WobblyShelf, type HeroState } from "./gadgets";
 import { RecessHud } from "./hud";
 import { EdgeMarkers, type Mark } from "./markers";
@@ -27,7 +28,7 @@ import { Scenery } from "./scenery";
 import { buildWorld, cx, cy, type World } from "./world";
 
 type Mode = "attract" | "play" | "ko" | "won";
-type Lesson = "walk" | "jump" | "hold" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "high" | "sticker";
+type Lesson = "walk" | "jump" | "hold" | "attack" | "locker" | "watcher" | "rope" | "pad" | "light" | "shield" | "wobbly" | "tower" | "high" | "sticker";
 type Anchor = () => { x: number; y: number } | null;
 type Chip = { box: Phaser.GameObjects.Container; half: number; lift: number; dx: number; leaving: boolean; anchor?: Anchor; tip?: Phaser.GameObjects.Graphics; at?: { x: number; y: number } };
 type Hint = { lesson: Lesson; anchor: Anchor; past: number };
@@ -70,6 +71,7 @@ export class StageScene extends Phaser.Scene {
   private pads: Pad[] = [];
   private spotlights: Searchlight[] = [];
   private shelves: WobblyShelf[] = [];
+  private towers: BookTower[] = [];
   private boss: Inspector | null = null;
   private music!: RecessMusic;
   private album!: RecessSave;
@@ -141,6 +143,7 @@ export class StageScene extends Phaser.Scene {
     this.pads = [];
     this.spotlights = [];
     this.shelves = [];
+    this.towers = [];
     this.boss = null;
     this.arena = { left: 0, right: 0, entered: false };
     this.gate = null;
@@ -239,12 +242,13 @@ export class StageScene extends Phaser.Scene {
       this.spawners.push(new BallSpawner(this.api, b, (ball) => this.balls.push(ball), near));
     }
     makeGadgetTextures(this);
-    (this.level.lockers ?? []).forEach((col, i) => this.lockers.push(new Locker(this.api, col, i, i === 0 && !resume)));
+    (this.level.lockers ?? []).forEach((col, i) => this.lockers.push(new Locker(this.api, col, i, i === 0 && !resume, this.level.theme === "library" ? "returns" : "locker")));
     for (const w of this.level.watchers ?? []) this.watchers.push(new Watcher(this.api, w.col, w.look, this.ctx.fonts.display, (x, dir) => this.mode === "play" && this.waves.push(new Wave(this, x, FLOOR_Y, dir, true))));
     for (const r of this.level.ropes ?? []) this.ropes.push(new Rope(this.api, r));
     for (const col of this.level.pads ?? []) this.pads.push(new Pad(this.api, col));
     for (const l of this.level.lights ?? []) this.spotlights.push(new Searchlight(this.api, l));
     for (const pl of this.level.platforms) if (pl.wobbly) this.shelves.push(new WobblyShelf(this.api, pl));
+    (this.level.towers ?? []).forEach((col, i) => this.towers.push(new BookTower(this.api, col, i, (x0, x1, dir) => this.bury(x0, x1, dir))));
 
     const startCol = resume ? resume.col : this.level.start;
     if (resume) {
@@ -1363,7 +1367,7 @@ export class StageScene extends Phaser.Scene {
   }
 
   private updateGadgets(t: number, dt: number) {
-    if (!this.lockers.length && !this.watchers.length && !this.ropes.length && !this.pads.length && !this.spotlights.length && !this.shelves.length) return;
+    if (!this.lockers.length && !this.watchers.length && !this.ropes.length && !this.pads.length && !this.spotlights.length && !this.shelves.length && !this.towers.length) return;
     const h = this.heroState();
     const hr = this.heroRect();
     for (const l of this.lockers) {
@@ -1381,6 +1385,7 @@ export class StageScene extends Phaser.Scene {
     }
     for (const l of this.spotlights) if (l.update(t, dt, h, t < this.invulnUntil)) this.hurt(l.spotX);
     for (const s of this.shelves) s.update(t, h);
+    if (this.mode === "play") for (const tw of this.towers) tw.update(h);
   }
 
   private collect(id: StickerId) {
@@ -1424,6 +1429,8 @@ export class StageScene extends Phaser.Scene {
     if (pad && fresh("pad")) return { lesson: "pad", anchor: fixed(pad.x, FLOOR_Y - 220), past: pad.x };
     const light = this.spotlights.find((l) => seen(l.mid) && x < l.mid + l.reach);
     if (light && fresh("light")) return { lesson: "light", anchor: fixed(light.mid, FLOOR_Y - 330), past: light.mid + light.reach };
+    const tower = this.towers.find((tw) => tw.standing && seen(tw.x) && x < tw.x - 60);
+    if (tower && fresh("tower")) return { lesson: "tower", anchor: () => (tower.standing ? { x: tower.x, y: tower.top - 110 } : null), past: tower.x };
     const shield = this.enemies.find((e) => !e.dead && e instanceof ShieldMonitor && seen(e.x) && x < e.x);
     if (shield && fresh("shield")) return { lesson: "shield", anchor: follow(shield), past: Infinity };
     const shelf = this.shelves.find((s) => s.near(x) && seen(s.x0 + s.w / 2));
@@ -1454,8 +1461,12 @@ export class StageScene extends Phaser.Scene {
     const id = this.hero.attackId;
     const fromX = this.hero.x;
     for (const l of this.lockers) if (Phaser.Geom.Intersects.RectangleToRectangle(atk, l.bounds()) && l.slam()) this.hitStopUntil = this.time.now + HIT_STOP_MS;
+    const dir = this.hero.facing;
+    const felled = this.towers.filter((tw) => Phaser.Geom.Intersects.RectangleToRectangle(atk, tw.bounds()) && tw.topple(dir));
+    if (felled.length) this.hitStopUntil = this.time.now + HIT_STOP_MS;
     for (const e of this.enemies) {
       if (e.dead || !Phaser.Geom.Intersects.RectangleToRectangle(atk, e.bounds())) continue;
+      if (felled.some((tw) => (e.x - tw.x) * dir > -20)) continue;
       const res = e.hitBy(id, fromX, t);
       if (!res || res === "dodge") continue;
       if (res === "block") {
@@ -1464,17 +1475,7 @@ export class StageScene extends Phaser.Scene {
       }
       const top = e.body.top;
       this.onEnemyHit(e.x, top, e.body.bottom, res === "kill");
-      if (res === "kill") {
-        this.stir(e);
-        this.kills += 1;
-        this.trace.kill(t, this.enemyIndex.get(e) ?? -1);
-        this.hud.setMonitors(this.kills, this.level.enemies.length, true);
-        const pts = e.kind === "shield" ? SCORE.shield : e.kind === "whistle" ? SCORE.whistle : SCORE.common;
-        this.killScore += pts;
-        this.addScore(pts);
-        const x = e.x;
-        this.time.delayedCall(150, () => this.word(`+${pts}`, x, top - 110, "#9df0dc", 34));
-      }
+      if (res === "kill") this.countKill(e, t, top);
     }
     if (this.boss) {
       const b = this.boss.body;
@@ -1506,6 +1507,33 @@ export class StageScene extends Phaser.Scene {
         this.word(this.copy.words.kick, b.img.x, b.img.y - 50, "#fbf5e6", 34);
       }
     }
+  }
+
+  private countKill(e: Enemy, t: number, top: number) {
+    this.stir(e);
+    this.kills += 1;
+    this.trace.kill(t, this.enemyIndex.get(e) ?? -1);
+    this.hud.setMonitors(this.kills, this.level.enemies.length, true);
+    const pts = e.kind === "shield" ? SCORE.shield : e.kind === "whistle" ? SCORE.whistle : SCORE.common;
+    this.killScore += pts;
+    this.addScore(pts);
+    const x = e.x;
+    this.time.delayedCall(150, () => this.word(`+${pts}`, x, top - 110, "#9df0dc", 34));
+  }
+
+  private bury(x0: number, x1: number, dir: number) {
+    if (this.mode !== "play") return;
+    let buried = 0;
+    for (const e of this.enemies) {
+      if (e.dead || e.x < x0 || e.x > x1 || Math.abs(e.feet - FLOOR_Y) > 40) continue;
+      const top = e.body.top;
+      if (!e.crush(dir)) continue;
+      buried += 1;
+      this.countKill(e, this.t, top);
+    }
+    if (!buried) return;
+    this.hitStopUntil = this.time.now + HIT_STOP_MS * 1.6;
+    this.time.delayedCall(60, () => this.sfx("ko", 0.8));
   }
 
   private stir(fallen: Enemy) {

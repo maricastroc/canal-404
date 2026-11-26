@@ -256,7 +256,7 @@ function drawPlatform(scene: Phaser.Scene, pl: LevelDef["platforms"][number], ya
   }
   if (pl.art === "books" && FLOOR_Y - y < 220) {
     contact(scene, x + w / 2, w);
-    scene.add.image(x + w / 2, y - 8, "bookcase-low").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, FLOOR_Y - y + 10);
+    scene.add.image(x + w / 2, y - 8, pl.col % 2 ? "bookcase-low" : "bookcase-low-b").setOrigin(0.5, 0).setDepth(4).setDisplaySize(w + 10, FLOOR_Y - y + 10);
     return null;
   }
   if (pl.art === "books") {

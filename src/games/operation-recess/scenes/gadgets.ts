@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { FLOOR_Y, KID_SCALE, TILE } from "../config";
 import type { LevelDef } from "../levels";
 import { INK_HEX, cartoonText } from "../../kit/ui";
+import { makeTowerTextures } from "./bookTower";
 import type { StageApi } from "./enemies";
 import { cx, cy } from "./world";
 
@@ -90,6 +91,7 @@ export class Locker {
     col: number,
     index: number,
     private demo = false,
+    private skin: "locker" | "returns" = "locker",
   ) {
     const scene = api.scene;
     const c = index % LOCKER_COLORS.length;
@@ -104,8 +106,9 @@ export class Locker {
     this.swing.arc(this.hinge, FLOOR_Y + 2, 96, Math.PI * 0.5, Math.PI * 1.5, false);
     this.swing.strokePath();
     this.swing.setScale(1, 0.22).setY((FLOOR_Y + 2) * 0.78);
-    this.body = scene.add.image(this.x, FLOOR_Y, `locker-body-${c}`).setOrigin(0.5, 1).setDepth(8.5);
-    this.door = scene.add.image(this.hinge, FLOOR_Y - 6, `locker-door-${c}`).setOrigin(0, 1).setDepth(8.6);
+    const returns = skin === "returns";
+    this.body = scene.add.image(this.x, FLOOR_Y, returns ? "returns-body" : `locker-body-${c}`).setOrigin(0.5, 1).setDepth(8.5);
+    this.door = scene.add.image(this.hinge, FLOOR_Y - 6, returns ? "returns-door" : `locker-door-${c}`).setOrigin(0, 1).setDepth(8.6);
     this.lock = scene.add.graphics().setDepth(8.7).setVisible(false);
     const lx = 0;
     const ly = 0;
@@ -174,7 +177,10 @@ export class Locker {
         this.api.impact(this.x, 1);
         this.api.word("BAM!", this.hinge - 50, FLOOR_Y - 230, "#ffc83d", 44);
         if (this.api.reduced) this.door.setScale(-1, 1);
-        else this.api.scene.tweens.add({ targets: this.door, scaleX: -1, duration: 110, ease: "Quad.easeOut" });
+        else {
+          this.api.scene.tweens.add({ targets: this.door, scaleX: -1, duration: 110, ease: "Quad.easeOut" });
+          if (this.skin === "returns") this.spill();
+        }
         return;
       }
       case "open":
@@ -187,6 +193,18 @@ export class Locker {
       case "closing":
         if (t >= this.until && (h.x < this.x - 360 || h.x > this.x + 60)) this.state = "idle";
         return;
+    }
+  }
+
+  private spill() {
+    const scene = this.api.scene;
+    makeTowerTextures(scene);
+    for (let i = 0; i < 3; i += 1) {
+      const book = scene.add.image(this.x - 10, FLOOR_Y - 150 + i * 46, `tower-book-${(i * 3 + 1) % 10}`).setDepth(13).setScale(0.55).setAngle(i * 40 - 30);
+      const land = FLOOR_Y - 8;
+      scene.tweens.add({ targets: book, x: book.x - 80 - i * 38, angle: book.angle - 200 - i * 60, duration: 520 + i * 70, ease: "Quad.easeOut" });
+      scene.tweens.add({ targets: book, y: land, duration: 520 + i * 70, ease: "Bounce.easeOut" });
+      scene.tweens.add({ targets: book, alpha: 0, delay: 1300 + i * 120, duration: 400, onComplete: () => book.destroy() });
     }
   }
 
@@ -655,9 +673,19 @@ export class Searchlight {
   }
 }
 
+const SHELF_LOAD: [x: number, w: number, h: number, color: number, tilt: number][] = [
+  [8, 13, 40, 0x3a4f9f, 0],
+  [22, 12, 46, 0xef4f43, 0],
+  [35, 14, 36, 0x63d6c1, 14],
+  [-62, 16, 44, 0xffc83d, -12],
+  [-44, 13, 50, 0x7b62c4, 0],
+  [-30, 14, 42, 0x93cf4c, 0],
+];
+
 export class WobblyShelf {
   readonly zone: Phaser.GameObjects.Zone;
   private img: Phaser.GameObjects.Graphics;
+  private load: Phaser.GameObjects.Graphics;
   private state: "solid" | "wobble" | "fall" = "solid";
   private until = 0;
   readonly x0: number;
@@ -696,6 +724,25 @@ export class WobblyShelf {
     g.strokeRoundedRect(w / 2 - 24, 30, 48, 18, 4);
     g.lineBetween(w / 2 - 14, 39, w / 2 + 14, 39);
     this.img = g.setPosition(this.x0, this.y).setDepth(4.2);
+    const load = scene.add.graphics();
+    for (const [bx, bw, bh, color, tilt] of SHELF_LOAD) {
+      const x = bx < 0 ? w + bx : bx;
+      const rad = Phaser.Math.DegToRad(tilt);
+      const quad = (x0: number, y0: number, x1: number, y1: number) =>
+        [
+          [x0, y0],
+          [x1, y0],
+          [x1, y1],
+          [x0, y1],
+        ].map(([px, py]) => new Phaser.Math.Vector2(x + px * Math.cos(rad) - py * Math.sin(rad), -3 + px * Math.sin(rad) + py * Math.cos(rad)));
+      load.fillStyle(INK_HEX, 1);
+      load.fillPoints(quad(0, 0, bw, -bh), true);
+      load.fillStyle(color, 1);
+      load.fillPoints(quad(2.5, -2.5, bw - 2.5, -bh + 2.5), true);
+      load.fillStyle(0xfbf5e6, 0.9);
+      load.fillPoints(quad(4, -bh + 8, bw - 4, -bh + 11), true);
+    }
+    this.load = load.setPosition(this.x0, this.y).setDepth(4.19);
     this.zone = scene.add.zone(this.x0 + this.w / 2, this.y + 10, this.w, 20);
     scene.physics.add.existing(this.zone, true);
     const body = this.zone.body as Phaser.Physics.Arcade.StaticBody;
@@ -711,7 +758,10 @@ export class WobblyShelf {
         this.state = "wobble";
         this.until = t + 520;
         this.api.sfx("roll", 0.7);
-        if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.img, angle: { from: -2, to: 2 }, duration: 60, yoyo: true, repeat: 3, onComplete: () => this.img.setAngle(0) });
+        if (!this.api.reduced) {
+          const parts = [this.img, this.load];
+          this.api.scene.tweens.add({ targets: parts, angle: { from: -2, to: 2 }, duration: 60, yoyo: true, repeat: 3, onComplete: () => parts.forEach((o) => o.setAngle(0)) });
+        }
       }
       return;
     }
@@ -721,16 +771,21 @@ export class WobblyShelf {
       this.until = t + 3200;
       body.enable = false;
       this.api.sfx("crash", 0.6);
-      if (this.api.reduced) this.img.setVisible(false);
-      else this.api.scene.tweens.add({ targets: this.img, y: this.y + 520, angle: 24, alpha: 0, duration: 700, ease: "Quad.easeIn" });
+      if (this.api.reduced) {
+        this.img.setVisible(false);
+        this.load.setVisible(false);
+      } else {
+        this.api.scene.tweens.add({ targets: this.img, y: this.y + 520, angle: 24, alpha: 0, duration: 700, ease: "Quad.easeIn" });
+        this.api.scene.tweens.add({ targets: this.load, y: this.y + 560, x: this.x0 + 26, angle: -38, alpha: 0, delay: 70, duration: 640, ease: "Quad.easeIn" });
+      }
       return;
     }
     if (t < this.until) return;
     this.state = "solid";
     body.enable = true;
-    this.api.scene.tweens.killTweensOf(this.img);
-    this.img.setPosition(this.x0, this.y).setAngle(0).setVisible(true).setAlpha(this.api.reduced ? 1 : 0);
-    if (!this.api.reduced) this.api.scene.tweens.add({ targets: this.img, alpha: 1, duration: 300 });
+    this.api.scene.tweens.killTweensOf([this.img, this.load]);
+    for (const o of [this.img, this.load]) o.setPosition(this.x0, this.y).setAngle(0).setVisible(true).setAlpha(this.api.reduced ? 1 : 0);
+    if (!this.api.reduced) this.api.scene.tweens.add({ targets: [this.img, this.load], alpha: 1, duration: 300 });
   }
 
   near(x: number) {
