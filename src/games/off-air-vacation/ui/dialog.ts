@@ -354,15 +354,20 @@ export class DialogBox {
     pinUi(this.root);
   }
 
+  choiceAt(px: number, py: number) {
+    if (!this.resolveChoice) return -1;
+    const half = this.choiceH / 2;
+    return this.tall
+      ? this.choices.findIndex((c) => px >= c.root.x && px <= c.root.x + c.w && py >= c.root.y - half - 4 && py <= c.root.y + half + 4)
+      : this.choices.findIndex((c) => px >= c.root.x && px <= c.root.x + c.w && py >= c.root.y - 38 && py <= c.root.y + 32);
+  }
+
   pointer(px: number, py: number, down: boolean) {
     if (!this.resolveChoice) {
       if (down && this.open && py > (this.tall ? this.frame.top.h : this.box.y - 40)) this.advance();
       return down && this.open;
     }
-    const half = this.choiceH / 2;
-    const hit = this.tall
-      ? this.choices.findIndex((c) => px >= c.root.x && px <= c.root.x + c.w && py >= c.root.y - half - 4 && py <= c.root.y + half + 4)
-      : this.choices.findIndex((c) => px >= c.root.x && px <= c.root.x + c.w && py >= c.root.y - 38 && py <= c.root.y + 32);
+    const hit = this.choiceAt(px, py);
     if (hit >= 0 && hit !== this.selected) {
       this.selected = hit;
       this.paintChoices();

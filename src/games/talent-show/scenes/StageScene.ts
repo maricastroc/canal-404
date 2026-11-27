@@ -3,6 +3,7 @@ import { ArrowRight, Check, Ear, Heart, Music2, Play, Pointer, ThumbsDown, Thumb
 import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
 import { reportFailedLoads } from "@/games/kit/load";
+import { pressed } from "@/games/kit/press";
 import { cartoonText } from "@/games/kit/ui";
 import { formatNumber } from "@/i18n/format";
 import { getAudio } from "@/lib/audio/engine";
@@ -887,6 +888,10 @@ export class StageScene extends Phaser.Scene {
     return this.mode === "playing" || this.mode === "countin" || this.mode === "resuming";
   }
 
+  overButton(pageX: number, pageY: number) {
+    return this.buttonAt(pageX, pageY) !== null;
+  }
+
   press(timeStamp: number, id: string, pageX = -1, pageY = -1) {
     if (this.mode === "playing" || this.mode === "countin") this.registerDown(timeStamp, id);
     else if (this.carded()) {
@@ -909,11 +914,11 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     if (!this.carded()) return;
-    const pressed = this.pressedButton;
+    const held = this.pressedButton;
     this.pressedButton = null;
     this.card.press(null);
-    if (pressed) {
-      if (this.buttonAt(pageX, pageY) === pressed) this.advance(true);
+    if (held) {
+      if (this.buttonAt(pageX, pageY) === held) pressed(() => this.advance(true));
       return;
     }
     this.advance(false);

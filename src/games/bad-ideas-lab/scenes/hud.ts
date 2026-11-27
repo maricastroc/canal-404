@@ -5,6 +5,7 @@ import type { Vec } from "../geometry";
 import type { Frame, FrameKind } from "../layout";
 import { actOf, type LevelDef } from "../levels";
 import { INK, INK_HEX, cartoonText, centerGlyphs, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
+import { pressed } from "../../kit/press";
 import { addIcon, setIcon, type IconName } from "../icons";
 import type { Mood } from "./lina";
 
@@ -301,7 +302,7 @@ export class DeskHud implements LabHudView {
     hit.on("pointerdown", () => {
       if (!this.enabled) return;
       root.setScale(0.94);
-      onClick();
+      pressed(onClick);
     });
     hit.on("pointerup", () => root.setScale(1));
     hit.on("pointerout", () => root.setScale(1));

@@ -5,6 +5,7 @@ import type { Vec } from "../geometry";
 import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { actOf } from "../levels";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, type Fonts } from "../../kit/ui";
+import { pressed } from "../../kit/press";
 import { addIcon, setIcon, type IconName } from "../icons";
 import { WIN_STAR, WIN_STAR_POP, centerGlyphs, type HudHandlers, type HudSetup, type LabHudView, type Mood, type StarReveal, type ToolbarAnchor, type ViewState } from "./hud";
 
@@ -152,8 +153,8 @@ export abstract class TouchHud implements LabHudView {
     this.goalSpeaker = this.fix(cartoonText(scene, 0, 0, copy.hud.speaker, { size: 10, color: "#7b62c4", font: fonts.display, stroke: 0, shadow: false }));
     this.goalStory = this.fix(scene.add.text(0, 0, story, { fontFamily: fonts.display, fontSize: "13px", color: INK, padding: { x: 1, y: 1 }, lineSpacing: -2 }));
     this.goalPar = this.fix(scene.add.text(0, 0, copy.hud.par(level.par), { fontFamily: fonts.hand, fontSize: "12px", color: "#7b62c4", padding: { x: 1, y: 1 } }));
-    this.goalHit = this.fix(scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0).setOrigin(0).setInteractive());
-    this.goalHit.on("pointerdown", () => this.hideGoal());
+    this.goalHit = this.fix(scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true }));
+    this.goalHit.on("pointerdown", () => pressed(() => this.hideGoal()));
     this.goal = this.fix(scene.add.container(0, 0, [this.goalBg, this.goalKicker, this.goalTitle, this.goalText, this.goalSpeaker, this.goalStory, this.goalPar, this.goalHit]).setDepth(DEPTH.goal).setVisible(false));
 
     this.runArrow = this.fix(addIcon(scene, 0, 0, "arrow-down").setDepth(DEPTH.toolbar).setVisible(false));
@@ -194,7 +195,7 @@ export abstract class TouchHud implements LabHudView {
       if (!opts.tool && !opts.free && !opts.always && (!this.enabled || this.running)) return;
       if (opts.always && !this.enabled) return;
       root.setScale(0.94);
-      onDown();
+      pressed(onDown);
     });
     hit.on("pointerup", () => root.setScale(1));
     hit.on("pointerout", () => root.setScale(1));

@@ -85,6 +85,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
   private hintMarks = new Map<string, Phaser.GameObjects.Image>();
   private player: Player | null = null;
   private hud!: ResortHud | DeckHud;
+  private cursorOver = false;
   private dialog!: DialogBox;
   private journal!: Journal | PhoneJournal;
   private arcade!: ArcadeGame;
@@ -599,6 +600,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       this.hud.pointerMove(p);
       if (this.arcade.active && p.isDown) this.arcade.pointer(p.x, true);
       if (this.dialog.waitingChoice) this.dialog.pointer(p.x, p.y, false);
+      this.hoverCursor(p);
     });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer) => {
       if (this.journal instanceof PhoneJournal) this.journal.pointerUp(p);
@@ -650,6 +652,17 @@ export class WorldScene extends Phaser.Scene implements Builder {
       event.preventDefault();
       this.interact();
     }
+  }
+
+  private hoverCursor(p: Phaser.Input.Pointer) {
+    const over = this.journal.open
+      ? this.journal.overButton(p.x, p.y)
+      : this.dialog.open
+        ? this.dialog.choiceAt(p.x, p.y) >= 0
+        : this.mode === "play" && !this.busy && !this.arcade.active && this.hud.buttonAt(p.x, p.y) !== null;
+    if (over === this.cursorOver) return;
+    this.cursorOver = over;
+    this.input.setDefaultCursor(over ? "pointer" : "");
   }
 
   private onPointerDown(p: Phaser.Input.Pointer) {

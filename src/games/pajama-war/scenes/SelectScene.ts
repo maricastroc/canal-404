@@ -87,6 +87,7 @@ export class SelectScene extends Phaser.Scene {
     const fonts = this.ctx.fonts;
     const reduced = this.ctx.reducedMotion;
     this.frame = currentFrame(this);
+    this.input.setDefaultCursor("default");
     this.cameras.main.setBackgroundColor("#1d1830");
     this.wall = this.add.tileSprite(0, 0, W, 420, "wall-bedroom").setOrigin(0, 0);
     this.floor = this.add.tileSprite(0, 420, W, H - 420, "floor-bedroom").setOrigin(0, 0);

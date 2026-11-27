@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { ArrowLeftIcon, MissionIcon, PauseIcon, PhoneIcon, QuestionIcon, RestartIcon } from "@/components/art/Icons";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { getAudio } from "@/lib/audio/engine";
-import { useSound } from "@/lib/audio/hooks";
+import { usePressSound, useSound } from "@/lib/audio/hooks";
 import { useTouchScreen } from "@/lib/device";
 import { GAME_LOADERS } from "@/games/loaders";
 import { getGame, type GameMeta } from "@/games/registry";
@@ -144,6 +144,7 @@ export function GameShell({ slug }: { slug: string }) {
   const game = getGame(slug, locale)!;
   useCloudCopyOnLeave();
   const { play } = useSound();
+  const pressSound = usePressSound();
   const stageRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<GameInstance | null>(null);
@@ -640,7 +641,7 @@ export function GameShell({ slug }: { slug: string }) {
   };
 
   return (
-    <div onFocus={afterFocus} className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
+    <div onFocus={afterFocus} {...pressSound} className="on-dark flex h-dvh flex-col bg-plum-900" style={{ backgroundImage: "var(--dots-dark)", backgroundSize: "18px 18px" }}>
       <header className="flex h-14 shrink-0 items-center gap-1.5 border-b-[3px] border-ink bg-plum-800 safe-inline [--pad-inline:0.5rem] max-[359px]:gap-1 max-[359px]:[--pad-inline:0.375rem] sm:gap-3 sm:[--pad-inline:1rem]">
         <Link
           href={`/games/${slug}`}

@@ -6,6 +6,7 @@ import { COPY, type StreetCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
 import type { PhaseDef } from "../phases";
 import { CREAM_HEX, INK, INK_HEX, cartoonText, glyphOffset, type Fonts } from "../../kit/ui";
+import { pressed } from "../../kit/press";
 import { targetArrow, type StreetHud } from "./ui";
 
 export type Speaker = "deco" | "lina" | "arlindo";
@@ -186,7 +187,7 @@ export class DockHud implements StreetHud {
   private press(root: Phaser.GameObjects.Container, hit: Phaser.GameObjects.Rectangle, onDown: () => void) {
     hit.on("pointerdown", () => {
       root.setScale(0.94);
-      onDown();
+      pressed(onDown);
     });
     const up = () => root.setScale(1);
     hit.on("pointerup", up);
@@ -194,7 +195,7 @@ export class DockHud implements StreetHud {
   }
 
   private hitRect(w: number, h: number, x = -w / 2, y = -h / 2) {
-    return this.scene.add.rectangle(x, y, w, h, 0xffffff, 0).setOrigin(0).setInteractive();
+    return this.scene.add.rectangle(x, y, w, h, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
   }
 
   get topHeight() {
@@ -289,7 +290,7 @@ export class DockHud implements StreetHud {
     const title = this.add(this.label(titleX, rowA, "", 21, "#ffc83d", { stroke: 0.15 }).setOrigin(0, 0.5).setDepth(DEPTH.ui));
     fitLine(title, this.copy.phases[phase.id].title.toUpperCase(), areaR - titleX, 21 * k, 13 * k);
     const hit = this.add(this.hitRect(Math.max(title.x + title.width, titleX) - left, 38 * k, left, rowA - 19 * k).setDepth(DEPTH.ui));
-    hit.on("pointerdown", () => this.toggleGoal());
+    hit.on("pointerdown", () => pressed(() => this.toggleGoal()));
 
     const size = Math.min(31 * k, barH * 0.3);
     const step = size + 6 * k;
