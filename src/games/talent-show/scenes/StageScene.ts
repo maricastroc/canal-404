@@ -121,6 +121,7 @@ export class StageScene extends Phaser.Scene {
   private weakMask!: Phaser.GameObjects.Graphics;
   private host!: Phaser.GameObjects.Image;
   private hostSpot!: Spot;
+  private hostLead = false;
   private hostMood: HostMood = "wave";
   private hostOverride: HostMood | null = null;
   private hostUntil = 0;
@@ -443,11 +444,20 @@ export class StageScene extends Phaser.Scene {
     this.bubbleBg.fillStyle(C.ink, 1).fillRoundedRect(4, -h / 2 + 5, w, h, h / 2);
     this.bubbleBg.fillStyle(C.cream, 1).fillRoundedRect(0, -h / 2, w, h, h / 2);
     this.bubbleBg.lineStyle(5, C.ink, 1).strokeRoundedRect(0, -h / 2, w, h, h / 2);
-    this.bubbleBg.fillStyle(C.cream, 1).fillTriangle(16, h / 2 - 6, 40, h / 2 - 6, 4, h / 2 + 22);
-    this.bubbleBg.lineStyle(5, C.ink, 1).lineBetween(16, h / 2 - 2, 4, h / 2 + 22).lineBetween(4, h / 2 + 22, 40, h / 2 - 2);
-    const s = this.host.scale * 2;
-    const x = Math.min(this.L.W - w - 16, this.host.x + 60 * s);
-    this.bubble.setPosition(x, this.host.y - 300 * s).setVisible(true);
+    const phone = this.L.kind === "phone";
+    const above = phone && this.hostLead;
+    const [a, b, tip] = above ? [w / 2 - 14, w / 2 + 14, w / 2] : [16, 40, 4];
+    this.bubbleBg.fillStyle(C.cream, 1).fillTriangle(a, h / 2 - 6, b, h / 2 - 6, tip, h / 2 + 22);
+    this.bubbleBg.lineStyle(5, C.ink, 1).lineBetween(a, h / 2 - 2, tip, h / 2 + 22).lineBetween(tip, h / 2 + 22, b, h / 2 - 2);
+    const spot = phone ? this.hostSpot : { x: this.host.x, y: this.host.y, scale: this.host.scale * 2 };
+    if (above) {
+      const top = spot.y - (HOST_BOX.feet - HOST_BOX.y) * spot.scale;
+      const x = Math.max(16, Math.min(this.L.W - w - 16, spot.x - w / 2));
+      this.bubble.setPosition(x, top - 28 - h / 2).setVisible(true);
+    } else {
+      const x = Math.min(this.L.W - w - 16, spot.x + (phone ? 95 : 60) * spot.scale);
+      this.bubble.setPosition(x, spot.y - (phone ? 230 : 300) * spot.scale).setVisible(true);
+    }
     this.bubbleUntil = performance.now() + ms;
   }
 
@@ -495,22 +505,37 @@ export class StageScene extends Phaser.Scene {
       }
       this.tweens.add({ targets: target, x: spot.x, y: spot.y, scale, duration: 420, ease: "Sine.easeInOut" });
     };
-    BAND.forEach((id, i) => {
+    BAND.forEach((id) => {
       const view = this.kids.get(id);
       if (!view) return;
       const lead = id === featured;
-      view.spot = lead ? performer : { x: L.backline.xs[i], y: L.backline.y, scale: L.backline.scale };
+      view.spot = lead ? performer : this.backlineSpot(id, featured);
       view.root.setDepth(lead ? 8 : 4);
       view.body.setTint(lead ? 0xffffff : 0xd9d2ee);
       view.head.setTint(lead ? 0xffffff : 0xd9d2ee);
       move(view.root, view.spot, view.spot.scale);
     });
     const hostLead = featured === "404";
+    this.hostLead = hostLead;
     this.hostSpot = hostLead ? { x: performer.x, y: performer.y, scale: L.performer.scale * 1.18 } : { ...L.host };
     this.host.setDepth(hostLead ? 8 : 7);
     move(this.host, this.hostSpot, this.hostSpot.scale / 2);
     const source = this.compiled.song.segments[this.segment].source ?? this.songId;
     this.setNameTag(this.copy.songs[source].who);
+  }
+
+  private backlineSpot(id: Kid, featured: BandMember): Spot {
+    const B = this.L.backline;
+    const half = B.xs.length / 2;
+    const index = BAND.indexOf(id);
+    let slot = index;
+    if (B.packed) {
+      const left = index < half;
+      const side = BAND.filter((other) => other !== featured && (BAND.indexOf(other) < half) === left);
+      const j = side.indexOf(id);
+      slot = left ? half - side.length + j : half + j;
+    }
+    return { x: B.xs[slot], y: B.y, scale: B.scale };
   }
 
   private buildTalk() {
