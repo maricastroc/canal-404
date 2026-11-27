@@ -17,6 +17,7 @@ type Round = { id: Pad; x: number; y: number; r: number; color: number; gfx: Pha
 
 export const DECK_THEME: Record<CourseId, number> = { arlindo: 0xff9a3d, feira: 0x93cf4c, antena: 0xa98bef };
 
+const SIDE = { pad: 10, height: 300, width: 92 };
 const SIZE = { square: 64, gap: 9, crouch: 31, jump: 36, padGap: 12, margin: 12, lip: 8, label: 12, labelGap: 6, reach: 32, slack: 10, gauge: 29, tierGap: 11, tierPad: 6, tierMin: 7.2 };
 const F = 64;
 const TIER_COLORS = [0x7fe0c4, 0x7fe0c4, 0xffcf3f, 0xff7a4a];
@@ -62,6 +63,7 @@ export class PhoneDeck {
   private readonly owned: Phaser.GameObjects.GameObject[] = [];
   private readonly bg: Phaser.GameObjects.Graphics;
   private readonly dots: Phaser.GameObjects.TileSprite;
+  private readonly dotsRight: Phaser.GameObjects.TileSprite;
   private readonly rocker: Phaser.GameObjects.Graphics;
   private readonly arrows: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
   private readonly spinLabel: Phaser.GameObjects.Text;
@@ -83,6 +85,9 @@ export class PhoneDeck {
   private gaugeY = 0;
   private gaugeR = 0;
   private top = 0;
+  private ox = 0;
+  private oy = 0;
+  private vertical = false;
   private enabled = true;
   private state: DeckState = { left: false, right: false, crouch: false, jump: false };
   private shownTier = -1;
@@ -115,6 +120,7 @@ export class PhoneDeck {
     }
     this.bg = this.add(scene.add.graphics());
     this.dots = this.add(scene.add.tileSprite(0, 0, 8, 8, "dd-deck-dots").setOrigin(0, 0));
+    this.dotsRight = this.add(scene.add.tileSprite(0, 0, 8, 8, "dd-deck-dots").setOrigin(0, 0).setVisible(false));
     this.rocker = this.add(scene.add.graphics());
     this.arrows = [this.add(scene.add.image(0, 0, "dd-ico-ccw")), this.add(scene.add.image(0, 0, "dd-ico-cw"))];
     const label = (text: string) => this.add(scene.add.text(0, 0, text, { fontFamily: fonts.display, fontSize: `${F}px`, color: "#fbf5e6" }).setOrigin(0.5, 0).setAlpha(0.74));
@@ -159,6 +165,13 @@ export class PhoneDeck {
     this.frame = frame;
     const u = frame.unit;
     this.u = u;
+    this.vertical = frame.kind === "side";
+    this.ox = frame.view.x;
+    this.oy = frame.view.y;
+    if (this.vertical) {
+      this.layoutSide(frame);
+      return;
+    }
     const room = (frame.width - frame.safe.left - frame.safe.right) / u;
     const k = Phaser.Math.Clamp(room / 390, 0.84, 1.14) * u;
     const deck = frame.deck;
@@ -211,11 +224,103 @@ export class PhoneDeck {
     this.redraw();
   }
 
+  private layoutSide(frame: Frame) {
+    const u = this.u;
+    const vw = frame.view.w;
+    const vh = frame.view.h;
+    const pad = SIDE.pad * u;
+    const leftL = -this.ox + frame.safe.left + pad;
+    const leftR = -pad;
+    const rightL = vw + pad;
+    const rightR = frame.width - this.ox - frame.safe.right - pad;
+    const top = -this.oy + frame.safe.top + pad;
+    const bottom = frame.height - this.oy - frame.safe.bottom - pad;
+    const colW = Math.min(leftR - leftL, rightR - rightL);
+    const k = Phaser.Math.Clamp(Math.min(colW / (SIDE.width * u), (bottom - top) / (SIDE.height * u)), 0.62, 1.1) * u;
+    this.top = top;
+    const labelScale = (SIZE.label * Math.min(k / u, 1.06) * u) / F;
+    this.labelScale = labelScale;
+    const labelH = this.spinLabel.height * labelScale;
+    const labelGap = SIZE.labelGap * u;
+    const leftX = (leftL + leftR) / 2;
+    const rightX = (rightL + rightR) / 2;
+    const square = Math.min(SIZE.square * k, leftR - leftL);
+    const gap = SIZE.gap * k;
+    const spinBottom = bottom - labelH - labelGap;
+    this.box.setTo(leftX - square / 2, spinBottom - square * 2 - gap, square, square * 2 + gap);
+    this.spinLabel.setScale(labelScale).setPosition(leftX, spinBottom + labelGap);
+    const [crouch, jump] = this.rounds;
+    crouch.r = Math.min(SIZE.crouch * k * 1.12, (rightR - rightL) / 2);
+    crouch.x = rightX;
+    crouch.y = bottom - labelH - labelGap - crouch.r;
+    jump.r = Math.min(SIZE.jump * k, (rightR - rightL) / 2);
+    jump.x = rightX;
+    jump.y = crouch.y - crouch.r - SIZE.padGap * k - labelH - labelGap - jump.r;
+    for (const r of this.rounds) {
+      r.label.setScale(labelScale).setPosition(r.x, r.y + r.r + labelGap);
+      r.icon.setOrigin(...originOf(this.scene, r.icon.texture.key)).setScale((r.r * 1.08) / 128);
+    }
+    this.arrows.forEach((a) => a.setOrigin(...originOf(this.scene, a.texture.key)).setScale((square * 0.56) / 128));
+    this.split = 0;
+    const room = jump.y - jump.r - SIZE.padGap * k - top;
+    this.gaugeR = Math.min(SIZE.gauge * k, (rightR - rightL) / 2, (room - 30 * u) / 2);
+    this.gaugeX = rightX;
+    this.gaugeY = top + 14 * u + this.gaugeR;
+    const showGauge = this.gaugeR >= 20 * u;
+    const gs = this.gaugeR / (SIZE.gauge * u);
+    this.speedText.setVisible(showGauge).setScale((18 * gs * u) / F).setPosition(this.gaugeX, this.gaugeY - 3 * gs * u);
+    this.unitText.setVisible(showGauge).setScale((8.5 * gs * u) / F).setPosition(this.gaugeX, this.gaugeY + 12 * gs * u);
+    this.tierRoom = rightR - rightL - 2 * SIZE.tierPad * u;
+    this.tierY = this.gaugeY + this.gaugeR + 4 * u + labelH / 2;
+    this.tierOn = showGauge && this.gaugeR >= 24 * u && this.tierY + labelH < jump.y - jump.r;
+    this.fitTier();
+    this.tierText.setPosition(this.gaugeX, this.tierY).setScale(this.tierBase);
+    this.deltaText.setScale((12 * u) / F).setPosition(this.gaugeX, this.gaugeY - this.gaugeR - 1 * u);
+    this.drawSideBg(vw, vh);
+    this.redraw();
+  }
+
+  private drawSideBg(vw: number, vh: number) {
+    const f = this.frame;
+    const u = this.u;
+    const g = this.bg;
+    const x0 = -this.ox;
+    const y0 = -this.oy;
+    const right = f.width - this.ox;
+    const bottom = f.height - this.oy;
+    const lip = SIZE.lip * u;
+    g.clear();
+    g.fillStyle(INK, 1);
+    g.fillRect(x0, y0, this.ox, f.height);
+    g.fillRect(vw, y0, right - vw, f.height);
+    if (this.oy > 0) {
+      g.fillRect(0, y0, vw, this.oy);
+      g.fillRect(0, vh, vw, bottom - vh);
+    }
+    g.fillStyle(this.theme, 1);
+    g.fillRect(-lip, y0, lip, f.height);
+    g.fillRect(vw, y0, lip, f.height);
+    g.fillStyle(0xffffff, 0.2);
+    g.fillRect(-lip + 2 * u, y0, 2 * u, f.height);
+    g.fillRect(vw + lip - 4 * u, y0, 2 * u, f.height);
+    g.fillStyle(0x140f26, 0.55);
+    g.fillRect(-lip - 6 * u, y0, 6 * u, f.height);
+    g.fillRect(vw + lip, y0, 6 * u, f.height);
+    g.lineStyle(Math.max(3, 1.6 * u), INK, 1);
+    g.lineBetween(0, y0, 0, bottom);
+    g.lineBetween(-lip, y0, -lip, bottom);
+    g.lineBetween(vw, y0, vw, bottom);
+    g.lineBetween(vw + lip, y0, vw + lip, bottom);
+    this.dots.setPosition(x0, y0).setSize(this.ox - lip, f.height).setTileScale(u / 2.6);
+    this.dotsRight.setVisible(true).setPosition(vw + lip, y0).setSize(right - vw - lip, f.height).setTileScale(u / 2.6);
+  }
+
   private drawBg() {
     const f = this.frame;
     const u = this.u;
     const g = this.bg;
     const top = f.deck.y;
+    this.dotsRight.setVisible(false);
     const lip = SIZE.lip * u;
     g.clear();
     g.fillStyle(INK, 1);
@@ -254,20 +359,23 @@ export class PhoneDeck {
     return dc < dj ? "crouch" : "jump";
   }
 
-  private dirAt(x: number, prev: -1 | 1 | 0): -1 | 1 {
-    const mid = this.box.centerX;
+  private dirAt(x: number, y: number, prev: -1 | 1 | 0): -1 | 1 {
+    const pos = this.vertical ? y : x;
+    const mid = this.vertical ? this.box.centerY : this.box.centerX;
     const slack = SIZE.slack * this.u;
-    if (prev === -1 && x < mid + slack) return -1;
-    if (prev === 1 && x > mid - slack) return 1;
-    return x < mid ? -1 : 1;
+    if (prev === -1 && pos < mid + slack) return -1;
+    if (prev === 1 && pos > mid - slack) return 1;
+    return pos < mid ? -1 : 1;
   }
 
   private down(p: Phaser.Input.Pointer) {
     if (!this.enabled) return;
-    if (p.y < this.top - SIZE.reach * this.u) return;
-    if (p.x < this.split) this.grips.set(p.id, { role: "spin", dir: this.dirAt(p.x, 0) });
+    const x = p.x - this.ox;
+    const y = p.y - this.oy;
+    if (this.vertical ? x >= 0 && x <= this.frame.view.w : y < this.top - SIZE.reach * this.u) return;
+    if (x < this.split) this.grips.set(p.id, { role: "spin", dir: this.dirAt(x, y, 0) });
     else {
-      const over = this.padAt(p.x, p.y, null);
+      const over = this.padAt(x, y, null);
       this.grips.set(p.id, { role: "pad", over, latched: over === "crouch" });
     }
     this.sync();
@@ -276,12 +384,14 @@ export class PhoneDeck {
   private move(p: Phaser.Input.Pointer) {
     const grip = this.grips.get(p.id);
     if (!grip || !p.isDown) return;
+    const x = p.x - this.ox;
+    const y = p.y - this.oy;
     if (grip.role === "spin") {
-      const dir = this.dirAt(p.x, grip.dir);
+      const dir = this.dirAt(x, y, grip.dir);
       if (dir === grip.dir) return;
       grip.dir = dir;
     } else {
-      const over = this.padAt(p.x, p.y, grip.over);
+      const over = this.padAt(x, y, grip.over);
       if (over === grip.over) return;
       grip.over = over;
       if (over === "crouch") grip.latched = true;
@@ -331,12 +441,19 @@ export class PhoneDeck {
       return;
     }
     if (this.state[button]) return;
+    const r = this.spinRect(button === "left" ? -1 : 1);
+    ring((pad) => g.strokeRoundedRect(r.x - pad, r.y - pad, r.w + pad * 2, r.h + pad * 2, r.radius + pad));
+  }
+
+  private spinRect(dir: -1 | 1) {
     const box = this.box;
-    const gap = SIZE.gap * (box.width / (SIZE.square * 2 + SIZE.gap));
-    const half = (box.width - gap) / 2;
-    const x = button === "left" ? box.x : box.x + half + gap;
-    const radius = Math.min(half, box.height) * 0.3;
-    ring((pad) => g.strokeRoundedRect(x - pad, box.y - pad, half + pad * 2, box.height + pad * 2, radius + pad));
+    const long = this.vertical ? box.height : box.width;
+    const gap = SIZE.gap * (long / (SIZE.square * 2 + SIZE.gap));
+    const half = (long - gap) / 2;
+    const w = this.vertical ? box.width : half;
+    const h = this.vertical ? half : box.height;
+    const shift = dir === -1 ? 0 : half + gap;
+    return { x: box.x + (this.vertical ? 0 : shift), y: box.y + (this.vertical ? shift : 0), w, h, radius: Math.min(w, h) * 0.3 };
   }
 
   flash(text: string, gain: boolean) {
@@ -417,30 +534,23 @@ export class PhoneDeck {
   private redraw() {
     const u = this.u;
     const g = this.rocker;
-    const box = this.box;
     const press = 4 * u;
     const shadow = 6 * u;
     const stroke = Math.max(3, 2.2 * u);
-    const gap = SIZE.gap * (box.width / (SIZE.square * 2 + SIZE.gap));
-    const half = (box.width - gap) / 2;
-    const radius = Math.min(half, box.height) * 0.3;
     g.clear();
-    const sides: [-1 | 1, number][] = [
-      [-1, box.x],
-      [1, box.x + half + gap],
-    ];
-    for (const [dir, x] of sides) {
+    for (const dir of [-1, 1] as const) {
+      const { x, y, w: bw, h: bh, radius } = this.spinRect(dir);
       const on = dir === -1 ? this.state.left : this.state.right;
       const dy = on ? press : 0;
       g.fillStyle(INK, 1);
-      g.fillRoundedRect(x + shadow * 0.8, box.y + shadow, half, box.height, radius);
+      g.fillRoundedRect(x + shadow * 0.8, y + shadow, bw, bh, radius);
       g.fillStyle(on ? 0xffc83d : CREAM, 1);
-      g.fillRoundedRect(x, box.y + dy, half, box.height, radius);
+      g.fillRoundedRect(x, y + dy, bw, bh, radius);
       g.fillStyle(0xffffff, on ? 0.2 : 0.5);
-      g.fillRoundedRect(x + 9 * u, box.y + dy + 6 * u, half - 18 * u, 6 * u, 3 * u);
+      g.fillRoundedRect(x + 9 * u, y + dy + 6 * u, bw - 18 * u, 6 * u, 3 * u);
       g.lineStyle(stroke, INK, 1);
-      g.strokeRoundedRect(x, box.y + dy, half, box.height, radius);
-      this.arrows[dir === -1 ? 0 : 1].setPosition(x + half / 2, box.centerY + dy);
+      g.strokeRoundedRect(x, y + dy, bw, bh, radius);
+      this.arrows[dir === -1 ? 0 : 1].setPosition(x + bw / 2, y + bh / 2 + dy);
     }
     for (const b of this.rounds) {
       const on = this.state[b.id];
