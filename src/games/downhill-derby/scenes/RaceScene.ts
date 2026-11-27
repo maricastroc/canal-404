@@ -27,7 +27,7 @@ import { CoachPlan, CoachView, coachButton } from "./coach";
 import { WorldFx } from "./fx";
 import { formatNumber } from "@/i18n/format";
 import { H, Hud, W, formatSeconds, type EdgeTag, type HudButton, type Marker, type Pin, type RaceHud, type StandingRow, type TouchButton } from "./hud";
-import { FULL_FRAME, type Frame } from "../layout";
+import { FULL_FRAME, type Frame, hudFrame } from "../layout";
 import { DECK_THEME, PhoneDeck, type DeckState } from "./deck";
 import { currentFrame, watchFrame } from "./frame";
 import { PhoneHud } from "./phoneHud";
@@ -355,7 +355,7 @@ export class RaceScene extends Phaser.Scene {
     this.latched.clear();
     const input = this.bridge.input;
     input.releaseSource("touch");
-    if (this.frame.kind === "tall") {
+    if (this.phone) {
       const c = this.copy;
       this.deck = new PhoneDeck(this, this.hudLayer, this.frame, { spin: c.touch.spin, crouch: c.touch.crouch, jump: c.touch.jump, kmh: c.kmh, tiers: c.tiers }, this.bridge.fonts, this.bridge.locale, DECK_THEME[this.track.id], (s: DeckState) => {
         input.setLeft(s.left, "touch");
@@ -363,10 +363,14 @@ export class RaceScene extends Phaser.Scene {
         input.setDown(s.crouch, "touch");
         input.setSpace(s.jump, "touch");
       });
-      this.phoneHud = new PhoneHud(this, this.hudLayer, this.copy, this.bridge.locale, this.bridge.fonts, this.frame, this.deck);
+      this.phoneHud = new PhoneHud(this, this.hudLayer, this.copy, this.bridge.locale, this.bridge.fonts, hudFrame(this.frame), this.deck);
       this.hud = this.phoneHud;
     } else this.hud = new Hud(this, this.hudLayer, this.copy, this.bridge.locale, this.bridge.fonts);
     this.hud.setTouch(this.touchActive);
+  }
+
+  private get phone() {
+    return this.frame.kind !== "full";
   }
 
   private applyFrame(frame: Frame) {
@@ -376,9 +380,10 @@ export class RaceScene extends Phaser.Scene {
     this.vh = frame.view.h;
     const tall = frame.kind === "tall";
     this.bgZoom = tall ? this.vh / H : 1;
-    this.bgCam.setViewport(0, 0, this.vw, this.vh).setZoom(this.bgZoom).centerOn(W / 2, H / 2);
-    this.worldCam.setViewport(0, 0, this.vw, this.vh);
-    this.uiCam.setViewport(0, 0, frame.width, frame.height);
+    const { x: ox, y: oy } = frame.view;
+    this.bgCam.setViewport(ox, oy, this.vw, this.vh).setZoom(this.bgZoom).centerOn(W / 2, H / 2);
+    this.worldCam.setViewport(ox, oy, this.vw, this.vh);
+    this.uiCam.setViewport(0, 0, frame.width, frame.height).setScroll(-ox, -oy);
     const zb = this.bgZoom;
     const [posts, grass] = this.fg;
     posts.sprite.setScale(zb).setSize(this.vw / zb, 300).setPosition(0, this.vh - 300 * zb);
@@ -391,7 +396,7 @@ export class RaceScene extends Phaser.Scene {
       if (this.phase === "countdown" && this.countdownShown > 0) this.hud.countdown(String(this.countdownShown));
     } else {
       this.deck?.layout(frame);
-      this.phoneHud?.layout(frame);
+      this.phoneHud?.layout(hudFrame(frame));
     }
     if (this.sim) {
       if (this.phase === "countdown") this.snapCamera();
@@ -1446,7 +1451,7 @@ export class RaceScene extends Phaser.Scene {
       else r.label.setAlpha(0);
     });
     labels.sort((p, q) => p.x - q.x);
-    const ls = this.frame.kind === "tall" ? Math.max(1, (12.5 * this.frame.unit) / (30 * this.cam.zoom)) : 1;
+    const ls = this.phone ? Math.max(1, (12.5 * this.frame.unit) / (30 * this.cam.zoom)) : 1;
     const labelTop = this.phoneHud ? this.toWorld(0, this.phoneHud.hudBottom + 4 * this.frame.unit).y : -Infinity;
     for (let i = 0; i < labels.length; i += 1) {
       const l = labels[i];
@@ -1475,7 +1480,7 @@ export class RaceScene extends Phaser.Scene {
     this.ghostLabel.setVisible(showGhost && this.phase === "race");
     if (ghost && showGhost) {
       const f = this.frameAt(ghost.frames, step, a);
-      this.ghostLabel.setPosition(f.x, f.y - 210).setScale(this.frame.kind === "tall" ? Math.max(1, (11 * this.frame.unit) / (24 * this.cam.zoom)) : 1);
+      this.ghostLabel.setPosition(f.x, f.y - 210).setScale(this.phone ? Math.max(1, (11 * this.frame.unit) / (24 * this.cam.zoom)) : 1);
       this.ghostView.update({ x: f.x, y: f.y, angle: f.angle, speed: f.speed, crouch: (f.flags & FRAME_CROUCH) !== 0, charge: 0, air: (f.flags & FRAME_AIR) !== 0, spin: 0, accel: 0, bigAir: false, brace: false, paddling: false, distance: f.x, crash: f.flags & FRAME_CRASH ? 0.5 : 0, time: this.elapsed }, dt);
     }
     if (dt > 0 && sim.mode === "ground" && this.track.surfaces[sim.surface]?.kind === "rail" && speed > 200) for (let i = 0; i < 3; i += 1) this.fx.sparks(x - 30 + i * 30, y, speed);
@@ -1504,7 +1509,7 @@ export class RaceScene extends Phaser.Scene {
     this.ambient.step = this.sim.step;
     this.ambient.lead = this.phase !== "countdown" ? Math.max(...this.world.rivals.map((t) => this.world.sample(t, "x"))) : -Infinity;
     this.ambient.racers = [x, ...this.world.rivals.map((t) => this.world.sample(t, "x"))];
-    this.ambient.bubbleMin = this.frame.kind === "tall" ? (11.5 * this.frame.unit) / this.cam.zoom : 0;
+    this.ambient.bubbleMin = this.phone ? (11.5 * this.frame.unit) / this.cam.zoom : 0;
     this.shieldBubbles();
     this.ambient.update(dt, this.elapsed, x, speed, this.cam.x, this.vw / (2 * this.cam.zoom));
     this.updateSigns(x);
@@ -1563,7 +1568,7 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private labelX(x: number, label: Phaser.GameObjects.Text, scale: number): number | null {
-    if (this.frame.kind !== "tall") return x;
+    if (!this.phone) return x;
     const z = this.cam.zoom;
     const half = (label.width * scale) / 2 + (8 * this.frame.unit) / z;
     const left = this.cam.x - this.vw / (2 * z);
@@ -1573,7 +1578,7 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private updateSigns(x: number) {
-    if (this.frame.kind !== "tall") {
+    if (!this.phone) {
       if (!this.signsScaled) return;
       this.signsScaled = false;
       for (const s of this.signs) {
@@ -1824,7 +1829,7 @@ export class RaceScene extends Phaser.Scene {
       g.fillTriangle(ex + tx * 26, ey + ty * 26, ex - ty * 15, ey + tx * 15, ex + ty * 15, ey - tx * 15);
       if ((this.alignLessons < 3 || this.coachPlan) && !this.touchActive) {
         const z = this.cam.zoom;
-        const tall = this.frame.kind === "tall";
+        const tall = this.phone;
         const sx = (ex + tx * 70 / z - this.cam.x) * z + this.vw / 2;
         const sy = (ey + ty * 70 / z - this.cam.y - this.cam.dip) * z + this.vh / 2;
         const kx = tall ? Math.max(40 * this.frame.unit, Math.min(this.vw - 40 * this.frame.unit, sx)) : Math.max(440, Math.min(W - 300, sx));
@@ -2025,8 +2030,9 @@ export class RaceScene extends Phaser.Scene {
     const tall = this.frame.kind === "tall";
     const u = this.frame.unit;
     const hudBottom = this.phoneHud?.hudBottom ?? 0;
+    const phone = this.phone;
     const above = this.toScreen(x + 30, y - 300);
-    const anchor = tall ? (above.y >= hudBottom + 60 * u ? above : this.toScreen(x - 60, y + 130)) : above.y >= 410 ? above : this.toScreen(x - 120, y + 170);
+    const anchor = phone ? (above.y >= hudBottom + 60 * u ? above : this.toScreen(x - 60, y + 130)) : above.y >= 410 ? above : this.toScreen(x - 120, y + 170);
     const speed = this.phase === "countdown" ? 0 : sim.speed;
     const tier = tierOf(speed);
     this.lastTier = tier;

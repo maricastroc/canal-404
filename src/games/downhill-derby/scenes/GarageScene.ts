@@ -91,6 +91,8 @@ export class GarageScene extends Phaser.Scene {
   private hover = false;
   private t = 0;
   private frame!: Frame;
+  private ox = 0;
+  private oy = 0;
   private tall: Tall | null = null;
 
   constructor() {
@@ -125,6 +127,10 @@ export class GarageScene extends Phaser.Scene {
       this.scene.restart({ ...this.data0, cart: CART_IDS[this.selected] });
     });
     this.frame = currentFrame(this);
+    this.ox = this.frame.view.x;
+    this.oy = this.frame.view.y;
+    this.cameras.main.setScroll(-this.ox, -this.oy);
+    if (this.frame.kind === "side") this.drawSideBands();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.removeAllListeners();
       this.input.setDefaultCursor("");
@@ -704,7 +710,21 @@ export class GarageScene extends Phaser.Scene {
   }
 
   private inside(px: number, py: number, x: number, y: number, w: number, h: number) {
-    return px >= x && px <= x + w && py >= y && py <= y + h;
+    const lx = px - this.ox;
+    const ly = py - this.oy;
+    return lx >= x && lx <= x + w && ly >= y && ly <= y + h;
+  }
+
+  private drawSideBands() {
+    const f = this.frame;
+    const g = this.add.graphics().setDepth(50);
+    g.fillStyle(INK, 1);
+    g.fillRect(-this.ox, -this.oy, this.ox, f.height);
+    g.fillRect(W, -this.oy, f.width - this.ox - W, f.height);
+    if (this.oy > 0) {
+      g.fillRect(0, -this.oy, W, this.oy);
+      g.fillRect(0, H, W, f.height - this.oy - H);
+    }
   }
 
   private pointer(p: Phaser.Input.Pointer, down: boolean) {
