@@ -26,6 +26,7 @@ type Rig = {
   wheels: { key: string; x: number; r: number }[];
   fan?: [number, number];
   rope?: [number, number];
+  flag: { x: number; y: number; mast: number; color: number };
   colors: number[];
 };
 
@@ -39,6 +40,7 @@ export const RIGS: Record<RiderId, Rig> = {
       { key: "wheel-bearing", x: 62, r: 17 },
     ],
     rope: [100, -108],
+    flag: { x: -88, y: -100, mast: 128, color: 0xe8c27a },
     colors: [0xb06c3f, 0x7c4527, 0xef4f43],
   },
   lina: {
@@ -50,6 +52,7 @@ export const RIGS: Record<RiderId, Rig> = {
       { key: "wheel-caster", x: 64, r: 16 },
     ],
     fan: [-132, -104],
+    flag: { x: -78, y: -100, mast: 132, color: 0x9aa6b8 },
     colors: [0x9aa6b8, 0x63d6c1, 0xef4f43],
   },
   bruno: {
@@ -60,6 +63,7 @@ export const RIGS: Record<RiderId, Rig> = {
       { key: "wheel-neat", x: -58, r: 21 },
       { key: "wheel-neat", x: 62, r: 21 },
     ],
+    flag: { x: -92, y: -194, mast: 54, color: 0xfffaf0 },
     colors: [0x5cb9f0, 0xffe39a, 0xff8a3d],
   },
   mila: {
@@ -72,6 +76,7 @@ export const RIGS: Record<RiderId, Rig> = {
       { key: "wheel-skate", x: -42, r: 13 },
       { key: "wheel-skate", x: 74, r: 13 },
     ],
+    flag: { x: -92, y: -246, mast: 30, color: 0x9aa6b8 },
     colors: [0xfffaf0, 0x7b62c4, 0xf06ba8],
   },
 };
@@ -113,6 +118,12 @@ const POSE_LIFT = [0, 0, 38, 78];
 const POSE_FACE: Expression[] = ["normal", "happy", "wow", "smug"];
 
 const HEAD_TEX_SCALE = ART_RES * HEAD_SCALE * 1.6;
+
+const SUN = 0xffcf3f;
+const CREAM = 0xfbf5e6;
+const FLAG_LEN = 92;
+const FLAG_H = 36;
+const FLAG_STEPS = 8;
 
 function image(scene: Phaser.Scene, view: View) {
   const img = scene.add.image(0, 0, view.key);
@@ -164,6 +175,8 @@ export class CartView {
   private shownArm: ArmPose | null = null;
   private flyers: Flyer[] = [];
   private helmet: Phaser.GameObjects.Image | null = null;
+  private pennant: Phaser.GameObjects.Graphics | null = null;
+  private pennantOn = false;
   private crashing = false;
   private readonly baseScale: number;
   private elapsed = 0;
@@ -259,6 +272,50 @@ export class CartView {
     this.helmet?.setVisible(on);
   }
 
+  setPennant(on: boolean) {
+    this.pennantOn = on;
+    if (on && !this.pennant) {
+      this.pennant = this.scene.add.graphics();
+      this.back.addAt(this.pennant, 0);
+    }
+    this.pennant?.setVisible(on && !this.crashing);
+  }
+
+  private drawPennant(speedK: number, time: number) {
+    const g = this.pennant;
+    if (!g) return;
+    g.clear();
+    const { x: mx, y: my, mast, color } = this.rig.flag;
+    const top = my - mast;
+    const freq = 6 + speedK * 14;
+    const amp = 9 - speedK * 5;
+    const upper: Phaser.Math.Vector2[] = [];
+    const lower: Phaser.Math.Vector2[] = [];
+    for (let i = 0; i <= FLAG_STEPS; i += 1) {
+      const k = i / FLAG_STEPS;
+      const wave = Math.sin(time * freq - i * 0.85) * amp * k;
+      const droop = (1 - speedK) * 26 * k * k;
+      const x = mx - 4 - FLAG_LEN * k * (1 - (1 - speedK) * 0.12);
+      upper.push(new Phaser.Math.Vector2(x, top + wave + droop));
+      lower.push(new Phaser.Math.Vector2(x, top + FLAG_H * (1 - k) + wave + droop));
+    }
+    g.lineStyle(10, INK, 1);
+    g.lineBetween(mx, my, mx, top - 6);
+    g.lineStyle(4, color, 1);
+    g.lineBetween(mx, my - 3, mx, top - 4);
+    const shape = [...upper, ...lower.slice(0, -1).reverse()];
+    g.fillStyle(SUN, 1);
+    g.fillPoints(shape, true);
+    g.lineStyle(3.5, CREAM, 0.85);
+    g.strokePoints(upper.slice(0, -2).map((p, i) => new Phaser.Math.Vector2(p.x, p.y + 7 * (1 - i / FLAG_STEPS))), false);
+    g.lineStyle(5, INK, 1);
+    g.strokePoints(shape, true, true);
+    g.fillStyle(INK, 1);
+    g.fillCircle(mx, top - 8, 10);
+    g.fillStyle(SUN, 1);
+    g.fillCircle(mx, top - 8, 6);
+  }
+
   setPose(level: number) {
     this.poseLevel = level;
   }
@@ -336,6 +393,7 @@ export class CartView {
     const back = make(this.rig.back.key, 0, 0, this.rig.back);
     this.backImg.setVisible(false);
     if (this.fan) this.fan.setVisible(false);
+    this.pennant?.setVisible(false);
     const w = this.rig.wheels[1];
     const wheel = make(w.key, w.x, -w.r);
     this.wheels[1].setVisible(false);
@@ -379,6 +437,7 @@ export class CartView {
     this.flyers = [];
     this.backImg.setVisible(true);
     this.fan?.setVisible(true);
+    this.pennant?.setVisible(this.pennantOn);
     this.wheels[1].setVisible(true);
   }
 
@@ -447,6 +506,7 @@ export class CartView {
       img.setScale((1 - bend * 0.28 * (0.5 + 0.5 * Math.sin(pose.time * 30))) / ART_RES, 1 / ART_RES);
     });
     if (this.fan) this.fan.setRotation(this.fan.rotation + dt * (4 + pose.speed / 90));
+    if (this.pennantOn && !this.crashing) this.drawPennant(speedK, pose.time);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     const seatX = this.rig.seat[0] * sx;

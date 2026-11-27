@@ -8,14 +8,14 @@ import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
 import { ArrowLeftIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RatingStar, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
-import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon, ShareIcon } from "@/components/art/Icons";
+import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon, PennantIcon, ShareIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
 import { KidBust } from "@/components/characters/Heads";
 import { Mascot404 } from "@/components/mascot/Mascot404";
 import { KeyText } from "@/components/ui/KeyText";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
-import type { GameResult, IntroProgress, LevelGoal, ResultFact, ResultGoal, ResultStanding } from "@/games/types";
+import type { GameResult, IntroMilestone, IntroProgress, LevelGoal, ResultFact, ResultGoal, ResultMark, ResultStanding } from "@/games/types";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber, ordinal } from "@/i18n/format";
@@ -85,9 +85,13 @@ const LEVEL: Record<LevelWord, string> = { fase: "level", arena: "arena", pista:
 
 const PICK: Record<LevelWord, string> = { fase: "Pick your level", arena: "Pick your arena", pista: "Pick your track", etapa: "Pick a stage", música: "Pick your song" };
 
+type MarkState = "done" | "locked" | "missing";
+
 const COPY = localized({
   "pt-BR": {
     stars: (count: number, total: number) => `${count} de ${total} estrelas`,
+    marks: "Vitórias por carrinho",
+    mark: (name: string, state: MarkState) => `${name}: ${state === "done" ? "venceu" : state === "locked" ? "bloqueado" : "falta vencer"}`,
     introLabel: (title: string) => `${title}: tela de apresentação`,
     howTo: "Como jogar",
     missionLink: "Ver a missão de hoje",
@@ -160,6 +164,8 @@ const COPY = localized({
   },
   en: {
     stars: (count: number, total: number) => `${count} of ${total} stars`,
+    marks: "Wins by cart",
+    mark: (name: string, state: MarkState) => `${name}: ${state === "done" ? "won" : state === "locked" ? "locked" : "not won yet"}`,
     introLabel: (title: string) => `${title}: title screen`,
     howTo: "How to play",
     missionLink: "See today's mission",
@@ -356,6 +362,45 @@ function MiniStars({ count, total = 3 }: { count: number; total?: number }) {
   );
 }
 
+function Marks({ marks, size = "sm", delay = 0 }: { marks: ResultMark[]; size?: "sm" | "md"; delay?: number }) {
+  const copy = useCopy(COPY);
+  const reduced = useReducedMotion();
+  const dot = size === "md" ? "size-6 border-2" : "size-[1.15rem] border-2 sm:size-6";
+  return (
+    <span role="list" aria-label={copy.marks} className={`flex ${size === "md" ? "gap-1" : "gap-0.5 sm:gap-1"}`}>
+      {marks.map((mark, i) => (
+        <motion.span
+          key={mark.label}
+          role="listitem"
+          initial={mark.fresh && !reduced ? { scale: 0.4, rotate: -20 } : false}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ delay: delay + i * 0.05, type: "spring", stiffness: 420, damping: 13 }}
+          className={`relative grid shrink-0 place-items-center rounded-full bg-[length:128%] bg-[position:50%_30%] bg-no-repeat ${dot} ${mark.done ? "border-ink" : "border-dashed border-ink/40 bg-cream"} ${mark.fresh ? "shadow-[0_0_0_2px_var(--color-bubblegum)]" : ""}`}
+          style={mark.locked ? undefined : { backgroundColor: mark.done ? mark.color : undefined, backgroundImage: `url(${mark.avatar})` }}
+        >
+          {mark.done || mark.locked ? null : <span aria-hidden className="absolute inset-0 rounded-full bg-cream/55" />}
+          {mark.locked ? <LockIcon className={`text-ink/45 ${size === "md" ? "size-3" : "size-2.5 sm:size-3"}`} /> : null}
+          <span className="sr-only">{copy.mark(mark.label, mark.done ? "done" : mark.locked ? "locked" : "missing")}</span>
+        </motion.span>
+      ))}
+    </span>
+  );
+}
+
+function MilestoneLine({ milestone }: { milestone: IntroMilestone }) {
+  return (
+    <p className={`mt-3 flex items-start gap-2 rounded-lg border-2 px-3 py-2 ${milestone.done ? "border-ink bg-mint" : "border-dashed border-ink/25"}`}>
+      <PennantIcon className={`mt-0.5 size-4 ${milestone.done ? "text-ink" : "text-ink-soft"}`} />
+      <span className="min-w-0 text-xs leading-snug text-ink-soft">
+        <span className="font-display text-sm uppercase tracking-wide text-ink">{milestone.title}</span>{" "}
+        <span className="font-display text-sm tabular-nums text-ink">{milestone.count}</span>
+        <span aria-hidden> · </span>
+        {milestone.note}
+      </span>
+    </p>
+  );
+}
+
 function StarRule({ rule }: { rule: NonNullable<GameMeta["starRule"]> }) {
   const copy = useCopy(COPY);
   return (
@@ -453,6 +498,11 @@ function PickCard({
                   <span className={`min-w-0 text-[11px] font-bold leading-tight ${goal.done ? "text-ink" : "text-ink-soft"}`}>
                     {goal.label}
                     {goal.done && goalDone ? <span className="sr-only">{` · ${goalDone}`}</span> : null}
+                    {goal.marks ? (
+                      <span className="mt-1 block">
+                        <Marks marks={goal.marks} size="md" />
+                      </span>
+                    ) : null}
                   </span>
                 </span>
               ))}
@@ -585,6 +635,7 @@ export function IntroPanel({
   levels,
   levelGoals = null,
   progress = null,
+  milestone = null,
   showHelp,
   onToggleHelp,
   onPlay,
@@ -600,6 +651,7 @@ export function IntroPanel({
   levels?: LevelProgress;
   levelGoals?: LevelGoal[][] | null;
   progress?: IntroProgress | null;
+  milestone?: IntroMilestone | null;
   showHelp: boolean;
   onToggleHelp: () => void;
   onPlay: (level?: number) => void;
@@ -786,6 +838,7 @@ export function IntroPanel({
                 );
               })}
             </ol>
+            {milestone ? <MilestoneLine milestone={milestone} /> : null}
           </div>
         )}
         {resume && !adventure && <p className="mt-4 font-hand text-xl leading-snug text-ink-soft">{copy.saved}</p>}
@@ -1231,15 +1284,18 @@ function Goals({ goals, label, done, fresh }: { goals: ResultGoal[]; label: stri
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 + i * 0.08 }}
-            className={`relative flex min-w-0 items-center gap-1.5 rounded-lg border-2 px-2 py-1.5 ${goal.fresh ? "border-ink bg-sun" : goal.done ? "border-ink bg-mint" : "border-dashed border-ink/25"}`}
+            className={`relative flex min-w-0 gap-1.5 rounded-lg border-2 px-2 py-1.5 ${goal.marks ? "flex-col justify-center gap-1 max-sm:px-1.5" : "items-center"} ${goal.fresh ? "border-ink bg-sun" : goal.done ? "border-ink bg-mint" : "border-dashed border-ink/25"}`}
           >
-            <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full border-2 ${goal.done ? "border-ink bg-cream text-ink" : "border-ink/30"}`}>
-              {goal.done ? <CheckIcon className="size-3" /> : null}
-            </span>
+            {goal.marks ? null : (
+              <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full border-2 ${goal.done ? "border-ink bg-cream text-ink" : "border-ink/30"}`}>
+                {goal.done ? <CheckIcon className="size-3" /> : null}
+              </span>
+            )}
             <span className={`min-w-0 text-[11px] font-bold leading-tight sm:text-xs ${goal.done ? "text-ink" : "text-ink-soft"}`}>
               {goal.label}
               {goal.done ? <span className="sr-only">{` · ${done}`}</span> : null}
             </span>
+            {goal.marks ? <Marks marks={goal.marks} delay={0.8 + i * 0.08} /> : null}
             {goal.fresh ? (
               <span className="absolute -right-1.5 -top-2.5 rotate-6 rounded-md border-2 border-ink bg-bubblegum px-1 font-display text-[11px] uppercase leading-tight text-ink">{fresh}</span>
             ) : null}

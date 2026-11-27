@@ -40,6 +40,7 @@ export type AchievementId =
   | "downhill-win"
   | "downhill-gnome"
   | "downhill-sweep"
+  | "downhill-master"
   | "bedtime-first"
   | "bedtime-par"
   | "bedtime-tape"
@@ -102,6 +103,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "downhill-win", color: "tangerine" },
   { id: "downhill-gnome", color: "sun" },
   { id: "downhill-sweep", color: "plum" },
+  { id: "downhill-master", color: "mint" },
   { id: "bedtime-first", color: "sky" },
   { id: "bedtime-par", color: "mint" },
   { id: "bedtime-tape", color: "plum" },
@@ -339,6 +341,11 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
       description: "Você venceu as 3 pistas da Ladeira Abaixo.",
       hint: "Chegue em 1º lugar nas 3 pistas da Ladeira Abaixo.",
     },
+    "downhill-master": {
+      title: "Mestre das Ladeiras",
+      description: "Você venceu as 3 pistas da Ladeira Abaixo com os 4 carrinhos e ganhou a flâmula dourada.",
+      hint: "Chegue em 1º lugar nas 3 pistas da Ladeira Abaixo com cada um dos 4 carrinhos.",
+    },
     "bedtime-first": {
       title: "Pé Ante Pé",
       description: "Você passou pela porta dos pais sem acordar o pai.",
@@ -510,6 +517,11 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
       title: "Triple Crown",
       description: "You won all 3 Downhill Derby tracks.",
       hint: "Finish 1st on all 3 Downhill Derby tracks.",
+    },
+    "downhill-master": {
+      title: "Hill Master",
+      description: "You won all 3 Downhill Derby tracks with all 4 carts and earned the golden pennant.",
+      hint: "Finish 1st on all 3 Downhill Derby tracks with each of the 4 carts.",
     },
     "bedtime-first": {
       title: "Tiptoe",

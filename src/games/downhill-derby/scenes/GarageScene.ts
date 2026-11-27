@@ -21,7 +21,7 @@ export type GarageHost = {
   announce: (message: string) => void;
 };
 
-export type GarageData = { attract: boolean; course: CourseId; index: number; cart: CartId; ghost: boolean; ghosts: readonly CartId[]; unlocked: readonly CartId[]; wins: TrackWins };
+export type GarageData = { attract: boolean; course: CourseId; index: number; cart: CartId; ghost: boolean; ghosts: readonly CartId[]; unlocked: readonly CartId[]; wins: TrackWins; pennant: boolean };
 
 const CW = 400;
 const CH = 560;
@@ -98,7 +98,7 @@ export class GarageScene extends Phaser.Scene {
   }
 
   init(data: GarageData) {
-    this.data0 = { attract: data.attract ?? true, course: data.course ?? "arlindo", index: data.index ?? 0, cart: data.cart ?? "deco", ghost: data.ghost ?? false, ghosts: data.ghosts ?? [], unlocked: data.unlocked ?? [], wins: data.wins ?? {} };
+    this.data0 = { attract: data.attract ?? true, course: data.course ?? "arlindo", index: data.index ?? 0, cart: data.cart ?? "deco", ghost: data.ghost ?? false, ghosts: data.ghosts ?? [], unlocked: data.unlocked ?? [], wins: data.wins ?? {}, pennant: data.pennant ?? false };
     this.cards = [];
     this.row = null;
     this.focus = "cart";
@@ -153,6 +153,7 @@ export class GarageScene extends Phaser.Scene {
       const g = this.add.graphics();
       const view = new CartView(this, layer, cart, { scale: 1.12 });
       const locked = !this.unlocked(cart);
+      view.setPennant(d.pennant);
       const name = this.add.text(x + CW / 2, Y0 + 372, this.copy.carts[cart].toUpperCase(), display(32, "#1d1830")).setOrigin(0.5, 0).setDepth(3);
       const rider = this.add.text(x + CW / 2, Y0 + 416, this.copy.rivalNames[cart], body(26, "#6a6385")).setOrigin(0.5, 0).setDepth(3);
       const unlock = UNLOCKS[cart];
@@ -240,6 +241,7 @@ export class GarageScene extends Phaser.Scene {
     const views = new Map<CartId, CartView>();
     for (const cart of CART_IDS) {
       const view = new CartView(this, layer, cart, { scale });
+      view.setPennant(d.pennant);
       view.setVisible(false);
       views.set(cart, view);
     }

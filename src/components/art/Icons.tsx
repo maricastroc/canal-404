@@ -15,6 +15,7 @@ import {
   Download,
   Eject,
   Ellipsis,
+  FlagTriangleRight,
   IdCard,
   Gamepad2,
   Gift,
@@ -112,6 +113,7 @@ export const MusicIcon = make(Music);
 export const Music2Icon = make(Music2);
 export const HeartIcon = make(Heart, true);
 export const SolidStarIcon = make(Star, true);
+export const PennantIcon = make(FlagTriangleRight);
 
 export function RatingStar({ className, on = true }: IconProps & { on?: boolean }) {
   return (

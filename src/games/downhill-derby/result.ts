@@ -1,8 +1,8 @@
-import type { GameResult } from "@/games/types";
+import type { GameResult, ResultGoal, ResultMark } from "@/games/types";
 import { formatNumber, ordinal } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
-import { RACE_COPY } from "./copy";
-import { championTime, type GoalState } from "./goals";
+import { RACE_COPY, type RaceCopy } from "./copy";
+import type { CartMark, GoalState } from "./goals";
 import type { RaceFinish } from "./scenes/RaceScene";
 import { formatSeconds, formatTime } from "./scenes/hud";
 import type { CartId } from "./sim/carts";
@@ -12,7 +12,18 @@ export const REPLAY_KIND = "downhill-run";
 
 const RACER_COLORS: Record<CartId, string> = { deco: "#ffc83d", lina: "#f27aa8", bruno: "#56c7a0", mila: "#a98bef" };
 
-export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | null, sweep: boolean, goals: GoalState[]): GameResult {
+export type Crown = { sweep: boolean; master: boolean; fresh: boolean };
+
+function markOf(mark: CartMark, copy: RaceCopy): ResultMark {
+  return { label: copy.carts[mark.cart], avatar: `/assets/downhill-derby/${mark.cart}-head-${mark.won ? "happy" : "normal"}.svg`, color: RACER_COLORS[mark.cart], done: mark.won, fresh: mark.fresh, locked: mark.locked && !mark.won };
+}
+
+export function goalOf(goal: GoalState, copy: RaceCopy): ResultGoal {
+  if (goal.feat) return { label: copy.results.goals[goal.feat], done: goal.done, fresh: goal.fresh };
+  return { label: copy.results.allCarts, done: goal.done, fresh: goal.fresh, marks: goal.carts.map((m) => markOf(m, copy)) };
+}
+
+export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | null, crown: Crown, goals: GoalState[]): GameResult {
   const copy = RACE_COPY[locale];
   const r = copy.results;
   const stars = placeStars(f.place);
@@ -24,15 +35,16 @@ export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | nul
   const behind = f.standings[mine + 1] ?? null;
   const gap = ahead ? f.time - ahead.time : behind ? behind.time - f.time : 0;
   const seconds = formatSeconds(gap, locale, 2);
-  const headline = f.place === 1 ? r.headline.win : f.place === 2 ? (gap < 0.5 ? r.headline.close : r.headline.second) : f.place === 3 ? r.headline.third : r.headline.fourth;
+  const headline = crown.fresh ? r.master.text : f.place === 1 ? r.headline.win : f.place === 2 ? (gap < 0.5 ? r.headline.close : r.headline.second) : f.place === 3 ? r.headline.third : r.headline.fourth;
   const previous = f.previous;
   const time = formatTime(f.time, locale);
   const summary = !previous ? time : f.time < previous.time ? `${time} · ${r.newRecord}` : `${time} · ${r.record(formatTime(previous.time, locale))}`;
   const achievements: string[] = [];
   if (f.place === 1) achievements.push("downhill-win");
   if (f.stats.secret) achievements.push("downhill-gnome");
-  if (sweep) achievements.push("downhill-sweep");
-  const hint = unlocked ? r.unlocked(copy.carts[unlocked]) : ahead ? r.behind[ahead.who](seconds) : behind ? r.wonBy[behind.who](seconds) : undefined;
+  if (crown.sweep) achievements.push("downhill-sweep");
+  if (crown.master) achievements.push("downhill-master");
+  const hint = crown.fresh ? r.master.hint : unlocked ? r.unlocked(copy.carts[unlocked]) : ahead ? r.behind[ahead.who](seconds) : behind ? r.wonBy[behind.who](seconds) : undefined;
   return {
     won: stars > 0,
     score: raceScore(f.place, show),
@@ -65,6 +77,6 @@ export function raceResult(f: RaceFinish, locale: Locale, unlocked: CartId | nul
       { label: r.facts.hits, value: formatNumber(f.stats.hits, locale) },
       { label: r.facts.crashes, value: formatNumber(f.stats.crashes, locale) },
     ],
-    goals: goals.map((g) => ({ label: g.feat ? r.goals[g.feat] : r.champion(formatTime(championTime(f.course, f.cart), locale)), done: g.done, fresh: g.fresh })),
+    goals: goals.map((g) => goalOf(g, copy)),
   };
 }

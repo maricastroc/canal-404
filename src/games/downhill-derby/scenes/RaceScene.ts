@@ -68,6 +68,7 @@ export type SceneBridge = {
   ghost: boolean;
   rivalDefs: readonly RivalDef[];
   form: RaceForm;
+  pennant: boolean;
   records: { load: (course: CourseId) => TrackRecord | null; save: (course: CourseId, record: TrackRecord) => void; win: (course: CourseId, cart: CartId) => void };
   onBeat: (course: CourseId, rival: CartId) => void;
   onShow: (points: number) => void;
@@ -309,6 +310,7 @@ export class RaceScene extends Phaser.Scene {
     this.worldLayer.add(this.ghostLabel);
     this.cart = new CartView(this, this.worldLayer, this.player);
     this.cart.setDepth(10);
+    this.cart.setPennant(this.bridge.pennant);
     this.overlay = this.add.graphics();
     this.overlay.setDepth(9);
     this.worldLayer.add(this.overlay);
@@ -668,6 +670,7 @@ export class RaceScene extends Phaser.Scene {
     }
     this.cart.setHold(null);
     this.cart.setPose(0);
+    this.cart.setPennant(this.bridge.pennant);
     this.cart.setHelmet(false);
     this.cart.setDusty(false);
     this.helmetOn = false;
