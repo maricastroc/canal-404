@@ -1396,9 +1396,22 @@ export class ArenaScene extends Phaser.Scene {
     if (this.heatStage === 0 && this.matchTime >= ESCALATE.heat) {
       this.heatStage = 1;
       for (const f of this.fighters) f.regenScale = 1.7;
-      this.hud?.flash(this.text.heat, "#ff8a3d", 1500, { sub: this.text.heatSub, at: "event" });
-      this.sfx("alarm", 0.8);
-      this.ctx.onEvent({ type: "announce", message: this.text.heatSay });
+      const line = this.text.adult[this.levelIndex] ?? this.text.adult[0];
+      this.hud?.voice(line, ARENAS[this.levelIndex].call, 1500);
+      this.sfx("call", 0.9);
+      this.ctx.onEvent({ type: "announce", message: this.text.adultSay(line), transient: true });
+      this.time.delayedCall(450, () => {
+        if (this.mode !== "play") return;
+        let laughed = false;
+        for (const f of this.fighters) if (!f.isPlayer && f.alive && f.gloat(this.t, GLOAT.laugh)) laughed = true;
+        if (laughed) this.sfx("giggle", 0.7);
+      });
+      this.time.delayedCall(1100, () => {
+        if (this.mode !== "play") return;
+        this.hud?.flash(this.text.heat, "#ff8a3d", 1500, { sub: this.text.heatSub, at: "event" });
+        this.sfx("alarm", 0.8);
+        this.ctx.onEvent({ type: "announce", message: this.text.heatSay });
+      });
     } else if (this.heatStage === 1 && this.matchTime >= ESCALATE.final) {
       this.heatStage = 2;
       for (const f of this.fighters) f.regenScale = 0;
