@@ -95,7 +95,7 @@ export class Arlindo {
     ];
     g.fillPoints(cloth, true);
     g.strokePoints(cloth, true);
-    this.flag = this.scene.add.container(win.x + win.w - 18, win.y + win.h + 40, [g]).setDepth(4.6).setAngle(-10);
+    this.flag = this.scene.add.container(win.x + win.w - 18, win.y + win.h + 40, [g]).setDepth(5.5).setAngle(-10);
     this.scene.tweens.add({ targets: this.flag, y: win.y + win.h - 6, duration: 420, delay: 500, ease: "Back.easeOut" });
     if (!this.reduced) this.scene.tweens.add({ targets: this.flag, angle: 14, duration: 260, delay: 900, yoyo: true, repeat: 7, ease: "Sine.easeInOut" });
     this.scene.time.delayedCall(700, () => this.shout(text, 2800));

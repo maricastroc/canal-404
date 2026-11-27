@@ -175,14 +175,28 @@ export class Fx {
     const now = this.scene.time.now;
     if (!force && now - this.lastWord < 360) return;
     this.lastWord = now;
+    const t = this.shout(text, x, y, color, size, 13, 10);
+    t.y = this.place(t.x, t.y, t.width, t.height * 0.8, 760);
+    this.pop(t);
+  }
+
+  headline(text: string, x: number, y: number, color: string, size: number) {
+    const t = this.shout(text, x, y, color, size, 17, 6);
+    this.labels.push({ x: t.x, y: t.y, w: t.width, h: t.height * 0.8, until: this.scene.time.now + 760 });
+    this.pop(t);
+  }
+
+  private shout(text: string, x: number, y: number, color: string, size: number, depth: number, tilt: number) {
     const p = this.clampPoint(x, y);
     const s = Math.min(this.scale, 1.5);
-    const t = cartoonText(this.scene, p.x, p.y, text, { size: Math.round(size * s), color, font: this.fonts.display, stroke: 0.22 })
+    return cartoonText(this.scene, p.x, p.y, text, { size: Math.round(size * s), color, font: this.fonts.display, stroke: 0.22 })
       .setOrigin(0.5)
-      .setDepth(13)
-      .setAngle(Phaser.Math.Between(-10, 10))
+      .setDepth(depth)
+      .setAngle(Phaser.Math.Between(-tilt, tilt))
       .setScale(0.3);
-    t.y = this.place(t.x, t.y, t.width, t.height * 0.8, 760);
+  }
+
+  private pop(t: Phaser.GameObjects.Text) {
     this.scene.tweens.add({ targets: t, scale: 1, duration: 170, ease: "Back.easeOut" });
     this.scene.tweens.add({
       targets: t,

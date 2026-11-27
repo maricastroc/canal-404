@@ -60,6 +60,16 @@ type KeptAims = { phase: number; shots: { angle: number; power: number }[] };
 
 type Misses = { phase: number; count: number };
 
+type Kid = "deco" | "lina";
+
+type Mood = "cheer" | "worried";
+
+type PendingMiss = { mess: number; nearest: number; since: number };
+
+const SETTLE = { speed: 1.4, wait: 3200 };
+const UNTOUCHED = { speed: 4, delay: 700 };
+const FINALE_BEAT = { farewell: 3000, overview: 4300, encore: 4700, result: 7000 };
+
 function tipDuration(text: string) {
   return 1800 + text.length * 55;
 }
@@ -152,6 +162,10 @@ export class PlayScene extends Phaser.Scene {
   private bandSnap = 0;
   private playMs = 0;
   private doorLine = 0;
+  private pendingMiss: PendingMiss | null = null;
+  private untouchedShot = -1;
+  private untouchedLine = 0;
+  private moodTimers: Partial<Record<Kid, Phaser.Time.TimerEvent>> = {};
 
   constructor() {
     super("play");
@@ -177,6 +191,10 @@ export class PlayScene extends Phaser.Scene {
     this.bandSnap = 0;
     this.playMs = 0;
     this.doorLine = 0;
+    this.pendingMiss = null;
+    this.untouchedShot = -1;
+    this.untouchedLine = 0;
+    this.moodTimers = {};
     this.dock = null;
     this.frame = FULL_FRAME;
     this.uiCam = null;
@@ -372,8 +390,8 @@ export class PlayScene extends Phaser.Scene {
     hud.setLaunches(this.sim.launches.length);
     hud.setScore(this.sim.score, false);
     for (const t of this.sim.targets) if (t.hit) hud.checkTarget(t.index);
-    if (this.sim.current && this.readyImage) hud.setAmmo(this.sim.current.id, this.sim.stock);
-    else hud.setAmmo(null, this.sim.stock);
+    const shown = this.sim.phase === "attract" || this.sim.phase === "over" ? null : (this.sim.current?.id ?? null);
+    hud.setAmmo(shown, this.sim.stock);
   }
 
   private scaleUi() {
@@ -561,23 +579,39 @@ export class PlayScene extends Phaser.Scene {
     this.tweens.add({ targets: sprite, y: GROUND_Y + 6 - height, duration: 150, yoyo: true, repeat: times, ease: "Quad.easeOut" });
   }
 
+  private kid(who: Kid) {
+    return who === "deco" ? this.deco : this.lina;
+  }
+
+  private setMood(who: Kid, mood: Mood | null, ms = 0) {
+    this.moodTimers[who]?.remove();
+    this.moodTimers[who] = undefined;
+    this.kid(who).setTexture(mood ? `${who}-${mood}` : who);
+    if (mood && ms > 0) this.moodTimers[who] = this.time.delayedCall(ms, () => this.setMood(who, null));
+  }
+
+  private drop(bubble: Bubble) {
+    bubble.hide();
+    bubble.container.setVisible(false);
+  }
+
   private decoSay(text: string, duration = 1300) {
     if (this.dock) {
-      this.dock.say("deco", text, duration);
+      this.dock.say("deco", text, duration, this.deco.texture.key);
       return;
     }
     this.linaBubble.hide();
-    this.tipBubble.hide();
+    this.drop(this.tipBubble);
     this.decoBubble.say(text, 70, 610, duration);
   }
 
   private linaSay(text: string, duration = 1100) {
     if (this.dock) {
-      this.dock.say("lina", text, duration);
+      this.dock.say("lina", text, duration, this.lina.texture.key);
       return;
     }
     this.decoBubble.hide();
-    this.tipBubble.hide();
+    this.drop(this.tipBubble);
     this.linaBubble.say(text, 470, 650, duration);
   }
 
@@ -605,15 +639,15 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private tipSay(line: TipLine) {
-    if (this.sim.finishing) return;
+    if (this.sim.finishing || this.sim.launches.length > 0) return;
     const duration = tipDuration(line.text);
     this.ctx.onEvent({ type: "announce", message: line.text, transient: true });
     if (this.dock) {
       this.dock.say(line.who, line.text, duration);
       return;
     }
-    this.decoBubble.hide();
-    this.linaBubble.hide();
+    this.drop(this.decoBubble);
+    this.drop(this.linaBubble);
     const at = line.who === "deco" ? { x: 70, y: 610 } : { x: 470, y: 650 };
     this.tipBubble.say(line.text, at.x, at.y, duration);
   }
@@ -1240,6 +1274,7 @@ export class PlayScene extends Phaser.Scene {
       const nearHit = recentHit && Phaser.Math.Distance.Between(x, y, this.lastHit.x, this.lastHit.y) < 180;
       const other = imp.other;
       if (other && !other.isStatic && rel > 7) this.flashBody(other);
+      if (other) this.checkUntouched(other, id, rel);
       if (imp.firstOfShot && rel > 5) {
         if (id === "shoe") {
           this.fx.burst(this.fx.puff, 5, x, y);
@@ -1268,6 +1303,23 @@ export class PlayScene extends Phaser.Scene {
     } else if (rel > 8) {
       this.fx.burst(this.fx.puff, 3, x, y);
     }
+  }
+
+  private checkUntouched(body: Matter.Body, ammo: ProjectileId, rel: number) {
+    const shot = this.sim.launches.length;
+    if (rel < UNTOUCHED.speed || this.untouchedShot === shot || this.sim.finishing) return;
+    const target = this.sim.targets.find((t) => t.body.id === body.id);
+    if (!target || target.hit) return;
+    const dry = target.def.kind === "soak" && ammo !== "balloon";
+    if (!dry && target.def.direct !== false) return;
+    this.untouchedShot = shot;
+    this.time.delayedCall(UNTOUCHED.delay, () => {
+      if (target.hit || this.sim.finishing || this.arlindo.busy || this.sim.launches.length !== shot) return;
+      const lines = this.copy.arlindo.untouched;
+      const text = dry ? this.copy.arlindo.dry : lines[this.untouchedLine++ % lines.length];
+      this.arlindo.shout(text, 1500);
+      this.ctx.onEvent({ type: "announce", message: text, transient: true });
+    });
   }
 
   private shake(ms: number, amount: number) {
@@ -1356,6 +1408,7 @@ export class PlayScene extends Phaser.Scene {
     this.sfx("launch", 0.6 + this.aimPower * 0.5);
     this.sfx("twang", 0.8);
     if (launches === 1) this.hud.hideBanner();
+    this.pendingMiss = null;
     this.decoBubble.hide();
     this.aimGfx.clear();
     this.hop(this.deco, 32);
@@ -1452,13 +1505,36 @@ export class PlayScene extends Phaser.Scene {
   private onShotEnd(hits: number, mess: number, nearest: number) {
     this.fx.stopTrail();
     if (hits > 0 || this.sim.finishing) return;
+    this.pendingMiss = { mess, nearest, since: this.time.now };
+    this.checkMiss();
+  }
+
+  private yardMoving() {
+    return this.sim.engine.world.bodies.some((b) => !b.isStatic && !this.sim.isProjectile(b) && b.speed > SETTLE.speed);
+  }
+
+  private checkMiss() {
+    const miss = this.pendingMiss;
+    if (!miss) return;
+    if (this.sim.finishing || this.sim.phase === "flying" || this.sim.phase === "over") {
+      this.pendingMiss = null;
+      return;
+    }
+    if (this.yardMoving() && this.time.now - miss.since < SETTLE.wait) return;
+    this.pendingMiss = null;
+    this.sayMiss(miss.mess, miss.nearest);
+  }
+
+  private sayMiss(mess: number, nearest: number) {
     if (nearest < 120) {
+      this.setMood("deco", "worried", 1400);
       this.decoSay(this.copy.nearMiss);
       this.sfx("nearMiss", 0.9);
     } else if (mess > 0) {
       this.decoSay(this.copy.messOnly);
       this.sfx("miss", 0.5);
     } else {
+      this.setMood("deco", "worried", 1400);
       this.decoSay(Phaser.Utils.Array.GetRandom(this.copy.missLines));
       this.sfx("miss", 0.8);
       if (!this.ctx.reducedMotion) {
@@ -1472,6 +1548,7 @@ export class PlayScene extends Phaser.Scene {
     const sprite = this.sprites.get(body.id);
     const { x, y } = body.position;
     const chain = this.sim.phase !== "flying";
+    this.pendingMiss = null;
     this.lastHit = { at: this.time.now, x, y };
     this.spot(x, y);
     this.pinIfHidden(`hit-${t.index}`, x, y, "star");
@@ -1517,14 +1594,18 @@ export class PlayScene extends Phaser.Scene {
       this.time.delayedCall(650, () => sprite?.active && sprite.setTint(KNOCKED_TINT));
     }
     this.hop(this.lina, 24);
+    this.setMood("lina", "cheer", 1000);
     const name = this.copy.targets[t.def.name].name;
     let message = t.def.kind === "soak" ? this.copy.announce.soaked(name, t.def.points) : this.copy.announce.knocked(name, t.def.points);
     if (combo) {
-      const at = this.tall ? this.viewPoint(0.5, 0.3) : { x: W / 2, y: 340 };
-      this.fx.word(this.copy.words.combo(shotHits), at.x, at.y, "#f06ba8", 96, true);
+      const at = this.tall ? this.viewPoint(0.5, 0.4) : { x: W * 0.36, y: 300 };
+      const size = this.tall ? Math.min(96, Math.round(this.camera.visible().w / 7.5)) : 96;
+      this.fx.headline(this.copy.words.combo(shotHits), at.x, at.y, "#f06ba8", size);
       this.fx.flash(0.3);
       this.freeze(90);
       this.sfx("combo", 1);
+      this.setMood("deco", "cheer", 1300);
+      this.setMood("lina", "cheer", 1300);
       this.decoSay(this.copy.comboShout, 1100);
       this.hop(this.deco, 36, 1);
       this.hop(this.lina, 36, 1);
@@ -1558,6 +1639,7 @@ export class PlayScene extends Phaser.Scene {
     this.decoBubble.hide();
     this.linaBubble.hide();
     this.tipBubble.hide();
+    this.pendingMiss = null;
     this.dock?.coach(null);
     if (this.tall) this.endGesture();
     if (this.tall && finale) {
@@ -1575,22 +1657,18 @@ export class PlayScene extends Phaser.Scene {
       this.sfx("victory", 1);
       this.fx.burst(this.fx.stars, 40, top.x, top.y);
       this.fx.flash(0.25);
+      this.setMood("deco", "cheer");
+      this.setMood("lina", "cheer");
       if (!this.ctx.reducedMotion) {
         this.hop(this.deco, 34, finale ? 6 : 3);
         this.hop(this.lina, 34, finale ? 6 : 3);
       }
-      if (finale) {
-        this.sfx("splash", 1);
-        this.arlindo.surrender(this.copy.arlindo.finale);
-        this.time.delayedCall(900, () => {
-          const at = this.tall ? this.viewPoint(0.5, 0.25) : { x: W / 2, y: 260 };
-          this.fx.burst(this.fx.stars, 50, at.x, at.y);
-        });
-      } else {
-        this.arlindo.shout(this.copy.arlindo.win[this.phaseIndex] ?? this.copy.arlindo.win[0], 2000);
-      }
+      if (finale) this.playFinale();
+      else this.arlindo.shout(this.copy.arlindo.win[this.phaseIndex] ?? this.copy.arlindo.win[0], 2000);
     } else {
       this.sfx("defeat", 1);
+      this.setMood("deco", "worried");
+      this.setMood("lina", "worried");
       this.arlindo.shout(this.copy.arlindo.lose, 2000);
       this.tweens.add({ targets: [this.deco, this.lina], scaleY: 0.92, angle: -4, duration: 400, ease: "Sine.easeOut" });
     }
@@ -1627,7 +1705,22 @@ export class PlayScene extends Phaser.Scene {
       summary,
       ...(won && stars < 3 ? { starHint: stars === 1 ? this.copy.starHintTwo(par[0], par[1]) : this.copy.starHint(par[0]) } : {}),
     };
-    this.time.delayedCall(finale ? 3600 : won ? 1100 : 400, () => this.ctx.onEvent({ type: "finished", result }));
+    this.time.delayedCall(finale ? FINALE_BEAT.result : won ? 1100 : 400, () => this.ctx.onEvent({ type: "finished", result }));
+  }
+
+  private playFinale() {
+    this.sfx("splash", 1);
+    this.arlindo.surrender(this.copy.arlindo.finale);
+    this.time.delayedCall(900, () => {
+      const at = this.tall ? this.viewPoint(0.5, 0.25) : { x: W / 2, y: 260 };
+      this.fx.burst(this.fx.stars, 50, at.x, at.y);
+    });
+    this.time.delayedCall(FINALE_BEAT.farewell, () => {
+      if (!this.ctx.reducedMotion) this.hop(this.deco, 30, 1);
+      this.decoSay(this.copy.farewell, FINALE_BEAT.encore - FINALE_BEAT.farewell + 1200);
+    });
+    if (this.tall) this.time.delayedCall(FINALE_BEAT.overview, () => this.camera.animateTo(this.camera.overviewPose(), 1100));
+    this.time.delayedCall(FINALE_BEAT.encore, () => this.arlindo.shout(this.copy.arlindo.encore, FINALE_BEAT.result - FINALE_BEAT.encore));
   }
 
   private drawBands() {
@@ -1771,6 +1864,7 @@ export class PlayScene extends Phaser.Scene {
       }
     }
     this.syncSprites();
+    this.checkMiss();
     this.gadgets.update(time, delta);
     if (this.sim.phase === "flying" && this.sim.flying) this.cat.notifyFlyby(this.sim.flying.position.x, this.sim.flying.position.y);
     this.drawBands();
