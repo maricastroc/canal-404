@@ -4,10 +4,6 @@ export const FEET = 458;
 
 export const HOST_BOX = { x: -24, y: -8, w: 248, h: 304, feet: 292 };
 
-export const BAND_REACH = { left: -122, right: 146, top: -452 } as const;
-
-export const HOST_REACH = { half: 96, top: -296 } as const;
-
 export type Point = readonly [number, number];
 export type ArmStroke = { from: Point; via: Point; to: Point; color: number; width: number };
 export type PaddleHold = { fist: Point; arm: readonly ArmStroke[]; skin: number | null; front: boolean };
