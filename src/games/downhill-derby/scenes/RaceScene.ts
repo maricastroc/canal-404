@@ -94,6 +94,9 @@ const TRAIL = 30;
 const ZOOM_MIN_GROUND = 0.92;
 const ZOOM_MIN_RIVAL = 1;
 const ZOOM_MIN_AIR = 0.55;
+const BIG_AIR = 1;
+const PERFECT_HOLD = 0.5;
+const EDGE_GAP = 64;
 const FIRST_RACE: Record<CourseId, Record<Slot, number>> = { arlindo: { lina: 41, bruno: 48, mila: 44.5 }, feira: { lina: 43.5, bruno: 51, mila: 47 }, antena: { lina: 47.5, bruno: 55, mila: 51 } };
 const PACE: Record<Slot, number> = { lina: -1.2, bruno: 0.8, mila: -0.3 };
 
@@ -101,6 +104,20 @@ function tierOf(speed: number) {
   let t = 0;
   for (const limit of TIER_LIMITS) if (speed >= limit) t += 1;
   return t;
+}
+
+function stackEdges(edges: EdgeTag[], anchorY: number) {
+  for (const side of ["left", "right"] as const) {
+    const list = edges.filter((e) => e.side === side).sort((a, b) => a.y - b.y);
+    if (list.length === 0) continue;
+    const top = side === "left" ? 250 : 330;
+    const bottom = Math.max(top + EDGE_GAP * (list.length - 1), side === "left" ? Math.min(860, anchorY - 40) : 860);
+    for (let i = 1; i < list.length; i += 1) list[i].y = Math.max(list[i].y, list[i - 1].y + EDGE_GAP);
+    const over = list[list.length - 1].y - bottom;
+    if (over > 0) for (const e of list) e.y -= over;
+    const under = top - list[0].y;
+    if (under > 0) for (const e of list) e.y += under;
+  }
 }
 
 function wrap(a: number) {
@@ -219,6 +236,9 @@ export class RaceScene extends Phaser.Scene {
   private awningTips = 0;
   private dustyOn = false;
   private wet = 0;
+  private perfectShouts = 0;
+  private perfectAt = -Infinity;
+  private hitInStep = false;
 
   constructor() {
     super("race");
@@ -653,6 +673,8 @@ export class RaceScene extends Phaser.Scene {
     this.helmetOn = false;
     this.dustyOn = false;
     this.wet = 0;
+    this.perfectShouts = 0;
+    this.perfectAt = -Infinity;
     this.rollCycle.clear();
     this.ambient.reset();
     this.voice.clear();
@@ -905,7 +927,9 @@ export class RaceScene extends Phaser.Scene {
     this.checkSections();
     if (!wasFinished) this.pushLiveFrame();
     this.dist += sim.speed * DT;
-    for (const e of sim.drain()) this.handleEvent(e, speedBefore);
+    const events = sim.drain();
+    this.hitInStep = events.some((e) => e.type === "hit" && e.penalized && !e.bounced);
+    for (const e of events) this.handleEvent(e, speedBefore);
     for (const e of this.world.drain()) this.handleWorld(e);
     if (sim.stats.show !== this.shownShow) {
       this.shownShow = sim.stats.show;
@@ -1025,7 +1049,11 @@ export class RaceScene extends Phaser.Scene {
             this.shout("land", c.flip(e.flips), { priority: 3, color: "#f27aa8", size: 64, sub: c.perfect });
             this.hitStop(0.06 + Math.min(e.flips, 3) * 0.02);
           }
-          else this.shout("land", c.perfect, { priority: 2, color: "#ffcf3f", size: 56 });
+          else if (!this.hitInStep && (this.perfectShouts === 0 || e.air >= BIG_AIR)) {
+            this.perfectShouts += 1;
+            this.perfectAt = this.elapsed;
+            this.shout("land", c.perfect, { priority: 2, color: "#ffcf3f", size: 56 });
+          }
           if (this.spunThisFlight) this.alignLessons += 1;
         } else {
           this.cart.rough(strength);
@@ -1087,6 +1115,11 @@ export class RaceScene extends Phaser.Scene {
           this.hud.flashSpeed(-speedBefore * e.loss);
         } else if (e.penalized && !heavy) {
           this.hud.untag("near");
+          if (this.elapsed - this.perfectAt < PERFECT_HOLD) {
+            this.hud.unshout("land");
+            this.perfectShouts = Math.max(0, this.perfectShouts - 1);
+            this.perfectAt = -Infinity;
+          }
           const text = { cone: c.hitCone, line: c.hitLine, crate: c.hitCrate, pothole: c.hitPothole, bin: c.hitBin, gnome: c.hitGnome, hose: c.hitHose, melon: c.hitMelon, orange: c.hitOrange, stand: c.hitStand, bag: c.hitBag }[kind as "cone"] ?? c.hitCrate;
           this.hud.tag("hit", text, "#ff9f80");
           if (kind === "line") this.hud.tip(c.tips.duck);
@@ -1421,7 +1454,9 @@ export class RaceScene extends Phaser.Scene {
     }
     const spots = new Map<CartId, { x: number; y: number }>();
     for (const l of labels) if (this.phase === "race" && l.r.label.alpha > 0) spots.set(l.r.id, { x: l.r.label.x, y: l.r.label.y });
-    this.voice.update(dt, spots, ls);
+    const vz = this.cam.zoom;
+    const inset = (this.frame.kind === "tall" ? 8 * this.frame.unit : 16) / vz + this.camSpeed * dt;
+    this.voice.update(dt, spots, ls, { left: this.cam.x - this.vw / (2 * vz) + inset, right: this.cam.x + this.vw / (2 * vz) - inset });
     for (const l of labels) if (this.voice.speaking(l.r.id)) l.r.label.setAlpha(0);
     const ghost = this.bridge.form.ghost;
     const showGhost = !!ghost && this.bridge.ghost;
@@ -2015,7 +2050,6 @@ export class RaceScene extends Phaser.Scene {
             const side = sp.x > W - edgeIn ? "right" : "left";
             let ty = Math.max(330, Math.min(860, sp.y));
             if (side === "left" && ty > anchor.y - 40) ty = Math.max(250, anchor.y - 40);
-            for (const other of edges) if (other.side === side && Math.abs(other.y - ty) < 64) ty = other.y + (ty >= other.y ? 64 : -64);
             edges.push({ side, y: ty, color: r.color, text: `${r.name.toUpperCase()} ${secs} s` });
           }
         }
@@ -2033,6 +2067,7 @@ export class RaceScene extends Phaser.Scene {
     });
     const showHint = this.phase !== "done" && time < (this.bridge.form.runs < 2 ? 14 : 6) && !(this.jumpedThisRun && time > 5);
     const pins = tall && this.phase === "race" && !sim.finished ? this.hazardPins(x) : undefined;
+    stackEdges(edges, anchor.y);
     this.hud.update(dt, { time, rows, speed, tier, trend: this.trend, markers, edges, finishX: this.track.finish, startX: this.track.start, reduced: this.bridge.reducedMotion, showHint, anchor, pins, started: this.phase !== "countdown" });
     const sh = sim.show;
     this.hud.showMeter(dt, { total: sh.total, seq: sh.seq + (sim.posing ? sim.posePending : 0), mult: sh.mult, timer: sh.timer / 300, active: sh.tricks > 0 || sim.posing });
