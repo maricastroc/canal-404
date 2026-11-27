@@ -1,3 +1,5 @@
+import { FEET } from "./figure";
+
 export type Orientation = "landscape" | "portrait";
 export type Kind = Orientation | "phone" | "wide";
 export type Shape = { kind: Kind; W: number; H: number };
@@ -52,6 +54,8 @@ export const DESK_LIP = 34;
 const PHONE_STAGE_H = 790;
 const STAGE_FIT_TOP = 152;
 const JURY_TOP = 165;
+const CAST_BOOST = 0.5;
+const CAST_OVERLAP = 28;
 
 export function shapeFor(width: number, height: number, coarse: boolean): Shape {
   const ratio = height / Math.max(1, width);
@@ -109,6 +113,19 @@ function placed(stage: StageLayout, x: number, y: number, k: number): StageLayou
   };
 }
 
+function cast(base: StageLayout, stage: StageLayout, k: number): StageLayout {
+  if (k >= 1) return stage;
+  const c = Math.min(k + (1 - k) * CAST_BOOST, k + CAST_OVERLAP / (FEET * base.performer.scale));
+  const spread = (x: number) => base.W / 2 + (x - base.W / 2) * c;
+  const { host, performer, backline } = stage;
+  return {
+    ...stage,
+    host: { x: spread(base.host.x), y: host.y, scale: base.host.scale * c },
+    performer: { ...performer, scale: base.performer.scale * c },
+    backline: { ...backline, xs: base.backline.xs.map(spread), y: backline.y + (c - k) * FEET * base.backline.scale, scale: base.backline.scale * c },
+  };
+}
+
 function centeredRow(y: number, scale: number, count: number, gap: number, W: number): CrowdRow {
   return { y, scale, xs: Array.from({ length: count }, (_, i) => W / 2 + (i - (count - 1) / 2) * gap) };
 }
@@ -125,7 +142,8 @@ function phoneLayout(H: number): Layout {
   const k = Math.max(0.56, Math.min(1, (hitY - laneMin - 14) / PHONE_STAGE_H));
   const oy = Math.round(Math.max(0, STAGE_FIT_TOP - JURY_TOP * k) + 36 * Math.max(0, (k - 0.56) / 0.44));
   const ox = (W - W * k) / 2;
-  const stage = placed(phoneStage(), ox, oy, k);
+  const base = phoneStage();
+  const stage = cast(base, placed(base, ox, oy, k), k);
   const laneTop = stage.stage.front + 14;
   const laneW = Math.round(2.6 * r + 2 * 58 + 36);
   const left = Math.round((W - laneW) / 2);
