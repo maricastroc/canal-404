@@ -1,6 +1,8 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule } from "@/games/types";
+import { introChallenges } from "./copy";
 import { frameFor } from "./layout";
+import { loadSave } from "./save";
 import { insetsOf } from "../kit/insets";
 import { BootScene } from "./scenes/BootScene";
 import { LunchScene } from "./scenes/LunchScene";
@@ -58,6 +60,9 @@ function mount(ctx: GameHostContext): GameInstance {
       game.registry.set("autostart", true);
       if (game.scene.isPaused("lunch")) game.scene.resume("lunch");
       lunch()?.scene.restart();
+    },
+    challenges() {
+      return introChallenges(loadSave(), ctx.locale);
     },
     setHighScore(value: number) {
       game.registry.set("highScore", value);

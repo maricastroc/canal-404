@@ -1,6 +1,9 @@
+import type { IntroChallenges, ResultGoal, ResultMark } from "@/games/types";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber, ordinal } from "@/i18n/format";
 import type { Locale } from "@/i18n/locales";
+import { NEED, readChallenges, type Challenge, type ChallengeBook, type FeatId } from "./challenges";
+import { RIVAL_KINDS, type RivalKind } from "./config";
 
 export const COPY = localized({
   "pt-BR": {
@@ -187,6 +190,17 @@ export const COPY = localized({
         `${hits} ${hits === 1 ? "acerto" : "acertos"}. Melhor sequência: ${bestStreak}.${confiscated ? ` ${confiscated} ${confiscated === 1 ? "lanche confiscado" : "lanches confiscados"}.` : ""}`,
       starHint: (missing: number, star: number) => `Faltaram ${formatNumber(missing, "pt-BR")} pontos para a ${star}ª estrela.`,
     },
+    challenges: {
+      title: "Desafios da cantina",
+      feats: {
+        brawl: `Acertar ${NEED.brawl} na bagunça`,
+        cook: "Vencer sem a merendeira levar nada",
+      } satisfies Record<FeatId, string>,
+      sweep: "Devolver o pudim de cada um da turma",
+      sweepMarks: "Pudins devolvidos por aluno",
+      kinds: { cap: "Garoto do boné", speedy: "Pimentinha", big: "Grandão" } satisfies Record<RivalKind, string>,
+      kindSay: (name: string, done: boolean) => `${name}: ${done ? "já levou o pudim de volta" : "falta"}`,
+    },
   },
   en: {
     hud: {
@@ -372,7 +386,44 @@ export const COPY = localized({
         `${countOf(hits, ["hit", "hits"], "en")}. Best streak: ${formatNumber(bestStreak, "en")}.${confiscated ? ` ${countOf(confiscated, ["snack", "snacks"], "en")} confiscated.` : ""}`,
       starHint: (missing: number, star: number) => `${formatNumber(missing, "en")} points short of the ${ordinal(star, "en")} star.`,
     },
+    challenges: {
+      title: "Cafeteria challenges",
+      feats: {
+        brawl: `Land ${NEED.brawl} hits in the brawl`,
+        cook: "Win without the cook taking a snack",
+      } satisfies Record<FeatId, string>,
+      sweep: "Send a pudding back to every kind of kid",
+      sweepMarks: "Puddings sent back by kid",
+      kinds: { cap: "Cap kid", speedy: "Firecracker", big: "Big kid" } satisfies Record<RivalKind, string>,
+      kindSay: (name: string, done: boolean) => `${name}: ${done ? "already got a pudding back" : "not yet"}`,
+    },
   },
 });
 
 export type FoodFightCopy = (typeof COPY)[Locale];
+
+const KIND_COLOR: Record<RivalKind, string> = { cap: "#93cf4c", speedy: "#f06ba8", big: "#7b62c4" };
+
+function kindMark(kind: RivalKind, c: Challenge, locale: Locale): ResultMark {
+  const t = COPY[locale].challenges;
+  const done = c.kinds.includes(kind);
+  return { label: t.kinds[kind], say: t.kindSay(t.kinds[kind], done), avatar: `/assets/food-fight/rival-${kind}-1-${done ? "oops" : "up"}.svg`, color: KIND_COLOR[kind], done, fresh: c.newKinds.includes(kind) };
+}
+
+export function challengeGoals(list: Challenge[], locale: Locale): { goalsTitle: string; goals: ResultGoal[] } {
+  const t = COPY[locale].challenges;
+  return {
+    goalsTitle: t.title,
+    goals: list.map((c) => ({
+      label: c.feat ? t.feats[c.feat] : t.sweep,
+      done: c.done,
+      fresh: c.fresh,
+      ...(c.feat ? {} : { marks: RIVAL_KINDS.map((kind) => kindMark(kind, c, locale)), marksLabel: t.sweepMarks }),
+    })),
+  };
+}
+
+export function introChallenges(book: ChallengeBook, locale: Locale): IntroChallenges {
+  const { goalsTitle, goals } = challengeGoals(readChallenges(book), locale);
+  return { title: goalsTitle, goals };
+}
