@@ -53,6 +53,7 @@ export const TALENT_COPY = localized({
       shh: "Shhh!",
       listen: "Escute a Mila!",
       now: (title: string) => `Agora: ${title}!`,
+      champions: "Temos campeões!",
     },
     yourTurn: "Sua vez",
     yourTurnCue: "Sua vez!",
@@ -64,6 +65,7 @@ export const TALENT_COPY = localized({
     precision: "Precisão",
     bestStreak: "Maior combo",
     keysHint: "Qualquer tecla toca · Esc: pausa",
+    encore: say("Bis! Bis!"),
     crowdLines: {
       any: [say("Vai, banda!"), say("Oi, mãe! Tô na TV!"), say("Aumenta o som!"), think("Será que eu apareço?"), think("Queria estar no palco…"), think("Esqueci de gravar em casa!")],
       hot: [say("Que ritmo!"), say("Isso é que é show!"), say("Arrasou!"), say("Uhuuu!"), think("Eles ensaiaram muito…")],
@@ -118,6 +120,7 @@ export const TALENT_COPY = localized({
       shh: "Shhh!",
       listen: "Listen to Mila!",
       now: (title: string) => `Now: ${title}!`,
+      champions: "We have champions!",
     },
     yourTurn: "Your turn",
     yourTurnCue: "Your turn!",
@@ -129,6 +132,7 @@ export const TALENT_COPY = localized({
     precision: "Accuracy",
     bestStreak: "Best combo",
     keysHint: "Any key plays · Esc: pause",
+    encore: say("Encore! Encore!"),
     crowdLines: {
       any: [say("Go, band!"), say("Hi, Mom! I'm on TV!"), say("Turn it up!"), think("Am I on camera?"), think("I wish I was up there…"), think("I forgot to tape this!")],
       hot: [say("What a beat!"), say("Now that's a show!"), say("Nailed it!"), say("Woo-hoo!"), think("They practiced a lot…")],

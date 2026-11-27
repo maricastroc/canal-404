@@ -11,6 +11,8 @@ const OLD_CALIBRATION_KEY = "canal404:talent-show:calibration:v1";
 const OLD_ASSIST_KEY = "canal404:talent-show:assist:v1";
 const FINALE_ACHIEVEMENT = "talent-finale";
 const RESULT_HOLD_MS = 1800;
+const SHOW_HOLD_MS = 2800;
+const FINALE_HOLD_MS = 4200;
 const IGNORED_KEYS = new Set(["Tab", "MetaLeft", "MetaRight", "AltLeft", "AltRight", "ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "CapsLock", "F5", "F12"]);
 
 function read(key: string) {
@@ -61,6 +63,7 @@ function mount(ctx: GameHostContext): GameInstance {
   let level = 0;
   let started = false;
   let pending: number | null = null;
+  let reveal: (() => void) | null = null;
   let shape = shapeOf(ctx.parent);
   let stale = false;
   const pointers = new Set<number>();
@@ -70,6 +73,7 @@ function mount(ctx: GameHostContext): GameInstance {
   const clearPending = () => {
     if (pending !== null) window.clearTimeout(pending);
     pending = null;
+    reveal = null;
   };
 
   const boot = () => {
@@ -99,15 +103,16 @@ function mount(ctx: GameHostContext): GameInstance {
         clearPending();
         const result = songResult(report, ctx.locale);
         ctx.onEvent({ type: "score", score: result.score });
-        if (report.song === "medley" && result.won) ctx.onEvent({ type: "achievement", id: FINALE_ACHIEVEMENT });
-        pending = window.setTimeout(
-          () => {
-            pending = null;
-            ctx.onEvent({ type: "finished", result });
-          },
-          ctx.reducedMotion ? 400 : RESULT_HOLD_MS,
-        );
+        const finale = report.song === "medley" && result.won;
+        if (finale) ctx.onEvent({ type: "achievement", id: FINALE_ACHIEVEMENT });
+        const show = () => {
+          clearPending();
+          ctx.onEvent({ type: "finished", result });
+        };
+        reveal = show;
+        pending = window.setTimeout(show, ctx.reducedMotion ? 400 : finale ? FINALE_HOLD_MS : result.won ? SHOW_HOLD_MS : RESULT_HOLD_MS);
       },
+      onSkip: () => reveal?.(),
       onPauseRequest: () => ctx.onEvent({ type: "pause-request" }),
       onScore: (score) => ctx.onEvent({ type: "score", score }),
     };

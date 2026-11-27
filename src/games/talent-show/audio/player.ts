@@ -5,6 +5,7 @@ import { agogo, bucket, click, crowd, fridge, hat, hiss, keysOn, kick, midiToFre
 const LOOKAHEAD = 0.2;
 const SIGNAL_CUTOFF: Record<Signal, number> = { clear: 5200, weak: 2000, lost: 1300 };
 const SIGNAL_HISS: Record<Signal, number> = { clear: 0, weak: 0.035, lost: 0.09 };
+const PLATE_TONES = [60, 62, 64, 67, 69, 72, 74, 76, 79, 81, 84];
 const CHEERS: readonly Cheer[] = [
   { mood: "aww", shouts: 8, claps: 10, seconds: 1.6, whistles: 0, level: 0.85 },
   { mood: "cheer", shouts: 5, claps: 40, seconds: 2, whistles: 0, level: 1.1 },
@@ -191,6 +192,11 @@ export class SongPlayer {
   lift() {
     this.held?.();
     this.held = null;
+  }
+
+  plates(grades: number[], gapSeconds: number) {
+    const now = this.stage.ctx.currentTime + 0.05;
+    grades.forEach((grade, i) => note(this.stage, this.sfx, midiToFreq(PLATE_TONES[Math.max(0, Math.min(10, grade))]), now + i * gapSeconds, 0.7, "triangle", 0.12, 5));
   }
 
   sting(notes: number[], stepSeconds: number) {
