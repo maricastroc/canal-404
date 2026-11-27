@@ -15,7 +15,7 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { KeyText } from "@/components/ui/KeyText";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
-import type { GameResult, IntroProgress, ResultFact, ResultGoal, ResultStanding } from "@/games/types";
+import type { GameResult, IntroProgress, LevelGoal, ResultFact, ResultGoal, ResultStanding } from "@/games/types";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber, ordinal } from "@/i18n/format";
@@ -395,6 +395,8 @@ function PickCard({
   locked = false,
   done = false,
   footer,
+  goals,
+  goalDone,
   onClick,
 }: {
   badge: ReactNode;
@@ -405,6 +407,8 @@ function PickCard({
   locked?: boolean;
   done?: boolean;
   footer?: ReactNode;
+  goals?: LevelGoal[];
+  goalDone?: string;
   onClick: () => void;
 }) {
   return (
@@ -439,6 +443,21 @@ function PickCard({
           <span className="block text-balance font-display text-base uppercase leading-tight text-ink">{title}</span>
           <span className="mt-0.5 block text-xs leading-snug text-ink-soft">{text}</span>
           {footer ? <span className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1.5">{footer}</span> : null}
+          {goals?.length ? (
+            <span className="mt-1.5 grid gap-1 border-t-2 border-dashed border-ink/15 pt-1.5">
+              {goals.map((goal) => (
+                <span key={goal.label} className="flex items-start gap-1.5">
+                  <span aria-hidden className={`mt-px grid size-3.5 shrink-0 place-items-center rounded-full border-2 ${goal.done ? "border-ink bg-mint text-ink" : "border-ink/30"}`}>
+                    {goal.done ? <CheckIcon className="size-2" /> : null}
+                  </span>
+                  <span className={`min-w-0 text-[11px] font-bold leading-tight ${goal.done ? "text-ink" : "text-ink-soft"}`}>
+                    {goal.label}
+                    {goal.done && goalDone ? <span className="sr-only">{` · ${goalDone}`}</span> : null}
+                  </span>
+                </span>
+              ))}
+            </span>
+          ) : null}
         </span>
       </button>
     </>
@@ -564,6 +583,7 @@ export function IntroPanel({
   game,
   highScore,
   levels,
+  levelGoals = null,
   progress = null,
   showHelp,
   onToggleHelp,
@@ -578,6 +598,7 @@ export function IntroPanel({
   game: GameMeta;
   highScore: number;
   levels?: LevelProgress;
+  levelGoals?: LevelGoal[][] | null;
   progress?: IntroProgress | null;
   showHelp: boolean;
   onToggleHelp: () => void;
@@ -749,6 +770,8 @@ export function IntroPanel({
                       current={current}
                       locked={locked}
                       done={done}
+                      goals={locked ? undefined : levelGoals?.[i]}
+                      goalDone={copy.goalDone}
                       footer={
                         locked ? null : (
                           <>
@@ -1121,7 +1144,7 @@ export function ResultPanel({
         <div className="wideshort:mt-4">
           {result.standings?.length ? <Standings rows={result.standings} label={copy.standings} /> : null}
           {result.facts?.length ? <Facts facts={result.facts} label={copy.facts} /> : null}
-          {result.goals?.length ? <Goals goals={result.goals} label={copy.goals} done={copy.goalDone} fresh={copy.goalNew} /> : null}
+          {result.goals?.length ? <Goals goals={result.goals} label={result.goalsTitle ?? copy.goals} done={copy.goalDone} fresh={copy.goalNew} /> : null}
           <dl className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 px-4 pt-1 max-sm:mt-3 max-sm:px-3 wideshort:mt-3">
             {result.breakdown.map((row, i) => (
               <motion.div

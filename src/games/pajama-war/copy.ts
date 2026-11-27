@@ -1,6 +1,8 @@
+import type { ResultGoal } from "@/games/types";
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
-import { KID_INFO, type KidId } from "./config";
+import { NEED, type Challenge, type FeatId } from "./challenges";
+import { KID_INFO, KIDS, type KidId } from "./config";
 
 export type ResultContext = {
   arena: number;
@@ -106,6 +108,8 @@ export const COPY = localized({
       start: "COMEÇAR",
       intro: "Escolha seu personagem: Lia, a veloz. Nico, o atirador. Bia, a resistente. Use as setas e aperte Enter.",
       picked: (name: string, role: string) => `${name}, ${role.toLowerCase()}.`,
+      wonHere: "VENCEU AQUI",
+      wonHereSay: "Já venceu nesta arena.",
     },
     hud: {
       you: "VOCÊ",
@@ -120,6 +124,20 @@ export const COPY = localized({
       onAir: "NO AR",
       cartoon: "FOGUETE 404",
       forecast: "PREVISÃO",
+    },
+    challenges: {
+      title: "Desafios da arena",
+      feats: {
+        dodges: `${NEED.dodges} desvios seguidos`,
+        streak: `${NEED.streak} acertos seguidos`,
+        bank: `Acertar ${NEED.banks} ricochetes`,
+        bankKo: "Nocaute de ricochete",
+        grabs: `Pegar ${NEED.grabs} travesseirões`,
+        giantKo: "Nocaute com o travesseirão",
+        caveIn: "Derrubar cabaninha em alguém",
+        standing: `Vencer com ${NEED.forts} cabaninhas de pé`,
+      } satisfies Record<FeatId, string>,
+      trio: "Vencer com os três",
     },
   },
   en: {
@@ -215,6 +233,8 @@ export const COPY = localized({
       start: "START",
       intro: "Pick your character: Lia, the fast one. Nico, the thrower. Bia, the tough one. Use the arrows and press Enter.",
       picked: (name: string, role: string) => `${name}, ${role.toLowerCase()}.`,
+      wonHere: "WON HERE",
+      wonHereSay: "Already won in this arena.",
     },
     hud: {
       you: "YOU",
@@ -229,6 +249,20 @@ export const COPY = localized({
       onAir: "ON AIR",
       cartoon: "ROCKET 404",
       forecast: "FORECAST",
+    },
+    challenges: {
+      title: "Arena challenges",
+      feats: {
+        dodges: `${NEED.dodges} dodges in a row`,
+        streak: `${NEED.streak} hits in a row`,
+        bank: `Land ${NEED.banks} bounce shots`,
+        bankKo: "Bounce-shot knockout",
+        grabs: `Grab ${NEED.grabs} giant pillows`,
+        giantKo: "Giant-pillow knockout",
+        caveIn: "Cave a fort in on someone",
+        standing: `Win with ${NEED.forts} forts standing`,
+      } satisfies Record<FeatId, string>,
+      trio: "Win with all three",
     },
   },
 });
@@ -257,4 +291,16 @@ export function resultCopy(c: ResultContext, locale: Locale) {
     return { title: t.almost, text: t.second(name, t.losePlace[c.arena] ?? t.loseFallback) };
   }
   return { title: t.out, text: t.firstOut(c.kid) };
+}
+
+export function challengeGoals(list: Challenge[], locale: Locale): { goalsTitle: string; goals: ResultGoal[] } {
+  const t = COPY[locale].challenges;
+  return {
+    goalsTitle: t.title,
+    goals: list.map((c) => ({
+      label: c.feat ? t.feats[c.feat] : c.done ? t.trio : `${t.trio} · ${c.kids}/${KIDS.length}`,
+      done: c.done,
+      fresh: c.fresh,
+    })),
+  };
 }

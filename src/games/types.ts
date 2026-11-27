@@ -21,7 +21,9 @@ export type ResultStanding = { name: string; value: string; detail?: string; you
 
 export type ResultFact = { label: string; value: string };
 
-export type ResultGoal = { label: string; done: boolean; fresh: boolean };
+export type LevelGoal = { label: string; done: boolean };
+
+export type ResultGoal = LevelGoal & { fresh: boolean };
 
 export type GameResult = {
   won: boolean;
@@ -41,6 +43,7 @@ export type GameResult = {
   standings?: ResultStanding[];
   facts?: ResultFact[];
   goals?: ResultGoal[];
+  goalsTitle?: string;
 };
 
 export type MatchSetup = { character?: string };
@@ -84,6 +87,7 @@ export type GameInstance = {
   restart: () => void;
   alt?: () => void;
   progress?: () => IntroProgress | null;
+  levelGoals?: () => LevelGoal[][] | null;
   setHighScore: (value: number) => void;
   destroy: () => void;
 };
