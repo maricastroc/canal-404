@@ -5,7 +5,7 @@ import { glyphOffset, type Fonts } from "@/games/kit/ui";
 import { reportFailedLoads } from "@/games/kit/load";
 import { pressed } from "@/games/kit/press";
 import type { Locale } from "@/i18n/locales";
-import { NIGHT_COPY, type NightCopy, type Sleeper } from "../copy";
+import { NIGHT_COPY, type MarkKind, type NightCopy, type NoteTag, type Sleeper } from "../copy";
 import { isCreaky, isFloor, isHiding, isWall, noiseDistances, pathTo } from "../sim/grid";
 import { ACTS, LEVELS } from "../sim/levels";
 import { encodeMoves } from "../sim/judge";
@@ -31,7 +31,7 @@ import { PhoneNotebook } from "./phoneNotebook";
 
 export type WinReport = { level: string; index: number; turns: number; par: number; stars: number; hints: number; moves: string; wakes: number; creaks: number; covered: number };
 
-export type Carry = { actions: readonly Action[]; hints: number; lesson?: number; stripesTold?: boolean };
+export type Carry = { actions: readonly Action[]; hints: number; lesson?: number; stripesTold?: boolean; marksTold?: MarkKind[]; repeats?: Record<string, number> };
 
 export type NightBridge = {
   locale: Locale;
@@ -57,22 +57,32 @@ export type CommandSource = "key" | "touch";
 
 type AgentView = ({ kind: "dad"; view: DadView } | { kind: "grandma"; view: GrandmaView } | { kind: "dog"; view: DogView } | { kind: "cat"; view: CatView }) & { status: StatusIcon; lift?: number };
 
-type Note = { text: string; kind: NoteKind; fleeting?: boolean; routine?: boolean };
+type BoardMark = "safe" | "wake" | "lure" | "creak";
+
+type Focus = "creak" | "creakDad" | "marks" | "clock" | "hide" | "dad" | "grandma" | "dog" | "cat" | `${BoardMark}Marks`;
+
+type Note = { text: string; kind: NoteKind; fleeting?: boolean; routine?: boolean; tag?: NoteTag; repeat?: string; mark?: MarkKind; focus?: Focus };
 
 type Danger = Note & { lapse: string; soft?: boolean };
 
 type Ahead = { result: NonNullable<ReturnType<typeof step>>; striped: Set<number>; nose: Set<number> };
 
-type Focus = "creak" | "creakDad" | "marks" | "clock" | "hide" | "dad" | "grandma" | "dog" | "cat";
-
 const LESSON_HOLD_MS = 1600;
 const LESSON_IDLE_MS = 3800;
+const REPEAT_CAP = 2;
 
 const NOSE = { fill: 0xffb36b, edge: 0xe0782c, stripe: 0xffc48a };
 
+const LESSON_TIPS: Record<string, readonly number[]> = {
+  hallway: [1],
+  laundry: [3],
+  living: [3],
+  return: [2],
+};
+
 const LESSON_FOCUS: Record<string, readonly (Focus | null)[]> = {
   doorway: ["creak", "clock", "dad", "creak"],
-  hallway: ["clock", "marks", "dad", null],
+  hallway: ["clock", null, "dad"],
   stairs: ["grandma", "grandma", "grandma"],
   kitchen: ["grandma", null, null],
   pantry: ["grandma", "hide", "hide"],
@@ -130,6 +140,10 @@ export class NightScene extends Phaser.Scene {
   private pinned: Danger | null = null;
   private fleeting: string | null = null;
   private stripesTold = false;
+  private marksTold = new Set<MarkKind>();
+  private repeats = new Map<string, number>();
+  private noteTag: NoteTag | undefined;
+  private noteAt = 0;
   private lessonAt = 0;
   private lessonShownAt = 0;
   private rings: Phaser.GameObjects.Graphics[] = [];
@@ -185,7 +199,7 @@ export class NightScene extends Phaser.Scene {
   }
 
   carry(): Carry {
-    return { actions: [...this.actions], hints: this.hints, lesson: this.lessonAt, stripesTold: this.stripesTold };
+    return { actions: [...this.actions], hints: this.hints, lesson: this.lessonAt, stripesTold: this.stripesTold, marksTold: [...this.marksTold], repeats: Object.fromEntries(this.repeats) };
   }
 
   relayout(frame: Frame) {
@@ -202,8 +216,10 @@ export class NightScene extends Phaser.Scene {
     this.hints = carry.hints;
     this.lessonAt = Math.max(this.lessonAt, carry.lesson ?? 1);
     this.stripesTold = this.stripesTold || !!carry.stripesTold;
-    const lesson = this.lessons()[this.lessonAt - 1];
-    if (lesson && this.lessonAt > 1) this.notebook.note(lesson, "info");
+    for (const mark of carry.marksTold ?? []) this.marksTold.add(mark);
+    for (const [key, count] of Object.entries(carry.repeats ?? {})) this.repeats.set(key, Math.max(count, this.repeats.get(key) ?? 0));
+    const lesson = this.lessonNote(this.lessonAt - 1);
+    if (lesson && this.lessonAt > 1) this.post(lesson);
     for (const action of carry.actions) {
       if (this.state.status !== "playing") break;
       const next = step(this.sim, this.state, action);
@@ -274,6 +290,8 @@ export class NightScene extends Phaser.Scene {
     this.pinned = null;
     this.fleeting = null;
     this.stripesTold = false;
+    this.marksTold = new Set();
+    this.repeats = new Map();
     this.lessonAt = 1;
     this.lessonShownAt = this.time.now;
     this.rings = [];
@@ -359,7 +377,9 @@ export class NightScene extends Phaser.Scene {
     const act = ACTS[actOf[index]];
     this.notebook.setLevel(index, LEVELS.length, text.title, text.goal, level.par, LEVELS.map((l) => progress[l.id] ?? 0), this.legendFor(), actOf, this.copy.actLabel(actOf[index] + 1, this.copy.acts[act.id] ?? ""));
     this.notebook.setStats(0, 0);
-    this.notebook.intro(text.intro);
+    this.notebook.intro(text.intro, this.lessonTag(0));
+    this.noteTag = this.lessonTag(0);
+    this.noteAt = this.time.now;
     this.story = new StoryBox(this.ui, L, this.bridge.fonts, charArt, this.copy.speaker, () => {
       this.focusBruno();
       if (this.history.length === 0) this.showLesson(this.lessonAt - 1);
@@ -909,15 +929,16 @@ export class NightScene extends Phaser.Scene {
   private turnNote(prev: State, events: SimEvent[], before: Ahead | null) {
     const n = this.copy.notes;
     const picks: Note[] = [];
-    const note = (text: string, kind: NoteKind, fleeting = false, routine = false) => picks.push({ text, kind, fleeting, routine });
+    const note = (text: string, kind: NoteKind, fleeting = false, routine = false, extra: Partial<Note> = {}) => picks.push({ text, kind, fleeting, routine, ...extra });
+    const alert = { tag: "alert" } as const;
     const creak = events.find((e) => e.type === "creak");
     const heard = events.filter((e) => e.type === "heard");
     const level = this.sim.grid.level;
     const grid = this.sim.grid;
     if (events.some((e) => e.type === "knock")) note(n.knocked, "info");
     if (creak && creak.type === "creak") {
-      if (creak.masked) note(n.masked, "good");
-      else if (heard.length === 0) note(n.unheard, "info");
+      if (creak.masked) note(n.masked, "good", false, false, { repeat: "masked" });
+      else if (heard.length === 0) note(n.unheard(this.hearer()), "info");
     }
     if (events.some((e) => e.type === "sleep")) note(n.backToSleep, "good");
     if (events.some((e) => e.type === "resume")) note(n.grandmaBack, "info");
@@ -929,24 +950,25 @@ export class NightScene extends Phaser.Scene {
     });
     if (events.some((e) => e.type === "dogArrive")) note(n.dogSniff, "good");
     if (level.clock && turnsToCuckoo(grid, this.state.turn) === 1) {
-      const board = ([0, 1, 2, 3] as Dir[]).some((d) => canMove(this.sim, this.state, d) && isCreaky(grid, this.state.x + DX[d], this.state.y + DY[d]));
-      note(board ? n.stepNow : n.cuckooSoon, board ? "good" : "warn", true);
+      const board = this.boardMarkSpots(this.state).length > 0;
+      if (board) note(n.stepNow, "good", true, false, { tag: "tip", repeat: "stepNow", focus: this.timesShown("stepNow") === 0 ? "safeMarks" : undefined });
+      else note(n.cuckooSoon, "info", true, false, { repeat: "cuckooSoon" });
     }
     level.agents.forEach((def) => {
       if (def.kind === "cat" && turnsToKnock(def, this.state.turn) === 1) note(n.knockSoon, "warn", true);
     });
     this.state.agents.forEach((a, i) => {
       const def = level.agents[i];
-      if (a.kind === "sleeper" && def.kind === "sleeper" && a.awake === 0 && turnsToToss(def, this.state.turn) === 1) note(n.tossSoon, "warn", true);
+      if (a.kind === "sleeper" && def.kind === "sleeper" && a.awake === 0 && turnsToToss(def, this.state.turn) === 1) note(n.tossSoon, "warn", true, false, alert);
     });
     this.state.agents.forEach((a, i) => {
       const before = prev.agents[i];
-      if (a.kind === "dog" && before.kind === "dog" && a.mode === "back" && before.mode === "sniff") note(n.dogBack, "warn");
+      if (a.kind === "dog" && before.kind === "dog" && a.mode === "back" && before.mode === "sniff") note(n.dogBack, "warn", false, false, alert);
     });
     const listeners = new Set(heard.flatMap((e) => (e.type === "heard" && !events.some((a) => a.type === "dogArrive" && a.agent === e.agent) ? [level.agents[e.agent].kind] : [])));
-    if (listeners.has("patrol")) note(n.grandmaStopped, "warn");
-    if (listeners.has("sleeper")) note(n.woke, "warn");
-    if (listeners.has("dog")) note(n.wokeDog, "warn");
+    if (listeners.has("patrol")) note(n.grandmaStopped, "warn", false, false, alert);
+    if (listeners.has("sleeper")) note(n.woke, "warn", false, false, alert);
+    if (listeners.has("dog")) note(n.wokeDog, "warn", false, false, alert);
     const hiddenNow = isHiding(grid, this.state.x, this.state.y);
     if (hiddenNow) {
       const stayed = prev.x === this.state.x && prev.y === this.state.y;
@@ -958,7 +980,7 @@ export class NightScene extends Phaser.Scene {
     }
     this.state.agents.forEach((a, i) => {
       const def = level.agents[i];
-      if (a.kind === "patrol" && def.kind === "patrol" && a.alert === 0 && def.path[(a.idx + 1) % def.path.length].peek) note(n.peekSoon, "warn", true);
+      if (a.kind === "patrol" && def.kind === "patrol" && a.alert === 0 && def.path[(a.idx + 1) % def.path.length].peek) note(n.peekSoon, "warn", true, false, alert);
     });
     this.state.agents.forEach((_a, i) => {
       if (!isPeeking(grid, this.state.agents, i)) return;
@@ -969,62 +991,102 @@ export class NightScene extends Phaser.Scene {
     });
     const breathing = this.bruno.getMood() === "breath";
     if (breathing && !this.wasBreathing) {
-      note(n.holdBreath(this.who(this.sleeperNear(this.state, 0))), "info");
+      note(n.holdBreath(this.who(this.sleeperNear(this.state, 0))), "info", false, false, alert);
       this.mumbleNearby();
     }
     this.wasBreathing = breathing;
-    if (events.some((e) => e.type === "toss")) note(n.tossed, "warn");
+    if (events.some((e) => e.type === "toss")) note(n.tossed, "warn", false, false, alert);
+    const usable = picks.filter((p) => !p.repeat || this.timesShown(p.repeat) < REPEAT_CAP);
     const danger = this.danger();
-    const teaching = picks.some((p) => p.text === n.stepNow || p.text === n.masked);
+    const fresh = this.ruleFresh();
+    const teaching = !fresh && usable.some((p) => p.text === n.stepNow || p.text === n.masked);
     const shownDanger = danger && !(danger.soft && teaching) ? danger : null;
     const stripes = [before, this.ahead].find((a) => a && (a.striped.size || a.nose.size));
-    const firstStripes: Note | null = !this.stripesTold && stripes ? { text: stripes.striped.size ? n.stripes : n.stripesNose, kind: "info" } : null;
+    const firstStripes: Note | null = !this.stripesTold && stripes ? { text: stripes.striped.size ? n.stripes : n.stripesNose, kind: "info", tag: "rule" } : null;
+    const markLesson = this.markLesson();
     const pin = this.pinned;
     const lapse: Note | null = pin && this.notebook.showing(pin.text) && this.ahead?.result.state.status !== "caught" ? { text: pin.lapse, kind: "good", fleeting: true } : null;
     const expired = this.fleeting && this.notebook.showing(this.fleeting);
-    const event = [...picks].reverse().find((p) => !p.routine) ?? null;
-    const routine = [...picks].reverse().find((p) => p.routine) ?? null;
-    const holding = !shownDanger && !firstStripes && !event && !lapse && this.lessonHeld();
-    const lesson = shownDanger || firstStripes || event || lapse || holding ? null : this.nextLesson();
-    const shown = holding ? null : (shownDanger ?? firstStripes ?? event ?? lapse ?? lesson ?? routine ?? (expired ? this.introNote() : null));
-    if (!shownDanger && firstStripes) this.stripesTold = true;
+    const event = [...usable].reverse().find((p) => !p.routine) ?? null;
+    const routine = [...usable].reverse().find((p) => p.routine) ?? null;
+    const lesson = shownDanger || firstStripes || markLesson || event || lapse ? null : this.lessonNote(this.lessonAt);
+    const shown = fresh
+      ? (shownDanger ?? [...usable].reverse().find((p) => p.tag === "alert") ?? null)
+      : (shownDanger ?? firstStripes ?? markLesson ?? event ?? lapse ?? lesson ?? routine ?? (expired ? this.introNote() : null));
     this.pinned = danger;
     this.fleeting = shown?.fleeting ? shown.text : null;
-    if (shown) this.notebook.note(shown.text, shown.kind);
-    if (lesson && shown === lesson) this.showLesson(this.lessonAt - 1);
+    if (!shown) return;
+    if (shown === firstStripes) this.stripesTold = true;
+    if (shown.mark) this.marksTold.add(shown.mark);
+    if (shown.repeat) this.repeats.set(shown.repeat, this.timesShown(shown.repeat) + 1);
+    this.post(shown);
+    if (shown === lesson) {
+      this.lessonAt += 1;
+      this.showLesson(this.lessonAt - 1);
+    } else if (shown.focus) this.ringFocus(shown.focus);
+  }
+
+  private post(note: Note) {
+    this.notebook.note(note.text, note.kind, note.tag);
+    this.noteTag = note.tag;
+    this.noteAt = this.time.now;
+  }
+
+  private ruleFresh() {
+    if (this.noteTag !== "rule" && this.noteTag !== "tip") return false;
+    if (this.fleeting && this.notebook.showing(this.fleeting)) return false;
+    return this.time.now - this.noteAt < LESSON_HOLD_MS;
+  }
+
+  private timesShown(key: string) {
+    return this.repeats.get(key) ?? 0;
+  }
+
+  private hearer(): Sleeper | null {
+    const kinds = new Set(this.sim.grid.level.agents.filter((a) => a.kind !== "cat").map((a) => a.kind));
+    if (kinds.size !== 1) return null;
+    return kinds.has("sleeper") ? "dad" : kinds.has("dog") ? "dog" : null;
+  }
+
+  private markLesson(): Note | null {
+    const lines = this.copy.levels[this.sim.grid.level.id]?.marks;
+    if (!lines) return null;
+    const seen = new Set(this.boardMarkSpots(this.state).map((m) => m.kind));
+    for (const mark of ["wake", "creak"] as const) {
+      const text = lines[mark];
+      if (text && !this.marksTold.has(mark) && seen.has(mark)) return { text, kind: "info", tag: "rule", mark, focus: `${mark}Marks` };
+    }
+    return null;
   }
 
   private lessons() {
     return this.copy.levels[this.sim.grid.level.id]?.intro ?? [];
   }
 
-  private lessonHeld() {
-    const lines = this.lessons();
-    const current = lines[this.lessonAt - 1];
-    return !!current && this.lessonAt < lines.length && this.notebook.showing(current) && this.time.now - this.lessonShownAt < LESSON_HOLD_MS;
+  private lessonTag(index: number): NoteTag {
+    return LESSON_TIPS[this.sim.grid.level.id]?.includes(index) ? "tip" : "rule";
+  }
+
+  private lessonNote(index: number): Note | null {
+    const text = this.lessons()[index];
+    return text ? { text, kind: "info", tag: this.lessonTag(index) } : null;
   }
 
   private idleLesson() {
     if (this.state.status !== "playing" || this.busy || this.story?.open || this.notebook.pageOpen() || this.overviewOn || this.pinned) return;
     if (this.time.now - Math.max(this.lessonShownAt, this.lastInput) < LESSON_IDLE_MS) return;
     if (!this.notebook.showing(this.lessons()[this.lessonAt - 1] ?? "")) return;
-    const lesson = this.nextLesson();
+    const lesson = this.lessonNote(this.lessonAt);
     if (!lesson) return;
-    this.fleeting = null;
-    this.notebook.note(lesson.text, lesson.kind);
-    this.showLesson(this.lessonAt - 1);
-  }
-
-  private nextLesson(): Note | null {
-    const lines = this.lessons();
-    if (this.lessonAt >= lines.length) return null;
-    const text = lines[this.lessonAt];
     this.lessonAt += 1;
-    return { text, kind: "info" };
+    this.fleeting = null;
+    this.post(lesson);
+    this.showLesson(this.lessonAt - 1);
   }
 
   private showLesson(index: number) {
     this.lessonShownAt = this.time.now;
+    this.noteAt = this.time.now;
     const target = LESSON_FOCUS[this.sim.grid.level.id]?.[index];
     if (target) this.ringFocus(target);
   }
@@ -1050,10 +1112,13 @@ export class NightScene extends Phaser.Scene {
       const dad = grid.level.agents.findIndex((a) => a.kind === "sleeper");
       return dad < 0 ? [] : nearest(agentPos(grid, dad, st.agents[dad])).map((t) => tileCenter(L, t.x, t.y));
     }
-    if (target === "marks") return ([0, 1, 2, 3] as Dir[]).filter((d) => canMove(this.sim, st, d) && isCreaky(grid, st.x + DX[d], st.y + DY[d])).map((d) => tileCenter(L, st.x + DX[d], st.y + DY[d]));
+    if (target === "marks") return this.boardMarkSpots(st).map((m) => tileCenter(L, m.x, m.y));
+    if (target.endsWith("Marks")) return this.boardMarkSpots(st).filter((m) => `${m.kind}Marks` === target).map((m) => tileCenter(L, m.x, m.y));
     if (target === "hide") return tiles((x, y) => isHiding(grid, x, y)).map((t) => tileCenter(L, t.x, t.y));
+    if (!(target in kindOf)) return [];
+    const kind = kindOf[target as keyof typeof kindOf];
     return grid.level.agents.flatMap((def, i) => {
-      if (def.kind !== kindOf[target]) return [];
+      if (def.kind !== kind) return [];
       const view = this.agents[i];
       const c = tileCenter(L, ...this.xy(agentPos(grid, i, st.agents[i])));
       return [{ x: c.x, y: c.y - (view?.lift ?? 0) - L.tile * (def.kind === "cat" ? 0.1 : 0.3) }];
@@ -1086,8 +1151,7 @@ export class NightScene extends Phaser.Scene {
   }
 
   private introNote(): Note | null {
-    const lines = this.lessons();
-    return lines.length ? { text: lines[lines.length - 1], kind: "info" } : null;
+    return this.lessonNote(this.lessons().length - 1);
   }
 
   private who(index: number): Sleeper {
@@ -1109,14 +1173,14 @@ export class NightScene extends Phaser.Scene {
     const n = this.copy.notes;
     const end = this.ahead?.result;
     if (end && end.state.status === "caught") {
-      if (!this.canEscape(st)) return { text: n.trapped, kind: "bad", lapse: n.clear };
+      if (!this.canEscape(st)) return { text: n.trapped, kind: "bad", tag: "alert", lapse: n.clear };
       const woken = end.events.some((e) => e.type === "heard" && e.agent === end.state.caughtBy && e.source === -2);
       const watcher = this.sim.grid.level.agents[end.state.caughtBy]?.kind;
-      if (!woken && end.state.reason === "light") return { text: watcher === "sleeper" ? n.seenDad : n.seen, kind: "bad", lapse: n.clear };
-      if (!woken && end.state.reason === "dog") return { text: n.seenDog, kind: "bad", lapse: n.calm };
+      if (!woken && end.state.reason === "light") return { text: watcher === "sleeper" ? n.seenDad : n.seen, kind: "bad", tag: "alert", lapse: n.clear };
+      if (!woken && end.state.reason === "dog") return { text: n.seenDog, kind: "bad", tag: "alert", lapse: n.calm };
     }
     const stirred = this.sleeperNear(st, STIR_WAKE - 1);
-    return stirred >= 0 ? { text: n.stirred(this.who(stirred)), kind: "bad", lapse: n.calm, soft: true } : null;
+    return stirred >= 0 ? { text: n.stirred(this.who(stirred)), kind: "bad", tag: "alert", lapse: n.calm, soft: true } : null;
   }
 
   private canEscape(st: State) {
@@ -1131,8 +1195,8 @@ export class NightScene extends Phaser.Scene {
     this.pinned = danger;
     this.fleeting = null;
     this.wasBreathing = this.moodFor(this.state) === "breath";
-    if (danger) this.notebook.note(danger.text, danger.kind);
-    else if (fallback) this.notebook.note(fallback, "info");
+    if (danger) this.post(danger);
+    else if (fallback) this.post({ text: fallback, kind: "info" });
   }
 
   private mumbleNearby() {
@@ -1610,12 +1674,12 @@ export class NightScene extends Phaser.Scene {
     }
   }
 
-  private boardMarks(st: State) {
+  private boardMarkSpots(st: State): { x: number; y: number; kind: BoardMark }[] {
     const grid = this.sim.grid;
-    const L = this.layout;
     const masked = isCuckooTurn(grid, st.turn + 1);
     let maxHear = 0;
     for (const def of grid.level.agents) maxHear = Math.max(maxHear, def.hear);
+    const out: { x: number; y: number; kind: BoardMark }[] = [];
     for (const d of [0, 1, 2, 3] as Dir[]) {
       if (!canMove(this.sim, st, d)) continue;
       const x = st.x + DX[d];
@@ -1634,8 +1698,16 @@ export class NightScene extends Phaser.Scene {
           else wakes = true;
         });
       }
-      const c = tileCenter(L, x, y);
-      this.badges.push(this.markBadge(c.x, c.y - L.tile * 0.04, masked ? "safe" : wakes ? "wake" : lures ? "lure" : "creak"));
+      out.push({ x, y, kind: masked ? "safe" : wakes ? "wake" : lures ? "lure" : "creak" });
+    }
+    return out;
+  }
+
+  private boardMarks(st: State) {
+    const L = this.layout;
+    for (const m of this.boardMarkSpots(st)) {
+      const c = tileCenter(L, m.x, m.y);
+      this.badges.push(this.markBadge(c.x, c.y - L.tile * 0.04, m.kind));
     }
   }
 
@@ -1654,7 +1726,7 @@ export class NightScene extends Phaser.Scene {
     return this.add.container(x, y, [g, label]).setDepth(39).setAlpha(alpha).setData("tag", true).setData("w", w).setData("h", h);
   }
 
-  private markBadge(x: number, y: number, kind: "safe" | "wake" | "lure" | "creak") {
+  private markBadge(x: number, y: number, kind: BoardMark) {
     const s = this.layout.tile;
     const r = s * 0.17;
     const ink = NIGHT.ink;
@@ -1777,7 +1849,7 @@ export class NightScene extends Phaser.Scene {
       this.talk(b.x, b.y - s * 0.5, this.pick(this.copy.lines.brunoExcuse[id] ?? ["…"]), "normal", 2400, "bruno");
     });
     const byCreak = level.agents[st.caughtBy]?.kind === "sleeper" && events.some((e) => e.type === "creak" && !e.masked);
-    this.notebook.showCaught(byCreak ? this.copy.notes.creakCaught : (this.copy.notes.caught[id] ?? ""), byCreak ? undefined : this.caughtCause(events));
+    this.notebook.showCaught(byCreak ? this.copy.notes.creakCaught : (this.copy.notes.caught[id] ?? ""), byCreak ? (level.clock ? this.copy.notes.cause.noCuckoo : undefined) : this.caughtCause(events));
   }
 
   private caughtCause(events: SimEvent[]) {
@@ -1879,7 +1951,7 @@ export class NightScene extends Phaser.Scene {
     const solution = solve(this.sim, this.state);
     this.clearHint();
     if (!solution || solution.actions.length === 0) {
-      this.notebook.note(this.copy.notes.noHint, "bad");
+      this.post({ text: this.copy.notes.noHint, kind: "bad", tag: "alert" });
       return;
     }
     this.hints += 1;
@@ -1905,7 +1977,7 @@ export class NightScene extends Phaser.Scene {
     };
     if (a === "wait") {
       const text = this.copy.notes.hintWait(this.waitsAhead(st, solution.turns));
-      this.notebook.note(text, "info");
+      this.post({ text, kind: "info", tag: "tip" });
       this.fleeting = text;
       const cx = c.x + s * 0.46;
       const cy = c.y - s * 0.62;
@@ -1913,7 +1985,7 @@ export class NightScene extends Phaser.Scene {
       this.hintMarks.add(this.add.image(cx, cy, iconKey("wait")).setDisplaySize(r * 1.3, r * 1.3));
       return;
     }
-    this.notebook.note(this.copy.notes.hint, "info");
+    this.post({ text: this.copy.notes.hint, kind: "info", tag: "tip" });
     this.fleeting = this.copy.notes.hint;
     const t = tileCenter(this.layout, st.x + DX[a], st.y + DY[a]);
     const cx = t.x;
