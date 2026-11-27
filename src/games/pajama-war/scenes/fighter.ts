@@ -36,6 +36,7 @@ export class Fighter {
   hurtBy: Fighter | null = null;
   lastHurtAt = -99999;
   stunUntil = 0;
+  gloatUntil = 0;
   tripSafeUntil = 0;
   invulnUntil = 0;
   readyAt = 0;
@@ -102,7 +103,7 @@ export class Fighter {
   }
 
   canThrow(t: number) {
-    return this.alive && t >= this.readyAt && !this.windupUntil && t >= this.stunUntil;
+    return this.alive && t >= this.readyAt && !this.windupUntil && t >= this.stunUntil && t >= this.gloatUntil;
   }
 
   requestThrow(t: number, angle: number, windup: number = PILLOW.windup) {
@@ -140,8 +141,32 @@ export class Fighter {
     }
   }
 
+  gloat(t: number, ms: number) {
+    if (!this.alive || this.locked || this.windupUntil || t < this.stunUntil || t < this.gloatUntil) return false;
+    this.gloatUntil = t + ms;
+    this.vx *= 0.3;
+    this.vy *= 0.3;
+    this.setPose("cheer");
+    if (!this.reduced) {
+      this.scene.tweens.killTweensOf(this);
+      this.lift = 0;
+      this.scene.tweens.add({ targets: this, lift: 26, duration: ms * 0.25, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
+    }
+    return true;
+  }
+
+  daze(t: number, ms: number) {
+    if (!this.alive) return;
+    this.gloatUntil = 0;
+    this.stunUntil = Math.max(this.stunUntil, t + ms);
+    this.readyAt = Math.max(this.readyAt, t + this.stats.cooldown);
+    this.wasReady = false;
+    this.held.setVisible(false);
+  }
+
   trip(t: number, ms: number) {
     if (!this.alive || t < this.tripSafeUntil || t < this.stunUntil) return false;
+    this.gloatUntil = 0;
     this.tripSafeUntil = t + FORT.immune;
     this.windupUntil = 0;
     this.stunUntil = t + ms;
@@ -169,6 +194,7 @@ export class Fighter {
   hurt(t: number, dirX: number, dirY: number, by: Fighter | null, power = 1) {
     if (!this.alive || t < this.invulnUntil) return false;
     this.hp -= 1;
+    this.gloatUntil = 0;
     this.lastHurtAt = t;
     this.regenAt = t + this.stats.regenDelay * this.regenScale;
     this.hurtBy = by;
@@ -265,7 +291,7 @@ export class Fighter {
         this.scene.tweens.add({ targets: this, squash: 1, duration: 220, ease: "Back.easeOut" });
       }
     }
-    if (t >= this.stunUntil) {
+    if (t >= this.stunUntil && t >= this.gloatUntil) {
       const k = this.windupUntil ? 0.4 : t < this.throwPoseUntil ? 0.7 : 1;
       drive(this, mx, my, this.speed * k, dt);
       if (!this.windupUntil && t >= this.throwPoseUntil && Math.abs(this.vx) > 60) this.facing = this.vx > 0 ? 1 : -1;
@@ -300,6 +326,7 @@ export class Fighter {
     const speed = Math.hypot(this.vx, this.vy);
     let pose: Pose = `idle-${this.dir}`;
     if (t < this.stunUntil) pose = "hurt";
+    else if (t < this.gloatUntil) pose = "cheer";
     else if (this.windupUntil) pose = `windup-${this.throwDir}`;
     else if (t < this.throwPoseUntil) pose = `throw-${this.throwDir}`;
     else if (speed > 50) {

@@ -29,8 +29,9 @@ export const BODY = { rx: 48, ry: 32 };
 
 export const PILLOW = { speed: 1000, range: 860, windup: 130, lift: 96, radius: 26 };
 export const HIT = { stun: 230, invuln: 560, invulnPlayer: 850, knock: 300 };
-export const ESCALATE = { heat: 40000, final: 70000 };
+export const ESCALATE = { heat: 30000, final: 55000 };
 export const FORT = { trip: 300, immune: 1500, reachX: 120, reachY: 76 };
+export const GLOAT: { ms: number; laugh: number; reach: number; chance: Record<KidId, number> } = { ms: 420, laugh: 520, reach: 760, chance: { lia: 0.55, nico: 0.35, bia: 0.45 } };
 
 export const SCORE = { hit: 100, ko: 250, win: 1000, hp: 50, second: 300 };
 

@@ -31,15 +31,15 @@ function scaled(insets: Insets, unit: number): Insets {
   return { top: insets.top * unit, right: insets.right * unit, bottom: insets.bottom * unit, left: insets.left * unit };
 }
 
-function tallFrame(cssW: number, cssH: number, insets: Insets): Frame {
+function tallFrame(cssW: number, cssH: number, insets: Insets, controls: boolean): Frame {
   const unit = TALL.width / cssW;
   const hud = TALL.hud + insets.top;
   const gameplay = LIP - HEAD_MIN;
   const widest = cssW / W;
   let s = Math.min(Math.max(TALL.scale, widest), cssW / TALL.viewMin);
-  const deckMin = TALL.deckMin + insets.bottom;
+  const deckMin = (controls ? TALL.deckMin : 0) + insets.bottom;
   const [deckLow, deckShare, deckHigh] = TALL.deck;
-  const deckWanted = Math.min(deckHigh, Math.max(deckLow, cssH * deckShare)) + insets.bottom;
+  const deckWanted = (controls ? Math.min(deckHigh, Math.max(deckLow, cssH * deckShare)) : 0) + insets.bottom;
   if (cssH - hud - gameplay * s < deckMin) s = Math.max(widest, (cssH - hud - deckMin) / gameplay);
   if (cssH - (LIP + WALL_EXT) * s > deckWanted) s = Math.min(cssW / TALL.viewMin, (cssH - deckWanted) / (LIP + WALL_EXT));
   const deckMax = cssH - hud - gameplay * s;
@@ -55,9 +55,9 @@ function bandFrame(cssW: number, cssH: number, insets: Insets): Frame {
   return { kind: "band", width: Math.round(cssW * unit), height: BAND.height, unit, zoom: s * unit, top: 0, hud: (BAND.hud + insets.top) * unit, deck: 0, safe: scaled(insets, unit) };
 }
 
-export function frameFor(cssW: number, cssH: number, insets: Insets = NO_INSETS): Frame {
+export function frameFor(cssW: number, cssH: number, insets: Insets = NO_INSETS, controls = true): Frame {
   if (cssW <= 0 || cssH <= 0) return FULL_FRAME;
-  if (cssH >= cssW * 1.05) return tallFrame(cssW, cssH, insets);
+  if (cssH >= cssW * 1.05) return tallFrame(cssW, cssH, insets, controls);
   if (cssH <= BAND.maxHeight && cssW / cssH >= BAND.minAspect) return bandFrame(cssW, cssH, insets);
   return FULL_FRAME;
 }

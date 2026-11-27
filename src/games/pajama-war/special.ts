@@ -13,6 +13,7 @@ export const SPECIAL = {
   hit: 1.7,
   lift: 1.65,
   knock: 1.6,
+  daze: 800,
   wave: { rx: 230, ry: 150, push: 560, stun: 300 },
 };
 
