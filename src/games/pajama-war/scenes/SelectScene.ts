@@ -64,6 +64,7 @@ export class SelectScene extends Phaser.Scene {
   private startBtn!: Phaser.GameObjects.Container;
   private dots!: Phaser.GameObjects.Graphics;
   private swipe: { id: number; x: number; y: number; at: number } | null = null;
+  private wonHere: KidId[] = [];
 
   constructor() {
     super("select");
@@ -113,9 +114,10 @@ export class SelectScene extends Phaser.Scene {
     this.arenaLabel = cartoonText(this, 34, 166, this.text.arena(level + 1, ARENAS[level].title[this.locale]), { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18 });
 
     const stats = loadStats();
+    this.wonHere = stats.wonWith[ARENAS[level].id] ?? [];
     const last = (this.registry.get("kid") as KidId | null) ?? stats.lastKid ?? "lia";
     this.index = Math.max(0, KIDS.indexOf(last));
-    KIDS.forEach((kid, i) => this.cards.push(this.makeCard(kid, W / 2 + (i - 1) * 500, 590, stats.wins[kid])));
+    KIDS.forEach((kid, i) => this.cards.push(this.makeCard(kid, W / 2 + (i - 1) * 500, 590, stats.wins[kid], this.wonHere.includes(kid))));
 
     this.hintText = cartoonText(this, W / 2, H - 46, "", { size: 30, color: "#fbf5e6", font: fonts.display, stroke: 0.16 }).setOrigin(0.5);
     this.dots = this.add.graphics();
@@ -274,7 +276,7 @@ export class SelectScene extends Phaser.Scene {
     this.ctx.audio.play(PAJAMA_SFX[name], { volume });
   }
 
-  private makeCard(kid: KidId, x: number, y: number, wins: number): Card {
+  private makeCard(kid: KidId, x: number, y: number, wins: number, wonHere: boolean): Card {
     const fonts = this.ctx.fonts;
     const info = KID_INFO[kid];
     const parts: Phaser.GameObjects.GameObject[] = [];
@@ -328,6 +330,7 @@ export class SelectScene extends Phaser.Scene {
       parts.push(wg, this.add.image(CARD.w / 2 - 128, -CARD.h / 2 + 170, "icon-trophy").setScale(0.8));
       parts.push(cartoonText(this, CARD.w / 2 - 104, -CARD.h / 2 + 170, `${wins}`, { size: 26, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5));
     }
+    if (wonHere) parts.push(this.wonStamp());
     const root = this.add.container(x, y, parts).setSize(CARD.w, CARD.h).setInteractive({ useHandCursor: true });
     root.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => {
       if (this.spot.carousel) return;
@@ -346,6 +349,32 @@ export class SelectScene extends Phaser.Scene {
       this.paint();
     });
     return card;
+  }
+
+  private wonStamp() {
+    const fonts = this.ctx.fonts;
+    const label = cartoonText(this, 0, 0, this.text.wonHere, { size: 21, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5);
+    const w = label.width + 58;
+    const x0 = -CARD.w / 2 + 20;
+    const cy = -CARD.h / 2 + 170;
+    const g = this.add.graphics();
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(x0 + 4, cy - 20 + 4, w, 40, 10);
+    g.fillStyle(0x9df0dc, 1);
+    g.fillRoundedRect(x0, cy - 20, w, 40, 10);
+    g.lineStyle(3.5, INK_HEX, 1);
+    g.strokeRoundedRect(x0, cy - 20, w, 40, 10);
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillCircle(x0 + 22, cy, 12);
+    g.strokeCircle(x0 + 22, cy, 12);
+    g.lineStyle(4, INK_HEX, 1);
+    g.beginPath();
+    g.moveTo(x0 + 16, cy);
+    g.lineTo(x0 + 21, cy + 5);
+    g.lineTo(x0 + 29, cy - 5);
+    g.strokePath();
+    label.setPosition(x0 + 42, cy + 1);
+    return this.add.container(0, 0, [g, label]);
   }
 
   private paint(snap = false) {
@@ -392,7 +421,8 @@ export class SelectScene extends Phaser.Scene {
       this.sfx("pick", 0.8);
       this.time.delayedCall(120, () => this.sfx(KIDS[i] === "lia" ? "step" : KIDS[i] === "nico" ? "throw" : "boing", 0.6));
       const kid = KIDS[i];
-      this.ctx.onEvent({ type: "announce", message: this.text.picked(KID_INFO[kid].name, KID_INFO[kid].title[this.locale]) });
+      const picked = this.text.picked(KID_INFO[kid].name, KID_INFO[kid].title[this.locale]);
+      this.ctx.onEvent({ type: "announce", message: this.wonHere.includes(kid) ? `${picked} ${this.text.wonHereSay}` : picked });
     }
   }
 

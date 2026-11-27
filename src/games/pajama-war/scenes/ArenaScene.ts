@@ -3,8 +3,9 @@ import type { GameHostContext, GameResult } from "@/games/types";
 import type { Locale } from "@/i18n/locales";
 import { getGameRecord } from "@/lib/progress/store";
 import { ARENAS } from "../arenas";
+import { freshFeats, settleChallenges, type MatchFeats } from "../challenges";
 import { BODY, ESCALATE, FORT, GLOAT, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, type KidId } from "../config";
-import { COPY, resultCopy, winShout, type PajamaCopy } from "../copy";
+import { challengeGoals, COPY, resultCopy, winShout, type PajamaCopy } from "../copy";
 import { matchScore } from "../score";
 import { HEAD_MIN, LIP, WALL_EXT, type Frame } from "../layout";
 import { firstTallHit, FLOOR_Y, pointOnTrace, resolveBody, separateBodies, traceShot, type Box, type Point } from "../nav";
@@ -76,6 +77,7 @@ export class ArenaScene extends Phaser.Scene {
   private freezeUntil = 0;
   private heatStage = 0;
   private damageTaken = 0;
+  private feats: MatchFeats = freshFeats();
   private guide!: Phaser.GameObjects.Graphics;
   private aimMarks!: Record<AimMark, Phaser.GameObjects.Image>;
   private youTag: Phaser.GameObjects.Container | null = null;
@@ -118,6 +120,7 @@ export class ArenaScene extends Phaser.Scene {
     this.freezeUntil = 0;
     this.heatStage = 0;
     this.damageTaken = 0;
+    this.feats = freshFeats();
     this.mouseAt = -99999;
     this.mouseDown = false;
     this.throwQueued = -99999;
@@ -1051,6 +1054,7 @@ export class ArenaScene extends Phaser.Scene {
       return;
     }
     const f = ev.by as Fighter;
+    if (f.isPlayer) this.feats.grabs += 1;
     this.drop?.grab(f.x, f.top + 40);
     this.drop = null;
     this.sfx("powerup", f.isPlayer ? 0.9 : 0.55);
@@ -1124,6 +1128,7 @@ export class ArenaScene extends Phaser.Scene {
         this.room.impact(p.x, p.y, 0.4, (n, v) => this.sfx(n, v, 120));
         if (p.special && !this.attract) this.wave(p.x, p.y, p.owner, null);
         this.missed(p);
+        this.landed(p);
         continue;
       }
       let hit = false;
@@ -1178,6 +1183,7 @@ export class ArenaScene extends Phaser.Scene {
           this.room.impact(bx, by, 0.7, (n, v) => this.sfx(n, v, 120));
           p.stop(bx, by, p.z);
           this.missed(p);
+          this.landed(p);
           continue;
         }
       }
@@ -1188,10 +1194,12 @@ export class ArenaScene extends Phaser.Scene {
         if (p.special && !this.attract) this.wave(p.x, arena.bounds.y0, p.owner, null);
         p.stop(p.x, p.y, p.z);
         this.missed(p);
+        this.landed(p);
         continue;
       }
       if (p.x < 20 || p.x > W - 20 || p.y > H + 30) {
         this.missed(p);
+        this.landed(p);
         p.kill();
       }
     }
@@ -1221,12 +1229,12 @@ export class ArenaScene extends Phaser.Scene {
     const view = this.room.forts.find((f) => f.box === box)?.view;
     const dir = Math.sign(p.vx) || 1;
     const sfx = (n: PajamaSfx, v?: number) => this.sfx(n, (v ?? 1) * (p.owner.isPlayer ? 1 : 0.7), 60);
-    if (fort.hp <= 0) this.caveIn(box, dir);
+    if (fort.hp <= 0) this.caveIn(box, dir, p.owner);
     else if (fortStage(fort) !== before) view?.sag(dir, sfx);
     else view?.hit(dir, sfx);
   }
 
-  private caveIn(box: Box, dir = 1) {
+  private caveIn(box: Box, dir: number, by: Fighter) {
     box.tall = false;
     const cx = (box.x0 + box.x1) / 2;
     const cy = box.y1;
@@ -1246,6 +1254,7 @@ export class ArenaScene extends Phaser.Scene {
       this.sfx("trip", f.isPlayer ? 0.9 : 0.5);
       if (f.isPlayer) playerTripped = true;
     }
+    if (by.isPlayer && this.mode === "play" && tripped.some((f) => !f.isPlayer)) this.feats.caveIns += 1;
     if (tripped.length && this.mode === "play") {
       const near = (f: Fighter) => Math.hypot(f.x - cx, f.y - cy);
       const laugher = this.fighters.filter((f) => f.alive && !f.isPlayer && !tripped.includes(f) && near(f) < GLOAT.reach).sort((a, b) => near(a) - near(b))[0];
@@ -1260,6 +1269,10 @@ export class ArenaScene extends Phaser.Scene {
     if (p.hitSomeone || this.mode !== "play") return;
     const now = this.time.now;
     const pl = this.player;
+    if (p.nearPlayer && pl?.alive) {
+      this.feats.dodges += 1;
+      this.feats.bestDodges = Math.max(this.feats.bestDodges, this.feats.dodges);
+    }
     if (p.nearPlayer && pl && pl.alive && now - this.lastUfa > 1400) {
       this.lastUfa = now;
       this.word(this.text.phew, pl.x + 40, pl.top - 30, "#9df0dc", 34);
@@ -1271,6 +1284,10 @@ export class ArenaScene extends Phaser.Scene {
         this.word(Phaser.Utils.Array.GetRandom(this.text.taunts[foe.kid]) as string, foe.x, foe.top - 30, foe.isPlayer ? "#fbf5e6" : KID_INFO[foe.kid].css, 32);
       } else this.word(this.text.close, foe.x, foe.top - 30, "#fbf5e6", 32);
     }
+  }
+
+  private landed(p: Pillow) {
+    if (p.owner.isPlayer && !p.hitSomeone) this.feats.streak = 0;
   }
 
   private telegraph(f: Fighter, t: number) {
@@ -1288,11 +1305,15 @@ export class ArenaScene extends Phaser.Scene {
     const owner = p.owner;
     owner.hits += 1;
     if (owner.isPlayer) this.engagedAt = this.t;
+    if (owner.isPlayer && this.mode === "play") this.countHit(p, f);
     p.hitSomeone = true;
     if (f.isPlayer) this.playerSafeUntil = Math.max(this.playerSafeUntil, this.t + 1000);
     const playerInvolved = f.isPlayer || owner.isPlayer;
     const ending = !this.attract && this.mode === "play" && !f.alive && (f.isPlayer || this.fighters.every((o) => o === f || o.isPlayer || !o.alive));
-    if (f.isPlayer) this.damageTaken += 1;
+    if (f.isPlayer) {
+      this.damageTaken += 1;
+      this.feats.dodges = 0;
+    }
     const y = f.y - 120;
     this.impact(p.img.x, p.img.y, f.y + 4, !f.alive);
     this.heartPop(f);
@@ -1334,6 +1355,16 @@ export class ArenaScene extends Phaser.Scene {
     if (f.isPlayer && f.alive) this.ctx.onEvent({ type: "announce", message: this.text.hit(this.text.hearts(f.hp)) });
     if (owner.isPlayer) this.ctx.onEvent({ type: "score", score: owner.hits * SCORE.hit + owner.kos * SCORE.ko });
     if (!f.alive) this.onKo(f, owner);
+  }
+
+  private countHit(p: Pillow, f: Fighter) {
+    const m = this.feats;
+    m.streak += 1;
+    m.bestStreak = Math.max(m.bestStreak, m.streak);
+    if (p.bounces > 0) m.banks += 1;
+    if (f.alive) return;
+    if (p.bounces > 0) m.bankKos += 1;
+    if (p.special) m.giantKos += 1;
   }
 
   private onKo(f: Fighter, by: Fighter) {
@@ -1484,12 +1515,14 @@ export class ArenaScene extends Phaser.Scene {
       stats.wins[p.kid] += 1;
       if (!stats.bestTime || this.matchTime < stats.bestTime) stats.bestTime = Math.round(this.matchTime);
     }
+    const arena = ARENAS[this.levelIndex];
+    this.feats.fortsLeft = this.room.forts.filter((f) => (f.box.fort?.hp ?? 0) > 0).length;
+    const challenges = settleChallenges(stats, arena.id, arena.feats, p.kid, won, this.feats);
     saveStats(stats);
     const achievements: string[] = [];
     if (won) achievements.push("pajama-first");
     if (won && this.damageTaken === 0) achievements.push("pajama-flawless");
     if (won && KIDS.every((k) => stats.wins[k] > 0)) achievements.push("pajama-trio");
-    const arena = ARENAS[this.levelIndex];
     const record = getGameRecord("pajama-war");
     const copy = resultCopy({
       arena: this.levelIndex,
@@ -1522,6 +1555,7 @@ export class ArenaScene extends Phaser.Scene {
       ...(won && stars < 3 ? { starHint: this.text.starHint(stars) } : {}),
       alt: this.text.alt,
       featured: p.kid,
+      ...challengeGoals(challenges, this.locale),
     };
     this.ctx.onEvent({ type: "score", score });
     this.pending = result;

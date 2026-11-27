@@ -1,7 +1,9 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { ARENAS } from "./arenas";
+import { readChallenges } from "./challenges";
 import { KIDS, type KidId } from "./config";
+import { challengeGoals } from "./copy";
 import { ArenaScene } from "./scenes/ArenaScene";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
@@ -92,6 +94,10 @@ function mount(ctx: GameHostContext): GameInstance {
     },
     alt() {
       pick();
+    },
+    levelGoals() {
+      const stats = loadStats();
+      return ARENAS.map((arena) => challengeGoals(readChallenges(stats, arena.id, arena.feats), ctx.locale).goals);
     },
     setHighScore() {},
     destroy() {

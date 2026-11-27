@@ -1,4 +1,5 @@
 import { localized, type Localized } from "@/i18n/copy";
+import type { FeatId } from "./challenges";
 
 export type CallSide = "left" | "right" | "bottom";
 
@@ -27,6 +28,7 @@ export type ArenaDef = {
   id: string;
   title: Localized<string>;
   goal: Localized<string>;
+  feats: readonly [FeatId, FeatId];
   theme: "bedroom" | "living" | "yard" | "attic";
   wallBottom: number;
   bounds: { x0: number; y0: number; x1: number; y1: number };
@@ -50,6 +52,7 @@ export const ARENAS: ArenaDef[] = [
     id: "bedroom",
     title: localized({ "pt-BR": "Quarto", en: "Bedroom" }),
     goal: localized({ "pt-BR": "Aprenda a mirar e desviar.", en: "Learn to aim and dodge." }),
+    feats: ["streak", "dodges"],
     theme: "bedroom",
     call: "right",
     wallBottom: 350,
@@ -90,6 +93,7 @@ export const ARENAS: ArenaDef[] = [
     id: "living",
     title: localized({ "pt-BR": "Sala de estar", en: "Living room" }),
     goal: localized({ "pt-BR": "Use o sofá e as poltronas para ricochetear.", en: "Use the sofa and armchairs to bounce your throws." }),
+    feats: ["bank", "bankKo"],
     theme: "living",
     call: "left",
     wallBottom: 350,
@@ -138,6 +142,7 @@ export const ARENAS: ArenaDef[] = [
     id: "yard",
     title: localized({ "pt-BR": "Quintal", en: "Backyard" }),
     goal: localized({ "pt-BR": "Pegue o travesseirão antes dos outros.", en: "Grab the giant pillow before the others do." }),
+    feats: ["grabs", "giantKo"],
     theme: "yard",
     call: "bottom",
     wallBottom: 330,
@@ -189,6 +194,7 @@ export const ARENAS: ArenaDef[] = [
     id: "attic",
     title: localized({ "pt-BR": "Sótão", en: "Attic" }),
     goal: localized({ "pt-BR": "As cabaninhas protegem, mas desabam.", en: "The blanket forts give cover, but they cave in." }),
+    feats: ["caveIn", "standing"],
     theme: "attic",
     call: "bottom",
     wallBottom: 350,
