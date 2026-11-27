@@ -11,7 +11,7 @@ const START = Date.UTC(2026, 10, 3, 15, 0, 0);
 const BOARD = boardOf("food-fight", null);
 
 function claimWith(interrupts: number, timeMs = 75_000) {
-  return lunchClaim({ interrupts, interruptPoints: interrupts * 100, timeMs });
+  return lunchClaim({ interrupts, interruptPoints: interrupts * 200, timeMs });
 }
 
 function resortClaim(posters: number) {
@@ -44,10 +44,10 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
   it("stores a checked run and makes it the personal best", async () => {
     const { player } = await makePlayer(db);
     const outcome = await submitLunch(player.id, 2, START, player);
-    expect(outcome.run).toMatchObject({ verification: "checked", eligible: true, score: 6000, stars: 1 });
+    expect(outcome.run).toMatchObject({ verification: "checked", eligible: true, score: 6200, stars: 1 });
     expect(outcome.board).toMatchObject({ id: BOARD, improved: true, previous: null, position: 1, total: 1 });
     const best = await db.personalBest.findUnique({ where: { playerId_board: { playerId: player.id, board: BOARD } } });
-    expect(best).toMatchObject({ runId: outcome.run.id, score: 6000, rank1: 6000, rank2: -2 });
+    expect(best).toMatchObject({ runId: outcome.run.id, score: 6200, rank1: 6200, rank2: -2 });
   });
 
   it("keeps only the replay the game's judge uses", async () => {
@@ -67,9 +67,9 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     const { player } = await makePlayer(db);
     await submitLunch(player.id, 2, START, player);
     const worse = await submitLunch(player.id, 0, START + 1000, player);
-    expect(worse.board).toMatchObject({ improved: false, best: { score: 6000 } });
+    expect(worse.board).toMatchObject({ improved: false, best: { score: 6200 } });
     const better = await submitLunch(player.id, 6, START + 2000, player);
-    expect(better.board).toMatchObject({ improved: true, previous: { score: 6000 }, best: { score: 6400 } });
+    expect(better.board).toMatchObject({ improved: true, previous: { score: 6200 }, best: { score: 7000 } });
     expect(await db.run.count({ where: { playerId: player.id } })).toBe(3);
   });
 
@@ -101,7 +101,7 @@ describe.skipIf(!hasTestDb)("run submissions", () => {
     const results = await Promise.all(interrupts.map((m, i) => submitLunch(player.id, m, START + i, player)));
     const best = await db.personalBest.findMany({ where: { playerId: player.id } });
     expect(best).toHaveLength(1);
-    expect(best[0].score).toBe(5800 + 9 * 100);
+    expect(best[0].score).toBe(5800 + 9 * 200);
     expect(results.some((r) => r.board && "improved" in r.board && r.board.improved)).toBe(true);
     expect(await db.run.count()).toBe(10);
   });

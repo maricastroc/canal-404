@@ -11,6 +11,7 @@ export const INVULNERABLE_MS = 1200;
 export const DECO = { x: 330, standY: 800, duckDrop: 250, face: { x: 342, y: 560 }, hand: { x: 440, y: 594 } };
 export const MILA = { x: 590, y: 790, duckDrop: 170 };
 export const OUR_TABLE = { x: 400, y: 756 };
+export const DUCK_ZONE = { width: 760, below: 34 };
 export const AMMO_SPOTS = [104, 140, 176, 212, 248, 284].map((x) => ({ x, y: 772 }));
 export const WALL_SPLAT = { x: 150, y: 590 };
 export const TABLE_PROPS = { y: 772, holder: { x: 456, scale: 0.9 }, napkins: [440, 456, 472], plates: { x: 690, scale: 0.8 }, juice: { x: 714, scale: 0.8 } };
@@ -32,6 +33,9 @@ export type RivalKind = "cap" | "speedy" | "big";
 
 export const RIVAL_KINDS: RivalKind[] = ["cap", "speedy", "big"];
 export const RIVAL_LOOKS = [1, 2, 3, 4];
+export const RIVAL_POSES = ["up", "windup", "laugh", "oops"] as const;
+
+export type RivalPose = (typeof RIVAL_POSES)[number];
 
 export type RivalDef = {
   kind: RivalKind;
@@ -78,11 +82,13 @@ export const SCORE = {
   lifeBonus: 300,
   cleanBonus: 500,
   lunchLadyPenalty: 200,
-  interruptBonus: 100,
+  interruptBonus: 200,
   brawlMultiplier: 2,
   twoStars: 7500,
   threeStars: 11500,
 };
+
+export const WINDUP_RED = 0.66;
 
 export const CATCH = { from: 0.68, radius: 100, whiffMs: 400, lessonScale: 0.25, lessonRounds: 3 };
 

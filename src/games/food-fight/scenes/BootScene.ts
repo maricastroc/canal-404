@@ -3,7 +3,7 @@ import { ArrowBigDown, Ban, Pointer, Star } from "lucide";
 import type { GameHostContext } from "@/games/types";
 import { loadIcons } from "../../kit/icons";
 import { reportFailedLoads } from "../../kit/load";
-import { RIVAL_KINDS, RIVAL_LOOKS } from "../config";
+import { RIVAL_KINDS, RIVAL_LOOKS, RIVAL_POSES } from "../config";
 
 const BASE = "/assets/food-fight/";
 
@@ -20,10 +20,9 @@ const ASSETS: [key: string, file: string, width: number, height: number][] = [
   ["mila-shout", "mila-shout.svg", 220, 240],
   ["mila-cheer", "mila-cheer.svg", 220, 240],
   ...RIVAL_KINDS.flatMap((kind) =>
-    RIVAL_LOOKS.flatMap((look): [string, string, number, number][] => [
-      [`rival-${kind}-${look}-up`, `rival-${kind}-${look}-up.svg`, 200, 250],
-      [`rival-${kind}-${look}-windup`, `rival-${kind}-${look}-windup.svg`, 200, 250],
-    ]),
+    RIVAL_LOOKS.flatMap((look) =>
+      RIVAL_POSES.map((pose): [string, string, number, number] => [`rival-${kind}-${look}-${pose}`, `rival-${kind}-${look}-${pose}.svg`, 200, 250]),
+    ),
   ),
   ...[0, 1, 2, 3].flatMap((i): [string, string, number, number][] => [
     [`lady-walk-${i}`, `lady-walk-${i}.svg`, 220, 520],

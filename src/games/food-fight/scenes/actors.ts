@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { COOK, LUNCH_LADY, RIVALS, type RivalDef, type RivalKind, type SlotDef } from "../config";
+import { COOK, LUNCH_LADY, RIVALS, WINDUP_RED, type RivalDef, type RivalKind, type RivalPose, type SlotDef } from "../config";
 import { cartoonText, type Fonts } from "../../kit/ui";
 
 export type RivalState = "hidden" | "rising" | "up" | "windup" | "after" | "dazed" | "stunned" | "lowering";
@@ -12,7 +12,7 @@ const SPRITE_H = 250;
 const TRAY_UP_Y = -86;
 const TRAY_DOWN_Y = 60;
 
-export type HitOutcome = { result: "hurt" | "down"; interrupted: boolean };
+export type HitOutcome = { result: "hurt" | "down"; interrupted: boolean; early: boolean };
 
 export class Rival {
   readonly container: Phaser.GameObjects.Container;
@@ -149,8 +149,16 @@ export class Rival {
     return this.container.y - 228 * this.scale;
   }
 
-  private texture(pose: "up" | "windup") {
+  private texture(pose: RivalPose) {
     return `rival-${this.def.kind}-${this.look}-${pose}`;
+  }
+
+  private showFace(face: "laugh" | "oops", ms: number) {
+    this.poseTimer?.remove();
+    this.body.setTexture(this.texture(face)).setFlipX(false);
+    this.poseTimer = this.scene.time.delayedCall(ms, () => {
+      if (this.state === "up" || this.state === "after") this.body.setTexture(this.texture("up")).setFlipX(false);
+    });
   }
 
   private shape(steps: Squash[], from?: [number, number], onDone?: () => void) {
@@ -239,6 +247,7 @@ export class Rival {
   }
 
   startWindup(now: number, ms: number) {
+    this.poseTimer?.remove();
     this.state = "windup";
     this.windupStart = now;
     this.windupMs = ms;
@@ -305,7 +314,7 @@ export class Rival {
         [1, 1, 200, "Back.easeOut"],
       ]);
       if (this.state === "windup") this.until = Math.max(this.until, now + 500);
-      return { result: "hurt", interrupted: false };
+      return { result: "hurt", interrupted: false, early: false };
     }
     this.state = "stunned";
     this.until = now + (wasWindup ? 950 : 650);
@@ -323,13 +332,17 @@ export class Rival {
       [0.95, 1.05, 130, "Sine.easeOut"],
       [1.02, 0.97, 200, "Sine.easeInOut"],
     ]);
-    const interrupted = wasWindup && this.pudding.visible;
-    if (!interrupted) {
+    if (!wasWindup || !this.pudding.visible) {
       this.pudding.setVisible(false);
-      return { result: "down", interrupted: false };
+      return { result: "down", interrupted: false, early: false };
     }
     this.dropPudding();
-    return { result: "down", interrupted: true };
+    const red = this.windupProgress(now) >= WINDUP_RED;
+    return { result: "down", interrupted: red, early: !red };
+  }
+
+  private windupProgress(now: number) {
+    return this.windupMs ? Phaser.Math.Clamp((now - this.windupStart) / this.windupMs, 0, 1) : 0;
   }
 
   private dropPudding() {
@@ -438,6 +451,7 @@ export class Rival {
 
   celebrate() {
     if (!this.onStage) return false;
+    this.showFace("laugh", 750);
     this.shape([
       [0.9, 1.13, 120, "Quad.easeOut"],
       [1.06, 0.94, 100, "Quad.easeIn"],
@@ -449,11 +463,32 @@ export class Rival {
 
   sulk() {
     if (!this.onStage) return false;
+    this.showFace("oops", 650);
     if (!this.reduced) this.scene.tweens.add({ targets: this.container, angle: { from: -6, to: 6 }, duration: 90, yoyo: true, repeat: 2, onComplete: () => this.container.setAngle(0) });
     this.shape([
       [1.06, 0.92, 140, "Quad.easeOut"],
       [1, 1, 300, "Sine.easeInOut"],
     ]);
+    return true;
+  }
+
+  laughAt() {
+    if (this.state !== "up" || this.brawl) return false;
+    this.showFace("laugh", 800);
+    if (!this.reduced) {
+      this.scene.tweens.add({ targets: this.container, angle: { from: 3, to: -3 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => this.container.setAngle(0) });
+    }
+    this.shape(
+      [
+        [1.06, 0.92, 110, "Quad.easeOut"],
+        [0.98, 1.04, 70],
+        [1.03, 0.97, 70],
+        [0.99, 1.02, 70],
+        [1, 1, 160, "Back.easeOut"],
+      ],
+      undefined,
+      () => this.breathe(),
+    );
     return true;
   }
 
@@ -480,7 +515,7 @@ export class Rival {
     if (!this.puddingFalling) this.pudding.setVisible(false);
     if (line) this.taunt(line);
     const arm = kind === "taunt" || kind === "cheer";
-    this.body.setTexture(this.texture(arm ? "windup" : "up")).setFlipX(kind === "taunt");
+    this.body.setTexture(this.texture(arm ? "windup" : kind === "laugh" ? "laugh" : "oops")).setFlipX(kind === "taunt");
     if (this.reduced) return true;
     const tweens = this.scene.tweens;
     if (this.state !== "rising") {
@@ -580,10 +615,10 @@ export class Rival {
       this.pudding.setPosition(h.x, h.y - 18 * this.scale).setAngle(wobble);
     }
     if (this.alert.visible) {
-      const k = this.windupMs ? Phaser.Math.Clamp((now - this.windupStart) / this.windupMs, 0, 1) : 0;
+      const k = this.windupProgress(now);
       const pulse = this.reduced ? 1 : 1 + Math.sin(now / (110 - k * 60)) * 0.12;
       this.alert.setPosition(this.x - 50 * this.scale, this.top() - 26).setScale((this.slot.row === "back" ? 0.85 : 1) * pulse);
-      this.alert.setColor(k > 0.66 ? "#ef4f43" : "#ffc83d");
+      this.alert.setColor(k >= WINDUP_RED ? "#ef4f43" : "#ffc83d");
     }
     if (this.dizzy.visible) {
       this.dizzy.setPosition(this.x + (this.reduced ? 0 : Math.sin(now / 90) * 14), this.top() - 8);

@@ -81,7 +81,7 @@ function lunch(overrides: Partial<Record<string, number>> = {}): RunClaim {
     hits: 30,
     hitPoints: 4800,
     interrupts: 5,
-    interruptPoints: 500,
+    interruptPoints: 1000,
     comboPoints: 1200,
     lives: 2,
     hitsTaken: 1,
@@ -265,7 +265,7 @@ describe("Laboratório", () => {
 describe("Guerra de Lanche", () => {
   it("recomputes the score and breaks ties by puddings taken, then the streak", () => {
     const v = ok(judgeRun("food-fight", null, lunch()));
-    expect(v.score).toBe(4800 + 500 + 1200 + 600);
+    expect(v.score).toBe(4800 + 1000 + 1200 + 600);
     const clean = ok(judgeRun("food-fight", null, lunch({ hitsTaken: 0, lives: 3, hitPoints: 3800 })));
     const messy = ok(judgeRun("food-fight", null, lunch({ hitsTaken: 1, lives: 2, hitPoints: 4600 })));
     expect(clean.score).toBe(messy.score);
@@ -294,23 +294,23 @@ describe("Guerra de Lanche", () => {
   });
 
   it("hands the mission evidence from the checked stats", () => {
-    expect(ok(judgeRun("food-fight", null, lunch())).evidence).toEqual({ won: 1, score: 7100, bestStreak: 9, hitsTaken: 1, lunchLadyHits: 0, interrupts: 5 });
+    expect(ok(judgeRun("food-fight", null, lunch())).evidence).toEqual({ won: 1, score: 7600, bestStreak: 9, hitsTaken: 1, lunchLadyHits: 0, interrupts: 5 });
   });
 
   it("accepts a real bot round and rejects what its limits cannot produce", () => {
-    const real = { hits: 47, hitPoints: 7450, interrupts: 31, interruptPoints: 3100, comboPoints: 880, lives: 3, hitsTaken: 0, lunchLadyHits: 1, bestStreak: 8, throws: 87, timeMs: 75_030 };
-    expect(ok(judgeRun("food-fight", null, lunch(real))).score).toBe(12_630);
+    const real = { hits: 51, hitPoints: 7400, interrupts: 6, interruptPoints: 1200, comboPoints: 14_160, lives: 3, hitsTaken: 0, lunchLadyHits: 1, bestStreak: 37, throws: 60, timeMs: 75_017 };
+    expect(ok(judgeRun("food-fight", null, lunch(real))).score).toBe(23_960);
     expect(judgeRun("food-fight", null, lunch({ ...real, lives: 2 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("food-fight", null, lunch({ ...real, throws: 400 }))).toMatchObject({ ok: false, reason: "inconsistent" });
-    expect(judgeRun("food-fight", null, lunch({ ...real, comboPoints: 3240 }))).toMatchObject({ ok: false, reason: "inconsistent" });
+    expect(judgeRun("food-fight", null, lunch({ ...real, comboPoints: 15_160 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("food-fight", null, lunch({ ...real, hits: 200, hitPoints: 20_000, throws: 300 }))).toMatchObject({ ok: false, reason: "inconsistent" });
   });
 
   it("knows what an early loss could not have had yet", () => {
-    const lost = { hits: 11, hitPoints: 1100, interrupts: 7, interruptPoints: 700, comboPoints: 0, lives: 0, hitsTaken: 3, lunchLadyHits: 1, bestStreak: 1, throws: 29, timeMs: 23_349 };
-    expect(ok(judgeRun("food-fight", null, lunch(lost))).score).toBe(1600);
+    const lost = { hits: 11, hitPoints: 1100, interrupts: 7, interruptPoints: 1400, comboPoints: 0, lives: 0, hitsTaken: 3, lunchLadyHits: 1, bestStreak: 1, throws: 29, timeMs: 23_349 };
+    expect(ok(judgeRun("food-fight", null, lunch(lost))).score).toBe(2300);
     expect(judgeRun("food-fight", null, lunch({ ...lost, hitPoints: 1700 }))).toMatchObject({ ok: false, reason: "inconsistent" });
-    const early = { hits: 6, hitPoints: 600, interrupts: 2, interruptPoints: 200, comboPoints: 60, lives: 0, hitsTaken: 3, lunchLadyHits: 0, bestStreak: 3, throws: 12, timeMs: 6_000 };
+    const early = { hits: 6, hitPoints: 600, interrupts: 2, interruptPoints: 400, comboPoints: 60, lives: 0, hitsTaken: 3, lunchLadyHits: 0, bestStreak: 3, throws: 12, timeMs: 6_000 };
     ok(judgeRun("food-fight", null, lunch(early)));
     expect(judgeRun("food-fight", null, lunch({ ...early, hitPoints: 650 }))).toMatchObject({ ok: false, reason: "inconsistent" });
     expect(judgeRun("food-fight", null, lunch({ ...early, lunchLadyHits: 1, throws: 13 }))).toMatchObject({ ok: false, reason: "inconsistent" });
