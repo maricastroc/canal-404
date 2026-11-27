@@ -42,7 +42,7 @@ type Stage = "loading" | "intro" | "playing" | "paused" | "result" | "error";
 
 type LevelWord = NonNullable<GameMeta["levelWord"]>;
 
-const LEVEL: Record<LevelWord, { word: string; Word: string }> = { fase: { word: "level", Word: "Level" }, arena: { word: "arena", Word: "Arena" }, pista: { word: "track", Word: "Track" }, parte: { word: "part", Word: "Part" }, música: { word: "song", Word: "Song" } };
+const LEVEL: Record<LevelWord, { word: string; Word: string }> = { fase: { word: "level", Word: "Level" }, arena: { word: "arena", Word: "Arena" }, pista: { word: "track", Word: "Track" }, etapa: { word: "stage", Word: "Stage" }, música: { word: "song", Word: "Song" } };
 
 const COPY = localized({
   "pt-BR": {

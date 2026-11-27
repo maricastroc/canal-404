@@ -1,6 +1,6 @@
 import type * as Phaser from "phaser";
 import { glyphOffset, type Fonts } from "@/games/kit/ui";
-import type { NightCopy } from "../copy";
+import type { LegendKey, NightCopy } from "../copy";
 import { partStars } from "../sim/score";
 import type { Action } from "../sim/types";
 import { ARROW_ICONS, iconKey, STAR_ORIGIN_Y, STAR_SPAN, type NightIcon } from "./icons";
@@ -22,7 +22,7 @@ export type NoteKind = keyof typeof COLORS;
 
 export type ButtonId = "wait" | "undo" | "restart" | "hint" | "undoCaught";
 
-export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "nextAny" | "nose" | "dog" | "goal" | "hide" | "cat" | "route" | "toss" | "near";
+export type LegendItem = LegendKey;
 
 export type PageKind = "rules" | "moves";
 
@@ -221,6 +221,9 @@ function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: num
       g.strokeRoundedRect(x - 15, y - 12, 30, 24, 8);
       break;
     case "near":
+    case "nearSeat":
+    case "nearDog":
+    case "nearBoth":
       break;
     case "goal":
       g.lineStyle(3, 0x2fa996, 1);
@@ -234,6 +237,9 @@ const LEGEND_ICONS: Partial<Record<LegendItem, { icon: NightIcon; size: number; 
   nose: { icon: "paw", size: 17, x: 0, y: 0 },
   toss: { icon: "toss", size: 17, x: 0, y: 0 },
   near: { icon: "near", size: 31, x: 0, y: 0 },
+  nearSeat: { icon: "near", size: 31, x: 0, y: 0 },
+  nearDog: { icon: "near", size: 31, x: 0, y: 0 },
+  nearBoth: { icon: "near", size: 31, x: 0, y: 0 },
 };
 
 export function legendIcon(scene: Phaser.Scene, item: LegendItem) {
@@ -293,6 +299,8 @@ export class Notebook implements NotebookView {
     const sp = this.spots;
     this.texts.title = this.raw(sp.title.x, sp.title.y, copy.notebookTitle, 29, PENCIL, undefined, "display");
     this.texts.mission = this.raw(sp.mission.x, sp.mission.y, copy.mission, 22, PENCIL_SOFT);
+    const missionRoom = layout.notebook.w - sp.mission.x - 24;
+    if (this.texts.mission.width > missionRoom) this.texts.mission.setFontSize(Math.floor((parseFloat(String(this.texts.mission.style.fontSize)) * missionRoom) / this.texts.mission.width));
     this.texts.act = this.onLine(sp.act.x, sp.act.line, "", 25, PENCIL_SOFT, undefined, "round", "600", -6);
     this.texts.heading = this.onLine(sp.heading.x, sp.heading.line, "", 48, PENCIL, undefined, "round", "700");
     this.texts.goal = this.onLine(sp.goal.x, sp.goal.line, "", 31, PENCIL, sp.goal.w);
@@ -510,9 +518,16 @@ export class Notebook implements NotebookView {
       { kind: "moves", label: `${this.copy.pages.moves} · ${this.planActions.length}`, fill: 0xfbe1ec },
     ];
     const gap = 12;
-    const w = (sp.w - gap) / 2;
     const h = sp.h;
+    const labels = items.map((it) => this.scene.add.text(0, 0, it.label, { fontFamily: this.round, fontStyle: "700", fontSize: "21px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5));
+    const natural = labels.map((t) => t.width + 24);
+    const total = natural.reduce((a, b) => a + b, 0);
+    const room = sp.w - gap;
+    const widths = total > room ? natural.map((n) => Math.max(room * 0.38, (room * n) / total)) : natural.map(() => room / 2);
+    const fit = Math.min(1, ...labels.map((t, i) => (widths[i] - 24) / t.width));
+    let left = sp.x;
     items.forEach((it, i) => {
+      const w = widths[i];
       const g = this.scene.add.graphics();
       g.fillStyle(INK, 0.8);
       g.fillRoundedRect(2, 3, w, h, 10);
@@ -520,9 +535,10 @@ export class Notebook implements NotebookView {
       g.fillRoundedRect(0, 0, w, h, 10);
       g.lineStyle(2, INK, 0.9);
       g.strokeRoundedRect(0, 0, w, h, 10);
-      const t = this.scene.add.text(w / 2, h / 2, it.label, { fontFamily: this.round, fontStyle: "700", fontSize: "21px", color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5);
-      if (t.width > w - 24) t.setFontSize(Math.floor((21 * (w - 24)) / t.width));
-      const c = this.scene.add.container(sp.x + i * (w + gap), sp.y, [g, t]).setAngle((wobble(i * 5 + 2) - 0.5) * 2);
+      const t = labels[i].setPosition(w / 2, h / 2);
+      if (fit < 1) t.setFontSize(Math.floor(21 * fit));
+      const c = this.scene.add.container(left, sp.y, [g, t]).setAngle((wobble(i * 5 + 2) - 0.5) * 2);
+      left += w + gap;
       this.makeClickable(c, w, h, () => this.openPage(it.kind));
       this.container.add(c);
       this.links.push(c);
@@ -579,21 +595,24 @@ export class Notebook implements NotebookView {
     let y = 80;
     const textW = a.w - 80;
     if (kind === "rules") {
+      const body: Phaser.GameObjects.GameObject[] = [];
       for (const line of this.rules) {
         const t = this.scene.add.text(58, y, `– ${line}`, { fontFamily: this.round, fontStyle: "600", fontSize: "21px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: textW }, lineSpacing: 6 });
-        parts.push(t);
+        body.push(t);
         y += t.height + 10;
       }
       y += 12;
       const sub = this.scene.add.text(58, y, this.copy.legendTitle, { fontFamily: this.fonts.display, fontSize: "22px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } });
-      parts.push(sub);
+      body.push(sub);
       y += 46;
       for (const item of this.legend) {
         const ig = legendIcon(this.scene, item).setPosition(76, y + 16);
-        const t = this.scene.add.text(104, y, this.copy.legend[item], { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 3 } });
-        parts.push(ig, t);
-        y += 40;
+        const t = this.scene.add.text(104, y, this.copy.legend[item], { fontFamily: this.round, fontStyle: "600", fontSize: "20px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: a.w - 124 } });
+        body.push(ig, t);
+        y += Math.max(40, t.height + 12);
       }
+      const fit = Math.min(1, (a.h - 92) / (y - 80));
+      parts.push(this.scene.add.container(58 * (1 - fit), 80 * (1 - fit), body).setScale(fit));
     } else {
       const runs = runsOf(this.planActions);
       if (!runs.length) parts.push(this.scene.add.text(58, y, this.copy.pages.empty, { fontFamily: this.round, fontStyle: "600", fontSize: "21px", color: PENCIL_SOFT, padding: { x: 2, y: 3 } }));

@@ -11,18 +11,18 @@ export const REPLAY_KIND = "bedtime-moves";
 
 const COPY = localized({
   "pt-BR": {
-    part: "Parte concluída",
+    part: "Etapa concluída",
     bonus: "Bônus de jogadas",
-    again: "Refazer a parte",
-    hinted: "A dica deixa esta parte com no máximo 2 estrelas. Sem espiar o caderno, a terceira volta.",
+    again: "Refazer a etapa",
+    hinted: "A dica deixa esta etapa com no máximo 2 estrelas. Sem espiar o caderno, a terceira volta.",
     second: (n: number) => `Chegue em até ${n} jogadas para a segunda estrela.`,
     third: (n: number) => `Chegue em ${n} jogadas para a terceira estrela.`,
   },
   en: {
-    part: "Part done",
+    part: "Stage done",
     bonus: "Move bonus",
-    again: "Replay part",
-    hinted: "The hint keeps this part at 2 stars at most. Without peeking at the notebook, the third one comes back.",
+    again: "Replay stage",
+    hinted: "The hint keeps this stage at 2 stars at most. Without peeking at the notebook, the third one comes back.",
     second: (n: number) => `Make it in ${n} moves or fewer for the second star.`,
     third: (n: number) => `Make it in ${n} moves for the third star.`,
   },

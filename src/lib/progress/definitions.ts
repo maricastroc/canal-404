@@ -342,12 +342,12 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     "bedtime-first": {
       title: "Pé Ante Pé",
       description: "Você passou pela porta dos pais sem acordar o pai.",
-      hint: "Termine a primeira parte da Madrugada.",
+      hint: "Termine a primeira etapa da Madrugada.",
     },
     "bedtime-par": {
       title: "Plano Perfeito",
-      description: "Você terminou uma parte da Madrugada dentro da meta de jogadas.",
-      hint: "Termine uma parte da Madrugada dentro da meta de jogadas, sem pedir dica.",
+      description: "Você terminou uma etapa da Madrugada dentro da meta de jogadas.",
+      hint: "Termine uma etapa da Madrugada dentro da meta de jogadas, sem pedir dica.",
     },
     "bedtime-tape": {
       title: "Fita Gravada",
@@ -514,12 +514,12 @@ export const ACHIEVEMENT_TEXT = localized<Record<AchievementId, ProgressText>>({
     "bedtime-first": {
       title: "Tiptoe",
       description: "You got past Mom and Dad's door without waking Dad.",
-      hint: "Finish the first part of Past Bedtime.",
+      hint: "Finish the first stage of Past Bedtime.",
     },
     "bedtime-par": {
       title: "Flawless Plan",
-      description: "You finished a Past Bedtime part within the move target.",
-      hint: "Finish a Past Bedtime part within the move target, without asking for a hint.",
+      description: "You finished a Past Bedtime stage within the move target.",
+      hint: "Finish a Past Bedtime stage within the move target, without asking for a hint.",
     },
     "bedtime-tape": {
       title: "Taped!",

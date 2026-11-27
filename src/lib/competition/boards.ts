@@ -80,7 +80,7 @@ export const BOARD_META: Record<GameSlug, BoardMeta> = {
     ],
   },
   "past-bedtime": {
-    explain: "Cada parte tem seu placar. Menos jogadas vence. Empate: quem acordou menos gente; depois, menos rangidos fora do cuco. Partidas com dica não entram.",
+    explain: "Cada etapa tem seu placar. Menos jogadas vence. Empate: quem acordou menos gente; depois, menos rangidos fora do cuco. Partidas com dica não entram.",
     check: "replayed",
     metrics: [
       { label: "Jogadas", unit: "count", lowerIsBetter: true, noun: ["jogada", "jogadas"] },
@@ -132,7 +132,7 @@ const BOARD_TEXT_EN: Record<GameSlug, BoardText> = {
     metrics: [{ label: "Time" }, { label: "Wipeouts", noun: ["wipeout", "wipeouts"] }, { label: "Show" }],
   },
   "past-bedtime": {
-    explain: "Each part has its own board. Fewest moves wins. Tiebreak: fewer people woken, then fewer creaks outside the cuckoo. Runs with a hint don't go on the board.",
+    explain: "Each stage has its own board. Fewest moves wins. Tiebreak: fewer people woken, then fewer creaks outside the cuckoo. Runs with a hint don't go on the board.",
     metrics: [{ label: "Moves", noun: ["move", "moves"] }, { label: "Wake-ups", noun: ["wake-up", "wake-ups"] }, { label: "Creaks", noun: ["creak", "creaks"] }],
   },
   "talent-show": {

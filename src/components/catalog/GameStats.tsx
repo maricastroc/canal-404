@@ -9,7 +9,7 @@ import { useHydrated, useProgress } from "@/lib/progress/hooks";
 const COPY = localized({
   "pt-BR": {
     stars: (n: number) => `${n} de 3 estrelas`,
-    levels: { fase: "Fases", arena: "Arenas", pista: "Pistas", parte: "Partes", música: "Músicas" },
+    levels: { fase: "Fases", arena: "Arenas", pista: "Pistas", etapa: "Etapas", música: "Músicas" },
     starsLabel: "Estrelas",
     plays: "Partidas",
     record: "Recorde",
@@ -18,7 +18,7 @@ const COPY = localized({
   },
   en: {
     stars: (n: number) => `${n} of 3 stars`,
-    levels: { fase: "Levels", arena: "Arenas", pista: "Tracks", parte: "Parts", música: "Songs" },
+    levels: { fase: "Levels", arena: "Arenas", pista: "Tracks", etapa: "Stages", música: "Songs" },
     starsLabel: "Stars",
     plays: "Plays",
     record: "Record",
@@ -38,7 +38,7 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; levels?: { id: string }[]; levelWord?: "fase" | "arena" | "pista" | "parte" | "música" }) {
+export function GameStats({ slug, levels, levelWord = "fase" }: { slug: string; levels?: { id: string }[]; levelWord?: "fase" | "arena" | "pista" | "etapa" | "música" }) {
   const progress = useProgress();
   const hydrated = useHydrated();
   const locale = useLocale();
