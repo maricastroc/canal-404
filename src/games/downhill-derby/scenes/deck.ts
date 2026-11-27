@@ -66,6 +66,8 @@ export class PhoneDeck {
   private readonly arrows: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
   private readonly spinLabel: Phaser.GameObjects.Text;
   private readonly rounds: [Round, Round];
+  private readonly coachG: Phaser.GameObjects.Graphics;
+  private coachClock = 0;
   private readonly gauge: Phaser.GameObjects.Graphics;
   private readonly trend: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
   private readonly speedText: Phaser.GameObjects.Text;
@@ -119,6 +121,7 @@ export class PhoneDeck {
     this.spinLabel = label(copy.spin);
     const round = (id: Pad, color: number, icon: string, text: string): Round => ({ id, x: 0, y: 0, r: 0, color, gfx: this.add(scene.add.graphics()), icon: this.add(scene.add.image(0, 0, icon)), label: label(text) });
     this.rounds = [round("crouch", 0x63d6c1, "dd-ico-crouch", copy.crouch), round("jump", 0xffc83d, "dd-ico-jump", copy.jump)];
+    this.coachG = this.add(scene.add.graphics());
     this.gauge = this.add(scene.add.graphics());
     this.trend = [this.add(scene.add.image(0, 0, "dd-ico-trend-up").setVisible(false)), this.add(scene.add.image(0, 0, "dd-ico-trend-down").setVisible(false))];
     this.speedText = this.add(scene.add.text(0, 0, "0", { fontFamily: fonts.display, fontSize: `${F}px`, color: "#fbf5e6" }).setOrigin(0.5, 0.5));
@@ -306,6 +309,34 @@ export class PhoneDeck {
     this.state = next;
     this.apply(next);
     this.redraw();
+  }
+
+  coach(button: "left" | "right" | "crouch" | "jump" | null, dt: number) {
+    this.coachClock += dt;
+    const g = this.coachG;
+    g.clear();
+    if (!button || !this.enabled) return;
+    const u = this.u;
+    const m = (5 + Math.sin(this.coachClock * 9) * 3) * u;
+    const ring = (draw: (pad: number) => void) => {
+      g.lineStyle(5 * u, INK, 0.6);
+      draw(m);
+      g.lineStyle(3 * u, 0xffcf3f, 1);
+      draw(m);
+    };
+    if (button === "crouch" || button === "jump") {
+      if (this.state[button]) return;
+      const b = this.rounds[button === "crouch" ? 0 : 1];
+      ring((pad) => g.strokeCircle(b.x, b.y, b.r + pad));
+      return;
+    }
+    if (this.state[button]) return;
+    const box = this.box;
+    const gap = SIZE.gap * (box.width / (SIZE.square * 2 + SIZE.gap));
+    const half = (box.width - gap) / 2;
+    const x = button === "left" ? box.x : box.x + half + gap;
+    const radius = Math.min(half, box.height) * 0.3;
+    ring((pad) => g.strokeRoundedRect(x - pad, box.y - pad, half + pad * 2, box.height + pad * 2, radius + pad));
   }
 
   flash(text: string, gain: boolean) {

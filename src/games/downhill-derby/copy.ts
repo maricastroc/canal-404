@@ -67,6 +67,7 @@ export type RaceCopy = {
   live: string;
   secret: string;
   chalk: { hold: string; jump: string };
+  coach: { hold: string; ready: string; jump: string; spin: string; space: string };
   beep: string;
   courses: { arlindo: string; feira: string; antena: string };
   sections: Record<"arlindo" | "feira" | "antena", Record<string, string>>;
@@ -196,6 +197,7 @@ export const RACE_COPY = localized<RaceCopy>({
     live: "AO VIVO",
     secret: "ANÃO DOURADO!",
     chalk: { hold: "SEGURA ↓", jump: "PULA!" },
+    coach: { hold: "SEGURE", ready: "PREPARE…", jump: "PULE!", spin: "GIRE", space: "ESPAÇO" },
     beep: "BIP! BIP!",
     courses: { arlindo: "Ladeira do Seu Arlindo", feira: "Dia de Feira", antena: "Morro da Antena" },
     sections: {
@@ -373,6 +375,7 @@ export const RACE_COPY = localized<RaceCopy>({
     live: "LIVE",
     secret: "GOLDEN GNOME!",
     chalk: { hold: "HOLD ↓", jump: "JUMP!" },
+    coach: { hold: "HOLD", ready: "GET READY…", jump: "JUMP!", spin: "SPIN", space: "SPACE" },
     beep: "BEEP! BEEP!",
     courses: { arlindo: "Mr. Arlindo's Hill", feira: "Market Day", antena: "Antenna Hill" },
     sections: {
