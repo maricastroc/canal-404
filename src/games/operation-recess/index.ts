@@ -1,7 +1,9 @@
 import * as Phaser from "phaser";
 import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
 import { GRAVITY } from "./config";
+import { COPY } from "./copy";
 import { LEVELS } from "./levels";
+import { loadSave } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { StageScene } from "./scenes/StageScene";
@@ -84,6 +86,15 @@ function mount(ctx: GameHostContext): GameInstance {
       const fromBell = stage()?.knockedOut === true;
       if (!fromBell) game.registry.set("checkpoint", null);
       restartScene(fromBell);
+    },
+    levelGoals() {
+      const owned = loadSave().stickers;
+      const text = COPY[ctx.locale].result;
+      return LEVELS.map((level) => {
+        const ids = level.items.flatMap((item) => (item.kind === "sticker" ? [item.id] : []));
+        const got = ids.filter((id) => owned.includes(id)).length;
+        return [{ label: text.levelStickers(got, ids.length), done: got === ids.length }];
+      });
     },
     setHighScore() {},
     destroy() {
