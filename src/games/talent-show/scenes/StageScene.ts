@@ -3,6 +3,7 @@ import { ArrowRight, Check, Ear, Heart, Music2, Play, Pointer, ThumbsDown, Thumb
 import type { Locale } from "@/i18n/locales";
 import { loadIcons } from "@/games/kit/icons";
 import { reportFailedLoads } from "@/games/kit/load";
+import { insetsOf } from "@/games/kit/insets";
 import { cartoonText } from "@/games/kit/ui";
 import { formatNumber } from "@/i18n/format";
 import { getAudio } from "@/lib/audio/engine";
@@ -14,7 +15,8 @@ import { barAt, beatMsAt, type BandMember, type ChartNote, type CompiledSong, ty
 import { compiledSong, roundOf, SONG_ORDER } from "../song/songs";
 import { ART_FILES } from "./artManifest";
 import { DEMO_OF, ShowCard, type CardButtonId, type CardContent } from "./card";
-import { AMP, FIGURE, FEET, HOST_BOX } from "./figure";
+import { BUBBLE_TAIL, fitAbove, tipOf, type BubbleFit, type Rect } from "./bubble";
+import { AMP, BAND_REACH, FIGURE, FEET, HOST_BOX, HOST_REACH, JURY_ART } from "./figure";
 import { Crowd, type CrowdMode, type Fan } from "./crowd";
 import { Jury } from "./jury";
 import { StageLights, type LightMode } from "./lights";
@@ -55,6 +57,7 @@ const CUT_STING = [69, 72, 76, 74, 72, 69];
 const CARD_MODES: Mode[] = ["intro", "tutorial"];
 const OFFSTAGE: Mode[] = ["idle", "intro", "tutorial"];
 const MISS_FALL_MS = 480;
+const HINT_MARGIN = 28;
 const SPARK_MS = 380;
 const TALK_MS = 2600;
 const LISTEN_TAIL_MS = 150;
@@ -391,7 +394,9 @@ export class StageScene extends Phaser.Scene {
       g.lineStyle(4, C.ink, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
       icon.setPosition(-w / 2 + 22 + icon.displayWidth / 2, 0);
       text.setPosition(icon.x + icon.displayWidth / 2 + 12, 0);
-      this.hint.add([g, icon, text]).setPosition(L.hint.x, L.hint.y);
+      const css = this.scale.displaySize.width / L.W;
+      const floor = css > 0 ? Math.max(HINT_MARGIN, insetsOf(this.game.canvas).bottom + 16) / css : 0;
+      this.hint.add([g, icon, text]).setPosition(L.hint.x, Math.min(L.hint.y, L.H - floor - h / 2 - 5));
     }
   }
 
@@ -437,6 +442,11 @@ export class StageScene extends Phaser.Scene {
   }
 
   private say(text: string, ms = 1400) {
+    this.bubbleUntil = performance.now() + ms;
+    if (this.L.kind === "phone") {
+      this.sayOnPhone(text);
+      return;
+    }
     this.bubbleText.setText(text).setPosition(22, 0);
     const w = this.bubbleText.width + 44;
     const h = this.L.text.bubble * 1.7;
@@ -444,21 +454,74 @@ export class StageScene extends Phaser.Scene {
     this.bubbleBg.fillStyle(C.ink, 1).fillRoundedRect(4, -h / 2 + 5, w, h, h / 2);
     this.bubbleBg.fillStyle(C.cream, 1).fillRoundedRect(0, -h / 2, w, h, h / 2);
     this.bubbleBg.lineStyle(5, C.ink, 1).strokeRoundedRect(0, -h / 2, w, h, h / 2);
-    const phone = this.L.kind === "phone";
-    const above = phone && this.hostLead;
-    const [a, b, tip] = above ? [w / 2 - 14, w / 2 + 14, w / 2] : [16, 40, 4];
-    this.bubbleBg.fillStyle(C.cream, 1).fillTriangle(a, h / 2 - 6, b, h / 2 - 6, tip, h / 2 + 22);
-    this.bubbleBg.lineStyle(5, C.ink, 1).lineBetween(a, h / 2 - 2, tip, h / 2 + 22).lineBetween(tip, h / 2 + 22, b, h / 2 - 2);
-    const spot = phone ? this.hostSpot : { x: this.host.x, y: this.host.y, scale: this.host.scale * 2 };
-    if (above) {
-      const top = spot.y - (HOST_BOX.feet - HOST_BOX.y) * spot.scale;
-      const x = Math.max(16, Math.min(this.L.W - w - 16, spot.x - w / 2));
-      this.bubble.setPosition(x, top - 28 - h / 2).setVisible(true);
-    } else {
-      const x = Math.min(this.L.W - w - 16, spot.x + (phone ? 95 : 60) * spot.scale);
-      this.bubble.setPosition(x, spot.y - (phone ? 230 : 300) * spot.scale).setVisible(true);
+    this.bubbleBg.fillStyle(C.cream, 1).fillTriangle(16, h / 2 - 6, 40, h / 2 - 6, 4, h / 2 + 22);
+    this.bubbleBg.lineStyle(5, C.ink, 1).lineBetween(16, h / 2 - 2, 4, h / 2 + 22).lineBetween(4, h / 2 + 22, 40, h / 2 - 2);
+    const s = this.host.scale * 2;
+    const x = Math.min(this.L.W - w - 16, this.host.x + 60 * s);
+    this.bubble.setPosition(x, this.host.y - 300 * s).setVisible(true);
+  }
+
+  private sayOnPhone(text: string) {
+    const L = this.L;
+    const label = this.bubbleText.setAlign("center");
+    const speaker = this.speakerRect();
+    const obstacles = this.bubbleObstacles();
+    const area = { x0: 16, y0: L.score.y + L.score.size * 0.8, x1: L.W - 16, y1: L.stage.front };
+    const box = (size: number) => {
+      const h = Math.max(size * 1.7, label.height + size * 0.62);
+      return { w: label.width + 44, h, round: Math.min(h / 2, size * 0.9) };
+    };
+    let pick: { size: number; wrap: number | null; cost: number; fit: BubbleFit } | null = null;
+    for (const size of [L.text.bubble, Math.round(L.text.bubble * 0.86)]) {
+      label.setFontSize(size).setWordWrapWidth(null).setText(text);
+      const one = label.width;
+      const longest = Math.max(...text.split(" ").map((word) => label.setText(word).width));
+      label.setText(text);
+      for (const lines of [1, 2, 3]) {
+        const wrap = lines === 1 ? null : Math.max(longest, one / lines + size);
+        label.setWordWrapWidth(wrap, true);
+        const { w, h, round } = box(size);
+        const fit = fitAbove(w, h, speaker, obstacles, area, round);
+        const cost = (fit.hit > 0 ? 1e6 + fit.hit : 0) + fit.raise + 40 * (label.getWrappedText().length - 1) + (size < L.text.bubble ? 60 : 0);
+        if (!pick || cost < pick.cost) pick = { size, wrap, cost, fit };
+        if (cost === 0) break;
+      }
+      if (pick && pick.cost === 0) break;
     }
-    this.bubbleUntil = performance.now() + ms;
+    if (!pick) return;
+    const { fit } = pick;
+    label.setFontSize(pick.size).setWordWrapWidth(pick.wrap, true).setText(text);
+    const { w, h, round } = box(pick.size);
+    label.setOrigin(0.5).setPosition(w / 2, 0);
+    const tip = tipOf(fit.x, w, speaker, round);
+    const base = Math.max(round, Math.min(w - round, tip));
+    const g = this.bubbleBg.clear();
+    g.fillStyle(C.ink, 1).fillRoundedRect(4, -h / 2 + 5, w, h, round);
+    g.fillStyle(C.cream, 1).fillRoundedRect(0, -h / 2, w, h, round);
+    g.lineStyle(5, C.ink, 1).strokeRoundedRect(0, -h / 2, w, h, round);
+    g.fillStyle(C.cream, 1).fillTriangle(base - 14, h / 2 - 6, base + 14, h / 2 - 6, tip, h / 2 + BUBBLE_TAIL);
+    g.lineStyle(5, C.ink, 1).lineBetween(base - 14, h / 2 - 2, tip, h / 2 + BUBBLE_TAIL).lineBetween(tip, h / 2 + BUBBLE_TAIL, base + 14, h / 2 - 2);
+    this.bubble.setPosition(fit.x, fit.top + h / 2).setVisible(true);
+  }
+
+  private speakerRect(): Rect {
+    const { x, y, scale } = this.hostSpot;
+    return { x0: x - HOST_REACH.half * scale, y0: y + HOST_REACH.top * scale, x1: x + HOST_REACH.half * scale, y1: y };
+  }
+
+  private bubbleObstacles(): Rect[] {
+    const L = this.L;
+    const rects: Rect[] = [];
+    this.kids.forEach(({ spot }) => rects.push({ x0: spot.x + BAND_REACH.left * spot.scale, y0: spot.y + BAND_REACH.top * spot.scale, x1: spot.x + BAND_REACH.right * spot.scale, y1: spot.y }));
+    const J = L.jury;
+    const reach = Math.max(...Object.values(JURY_ART).map((art) => art.crop * art.scale));
+    rects.push({ x0: J.x0, y0: J.deskTop + 16 - reach * J.scale, x1: J.x1, y1: J.deskTop + 16 });
+    const tagW = this.nameTagText.width + 48;
+    const tagH = L.text.tag * 1.6;
+    rects.push({ x0: L.performer.x - tagW / 2, y0: L.nameTag.y - tagH / 2, x1: L.performer.x + tagW / 2, y1: L.nameTag.y + tagH / 2 + 5 });
+    const amp = L.amp;
+    rects.push({ x0: amp.x - (AMP.w / 2) * amp.scale, y0: amp.y - AMP.h * amp.scale, x1: amp.x + (AMP.w / 2) * amp.scale, y1: amp.y });
+    return rects;
   }
 
   private hostFlash(mood: HostMood, ms: number) {
@@ -526,16 +589,14 @@ export class StageScene extends Phaser.Scene {
 
   private backlineSpot(id: Kid, featured: BandMember): Spot {
     const B = this.L.backline;
-    const half = B.xs.length / 2;
-    const index = BAND.indexOf(id);
-    let slot = index;
-    if (B.packed) {
-      const left = index < half;
-      const side = BAND.filter((other) => other !== featured && (BAND.indexOf(other) < half) === left);
-      const j = side.indexOf(id);
-      slot = left ? half - side.length + j : half + j;
-    }
-    return { x: B.xs[slot], y: B.y, scale: B.scale };
+    if (!B.packed) return { x: B.xs[BAND.indexOf(id)], y: B.y, scale: B.scale };
+    const members = BAND.filter((other) => other !== featured);
+    const host = this.L.host.x;
+    const slots = [...B.xs]
+      .sort((a, b) => Math.abs(b - host) - Math.abs(a - host))
+      .slice(0, members.length)
+      .sort((a, b) => a - b);
+    return { x: slots[members.indexOf(id)], y: B.y, scale: B.scale };
   }
 
   private buildTalk() {
@@ -1220,7 +1281,7 @@ export class StageScene extends Phaser.Scene {
   private updateHint(shown: number) {
     if (this.hint.length === 0) return;
     const first = this.compiled.notes[0]?.at ?? 0;
-    const on = (this.mode === "countin" || this.mode === "playing" || this.mode === "resuming") && shown < first - 150 && (this.verdict?.events.length ?? 0) === 0;
+    const on = (this.mode === "countin" || this.mode === "playing" || this.mode === "resuming") && shown < first - 150 && this.presses.length === 0 && (this.verdict?.events.length ?? 0) === 0;
     if (on !== this.hint.visible) this.hint.setVisible(on);
     if (on) this.hint.setAlpha(this.bridge.reducedMotion ? 1 : 0.75 + 0.25 * Math.abs(Math.sin(performance.now() / 260)));
   }
