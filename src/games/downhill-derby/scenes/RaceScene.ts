@@ -1849,7 +1849,7 @@ export class RaceScene extends Phaser.Scene {
     if (plan && !live) plan.scale = 1;
     const touch = this.touchActive;
     this.hud.coach(touch ? coachButton(beat) : null, dt);
-    const tall = this.frame.kind === "tall";
+    const tall = this.phone;
     const s = tall ? this.frame.unit * 0.55 : 1;
     const shown = beat && (touch || beat.kind !== "spin") ? beat : null;
     const p = this.toScreen(x, y);

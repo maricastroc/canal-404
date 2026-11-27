@@ -441,12 +441,19 @@ export class PhoneDeck {
       return;
     }
     if (this.state[button]) return;
+    const r = this.spinRect(button === "left" ? -1 : 1);
+    ring((pad) => g.strokeRoundedRect(r.x - pad, r.y - pad, r.w + pad * 2, r.h + pad * 2, r.radius + pad));
+  }
+
+  private spinRect(dir: -1 | 1) {
     const box = this.box;
-    const gap = SIZE.gap * (box.width / (SIZE.square * 2 + SIZE.gap));
-    const half = (box.width - gap) / 2;
-    const x = button === "left" ? box.x : box.x + half + gap;
-    const radius = Math.min(half, box.height) * 0.3;
-    ring((pad) => g.strokeRoundedRect(x - pad, box.y - pad, half + pad * 2, box.height + pad * 2, radius + pad));
+    const long = this.vertical ? box.height : box.width;
+    const gap = SIZE.gap * (long / (SIZE.square * 2 + SIZE.gap));
+    const half = (long - gap) / 2;
+    const w = this.vertical ? box.width : half;
+    const h = this.vertical ? half : box.height;
+    const shift = dir === -1 ? 0 : half + gap;
+    return { x: box.x + (this.vertical ? 0 : shift), y: box.y + (this.vertical ? shift : 0), w, h, radius: Math.min(w, h) * 0.3 };
   }
 
   flash(text: string, gain: boolean) {
@@ -527,27 +534,12 @@ export class PhoneDeck {
   private redraw() {
     const u = this.u;
     const g = this.rocker;
-    const box = this.box;
     const press = 4 * u;
     const shadow = 6 * u;
     const stroke = Math.max(3, 2.2 * u);
-    const long = this.vertical ? box.height : box.width;
-    const gap = SIZE.gap * (long / (SIZE.square * 2 + SIZE.gap));
-    const half = (long - gap) / 2;
-    const bw = this.vertical ? box.width : half;
-    const bh = this.vertical ? half : box.height;
-    const radius = Math.min(bw, bh) * 0.3;
     g.clear();
-    const sides: [-1 | 1, number, number][] = this.vertical
-      ? [
-          [-1, box.x, box.y],
-          [1, box.x, box.y + half + gap],
-        ]
-      : [
-          [-1, box.x, box.y],
-          [1, box.x + half + gap, box.y],
-        ];
-    for (const [dir, x, y] of sides) {
+    for (const dir of [-1, 1] as const) {
+      const { x, y, w: bw, h: bh, radius } = this.spinRect(dir);
       const on = dir === -1 ? this.state.left : this.state.right;
       const dy = on ? press : 0;
       g.fillStyle(INK, 1);
