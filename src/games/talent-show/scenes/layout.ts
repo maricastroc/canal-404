@@ -24,7 +24,7 @@ export type StageLayout = {
   jury: { xs: number[]; deskTop: number; deskBottom: number; x0: number; x1: number; scale: number };
   host: Spot;
   performer: Spot & { podium: number };
-  backline: { xs: number[]; y: number; scale: number };
+  backline: { xs: number[]; y: number; scale: number; packed?: boolean };
   nameTag: { y: number };
   amp: Spot;
 };
@@ -67,7 +67,7 @@ export function sameShape(a: Shape, b: Shape) {
 
 export function phoneStage(): StageLayout {
   const W = 1080;
-  const deskScale = 0.86;
+  const deskScale = 0.74;
   return {
     W,
     H: PHONE_STAGE_H,
@@ -78,14 +78,14 @@ export function phoneStage(): StageLayout {
       { x: W - 60, y: 150 },
     ],
     sign: null,
-    riser: { x0: 96, x1: W - 96, top: 432, front: 650, tall: true },
+    riser: { x0: 96, x1: W - 96, top: 398, front: 650, tall: true },
     stage: { top: 650, front: PHONE_STAGE_H },
-    jury: { xs: [540 - 268 * deskScale, 540, 540 + 268 * deskScale], deskTop: 312, deskBottom: 432, x0: 540 - 412 * deskScale, x1: 540 + 412 * deskScale, scale: 0.84 * deskScale },
-    host: { x: 118, y: 770, scale: 0.56 },
-    performer: { x: 540, y: 748, scale: 0.64, podium: 124 },
-    backline: { xs: [292, 412, 668, 788], y: 676, scale: 0.42 },
+    jury: { xs: [540 - 268 * deskScale, 540, 540 + 268 * deskScale], deskTop: 292, deskBottom: 398, x0: 540 - 412 * deskScale, x1: 540 + 412 * deskScale, scale: 0.84 * deskScale },
+    host: { x: 118, y: 770, scale: 0.66 },
+    performer: { x: 540, y: 748, scale: 0.82, podium: 132 },
+    backline: { xs: [258, 396, 684, 822], y: 680, scale: 0.6, packed: true },
     nameTag: { y: 772 },
-    amp: { x: 948, y: 766, scale: 0.46 },
+    amp: { x: 956, y: 766, scale: 0.46 },
   };
 }
 
@@ -103,7 +103,7 @@ function placed(stage: StageLayout, x: number, y: number, k: number): StageLayou
     jury: { xs: jury.xs.map(px), deskTop: py(jury.deskTop), deskBottom: py(jury.deskBottom), x0: px(jury.x0), x1: px(jury.x1), scale: jury.scale * k },
     host: { x: px(host.x), y: py(host.y), scale: host.scale * k },
     performer: { x: px(performer.x), y: py(performer.y), scale: performer.scale * k, podium: performer.podium * k },
-    backline: { xs: backline.xs.map(px), y: py(backline.y), scale: backline.scale * k },
+    backline: { ...backline, xs: backline.xs.map(px), y: py(backline.y), scale: backline.scale * k },
     nameTag: { y: py(stage.nameTag.y) },
     amp: { x: px(amp.x), y: py(amp.y), scale: amp.scale * k },
   };
