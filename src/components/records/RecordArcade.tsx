@@ -35,8 +35,8 @@ const PLACE_COLOR = ["text-sun", "text-cream", "text-tangerine"];
 
 const COPY = localized({
   "pt-BR": {
-    word: { fase: "Fase", arena: "Arena", pista: "Pista", parte: "Parte", música: "Música" },
-    words: { fase: "Fases", arena: "Arenas", pista: "Pistas", parte: "Partes", música: "Músicas" },
+    word: { fase: "Fase", arena: "Arena", pista: "Pista", etapa: "Etapa", música: "Música" },
+    words: { fase: "Fases", arena: "Arenas", pista: "Pistas", etapa: "Etapas", música: "Músicas" },
     games: "Jogos do fliperama",
     cartridge: (n: number) => `Cartucho ${n}`,
     you: "Você",
@@ -67,7 +67,7 @@ const COPY = localized({
     rules: "Regras da casa",
     tie: "Se tudo empatar, fica na frente quem registrou o resultado primeiro.",
     check: "Como o canal confere",
-    where: { fase: "desta fase", arena: "desta arena", pista: "desta pista", parte: "desta parte", música: "desta música", game: "deste jogo" },
+    where: { fase: "desta fase", arena: "desta arena", pista: "desta pista", etapa: "desta etapa", música: "desta música", game: "deste jogo" },
     caption: (game: string, level: string | null) => `Melhores do canal em ${game}${level ? `, ${level}` : ""}`,
     finishersTitle: "Quem terminou",
     finishedOn: "Terminou em",
@@ -79,8 +79,8 @@ const COPY = localized({
     again: "Jogar de novo",
   },
   en: {
-    word: { fase: "Level", arena: "Arena", pista: "Track", parte: "Part", música: "Song" },
-    words: { fase: "Levels", arena: "Arenas", pista: "Tracks", parte: "Parts", música: "Songs" },
+    word: { fase: "Level", arena: "Arena", pista: "Track", etapa: "Stage", música: "Song" },
+    words: { fase: "Levels", arena: "Arenas", pista: "Tracks", etapa: "Stages", música: "Songs" },
     games: "Arcade games",
     cartridge: (n: number) => `Cartridge ${n}`,
     you: "You",
@@ -111,7 +111,7 @@ const COPY = localized({
     rules: "House rules",
     tie: "If everything is tied, whoever posted the result first stays ahead.",
     check: "How the channel checks",
-    where: { fase: "on this level", arena: "in this arena", pista: "on this track", parte: "in this part", música: "in this song", game: "in this game" },
+    where: { fase: "on this level", arena: "in this arena", pista: "on this track", etapa: "in this stage", música: "in this song", game: "in this game" },
     caption: (game: string, level: string | null) => `Channel's best in ${game}${level ? `, ${level}` : ""}`,
     finishersTitle: "Who finished",
     finishedOn: "Finished on",
@@ -124,7 +124,7 @@ const COPY = localized({
   },
 });
 
-function levelName(game: GameMeta, level: BoardLevel | null, word: Record<"fase" | "arena" | "pista" | "parte" | "música", string>) {
+function levelName(game: GameMeta, level: BoardLevel | null, word: Record<"fase" | "arena" | "pista" | "etapa" | "música", string>) {
   if (!level) return null;
   return `${word[game.levelWord ?? "fase"]} ${level.number}: ${level.title}`;
 }

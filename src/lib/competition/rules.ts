@@ -492,7 +492,7 @@ const pastBedtime: GameRule = {
   levels: NIGHT_LEVELS.map((l) => l.id),
   stats: [...NIGHT_STATS, "hints"],
   judge(level, claim) {
-    if (!isNightLevel(level)) return reject("unknown_level", "parte desconhecida");
+    if (!isNightLevel(level)) return reject("unknown_level", "etapa desconhecida");
     const r = read(claim.stats, { turns: [1, 400], hints: [0, 400], wakes: [0, 400], creaks: [0, 400], covered: [0, 400] });
     if (!r.ok) return reject("bad_stats", r.detail);
     const log = claim.replay;

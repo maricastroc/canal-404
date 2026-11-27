@@ -538,7 +538,10 @@ export class NightScene extends Phaser.Scene {
     if (level.map.some((r) => r.includes("h"))) items.push("hide");
     if (level.agents.some((a) => a.kind === "patrol")) items.push("route");
     if (level.agents.some((a) => a.kind === "sleeper" && a.toss)) items.push("toss");
-    if (level.agents.some((a) => a.kind === "sleeper" || a.kind === "dog")) items.push("near");
+    const sleeper = level.agents.some((a) => a.kind === "sleeper");
+    if (sleeper && dog) items.push("nearBoth");
+    else if (dog) items.push("nearDog");
+    else if (sleeper) items.push(level.props.some((p) => p.kind === "bed") ? "near" : "nearSeat");
     if (dog && boards) items.push("dog");
     if (level.agents.some((a) => a.kind === "cat")) items.push("cat");
     return items;
