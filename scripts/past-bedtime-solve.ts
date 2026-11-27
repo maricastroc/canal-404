@@ -1,7 +1,8 @@
 import { LEVELS } from "../src/games/past-bedtime/sim/levels";
 import { createSim, stateKey, step } from "../src/games/past-bedtime/sim/sim";
 import { audit, solve } from "../src/games/past-bedtime/sim/solver";
-import type { Action, LevelDef, State } from "../src/games/past-bedtime/sim/types";
+import { pathTo } from "../src/games/past-bedtime/sim/grid";
+import { DX, DY, type Action, type Dir, type LevelDef, type State } from "../src/games/past-bedtime/sim/types";
 
 const ARROWS = ["↑", "→", "↓", "←"];
 
@@ -44,6 +45,20 @@ const fastestWithCreaks = (level: LevelDef, cap: number) => {
   return Infinity;
 };
 
+const rushCaught = (level: LevelDef) => {
+  const sim = createSim(level);
+  const hide = sim.grid.tiles.indexOf("h");
+  const path = pathTo(sim.grid, sim.grid.start, { x: hide % sim.grid.w, y: Math.floor(hide / sim.grid.w) }, () => false) ?? [];
+  let state = sim.initial;
+  for (const p of path) {
+    const dir = ([0, 1, 2, 3] as Dir[]).find((d) => state.x + DX[d] === p.x && state.y + DY[d] === p.y)!;
+    const next = step(sim, state, dir);
+    if (!next || next.state.status === "caught") return true;
+    state = next.state;
+  }
+  return false;
+};
+
 const withoutRollover = (level: LevelDef): LevelDef => ({ ...level, agents: level.agents.map((a) => (a.kind === "sleeper" ? { ...a, toss: undefined } : a)) });
 
 const PROOFS: Record<string, Proof> = {
@@ -57,7 +72,10 @@ const PROOFS: Record<string, Proof> = {
   pantry: { label: "without the hiding spot the target is out of reach", holds: (l) => (solve(createSim({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }))?.turns ?? Infinity) > l.par + 3 },
   laundry: { label: "unsolvable with only one of the two boards, so Pipoca has to be lured twice", holds: (l) => onlyBoards(l).length > 1 && onlyBoards(l).every((map) => unsolvable({ ...l, map })) },
   dining: { label: "unsolvable without Pixel knocking things over, or without the way around the aquarium, so Bruno has to dodge Pipoca as she runs in", holds: (l) => unsolvable({ ...l, agents: l.agents.filter((a) => a.kind !== "cat") }) && unsolvable({ ...l, map: belowAquariumClosed(l) }) },
-  sofa: { label: "unsolvable without the plants, or without the coffee table's shadow", holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }) && unsolvable({ ...l, map: withoutTable(l) }) },
+  sofa: {
+    label: "unsolvable without the plant, or without the coffee table's shadow, and walking straight to the plant gets caught, so Bruno has to dash between shadows",
+    holds: (l) => unsolvable({ ...l, map: l.map.map((row) => row.replace(/h/g, ".")) }) && unsolvable({ ...l, map: withoutTable(l) }) && rushCaught(l),
+  },
   living: { label: "one lure is not enough, so Pipoca has to be called back, and Dad rolling over is what makes it hard", holds: (l) => fastestWithCreaks(l, 1) > l.par + 3 && (solve(createSim(withoutRollover(l)))?.turns ?? Infinity) < l.par },
   return: { label: "unsolvable without the cuckoo", holds: (l) => unsolvable({ ...l, clock: undefined }) },
 };

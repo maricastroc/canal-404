@@ -21,7 +21,7 @@ export type NightCopy = {
   status: { toss: (n: number) => string; sleepsIn: (n: number) => string; looking: (n: number) => string; sniffing: (n: number) => string; going: string; returning: string; knock: (n: number) => string; look: (n: number) => string; peek: (n: number) => string };
   pages: { rules: string; moves: string; back: string; rulesTitle: string; movesTitle: string; empty: string };
   legendTitle: string;
-  legend: { creak: string; marks: string; clock: string; light: string; next: string; dog: string; goal: string; hide: string; cat: string; route: string; toss: string; near: string };
+  legend: { creak: string; marks: string; clock: string; light: string; next: string; nextAny: string; nose: string; dog: string; goal: string; hide: string; cat: string; route: string; toss: string; near: string };
   acts: Record<string, string>;
   actLabel: (n: number, name: string) => string;
   buttons: { wait: string; undo: string; restart: string; hint: string; undoCaught: string };
@@ -38,7 +38,10 @@ export type NightCopy = {
     holdBreath: (who: Sleeper) => string;
     stirred: (who: Sleeper) => string;
     seen: string;
+    seenDad: string;
+    seenDog: string;
     stripes: string;
+    stripesNose: string;
     calm: string;
     clear: string;
     trapped: string;
@@ -52,6 +55,7 @@ export type NightCopy = {
     dogBack: string;
     dogHome: string;
     hidden: string;
+    hiddenNoPeek: string;
     hiddenSafe: string;
     knockSoon: string;
     knocked: string;
@@ -62,6 +66,7 @@ export type NightCopy = {
     restarted: string;
     failed: string;
     caught: Record<string, string>;
+    cause: { walked: string; light: string; stirDad: string; stirDog: string; dog: string; peek: string; creak: string };
     undoTip: string;
     won: string;
   };
@@ -173,9 +178,9 @@ export const NIGHT_COPY = localized<NightCopy>({
         goal: "Atravessar até a sala de estar.",
         target: "sala",
         intro: [
-          "A Pipoca dorme bem no caminho, e aqui não há tábuas soltas para atraí-la.",
-          "Mas o Pixel derruba alguma coisa de tempos em tempos. A plaquinha “derruba em…” avisa quando.",
+          "O Pixel derruba coisas de tempos em tempos: veja o “derruba em…”.",
           "Quando aparecer “vai derrubar!”, um círculo amarelo marca quem vai ouvir.",
+          "A Pipoca dorme no caminho, e aqui não há tábuas soltas para atraí-la.",
           "O barulho do Pixel tira a Pipoca do caminho… e traz ela direto até você.",
         ],
         story: "Nenhuma tábua pra me ajudar. Mas o Pixel… o Pixel é o caos em forma de gato.",
@@ -187,8 +192,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Quando o Pixel derruba alguma coisa, o pai acorda e olha para o barulho.",
           "A plaquinha “dorme em…” mostra quantas jogadas faltam para ele dormir de novo.",
-          "E de vez em quando ele se vira para o lado da TV. Fique de olho no “vira em…”.",
-          "O pai acordou? Fique atrás das plantas: ali ele não te vê.",
+          "A planta esconde você, e os móveis fazem sombra.",
         ],
         story: "O pai cochilou no sofá vendo o jogo. E o Pixel está em cima do rack.",
       },
@@ -246,7 +250,9 @@ export const NIGHT_COPY = localized<NightCopy>({
       clock: "Cuco abafa o rangido",
       light: "Luz: aqui te veem",
       next: "Luz na próxima jogada",
-      dog: "Pipoca investiga barulhos",
+      nextAny: "Listras: perigo na próxima jogada",
+      nose: "Pata: ali a Pipoca te acha",
+      dog: "Pata na tábua: a Pipoca vem ver",
       hide: "Esconderijo",
       cat: "Pixel derruba coisas: barulho",
       goal: "Objetivo",
@@ -268,7 +274,10 @@ export const NIGHT_COPY = localized<NightCopy>({
       holdBreath: (who) => (who === "dog" ? "Ao lado da Pipoca: duas esperas e ela acorda." : "Ao lado do pai: duas esperas e ele acorda."),
       stirred: (who) => (who === "dog" ? "Mais uma espera e a Pipoca acorda!" : "Mais uma espera e o pai acorda!"),
       seen: "A lanterna vem pra cá! Preciso sair daqui.",
+      seenDad: "O pai vai olhar pra cá! Preciso sair daqui.",
+      seenDog: "A Pipoca vem pra cá! Preciso sair do lado dela.",
       stripes: "Listras: onde vai ter luz na próxima jogada.",
+      stripesNose: "Listras: onde a Pipoca te acha na próxima jogada.",
       calm: "Saí de perto. Aqui posso esperar.",
       clear: "Saí do caminho da luz. Aqui posso esperar.",
       trapped: "Não tem saída! Melhor desfazer.",
@@ -282,6 +291,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogBack: "A Pipoca está voltando. Saia da frente!",
       dogHome: "A Pipoca dormiu de novo.",
       hidden: "Escondido. Só me acham se vierem espiar.",
+      hiddenNoPeek: "Escondido. Daqui a luz não me pega.",
       hiddenSafe: "A luz passou direto. Funcionou!",
       knockSoon: "O Pixel está de olho no próximo copo…",
       knocked: "Lá se foi mais um copo.",
@@ -292,6 +302,15 @@ export const NIGHT_COPY = localized<NightCopy>({
       restarted: "Folha nova, plano novo.",
       failed: "PLANO FALHOU",
       caught: { dad: "O pai me pegou no flagra.", grandma: "A lanterna da Vó me achou.", pipoca: "A Pipoca me achou e fez festa." },
+      cause: {
+        walked: "Entrei na luz.",
+        light: "Fiquei numa casa listrada.",
+        stirDad: "Esperei duas vezes do lado dele.",
+        stirDog: "Esperei duas vezes do lado dela.",
+        dog: "Fiquei lado a lado com ela.",
+        peek: "A Vó espiou o esconderijo.",
+        creak: "A Vó ouviu o rangido e virou.",
+      },
       undoTip: "Desfaça e tente outro caminho.",
       won: "Deu certo!",
     },
@@ -416,9 +435,9 @@ export const NIGHT_COPY = localized<NightCopy>({
         goal: "Cross over to the living room.",
         target: "living room",
         intro: [
-          "Pipoca is asleep right in the way, and there are no creaky boards to lure her.",
-          "But Pixel knocks something over every so often. The “knocks in…” tag tells you when.",
+          "Pixel knocks things over every so often: watch the “knocks in…” tag.",
           "When it says “about to knock!”, a yellow ring marks everyone who'll hear it.",
+          "Pipoca is asleep in the way, and there are no creaky boards to lure her.",
           "Pixel's crash moves Pipoca out of the way… and right toward you.",
         ],
         story: "No boards to help me here. But Pixel… Pixel is chaos shaped like a cat.",
@@ -430,8 +449,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         intro: [
           "Whenever Pixel knocks something over, Dad wakes up and looks toward the noise.",
           "The “asleep in…” tag shows how many moves until he dozes off again.",
-          "And every so often he rolls over toward the TV. Watch the “rolls in…” tag.",
-          "Dad woke up? Get behind the plants: he can't see you there.",
+          "The plant hides you, and the furniture casts shadows.",
         ],
         story: "Dad dozed off on the sofa watching the game. And Pixel is up on the TV stand.",
       },
@@ -489,7 +507,9 @@ export const NIGHT_COPY = localized<NightCopy>({
       clock: "Cuckoo drowns out creaks",
       light: "Light: you'll be seen",
       next: "Light on the next move",
-      dog: "Pipoca checks out noises",
+      nextAny: "Stripes: danger on the next move",
+      nose: "Paw: Pipoca finds you here",
+      dog: "Paw on a board: Pipoca comes to check",
       hide: "Hiding spot",
       cat: "Pixel knocks things over: noise",
       goal: "Goal",
@@ -511,7 +531,10 @@ export const NIGHT_COPY = localized<NightCopy>({
       holdBreath: (who) => (who === "dog" ? "Right by Pipoca: two waits and she wakes up." : "Right by Dad: two waits and he wakes up."),
       stirred: (who) => (who === "dog" ? "One more wait and Pipoca wakes up!" : "One more wait and Dad wakes up!"),
       seen: "The flashlight's coming this way! I need to get out of here.",
+      seenDad: "Dad's about to look this way! I need to move.",
+      seenDog: "Pipoca's coming over here! I need to get away from her.",
       stripes: "Stripes: where the light will be next move.",
+      stripesNose: "Stripes: where Pipoca finds you next move.",
       calm: "Stepped away. I can wait here.",
       clear: "Out of the light's way. I can wait here.",
       trapped: "No way out! Better undo.",
@@ -525,6 +548,7 @@ export const NIGHT_COPY = localized<NightCopy>({
       dogBack: "Pipoca's heading back. Out of her way!",
       dogHome: "Pipoca's asleep again.",
       hidden: "Hidden. They'd have to peek to find me.",
+      hiddenNoPeek: "Hidden. The light can't get me here.",
       hiddenSafe: "The light went right past me. It worked!",
       knockSoon: "Pixel is eyeing the next cup…",
       knocked: "And there goes another cup.",
@@ -535,6 +559,15 @@ export const NIGHT_COPY = localized<NightCopy>({
       restarted: "New page, new plan.",
       failed: "PLAN FAILED",
       caught: { dad: "Dad caught me red-handed.", grandma: "Grandma's flashlight found me.", pipoca: "Pipoca found me. Party time." },
+      cause: {
+        walked: "I walked into the light.",
+        light: "I stayed on a striped tile.",
+        stirDad: "I waited twice right next to him.",
+        stirDog: "I waited twice right next to her.",
+        dog: "I ended up right next to her.",
+        peek: "Grandma peeked into the hiding spot.",
+        creak: "Grandma heard the creak and turned.",
+      },
       undoTip: "Undo and try another way.",
       won: "It worked!",
     },

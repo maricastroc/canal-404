@@ -223,14 +223,14 @@ export const SOFA: LevelDef = {
     "#.o..ooo.o.#",
     "#Bo.......G#",
     "#...o...oo.#",
-    "#.....h..h.#",
+    "#.....h....#",
     "#o...ooo..o#",
     "############",
   ],
   loud: 3,
   agents: [
-    { kind: "sleeper", id: "dad", x: 6, y: 1, wake: 5, range: 5, cone: "wide", hear: 0, toss: { period: 10, offset: 6, facing: 1 } },
-    { kind: "cat", id: "pixel", x: 7, y: 5, sx: 7, sy: 4, period: 7, offset: 0, loud: 5, hear: 0 },
+    { kind: "sleeper", id: "dad", x: 6, y: 1, wake: 5, range: 5, cone: "wide", hear: 0 },
+    { kind: "cat", id: "pixel", x: 7, y: 5, sx: 7, sy: 4, period: 7, offset: 6, loud: 5, hear: 0 },
   ],
   props: [
     { kind: "armchair", x: 2, y: 1 },
@@ -243,7 +243,7 @@ export const SOFA: LevelDef = {
     { kind: "sideboard", x: 5, y: 5, w: 3 },
     { kind: "shelf", x: 10, y: 5 },
   ],
-  par: 18,
+  par: 19,
 };
 
 export const RETURN: LevelDef = {

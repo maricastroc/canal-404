@@ -694,7 +694,7 @@ export class PhoneNotebook implements NotebookView {
 
   intro(lines: string[]) {
     this.rules = lines;
-    this.tip = lines.length ? { text: lines[lines.length - 1], kind: "info" } : null;
+    this.tip = lines.length ? { text: lines[0], kind: "info" } : null;
     this.renderCard(true);
   }
 
@@ -738,7 +738,7 @@ export class PhoneNotebook implements NotebookView {
     this.paintCard(NOTE);
   }
 
-  showCaught(reason: string) {
+  showCaught(reason: string, sub = this.copy.notes.undoTip) {
     this.clearStamp();
     this.closePage();
     this.mode = "caught";
@@ -761,7 +761,7 @@ export class PhoneNotebook implements NotebookView {
     this.stamp.setData("w", this.band ? 0 : sw);
     this.card.add(this.stamp);
     this.scene.tweens.add({ targets: this.stamp, alpha: 1, scale: 1, duration: 220, ease: "Back.easeOut" });
-    this.renderCard(false, this.copy.notes.undoTip);
+    this.renderCard(false, sub);
     this.setUndoAlarm(true);
     this.setButton("wait", { dim: true });
     this.drawPad();
