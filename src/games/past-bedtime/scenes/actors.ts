@@ -170,6 +170,8 @@ export class StatusIcon {
   private bg: Phaser.GameObjects.Graphics;
   private current = "";
   private wanted = false;
+  w = 0;
+  h = 0;
 
   constructor(
     private scene: Phaser.Scene,
@@ -212,6 +214,8 @@ export class StatusIcon {
     this.text.setText(label);
     const w = this.text.width + this.size * 0.5;
     const h = this.text.height + 4;
+    this.w = w;
+    this.h = h;
     const fill = Phaser.Display.Color.HexStringToColor(bg).color;
     const g = this.bg;
     g.clear();
