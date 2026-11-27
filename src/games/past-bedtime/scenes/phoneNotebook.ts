@@ -1,12 +1,12 @@
 import * as Phaser from "phaser";
 import type { Fonts } from "@/games/kit/ui";
 import { pressed } from "@/games/kit/press";
-import type { NightCopy } from "../copy";
+import type { NightCopy, NoteTag } from "../copy";
 import { partStars } from "../sim/score";
 import type { Action, Dir } from "../sim/types";
 import { iconKey, PAD_ICONS, STAR_ORIGIN_Y, STAR_SPAN, type NightIcon } from "./icons";
 import { wobble, type Hud, type Layout, type Rect } from "./layout";
-import { COLORS, legendIcon, moveIcon, PENCIL_SOFT, runsOf, starIcon, wobblyLine, type ButtonId, type LegendItem, type NoteKind, type NotebookMode, type NotebookView, type PageKind } from "./notebook";
+import { COLORS, legendIcon, moveIcon, PENCIL_SOFT, runsOf, starIcon, tagTape, wobblyLine, type ButtonId, type LegendItem, type NoteKind, type NotebookMode, type NotebookView, type PageKind } from "./notebook";
 
 const INK = 0x1d1830;
 const PENCIL = "#2f2944";
@@ -84,7 +84,8 @@ export class PhoneNotebook implements NotebookView {
   private buttons = new Map<ActionId, Button>();
   private undoPulse?: Phaser.Tweens.Tween;
   private page: Page | null = null;
-  private tip: { text: string; kind: NoteKind } | null = null;
+  private tip: { text: string; kind: NoteKind; tag?: NoteTag } | null = null;
+  private cardTag!: Phaser.GameObjects.Container;
   private rules: string[] = [];
   private legend: LegendItem[] = [];
   private planActions: Action[] = [];
@@ -350,7 +351,8 @@ export class PhoneNotebook implements NotebookView {
     const pad = this.px(12);
     this.cardText = this.text(pad - w / 2, 0, "", 14.5, PENCIL).setWordWrapWidth(w - pad * 2).setLineSpacing(-this.px(1));
     this.cardSub = this.text(pad - w / 2, 0, "", 12.5, PENCIL_SOFT).setWordWrapWidth(w - pad * 2);
-    this.card = this.keep(this.scene.add.container(n.x + w / 2, n.y + h / 2, [this.cardBg, this.cardText, this.cardSub]).setAngle(this.band ? -1.2 : -0.7));
+    this.cardTag = this.scene.add.container(0, 0);
+    this.card = this.keep(this.scene.add.container(n.x + w / 2, n.y + h / 2, [this.cardBg, this.cardTag, this.cardText, this.cardSub]).setAngle(this.band ? -1.2 : -0.7));
     this.paintCard(NOTE);
   }
 
@@ -404,6 +406,8 @@ export class PhoneNotebook implements NotebookView {
     const top = this.band ? -this.cardBox.h / 2 + this.px(10) : -total / 2;
     this.cardText.setPosition(-w / 2 + pad, top);
     this.cardSub.setPosition(-w / 2 + pad, top + this.cardText.height);
+    this.cardTag.removeAll(true);
+    if (tip?.tag && this.mode === "play") this.cardTag.add(tagTape(this.scene, this.copy.tags[tip.tag], tip.tag, this.round, this.px(9.5), this.px(14), this.px(52)).setPosition(0, -this.cardBox.h / 2 - this.px(0.5)));
     if (!animate || !tip) return;
     let shown = 1;
     this.cardText.setText(full.slice(0, shown));
@@ -693,16 +697,16 @@ export class PhoneNotebook implements NotebookView {
     if (this.page?.kind === "moves") this.openPage("moves");
   }
 
-  intro(lines: string[]) {
+  intro(lines: string[], tag?: NoteTag) {
     this.rules = lines;
-    this.tip = lines.length ? { text: lines[0], kind: "info" } : null;
+    this.tip = lines.length ? { text: lines[0], kind: "info", tag } : null;
     this.renderCard(true);
   }
 
-  note(text: string, kind: NoteKind = "info") {
+  note(text: string, kind: NoteKind = "info", tag?: NoteTag) {
     if (this.mode !== "play") return;
     if (this.tip?.text === text) return;
-    this.tip = { text, kind };
+    this.tip = { text, kind, tag };
     this.renderCard(true);
   }
 

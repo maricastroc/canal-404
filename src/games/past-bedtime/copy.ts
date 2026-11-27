@@ -1,8 +1,12 @@
 import { localized } from "@/i18n/copy";
 
-export type LevelText = { title: string; goal: string; target: string; intro: string[]; story: string };
+export type MarkKind = "wake" | "creak";
+
+export type LevelText = { title: string; goal: string; target: string; intro: string[]; story: string; marks?: Partial<Record<MarkKind, string>> };
 
 export type Sleeper = "dad" | "dog";
+
+export type NoteTag = "rule" | "alert" | "tip";
 
 export type LegendKey = "creak" | "marks" | "clock" | "light" | "next" | "nextAny" | "nose" | "dog" | "goal" | "hide" | "cat" | "route" | "toss" | "near" | "nearSeat" | "nearDog" | "nearBoth";
 
@@ -24,6 +28,7 @@ export type NightCopy = {
   pages: { rules: string; moves: string; back: string; rulesTitle: string; movesTitle: string; empty: string };
   legendTitle: string;
   legend: Record<LegendKey, string>;
+  tags: Record<NoteTag, string>;
   acts: Record<string, string>;
   actLabel: (n: number, name: string) => string;
   buttons: { wait: string; undo: string; restart: string; hint: string; undoCaught: string };
@@ -32,7 +37,7 @@ export type NightCopy = {
     stepNow: string;
     creakCaught: string;
     masked: string;
-    unheard: string;
+    unheard: (who: Sleeper | null) => string;
     woke: string;
     wokeDog: string;
     stillAwake: (n: number) => string;
@@ -68,7 +73,7 @@ export type NightCopy = {
     restarted: string;
     failed: string;
     caught: Record<string, string>;
-    cause: { walked: string; light: string; stirDad: string; stirDog: string; dog: string; peek: string; creak: string };
+    cause: { walked: string; light: string; stirDad: string; stirDog: string; dog: string; peek: string; creak: string; noCuckoo: string };
     undoTip: string;
     won: string;
   };
@@ -128,12 +133,15 @@ export const NIGHT_COPY = localized<NightCopy>({
         goal: "Chegue à escada sem acordar o seu pai.",
         target: "escada",
         intro: [
-          "O corredor está cheio de tábuas soltas, e o cuco canta a cada 3 jogadas.",
-          "Repare nas tábuas ao seu lado: ♪ o cuco esconde o barulho, ~ seu pai não ouve, ! seu pai acorda.",
-          "A plaquinha “vira em…” avisa quando seu pai vai se virar na cama e olhar para a frente da porta.",
-          "Esperar ajuda a acertar o ritmo do cuco, mas gasta uma jogada.",
+          "O chão está cheio de tábuas que rangem! Mas o cuco canta a cada 3 jogadas…",
+          "Precisa acertar o tempo do cuco? Use Esperar para passar uma jogada sem sair do lugar.",
+          "A plaquinha “vira em…” mostra quantas jogadas faltam para seu pai se virar e olhar para o corredor.",
         ],
-        story: "Esse corredor range que nem navio velho. E de vez em quando o pai vira na cama…",
+        marks: {
+          wake: "Tábua com ! acorda seu pai. Espere ela virar ♪ para pisar.",
+          creak: "Tábua com ~ range, mas daqui seu pai não ouve.",
+        },
+        story: "Esse corredor range mais que navio velho… E, pra piorar, meu pai vive se virando na cama!",
       },
       stairs: {
         title: "A escada",
@@ -249,7 +257,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     acts: { upstairs: "Lá em cima", grandma: "A Vó acordada", pets: "Pipoca e Pixel", back: "A volta" },
     legend: {
       creak: "Tábua solta: faz barulho ao pisar",
-      marks: "♪ Seguro · ! Alguém vai ouvir",
+      marks: "♪ Seguro · ~ Ninguém ouve · ! Alguém vai ouvir",
       clock: "O canto do cuco esconde o barulho",
       light: "Área iluminada: aqui você é visto",
       next: "Área iluminada na próxima jogada",
@@ -266,14 +274,15 @@ export const NIGHT_COPY = localized<NightCopy>({
       nearDog: "Esperar duas vezes perto da Pipoca faz ela acordar",
       nearBoth: "Esperar duas vezes perto de quem dorme acorda o dorminhoco",
     },
+    tags: { rule: "REGRA", alert: "ATENÇÃO", tip: "DICA" },
     buttons: { wait: "Esperar", undo: "Desfazer", restart: "Recomeçar", hint: "Dica", undoCaught: "Desfazer a última jogada" },
     notes: {
-      cuckooSoon: "O cuco canta na próxima jogada.",
-      stepNow: "É agora! Aproveite o canto do cuco para pisar na tábua.",
-      creakCaught: "Rangeu sem o cuco. Vacilo.",
-      masked: "O cuco abafou o nhéc!",
-      unheard: "Rangeu… mas ninguém ouviu. Ufa.",
-      woke: "O pai acordou! Fique fora da luz.",
+      cuckooSoon: "Na próxima jogada, o cuco vai cantar!",
+      stepNow: "O cuco vai cantar! Pise agora na tábua com ♪ e ninguém vai ouvir.",
+      creakCaught: "Ih! Seu pai ouviu o rangido!",
+      masked: "O cuco abafou o rangido da tábua!",
+      unheard: (who) => (who === "dad" ? "Ufa! Seu pai não ouviu nada." : who === "dog" ? "Ufa! A Pipoca não ouviu nada." : "Rangeu… mas ninguém ouviu. Ufa."),
+      woke: "Ih! Seu pai ouviu o barulho! Fique fora da luz.",
       wokeDog: "A Pipoca ouviu! Lá vem ela.",
       stillAwake: (n) => (n === 1 ? "O pai dorme de novo na próxima jogada." : `O pai dorme de novo em ${n} jogadas.`),
       backToSleep: "O pai dormiu de novo. Ufa.",
@@ -282,13 +291,13 @@ export const NIGHT_COPY = localized<NightCopy>({
       seen: "A lanterna vem pra cá! Preciso sair daqui.",
       seenDad: "O pai vai olhar pra cá! Preciso sair daqui.",
       seenDog: "A Pipoca vem pra cá! Preciso sair do lado dela.",
-      stripes: "Listras: onde vai ter luz na próxima jogada.",
+      stripes: "As listras mostram onde a luz vai alcançar na próxima jogada.",
       stripesNose: "Listras: onde a Pipoca te acha na próxima jogada.",
       calm: "Saí de perto. Aqui posso esperar.",
       clear: "Saí do caminho da luz. Aqui posso esperar.",
       trapped: "Não tem saída! Melhor desfazer.",
       tossed: "O pai se virou! Fique fora da luz.",
-      tossSoon: "Na próxima jogada, o pai se vira.",
+      tossSoon: "Seu pai vai se virar! Fique fora das listras.",
       peekSoon: "A Vó vai espiar o esconderijo!",
       grandmaStopped: "A Vó ouviu e parou para olhar.",
       grandmaBack: "A Vó voltou à ronda.",
@@ -316,6 +325,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         dog: "Fiquei lado a lado com ela.",
         peek: "A Vó espiou o esconderijo.",
         creak: "A Vó ouviu o rangido e virou.",
+        noCuckoo: "Pisei sem o canto do cuco.",
       },
       undoTip: "Desfaça e tente outro caminho.",
       won: "Deu certo!",
@@ -398,12 +408,15 @@ export const NIGHT_COPY = localized<NightCopy>({
         goal: "Reach the stairs without waking Dad.",
         target: "stairs",
         intro: [
-          "The hallway is full of creaky boards, and the cuckoo sings every 3 moves.",
-          "Check the boards next to you: ♪ the cuckoo covers the noise, ~ Dad won't hear, ! Dad wakes up.",
-          "The “rolls in…” tag tells you when Dad will roll over in bed and look out his door.",
-          "Waiting helps you match the cuckoo's rhythm, but costs a move.",
+          "The floor is full of creaky boards! But the cuckoo sings every 3 moves…",
+          "Need to match the cuckoo's timing? Use Wait to pass a move without leaving your spot.",
+          "The “rolls in…” tag shows how many moves until Dad rolls over and looks down the hallway.",
         ],
-        story: "This hallway creaks like an old ship. And every so often Dad rolls over…",
+        marks: {
+          wake: "A board with ! wakes Dad. Wait for it to turn ♪ before you step.",
+          creak: "A board with ~ creaks, but Dad can't hear it from there.",
+        },
+        story: "This hallway creaks worse than an old ship… And to top it off, Dad keeps rolling over in bed!",
       },
       stairs: {
         title: "The stairs",
@@ -519,7 +532,7 @@ export const NIGHT_COPY = localized<NightCopy>({
     acts: { upstairs: "Upstairs", grandma: "Grandma's up", pets: "Pipoca and Pixel", back: "The way back" },
     legend: {
       creak: "Creaky board: noisy to step on",
-      marks: "♪ Safe · ! Someone will hear",
+      marks: "♪ Safe · ~ Nobody hears · ! Someone will hear",
       clock: "The cuckoo's song covers the noise",
       light: "Lit area: you'll be seen here",
       next: "Lit area on the next move",
@@ -536,14 +549,15 @@ export const NIGHT_COPY = localized<NightCopy>({
       nearDog: "Waiting twice near Pipoca wakes her up",
       nearBoth: "Waiting twice near a sleeper wakes them up",
     },
+    tags: { rule: "RULE", alert: "WATCH OUT", tip: "TIP" },
     buttons: { wait: "Wait", undo: "Undo", restart: "Restart", hint: "Hint", undoCaught: "Undo the last move" },
     notes: {
-      cuckooSoon: "The cuckoo sings on the next move.",
-      stepNow: "Now! Use the cuckoo's song to step on the board.",
-      creakCaught: "Creaked without the cuckoo.",
+      cuckooSoon: "The cuckoo sings on the next move!",
+      stepNow: "The cuckoo's about to sing! Step on the ♪ board now and nobody will hear.",
+      creakCaught: "Uh-oh! Dad heard the creak!",
       masked: "The cuckoo drowned out the creak!",
-      unheard: "It creaked… but nobody heard. Phew.",
-      woke: "Dad woke up! Stay out of the light.",
+      unheard: (who) => (who === "dad" ? "Phew! Dad didn't hear a thing." : who === "dog" ? "Phew! Pipoca didn't hear a thing." : "It creaked… but nobody heard. Phew."),
+      woke: "Uh-oh! Dad heard that! Stay out of the light.",
       wokeDog: "Pipoca heard it! Here she comes.",
       stillAwake: (n) => (n === 1 ? "Dad dozes off again after the next move." : `Dad dozes off again in ${n} moves.`),
       backToSleep: "Dad's asleep again. Phew.",
@@ -552,13 +566,13 @@ export const NIGHT_COPY = localized<NightCopy>({
       seen: "The flashlight's coming this way! I need to get out of here.",
       seenDad: "Dad's about to look this way! I need to move.",
       seenDog: "Pipoca's coming over here! I need to get away from her.",
-      stripes: "Stripes: where the light will be next move.",
+      stripes: "The stripes show where the light will reach on the next move.",
       stripesNose: "Stripes: where Pipoca finds you next move.",
       calm: "Stepped away. I can wait here.",
       clear: "Out of the light's way. I can wait here.",
       trapped: "No way out! Better undo.",
       tossed: "Dad rolled over! Stay out of the light.",
-      tossSoon: "Dad rolls over on the next move.",
+      tossSoon: "Dad's about to roll over! Stay off the stripes.",
       peekSoon: "Grandma's about to peek into the hiding spot!",
       grandmaStopped: "Grandma heard it and stopped to look.",
       grandmaBack: "Grandma's back on her rounds.",
@@ -586,6 +600,7 @@ export const NIGHT_COPY = localized<NightCopy>({
         dog: "I ended up right next to her.",
         peek: "Grandma peeked into the hiding spot.",
         creak: "Grandma heard the creak and turned.",
+        noCuckoo: "I stepped without the cuckoo's song.",
       },
       undoTip: "Undo and try another way.",
       won: "It worked!",

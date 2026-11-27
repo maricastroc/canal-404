@@ -1,7 +1,7 @@
 import type * as Phaser from "phaser";
-import { glyphOffset, type Fonts } from "@/games/kit/ui";
+import { centerGlyphs, glyphOffset, type Fonts } from "@/games/kit/ui";
 import { pressed } from "@/games/kit/press";
-import type { LegendKey, NightCopy } from "../copy";
+import type { LegendKey, NightCopy, NoteTag } from "../copy";
 import { partStars } from "../sim/score";
 import type { Action } from "../sim/types";
 import { ARROW_ICONS, iconKey, STAR_ORIGIN_Y, STAR_SPAN, type NightIcon } from "./icons";
@@ -12,6 +12,7 @@ const PENCIL = "#2f2944";
 export const PENCIL_SOFT = "#665e83";
 export const MARKER = 0xffe07a;
 export const COLORS = { info: "#2f2944", good: "#23794b", warn: "#a85d08", bad: "#c4352c" } as const;
+const TAG_FILLS: Record<NoteTag, number> = { rule: 0xcfc4ff, alert: 0xffab96, tip: 0xa8ebc6 };
 const LINE0 = 136;
 const STEP = 38;
 const TALLY_USED = 0x7d74a0;
@@ -32,8 +33,8 @@ export type NotebookMode = "play" | "caught" | "won";
 export interface NotebookView {
   setLevel(index: number, total: number, title: string, goal: string, par: number, progress: number[], legend: LegendItem[], acts?: number[], actLabel?: string): void;
   setStats(turns: number, hints: number): void;
-  intro(lines: string[]): void;
-  note(text: string, kind?: NoteKind): void;
+  intro(lines: string[], tag?: NoteTag): void;
+  note(text: string, kind?: NoteKind, tag?: NoteTag): void;
   showing(text: string): boolean;
   clearNotes(): void;
   setPlan(actions: readonly Action[]): void;
@@ -91,6 +92,24 @@ function spotsFor(layout: Layout): Spots {
     buttons,
     lastLine: 21,
   };
+}
+
+export function tagTape(scene: Phaser.Scene, text: string, tag: NoteTag, font: string, size: number, h: number, minW: number) {
+  const label = scene.add.text(0, 0, text, { fontFamily: font, fontStyle: "700", fontSize: `${Math.round(size)}px`, color: PENCIL, padding: { x: 2, y: 2 } }).setOrigin(0.5).setLetterSpacing(Math.round(size * 0.12));
+  centerGlyphs(label);
+  const w = Math.max(minW, label.width + h * 1.3);
+  const tooth = h / 4;
+  const bite = tooth * 0.7;
+  const pts: { x: number; y: number }[] = [{ x: -w / 2, y: -h / 2 }, { x: w / 2, y: -h / 2 }];
+  for (let k = 1; k <= 4; k += 1) pts.push({ x: w / 2 - (k % 2 ? bite : 0), y: -h / 2 + k * tooth });
+  pts.push({ x: -w / 2, y: h / 2 });
+  for (let k = 3; k >= 1; k -= 1) pts.push({ x: -w / 2 + (k % 2 ? bite : 0), y: -h / 2 + k * tooth });
+  const g = scene.add.graphics();
+  g.fillStyle(TAG_FILLS[tag], 0.96);
+  g.fillPoints(pts, true);
+  g.fillStyle(0xffffff, 0.35);
+  g.fillRect(-w / 2 + bite, -h / 2, w - bite * 2, h * 0.28);
+  return scene.add.container(0, 0, [g, label]);
 }
 
 export function starIcon(scene: Phaser.Scene, x: number, y: number, r: number, filled: boolean) {
@@ -267,7 +286,8 @@ export class Notebook implements NotebookView {
   private card: Phaser.GameObjects.Container;
   private cardText: Phaser.GameObjects.Text;
   private cardSub: Phaser.GameObjects.Text;
-  private tip: { text: string; kind: NoteKind } | null = null;
+  private tip: { text: string; kind: NoteKind; tag?: NoteTag } | null = null;
+  private cardTag: Phaser.GameObjects.Container;
   private rules: string[] = [];
   private legend: LegendItem[] = [];
   private planActions: Action[] = [];
@@ -325,9 +345,10 @@ export class Notebook implements NotebookView {
     cardBg.lineBetween(c.w - 34, c.h, c.w, c.h - 34);
     cardBg.fillStyle(0xffffff, 0.55);
     cardBg.fillRect(c.w / 2 - 44, -10, 88, 22);
+    this.cardTag = scene.add.container(c.w / 2, 1);
     this.cardText = scene.add.text(22, 26, "", { fontFamily: this.round, fontStyle: "600", fontSize: "27px", color: PENCIL, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 }, lineSpacing: 2 });
     this.cardSub = scene.add.text(22, 0, "", { fontFamily: this.round, fontStyle: "600", fontSize: "21px", color: PENCIL_SOFT, padding: { x: 2, y: 3 }, wordWrap: { width: c.w - 44 } });
-    this.card = scene.add.container(c.x, c.y, [cardBg, this.cardText, this.cardSub]).setAngle(-1.2);
+    this.card = scene.add.container(c.x, c.y, [cardBg, this.cardTag, this.cardText, this.cardSub]).setAngle(-1.2);
     this.container.add(this.card);
   }
 
@@ -648,6 +669,8 @@ export class Notebook implements NotebookView {
     this.card.setVisible(this.mode !== "won");
     this.cardText.setText(tip ? tip.text : "").setColor(tip ? COLORS[tip.kind] : PENCIL);
     this.cardSub.setText(sub);
+    this.cardTag.removeAll(true);
+    if (tip?.tag && this.mode === "play") this.cardTag.add(tagTape(this.scene, this.copy.tags[tip.tag], tip.tag, this.round, 15, 24, 88));
     const room = this.spots.card.h - this.cardText.y - 10;
     for (let size = 27; size >= 21; size -= 1) {
       this.cardText.setFontSize(size);
@@ -669,10 +692,10 @@ export class Notebook implements NotebookView {
     });
   }
 
-  note(text: string, kind: NoteKind = "info") {
+  note(text: string, kind: NoteKind = "info", tag?: NoteTag) {
     if (this.mode !== "play") return;
     if (this.tip?.text === text) return;
-    this.tip = { text, kind };
+    this.tip = { text, kind, tag };
     this.renderCard(true);
   }
 
@@ -680,9 +703,9 @@ export class Notebook implements NotebookView {
     return this.mode === "play" && this.tip?.text === text;
   }
 
-  intro(lines: string[]) {
+  intro(lines: string[], tag?: NoteTag) {
     this.rules = lines;
-    this.tip = lines.length ? { text: lines[0], kind: "info" } : null;
+    this.tip = lines.length ? { text: lines[0], kind: "info", tag } : null;
     this.renderCard(true);
   }
 
