@@ -446,10 +446,10 @@ const TEXT = gameText({
       ],
       controls: [
         { input: "↓ ou S", action: "Agache para ganhar velocidade nas descidas.", on: "keys" },
-        { input: "Espaço", action: "Pule rampas e obstáculos. Segure no ar para fazer uma pose.", on: "keys" },
+        { input: "Espaço", action: "Pule rampas e obstáculos. Se estiver agachado, o pulo sai mais alto. Segure no ar para fazer uma pose.", on: "keys" },
         { input: "← → ou A D", action: "No ar, gire o carrinho para acertar o pouso. No chão, empine e equilibre para ganhar pontos.", on: "keys" },
         { input: "Esc ou P", action: "Pause ou retome a corrida.", on: "keys" },
-        { input: "AGACHAR", action: "Segure para ganhar velocidade nas descidas. Para pular, é só deslizar o dedo até PULAR.", on: "touch" },
+        { input: "AGACHAR", action: "Segure para ganhar velocidade nas descidas. Deslize o dedo até PULAR e o pulo sai mais alto.", on: "touch" },
         { input: "PULAR", action: "Toque para pular. Segure no ar para fazer uma pose.", on: "touch" },
         { input: "Setas de girar", action: "No ar, gire o carrinho para acertar o pouso. No chão, empine e equilibre para ganhar pontos.", on: "touch" },
         {
@@ -458,7 +458,7 @@ const TEXT = gameText({
         },
       ],
       howTo: [
-        { title: "Embale", text: "Agache para ganhar velocidade nas descidas. Quando chegar a uma rampa, pule bem na pontinha para voar mais longe!" },
+        { title: "Embale", text: "Agache para ganhar velocidade nas descidas e pule ainda agachado, que o pulo sai mais alto. Na rampa, pule bem na pontinha para voar mais longe!" },
         { title: "Pouse reto", text: "Gire o carrinho no ar até a silhueta ficar verde. Acerte o pouso para ganhar velocidade. Se aterrissar muito torto, você capota!" },
         { title: "Dê show", text: "Dê mortais, faça poses e empine o carrinho para ganhar pontos. Combine manobras e aumente seu multiplicador até ×5!" },
       ],
@@ -939,10 +939,10 @@ const TEXT = gameText({
       ],
       controls: [
         { input: "↓ or S", action: "Crouch to build speed on the way down.", on: "keys" },
-        { input: "Space", action: "Jump ramps and obstacles. Hold in the air to strike a pose.", on: "keys" },
+        { input: "Space", action: "Jump ramps and obstacles. Jump while crouching to go higher. Hold in the air to strike a pose.", on: "keys" },
         { input: "← → or A D", action: "In the air, spin the cart to land straight. On the ground, pop a wheelie and balance it for points.", on: "keys" },
         { input: "Esc or P", action: "Pause or resume the race.", on: "keys" },
-        { input: "CROUCH", action: "Hold to build speed on the way down. To jump, just slide your thumb over to JUMP.", on: "touch" },
+        { input: "CROUCH", action: "Hold to build speed on the way down. Slide your thumb over to JUMP for a higher jump.", on: "touch" },
         { input: "JUMP", action: "Tap to jump. Hold in the air to strike a pose.", on: "touch" },
         { input: "Spin arrows", action: "In the air, spin the cart to land straight. On the ground, pop a wheelie and balance it for points.", on: "touch" },
         {
@@ -951,7 +951,7 @@ const TEXT = gameText({
         },
       ],
       howTo: [
-        { title: "Build speed", text: "Crouch to build speed on the way down. When you reach a ramp, jump right at the edge to fly farther!" },
+        { title: "Build speed", text: "Crouch to build speed on the way down and jump while still crouching to go higher. On a ramp, jump right at the edge to fly farther!" },
         { title: "Land straight", text: "Spin the cart in the air until the outline turns green. Nail the landing to gain speed. Land too crooked and you wipe out!" },
         { title: "Put on a show", text: "Do flips, strike poses and pop wheelies to earn points. Chain tricks to push your multiplier up to ×5!" },
       ],

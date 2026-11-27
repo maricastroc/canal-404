@@ -46,6 +46,7 @@ export interface RaceHud {
   setTouch(touch: boolean): void;
   resetHint(): void;
   setPressed(pressed: Set<TouchButton>): void;
+  coach(button: TouchButton | null, dt: number): void;
   hitTest(x: number, y: number): HudButton | null;
   flashSpeed(delta: number): void;
   update(dt: number, data: HudData): void;
@@ -121,6 +122,8 @@ export class Hud implements RaceHud {
   private tipLife = 0;
   private buttons: Circle[] = [];
   private pressed = new Set<TouchButton>();
+  private coachButton: TouchButton | null = null;
+  private coachClock = 0;
   private touchOn = false;
   private hintAlpha = 1;
   private streakSeed = 1;
@@ -288,6 +291,11 @@ export class Hud implements RaceHud {
     this.pressed = pressed;
   }
 
+  coach(button: TouchButton | null, dt: number) {
+    this.coachButton = button;
+    this.coachClock += dt;
+  }
+
   hitTest(x: number, y: number): HudButton | null {
     for (const b of this.buttons) {
       const dx = x - b.x;
@@ -317,6 +325,13 @@ export class Hud implements RaceHud {
       g.fillCircle(b.x, b.y, b.r);
       g.lineStyle(6, on ? 0xffcf3f : 0xfbf5e6, on ? 0.95 : 0.55);
       g.strokeCircle(b.x, b.y, b.r);
+      if (this.coachButton === b.id && !on) {
+        const m = 14 + Math.sin(this.coachClock * 9) * 7;
+        g.lineStyle(14, INK, 0.6);
+        g.strokeCircle(b.x, b.y, b.r + m);
+        g.lineStyle(8, 0xffcf3f, 1);
+        g.strokeCircle(b.x, b.y, b.r + m);
+      }
     }
   }
 

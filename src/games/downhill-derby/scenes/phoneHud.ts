@@ -5,7 +5,7 @@ import type { RaceCopy } from "../copy";
 import type { Frame } from "../layout";
 import { INK } from "./cart";
 import type { PhoneDeck } from "./deck";
-import { formatTime, type HudButton, type HudData, type LineupEntry, type Pin, type RaceHud, type ShoutOptions, type ShowMeter, type StandingRow } from "./hud";
+import { formatTime, type HudButton, type HudData, type LineupEntry, type Pin, type RaceHud, type ShoutOptions, type ShowMeter, type StandingRow, type TouchButton } from "./hud";
 import { keyArrows } from "../../kit/keyArrows";
 
 type Callout = { key: string; text: Phaser.GameObjects.Text; sub: Phaser.GameObjects.Text | null; life: number; max: number; priority: number; fade: number; rise: number };
@@ -257,6 +257,10 @@ export class PhoneHud implements RaceHud {
   }
 
   setPressed() {}
+
+  coach(button: TouchButton | null, dt: number) {
+    this.deck.coach(button, dt);
+  }
 
   hitTest(): HudButton | null {
     return null;

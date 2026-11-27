@@ -18,7 +18,7 @@ import { destroyGame } from "../kit/game";
 const RACE_KEYS = new Set(["Space", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "KeyS", "KeyA", "KeyD", "KeyW"]);
 
 function newForm(): RaceForm {
-  return { best: Infinity, recent: [], runs: 0, ghost: null };
+  return { best: Infinity, recent: [], runs: 0, ghost: null, coach: -1 };
 }
 
 function mount(ctx: GameHostContext): GameInstance {
