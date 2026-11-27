@@ -216,7 +216,7 @@ function seedEntry(
 function seedNickname() {
   for (let i = 0; i < 20; i += 1) {
     const check = checkNickname(
-      suggestNickname(random, random() < 0.8 ? "pt-BR" : "en"),
+      suggestNickname(random, random() < 0.6 ? "pt-BR" : "en"),
     );
     if (check.ok) return check;
   }
