@@ -1,5 +1,7 @@
 import { localized, type Localized } from "@/i18n/copy";
 
+export type CallSide = "left" | "right" | "bottom";
+
 export type React = "wobble" | "swing" | "bounce" | "roll" | "tip" | "flap" | "cat" | "billow" | "rustle";
 
 export type PropDef = {
@@ -37,6 +39,7 @@ export type ArenaDef = {
   cushions?: { key: string; x: number; y: number; angle: number }[];
   fireflies?: number;
   mechanic?: "ricochet" | "special" | "fort";
+  call: CallSide;
   specialSpots?: [number, number][];
 };
 
@@ -48,6 +51,7 @@ export const ARENAS: ArenaDef[] = [
     title: localized({ "pt-BR": "Quarto", en: "Bedroom" }),
     goal: localized({ "pt-BR": "Aprenda a mirar e desviar.", en: "Learn to aim and dodge." }),
     theme: "bedroom",
+    call: "right",
     wallBottom: 350,
     bounds: { x0: 130, y0: 440, x1: 1790, y1: 1020 },
     spawns: [
@@ -87,6 +91,7 @@ export const ARENAS: ArenaDef[] = [
     title: localized({ "pt-BR": "Sala de estar", en: "Living room" }),
     goal: localized({ "pt-BR": "Use o sofá e as poltronas para ricochetear.", en: "Use the sofa and armchairs to bounce your throws." }),
     theme: "living",
+    call: "left",
     wallBottom: 350,
     bounds: { x0: 130, y0: 440, x1: 1790, y1: 1020 },
     spawns: [
@@ -134,6 +139,7 @@ export const ARENAS: ArenaDef[] = [
     title: localized({ "pt-BR": "Quintal", en: "Backyard" }),
     goal: localized({ "pt-BR": "Pegue o travesseirão antes dos outros.", en: "Grab the giant pillow before the others do." }),
     theme: "yard",
+    call: "bottom",
     wallBottom: 330,
     bounds: { x0: 120, y0: 440, x1: 1800, y1: 1020 },
     spawns: [
@@ -184,6 +190,7 @@ export const ARENAS: ArenaDef[] = [
     title: localized({ "pt-BR": "Sótão", en: "Attic" }),
     goal: localized({ "pt-BR": "As cabaninhas protegem, mas desabam.", en: "The blanket forts give cover, but they cave in." }),
     theme: "attic",
+    call: "bottom",
     wallBottom: 350,
     bounds: { x0: 130, y0: 440, x1: 1790, y1: 1020 },
     spawns: [

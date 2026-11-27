@@ -93,6 +93,19 @@ export const PAJAMA_SFX = {
       { kind: "tone", wave: "triangle", from: 349, to: 300, duration: 0.5, delay: 0.44, gain: 0.08, vibrato: { rate: 7, depth: 8 } },
     ],
   },
+  call: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 230, to: 190, duration: 0.14, gain: 0.07, vibrato: { rate: 18, depth: 12 }, filter: { type: "lowpass", frequency: 900 } },
+      { kind: "tone", wave: "triangle", from: 270, to: 170, duration: 0.22, delay: 0.17, gain: 0.08, glide: "exp", vibrato: { rate: 14, depth: 14 }, filter: { type: "lowpass", frequency: 900 } },
+    ],
+  },
+  giggle: {
+    layers: [
+      { kind: "tone", wave: "triangle", from: 900, to: 1100, duration: 0.07, gain: 0.04, vibrato: { rate: 30, depth: 40 } },
+      { kind: "tone", wave: "triangle", from: 980, to: 1200, duration: 0.07, delay: 0.1, gain: 0.04, vibrato: { rate: 30, depth: 40 } },
+      { kind: "tone", wave: "triangle", from: 860, to: 1060, duration: 0.09, delay: 0.2, gain: 0.035, vibrato: { rate: 30, depth: 40 } },
+    ],
+  },
   cheer: {
     layers: [
       { kind: "noise", duration: 0.7, gain: 0.06, attack: 0.08, filter: { type: "bandpass", from: 1200, to: 2400, q: 0.8 } },

@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import type { CallSide } from "../arenas";
 import { HP, KID_INFO, W, type KidId } from "../config";
 import type { PajamaCopy } from "../copy";
 import { FULL_FRAME, type Frame } from "../layout";
@@ -85,6 +86,12 @@ export class PajamaHud {
   private tipH = 0;
   private tipTimer?: Phaser.Time.TimerEvent;
   private tipScale = 1;
+  private call: Phaser.GameObjects.Container;
+  private callBg: Phaser.GameObjects.Graphics;
+  private callText: Phaser.GameObjects.Text;
+  private callSide: CallSide = "bottom";
+  private callSize = { w: 0, h: 0 };
+  private callTimer?: Phaser.Time.TimerEvent;
   private deck: Phaser.GameObjects.Graphics;
   private deckDots: Phaser.GameObjects.TileSprite;
   private deckColor = 0x7c4527;
@@ -177,6 +184,10 @@ export class PajamaHud {
     this.tipText = cartoonText(scene, 0, 0, "", { size: 30, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center", wrap: 900 }).setOrigin(0.5);
     this.tip = scene.add.container(W / 2, 156, [this.tipBg, this.tipTitle, this.tipText]).setDepth(2004).setVisible(false).setAngle(-1);
 
+    this.callBg = scene.add.graphics();
+    this.callText = cartoonText(scene, 0, 0, "", { size: 32, color: INK, font: fonts.display, stroke: 0, shadow: false, align: "center" }).setOrigin(0.5);
+    this.call = scene.add.container(0, 0, [this.callBg, this.callText]).setDepth(2004).setVisible(false);
+
     for (const { kid, isPlayer } of kids) if (!isPlayer) this.pins.set(kid, this.makePin(kid));
   }
 
@@ -252,6 +263,63 @@ export class PajamaHud {
     this.tipTimer = this.scene.time.delayedCall(ms, () => {
       this.scene.tweens.add({ targets: this.tip, alpha: 0, duration: 260, onComplete: () => this.tip.setVisible(false) });
     });
+  }
+
+  voice(text: string, side: CallSide, ms = 1500) {
+    this.callTimer?.remove();
+    this.scene.tweens.killTweensOf(this.call);
+    this.callSide = side;
+    this.callText.setText(text);
+    const w = this.callText.width + 48;
+    const h = this.callText.height + 26;
+    this.callSize = { w, h };
+    const tail =
+      side === "left" ? [-w / 2 + 10, -12, -w / 2 + 10, 12, -w / 2 - 24, 0] : side === "right" ? [w / 2 - 10, -12, w / 2 - 10, 12, w / 2 + 24, 0] : [-14, h / 2 - 10, 14, h / 2 - 10, 0, h / 2 + 24];
+    const [ax, ay, bx, by, cx, cy] = tail;
+    const g = this.callBg;
+    g.clear();
+    g.fillStyle(INK_HEX, 1);
+    g.fillRoundedRect(-w / 2 + 5, -h / 2 + 6, w, h, 16);
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillTriangle(ax, ay, bx, by, cx, cy);
+    g.lineStyle(5, INK_HEX, 1);
+    g.strokeTriangle(ax, ay, bx, by, cx, cy);
+    g.fillStyle(0xfbf5e6, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+    g.lineStyle(5, INK_HEX, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
+    g.fillStyle(0xfbf5e6, 1);
+    if (side === "left") g.fillRect(-w / 2 - 3, -9, 10, 18);
+    else if (side === "right") g.fillRect(w / 2 - 7, -9, 10, 18);
+    else g.fillRect(-11, h / 2 - 7, 22, 10);
+    this.call.setVisible(true).setAlpha(1).setAngle(side === "right" ? 1.5 : -1.5);
+    const scale = this.placeCall();
+    if (!this.reduced) {
+      this.call.setScale(scale * 0.5);
+      this.scene.tweens.add({ targets: this.call, scale, duration: 260, ease: "Back.easeOut" });
+    }
+    this.callTimer = this.scene.time.delayedCall(ms, () => {
+      this.scene.tweens.add({ targets: this.call, alpha: 0, duration: 220, onComplete: () => this.call.setVisible(false) });
+    });
+  }
+
+  private placeCall() {
+    const f = this.frame;
+    const field = this.playfield;
+    const u = f.kind === "full" ? this.k : f.unit;
+    const margin = (f.kind === "full" ? 40 : 10) * u;
+    const room = field.right - field.left - margin * 2;
+    const want = f.kind === "full" ? this.k : this.tipScale;
+    const s = Math.min(want, room / (this.callSize.w + 30));
+    const w = this.callSize.w * s;
+    const h = this.callSize.h * s;
+    const reach = 24 * s;
+    const midY = field.top + (field.bottom - field.top) * (f.kind === "full" ? 0.46 : 0.42);
+    if (this.callSide === "left") this.call.setPosition(field.left + margin + reach + w / 2, midY);
+    else if (this.callSide === "right") this.call.setPosition(field.right - margin - reach - w / 2, midY);
+    else this.call.setPosition((field.left + field.right) / 2, field.bottom - margin - reach - h / 2);
+    this.call.setScale(s);
+    return s;
   }
 
   private placeTip() {
@@ -514,6 +582,7 @@ export class PajamaHud {
       this.placeTip();
     }
     if (this.banner.visible) this.placeBanner();
+    if (this.call.visible) this.placeCall();
   }
 
   private layoutFull(displayWidth: number) {
