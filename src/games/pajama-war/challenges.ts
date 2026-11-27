@@ -24,12 +24,12 @@ export function featDone(id: FeatId, m: MatchFeats, won: boolean) {
 
 export type ChallengeBook = { feats: Partial<Record<string, FeatId[]>>; wonWith: Partial<Record<string, KidId[]>> };
 
-export type Challenge = { feat: FeatId | null; done: boolean; fresh: boolean; kids: number };
+export type Challenge = { feat: FeatId | null; done: boolean; fresh: boolean; kids: KidId[]; newKid: KidId | null };
 
 export function readChallenges(book: ChallengeBook, arena: string, feats: readonly FeatId[]): Challenge[] {
   const got = book.feats[arena] ?? [];
-  const kids = book.wonWith[arena]?.length ?? 0;
-  return [...feats.map((feat) => ({ feat, done: got.includes(feat), fresh: false, kids: 0 })), { feat: null, done: kids >= KIDS.length, fresh: false, kids }];
+  const kids = book.wonWith[arena] ?? [];
+  return [...feats.map((feat) => ({ feat, done: got.includes(feat), fresh: false, kids: [], newKid: null })), { feat: null, done: kids.length >= KIDS.length, fresh: false, kids: [...kids], newKid: null }];
 }
 
 export function settleChallenges(book: ChallengeBook, arena: string, feats: readonly FeatId[], kid: KidId, won: boolean, m: MatchFeats): Challenge[] {
@@ -42,11 +42,13 @@ export function settleChallenges(book: ChallengeBook, arena: string, feats: read
   }
   const winners = (book.wonWith[arena] ??= []);
   const before = winners.length;
-  if (won && !winners.includes(kid)) winners.push(kid);
+  const newKid = won && !winners.includes(kid) ? kid : null;
+  if (newKid) winners.push(newKid);
   if (got.length === 0) delete book.feats[arena];
   if (winners.length === 0) delete book.wonWith[arena];
   return readChallenges(book, arena, feats).map((c) => ({
     ...c,
     fresh: c.feat ? fresh.has(c.feat) : before < KIDS.length && c.done,
+    newKid: c.feat ? null : newKid,
   }));
 }
