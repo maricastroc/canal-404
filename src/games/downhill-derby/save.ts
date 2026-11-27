@@ -97,6 +97,20 @@ export function writeSave(save: DerbySave, storage?: Storage | null) {
   }
 }
 
+export const MASTER_TOTAL = RACE_COURSES.length * CART_IDS.length;
+
+export function wonWith(save: DerbySave, course: CourseId, cart: CartId) {
+  return (save.wins[course]?.[cart] ?? 0) > 0;
+}
+
+export function masterCount(save: DerbySave) {
+  return RACE_COURSES.reduce((sum, course) => sum + CART_IDS.filter((cart) => wonWith(save, course, cart)).length, 0);
+}
+
+export function isMaster(save: DerbySave) {
+  return masterCount(save) === MASTER_TOTAL;
+}
+
 export function addWin(save: DerbySave, course: CourseId, cart: CartId) {
   const wins = (save.wins[course] ??= {});
   wins[cart] = (wins[cart] ?? 0) + 1;

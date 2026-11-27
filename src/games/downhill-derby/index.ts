@@ -1,9 +1,10 @@
 import * as Phaser from "phaser";
-import type { GameHostContext, GameInstance, GameModule, StartOptions } from "@/games/types";
+import type { GameHostContext, GameInstance, GameModule, IntroMilestone, LevelGoal, StartOptions } from "@/games/types";
+import { RACE_COPY } from "./copy";
 import { DEFAULT_CAMERA, InputState } from "./input";
-import { settleGoals } from "./goals";
-import { raceResult } from "./result";
-import { addWin, isUnlocked, loadSave, updateSave, writeSave } from "./save";
+import { firstWin, settleGoals, trackGoals } from "./goals";
+import { goalOf, raceResult } from "./result";
+import { addWin, isMaster, isUnlocked, loadSave, MASTER_TOTAL, masterCount, updateSave, writeSave } from "./save";
 import { BootScene } from "./scenes/BootScene";
 import { measureFrame } from "./scenes/frame";
 import { GarageScene, type GarageData, type GarageHost } from "./scenes/GarageScene";
@@ -68,6 +69,7 @@ function mount(ctx: GameHostContext): GameInstance {
     ghost,
     rivalDefs: [],
     form: newForm(),
+    pennant: isMaster(initial),
     records: {
       load: (id) => loadSave().tracks[id] ?? null,
       save: (id, record) => {
@@ -90,9 +92,11 @@ function mount(ctx: GameHostContext): GameInstance {
     onShow: (points) => ctx.onEvent({ type: "score", score: points }),
     onFinish: (finish: RaceFinish) => {
       const save = loadSave();
-      const goals = settleGoals(save, finish.course, finish.cart, finish.stats, finish.time);
+      const goals = settleGoals(save, finish.course, finish.cart, finish.stats, finish.place);
       writeSave(save);
-      const result = raceResult(finish, ctx.locale, unlockedNow, RACE_COURSES.every((id) => Object.keys(save.wins[id] ?? {}).length > 0), goals);
+      const master = isMaster(save);
+      const crown = { sweep: RACE_COURSES.every((id) => Object.keys(save.wins[id] ?? {}).length > 0), master, fresh: master && firstWin(save, finish.course, finish.cart, finish.place) };
+      const result = raceResult(finish, ctx.locale, unlockedNow, crown, goals);
       unlockedNow = null;
       ctx.onEvent({ type: "score", score: result.score });
       ctx.onEvent({ type: "finished", result });
@@ -141,7 +145,7 @@ function mount(ctx: GameHostContext): GameInstance {
         g.registry.set("frame", frame);
         g.registry.set("bridge", bridge);
         g.registry.set("garage", garageHost);
-        g.registry.set("attract", { attract: true, course: course(), index: level, cart, ghost, ghosts: [], unlocked: initial.unlocked, wins: initial.wins[course()] ?? {} } satisfies GarageData);
+        g.registry.set("attract", { attract: true, course: course(), index: level, cart, ghost, ghosts: [], unlocked: initial.unlocked, wins: initial.wins[course()] ?? {}, pennant: isMaster(initial) } satisfies GarageData);
       },
       postBoot: () => ctx.onProgress(0.05, "art"),
     },
@@ -162,7 +166,7 @@ function mount(ctx: GameHostContext): GameInstance {
     if (game.scene.getScene("race")) game.scene.remove("race");
     const save = loadSave();
     const ghosts = CART_IDS.filter((id) => forms.get(`${course()}:${id}`)?.ghost);
-    const data: GarageData = { attract: false, course: course(), index: level, cart, ghost, ghosts, unlocked: save.unlocked, wins: save.wins[course()] ?? {} };
+    const data: GarageData = { attract: false, course: course(), index: level, cart, ghost, ghosts, unlocked: save.unlocked, wins: save.wins[course()] ?? {}, pennant: isMaster(save) };
     if (game.scene.isActive("garage")) game.scene.getScene("garage").scene.restart(data);
     else game.scene.start("garage", data);
   };
@@ -179,6 +183,7 @@ function mount(ctx: GameHostContext): GameInstance {
     bridge.ghost = ghost;
     bridge.rivalDefs = defs;
     bridge.form = formFor(id, cart);
+    bridge.pennant = isMaster(loadSave());
     const current = raceScene();
     if (current && racing() && current.matches(id, cart)) {
       current.restartRace();
@@ -247,6 +252,17 @@ function mount(ctx: GameHostContext): GameInstance {
       garage();
     },
     setHighScore() {},
+    levelGoals(): LevelGoal[][] {
+      const save = loadSave();
+      const copy = RACE_COPY[ctx.locale];
+      return RACE_COURSES.map((id) => trackGoals(save, id).map((g) => goalOf(g, copy)));
+    },
+    milestone(): IntroMilestone {
+      const save = loadSave();
+      const copy = RACE_COPY[ctx.locale];
+      const done = isMaster(save);
+      return { title: copy.mastery.title, count: copy.mastery.count(masterCount(save), MASTER_TOTAL), note: done ? copy.mastery.done : copy.mastery.todo, done };
+    },
     destroy() {
       destroyed = true;
       target.removeEventListener("keydown", keydown);

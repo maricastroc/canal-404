@@ -11,7 +11,7 @@ import { useSound } from "@/lib/audio/hooks";
 import { useTouchScreen } from "@/lib/device";
 import { GAME_LOADERS } from "@/games/loaders";
 import { getGame, type GameMeta } from "@/games/registry";
-import type { GameInstance, GameResult, IntroProgress, LevelGoal, LoadStage, StartOptions } from "@/games/types";
+import type { GameInstance, GameResult, IntroMilestone, IntroProgress, LevelGoal, LoadStage, StartOptions } from "@/games/types";
 import { useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber } from "@/i18n/format";
@@ -162,6 +162,7 @@ export function GameShell({ slug }: { slug: string }) {
   const [progress, setProgress] = useState(0.04);
   const [introProgress, setIntroProgress] = useState<IntroProgress | null>(null);
   const [levelGoals, setLevelGoals] = useState<LevelGoal[][] | null>(null);
+  const [milestone, setMilestone] = useState<IntroMilestone | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
   const { regions, announce, afterFocus } = useAnnouncer();
@@ -284,6 +285,7 @@ export function GameShell({ slug }: { slug: string }) {
         setLeaving(true);
         setIntroProgress(instanceRef.current?.progress?.() ?? null);
         setLevelGoals(instanceRef.current?.levelGoals?.() ?? null);
+        setMilestone(instanceRef.current?.milestone?.() ?? null);
         setStage("intro");
         window.setTimeout(() => !cancelled && setShowLoader(false), reduced ? 0 : 320);
       }, hold);
@@ -730,6 +732,7 @@ export function GameShell({ slug }: { slug: string }) {
               levels={levelProgress}
               levelGoals={levelGoals}
               progress={introProgress}
+              milestone={milestone}
               showHelp={showHelp}
               onToggleHelp={() => setShowHelp((v) => !v)}
               onPlay={start}
@@ -773,6 +776,7 @@ export function GameShell({ slug }: { slug: string }) {
                 game.levels
                   ? () => {
                       setLevelGoals(instanceRef.current?.levelGoals?.() ?? null);
+                      setMilestone(instanceRef.current?.milestone?.() ?? null);
                       setStage("intro");
                     }
                   : undefined

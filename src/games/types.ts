@@ -21,7 +21,9 @@ export type ResultStanding = { name: string; value: string; detail?: string; you
 
 export type ResultFact = { label: string; value: string };
 
-export type LevelGoal = { label: string; done: boolean };
+export type ResultMark = { label: string; avatar: string; color: string; done: boolean; fresh?: boolean; locked?: boolean };
+
+export type LevelGoal = { label: string; done: boolean; marks?: ResultMark[] };
 
 export type ResultGoal = LevelGoal & { fresh: boolean };
 
@@ -80,6 +82,8 @@ export type GameHostContext = {
 
 export type IntroProgress = { title: string; text: string; stats: { label: string; value: string }[] };
 
+export type IntroMilestone = { title: string; count: string; note: string; done: boolean };
+
 export type GameInstance = {
   start: (options?: StartOptions) => void;
   pause: () => void;
@@ -88,6 +92,7 @@ export type GameInstance = {
   alt?: () => void;
   progress?: () => IntroProgress | null;
   levelGoals?: () => LevelGoal[][] | null;
+  milestone?: () => IntroMilestone | null;
   setHighScore: (value: number) => void;
   destroy: () => void;
 };

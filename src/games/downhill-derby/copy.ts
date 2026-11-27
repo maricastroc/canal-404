@@ -98,8 +98,10 @@ export type RaceCopy = {
     behind: Record<CartId, (seconds: string) => string>;
     facts: { perfect: string; crashes: string; combo: string; hits: string };
     goals: Record<FeatId, string>;
-    champion: (time: string) => string;
+    allCarts: string;
+    master: { text: string; hint: string };
   };
+  mastery: { title: string; count: (won: number, total: number) => string; todo: string; done: string };
   garage: {
     title: string;
     track: (n: number, name: string) => string;
@@ -266,7 +268,8 @@ export const RACE_COPY = localized<RaceCopy>({
       record: (time) => `Recorde: ${time}`,
       facts: { perfect: "Pousos perfeitos", crashes: "Capotadas", combo: "Melhor combo", hits: "Trombadas" },
       goals: { gnome: "Pegar o anão dourado", clean: "Descer sem trombar", awnings: "Quicar nos 9 toldos", pigeons: "Voar sobre os pombos", loop: "Fechar o looping", pipe: "Atalho do bueiro" },
-      champion: (time) => `Menos de ${time}`,
+      allCarts: "Vencer com os 4 carrinhos",
+      master: { text: "Agora você é Mestre das Ladeiras!", hint: "A flâmula dourada vai com você em todas as corridas." },
       newRecord: "Novo recorde da pista!",
       again: "Correr de novo",
       alt: "Trocar carrinho",
@@ -295,6 +298,7 @@ export const RACE_COPY = localized<RaceCopy>({
     touch: { crouch: "AGACHAR", jump: "PULAR", spin: "GIRAR" },
     rivalNames: { deco: "Déco", lina: "Lina", bruno: "Bruno", mila: "Mila" },
     carts: { deco: "Relâmpago de Madeira", lina: "Turbina da Vovó", bruno: "Plano B", mila: "Banheira" },
+    mastery: { title: "Mestre das Ladeiras", count: (won, total) => `${won} de ${total}`, todo: "Vença cada pista com os 4 carrinhos para ganhar a flâmula dourada.", done: "A flâmula dourada já vai no seu carrinho em todas as corridas." },
     youAre: (name) => `${name} (você)`,
     puddle: { slow: "Poça! Perdeu embalo", boost: "Splash! A banheira deslizou" },
     potholeBounce: "Boing! Quicou no buraco",
@@ -444,7 +448,8 @@ export const RACE_COPY = localized<RaceCopy>({
       newRecord: "New track record!",
       facts: { perfect: "Perfect landings", crashes: "Crashes", combo: "Best combo", hits: "Bumps" },
       goals: { gnome: "Grab the golden gnome", clean: "No bumps at all", awnings: "Bounce on all 9 awnings", pigeons: "Fly over the pigeons", loop: "Make it round the loop", pipe: "Sewer shortcut" },
-      champion: (time) => `Under ${time}`,
+      allCarts: "Win with all 4 carts",
+      master: { text: "You're a Hill Master now!", hint: "The golden pennant rides with you in every race." },
       again: "Race again",
       alt: "Change cart",
       unlocked: (cart) => `${cart} is waiting for you in the garage!`,
@@ -472,6 +477,7 @@ export const RACE_COPY = localized<RaceCopy>({
     touch: { crouch: "CROUCH", jump: "JUMP", spin: "SPIN" },
     rivalNames: { deco: "Déco", lina: "Lina", bruno: "Bruno", mila: "Mila" },
     carts: { deco: "Wooden Lightning", lina: "Grandma's Turbo", bruno: "Plan B", mila: "The Tub" },
+    mastery: { title: "Hill Master", count: (won, total) => `${won} of ${total}`, todo: "Win every track with all 4 carts to earn the golden pennant.", done: "The golden pennant rides on your cart in every race." },
     youAre: (name) => `${name} (you)`,
     puddle: { slow: "Puddle! Lost speed", boost: "Splash! The tub slid" },
     potholeBounce: "Boing! Bounced off the pothole",
