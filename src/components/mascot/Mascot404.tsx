@@ -185,12 +185,14 @@ function Head({
   closed,
   id,
   wiggle,
+  feet,
 }: {
   expression: MascotExpression;
   look: { x: number; y: number };
   closed: boolean;
   id: string;
   wiggle: number;
+  feet: boolean;
 }) {
   const lx = Math.max(-1, Math.min(1, look.x)) * 7;
   const ly = Math.max(-1, Math.min(1, look.y)) * 5;
@@ -277,7 +279,7 @@ function Head({
       <circle cx="160" cy="62" r="5.5" fill={P.tangerine} stroke={P.ink} strokeWidth="3" />
       <circle cx="160" cy="82" r="5.5" fill={P.mint} stroke={P.ink} strokeWidth="3" />
       <path d="M155 100 L165 100 M155 108 L165 108 M155 116 L165 116" stroke={P.ink} strokeWidth="3" strokeLinecap="round" />
-      <path d="M60 161 L56 170 M140 161 L144 170" stroke={P.ink} strokeWidth="5" strokeLinecap="round" />
+      {feet && <path d="M60 161 L56 170 M140 161 L144 170" stroke={P.ink} strokeWidth="5" strokeLinecap="round" />}
       <ellipse cx="22" cy="100" rx="15" ry="26" fill={P.plum500} stroke={P.ink} strokeWidth={S} />
       <ellipse cx="25" cy="100" rx="7" ry="16" fill={P.plum300} />
       <ellipse cx="178" cy="100" rx="15" ry="26" fill={P.plum500} stroke={P.ink} strokeWidth={S} />
@@ -310,6 +312,8 @@ function Body({ pose }: { pose: MascotPose }) {
       <path d="M50 286 Q50 272 72 272 L82 272 Q90 274 88 290 L54 292 Q48 292 50 286 Z" fill={P.tomato} stroke={P.ink} strokeWidth="4.5" strokeLinejoin="round" />
       <path d="M150 286 Q150 272 128 272 L118 272 Q110 274 112 290 L146 292 Q152 292 150 286 Z" fill={P.tomato} stroke={P.ink} strokeWidth="4.5" strokeLinejoin="round" />
       <path d="M54 286 L86 285 M114 285 L146 286" stroke={P.white} strokeWidth="3" />
+      <rect x="82" y="150" width="36" height="30" rx="5" fill={P.steelDeep} stroke={P.ink} strokeWidth="4.5" />
+      <path d="M84 166 L116 166" stroke={P.ink} strokeWidth="3" />
       <path
         d="M62 176 Q100 166 138 176 Q152 220 136 262 Q100 272 64 262 Q48 220 62 176 Z"
         fill={P.plum500}
@@ -349,7 +353,6 @@ function Body({ pose }: { pose: MascotPose }) {
           <path d="M72 222 L72 234 M66 228 L78 228" stroke={P.ink} strokeWidth="4" strokeLinecap="round" />
           <circle cx="122" cy="224" r="4.5" fill={P.tomato} stroke={P.ink} strokeWidth="2.5" />
           <circle cx="132" cy="232" r="4.5" fill={P.sun} stroke={P.ink} strokeWidth="2.5" />
-          <path d="M100 210 Q102 196 112 190" fill="none" stroke={P.ink} strokeWidth="3" />
           <Glove x={70} y={236} rotate={-20} />
           <Glove x={130} y={236} flip rotate={20} />
         </g>
@@ -379,6 +382,7 @@ export function Mascot404({
   const raw = useId();
   const id = `m${raw.replace(/[^a-zA-Z0-9]/g, "")}`;
   const closed = useBlink(expression !== "sleepy" && expression !== "static" && expression !== "dizzy");
+  const hasBody = pose === "full" || pose === "controller" || pose === "wave";
   const viewBox =
     pose === "head" ? "0 -6 200 182" : pose === "peek" ? "0 -6 200 200" : "0 -6 200 304";
   return (
@@ -396,8 +400,8 @@ export function Mascot404({
           <rect width="4" height="1.3" fill={P.ink} opacity="0.25" />
         </pattern>
       </defs>
-      {(pose === "full" || pose === "controller" || pose === "wave") && <Body pose={pose} />}
-      <Head expression={expression} look={look} closed={closed} id={id} wiggle={wiggle} />
+      {hasBody && <Body pose={pose} />}
+      <Head expression={expression} look={look} closed={closed} id={id} wiggle={wiggle} feet={!hasBody} />
       {pose === "peek" && (
         <g>
           <Glove x={44} y={176} rotate={-8} />
