@@ -5,8 +5,8 @@ const KEY = "canal404:food-fight:v1";
 
 describe("Guerra de Lanche save", () => {
   it("save and load the tutorial flags and the challenges", () => {
-    writeSave({ tutorialDone: true, catchLessons: 2, feats: ["cook"], returned: ["cap", "big"] });
-    expect(loadSave()).toEqual({ tutorialDone: true, catchDone: false, catchLessons: 2, feats: ["cook"], returned: ["cap", "big"] });
+    writeSave({ tutorialDone: true, catchLessons: 2, feats: ["spotless"], returned: ["cap", "big"] });
+    expect(loadSave()).toEqual({ tutorialDone: true, catchDone: false, catchLessons: 2, feats: ["spotless"], returned: ["cap", "big"] });
   });
 
   it("keep the flags of a save written before the challenges", () => {
@@ -17,12 +17,12 @@ describe("Guerra de Lanche save", () => {
   });
 
   it("drop challenges and kids the game does not know", () => {
-    window.localStorage.setItem(KEY, JSON.stringify({ v: 1, feats: ["cook", "nope", "cook"], returned: ["speedy", "teacher"], catchLessons: "3" }));
-    expect(loadSave()).toMatchObject({ feats: ["cook"], returned: ["speedy"], catchLessons: 0 });
+    window.localStorage.setItem(KEY, JSON.stringify({ v: 1, feats: ["cook", "spotless", "nope", "spotless"], returned: ["speedy", "teacher"], catchLessons: "3" }));
+    expect(loadSave()).toMatchObject({ feats: ["spotless"], returned: ["speedy"], catchLessons: 0 });
   });
 
   it("back up a save from a newer version before replacing it", () => {
-    const newer = JSON.stringify({ v: 2, tutorialDone: true, feats: ["cook"] });
+    const newer = JSON.stringify({ v: 2, tutorialDone: true, feats: ["spotless"] });
     window.localStorage.setItem(KEY, newer);
     expect(loadSave().feats).toEqual([]);
     expect(window.localStorage.getItem(KEY)).toBe(newer);

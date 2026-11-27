@@ -194,7 +194,7 @@ export const COPY = localized({
       title: "Desafios da cantina",
       feats: {
         brawl: `Acertar ${NEED.brawl} na bagunça`,
-        cook: "Vencer sem a merendeira levar nada",
+        spotless: "3 estrelas sem levar pudim",
       } satisfies Record<FeatId, string>,
       sweep: "Devolver o pudim de cada um da turma",
       sweepMarks: "Pudins devolvidos por aluno",
@@ -390,7 +390,7 @@ export const COPY = localized({
       title: "Cafeteria challenges",
       feats: {
         brawl: `Land ${NEED.brawl} hits in the brawl`,
-        cook: "Win without the cook taking a snack",
+        spotless: "3 stars without a pudding hit",
       } satisfies Record<FeatId, string>,
       sweep: "Send a pudding back to every kind of kid",
       sweepMarks: "Puddings sent back by kid",

@@ -1,19 +1,19 @@
 import { RIVAL_KINDS, type RivalKind } from "./config";
 
-export const FEATS = ["brawl", "cook"] as const;
+export const FEATS = ["brawl", "spotless"] as const;
 export type FeatId = (typeof FEATS)[number];
 
 export const NEED = { brawl: 8 };
 
-export type RoundFeats = { brawlHits: number; confiscated: number; returned: RivalKind[] };
+export type RoundFeats = { brawlHits: number; hitsTaken: number; stars: number; returned: RivalKind[] };
 
 export function freshFeats(): RoundFeats {
-  return { brawlHits: 0, confiscated: 0, returned: [] };
+  return { brawlHits: 0, hitsTaken: 0, stars: 0, returned: [] };
 }
 
-export function featDone(id: FeatId, m: RoundFeats, won: boolean) {
+export function featDone(id: FeatId, m: RoundFeats) {
   if (id === "brawl") return m.brawlHits >= NEED.brawl;
-  return won && m.confiscated === 0;
+  return m.stars === 3 && m.hitsTaken === 0;
 }
 
 export type ChallengeBook = { feats: FeatId[]; returned: RivalKind[] };
@@ -27,8 +27,8 @@ export function readChallenges(book: ChallengeBook): Challenge[] {
   ];
 }
 
-export function settleChallenges(book: ChallengeBook, won: boolean, m: RoundFeats): Challenge[] {
-  const fresh = FEATS.filter((feat) => !book.feats.includes(feat) && featDone(feat, m, won));
+export function settleChallenges(book: ChallengeBook, m: RoundFeats): Challenge[] {
+  const fresh = FEATS.filter((feat) => !book.feats.includes(feat) && featDone(feat, m));
   book.feats = FEATS.filter((feat) => book.feats.includes(feat) || fresh.includes(feat));
   const swept = RIVAL_KINDS.every((k) => book.returned.includes(k));
   const newKinds = RIVAL_KINDS.filter((k) => m.returned.includes(k) && !book.returned.includes(k));
