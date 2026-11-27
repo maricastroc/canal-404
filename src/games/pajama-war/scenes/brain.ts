@@ -60,6 +60,9 @@ export type BrainMode = "engage" | "cover" | "grab" | "hunt" | "roam";
 const HIDER_PULL = 3.4;
 const CANDIDATES = 34;
 const RING = 8;
+const DUEL = { quick: 60, run: 800, floor: 500, three: 0.45, longest: 3, turn: 1.2, reach: 300, flip: 0.35, plant: 0.55 };
+
+const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class Brain {
   target: BrainBody | null = null;
@@ -85,6 +88,15 @@ export class Brain {
   private dodgeUntil = 0;
   private dodge = { x: 0, y: 0 };
   private seen = new WeakSet<object>();
+  private duel = false;
+  private volley = 0;
+  private shots = 0;
+  private bank = 0;
+  private owed = -1;
+  private readySince = -1;
+  private flank = false;
+  private orbit = 1;
+  private running = false;
   private retreating = false;
   private hiderSeen: BrainBody | null = null;
   private blindSince = -1;
@@ -218,6 +230,21 @@ export class Brain {
     return s + this.rng() * 70;
   }
 
+  private scoreFlank(x: number, y: number, v: BrainView, near: number, far: number) {
+    const me = this.me;
+    const tg = this.target!;
+    const d = Math.hypot(x - tg.x, y - tg.y);
+    let s = d < near ? (near - d) * 2.2 : d > far ? (d - far) * 1.6 : 0;
+    const turn = wrap(Math.atan2((y - tg.y) / FLOOR_Y, x - tg.x) - Math.atan2((me.y - tg.y) / FLOOR_Y, me.x - tg.x));
+    s += Math.abs(Math.abs(turn) - DUEL.turn) * 260;
+    if (Math.sign(turn) !== this.orbit) s += 90;
+    s += Math.abs(Math.hypot(x - me.x, y - me.y) - DUEL.reach) * 0.45;
+    if (!me.special && !this.clearShot(x, y, tg.x, tg.y, v)) s += this.fortArena && this.fortInWay(x, y, tg.x, tg.y, v) ? 420 * (1 - this.fort.wreck * 0.55) : 420;
+    s += this.fortDanger(x, y, v);
+    s += this.edgeCost(x, y, v, 90, 1.8);
+    return s + this.rng() * 60;
+  }
+
   private scoreCover(x: number, y: number, v: BrainView) {
     const me = this.me;
     let s = 0;
@@ -242,6 +269,8 @@ export class Brain {
     const grid = v.room.nav;
     const shift = this.shift;
     this.shift = false;
+    const flank = this.flank && this.mode === "engage" && this.target !== null;
+    if (this.mode === "engage") this.flank = false;
     this.holdUntil = 0;
     if (this.mode === "grab" && v.special) {
       this.nav.setGoal(v.special.x, v.special.y, t, 6);
@@ -253,7 +282,7 @@ export class Brain {
     const { near, far } = this.band(t, v);
     const best = { x: 0, y: 0, score: Infinity };
     const consider = (x: number, y: number, bonus = 0) => {
-      let s = (this.mode === "cover" ? this.scoreCover(x, y, v) : this.mode === "roam" ? this.scoreRoam(x, y, v) : this.scoreEngage(x, y, v, near, far)) + bonus;
+      let s = (flank ? this.scoreFlank(x, y, v, near, far) : this.mode === "cover" ? this.scoreCover(x, y, v) : this.mode === "roam" ? this.scoreRoam(x, y, v) : this.scoreEngage(x, y, v, near, far)) + bonus;
       if (shift && Math.hypot(x - me.x, y - me.y) < 100) s += 220;
       if (s < best.score) {
         best.score = s;
@@ -274,6 +303,16 @@ export class Brain {
         const c = grid.nearest(tg.x + Math.cos(a) * r, tg.y + Math.sin(a) * r);
         if (c >= 0) consider(grid.centerX(c), grid.centerY(c));
       }
+      if (flank) {
+        const from = Math.atan2((me.y - tg.y) / FLOOR_Y, me.x - tg.x);
+        for (const side of [-1, 1]) {
+          for (const j of [-0.35, 0, 0.35]) {
+            const a = from + side * (DUEL.turn + j);
+            const c = grid.nearest(tg.x + Math.cos(a) * r, tg.y + Math.sin(a) * r * FLOOR_Y);
+            if (c >= 0) consider(grid.centerX(c), grid.centerY(c));
+          }
+        }
+      }
     }
     if (goal && !this.nav.blocked && !shift) consider(goal.x, goal.y, -70);
     consider(me.x, me.y, this.nav.blocked ? 300 : 30);
@@ -281,7 +320,7 @@ export class Brain {
       if (Math.hypot(best.x - me.x, best.y - me.y) < 26) this.nav.clear();
       else this.nav.setGoal(best.x, best.y, t);
     }
-    this.planAt = t + (this.mode === "cover" ? 700 : 650) + this.rng() * 450;
+    this.planAt = t + (flank ? 1100 : this.mode === "cover" ? 700 : 650) + this.rng() * 450;
   }
 
   private scoreRoam(x: number, y: number, v: BrainView) {
@@ -338,6 +377,16 @@ export class Brain {
     if (!this.target || !this.target.alive || t >= this.retargetAt) this.pickTarget(t, v);
     v.targets.set(me, this.target);
     const skill = Math.min(1, Math.max(0, this.skill + v.heat * 0.22));
+    const duel = this.inDuel(v);
+    if (duel !== this.duel) {
+      this.duel = duel;
+      this.volley = duel ? 2 + (rng() < DUEL.three ? 1 : 0) : 0;
+      this.shots = 0;
+      this.bank = 0;
+      this.owed = -1;
+      this.flank = false;
+      this.running = false;
+    }
 
     const hp = me.hp;
     if (!this.retreating && hp <= this.style.retreatAt && v.heat < 0.9 && me.regenScale > 0) this.retreating = true;
@@ -406,7 +455,7 @@ export class Brain {
         const ux = dx / dist;
         const uy = dy / dist;
         const { near, far } = this.band(t, v);
-        const s = this.style.strafe * (this.retreating ? 0.4 : 0.7);
+        const s = this.style.strafe * (this.retreating ? 0.4 : 0.7) * (this.duel && !this.running ? DUEL.plant : 1);
         mx = -uy * this.strafe * s;
         my = ux * this.strafe * s;
         if (dist > far) {
@@ -473,15 +522,17 @@ export class Brain {
       mx /= len;
       my /= len;
     }
-    const pace = 0.82 + skill * 0.18;
+    const pace = this.running ? 1 : 0.82 + skill * 0.18;
     this.validate(mx * pace, my * pace, v);
 
     const ready = me.canThrow(t);
     if (ready && !this.ready) {
       this.hesitateUntil = Math.max(this.hesitateUntil, t + this.rest);
       this.rest = 0;
+      this.readySince = t;
     }
     this.ready = ready;
+    if (this.running && ready && t >= this.hesitateUntil) this.running = false;
     if (tg && ready && t >= this.hesitateUntil) this.aim(t, v, skill);
     return out;
   }
@@ -533,10 +584,36 @@ export class Brain {
     if (this.fortArena) this.wreckStreak = wrecking ? this.wreckStreak + 1 : 0;
     const opening = victim.readyAt > t + 280 || victim.stunUntil > t ? 0.6 : 1;
     const press = (1.25 - skill * 0.6 - v.heat * 0.35) * (victim.isPlayer ? 1.15 + ease * 0.6 : 1) * opening * (me.special ? 0.6 : 1);
-    this.rest = this.nextPause(press, v);
+    const pause = this.nextPause(press, v, !this.duel);
+    this.rest = this.duel ? this.duelPause(t, pause) : pause;
   }
 
-  private nextPause(press: number, v: BrainView) {
+  private inDuel(v: BrainView) {
+    let rival: BrainBody | null = null;
+    for (const o of v.fighters) {
+      if (o === this.me || !o.alive) continue;
+      if (rival) return false;
+      rival = o;
+    }
+    return rival !== null && rival.isPlayer;
+  }
+
+  private duelPause(t: number, pause: number) {
+    const rng = this.rng;
+    if (this.owed >= 0 && this.readySince >= 0) this.bank += this.owed - (t - this.readySince);
+    this.owed = pause;
+    this.shots += 1;
+    if (this.shots < this.volley || (this.bank + pause < DUEL.run && this.shots < DUEL.longest)) return rng() * DUEL.quick;
+    this.shots = 0;
+    this.volley = 2 + (rng() < DUEL.three ? 1 : 0);
+    if (rng() < DUEL.flip) this.orbit = -this.orbit;
+    this.flank = true;
+    this.planAt = 0;
+    this.running = true;
+    return Math.max(DUEL.floor, this.bank + pause);
+  }
+
+  private nextPause(press: number, v: BrainView, move = true) {
     const rng = this.rng;
     const burst = this.style.burst + v.heat * 0.2;
     const hold = this.style.hold * (1 - v.heat * 0.3);
@@ -548,7 +625,7 @@ export class Brain {
     const base = Math.max(0, 690 * press - v.windup) / (burst * 0.12 + hold * 2 + (1 - burst - hold));
     if (beat === "burst") return base * rng() * 0.24;
     if (beat === "steady") return Math.max(0, base * (0.6 + rng() * 0.8) - 50) + rng() * 140;
-    if (rng() < 0.5) {
+    if (rng() < 0.5 && move) {
       this.shift = true;
       this.planAt = 0;
     }
