@@ -1810,9 +1810,10 @@ export class LunchScene extends Phaser.Scene {
     if (won) achievements.push("fight-win");
     if (won && this.hitsTaken === 0) achievements.push("fight-clean");
     if (this.bestStreak >= 10) achievements.push("fight-sharpshooter");
-    this.feats.confiscated = this.confiscated;
+    this.feats.hitsTaken = this.hitsTaken;
+    this.feats.stars = stars;
     const book = loadSave();
-    const challenges = settleChallenges(book, won, this.feats);
+    const challenges = settleChallenges(book, this.feats);
     writeSave({ feats: book.feats, returned: book.returned });
     this.ctx.onEvent({ type: "score", score });
     const result: GameResult = {
