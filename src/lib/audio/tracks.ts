@@ -2,7 +2,7 @@ import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import type { Wave } from "./types";
 
-export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live" | "downhill" | "lunch" | "inspector";
+export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live" | "downhill" | "lunch" | "inspector" | "street-finale";
 
 export type TrackUnlock =
   | { type: "default" }
@@ -62,6 +62,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       mood: "A marcha do Inspetor do Silêncio. Da sala da diretoria ao sinal do recreio.",
       unlock: "",
     },
+    "street-finale": {
+      title: "Rua Sem Saída (Bagunça Completa)",
+      mood: "O tema da rua em tom de festa, enquanto o Seu Arlindo junta os gnomos.",
+      unlock: "",
+    },
   },
   en: {
     theme: {
@@ -107,6 +112,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
     inspector: {
       title: "Operation: Recess (The Inspector)",
       mood: "The Silence Inspector's march. From the principal's office to the recess bell.",
+      unlock: "",
+    },
+    "street-finale": {
+      title: "Dead End Street (The Big Mess)",
+      mood: "The street's theme turned into a party while Mr. Arlindo picks up his gnomes.",
       unlock: "",
     },
   },

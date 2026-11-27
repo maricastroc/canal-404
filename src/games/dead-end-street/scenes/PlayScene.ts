@@ -27,8 +27,10 @@ import { COPY, type StreetCopy, type TipLine } from "../copy";
 import { FULL_FRAME, type Frame, type FrameKind } from "../layout";
 import { PHASES, type Material, type PhaseDef, type PieceDef, type Point } from "../phases";
 import { ANGLE_STEPS, POWER_STEPS, StreetSim, type GadgetEvent, type SimImpact, type SimTarget, type StreetTally } from "../sim";
+import { STREET_FINALE } from "../music";
 import { GAME_SFX, type GameSfx } from "../sounds";
 import { eachKeyOnce } from "../../kit/keys";
+import { StingPlayer } from "../../kit/sting";
 import { StreetCamera, type CameraMode, type Pose, type Vec } from "./camera";
 import { DockHud, type CoachStep } from "./dock";
 import { currentFrame, watchFrame } from "./frame";
@@ -68,7 +70,7 @@ type PendingMiss = { mess: number; nearest: number; since: number };
 
 const SETTLE = { speed: 1.4, wait: 3200 };
 const UNTOUCHED = { speed: 4, delay: 700 };
-const FINALE_BEAT = { farewell: 3000, overview: 4300, encore: 4700, result: 7000 };
+const FINALE_BEAT = { music: 950, farewell: 3000, overview: 4300, encore: 4700, result: 7000 };
 
 function tipDuration(text: string) {
   return 1800 + text.length * 55;
@@ -152,6 +154,7 @@ export class PlayScene extends Phaser.Scene {
   private linaBubble!: Bubble;
   private tipBubble!: Bubble;
   private lastSound = new Map<string, number>();
+  private music!: StingPlayer;
   private lastHit = { at: -1000, x: 0, y: 0 };
   private freezeUntil = 0;
   private charged = false;
@@ -247,6 +250,9 @@ export class PlayScene extends Phaser.Scene {
       finish: (tally) => this.finish(tally),
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.sim.destroy());
+    this.music = new StingPlayer("street-finale");
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.music.destroy());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.music.destroy());
     this.buildLevel();
     this.camera.setBounds(this.levelBounds());
     this.gadgets = new GadgetView(this, this.sim, this.fx, reduced);
@@ -1711,6 +1717,7 @@ export class PlayScene extends Phaser.Scene {
   private playFinale() {
     this.sfx("splash", 1);
     this.arlindo.surrender(this.copy.arlindo.finale);
+    this.time.delayedCall(FINALE_BEAT.music, () => this.music.play(STREET_FINALE));
     this.time.delayedCall(900, () => {
       const at = this.tall ? this.viewPoint(0.5, 0.25) : { x: W / 2, y: 260 };
       this.fx.burst(this.fx.stars, 50, at.x, at.y);

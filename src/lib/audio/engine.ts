@@ -338,11 +338,10 @@ class AudioEngine {
     voice(current.lead[step], track.lead.wave, track.lead.gain, track.lead.vibrato);
     voice(current.bass[step], track.bass.wave, track.bass.gain);
     if (track.pad) voice(current.pad[step], track.pad.wave, track.pad.gain, 3);
-    const d = step % 16;
-    const dg = track.drums.gain;
-    if (track.drums.kick[d] === "x") this.kick(time, dg);
-    if (track.drums.snare[d] === "x") this.snare(time, dg);
-    if (track.drums.hat[d] === "x") this.hat(time, dg);
+    const { kick, snare, hat, gain: dg } = track.drums;
+    if (kick[step % kick.length] === "x") this.kick(time, dg);
+    if (snare[step % snare.length] === "x") this.snare(time, dg);
+    if (hat[step % hat.length] === "x") this.hat(time, dg);
   }
 
   private musicNote(
