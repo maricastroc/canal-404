@@ -156,11 +156,12 @@ export class Jury {
     else if (streak % 10 === 0) this.say("lunch", { face: "happy", ms: 900, motion: "pop", badge: "up" }, between(30, 110));
   }
 
-  plates(base: number, ms: number) {
-    for (const id of ORDER) {
+  plates(base: number, ms: number, gap = 0) {
+    return ORDER.map((id, i) => {
       const grade = Math.max(0, Math.min(10, base + BIAS[id]));
-      this.say(id, { ...this.verdictOf(id, grade, ms), strong: true, plate: { grade, ms } }, PLATE_STAGGER[id]);
-    }
+      this.say(id, { ...this.verdictOf(id, grade, ms), strong: true, plate: { grade, ms } }, gap > 0 ? i * gap : PLATE_STAGGER[id]);
+      return grade;
+    });
   }
 
   cut() {

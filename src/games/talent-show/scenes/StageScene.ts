@@ -39,6 +39,7 @@ export type TalentBridge = {
   onRun: (report: RunReport) => void;
   onPauseRequest: () => void;
   onScore: (score: number) => void;
+  onSkip: () => void;
 };
 
 type Mode = "idle" | "intro" | "tutorial" | "countin" | "playing" | "paused" | "resuming" | "cut" | "results";
@@ -65,6 +66,9 @@ const RECHECK_MS = 300;
 const READOUT_MS = 560;
 const READOUT_FADE_MS = 140;
 const APPLAUSE_MS = 150;
+const PLATE_GAP_MS = 450;
+const FINALE_TALK_MS = 3600;
+const SKIP_AFTER_MS = 700;
 
 type Pop = { born: number; x: number; color: number; tint: number; strength: PopStrength };
 type Chip = { text: string; color: number; heard: boolean };
@@ -556,7 +560,7 @@ export class StageScene extends Phaser.Scene {
     return choices[Math.floor(Math.random() * choices.length)];
   }
 
-  private crowdSay(now: number) {
+  private crowdSay(now: number, said?: CrowdLine) {
     const W = this.L.W;
     const sided = this.L.talk.lanes !== null;
     const head = (f: Fan) => f.y - f.img.displayHeight * 0.66;
@@ -567,7 +571,7 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     const fan = fans[Math.floor(Math.random() * fans.length)];
-    const line = this.crowdLine();
+    const line = said ?? this.crowdLine();
     this.talkRecent = [line.text, ...this.talkRecent].slice(0, 5);
     this.talkFan = fan;
     this.drawTalk(fan, line);
@@ -635,7 +639,8 @@ export class StageScene extends Phaser.Scene {
   }
 
   private updateTalk(now: number) {
-    if (this.mode !== "playing") {
+    const ended = this.mode === "results";
+    if (this.mode !== "playing" && !ended) {
       if (this.talk.visible) this.talk.setVisible(false);
       return;
     }
@@ -645,7 +650,7 @@ export class StageScene extends Phaser.Scene {
       else this.talk.setAlpha(Math.min(1, left / 250));
       return;
     }
-    if (now >= this.talkNext) this.crowdSay(now);
+    if (!ended && now >= this.talkNext) this.crowdSay(now);
   }
 
   private framed<T extends Phaser.GameObjects.Components.Transform>(item: T) {
@@ -899,6 +904,10 @@ export class StageScene extends Phaser.Scene {
       this.releaseAtPause(id);
       return;
     }
+    if (this.mode === "results" || this.mode === "cut") {
+      this.skip();
+      return;
+    }
     if (!this.carded()) return;
     const pressed = this.pressedButton;
     this.pressedButton = null;
@@ -917,9 +926,17 @@ export class StageScene extends Phaser.Scene {
       else if (this.mode !== "resuming") this.press(timeStamp, `k${code}`);
       return;
     }
+    if (!pauseKey && (this.mode === "results" || this.mode === "cut")) {
+      this.skip();
+      return;
+    }
     if (!this.carded()) return;
     if (pauseKey) this.bridge.onPauseRequest();
     else this.advance(false);
+  }
+
+  private skip() {
+    if (performance.now() - this.modeSince > SKIP_AFTER_MS) this.bridge.onSkip();
   }
 
   keyUp(code: string, timeStamp: number) {
@@ -1132,8 +1149,15 @@ export class StageScene extends Phaser.Scene {
     this.setMode("results");
     this.setKidFaces(verdict.stars >= 2 ? "happy" : verdict.stars === 0 ? "wow" : "normal");
     const base = Math.round((10 * Math.max(0, verdict.points)) / Math.max(1, verdict.maxPoints));
-    this.jury.plates(base, 4000);
+    const gap = this.bridge.reducedMotion ? 0 : PLATE_GAP_MS;
+    const grades = this.jury.plates(base, 4000, gap);
+    this.player?.plates(grades, gap / 1000);
     this.applaud(verdict.stars);
+    if (this.songId === "medley" && verdict.stars > 0) {
+      this.say(this.copy.host.champions, FINALE_TALK_MS);
+      this.crowdSay(performance.now(), this.copy.encore);
+      this.talkUntil = performance.now() + FINALE_TALK_MS;
+    }
     const beat = this.beatPos(this.lastSongMs);
     if (verdict.stars >= 2) this.stageLights.cue("chase", beat, 8, verdict.stars >= 3 ? 4 : 2);
     if (verdict.stars >= 1) this.stageLights.cue("pulse", beat, 3);
@@ -1244,7 +1268,7 @@ export class StageScene extends Phaser.Scene {
     this.setScore(runScore(verdict));
     this.markNew(verdict);
     verdict.sections.forEach((s, i) => {
-      if (!s.closed || this.platesShown.has(i) || s.max === 0) return;
+      if (!s.closed || this.platesShown.has(i) || s.max === 0 || this.compiled.sections[i].endMs >= this.compiled.endMs) return;
       this.platesShown.add(i);
       const base = Math.round((10 * Math.max(0, s.points)) / s.max);
       this.jury.plates(base, 1800);
