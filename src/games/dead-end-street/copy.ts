@@ -28,7 +28,7 @@ const tipsPt: Tips = {
     "blocked-path": "Primeiro abra o caminho, depois empurre a bola.",
     counterattack: "Cada lançamento vira o portão. Repare quando ele fica aberto.",
     "free-for-all": "Corte a corda do balde: a água cuida do gnomo tomando sol.",
-    "grand-mess": "O Gnomão não cai com tiro direto. O saco de areia pode ajudar.",
+    "grand-mess": "Espere o portão abrir e mande o pneu no Gnomão. Ou corte a corda do saco de areia.",
   },
 };
 
@@ -53,7 +53,7 @@ const tipsEn: Tips = {
     "blocked-path": "Clear the path first, then nudge the ball.",
     counterattack: "Every launch flips the gate. Watch when it's open.",
     "free-for-all": "Cut the bucket's rope: the water takes care of the sunbather.",
-    "grand-mess": "The Giant Gnome won't fall to a direct hit. The sandbag can help.",
+    "grand-mess": "Wait for the gate to open and send the tire at the Giant Gnome. Or cut the sandbag's rope.",
   },
 };
 
@@ -123,7 +123,7 @@ export const COPY = localized({
       angle: "ÂNGULO",
       power: "FORÇA",
       ammo: "MUNIÇÃO",
-      swap: "Toque na munição ou use 1 a 4 para trocar",
+      swap: "Clique na munição ou use 1 a 4 para trocar",
       swapTouch: "Toque na munição para trocar",
       pull: "PUXE!",
       empty: "ACABOU!",
@@ -134,6 +134,7 @@ export const COPY = localized({
     messOnly: "PELO MENOS\nFEZ BAGUNÇA!",
     comboShout: "COMBOOO!",
     chainShout: "OLHA A REAÇÃO!",
+    farewell: "AMANHÃ A GENTE VOLTA, SEU ARLINDO!",
     impactWords: {
       shoe: ["PLOFT!", "TUM!", "PAF!"],
       balloon: ["SPLASH!"],
@@ -169,6 +170,9 @@ export const COPY = localized({
       win: ["HMPF!", "MEU JARDIM!", "DE NOVO?!", "ISSO É PESSOAL!", "VOU CHAMAR SUA MÃE!", "MINHAS ENGENHOCAS!", "CHEGA!!!", "ISSO NÃO VAI FICAR ASSIM!", "TÁ BOM, VOCÊS VENCERAM!"],
       lose: "E NÃO VOLTEM!",
       finale: "TÁ BOM, TÁ BOM! VOCÊS VENCERAM!",
+      encore: "E EU COMPRO UM GNOMO AINDA MAIOR!",
+      untouched: ["HÁ! NEM FEZ CÓCEGA!", "HÁ! NEM BALANÇOU!"],
+      dry: "HÁ! ELE NEM ACORDOU!",
       sign: "PROIBIDO BAGUNÇA",
       sign2: "CUIDADO: GNOMO BRAVO",
     },
@@ -269,6 +273,7 @@ export const COPY = localized({
     messOnly: "AT LEAST\nIT MADE A MESS!",
     comboShout: "COMBOOO!",
     chainShout: "LOOK AT THAT!",
+    farewell: "SEE YOU TOMORROW, MR. ARLINDO!",
     impactWords: {
       shoe: ["PLOP!", "THUD!", "WHAP!"],
       balloon: ["SPLASH!"],
@@ -304,6 +309,9 @@ export const COPY = localized({
       win: ["HMPH!", "MY GARDEN!", "AGAIN?!", "THIS IS PERSONAL!", "I'M CALLING YOUR MOTHER!", "MY GADGETS!", "ENOUGH!!!", "THIS ISN'T OVER!", "FINE, YOU WIN!"],
       lose: "AND STAY OUT!",
       finale: "FINE, FINE! YOU WIN!",
+      encore: "AND I'LL BUY AN EVEN BIGGER GNOME!",
+      untouched: ["HA! DIDN'T EVEN TICKLE!", "HA! DIDN'T EVEN WOBBLE!"],
+      dry: "HA! HE DIDN'T EVEN WAKE UP!",
       sign: "NO MESS ALLOWED",
       sign2: "BEWARE: ANGRY GNOME",
     },

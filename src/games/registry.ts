@@ -100,7 +100,7 @@ const TEXT = gameText({
     "dead-end-street": {
       title: "Rua Sem Saída",
       tagline: "Engenhocas, física e muita confusão no quintal do vizinho.",
-      description: "Déco e Lina transformaram um carrinho de rolimã numa máquina de lançar objetos. O alvo? Os enfeites do quintal do Seu Arlindo! Acerte os lançamentos, faça a maior bagunça possível e tente bater o recorde antes que a munição acabe.",
+      description: "Déco e Lina transformaram um carrinho de rolimã numa máquina de lançar objetos. O alvo? Os enfeites do quintal do Seu Arlindo! Acerte os lançamentos, faça a maior bagunça possível e guarde munição para ganhar todas as estrelas.",
       tags: ["Ação", "Física", "Engenhocas"],
       objective: "Nove fases no quintal do Seu Arlindo, em três atos. Escolha a munição, observe o quintal e use caixas, baldes, cordas e as engenhocas do vizinho a seu favor.",
       levels: [
@@ -593,7 +593,7 @@ const TEXT = gameText({
     "dead-end-street": {
       title: "Dead End Street",
       tagline: "Gadgets, physics and plenty of chaos in the neighbor's yard.",
-      description: "Déco and Lina turned a soapbox cart into a machine that launches things. The target? Mr. Arlindo's yard ornaments! Nail your launches, make the biggest mess you can and try to beat the record before you run out of ammo.",
+      description: "Déco and Lina turned a soapbox cart into a machine that launches things. The target? Mr. Arlindo's yard ornaments! Nail your launches, make the biggest mess you can and save ammo to earn every star.",
       tags: ["Action", "Physics", "Gadgets"],
       objective: "Nine levels in Mr. Arlindo's yard, in three acts. Pick your ammo, read the yard and turn crates, buckets, ropes and the neighbor's own gadgets against him.",
       levels: [
