@@ -94,6 +94,7 @@ const PAJAMA_PROOFS: Record<string, RunClaim> = {
   "pajama-living-double-ko": pajama(true, 4650, 1, { hits: 31, kos: 2, throws: 123, hp: 1, damageTaken: 15, place: 1, timeMs: 96_633, kid: 2 }),
   "pajama-living-full-energy": pajama(true, 4300, 3, { hits: 27, kos: 1, throws: 101, hp: 7, damageTaken: 8, place: 1, timeMs: 90_967, kid: 0 }),
   "pajama-yard-lia": pajama(true, 4350, 2, { hits: 26, kos: 2, throws: 84, hp: 5, damageTaken: 10, place: 1, timeMs: 76_167, kid: 0 }),
+  "pajama-attic-nico": pajama(true, 3050, 2, { hits: 16, kos: 1, throws: 61, hp: 4, damageTaken: 10, place: 1, timeMs: 68_733, kid: 1 }),
 };
 
 function evidenceOf(mission: MissionDef, claim: RunClaim) {

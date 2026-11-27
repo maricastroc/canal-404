@@ -39,10 +39,10 @@ export const COPY = localized({
     },
     arena: {
       hitWords: ["POF!", "PAF!", "FLOF!", "TUF!"],
-      taunts: ["ERROU!", "NEM PERTO!", "HA!"],
+      taunts: { lia: ["PEGA EU!", "TÔ AQUI!"], nico: ["NEM PERTO!", "ERROU!"], bia: ["HA!", "ERROU FEIO!"] } as Record<KidId, string[]>,
       hints: {
         ricochet: { title: "RICOCHETE!", body: "Jogue nos móveis com mola." },
-        special: { title: "TRAVESSEIRO ESPECIAL!", body: "Pegue antes dos outros!" },
+        special: { title: "TRAVESSEIRO ESPECIAL!", body: "Pegue antes dos outros!\nQuem leva fica tonto." },
         fort: { title: "CABANINHAS!", body: "Elas seguram travesseiradas,\nmas desabam depois de muitos acertos!" },
       },
       controlsTouch: "Arraste o polegar na esquerda para andar. Toque na direita para jogar.",
@@ -146,10 +146,10 @@ export const COPY = localized({
     },
     arena: {
       hitWords: ["POW!", "WHAP!", "FLUMP!", "WHUMP!"],
-      taunts: ["MISSED!", "NOT EVEN CLOSE!", "HA!"],
+      taunts: { lia: ["CATCH ME!", "OVER HERE!"], nico: ["NOT EVEN CLOSE!", "MISSED!"], bia: ["HA!", "WAY OFF!"] } as Record<KidId, string[]>,
       hints: {
         ricochet: { title: "BOUNCE!", body: "Throw at the furniture with springs." },
-        special: { title: "SPECIAL PILLOW!", body: "Grab it before the others!" },
+        special: { title: "SPECIAL PILLOW!", body: "Grab it before the others!\nWhoever gets hit gets dizzy." },
         fort: { title: "BLANKET FORTS!", body: "They stop pillows,\nbut they cave in after too many hits!" },
       },
       controlsTouch: "Drag your left thumb to move. Tap on the right to throw.",

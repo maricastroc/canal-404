@@ -390,7 +390,7 @@ const PAJAMA_SLACK = 0.95;
 const pajamaWar: GameRule = {
   game: "pajama-war",
   replay: null,
-  version: 1,
+  version: 2,
   levels: ARENAS.map((a) => a.id),
   stats: ["hits", "kos", "throws", "hp", "damageTaken", "place", "timeMs", "kid"],
   judge(level, claim) {

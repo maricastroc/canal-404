@@ -116,6 +116,10 @@ const EN: Record<string, MissionText> = {
     title: "The fast one in the Backyard",
     objective: "Win in the Backyard playing as Lia. She runs fast, but takes a while to grab another pillow.",
   },
+  "pajama-attic-nico": {
+    title: "The thrower in the Attic",
+    objective: "Win in the Attic playing as Nico. He throws fast, but he's the slowest runner between the blanket forts.",
+  },
 };
 
 export function missionText(mission: { key: string; version: number; title: string; objective: string }, locale: Locale): MissionText {

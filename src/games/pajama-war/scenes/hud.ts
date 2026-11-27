@@ -598,6 +598,11 @@ export class PajamaHud {
   private drawDeck() {
     const f = this.frame;
     const u = f.unit;
+    if (f.deck < 24 * u) {
+      this.deck.setVisible(false);
+      this.deckDots.setVisible(false);
+      return;
+    }
     const top = f.height - f.deck;
     const lip = 9 * u;
     const g = this.deck;
@@ -682,6 +687,18 @@ export class PajamaHud {
 
   get hasTouch() {
     return this.touchUi;
+  }
+
+  thumbZones() {
+    const f = this.frame;
+    if (f.kind !== "band" || !this.touchUi || !this.controlsOn) return [];
+    const pad = 18 * f.unit;
+    const r = STICK.base * this.stickScale;
+    const R = (BUTTON_R + 16) * this.buttonScale;
+    return [
+      { x0: 0, x1: this.stickRest.x + r + pad, top: this.stickRest.y - 8 * f.unit },
+      { x0: this.throwBtn.x - R - pad, x1: f.width, top: this.throwBtn.y - 8 * f.unit },
+    ];
   }
 
   private get cssUnit() {

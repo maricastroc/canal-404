@@ -1,8 +1,11 @@
 import * as Phaser from "phaser";
 import { frameOf, measureWith, watchFrameWith, type FrameRules } from "../../kit/frame";
+import { coarsePointer } from "../../kit/touch";
 import { FULL_FRAME, frameFor, sameFrame, type Frame } from "../layout";
 
-const RULES: FrameRules<Frame> = { frameFor, fallback: FULL_FRAME, same: sameFrame };
+const touchScreen = () => coarsePointer() || (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0);
+
+const RULES: FrameRules<Frame> = { frameFor: (w, h, insets) => frameFor(w, h, insets, touchScreen()), fallback: FULL_FRAME, same: sameFrame };
 
 export function measureFrame(parent: HTMLElement): Frame {
   return measureWith(parent, RULES);

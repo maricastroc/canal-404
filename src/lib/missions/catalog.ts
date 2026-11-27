@@ -379,6 +379,21 @@ export const CATALOG: readonly MissionDef[] = [
     ranked: true,
     setup: { character: "lia" },
   },
+  {
+    key: "pajama-attic-nico",
+    version: 1,
+    game: "pajama-war",
+    level: "attic",
+    title: "O atirador no Sótão",
+    objective: "Vença no Sótão jogando com o Nico. Ele joga rápido, mas é o mais lento para correr entre as cabaninhas.",
+    goal: [
+      { stat: "won", op: "min", value: 1 },
+      { stat: "kid", op: "min", value: 1 },
+      { stat: "kid", op: "max", value: 1 },
+    ],
+    ranked: true,
+    setup: { character: "nico" },
+  },
 ];
 
 export function missionByKey(key: string) {

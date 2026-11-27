@@ -849,6 +849,12 @@ export class Room {
       p.img.angle += (p.vx / 30) * dt * 57;
       p.follow();
     }
+    for (const p of this.props) {
+      if (p.def.react !== "swing" || p.def.layer !== "sort") continue;
+      const b = p.img.getBounds();
+      const behind = feet.some((f) => f.y < p.img.depth && f.x > b.x - 30 && f.x < b.right + 30 && f.y > b.y && f.y - 200 < b.bottom);
+      p.img.setAlpha(p.img.alpha + ((behind ? 0.42 : 1) - p.img.alpha) * Math.min(1, dt * 10));
+    }
     this.cat?.update(t, dt, feet, sfx);
     this.ambient.update(t, dt);
     for (const f of this.forts) f.view.update(t);

@@ -3,7 +3,7 @@ import type { GameHostContext, GameResult } from "@/games/types";
 import type { Locale } from "@/i18n/locales";
 import { getGameRecord } from "@/lib/progress/store";
 import { ARENAS } from "../arenas";
-import { BODY, ESCALATE, FORT, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, type KidId } from "../config";
+import { BODY, ESCALATE, FORT, GLOAT, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, type KidId } from "../config";
 import { COPY, resultCopy, winShout, type PajamaCopy } from "../copy";
 import { matchScore } from "../score";
 import { HEAD_MIN, LIP, WALL_EXT, type Frame } from "../layout";
@@ -311,8 +311,17 @@ export class ArenaScene extends Phaser.Scene {
     sx = Phaser.Math.Clamp(sx, anchor.x - (fd.right - margin), anchor.x - (fd.left + margin));
     sx = fd.vw >= W ? (W - fd.vw) / 2 : Phaser.Math.Clamp(sx, 0, W - fd.vw);
     const minTop = f.kind === "tall" ? Math.max(-WALL_EXT, this.ceilingY) : 0;
-    const maxBottom = f.kind === "tall" ? LIP + f.deck / z : H;
-    const fh = fd.bottom - fd.top;
+    let maxBottom = f.kind === "tall" ? LIP + f.deck / z : H;
+    let bottom = fd.bottom;
+    if (p && f.kind === "band" && this.hud) {
+      const at = (anchor.x - sx) * z;
+      for (const zone of this.hud.thumbZones()) {
+        if (at < zone.x0 || at > zone.x1) continue;
+        bottom = Math.min(bottom, zone.top / z);
+        maxBottom = Math.max(maxBottom, H + (f.height - zone.top) / z);
+      }
+    }
+    const fh = bottom - fd.top;
     const fixed = this.fixedHeight(f);
     let sy: number;
     if (fixed) sy = f.top;
@@ -321,7 +330,7 @@ export class ArenaScene extends Phaser.Scene {
       const feet = anchor.y + 36;
       const wantY = focus ? (head + feet) / 2 + ((focus.y - anchor.y) * 0.5) : (head + feet) / 2;
       sy = wantY - (fd.top + fh / 2);
-      sy = Phaser.Math.Clamp(sy, feet - fd.bottom, Math.max(feet - fd.bottom, head - fd.top));
+      sy = Phaser.Math.Clamp(sy, feet - bottom, Math.max(feet - bottom, head - fd.top));
       sy = Phaser.Math.Clamp(sy, minTop, Math.max(minTop, maxBottom - fd.vh));
     }
     const k = snap || this.ctx.reducedMotion ? 1 : 1 - Math.exp(-dt * 4.5);
@@ -698,7 +707,11 @@ export class ArenaScene extends Phaser.Scene {
     return { angle, target: null, x: p.x + Math.cos(angle) * reach, y: p.y + Math.sin(angle) * reach * 0.86, free: true };
   }
 
-  private computeAim(p: Fighter): Aim {
+  private holdingThrow() {
+    return this.keys.space.isDown || this.mouseDown || Boolean(this.hud?.touch.throwing);
+  }
+
+  private computeAim(p: Fighter, lead = true): Aim {
     const touchAim = this.hud?.touch.aim;
     if (touchAim !== null && touchAim !== undefined) return this.manualAim(p, touchAim);
     if (this.aimMode === "mouse") {
@@ -719,7 +732,7 @@ export class ArenaScene extends Phaser.Scene {
         }
       }
       if (best) {
-        const q = this.led(p, best);
+        const q = lead ? this.led(p, best) : best;
         return { angle: this.angleTo(p, q.x, q.y), target: best, x: best.x, y: best.y, free: false };
       }
       return { angle: raw, target: null, x: gx, y: gy, free: true };
@@ -729,7 +742,7 @@ export class ArenaScene extends Phaser.Scene {
     const keep = this.lock && this.lock.alive && Math.hypot(this.lock.x - p.x, this.lock.y - p.y) < PILLOW.range * 1.05 ? this.lock : null;
     if (keep && target && keep !== target && (found.scores.get(keep) ?? Infinity) < found.score * 1.3) target = keep;
     if (target) {
-      const q = this.led(p, target);
+      const q = lead ? this.led(p, target) : target;
       return { angle: this.angleTo(p, q.x, q.y), target, x: target.x, y: target.y, free: false };
     }
     const k = this.keys;
@@ -740,8 +753,8 @@ export class ArenaScene extends Phaser.Scene {
     return { angle, target: null, x: p.x + Math.cos(angle) * 400, y: p.y + Math.sin(angle) * 400 * 0.86, free: true };
   }
 
-  private aimAngle(p: Fighter) {
-    return this.computeAim(p).angle;
+  private aimAngle(p: Fighter, lead = true) {
+    return this.computeAim(p, lead).angle;
   }
 
   private assistTarget(p: Fighter) {
@@ -862,7 +875,7 @@ export class ArenaScene extends Phaser.Scene {
             const wants = k.space.isDown || this.mouseDown || Boolean(touch?.throwing) || queued;
             if (wants && f.canThrow(t)) {
               const manual = touch && tapped && touch.shot !== null ? this.manualAim(f, touch.shot).angle : null;
-              f.requestThrow(t, manual ?? this.aimAngle(f), PILLOW.windup + (f.special ? SPECIAL.windup : 0));
+              f.requestThrow(t, manual ?? this.aimAngle(f, queued), PILLOW.windup + (f.special ? SPECIAL.windup : 0));
               if (this.tutorial) this.learn(false, true, manual !== null);
               this.throwQueued = -99999;
               if (touch) {
@@ -911,7 +924,7 @@ export class ArenaScene extends Phaser.Scene {
       this.aimNow = null;
       return;
     }
-    const aim = this.computeAim(p);
+    const aim = this.computeAim(p, !this.holdingThrow());
     this.aimNow = aim;
     this.lock = aim.target;
     const ready = p.canThrow(t);
@@ -1221,15 +1234,22 @@ export class ArenaScene extends Phaser.Scene {
     this.word(this.text.caveIn, cx, cy - 170, "#ffc83d", 44);
     this.room.impact(cx, cy, 0.9, (n, v) => this.sfx(n, v, 120));
     let playerTripped = false;
+    const tripped: Fighter[] = [];
     for (const f of this.fighters) {
       if (!f.alive) continue;
       const dx = Math.max(box.x0 - f.x, 0, f.x - box.x1) / FORT.reachX;
       const dy = Math.max(box.y0 - f.y, 0, f.y - box.y1) / FORT.reachY;
       if (dx * dx + dy * dy > 1) continue;
       if (!f.trip(this.t, FORT.trip)) continue;
+      tripped.push(f);
       this.word(this.text.tripped, f.x, f.top - 20, f.isPlayer ? "#fbf5e6" : KID_INFO[f.kid].css, 32);
       this.sfx("trip", f.isPlayer ? 0.9 : 0.5);
       if (f.isPlayer) playerTripped = true;
+    }
+    if (tripped.length && this.mode === "play") {
+      const near = (f: Fighter) => Math.hypot(f.x - cx, f.y - cy);
+      const laugher = this.fighters.filter((f) => f.alive && !f.isPlayer && !tripped.includes(f) && near(f) < GLOAT.reach).sort((a, b) => near(a) - near(b))[0];
+      laugher?.gloat(this.t, GLOAT.laugh);
     }
     if (playerTripped && !this.ctx.reducedMotion) this.cameras.main.shake(110, 0.0035);
     this.ctx.onEvent({ type: "announce", message: playerTripped ? this.text.youTripped : this.text.fortDown, transient: !playerTripped });
@@ -1248,7 +1268,7 @@ export class ArenaScene extends Phaser.Scene {
       const foe = p.nearFoe;
       if (now - this.lastTaunt > 5000 && Math.random() < 0.4) {
         this.lastTaunt = now;
-        this.word(Phaser.Utils.Array.GetRandom(this.text.taunts) as string, foe.x, foe.top - 30, foe.isPlayer ? "#fbf5e6" : KID_INFO[foe.kid].css, 32);
+        this.word(Phaser.Utils.Array.GetRandom(this.text.taunts[foe.kid]) as string, foe.x, foe.top - 30, foe.isPlayer ? "#fbf5e6" : KID_INFO[foe.kid].css, 32);
       } else this.word(this.text.close, foe.x, foe.top - 30, "#fbf5e6", 32);
     }
   }
@@ -1271,6 +1291,7 @@ export class ArenaScene extends Phaser.Scene {
     p.hitSomeone = true;
     if (f.isPlayer) this.playerSafeUntil = Math.max(this.playerSafeUntil, this.t + 1000);
     const playerInvolved = f.isPlayer || owner.isPlayer;
+    const ending = !this.attract && this.mode === "play" && !f.alive && (f.isPlayer || this.fighters.every((o) => o === f || o.isPlayer || !o.alive));
     if (f.isPlayer) this.damageTaken += 1;
     const y = f.y - 120;
     this.impact(p.img.x, p.img.y, f.y + 4, !f.alive);
@@ -1280,24 +1301,31 @@ export class ArenaScene extends Phaser.Scene {
       this.hurtFlash.setAlpha(0.45);
       this.tweens.add({ targets: this.hurtFlash, alpha: 0, duration: 420, ease: "Quad.easeOut" });
     }
-    this.feathers(f.x, y, f.alive ? 7 : 16, f.alive ? 80 : 140);
+    this.feathers(f.x, y, f.alive ? 7 : ending ? 26 : 16, f.alive ? 80 : ending ? 190 : 140);
     this.word(Phaser.Utils.Array.GetRandom(this.text.hitWords) as string, f.x + Phaser.Math.Between(-20, 20), f.top - 20, "#ffc83d", f.alive ? 46 : 56);
     this.sfx("hit", playerInvolved ? 0.95 : 0.55);
     if (f.isPlayer && this.time.now - this.lastOuch > 300) {
       this.lastOuch = this.time.now;
       this.sfx("ouch", 0.8);
     }
-    if (playerInvolved && !this.ctx.reducedMotion) {
-      this.freezeUntil = this.time.now + (f.alive ? 45 : 90);
-      if (f.isPlayer || !f.alive) this.cameras.main.shake(f.alive ? 90 : 120, f.alive ? 0.0035 : 0.004);
+    if ((playerInvolved || ending) && !this.ctx.reducedMotion) {
+      this.freezeUntil = this.time.now + (f.alive ? 45 : ending ? 260 : 90);
+      if (ending) this.cameras.main.shake(220, 0.006);
+      else if (f.isPlayer || !f.alive) this.cameras.main.shake(f.alive ? 90 : 120, f.alive ? 0.0035 : 0.004);
     }
     this.room.impact(f.x, f.y, 0.7, (n, v) => this.sfx(n, v, 120));
     p.stop(p.x, p.y, p.z, true);
     if (p.special) {
       this.word(this.text.thump, f.x, f.top - 80, "#ffc83d", 64);
       this.wave(f.x, f.y, owner, f);
+      if (f.alive && !this.attract) {
+        f.daze(this.t, SPECIAL.daze);
+        this.dropPillow(f);
+        this.dazeStars(f, SPECIAL.daze);
+      }
     }
     if (!this.attract && owner.alive) this.hud?.cheerFace(owner.kid);
+    if (!this.attract && this.mode === "play" && !owner.isPlayer && owner.alive && owner !== f && Math.random() < GLOAT.chance[owner.kid] + (f.alive ? 0 : 0.35)) owner.gloat(this.t, GLOAT.ms);
     if (this.attract) {
       if (f.hp < 4) f.hp = HP;
       return;
@@ -1319,6 +1347,36 @@ export class ArenaScene extends Phaser.Scene {
     const name = KID_INFO[f.kid].name;
     this.ctx.onEvent({ type: "announce", message: f.isPlayer ? this.text.youOut : this.text.kidOut(name) });
     this.checkEnd();
+  }
+
+  private dropPillow(f: Fighter) {
+    const hand = f.hand();
+    const img = this.add.image(hand.x, hand.y - 20, "pillow").setScale(0.62 / 1.25).setTint(KID_INFO[f.kid].tint).setDepth(f.y + 1);
+    const x = hand.x - f.facing * 70;
+    const y = f.y - 8;
+    if (this.ctx.reducedMotion) {
+      img.setPosition(x, y).setAngle(f.facing * 80);
+      this.tweens.add({ targets: img, alpha: 0, delay: 500, duration: 300, onComplete: () => img.destroy() });
+      return;
+    }
+    this.tweens.add({ targets: img, x, y, angle: -f.facing * 220, duration: 380, ease: "Quad.easeIn", onComplete: () => {
+      img.setDepth(y + 1).setTint(0xb8aec8);
+      this.tweens.add({ targets: img, scaleY: img.scaleY * 0.7, duration: 120, yoyo: true });
+      this.tweens.add({ targets: img, alpha: 0, delay: 450, duration: 300, onComplete: () => img.destroy() });
+    } });
+  }
+
+  private dazeStars(f: Fighter, ms: number) {
+    if (this.ctx.reducedMotion) return;
+    const stars = [0, 1].map(() => this.add.image(f.x, f.top, "star").setScale(0.5).setDepth(1440));
+    const state = { a: 0 };
+    this.tweens.add({
+      targets: state,
+      a: Math.PI * 4,
+      duration: ms,
+      onUpdate: () => stars.forEach((s, i) => s.setPosition(f.x + Math.cos(state.a + i * Math.PI) * 42, f.top + 4 + Math.sin(state.a + i * Math.PI) * 11)),
+      onComplete: () => stars.forEach((s) => s.destroy()),
+    });
   }
 
   private orbitStars(f: Fighter) {
