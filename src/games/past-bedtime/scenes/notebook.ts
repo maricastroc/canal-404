@@ -22,7 +22,7 @@ export type NoteKind = keyof typeof COLORS;
 
 export type ButtonId = "wait" | "undo" | "restart" | "hint" | "undoCaught";
 
-export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "dog" | "goal" | "hide" | "cat" | "route" | "toss" | "near";
+export type LegendItem = "creak" | "marks" | "clock" | "light" | "next" | "nextAny" | "nose" | "dog" | "goal" | "hide" | "cat" | "route" | "toss" | "near";
 
 export type PageKind = "rules" | "moves";
 
@@ -37,7 +37,7 @@ export interface NotebookView {
   clearNotes(): void;
   setPlan(actions: readonly Action[]): void;
   strikeLast(done: () => void): void;
-  showCaught(reason: string): void;
+  showCaught(reason: string, sub?: string): void;
   clearCaught(): void;
   showWin(turns: number, par: number, stars: number, isLast: boolean, line: string): void;
   clearWin(): void;
@@ -163,6 +163,7 @@ function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: num
       g.strokeRect(x - 14, y - 13, 28, 26);
       break;
     case "next":
+    case "nextAny":
       g.fillStyle(0xffe39a, 0.5);
       g.fillRect(x - 14, y - 13, 28, 26);
       g.lineStyle(2.5, 0xd99a1e, 1);
@@ -171,6 +172,14 @@ function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: num
         g.lineBetween(x + ax, y + ay, x + ax + (bx - ax) * 0.35, y + ay + (by - ay) * 0.35);
         g.lineBetween(x + ax + (bx - ax) * 0.65, y + ay + (by - ay) * 0.65, x + bx, y + by);
       }
+      break;
+    case "nose":
+      g.fillStyle(0xffb36b, 0.95);
+      g.fillRect(x - 14, y - 13, 28, 26);
+      g.lineStyle(5, INK, 0.5);
+      g.strokeRect(x - 14, y - 13, 28, 26);
+      g.lineStyle(3, 0xe0782c, 1);
+      g.strokeRect(x - 14, y - 13, 28, 26);
       break;
     case "dog":
       g.fillStyle(0xd89a4e, 1);
@@ -222,6 +231,7 @@ function drawLegendIcon(g: Phaser.GameObjects.Graphics, item: LegendItem, x: num
 
 const LEGEND_ICONS: Partial<Record<LegendItem, { icon: NightIcon; size: number; x: number; y: number }>> = {
   light: { icon: "watched", size: 15, x: -4, y: -4 },
+  nose: { icon: "paw", size: 17, x: 0, y: 0 },
   toss: { icon: "toss", size: 17, x: 0, y: 0 },
   near: { icon: "near", size: 31, x: 0, y: 0 },
 };
@@ -652,7 +662,7 @@ export class Notebook implements NotebookView {
 
   intro(lines: string[]) {
     this.rules = lines;
-    this.tip = lines.length ? { text: lines[lines.length - 1], kind: "info" } : null;
+    this.tip = lines.length ? { text: lines[0], kind: "info" } : null;
     this.renderCard(true);
   }
 
@@ -682,12 +692,12 @@ export class Notebook implements NotebookView {
     this.stampObjects = [];
   }
 
-  showCaught(reason: string) {
+  showCaught(reason: string, sub = this.copy.notes.undoTip) {
     this.clearStamp();
     this.closePage();
     this.mode = "caught";
     this.tip = { text: reason, kind: "bad" };
-    this.renderCard(false, this.copy.notes.undoTip);
+    this.renderCard(false, sub);
     const c = this.spots.card;
     const stamp = this.scene.add.text(0, 0, this.copy.notes.failed, { fontFamily: this.fonts.display, fontSize: "34px", color: "#c4352c", padding: { x: 10, y: 6 } }).setOrigin(0.5);
     stamp.setFontSize(30);
@@ -702,7 +712,7 @@ export class Notebook implements NotebookView {
     frame.strokeRoundedRect(-sw / 2, -sh / 2, sw, sh, 10);
     frame.lineStyle(2, 0xc4352c, 0.6);
     frame.strokeRoundedRect(-sw / 2 + 5, -sh / 2 + 5, sw - 10, sh - 10, 7);
-    const box = this.scene.add.container(c.x + c.w - sw / 2 - 6, c.y + c.h - 8, [frame, stamp]).setAngle(-5).setAlpha(0).setScale(1.8);
+    const box = this.scene.add.container(c.x + c.w - sw / 2 - 6, c.y + c.h + sh / 2 - 10, [frame, stamp]).setAngle(-5).setAlpha(0).setScale(1.8);
     this.container.add(box);
     this.stampObjects.push(box);
     this.scene.tweens.add({ targets: box, alpha: 1, scale: 1, duration: 220, ease: "Back.easeOut" });

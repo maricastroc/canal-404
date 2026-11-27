@@ -488,7 +488,7 @@ const NIGHT_STATS = ["turns", "wakes", "creaks", "covered"] as const;
 const pastBedtime: GameRule = {
   game: "past-bedtime",
   replay: "bedtime-moves",
-  version: 2,
+  version: 3,
   levels: NIGHT_LEVELS.map((l) => l.id),
   stats: [...NIGHT_STATS, "hints"],
   judge(level, claim) {
