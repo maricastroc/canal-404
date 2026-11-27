@@ -110,7 +110,7 @@ export class SelectScene extends Phaser.Scene {
     this.titleBox = this.add.container(W / 2, 92, [tg, title]).setAngle(-1.5).setSize(tw, 100);
 
     const level = Phaser.Math.Clamp((this.registry.get("level") as number | undefined) ?? 0, 0, ARENAS.length - 1);
-    this.arenaLabel = cartoonText(this, 34, 200, this.text.arena(level + 1, ARENAS[level].title[this.locale]), { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18 });
+    this.arenaLabel = cartoonText(this, 34, 166, this.text.arena(level + 1, ARENAS[level].title[this.locale]), { size: 30, color: "#ffc83d", font: fonts.display, stroke: 0.18 });
 
     const stats = loadStats();
     const last = (this.registry.get("kid") as KidId | null) ?? stats.lastKid ?? "lia";
@@ -180,7 +180,7 @@ export class SelectScene extends Phaser.Scene {
     if (frame.kind === "full") {
       this.spot = { cx: W / 2, cardY: 590, scale: 1, spacing: 500, carousel: false };
       this.titleBox.setPosition(W / 2, 92).setScale(1);
-      this.arenaLabel.setOrigin(0, 0).setPosition(34, 200).setScale(1);
+      this.arenaLabel.setOrigin(0, 0).setPosition(34, 166).setScale(1);
       this.hintText.setPosition(W / 2, H - 46).setScale(1);
       this.startBtn.setPosition(W - 230, H - 70).setScale(1);
       this.dots.clear();
