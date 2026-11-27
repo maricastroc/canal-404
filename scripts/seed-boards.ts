@@ -10,7 +10,9 @@ import {
   type RankKey,
 } from "@/lib/competition/boards";
 import { checkNickname, suggestNickname } from "@/lib/competition/nickname";
-import { boardId } from "@/lib/competition/rules";
+import { HP, KIDS, PILLOW, SCORE as PAJAMA_SCORE, STATS as KID_STATS } from "@/games/pajama-war/config";
+import type { GameStats } from "@/games/types";
+import { boardId, RULES } from "@/lib/competition/rules";
 import { closeDb, getDb, type Db } from "@/server/db";
 import { hashToken, newToken, saveWithFreeTag } from "@/server/identity";
 
@@ -31,7 +33,7 @@ type Board = {
   game: GameSlug;
   level: string;
   version: number;
-  best: Anchor;
+  best: Anchor | null;
   runs: Anchor[];
 };
 type Entry = {
@@ -39,8 +41,11 @@ type Entry = {
   rank: RankKey;
   score: number;
   stars: number;
+  stats: GameStats;
   at: Date;
 };
+type Fresh = { rank: RankKey; score: number; stars: number; stats: GameStats };
+type FreshMaker = (levelIndex: number) => Fresh;
 
 const { values: args } = parseArgs({
   options: {
@@ -118,22 +123,77 @@ function worsen(
   return lowerIsBetter ? value - delta : Math.max(0, value - delta);
 }
 
+function pick(min: number, max: number) {
+  return min + random() * (max - min);
+}
+
+const PAJAMA_BASE_SECONDS = [64, 72, 78, 86];
+
+function freshPajamaWar(levelIndex: number): Fresh {
+  const skill = random() ** 0.8;
+  const kid = Math.floor(random() * KIDS.length);
+  const hp = Math.max(1, Math.min(HP - 2, Math.round(1 + skill * 7.5 + pick(-1.5, 1.8))));
+  const damageTaken = HP - hp + Math.floor(random() * 4);
+  const base = PAJAMA_BASE_SECONDS[Math.min(levelIndex, PAJAMA_BASE_SECONDS.length - 1)];
+  const timeMs = Math.round(base * (1.25 - 0.35 * skill) * pick(0.9, 1.12) * 1000);
+  const kos = random() < 0.65 ? 2 : random() < 0.8 ? 1 : 0;
+  const hits = Math.max(kos, Math.round((timeMs / 60000) * (13 + 12 * skill + pick(0, 4))));
+  const cooldown = KID_STATS[KIDS[kid]].cooldown;
+  const maxThrows = Math.floor(timeMs / (cooldown + PILLOW.windup));
+  const throws = Math.min(maxThrows, Math.max(hits, Math.round(hits / pick(0.42, 0.7))));
+  const score = hits * PAJAMA_SCORE.hit + kos * PAJAMA_SCORE.ko + PAJAMA_SCORE.win + hp * PAJAMA_SCORE.hp;
+  const stars = hp >= 7 ? 3 : hp >= 4 ? 2 : 1;
+  return {
+    rank: [hp, -timeMs, hits],
+    score,
+    stars,
+    stats: { hits, kos, throws, hp, damageTaken, place: 1, timeMs, kid },
+  };
+}
+
+const FRESH: Partial<Record<GameSlug, FreshMaker>> = {
+  "pajama-war": freshPajamaWar,
+};
+
+function freshBoards(boards: Board[], games: Set<GameSlug>) {
+  const known = new Set(boards.map((b) => b.id));
+  const added: Board[] = [];
+  for (const game of games) {
+    if (!FRESH[game]) continue;
+    const rule = RULES[game];
+    for (const level of rule.levels ?? [null]) {
+      const id = boardId(game, level);
+      if (known.has(id)) continue;
+      added.push({ id, game, level: level ?? "all", version: rule.version, best: null, runs: [] });
+    }
+  }
+  return added;
+}
+
+function freshEntry(board: Board, at: Date): Entry {
+  const levels = RULES[board.game].levels;
+  const index = levels ? levels.indexOf(board.level) : 0;
+  return { board, ...FRESH[board.game]!(Math.max(0, index)), at };
+}
+
 function seedEntry(
   board: Board,
   step: RankKey,
   spread: number,
   at: Date,
 ): Entry | null {
+  if (!board.best) return FRESH[board.game] ? freshEntry(board, at) : null;
+  const best = board.best;
   const metrics = BOARD_META[board.game].metrics;
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const rank = [0, 1, 2].map((i) =>
       metrics[i]
-        ? worsen(board.best.rank[i], step[i], spread, metrics[i].lowerIsBetter)
-        : board.best.rank[i],
+        ? worsen(best.rank[i], step[i], spread, metrics[i].lowerIsBetter)
+        : best.rank[i],
     ) as RankKey;
-    if (!isFinishersBoard(board.game) && compare(rank, board.best.rank) >= 0)
+    if (!isFinishersBoard(board.game) && compare(rank, best.rank) >= 0)
       continue;
-    const primary = board.best.rank[0];
+    const primary = best.rank[0];
     const ratio =
       primary === 0
         ? 1
@@ -142,13 +202,13 @@ function seedEntry(
           : rank[0] / primary;
     const score = SAME_SCORE_GAMES.has(board.game)
       ? Math.max(0, rank[0])
-      : Math.max(0, Math.round(board.best.score * Math.min(1, ratio)));
+      : Math.max(0, Math.round(best.score * Math.min(1, ratio)));
     const notBetter = board.runs
       .filter((r) => compare(r.rank, rank) <= 0)
       .sort((a, b) => compare(b.rank, a.rank));
     const stars =
       notBetter[0]?.stars ?? Math.min(...board.runs.map((r) => r.stars));
-    return { board, rank, score, stars, at };
+    return { board, rank, score, stars, stats: {}, at };
   }
   return null;
 }
@@ -190,14 +250,14 @@ async function loadBoards(db: Db, games: Set<GameSlug>) {
       score: row.score,
       stars: row.stars,
     };
-    const board = boards.get(row.board!) ?? {
+    const board: Board = boards.get(row.board!) ?? {
       id: row.board!,
       ...parsed,
       best: anchor,
       runs: [],
     };
     board.runs.push(anchor);
-    if (compare(anchor.rank, board.best.rank) > 0) board.best = anchor;
+    if (!board.best || compare(anchor.rank, board.best.rank) > 0) board.best = anchor;
     boards.set(board.id, board);
   }
   return [...boards.values()].sort((a, b) => a.id.localeCompare(b.id));
@@ -220,7 +280,7 @@ async function seedPlayer(db: Db, entries: Entry[]) {
         },
       });
       for (const entry of entries) {
-        const { board, rank, score, stars, at } = entry;
+        const { board, rank, score, stars, stats, at } = entry;
         const run = await tx.run.create({
           data: {
             ticketId: randomUUID(),
@@ -231,7 +291,7 @@ async function seedPlayer(db: Db, entries: Entry[]) {
             won: true,
             score,
             stars,
-            stats: {},
+            stats,
             rank1: rank[0],
             rank2: rank[1],
             rank3: rank[2],
@@ -254,7 +314,7 @@ async function seedPlayer(db: Db, entries: Entry[]) {
             rank3: rank[2],
             score,
             stars,
-            stats: {},
+            stats,
             achievedAt: at,
           },
         });
@@ -303,11 +363,15 @@ async function main() {
       );
     const games = new Set(chosen as GameSlug[]);
 
-    const boards = await loadBoards(db, games);
+    const real = await loadBoards(db, games);
+    const boards = [...real, ...freshBoards(real, games)].sort((a, b) => a.id.localeCompare(b.id));
     if (!boards.length)
       fail(
         "No board has a real run yet. Play each level once first: the seed builds on real results.",
       );
+    const invented = boards.filter((b) => !b.best).map((b) => b.id);
+    if (invented.length)
+      console.log(`No real runs yet, inventing plausible results: ${invented.join(", ")}`);
     const empty = [...games].filter((g) => !boards.some((b) => b.game === g));
     if (empty.length)
       console.log(`No real runs yet, skipped: ${empty.join(", ")}`);
@@ -348,7 +412,7 @@ async function main() {
         ? `${show(ranks[0])} … ${show(ranks[ranks.length - 1])}`
         : "-";
       console.log(
-        `${board.id.padEnd(34)} real best ${show(board.best.rank).padEnd(20)} +${String(entries.length).padStart(3)} seeded  ${range}`,
+        `${board.id.padEnd(34)} real best ${(board.best ? show(board.best.rank) : "-").padEnd(20)} +${String(entries.length).padStart(3)} seeded  ${range}`,
       );
     }
 
