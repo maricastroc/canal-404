@@ -50,7 +50,7 @@ function Burst({ cx, cy, color, count = 16, r = 360 }: { cx: number; cy: number;
 
 const COVER_ALT = localized({
   "pt-BR": {
-    "dead-end-street": "Capa de Rua Sem Saída: Déco e Lina num carrinho com uma colher gigante lançando um tênis em direção a uma pilha de vasos com um gnomo",
+    "dead-end-street": "Capa de Rua Sem Saída: Déco e Lina num carrinho com um estilingue lançando um tênis em direção a um gnomo de jardim em cima de uma pilha de vasos",
     "bad-ideas-lab": "Capa de Laboratório de Péssimas Ideias: Lina atrás da bancada, com um frasco borbulhando, engrenagens e uma lâmpada acesa",
     "food-fight": "Capa de Guerra de Lanche: na cantina, Déco se prepara para arremessar um sanduíche enquanto a Mila se protege de um pudim com uma bandeja",
     "operation-recess": "Capa de Operação: Recreio: no corredor da escola, Bruno ergue a espada de papelão contra um monitor que apita bloqueando o caminho para a diretoria",
@@ -61,7 +61,7 @@ const COVER_ALT = localized({
     "talent-show": "Capa de Ao Vivo no 404: no palco do Canal 404, sob o letreiro luminoso do 404, o Déco toca um balde virado debaixo do holofote, com a Lina no teclado, a Mila no gravador e o Bruno no chocalho, enquanto o júri levanta as placas de nota, uma delas com um 10, e a plateia assiste lá da frente",
   },
   en: {
-    "dead-end-street": "Dead End Street cover: Déco and Lina in a cart with a giant spoon, launching a sneaker at a stack of flowerpots with a gnome",
+    "dead-end-street": "Dead End Street cover: Déco and Lina in a cart with a slingshot, launching a sneaker at a garden gnome on top of a stack of flowerpots",
     "bad-ideas-lab": "Bad Ideas Lab cover: Lina behind the workbench, with a bubbling flask, gears and a lit light bulb",
     "food-fight": "Food Fight cover: in the cafeteria, Déco gets ready to throw a sandwich while Mila blocks a pudding with a tray",
     "operation-recess": "Operation: Recess cover: in the school hallway, Bruno raises his cardboard sword at a whistle-blowing hall monitor who blocks the way to the principal's office",
@@ -91,7 +91,7 @@ function Frame({ children, bg, label, decorative }: { children: React.ReactNode;
   );
 }
 
-const ARC = { from: { x: 200, y: 118 }, via: { x: 246, y: 0 }, to: { x: 286, y: 112 } };
+const ARC = { from: { x: 200, y: 118 }, via: { x: 244, y: -52 }, to: { x: 292, y: 122 } };
 
 const arcAt = (t: number) => arcPoint(ARC.from, ARC.via, ARC.to, t);
 
@@ -107,9 +107,41 @@ function Pot({ cx, bottom, w, h, fill, rim }: { cx: number; bottom: number; w: n
   );
 }
 
+function CoverGnome({ x, y, s }: { x: number; y: number; s: number }) {
+  const w = 3 / s;
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`} stroke={P.ink} strokeWidth={w} strokeLinejoin="round" strokeLinecap="round">
+      <path d="M-15 0 Q-16 -5 -12 -6 L-12 -9 L-3 -9 L-3 0 Z M15 0 Q16 -5 12 -6 L12 -9 L3 -9 L3 0 Z" fill={P.woodDeep} />
+      <path d="M-16 -6 Q-17 -33 0 -34 Q17 -33 16 -6 Z" fill={P.skyDeep} />
+      <path d="M9 -31 Q16 -24 15 -7 L8 -7 Q12 -20 9 -31 Z" fill={P.ink} opacity={0.18} stroke="none" />
+      <path d="M-16.4 -15 L16.4 -15" />
+      <rect x={-3.5} y={-18.5} width={7} height={7} rx={1} fill={P.sun} strokeWidth={w * 0.7} />
+      {[-1, 1].map((k) => (
+        <g key={k}>
+          <path d={`M${k * 12} -28 L${k * 21} -21 L${k * 16} -14`} fill="none" strokeWidth={w * 2.6} />
+          <path d={`M${k * 12} -28 L${k * 21} -21 L${k * 16} -14`} fill="none" stroke={P.skyDeep} strokeWidth={w * 1.2} />
+          <circle cx={k * 15.5} cy={-14} r={3.4} fill={P.skinLight} strokeWidth={w * 0.8} />
+        </g>
+      ))}
+      <circle cx="0" cy="-48" r="11.5" fill={P.skinLight} />
+      <path d="M-13 -48 Q-18.5 -36 -14 -27 Q-10 -21 -5 -24.5 Q0 -18 5 -24.5 Q10 -21 14 -27 Q18.5 -36 13 -48 Q7 -41 0 -41 Q-7 -41 -13 -48 Z" fill={P.white} />
+      <path d="M-8 -30 Q-4 -27 0 -29 M3 -29 Q6 -27 9 -31" fill="none" stroke={P.cream3} strokeWidth={w * 0.7} />
+      <path d="M-4.5 -36.5 Q1.5 -30.5 7 -37.5 Q1.5 -34.5 -4.5 -36.5 Z" fill={P.ink} strokeWidth={w * 0.6} />
+      <path d="M0 -42 Q-6 -45.5 -9.5 -40 Q-5 -37 0 -40 Q5 -37 9.5 -40 Q6 -45.5 0 -42 Z" fill={P.white} strokeWidth={w * 0.8} />
+      <circle cx="0" cy="-45" r="4.4" fill={P.blush} strokeWidth={w * 0.8} />
+      <path d="M-9.5 -51 Q-7 -53 -4.5 -51" fill="none" strokeWidth={w * 0.8} />
+      <circle cx="6.8" cy="-51.3" r="1.8" fill={P.ink} stroke="none" />
+      <path d="M4 -55 Q7 -56.8 10 -55.2" fill="none" strokeWidth={w * 0.7} />
+      <path d="M-15 -54 Q-12 -70 -4 -82 Q3 -92 17 -93 Q9 -87 8.5 -78 Q9 -68 15 -60 Q0 -60 -15 -54 Z" fill={P.tomato} />
+      <path d="M-9 -63 Q-6.5 -72 -1.5 -79" fill="none" stroke={P.blush} strokeWidth={w * 0.8} />
+      <path d="M-15 -54 Q0 -60 15 -60" fill="none" stroke={P.tomatoDeep} strokeWidth={w * 0.8} />
+    </g>
+  );
+}
+
 export function DeadEndStreetCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
-  const dots = [0.1, 0.2, 0.3, 0.4, 0.62, 0.72, 0.82, 0.92].map((t) => ({ t, ...arcAt(t) }));
-  const shoe = arcAt(0.51);
+  const dots = [0.125, 0.2, 0.745, 0.81, 0.875].map((t) => ({ t, ...arcAt(t) }));
+  const shoe = arcAt(0.48);
   return (
     <Frame decorative={decorative} bg="#82d3f7" label={COVER_ALT[locale]["dead-end-street"]}>
       <rect y="96" width="320" height="70" fill={P.skyPale} opacity={0.55} />
@@ -122,15 +154,17 @@ export function DeadEndStreetCover({ decorative, locale = DEFAULT_LOCALE }: Cove
         <circle cx="46" cy="40" r="20" fill={P.sun} {...ink} />
         <path d="M34 48 Q46 58 58 46" fill="none" stroke={P.sunDeep} strokeWidth={4} strokeLinecap="round" />
       </g>
-      <g transform="translate(112 -8)">
+      <g transform="translate(84 -10)">
         <path d="M30 60 Q28 44 46 44 Q52 30 68 36 Q80 26 92 40 Q108 40 104 58 Z" fill={P.white} {...ink} strokeWidth={3} />
         <path d="M36 58 Q60 52 98 56" fill="none" stroke={P.skyPale} strokeWidth={4} strokeLinecap="round" />
       </g>
-      <g transform="translate(-6 66) scale(0.6)">
+      <g transform="translate(62 50) scale(0.6)">
         <path d="M30 60 Q28 44 46 44 Q52 30 68 36 Q80 26 92 40 Q108 40 104 58 Z" fill={P.white} {...ink} strokeWidth={4.5} />
       </g>
-      <House x={184} w={54} h={34} peak={26} wall={P.sunPale} roof={P.skyDeep} />
-      <House x={250} w={66} h={42} peak={32} wall={P.plum300} roof={P.tomatoDeep} />
+      <g transform="translate(10 0) scale(-1 1)">
+        <House x={-28} w={66} h={42} peak={32} wall={P.plum300} roof={P.tomatoDeep} />
+      </g>
+      <House x={218} w={50} h={34} peak={24} wall={P.sunPale} roof={P.skyDeep} />
       <g>
         {Array.from({ length: 17 }, (_, i) => i * 20 - 6).map((x) => (
           <g key={x}>
@@ -152,22 +186,16 @@ export function DeadEndStreetCover({ decorative, locale = DEFAULT_LOCALE }: Cove
         <path d="M8 204 L6 197 M12 204 L14 196 M16 204 L20 198" />
         <path d="M232 204 L230 198 M236 204 L238 197 M240 204 L244 199" />
       </g>
-      <ellipse cx="290" cy="203" rx="26" ry="5" fill={P.ink} opacity={0.22} />
-      <Pot cx={290} bottom={202} w={38} h={19} fill={P.tangerineDeep} rim={P.tangerine} />
-      <Pot cx={290} bottom={183} w={32} h={16} fill={P.sunDeep} rim={P.sun} />
-      <Pot cx={290} bottom={167} w={26} h={14} fill={P.bubblegumDeep} rim={P.bubblegum} />
-      <g stroke={P.ink} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round">
-        <path d="M281 142 Q282 160 290 162 Q298 160 299 142 Q290 150 281 142 Z" fill={P.white} />
-        <ellipse cx="290" cy="140" rx="9" ry="6" fill={P.blush} />
-        <circle cx="290" cy="142" r="3" fill={P.bubblegum} strokeWidth={2} />
-        <path d="M280 136 L290 106 L300 136 Q290 140 280 136 Z" fill={P.tomato} />
-        <path d="M290 106 L296 120" stroke={P.tomatoDeep} strokeWidth={3} />
-      </g>
-      <Sparkle4 x={304} y={112} r={7} fill={P.sunPale} />
-      <Sparkle4 x={272} y={128} r={5} fill={P.white} />
+      <ellipse cx="294" cy="203" rx="27" ry="5" fill={P.ink} opacity={0.22} />
+      <Pot cx={294} bottom={202} w={40} h={20} fill={P.tangerineDeep} rim={P.tangerine} />
+      <Pot cx={294} bottom={182} w={34} h={16} fill={P.sunDeep} rim={P.sun} />
+      <ellipse cx="294" cy="167" rx="15" ry="2.6" fill={P.ink} opacity={0.25} />
+      <CoverGnome x={294} y={167} s={0.9} />
+      <Sparkle4 x={308} y={22} r={7} fill={P.sunPale} />
+      <Sparkle4 x={96} y={18} r={5} fill={P.white} />
       <g>
         {dots.map(({ t, x, y }) => {
-          const r = 6.5 - t * 3;
+          const r = 5.2 - t * 1.6;
           return (
             <g key={t}>
               <circle cx={x} cy={y} r={r + 2.5} fill={P.ink} opacity={0.9 - t * 0.35} />
@@ -177,7 +205,7 @@ export function DeadEndStreetCover({ decorative, locale = DEFAULT_LOCALE }: Cove
         })}
       </g>
       <g transform={`translate(${shoe.x.toFixed(1)} ${shoe.y.toFixed(1)}) rotate(-14)`}>
-        <path d="M-34 -6 L-24 -6 M-38 3 L-26 3 M-32 12 L-24 12" stroke={P.ink} strokeWidth={3} strokeLinecap="round" />
+        <path d="M-34 -13 L-24 -13 M-38 -4 L-26 -4 M-32 5 L-24 5" stroke={P.ink} strokeWidth={3} strokeLinecap="round" />
         <path d="M-17 -14 L-3 -14 L3 -4 Q13 -3 19 -1 Q24 1 23 7 L-17 7 Z" fill={P.tomato} {...ink} strokeWidth={3} />
         <path d="M-3 -14 L3 -4 L-6 -3 Z" fill={P.tomatoDeep} {...ink} strokeWidth={2} />
         <path d="M-17 -14 L-17 7" stroke={P.ink} strokeWidth={3} strokeLinecap="round" />
@@ -204,7 +232,7 @@ export function DeadEndStreetCover({ decorative, locale = DEFAULT_LOCALE }: Cove
         <path d="M160 211 Q164 207 170 208" stroke={P.white} strokeWidth={2.5} strokeLinecap="round" fill="none" opacity={0.7} />
       </g>
       <Fork x={192} y={176} s={1.7} pouch={{ x: 2, y: -28 }} tension={0} />
-      <Sparkle4 x={20} y={130} r={9} fill={P.sunPale} />
+      <Sparkle4 x={58} y={94} r={8} fill={P.sunPale} />
     </Frame>
   );
 }
