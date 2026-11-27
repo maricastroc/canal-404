@@ -78,6 +78,7 @@ export type NightCopy = {
   wonWithHint: string;
   wonClose: (extra: number) => string;
   lastLevel: string;
+  ending: { label: string; night: string; morning: string; deco: string; bruno: string; end: string; tap: string; key: string };
   lines: {
     dadSleep: string[];
     dadStir: string[];
@@ -325,6 +326,16 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonWithHint: "Na meta, mas com dica. Sem ela, seriam 3 estrelas.",
     wonClose: (extra) => (extra === 1 ? "Uma jogada a mais que a meta." : `${extra} jogadas a mais que a meta.`),
     lastLevel: "Bruno voltou para a cama. Fim da madrugada!",
+    ending: {
+      label: "SESSÃO CHIADO",
+      night: "3:58. Fita gravada, ninguém acordou.",
+      morning: "No recreio, no dia seguinte…",
+      deco: "Você gravou MESMO?!",
+      bruno: "Inteirinha. Agora paga!",
+      end: "Fim da madrugada",
+      tap: "Toque para continuar",
+      key: "Enter para continuar",
+    },
     lines: {
       dadSleep: ["…pênalti… foi pênalti…", "…mais cinco minutinhos, chefe…", "…quem comeu o último pão de queijo…", "…rebobina a fita…", "…zzz… gooool…", "…tá na gaveta, amor…"],
       dadStir: ["…hmm… tem alguém aí?…", "…quem tá respirando no meu ouvido…", "…Bruno?… não… é sonho…"],
@@ -585,6 +596,16 @@ export const NIGHT_COPY = localized<NightCopy>({
     wonWithHint: "On target, but with a hint. Without it, 3 stars.",
     wonClose: (extra) => (extra === 1 ? "One move over the target." : `${extra} moves over the target.`),
     lastLevel: "Bruno made it back to bed. Night over!",
+    ending: {
+      label: "STATIC SHOW",
+      night: "3:58. Taped it. Nobody woke up.",
+      morning: "At recess the next day…",
+      deco: "You ACTUALLY taped it?!",
+      bruno: "Every second. Now pay up!",
+      end: "Night over",
+      tap: "Tap to continue",
+      key: "Press Enter to continue",
+    },
     lines: {
       dadSleep: ["…penalty… that was a penalty…", "…five more minutes, boss…", "…who ate the last cheese bread…", "…be kind, rewind…", "…zzz… gooool…", "…it's in the drawer, honey…"],
       dadStir: ["…hmm… someone there?…", "…who's breathing in my ear…", "…Bruno?… nah… just a dream…"],

@@ -20,6 +20,7 @@ import { NightLighting, type DynamicLight } from "./lighting";
 import { floatZ, noiseRing, pop, popIcon, say, sightLine, soundLine, squiggle, type BubbleTone, type Box, type Speaker } from "./fx";
 import { drawExit } from "./exit";
 import { StoryBox } from "./story";
+import { DECO_KEY, DECO_URL, playEnding } from "./ending";
 import { drawCreakMarks, drawCreaks, drawFloor, drawHides, drawProps, drawWalls, faceMap, hideStyleFor, NIGHT, themeFor, type HideStyle, type Theme } from "./house";
 import { ARROW_ICONS, iconKey, loadNightIcons } from "./icons";
 import { computeLayout, tileCenter, wobble, type Frame, type Layout } from "./layout";
@@ -46,6 +47,7 @@ export type NightBridge = {
   onReady: () => void;
   onLevel: (index: number) => void;
   onWin: (report: WinReport) => void;
+  finishWin: () => void;
 };
 
 export type Command = "up" | "right" | "down" | "left" | "wait" | "undo" | "restart" | "hint" | "next" | "rules" | "view";
@@ -153,6 +155,7 @@ export class NightScene extends Phaser.Scene {
     const bridge = this.registry.get("bridge") as NightBridge;
     this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => bridge.onLoad(value));
     if (bridge.art === "final") loadArt(this);
+    if (!this.textures.exists(DECO_KEY)) this.load.svg(DECO_KEY, DECO_URL, { scale: 2 });
     loadNightIcons(this);
     reportFailedLoads(this, bridge.onError);
   }
@@ -1647,7 +1650,7 @@ export class NightScene extends Phaser.Scene {
     g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
     g.lineStyle(3, NIGHT.ink, 1);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
-    return this.add.container(x, y, [g, label]).setDepth(39).setAlpha(alpha);
+    return this.add.container(x, y, [g, label]).setDepth(39).setAlpha(alpha).setData("tag", true).setData("w", w).setData("h", h);
   }
 
   private markBadge(x: number, y: number, kind: "safe" | "wake" | "lure" | "creak") {
@@ -1809,6 +1812,7 @@ export class NightScene extends Phaser.Scene {
     const b = this.bruno.container;
     this.talk(b.x, b.y - s * 0.5, line, "cheer", 2600, "bruno");
     this.notebook.showWin(turns, level.par, got, this.levelIndex === LEVELS.length - 1, line);
+    if (this.levelIndex === LEVELS.length - 1) this.time.delayedCall(1300, () => this.state.status === "won" && playEnding(this.ui, this.layout, this.bridge.fonts, this.copy, { reducedMotion: this.bridge.reducedMotion, touch: this.bridge.touch, onDone: () => this.bridge.finishWin() }));
     const st = this.state;
     this.bridge.onWin({ level: level.id, index: this.levelIndex, turns, par: level.par, stars: got, hints: this.hints, moves: encodeMoves(this.actions), wakes: st.wakes, creaks: st.creaks - st.masked, covered: st.masked });
   }
@@ -2247,6 +2251,7 @@ export class NightScene extends Phaser.Scene {
 
   update() {
     if (this.layout && this.bruno) this.sortActors();
+    if (this.layout && this.bruno) this.spreadTags();
     if (!this.layout?.scroll || !this.bruno) return;
     this.dodgeChip();
     const cam = this.cameras.main;
@@ -2297,6 +2302,31 @@ export class NightScene extends Phaser.Scene {
       a.fillTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
       a.lineStyle(3 * ui, NIGHT.ink, 1);
       a.strokeTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y);
+    }
+  }
+
+  private spreadTags() {
+    const s = this.layout.tile;
+    const b = tileCenter(this.layout, this.state.x, this.state.y);
+    type Rect = { x: number; y: number; w: number; h: number };
+    const hit = (a: Rect, c: Rect) => a.x < c.x + c.w && c.x < a.x + a.w && a.y < c.y + c.h && c.y < a.y + a.h;
+    const placed: Rect[] = [{ x: b.x - s * 0.3, y: b.y - s * 1.1, w: s * 0.6, h: s * 1.5 }];
+    for (const tag of this.badges) {
+      if (!(tag instanceof Phaser.GameObjects.Container) || !tag.getData("tag")) continue;
+      placed.push({ x: tag.x - (tag.getData("w") as number) / 2, y: tag.y - (tag.getData("h") as number) / 2, w: tag.getData("w") as number, h: tag.getData("h") as number });
+    }
+    const order = { dad: 0, grandma: 1, dog: 2, cat: 3 } as const;
+    const views = [...this.agents].sort((p, q) => order[p.kind] - order[q.kind]);
+    for (const view of views) {
+      const tag = view.status;
+      if (!tag.root.visible || !tag.w) continue;
+      const { x, y } = tag.root;
+      const gap = s * 0.06;
+      const options: [number, number][] = [[0, 0], [0, -(tag.h + gap)], [tag.w * 0.6 + s * 0.3, 0], [-(tag.w * 0.6 + s * 0.3), 0], [0, tag.h + s * 0.85]];
+      const box = (dx: number, dy: number): Rect => ({ x: x + dx - tag.w / 2, y: y + dy - tag.h / 2, w: tag.w, h: tag.h });
+      const pick = options.find(([dx, dy]) => !placed.some((r) => hit(r, box(dx, dy)))) ?? [0, 0];
+      tag.root.setPosition(x + pick[0], y + pick[1]);
+      placed.push(box(pick[0], pick[1]));
     }
   }
 

@@ -32,6 +32,7 @@ const KEYS: Record<string, Command> = {
 const ONCE = new Set<Command>(["undo", "restart", "hint", "rules", "view"]);
 
 const WIN_HOLD_MS = 1700;
+const ENDING_HOLD_MS = 9000;
 
 const touchScreen = () => window.matchMedia?.("(pointer: coarse)").matches ?? false;
 
@@ -47,6 +48,8 @@ function mount(ctx: GameHostContext): GameInstance {
   let paused = false;
   let ready = false;
   let pendingWin: number | null = null;
+  let finishPending: (() => void) | null = null;
+  let finale = false;
   let game: Phaser.Game | null = null;
   let frame = measure(ctx.parent);
   let carried: Carry | null = null;
@@ -64,6 +67,8 @@ function mount(ctx: GameHostContext): GameInstance {
   const clearWin = () => {
     if (pendingWin !== null) window.clearTimeout(pendingWin);
     pendingWin = null;
+    finishPending = null;
+    finale = false;
   };
 
   const boot = (carry: Carry | null) => {
@@ -98,13 +103,16 @@ function mount(ctx: GameHostContext): GameInstance {
         const stars = records[report.index]?.stars ?? 0;
         records = LEVELS.map((_l, i) => (i === report.index ? { stars: Math.max(stars, report.stars), score: Math.max(records[i]?.score ?? 0, result.score) } : (records[i] ?? { stars: 0, score: 0 })));
         ctx.onEvent({ type: "score", score: result.score });
-        pendingWin = window.setTimeout(
-          () => {
-            pendingWin = null;
-            ctx.onEvent({ type: "finished", result });
-          },
-          ctx.reducedMotion ? 300 : WIN_HOLD_MS,
-        );
+        const finish = () => {
+          clearWin();
+          ctx.onEvent({ type: "finished", result });
+        };
+        finale = report.index === LEVELS.length - 1;
+        finishPending = finish;
+        pendingWin = window.setTimeout(finish, finale ? ENDING_HOLD_MS : ctx.reducedMotion ? 300 : WIN_HOLD_MS);
+      },
+      finishWin: () => {
+        if (finale) finishPending?.();
       },
     };
     game = new Phaser.Game({
@@ -129,6 +137,7 @@ function mount(ctx: GameHostContext): GameInstance {
   };
 
   const command = (cmd: Command) => {
+    if (pendingWin !== null && finale && !paused && (cmd === "next" || cmd === "wait")) finishPending?.();
     if (paused || pendingWin !== null) return;
     scene()?.command(cmd);
   };
