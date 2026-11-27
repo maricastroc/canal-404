@@ -7,6 +7,7 @@ import {
   COUNTDOWN_MS,
   AMMO_SPOTS,
   DECO,
+  DUCK_ZONE,
   EVENTS,
   FOOD_BAG,
   FOOD_EFFECTS,
@@ -37,10 +38,11 @@ import { LUNCH_SFX, type LunchSfx } from "../sounds";
 import { LUNCH_FINALE } from "../music";
 import { Bubble, cartoonText } from "../../kit/ui";
 import { insetsOf } from "../../kit/insets";
+import { coarsePointer } from "../../kit/touch";
 import { eachKeyOnce } from "../../kit/keys";
 import { StingPlayer } from "../../kit/sting";
 import { Cook, LunchLady, Rival, type Reaction } from "./actors";
-import { LunchHud } from "./hud";
+import { LunchHud, type BannerTone } from "./hud";
 
 type Mode = "attract" | "tutorial" | "playing" | "ending" | "over";
 type Food = (typeof FOOD_BAG)[number];
@@ -167,6 +169,7 @@ export class LunchScene extends Phaser.Scene {
   private brawlNext = 0;
   private brawlFillAt = 0;
   private milaPriorityUntil = 0;
+  private lastLaughAt = -Infinity;
   private frame: Frame = LANDSCAPE_FRAME;
   private frozenUntil = 0;
   private catchLockUntil = 0;
@@ -187,6 +190,10 @@ export class LunchScene extends Phaser.Scene {
   private props: Phaser.GameObjects.Image[] = [];
   private napkins: Phaser.GameObjects.Image[] = [];
   private music!: StingPlayer;
+  private duckZone!: Phaser.GameObjects.Zone;
+  private menuParts: (Phaser.GameObjects.Text | Phaser.GameObjects.Graphics)[] = [];
+  private menuDim?: Phaser.Time.TimerEvent;
+  private touch = false;
 
   constructor() {
     super("lunch");
@@ -241,10 +248,13 @@ export class LunchScene extends Phaser.Scene {
     this.brawlNext = 0;
     this.brawlFillAt = 0;
     this.milaPriorityUntil = 0;
+    this.lastLaughAt = -Infinity;
     this.tables = [];
     this.rowMasks = new Map();
     this.props = [];
     this.napkins = [];
+    this.menuParts = [];
+    this.menuDim = undefined;
     this.peels = new Map();
     this.taught = new Set();
     this.ladyStop = 0;
@@ -263,6 +273,7 @@ export class LunchScene extends Phaser.Scene {
     this.highScore = (this.registry.get("highScore") as number | undefined) ?? this.ctx.highScore;
     const reduced = this.ctx.reducedMotion;
     const fonts = this.ctx.fonts;
+    this.touch = coarsePointer();
 
     this.extension = this.add.graphics().setDepth(-1);
     this.add.image(0, 0, "cafeteria-bg").setOrigin(0).setDepth(0);
@@ -316,6 +327,7 @@ export class LunchScene extends Phaser.Scene {
     this.deco = this.add.image(DECO.x, DECO.standY, "deco-idle").setOrigin(0.5, 1).setDepth(9).setMask(ourMask);
     this.mila = this.add.image(MILA.x, MILA.y, "mila-peek").setOrigin(0.5, 1).setDepth(10).setMask(ourMask);
     this.ourTable = this.add.image(OUR_TABLE.x, OUR_TABLE.y, "our-table").setOrigin(0.5, 0).setDepth(11);
+    this.duckZone = this.add.zone(0, 0, DUCK_ZONE.width, 100).setOrigin(0).setDepth(11).setInteractive();
     this.buildTableProps();
     for (const spot of AMMO_SPOTS) {
       this.ammoImgs.push(this.add.image(spot.x, spot.y, "sandwich").setOrigin(0.5, 1).setScale(0.62).setDepth(12).setVisible(false));
@@ -335,8 +347,12 @@ export class LunchScene extends Phaser.Scene {
 
     this.setupInput();
     this.music = new StingPlayer("lunch");
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.music.destroy());
-    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.music.destroy());
+    const stopMusic = () => this.music.destroy();
+    this.events.once(Phaser.Scenes.Events.DESTROY, stopMusic);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      stopMusic();
+      this.events.off(Phaser.Scenes.Events.DESTROY, stopMusic);
+    });
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this));
     this.onResize();
@@ -393,6 +409,10 @@ export class LunchScene extends Phaser.Scene {
     this.cameras.main.setScroll(0, frame.top);
     this.ourMaskShape.setY(dy);
     this.ourTable.setY(OUR_TABLE.y + dy);
+    const zoneTop = OUR_TABLE.y + DUCK_ZONE.below + dy;
+    const zoneHeight = Math.max(100, frame.top + (portrait ? frame.height : H) - zoneTop);
+    this.duckZone.setPosition(0, zoneTop).setSize(DUCK_ZONE.width, zoneHeight);
+    this.duckZone.input?.hitArea.setTo(0, 0, DUCK_ZONE.width, zoneHeight);
     this.props.forEach((img) => img.setY(TABLE_PROPS.y + dy));
     this.napkins.forEach((img) => img.visible && img.getData("seated") && img.setY(TABLE_PROPS.y - 20 + dy));
     this.ammoImgs.forEach((img, i) => img.setY(this.ammoY(i)));
@@ -437,17 +457,38 @@ export class LunchScene extends Phaser.Scene {
 
   private buildMenu() {
     const m = this.copy.menu;
-    const chalk = (x: number, y: number, text: string, size: number, alpha: number) =>
-      this.add.text(x, y, text, { fontFamily: this.ctx.fonts.hand, fontSize: `${size}px`, color: "#e8f5ee" }).setAlpha(alpha).setDepth(0.5);
+    const chalk = (x: number, y: number, text: string, size: number, alpha: number) => {
+      const t = this.add.text(x, y, text, { fontFamily: this.ctx.fonts.hand, fontSize: `${size}px`, color: "#e8f5ee" }).setAlpha(alpha).setDepth(0.5).setData("alpha", alpha);
+      this.menuParts.push(t);
+      return t;
+    };
     chalk(MENU_BOARD.titleX, MENU_BOARD.titleY, m.title, 34, 0.9).setOrigin(0.5).setAngle(-1.5);
     chalk(MENU_BOARD.specialX, MENU_BOARD.specialY, m.special, 28, 0.88).setOrigin(0, 0.5).setAngle(-2);
-    const dots = this.add.graphics().setDepth(0.5).fillStyle(0xe8f5ee, 0.5);
+    const dots = this.add.graphics().setDepth(0.5).fillStyle(0xe8f5ee, 0.5).setData("alpha", 1);
+    this.menuParts.push(dots);
     m.prices.forEach(([item, price], i) => {
       const y = MENU_BOARD.rowY + i * MENU_BOARD.rowGap;
       const a = chalk(MENU_BOARD.left, y, item, 25, 0.85).setOrigin(0, 0.5);
       const b = chalk(MENU_BOARD.right, y, price, 25, 0.85).setOrigin(1, 0.5);
       for (let x = a.x + a.width + 10; x < b.x - b.width - 8; x += 12) dots.fillCircle(x, y + 7, 1.8);
     });
+  }
+
+  private flash(text: string, color: string, hold: number, sub = "", tone: BannerTone = "alert") {
+    this.hud.flash(text, color, hold, sub, tone);
+    if (this.frame.kind !== "landscape" || !this.menuParts.length) return;
+    this.dimMenu(true);
+    this.menuDim?.remove();
+    this.menuDim = this.time.delayedCall(hold + 250, () => this.dimMenu(false));
+  }
+
+  private dimMenu(on: boolean) {
+    this.tweens.killTweensOf(this.menuParts);
+    for (const part of this.menuParts) {
+      const alpha = (part.getData("alpha") as number) * (on ? 0.18 : 1);
+      if (this.ctx.reducedMotion) part.setAlpha(alpha);
+      else this.tweens.add({ targets: part, alpha, duration: on ? 120 : 260 });
+    }
   }
 
   private buildTableProps() {
@@ -629,7 +670,7 @@ export class LunchScene extends Phaser.Scene {
       }
     }));
     this.input.on("pointerdown", (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (over.includes(this.hud.duckHit)) {
+      if (over.includes(this.hud.duckHit) || over.includes(this.duckZone)) {
         this.duckPointer = p.id;
         return;
       }
@@ -661,7 +702,7 @@ export class LunchScene extends Phaser.Scene {
     this.time.delayedCall(320, () => {
       if (this.tutorial === "throw") this.hud.showPointer(r.face().x, r.face().y);
     });
-    this.milaSay(this.copy.tutorial.tapSay, 5000, "shout", true);
+    this.milaSay(this.touch ? this.copy.tutorial.tapSay : this.copy.tutorial.clickSay, 5000, "shout", true);
     this.announce(this.copy.tutorial.tapAnnounce);
   }
 
@@ -713,11 +754,11 @@ export class LunchScene extends Phaser.Scene {
     this.hud.setStreak(0);
     this.updateScore();
     this.hud.setTimer(ROUND_MS, ROUND_MS, false);
-    this.hud.flash(this.copy.countdown.title, "#ffc83d", 700, this.copy.countdown.sub);
+    this.flash(this.copy.countdown.title, "#ffc83d", 700, this.copy.countdown.sub);
     this.sfx("beep", 0.8);
     this.announce(this.copy.countdown.announce);
     this.time.delayedCall(COUNTDOWN_MS, () => {
-      this.hud.flash(this.copy.countdown.go, "#93cf4c", 500);
+      this.flash(this.copy.countdown.go, "#93cf4c", 500);
       this.sfx("go", 0.9);
       this.mode = "playing";
       this.roundStart = this.t;
@@ -778,7 +819,7 @@ export class LunchScene extends Phaser.Scene {
     for (const r of this.rivals) {
       if (r.visible && r.state !== "lowering") r.lower(() => (r.readyAt = this.t + 150));
     }
-    this.hud.flash(this.copy.brawl.title, "#ffc83d", 1300, this.copy.brawl.sub);
+    this.flash(this.copy.brawl.title, "#ffc83d", 1300, this.copy.brawl.sub);
     this.sfx("crowd", 1);
     this.milaSay(this.copy.brawl.say, 2000, "cheer", true);
     this.announce(this.copy.brawl.announce);
@@ -876,7 +917,7 @@ export class LunchScene extends Phaser.Scene {
           r.startWindup(this.t, tut ? 2200 : lesson ? 1200 : phase.windup * r.def.windup);
           this.sfx("windup", 0.7);
           if (tut) {
-            this.milaSay(this.copy.tutorial.duckSay, 3200, "shout", true);
+            this.milaSay(this.touch ? this.copy.tutorial.duckSayTouch : this.copy.tutorial.duckSay, 3200, "shout", true);
             this.hud.pulseDuck(true);
           } else {
             this.announce(this.copy.pudding.incoming(r.slot.key), "windup", 900);
@@ -979,7 +1020,7 @@ export class LunchScene extends Phaser.Scene {
     this.slowScale = CATCH.lessonScale;
     this.hud.showPointer(p.img.x, p.img.y);
     this.hideBubbles();
-    this.hud.flash(this.copy.catch.lessonTitle, "#93cf4c", 1400, this.keyboardUsed ? this.copy.catch.lessonKeys : this.copy.catch.lessonTap);
+    this.flash(this.copy.catch.lessonTitle, "#93cf4c", 1400, this.keyboardUsed ? this.copy.catch.lessonKeys : this.touch ? this.copy.catch.lessonTap : this.copy.catch.lessonClick);
     this.announce(this.copy.catch.lessonAnnounce);
     if (this.tutorial === "catch") return;
     this.catchLesson = false;
@@ -1076,8 +1117,9 @@ export class LunchScene extends Phaser.Scene {
     this.incoming = Math.max(0, this.incoming - 1);
     if (this.tutorial === "catch" && thrower === this.tutorialRival) {
       this.tweens.add({ targets: img, alpha: 0, duration: 200, onComplete: () => img.destroy() });
-      this.milaSay(this.copy.tutorial.catchMissed, 2600, "shout", true);
-      this.announce(this.copy.tutorial.catchMissed);
+      const missed = this.touch ? this.copy.tutorial.catchMissed : this.copy.tutorial.catchMissedClick;
+      this.milaSay(missed, 2600, "shout", true);
+      this.announce(missed);
       this.time.delayedCall(2000, () => this.endTutorial());
       return;
     }
@@ -1152,6 +1194,7 @@ export class LunchScene extends Phaser.Scene {
     this.hud.setLives(this.lives);
     this.useNapkin(this.lives);
     this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.ouch) as string, 1100, "shout");
+    this.neighborLaugh(null);
     if (this.lives <= 0) {
       this.lose();
       return;
@@ -1312,6 +1355,16 @@ export class LunchScene extends Phaser.Scene {
     this.rivalHit(r, food);
   }
 
+  private neighborLaugh(source: Rival | null) {
+    if (this.mode !== "playing" || this.t - this.lastLaughAt < 2200 || Math.random() > 0.6) return;
+    const pool = this.rivals.filter((r) => r !== source && r.state === "up" && !r.brawl);
+    const near = source ? pool.filter((r) => Math.abs(r.slot.key - source.slot.key) === 1) : [];
+    const r = Phaser.Utils.Array.GetRandom(near.length ? near : pool) as Rival | undefined;
+    if (!r?.laughAt()) return;
+    this.lastLaughAt = this.t;
+    if (Math.random() < 0.35) r.taunt(Phaser.Utils.Array.GetRandom(this.copy.laughAt) as string);
+  }
+
   private foodNews(key: string, say: string, message: string) {
     if (this.mode !== "playing") return;
     if (!this.taught.has(key)) {
@@ -1381,6 +1434,7 @@ export class LunchScene extends Phaser.Scene {
     if (this.ctx.reducedMotion) img.destroy();
     else this.tweens.add({ targets: img, x: img.x + Phaser.Math.Between(-90, 90), y: img.y - 110, angle: 320, alpha: 0, duration: 420, ease: "Quad.easeOut", onComplete: () => img.destroy() });
     this.foodNews("slip", this.copy.food.slipSay, this.copy.food.slipAnnounce(r.slot.key));
+    this.neighborLaugh(r);
   }
 
   private splash(source: Rival) {
@@ -1454,7 +1508,7 @@ export class LunchScene extends Phaser.Scene {
       this.sfx("bonk", 0.9);
       this.hitScore += SCORE.bigHurt;
       this.word(this.copy.throwing.ouch, f.x, top - 40, "#fbf5e6", back ? 36 : 44);
-      this.popScore(`+${SCORE.bigHurt}`, f.x, top + 4);
+      this.popScore(`+${SCORE.bigHurt}`, f.x + 64 * r.scale, f.y, undefined, 36);
       this.updateScore();
       return;
     }
@@ -1474,11 +1528,15 @@ export class LunchScene extends Phaser.Scene {
       this.time.delayedCall(this.ctx.reducedMotion ? 0 : 240, () => this.sfx("plop", 0.9));
       if (this.interrupts === 1 || Math.random() < 0.25) this.milaSay(this.copy.throwing.interruptSay, 1100, "cheer");
       this.announce(this.copy.throwing.interruptAnnounce, "interrupt", 2500);
+    } else if (out.early && this.mode === "playing" && !this.taught.has("early")) {
+      this.taught.add("early");
+      this.milaSay(this.copy.throwing.earlySay, 1800, "shout");
+      this.announce(this.copy.throwing.earlyAnnounce);
     }
     this.updateScore();
     const word = bonus ? this.copy.throwing.interruptWord : food === "pudding" ? this.copy.catch.hitWord : (Phaser.Utils.Array.GetRandom(this.copy.hitWords[food]) as string);
     this.word(word, f.x, top - 44, bonus ? "#63d6c1" : "#ffc83d", back ? 38 : 48);
-    this.popScore(`+${points + combo + bonus}`, f.x, top + 4, r.brawl ? "#ffc83d" : "#9df0dc");
+    this.popScore(`+${points + combo + bonus}`, f.x + 64 * r.scale, f.y, r.brawl ? "#ffc83d" : "#9df0dc", 36);
     this.burst(f.x, f.y, 4, "spark");
     this.hud.setStreak(this.streak);
     if (this.streak > 0 && this.streak % 5 === 0) {
@@ -1486,6 +1544,7 @@ export class LunchScene extends Phaser.Scene {
       this.milaSay(Phaser.Utils.Array.GetRandom(this.copy.cheer) as string, 1000, "cheer");
     }
     this.announce(this.copy.throwing.hit, "hit", 1200);
+    this.neighborLaugh(r);
     if (this.tutorial === "throw" && r === this.tutorialRival) {
       this.hud.hidePointer();
       this.milaSay(this.copy.tutorial.thrown, 1400, "cheer", true);
@@ -1504,9 +1563,9 @@ export class LunchScene extends Phaser.Scene {
     }
   }
 
-  private popScore(text: string, x: number, y: number, color = "#9df0dc") {
+  private popScore(text: string, x: number, y: number, color = "#9df0dc", rise = 60) {
     const t = cartoonText(this, x, y, text, { size: 32, color, font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(15);
-    this.tweens.add({ targets: t, y: y - 60, alpha: 0, duration: 800, ease: "Quad.easeOut", onComplete: () => t.destroy() });
+    this.tweens.add({ targets: t, y: y - rise, alpha: 0, duration: 800, ease: "Quad.easeOut", onComplete: () => t.destroy() });
   }
 
   private updateScore() {
@@ -1587,6 +1646,8 @@ export class LunchScene extends Phaser.Scene {
         this.sfx("duck", 0.6);
         this.hideBubbles();
         if (this.poseUntil && this.deco.texture.key === "deco-throw") this.setPose("idle");
+      } else if (this.frame.kind === "landscape" && this.bubble.container.visible) {
+        this.tweens.add({ targets: this.bubble.container, y: MILA.y - 240, duration: ms + 30, ease: "Quad.easeOut" });
       }
     }
     if (this.ducking) {
@@ -1636,11 +1697,11 @@ export class LunchScene extends Phaser.Scene {
       this.tweens.add({ targets: [this.deco, this.mila], y: "-=30", duration: 180, yoyo: true, repeat: 2, ease: "Quad.easeOut" });
     }
     this.word(this.copy.win.ring, this.bell.x, this.bell.y + 120, "#ffc83d", 56);
-    this.hud.flash(this.copy.win.title, "#ffc83d", 1500, this.copy.win.sub, "headline");
-    this.sulkAway();
+    this.flash(this.copy.win.title, "#ffc83d", 1500, this.copy.win.sub, "headline");
+    this.standUp(true);
     this.burst(DECO.x, 520 + this.frame.drop, 14);
     this.announce(this.copy.win.announce);
-    this.time.delayedCall(1900, () => this.finish(true));
+    this.time.delayedCall(2500, () => this.finish(true));
   }
 
   private lose() {
@@ -1650,24 +1711,10 @@ export class LunchScene extends Phaser.Scene {
     this.mila.setTexture("mila-shout");
     this.sfx("lose", 1);
     this.time.delayedCall(700, () => this.music.play(LUNCH_FINALE.lose));
-    this.hud.flash(this.copy.lose.title, "#ef4f43", 1500, this.copy.lose.sub, "headline");
-    this.gloat();
+    this.flash(this.copy.lose.title, "#ef4f43", 1500, this.copy.lose.sub, "headline");
+    this.standUp(false);
     this.announce(this.copy.lose.announce);
     this.time.delayedCall(2000, () => this.finish(false));
-  }
-
-  private sulkAway() {
-    let spoke = false;
-    for (const r of this.rivals) {
-      if (!r.visible || r.state === "lowering") continue;
-      const line = spoke ? undefined : (Phaser.Utils.Array.GetRandom(this.copy.ending.sulk) as string);
-      if (!r.react("huff", line)) {
-        r.lower(() => undefined);
-        continue;
-      }
-      spoke = true;
-      this.time.delayedCall(520, () => r.visible && r.state !== "lowering" && r.lower(() => undefined));
-    }
   }
 
   private rantSpot() {
@@ -1675,12 +1722,18 @@ export class LunchScene extends Phaser.Scene {
     return { backs, x: (backs[backs.length - 2].x + backs[backs.length - 1].x) / 2 };
   }
 
-  private gloat() {
+  private standUp(won: boolean) {
     const lines = this.copy.ending;
     const stopX = this.lunchLady.active ? this.lunchLady.img.x : this.rantSpot().x;
     const picked = new Map<number, Gloat>();
     let speakers = 0;
     const react = (r: Rival) => {
+      if (won) {
+        const speaks = speakers < 2 && Math.abs(r.x - stopX) > 200;
+        if (speaks) speakers += 1;
+        r.react("huff", speaks ? (Phaser.Utils.Array.GetRandom(lines.sulk) as string) : undefined);
+        return;
+      }
       const [main, alt] = PERSONALITY[r.def.kind];
       const kind = [r.slot.key - 1, r.slot.key + 1].some((k) => picked.get(k) === main) ? alt : main;
       picked.set(r.slot.key, kind);
@@ -1706,22 +1759,23 @@ export class LunchScene extends Phaser.Scene {
       this.time.delayedCall(r.state === "rising" ? 260 : 60 + standing * 110, () => react(r));
       standing += 1;
     }
-    this.time.delayedCall(420, () => this.ladyStorms());
+    this.time.delayedCall(420, () => this.ladyStorms(won));
   }
 
-  private ladyStorms() {
+  private ladyStorms(won: boolean) {
     if (this.mode !== "ending" && this.mode !== "over") return;
     const { backs, x: stopX } = this.rantSpot();
     this.lunchLady.storm(frameX(this.frame, LUNCH_LADY.enterX), stopX, () => {
       const x = this.lunchLady.img.x;
       this.sfx("whistle", 0.7);
-      this.word(this.copy.lady.whistle, x, this.lunchLady.top() - 34, "#fbf5e6", 46);
+      this.word(this.copy.lady.whistle, x + 130, this.lunchLady.top() + 40, "#fbf5e6", 46);
       let spoke = false;
       for (const r of backs) {
         if (Math.abs(r.x - x) > 200 || !r.react("surprise", spoke ? undefined : this.copy.ending.surprise)) continue;
         spoke = true;
         this.time.delayedCall(380, () => r.visible && r.state !== "lowering" && r.lower(() => undefined));
       }
+      if (won) this.time.delayedCall(250, () => this.milaSay(this.copy.win.ladySay, 1600, "cheer", true));
     });
   }
 
@@ -1847,7 +1901,7 @@ export class LunchScene extends Phaser.Scene {
     const sec = Math.ceil(left / 1000);
     if (left <= 10000 && !this.warnedLast) {
       this.warnedLast = true;
-      this.hud.flash(this.copy.lastSeconds.title, "#ef4f43", 900);
+      this.flash(this.copy.lastSeconds.title, "#ef4f43", 900);
       this.announce(this.copy.lastSeconds.announce);
     }
     if (left <= 10000 && sec !== this.lastSecond) {

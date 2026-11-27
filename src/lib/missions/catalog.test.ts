@@ -42,7 +42,7 @@ function labClaim(level: string, parts: PlacedPart[]): RunClaim {
 }
 
 function lunch(overrides: Record<string, number> = {}): RunClaim {
-  const s = { hits: 30, hitPoints: 4800, interrupts: 2, interruptPoints: 200, comboPoints: 900, lives: 1, hitsTaken: 2, lunchLadyHits: 1, bestStreak: 6, throws: 44, timeMs: 75_000, ...overrides };
+  const s = { hits: 30, hitPoints: 4800, interrupts: 2, interruptPoints: 400, comboPoints: 900, lives: 1, hitsTaken: 2, lunchLadyHits: 1, bestStreak: 6, throws: 44, timeMs: 75_000, ...overrides };
   const won = s.lives > 0;
   const score = Math.max(0, s.hitPoints + s.interruptPoints + s.comboPoints + (won ? s.lives * 300 : 0) + (won && s.hitsTaken === 0 ? 500 : 0) - s.lunchLadyHits * 200);
   return { won, score, stars: won ? (score >= 11500 ? 3 : score >= 7500 ? 2 : 1) : 0, stats: s };
@@ -53,7 +53,7 @@ const LUNCH_PROOFS: Record<string, RunClaim> = {
   "food-spotless": lunch({ lives: 3, hitsTaken: 0 }),
   "food-two-stars": lunch({ hits: 40, hitPoints: 6400, comboPoints: 1400, throws: 52 }),
   "food-lunch-lady": lunch({ lunchLadyHits: 0 }),
-  "food-right-on-time": lunch({ interrupts: 5, interruptPoints: 500 }),
+  "food-right-on-time": lunch({ interrupts: 12, interruptPoints: 2400 }),
 };
 
 function streetClaim(level: string, launches: Launch[]): RunClaim {

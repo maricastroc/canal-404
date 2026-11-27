@@ -38,7 +38,7 @@ const EN: Record<string, MissionText> = {
   },
   "food-spotless": {
     title: "Not a single stain",
-    objective: "Make it to the bell without getting hit by a single pudding.",
+    objective: "Make it to the bell without getting hit by a single pudding, with at least 5,000 points.",
   },
   "food-two-stars": {
     title: "Two-star recess",
@@ -46,11 +46,11 @@ const EN: Record<string, MissionText> = {
   },
   "food-lunch-lady": {
     title: "Lunch lady never saw it",
-    objective: "Make it to the bell without hitting the lunch lady.",
+    objective: "Make it to the bell without hitting the lunch lady, with at least 5,000 points.",
   },
   "food-right-on-time": {
     title: "Just in time",
-    objective: "Hit 5 classmates just in time, right as they raise their pudding.",
+    objective: "Hit 12 classmates just in time, once the ! of whoever is about to throw has turned red.",
   },
   "street-five-launches": {
     title: "Thrifty aim",

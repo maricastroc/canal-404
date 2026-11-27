@@ -83,7 +83,7 @@ The room already had a TV with channels, a mascot with lines and many objects, s
 | Game | How the channel checks | Missions |
 | --- | --- | --- |
 | Laboratório | **Replayed**: parts, machine time and touched parts come from the server simulation | 7 missions; each has a proof machine in `catalog.test.ts` that the server accepts and that meets the goal |
-| Guerra de Lanche | **Checked**: the stats must be consistent (0004); a best streak now also needs the combo points it would have earned | 5 missions based on numbers the game already defines (its 2-star score, its clean-round bonus, its streak achievement) |
+| Guerra de Lanche | **Checked**: the stats must be consistent (0004); a best streak now also needs the combo points it would have earned | 5 missions based on numbers the game already defines (its 2-star score, its clean-round bonus, its streak achievement). Since 2026-11-27 (version 2 of three entries) the clean round and the lunch lady missions also ask for 5,000 points, because holding DUCK for the whole round met both without a single throw, and the just-in-time mission asks for 12 red-! hits |
 | Rua Sem Saída (3.4) | **Checked** | 4 missions: win with at most 5 launches, a combo, 3 stars (2,050 points), 7 of the 10 yard things out of place |
 | Operação: Recreio (3.4) | **Checked**; every goal also asks for a run that did not come back from a bell | 4 missions: the corridor with no bumps, the 4 yard stickers, the 9 yard monitors, the principal with at most 3 bumps |
 | Guerra do Pijama (3.4) | **Checked**; the forced kid is checked from the run's stats | 4 missions: win in the bedroom taking at most 4 pillows, knock out both rivals in the living room, finish the living room with 7 energy or more, win in the yard as Lia |
