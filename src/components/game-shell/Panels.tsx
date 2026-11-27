@@ -15,7 +15,7 @@ import { Mascot404 } from "@/components/mascot/Mascot404";
 import { KeyText } from "@/components/ui/KeyText";
 import { InkButton, InkLink } from "@/components/ui/Primitives";
 import type { GameMeta } from "@/games/registry";
-import type { GameResult, IntroMilestone, IntroProgress, LevelGoal, ResultFact, ResultGoal, ResultStanding } from "@/games/types";
+import type { GameResult, IntroChallenges, IntroMilestone, IntroProgress, LevelGoal, ResultFact, ResultGoal, ResultStanding } from "@/games/types";
 import { useCopy, useLocale } from "@/i18n/client";
 import { localized } from "@/i18n/copy";
 import { countOf, formatNumber, ordinal } from "@/i18n/format";
@@ -139,6 +139,7 @@ const COPY = localized({
     goals: "Desafios da pista",
     goalDone: "Cumprido",
     goalNew: "Novo!",
+    goalsCount: (count: number, total: number) => `${count} de ${total} feitos`,
     levelOf: (word: LevelWord, n: number, total: number, title: string) => `${word[0].toUpperCase() + word.slice(1)} ${n} de ${total} · ${title}`,
     total: "Total",
     retryMission: "Tentar a missão de novo",
@@ -211,6 +212,7 @@ const COPY = localized({
     goals: "Track challenges",
     goalDone: "Done",
     goalNew: "New!",
+    goalsCount: (count: number, total: number) => `${count} of ${total} done`,
     levelOf: (word: LevelWord, n: number, total: number, title: string) => `${LEVEL[word][0].toUpperCase() + LEVEL[word].slice(1)} ${n} of ${total} · ${title}`,
     total: "Total",
     retryMission: "Try the mission again",
@@ -371,6 +373,34 @@ function MilestoneLine({ milestone }: { milestone: IntroMilestone }) {
   );
 }
 
+function ChallengeList({ challenges }: { challenges: IntroChallenges }) {
+  const copy = useCopy(COPY);
+  const count = challenges.goals.filter((goal) => goal.done).length;
+  return (
+    <section className="mt-5 shorter:mt-3">
+      <PickHeader title={challenges.title} meta={copy.goalsCount(count, challenges.goals.length)} />
+      <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+        {challenges.goals.map((goal) => (
+          <li key={goal.label} className={`flex items-start gap-2 rounded-xl border-[3px] px-3 py-2.5 ${goal.done ? "border-ink bg-mint" : "border-dashed border-ink/30"}`}>
+            <span aria-hidden className={`mt-px grid size-5 shrink-0 place-items-center rounded-full border-2 ${goal.done ? "border-ink bg-cream text-ink" : "border-ink/30"}`}>
+              {goal.done ? <CheckIcon className="size-3" /> : null}
+            </span>
+            <span className={`min-w-0 text-sm font-bold leading-tight ${goal.done ? "text-ink" : "text-ink-soft"}`}>
+              {goal.label}
+              {goal.done ? <span className="sr-only">{` · ${copy.goalDone}`}</span> : null}
+              {goal.marks ? (
+                <span className="mt-1.5 block">
+                  <RosterMarks marks={goal.marks} label={goal.marksLabel} size="md" />
+                </span>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function StarRule({ rule }: { rule: NonNullable<GameMeta["starRule"]> }) {
   const copy = useCopy(COPY);
   return (
@@ -470,7 +500,7 @@ function PickCard({
                     {goal.done && goalDone ? <span className="sr-only">{` · ${goalDone}`}</span> : null}
                     {goal.marks ? (
                       <span className="mt-1 block">
-                        <RosterMarks marks={goal.marks} size="md" />
+                        <RosterMarks marks={goal.marks} label={goal.marksLabel} size="md" />
                       </span>
                     ) : null}
                   </span>
@@ -606,6 +636,7 @@ export function IntroPanel({
   levelGoals = null,
   progress = null,
   milestone = null,
+  challenges = null,
   showHelp,
   onToggleHelp,
   onPlay,
@@ -622,6 +653,7 @@ export function IntroPanel({
   levelGoals?: LevelGoal[][] | null;
   progress?: IntroProgress | null;
   milestone?: IntroMilestone | null;
+  challenges?: IntroChallenges | null;
   showHelp: boolean;
   onToggleHelp: () => void;
   onPlay: (level?: number) => void;
@@ -747,6 +779,7 @@ export function IntroPanel({
             <ControlsList game={game} />
           </div>
         ) : null}
+        {challenges && challenges.goals.length > 0 && !picking && !adventure && !mission && !missionPending ? <ChallengeList challenges={challenges} /> : null}
         {adventure && !showHelp ? (
           <div className="mt-5 shorter:mt-3">
             <PickHeader title={copy.adventure} meta={recordText} />
@@ -1265,7 +1298,7 @@ function Goals({ goals, label, done, fresh }: { goals: ResultGoal[]; label: stri
               {goal.label}
               {goal.done ? <span className="sr-only">{` · ${done}`}</span> : null}
             </span>
-            {goal.marks ? <RosterMarks marks={goal.marks} delay={0.8 + i * 0.08} /> : null}
+            {goal.marks ? <RosterMarks marks={goal.marks} label={goal.marksLabel} delay={0.8 + i * 0.08} /> : null}
             {goal.fresh ? (
               <span className="absolute -right-1.5 -top-2.5 rotate-6 rounded-md border-2 border-ink bg-bubblegum px-1 font-display text-[11px] uppercase leading-tight text-ink">{fresh}</span>
             ) : null}

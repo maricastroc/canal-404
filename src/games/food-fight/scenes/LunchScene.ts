@@ -32,10 +32,12 @@ import {
   type Phase,
   type RivalKind,
 } from "../config";
-import { COPY, type FoodFightCopy } from "../copy";
+import { freshFeats, settleChallenges, type RoundFeats } from "../challenges";
+import { challengeGoals, COPY, type FoodFightCopy } from "../copy";
 import { LANDSCAPE_FRAME, SCENERY, frameFor, frameX, landscapeX, landscapeY, rowShift, walkScale, wallSplat, type Frame } from "../layout";
 import { LUNCH_SFX, type LunchSfx } from "../sounds";
 import { LUNCH_FINALE } from "../music";
+import { loadSave, writeSave } from "../save";
 import { Bubble, cartoonText } from "../../kit/ui";
 import { insetsOf } from "../../kit/insets";
 import { coarsePointer } from "../../kit/touch";
@@ -74,32 +76,12 @@ function bezier(a: Pt, c: Pt, b: Pt, k: number): Pt {
   return { x: u * u * a.x + 2 * u * k * c.x + k * k * b.x, y: u * u * a.y + 2 * u * k * c.y + k * k * b.y };
 }
 
-const SAVE_KEY = "canal404:food-fight:v1";
 type Gloat = Extract<Reaction, "taunt" | "cheer" | "laugh">;
 const PERSONALITY: Record<RivalKind, [Gloat, Gloat]> = { cap: ["taunt", "laugh"], speedy: ["cheer", "taunt"], big: ["laugh", "cheer"] };
 const SIDE_BUBBLE = { x: MILA.x + 112, y: MILA.y - 150 };
 
-type FoodFightSave = { tutorialDone?: boolean; catchDone?: boolean; catchLessons?: number };
-
-function readSave(): FoodFightSave {
-  try {
-    const raw = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}");
-    return raw && typeof raw === "object" ? raw : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeSave(patch: FoodFightSave) {
-  try {
-    window.localStorage.setItem(SAVE_KEY, JSON.stringify({ ...readSave(), ...patch, v: 1 }));
-  } catch {
-    return;
-  }
-}
-
 function tutorialSeen() {
-  return readSave().tutorialDone === true;
+  return loadSave().tutorialDone;
 }
 
 function rememberTutorial() {
@@ -194,6 +176,7 @@ export class LunchScene extends Phaser.Scene {
   private menuParts: (Phaser.GameObjects.Text | Phaser.GameObjects.Graphics)[] = [];
   private menuDim?: Phaser.Time.TimerEvent;
   private touch = false;
+  private feats: RoundFeats = freshFeats();
 
   constructor() {
     super("lunch");
@@ -265,6 +248,7 @@ export class LunchScene extends Phaser.Scene {
     this.slowScale = 1;
     this.slowShot = null;
     this.catchLesson = false;
+    this.feats = freshFeats();
   }
 
   create() {
@@ -749,8 +733,9 @@ export class LunchScene extends Phaser.Scene {
     this.bestStreak = 0;
     this.interrupts = 0;
     this.throws = 0;
-    const save = readSave();
-    this.catchLesson = !this.registry.get("catchDone") && !save.catchDone && (save.catchLessons ?? 0) < CATCH.lessonRounds;
+    this.feats = freshFeats();
+    const save = loadSave();
+    this.catchLesson = !this.registry.get("catchDone") && !save.catchDone && save.catchLessons < CATCH.lessonRounds;
     this.hud.setStreak(0);
     this.updateScore();
     this.hud.setTimer(ROUND_MS, ROUND_MS, false);
@@ -1024,7 +1009,7 @@ export class LunchScene extends Phaser.Scene {
     this.announce(this.copy.catch.lessonAnnounce);
     if (this.tutorial === "catch") return;
     this.catchLesson = false;
-    writeSave({ catchLessons: (readSave().catchLessons ?? 0) + 1 });
+    writeSave({ catchLessons: loadSave().catchLessons + 1 });
   }
 
   private endSlow() {
@@ -1515,6 +1500,7 @@ export class LunchScene extends Phaser.Scene {
     this.sfx("hit", 0.9);
     if (food === "apple") this.sfx("bonk", 0.5, 1.3);
     this.hits += 1;
+    if (this.mode === "playing") this.countHit(r, food);
     this.streak += 1;
     this.bestStreak = Math.max(this.bestStreak, this.streak);
     const combo = this.streak >= 2 ? SCORE.comboStep * (this.streak - 1) : 0;
@@ -1561,6 +1547,11 @@ export class LunchScene extends Phaser.Scene {
       this.announce(line);
       this.time.delayedCall(caught ? 1300 : 2400, () => this.endTutorial());
     }
+  }
+
+  private countHit(r: Rival, food: Food | "pudding") {
+    if (r.brawl) this.feats.brawlHits += 1;
+    if (food === "pudding" && !this.feats.returned.includes(r.def.kind)) this.feats.returned.push(r.def.kind);
   }
 
   private popScore(text: string, x: number, y: number, color = "#9df0dc", rise = 60) {
@@ -1819,6 +1810,10 @@ export class LunchScene extends Phaser.Scene {
     if (won) achievements.push("fight-win");
     if (won && this.hitsTaken === 0) achievements.push("fight-clean");
     if (this.bestStreak >= 10) achievements.push("fight-sharpshooter");
+    this.feats.confiscated = this.confiscated;
+    const book = loadSave();
+    const challenges = settleChallenges(book, won, this.feats);
+    writeSave({ feats: book.feats, returned: book.returned });
     this.ctx.onEvent({ type: "score", score });
     const result: GameResult = {
       won,
@@ -1842,6 +1837,7 @@ export class LunchScene extends Phaser.Scene {
       copy: won ? text.won : text.lost,
       summary: text.summary(this.hits, this.bestStreak, this.confiscated),
       ...(won && stars < 3 ? { starHint: text.starHint((stars === 1 ? SCORE.twoStars : SCORE.threeStars) - score, stars + 1) } : {}),
+      ...challengeGoals(challenges, this.ctx.locale),
     };
     this.ctx.onEvent({ type: "finished", result });
   }

@@ -19,12 +19,12 @@ const COPY = localized({
   },
 });
 
-export function RosterMarks({ marks, size = "sm", delay = 0 }: { marks: ResultMark[]; size?: "sm" | "md"; delay?: number }) {
+export function RosterMarks({ marks, label, size = "sm", delay = 0 }: { marks: ResultMark[]; label?: string; size?: "sm" | "md"; delay?: number }) {
   const copy = useCopy(COPY);
   const reduced = useReducedMotion();
   const dot = size === "md" ? "size-6 border-2" : "size-[1.15rem] border-2 sm:size-6";
   return (
-    <span role="list" aria-label={copy.list} className={`flex ${size === "md" ? "gap-1" : "gap-0.5 sm:gap-1"}`}>
+    <span role="list" aria-label={label ?? copy.list} className={`flex ${size === "md" ? "gap-1" : "gap-0.5 sm:gap-1"}`}>
       {marks.map((mark, i) => (
         <motion.span
           key={mark.label}
@@ -37,7 +37,7 @@ export function RosterMarks({ marks, size = "sm", delay = 0 }: { marks: ResultMa
         >
           {mark.done || mark.locked ? null : <span aria-hidden className="absolute inset-0 rounded-full bg-cream/55" />}
           {mark.locked ? <LockIcon className={`text-ink/45 ${size === "md" ? "size-3" : "size-2.5 sm:size-3"}`} /> : null}
-          <span className="sr-only">{copy.mark(mark.label, mark.done ? "done" : mark.locked ? "locked" : "missing")}</span>
+          <span className="sr-only">{mark.say ?? copy.mark(mark.label, mark.done ? "done" : mark.locked ? "locked" : "missing")}</span>
         </motion.span>
       ))}
     </span>
