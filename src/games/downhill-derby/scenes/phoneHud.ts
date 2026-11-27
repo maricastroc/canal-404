@@ -765,6 +765,14 @@ export class PhoneHud implements RaceHud {
     this.tags.splice(i, 1);
   }
 
+  unshout(key: string) {
+    const cur = this.headline;
+    if (!cur || cur.key !== key) return;
+    cur.fade = LEAVE;
+    this.leaving.push(cur);
+    this.headline = null;
+  }
+
   tip(text: string, life = 2.8) {
     this.fitDockText(this.tipText, text);
     this.tipLife = life;
