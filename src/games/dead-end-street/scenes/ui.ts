@@ -8,6 +8,7 @@ import type { PhaseDef } from "../phases";
 
 export { Bubble, CREAM_HEX, INK, INK_HEX, cartoonText, fitText, type Fonts } from "../../kit/ui";
 import { INK, INK_HEX, cartoonText, darkPanel, fitText, paper, type Fonts } from "../../kit/ui";
+import { pressed } from "../../kit/press";
 
 type TargetIcon = { img: Phaser.GameObjects.Image; check: Phaser.GameObjects.Container; drop: Phaser.GameObjects.Container | null; base: number };
 
@@ -197,8 +198,8 @@ export class Hud implements StreetHud {
       icon.setScale(Math.min(34 / icon.width, 34 / icon.height));
       const count = cartoonText(scene, 16, 18, "", { size: 20, color: INK, font: fonts.display, stroke: 0, shadow: false }).setOrigin(0.5);
       const box = scene.add.container(x, mid + 12, [disc, icon, count]).setSize(56, 56);
-      box.setInteractive(new Phaser.Geom.Circle(28, 28, 30), Phaser.Geom.Circle.Contains);
-      box.on("pointerdown", () => onPick(id));
+      box.setInteractive({ hitArea: new Phaser.Geom.Circle(28, 28, 30), hitAreaCallback: Phaser.Geom.Circle.Contains, useHandCursor: true });
+      box.on("pointerdown", () => pressed(() => onPick(id)));
       this.slots.push({ id, box, disc, count, x });
       tagChildren.push(box);
     });

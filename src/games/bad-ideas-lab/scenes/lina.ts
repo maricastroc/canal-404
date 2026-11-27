@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { CREAM_HEX, INK_HEX } from "../../kit/ui";
+import { pressed } from "../../kit/press";
 import type { Vec } from "../geometry";
 
 export type Mood = "idle" | "yay" | "oops" | "watch" | "flinch" | "cover" | "close" | "wow";
@@ -49,7 +50,7 @@ export class LinaView {
 
   onTap(fn: () => void) {
     const up = (p: Phaser.Input.Pointer) => {
-      if (p.getDistance() < CUE.tap) fn();
+      if (p.getDistance() < CUE.tap) pressed(fn);
     };
     const over = (on: boolean) => this.cue.setScale(on && this.cueOn ? 1.1 : 1);
     this.img.setInteractive({ useHandCursor: true });

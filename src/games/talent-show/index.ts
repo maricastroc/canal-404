@@ -151,6 +151,12 @@ function mount(ctx: GameHostContext): GameInstance {
     if (!pointers.delete(event.pointerId)) return;
     event.preventDefault();
     scene()?.release(event.timeStamp, `p${event.pointerId}`, event.pageX, event.pageY);
+    hover(event);
+  };
+
+  const hover = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse") return;
+    ctx.parent.style.cursor = scene()?.overButton(event.pageX, event.pageY) ? "pointer" : "";
   };
 
   const keydown = (event: KeyboardEvent) => {
@@ -168,6 +174,7 @@ function mount(ctx: GameHostContext): GameInstance {
   ctx.parent.addEventListener("pointerdown", down);
   ctx.parent.addEventListener("pointerup", up);
   ctx.parent.addEventListener("pointercancel", up);
+  ctx.parent.addEventListener("pointermove", hover);
   target.addEventListener("keydown", keydown);
   window.addEventListener("keyup", keyup);
 
@@ -223,6 +230,8 @@ function mount(ctx: GameHostContext): GameInstance {
       ctx.parent.removeEventListener("pointerdown", down);
       ctx.parent.removeEventListener("pointerup", up);
       ctx.parent.removeEventListener("pointercancel", up);
+      ctx.parent.removeEventListener("pointermove", hover);
+      ctx.parent.style.cursor = "";
       target.removeEventListener("keydown", keydown);
       window.removeEventListener("keyup", keyup);
       observer.disconnect();

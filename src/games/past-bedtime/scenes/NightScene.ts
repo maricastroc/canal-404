@@ -3,6 +3,7 @@ import { getAudio } from "@/lib/audio/engine";
 import type { SoundRecipe } from "@/lib/audio/types";
 import { glyphOffset, type Fonts } from "@/games/kit/ui";
 import { reportFailedLoads } from "@/games/kit/load";
+import { pressed } from "@/games/kit/press";
 import type { Locale } from "@/i18n/locales";
 import { NIGHT_COPY, type NightCopy, type Sleeper } from "../copy";
 import { isCreaky, isFloor, isHiding, isWall, noiseDistances, pathTo } from "../sim/grid";
@@ -2144,7 +2145,7 @@ export class NightScene extends Phaser.Scene {
     const bg = this.ui.add.graphics().setDepth(25);
     this.viewChip = { box: { x: 0, y: 0, w: 0, h: 0 }, label, icon, size, bg };
     const hit = this.ui.add.zone(0, 0, 10, 10).setOrigin(0).setDepth(27).setInteractive({ useHandCursor: true });
-    hit.on("pointerup", () => this.command("view"));
+    hit.on("pointerup", () => pressed(() => this.command("view")));
     hit.setData("chip", true);
     this.viewChip.label.setData("hit", hit);
   }

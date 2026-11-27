@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import type { Fonts } from "@/games/kit/ui";
+import { pressed } from "@/games/kit/press";
 import type { NightCopy } from "../copy";
 import { partStars } from "../sim/score";
 import type { Action, Dir } from "../sim/types";
@@ -251,7 +252,7 @@ export class PhoneNotebook implements NotebookView {
     const hit = this.keep(this.scene.add.zone(0, 0, 10, 10).setOrigin(0).setInteractive({ useHandCursor: true }));
     hit.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
       ev.stopPropagation();
-      this.togglePage("moves");
+      pressed(() => this.togglePage("moves"));
     });
     hit.setData("stats", true);
     this.texts.moves.setData("hit", hit);
@@ -542,7 +543,7 @@ export class PhoneNotebook implements NotebookView {
       if (b.down !== p.id) continue;
       const hit = onCanvas && this.inside(b, p.x, p.y, this.px(14));
       this.release(b);
-      if (hit) this.fire(b.id);
+      if (hit) pressed(() => this.fire(b.id));
     }
     if (this.page?.drag && this.page.drag.id === p.id) this.page.drag = null;
   }
@@ -891,7 +892,7 @@ export class PhoneNotebook implements NotebookView {
     close.add(closeHit);
     closeHit.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
       ev.stopPropagation();
-      this.closePage();
+      pressed(() => this.closePage());
     });
     if (title.x + title.width > close.x - this.px(8)) this.shrink(title, close.x - this.px(8) - title.x, 17, 12, 1);
     const view: Rect = { x: a.x, y: a.y + this.px(54), w: a.w, h: a.h - this.px(60) };

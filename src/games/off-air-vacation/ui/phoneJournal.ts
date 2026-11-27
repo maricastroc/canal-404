@@ -232,6 +232,11 @@ export class PhoneJournal {
     this.switchTo(TABS[(i + dir + TABS.length) % TABS.length], s, area, ax, ay);
   }
 
+  overButton(px: number, py: number) {
+    if (Math.hypot(px - this.close.x, py - this.close.y) < this.close.r) return true;
+    return this.tabs.some((t) => px >= t.box.x && px <= t.box.x + t.box.w && py >= t.box.y - 8 * this.u && py <= t.box.y + t.box.h + 6 * this.u);
+  }
+
   hit(px: number, py: number, id = 0): Tab | "close" | null {
     if (Math.hypot(px - this.close.x, py - this.close.y) < this.close.r) return "close";
     for (const t of this.tabs) if (px >= t.box.x && px <= t.box.x + t.box.w && py >= t.box.y - 8 * this.u && py <= t.box.y + t.box.h + 6 * this.u) return t.id;

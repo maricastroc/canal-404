@@ -372,9 +372,9 @@ export class GarageScene extends Phaser.Scene {
       }
       const index = t.tiles.findIndex((tile) => inBox(tile, 4 * t.u));
       if (index >= 0) {
+        getAudio().play(DOWNHILL_SFX.beep);
         if (index !== this.selected) {
           this.selected = index;
-          getAudio().play(DOWNHILL_SFX.beep);
           this.redraw();
         }
         return;
@@ -660,6 +660,7 @@ export class GarageScene extends Phaser.Scene {
   private confirm() {
     const cart = CART_IDS[this.selected];
     if (!this.unlocked(cart)) {
+      getAudio().play(DOWNHILL_SFX.beep, { pitch: 0.7 });
       if (this.tall) this.tall.shake = 0.5;
       else this.cards[this.selected].shake = 0.5;
       return;
@@ -670,6 +671,7 @@ export class GarageScene extends Phaser.Scene {
 
   private flipGhost() {
     if (!this.ghostAvailable()) {
+      getAudio().play(DOWNHILL_SFX.beep, { pitch: 0.7 });
       if (this.row) this.row.shake = 0.4;
       this.host.announce(this.copy.garage.ghost("later"));
       return;
@@ -727,9 +729,9 @@ export class GarageScene extends Phaser.Scene {
         return;
       }
       const index = this.cards.findIndex((c) => this.inside(p.x, p.y, c.x, Y0 - 20, CW, CH + 20));
+      if (index >= 0) getAudio().play(DOWNHILL_SFX.beep);
       if (index >= 0 && index !== this.selected) {
         this.selected = index;
-        getAudio().play(DOWNHILL_SFX.beep);
         this.redraw();
       }
       return;

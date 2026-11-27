@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import type { Vec } from "../geometry";
 import { TALL, type Frame } from "../layout";
 import { CREAM_HEX, INK, INK_HEX, cartoonText } from "../../kit/ui";
+import { pressed } from "../../kit/press";
 import { setIcon } from "../icons";
 import type { HudSetup, Mood, StarReveal, ViewState } from "./hud";
 import { LINA_TEXTURES } from "./lina";
@@ -61,8 +62,8 @@ export class DockHud extends TouchHud {
     this.title = this.fix(cartoonText(scene, 0, 0, this.titleFull, { size: 15, color: "#ffc83d", font: fonts.display, stroke: 0, shadow: false }).setOrigin(0, 0.5).setDepth(DEPTH.rail));
     this.goalLine = this.fix(scene.add.text(0, 0, this.goalFull, { fontFamily: fonts.hand, fontSize: "14px", color: "#f7ecd4", padding: { x: 1, y: 1 } }).setOrigin(0, 0.5).setDepth(DEPTH.rail));
     this.usedLine = this.fix(cartoonText(scene, 0, 0, "", { size: 11, color: "#f7ecd4", font: fonts.display, stroke: 0, shadow: false }).setOrigin(1, 0.5).setDepth(DEPTH.rail));
-    this.titleHit = this.fix(scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0).setOrigin(0).setInteractive().setDepth(DEPTH.rail));
-    this.titleHit.on("pointerdown", () => this.toggleGoal());
+    this.titleHit = this.fix(scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true }).setDepth(DEPTH.rail));
+    this.titleHit.on("pointerdown", () => pressed(() => this.toggleGoal()));
     this.viewBtn = this.makeButton(this.copy.hud.overview, CREAM_HEX, "overview", () => this.handlers.onOverview(), { free: true, row: true });
     this.centerBtn = this.makeButton("", CREAM_HEX, "recenter", () => this.handlers.onRecenter(), { free: true });
     this.viewBtn.root.setDepth(DEPTH.rail);
@@ -73,8 +74,8 @@ export class DockHud extends TouchHud {
     this.coachText = this.fix(scene.add.text(0, 0, "", { fontFamily: fonts.display, fontSize: "15px", color: INK, padding: { x: 2, y: 2 }, lineSpacing: -2 }).setOrigin(0, 0));
     this.coachLina = this.fix(scene.add.image(0, 0, "lina").setOrigin(0, 0));
     this.coachLina.setCrop(FACE.x, FACE.y, FACE.size, FACE.size);
-    this.coachHit = this.fix(scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0).setOrigin(0).setInteractive());
-    this.coachHit.on("pointerdown", () => this.hideSay());
+    this.coachHit = this.fix(scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true }));
+    this.coachHit.on("pointerdown", () => pressed(() => this.hideSay()));
     this.coach = this.fix(scene.add.container(0, 0, [this.coachBg, this.coachLina, this.coachName, this.coachText, this.coachHit]).setDepth(DEPTH.coach).setVisible(false));
   }
 

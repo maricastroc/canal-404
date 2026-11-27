@@ -24,6 +24,7 @@ class AudioEngine {
   private sfxEnabled = true;
   private unlocked = false;
   private lastPlayed = new Map<SoundRecipe, number>();
+  private requests = 0;
   private current: ScheduledTrack | null = null;
   private step = 0;
   private nextTime = 0;
@@ -41,6 +42,10 @@ class AudioEngine {
 
   get currentTrackId() {
     return this.current?.track.id ?? null;
+  }
+
+  get playRequests() {
+    return this.requests;
   }
 
   subscribe(listener: Listener) {
@@ -154,6 +159,7 @@ class AudioEngine {
   }
 
   play(recipe: SoundRecipe, options: { volume?: number; pitch?: number; throttle?: number } = {}) {
+    this.requests += 1;
     if (!this.sfxEnabled || !this.unlocked || !this.ctx || !this.sfxBus) return;
     const now = this.ctx.currentTime;
     if (options.throttle) {

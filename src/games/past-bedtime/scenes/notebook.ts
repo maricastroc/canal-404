@@ -1,5 +1,6 @@
 import type * as Phaser from "phaser";
 import { glyphOffset, type Fonts } from "@/games/kit/ui";
+import { pressed } from "@/games/kit/press";
 import type { LegendKey, NightCopy } from "../copy";
 import { partStars } from "../sim/score";
 import type { Action } from "../sim/types";
@@ -836,7 +837,7 @@ export class Notebook implements NotebookView {
     zone.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
       ev.stopPropagation();
       this.scene.tweens.add({ targets: c, scale: 0.94, duration: 70, yoyo: true });
-      fn();
+      pressed(fn);
     });
     c.add(zone);
   }

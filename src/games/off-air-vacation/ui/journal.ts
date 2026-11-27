@@ -141,6 +141,11 @@ export class Journal {
     return null;
   }
 
+  overButton(px: number, py: number) {
+    if (Math.hypot(px - (BOOK.x + BOOK.w - 46), py - (BOOK.y + 46)) < 42) return true;
+    return this.tabs.some((t) => px >= t.x && px <= t.x + t.w && py >= BOOK.y + 8 && py <= BOOK.y + 90);
+  }
+
   private paintTabs() {
     for (const t of this.tabs) {
       const on = t.id === this.tab;
