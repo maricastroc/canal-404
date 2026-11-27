@@ -324,8 +324,8 @@ export class LunchScene extends Phaser.Scene {
 
     this.ourMaskShape = this.make.graphics({}, false).fillRect(-W, -H, W * 3, H + 940);
     const ourMask = this.ourMaskShape.createGeometryMask();
-    this.deco = this.add.image(DECO.x, DECO.standY, "deco-idle").setOrigin(0.5, 1).setDepth(9).setMask(ourMask);
-    this.mila = this.add.image(MILA.x, MILA.y, "mila-peek").setOrigin(0.5, 1).setDepth(10).setMask(ourMask);
+    this.deco = this.add.image(DECO.x, DECO.standY, "deco-idle").setOrigin(0.5, DECO.originY).setDepth(9).setMask(ourMask);
+    this.mila = this.add.image(MILA.x, MILA.y, "mila-peek").setOrigin(0.5, MILA.originY).setDepth(10).setMask(ourMask);
     this.ourTable = this.add.image(OUR_TABLE.x, OUR_TABLE.y, "our-table").setOrigin(0.5, 0).setDepth(11);
     this.duckZone = this.add.zone(0, 0, DUCK_ZONE.width, 100).setOrigin(0).setDepth(11).setInteractive();
     this.buildTableProps();

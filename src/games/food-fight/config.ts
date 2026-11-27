@@ -8,8 +8,8 @@ export const RELOAD_MS = 260;
 export const THROW_GAP_MS = 230;
 export const INVULNERABLE_MS = 1200;
 
-export const DECO = { x: 330, standY: 800, duckDrop: 250, face: { x: 342, y: 560 }, hand: { x: 440, y: 594 } };
-export const MILA = { x: 590, y: 790, duckDrop: 170 };
+export const DECO = { x: 330, standY: 800, originY: 330 / 380, duckDrop: 250, face: { x: 342, y: 560 }, hand: { x: 440, y: 594 } };
+export const MILA = { x: 590, y: 790, originY: 240 / 290, duckDrop: 170 };
 export const OUR_TABLE = { x: 400, y: 756 };
 export const DUCK_ZONE = { width: 760, below: 34 };
 export const AMMO_SPOTS = [104, 140, 176, 212, 248, 284].map((x) => ({ x, y: 772 }));
