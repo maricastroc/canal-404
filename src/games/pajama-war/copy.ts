@@ -1,4 +1,4 @@
-import type { ResultGoal } from "@/games/types";
+import type { ResultGoal, ResultMark } from "@/games/types";
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import { NEED, type Challenge, type FeatId } from "./challenges";
@@ -293,14 +293,20 @@ export function resultCopy(c: ResultContext, locale: Locale) {
   return { title: t.out, text: t.firstOut(c.kid) };
 }
 
+function kidMark(kid: KidId, c: Challenge): ResultMark {
+  const won = c.kids.includes(kid);
+  return { label: KID_INFO[kid].name, avatar: `/assets/pajama-war/face-${kid}-${won ? "happy" : "normal"}.svg`, color: KID_INFO[kid].css, done: won, fresh: c.newKid === kid };
+}
+
 export function challengeGoals(list: Challenge[], locale: Locale): { goalsTitle: string; goals: ResultGoal[] } {
   const t = COPY[locale].challenges;
   return {
     goalsTitle: t.title,
     goals: list.map((c) => ({
-      label: c.feat ? t.feats[c.feat] : c.done ? t.trio : `${t.trio} · ${c.kids}/${KIDS.length}`,
+      label: c.feat ? t.feats[c.feat] : t.trio,
       done: c.done,
       fresh: c.fresh,
+      ...(c.feat ? {} : { marks: KIDS.map((kid) => kidMark(kid, c)) }),
     })),
   };
 }
