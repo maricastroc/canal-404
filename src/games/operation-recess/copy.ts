@@ -163,6 +163,7 @@ export const COPY = localized({
       hearts: (n: number) => `Corações (${n})`,
       boss: "Inspetor vencido",
       album: (n: number, total: number) => `Álbum: ${n} de ${total}.`,
+      levelStickers: (n: number, total: number) => `Figurinhas: ${n} de ${total}`,
     },
   },
   en: {
@@ -326,6 +327,7 @@ export const COPY = localized({
       hearts: (n: number) => `Hearts (${n})`,
       boss: "Inspector defeated",
       album: (n: number, total: number) => `Album: ${n} of ${total}.`,
+      levelStickers: (n: number, total: number) => `Stickers: ${n} of ${total}`,
     },
   },
 });
