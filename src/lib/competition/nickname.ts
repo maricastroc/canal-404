@@ -130,27 +130,62 @@ export function checkNickname(raw: unknown): NicknameCheck {
   return { ok: true, nickname, key: nicknameKey(nickname) };
 }
 
-const SUGGESTIONS = localized<{ first: string[]; second: string[]; join: (a: string, b: string) => string; fallback: string }>({
+type Noun = readonly [word: string, feminine?: true];
+type Adjective = string | readonly [masculine: string, feminine: string];
+
+const SUGGESTIONS = localized<{ nouns: readonly Noun[]; adjectives: readonly Adjective[]; join: (noun: string, adjective: string) => string; fallback: string }>({
   "pt-BR": {
-    first: ["Pato", "Gnomo", "Pudim", "Chiado", "Rolimã", "Pixel", "Sinal", "Controle", "Travesseiro", "Cartucho", "Fita", "Antena", "Apito", "Lanche", "Bolinha", "Mola"],
-    second: ["Veloz", "Dourado", "Maluco", "Turbo", "Noturno", "Fora do Ar", "Saltitante", "Zapeador", "Teimoso", "Elétrico", "Sem Sinal", "Furioso", "Distraído", "Valente"],
-    join: (a, b) => `${a} ${b}`,
+    nouns: [
+      ["Pato"], ["Gnomo"], ["Pudim"], ["Chiado"], ["Rolimã"], ["Pixel"], ["Sinal"], ["Controle"], ["Travesseiro"], ["Cartucho"],
+      ["Apito"], ["Lanche"], ["Biscoito"], ["Chinelo"], ["Carrinho"], ["Gibi"], ["Estojo"], ["Pirulito"], ["Ioiô"], ["Bigode"],
+      ["Cometa"], ["Foguete"], ["Robô"], ["Tatu"], ["Sapo"], ["Grilo"], ["Esquilo"], ["Pinguim"], ["Jacaré"], ["Picolé"],
+      ["Pastel"], ["Patinete"], ["Skate"], ["Bambolê"], ["Tambor"], ["Megafone"],
+      ["Bolinha", true], ["Fita", true], ["Antena", true], ["Mola", true], ["Pipoca", true], ["Coxinha", true], ["Pantufa", true],
+      ["Lanterna", true], ["Corneta", true], ["Sirene", true], ["Gelatina", true], ["Coruja", true], ["Girafa", true], ["Minhoca", true],
+      ["Peteca", true], ["Pipa", true], ["Bolacha", true], ["Vassoura", true], ["Mochila", true], ["Meia", true], ["Abelha", true],
+      ["Formiga", true], ["Galinha", true], ["Baleia", true], ["Vitrola", true], ["Gaita", true],
+    ],
+    adjectives: [
+      "Veloz", ["Dourado", "Dourada"], ["Maluco", "Maluca"], "Turbo", ["Noturno", "Noturna"], "Fora do Ar", "Saltitante",
+      ["Zapeador", "Zapeadora"], ["Teimoso", "Teimosa"], ["Elétrico", "Elétrica"], "Sem Sinal", ["Furioso", "Furiosa"],
+      ["Distraído", "Distraída"], "Valente", ["Sonâmbulo", "Sonâmbula"], ["Atrasado", "Atrasada"], ["Lendário", "Lendária"],
+      "Invencível", ["Misterioso", "Misteriosa"], ["Barulhento", "Barulhenta"], ["Desastrado", "Desastrada"], "Radical",
+      ["Ligeiro", "Ligeira"], ["Fofo", "Fofa"], ["Travesso", "Travessa"], "Brilhante", ["Cósmico", "Cósmica"], "Gigante",
+      "Mirim", "Ninja", ["Sorrateiro", "Sorrateira"], ["Campeão", "Campeã"], ["Faminto", "Faminta"], ["Destemido", "Destemida"],
+      "Pirata", ["Secreto", "Secreta"], "Selvagem", ["Desligado", "Desligada"], "de Pijama", "do Recreio", "Sem Freio", "Ao Vivo",
+    ],
+    join: (noun, adjective) => `${noun} ${adjective}`,
     fallback: "Pato Veloz",
   },
   en: {
-    first: ["Duck", "Gnome", "Pudding", "Joystick", "Soapbox", "Pixel", "Signal", "Remote", "Pillow", "Cartridge", "Tape", "Antenna", "Whistle", "Snack", "Ball", "Spring"],
-    second: ["Speedy", "Golden", "Wacky", "Turbo", "Midnight", "Off-Air", "Bouncy", "Zappy", "Stubborn", "Electric", "Fuzzy", "Furious", "Spacey", "Brave"],
-    join: (a, b) => `${b} ${a}`,
+    nouns: [
+      ["Duck"], ["Gnome"], ["Pudding"], ["Joystick"], ["Soapbox"], ["Pixel"], ["Signal"], ["Remote"], ["Pillow"], ["Cartridge"],
+      ["Tape"], ["Antenna"], ["Whistle"], ["Snack"], ["Ball"], ["Spring"], ["Popcorn"], ["Slipper"], ["Flashlight"], ["Rocket"],
+      ["Robot"], ["Comet"], ["Yo-yo"], ["Frog"], ["Cricket"], ["Squirrel"], ["Penguin"], ["Gator"], ["Owl"], ["Turtle"],
+      ["Llama"], ["Pickle"], ["Waffle"], ["Noodle"], ["Muffin"], ["Pretzel"], ["Kazoo"], ["Banjo"], ["Sock"], ["Scooter"],
+      ["Kite"], ["Marble"], ["Lunchbox"], ["Backpack"], ["Gecko"], ["Hamster"], ["Cupcake"], ["Megaphone"],
+    ],
+    adjectives: [
+      "Speedy", "Golden", "Wacky", "Turbo", "Midnight", "Off-Air", "Bouncy", "Zappy", "Stubborn", "Electric", "Fuzzy", "Furious",
+      "Spacey", "Brave", "Sleepy", "Sneaky", "Legendary", "Mighty", "Cosmic", "Noisy", "Clumsy", "Radical", "Super", "Sonic",
+      "Tiny", "Giant", "Ninja", "Secret", "Wild", "Jumpy", "Grumpy", "Hungry", "Fearless", "Lucky", "Rusty", "Sparkly", "Static",
+      "Late-Night", "Pajama", "Rowdy",
+    ],
+    join: (noun, adjective) => `${adjective} ${noun}`,
     fallback: "Speedy Duck",
   },
 });
 
+function agree(adjective: Adjective, feminine: boolean) {
+  return typeof adjective === "string" ? adjective : adjective[feminine ? 1 : 0];
+}
+
 export function suggestNickname(random: () => number, locale: Locale) {
-  const { first, second, join, fallback } = SUGGESTIONS[locale];
+  const { nouns, adjectives, join, fallback } = SUGGESTIONS[locale];
   for (let i = 0; i < 20; i += 1) {
-    const a = first[Math.floor(random() * first.length)];
-    const b = second[Math.floor(random() * second.length)];
-    const candidate = join(a, b);
+    const [noun, feminine] = nouns[Math.floor(random() * nouns.length)];
+    const adjective = agree(adjectives[Math.floor(random() * adjectives.length)], feminine === true);
+    const candidate = join(noun, adjective);
     if (candidate.length <= NICKNAME_MAX) return candidate;
   }
   return fallback;
