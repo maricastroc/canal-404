@@ -442,7 +442,7 @@ export function OperationRecessCover({ decorative, locale = DEFAULT_LOCALE }: Co
 export function PajamaWarCover({ decorative, locale = DEFAULT_LOCALE }: CoverProps) {
   return (
     <Frame decorative={decorative} bg="#5b3f9c" label={COVER_ALT[locale]["pajama-war"]}>
-      <PajamaWarCoverArt />
+      <PajamaWarCoverArt locale={locale} />
     </Frame>
   );
 }
