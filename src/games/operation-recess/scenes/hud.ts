@@ -70,6 +70,7 @@ export class RecessHud {
   private bossBar: Phaser.GameObjects.Graphics;
   private banner: Phaser.GameObjects.Text;
   private sub: Phaser.GameObjects.Text;
+  private plate: Phaser.GameObjects.Graphics;
   private pads: Pad[] = [];
   private pointers = new Map<number, PadAction>();
   private touchOn = false;
@@ -142,6 +143,7 @@ export class RecessHud {
       .setDepth(70)
       .setScrollFactor(0)
       .setVisible(false);
+    this.plate = scene.add.graphics().setDepth(69.9).setScrollFactor(0).setVisible(false);
 
     this.compact = this.makeCompact(fonts, bells);
 
@@ -367,7 +369,11 @@ export class RecessHud {
       this.layoutCompact(frame);
       if (this.touchOn) this.showTouch(false);
     } else this.layoutFull(displayScale);
-    if (this.banner.visible) this.banner.setScale(this.placeBanner());
+    if (this.banner.visible) {
+      const s = this.placeBanner();
+      this.banner.setScale(s);
+      this.drawPlate(s);
+    }
   }
 
   get compactMode() {
@@ -551,18 +557,35 @@ export class RecessHud {
     g.strokeRoundedRect(-BAR_W / 2, 56, BAR_W, 22, 11);
   }
 
+  private drawPlate(s: number) {
+    const g = this.plate.clear();
+    if (!this.sub.visible || !this.sub.text) {
+      g.setVisible(false);
+      return;
+    }
+    const b = this.banner;
+    const sub = this.sub;
+    const w = Math.max(b.width * s, sub.width * sub.scaleX) + 64 * s;
+    const top = b.y - (b.height * s) / 2 - 18 * s;
+    const bottom = sub.y + (sub.height * sub.scaleY) / 2 + 18 * s;
+    g.fillStyle(INK_HEX, 0.62);
+    g.fillRoundedRect(b.x - w / 2, top, w, bottom - top, 22 * s);
+    g.setVisible(true).setAlpha(1);
+  }
+
   flash(text: string, color = "#ffc83d", hold = 1000, sub = "") {
     const b = this.banner;
-    this.scene.tweens.killTweensOf([b, this.sub]);
+    this.scene.tweens.killTweensOf([b, this.sub, this.plate]);
     b.setText(text).setColor(color).setVisible(true).setAlpha(1);
     this.sub.setText(sub).setVisible(Boolean(sub)).setAlpha(1);
     const s = this.placeBanner();
+    this.drawPlate(s);
     if (this.reduced) b.setScale(s);
     else {
       b.setScale(s * 0.3);
       this.scene.tweens.add({ targets: b, scale: s, duration: 240, ease: "Back.easeOut" });
     }
-    if (hold > 0) this.scene.tweens.add({ targets: [b, this.sub], alpha: 0, delay: hold, duration: 260, onComplete: () => [b, this.sub].forEach((o) => o.setVisible(false)) });
+    if (hold > 0) this.scene.tweens.add({ targets: [b, this.sub, this.plate], alpha: 0, delay: hold, duration: 260, onComplete: () => [b, this.sub, this.plate].forEach((o) => o.setVisible(false)) });
   }
 
   hideControls() {

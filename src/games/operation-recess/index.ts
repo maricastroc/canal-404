@@ -67,6 +67,7 @@ function mount(ctx: GameHostContext): GameInstance {
       const scene = stage();
       game.registry.set("resume", false);
       game.registry.set("checkpoints", options?.checkpoints !== false);
+      if (options?.records) game.registry.set("records", options.records);
       if (scene && scene.isAttract && scene.currentLevel === level) {
         game.registry.set("checkpoint", null);
         scene.begin();
