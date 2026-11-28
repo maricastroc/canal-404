@@ -112,6 +112,7 @@ export const POOL = {
     glow: [1240, 1360] as [number, number],
     bigodes: [720, 1760] as [number, number],
     tilt: [1010, 1730] as [number, number],
+    clique: [1530, 1700] as [number, number],
     marisa: [1690, 1730] as [number, number],
     psiu: [1940, 1680] as [number, number],
     mascot: [1180, 1752] as [number, number],
@@ -1560,12 +1561,12 @@ export const AREAS: Record<AreaId, (b: Builder) => void> = {
       const [dot, live] = liveTag(b.world, b.fonts.display, b.text.world.live, 136, -78);
       const scan = b.world.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
       const noise = b.world.add.tileSprite(0, 0, 292, 168, "static").setAlpha(0);
-      const cont = b.world.add.container(cx, 403, [bg, face, tag, dot, live, scan, noise]).setDepth(2.45).setAlpha(0);
+      const cont = b.world.add.container(cx, 403, [bg, face, tag, dot, live, scan, noise]).setDepth(2.55).setAlpha(0);
       return { cont, face, noise, cx, on: false, until: 0 };
     });
     b.onUpdate((t) => {
       const h = b.hero();
-      const busy = Boolean(b.vars.feeds);
+      const busy = Boolean(b.vars.feedsLive);
       for (const c of cams) {
         const want = !busy && Boolean(h) && Math.abs((h?.x ?? -9999) - c.cx) < 175;
         if (want && !c.on) {

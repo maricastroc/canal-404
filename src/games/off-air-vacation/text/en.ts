@@ -155,7 +155,7 @@ export const TEXT: VacationText = {
     pauseSea: "At the beach, pause the sea near the wave sign.",
     takeRemote: "Take the master remote to the beach.",
     pauseFall: "Pause the waterfall with the master remote.",
-    findStation: "Look for the broadcast room, behind the waterfall.",
+    findStation: "Find out where the broadcast room is.",
     deliver: "Hand in the final order at the control desk.",
   },
   side: {
@@ -516,8 +516,8 @@ export const TEXT: VacationText = {
       pause: "The sea stops mid-wave and pulls back. There's a bottle stuck in the wet sand!",
     },
     bottle: {
-      note: "There's a note inside the bottle: 'FINAL ORDER: end the broadcast of the Canal 404 Resort. Deliver to the broadcast room, behind the waterfall.'",
-      deco: "Behind the waterfall... in the forest!",
+      note: "There's a note inside the bottle: 'FINAL ORDER: end the broadcast of the Canal 404 Resort. Deliver to the broadcast room.' On the back, someone drew water hissing with static.",
+      deco: "Water that hisses... I've heard that somewhere.",
     },
     shellToken: {
       empty: "A huge shell. You can hear the sea. The same old wave.",

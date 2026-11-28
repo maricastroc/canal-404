@@ -47,7 +47,7 @@ export function critter(b: Builder, def: CritterDef) {
   const speed = def.speed ?? 60;
   const solid = (px: number, py: number) => b.isBlocked(px, py) && !def.water?.(px, py);
   const grounded = (def.mode === "walk" || def.mode === "hop") && !solid(def.x, def.y);
-  const free = (px: number, py: number) => !grounded || !solid(px, py);
+  const free = (px: number, py: number) => !grounded || !b.isBlocked(px, py);
   const depthOf = () => def.depth ?? y;
   const place = () => {
     img.setPosition(x, y).setDepth(depthOf());

@@ -27,7 +27,7 @@ type Data = { mode?: Mode; area?: AreaId; spawn?: string; intro?: boolean };
 type Rect = { x: number; y: number; w: number; h: number; show?: Show };
 type Circle = { x: number; y: number; r: number; show?: Show };
 type Exit = Rect & { to: AreaId; spawn: string };
-type PropRec = { img: Phaser.GameObjects.Image; opts: PropOpts; key: string };
+type PropRec = { img: Phaser.GameObjects.Image; opts: PropOpts; key: string; shadow?: Phaser.GameObjects.Image };
 type Kick = { img: Phaser.GameObjects.Image; vx: number; vy: number; next: number; home: [number, number]; water?: (x: number, y: number) => boolean; floating: number };
 type Near = NearOpts & { x: number; y: number; r: number; inside: boolean; next: number };
 type Reactive = { img: Phaser.GameObjects.Image; kind: React; r: number; band: [number, number]; inside: boolean; next: number; sx: number; sy: number; angle: number };
@@ -205,6 +205,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     }
     this.cameras.main.setBackgroundColor("#1d1830");
     AREAS[this.area](this);
+    if (this.area === "station") this.buildFeeds(true);
     this.focus = this.add.graphics().setDepth(1.35).setVisible(false);
     this.collectTall();
     if (tall) this.placeMain();
@@ -367,13 +368,13 @@ export class WorldScene extends Phaser.Scene implements Builder {
     const img = this.add.image(x, y, opts.key2 ? opts.key2(this.s) : key);
     const [ox, oy] = opts.origin ?? [0.5, 1];
     img.setOrigin(ox, oy).setScale(opts.scale ?? 1).setFlipX(Boolean(opts.flip)).setAngle(opts.angle ?? 0).setDepth(this.depthOf(opts, y));
-    if (opts.shadow) {
-      this.add
-        .image(x, y + 2, "blob")
-        .setDisplaySize(opts.shadow, Math.max(22, opts.shadow * 0.26))
-        .setAlpha(0.38)
-        .setDepth(1.05 + y / 10000);
-    }
+    const shadow = opts.shadow
+      ? this.add
+          .image(x, y + 2, "blob")
+          .setDisplaySize(opts.shadow, Math.max(22, opts.shadow * 0.26))
+          .setAlpha(0.38)
+          .setDepth(1.05 + y / 10000)
+      : undefined;
     if (opts.tint !== undefined) img.setTint(opts.tint);
     if (opts.alpha !== undefined) img.setAlpha(opts.alpha);
     if (opts.rect) {
@@ -397,7 +398,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const kind = opts.react === "wobble" && opts.anim ? "rustle" : opts.react;
       this.reactive.push({ img, kind, r: opts.reactR ?? Math.max(70, w * 0.5), band: [y - Math.max(60, img.displayHeight * 0.25), y + 70], inside: false, next: 0, sx: img.scaleX, sy: img.scaleY, angle: img.angle });
     }
-    this.props.push({ img, opts, key });
+    this.props.push({ img, opts, key, shadow });
     return img;
   }
 
@@ -1083,6 +1084,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
       }
       case "monitorsOn": {
         this.sfx("bars", 0.7);
+        this.vars.feedsLive = true;
         this.buildFeeds();
         const msg = cartoonText(this, 1000, 160, this.text.world.orderReceived, { size: 44, color: "#ffc83d", font: this.ctx.fonts.display, stroke: 0.2 }).setOrigin(0.5).setDepth(3);
         this.vars.orderMsg = msg;
@@ -1258,13 +1260,17 @@ export class WorldScene extends Phaser.Scene implements Builder {
     }
   }
 
-  private buildFeeds() {
-    if (this.vars.feeds) return;
+  private buildFeeds(idle = false) {
+    const built = this.vars.feeds as Phaser.GameObjects.Container[] | undefined;
+    if (built) {
+      if (!idle) this.wakeFeeds(built);
+      return;
+    }
     const feed = this.text.world.feeds;
     const ids: [string, string, number][] = [
-      ["bigodes", feed.bigodes, 0xef4f43],
       ["marola", feed.marola, 0x5cb9f0],
       ["tilt", feed.tilt, 0xb9a6ef],
+      ["bigodes", feed.bigodes, 0xef4f43],
       ["marisa", feed.marisa, 0xffe39a],
       ["psiu", feed.psiu, 0x63d6c1],
       ["deco", this.text.world.here, 0xffc83d],
@@ -1284,14 +1290,64 @@ export class WorldScene extends Phaser.Scene implements Builder {
       const tag = this.add.text(-136, -78, label, { fontFamily: this.ctx.fonts.display, fontSize: "20px", color: "#1d1830" });
       const [dot, live] = liveTag(this, this.ctx.fonts.display, this.text.world.live, 136, -78);
       const scan = this.add.tileSprite(0, 0, 292, 168, "scanlines").setAlpha(0.35);
-      const cont = this.add.container(x, y, [bg, face, tag, dot, live, scan]).setDepth(2.5);
+      const noise = this.add.tileSprite(0, 0, 292, 168, "static").setAlpha(0);
+      const cont = this.add.container(x, y, [bg, face, tag, dot, live, scan, noise]).setDepth(2.5);
       cont.setData("id", id);
       cont.setData("live", live);
-      if (!this.reduced) cont.setAlpha(0);
-      this.tweens.add({ targets: cont, alpha: 1, duration: 200, delay: i * 120 });
+      cont.setData("face", face);
+      cont.setData("noise", noise);
+      cont.setData("base", k);
+      if (!idle) {
+        if (!this.reduced) cont.setAlpha(0);
+        this.tweens.add({ targets: cont, alpha: 1, duration: 200, delay: i * 120 });
+      }
       return cont;
     });
     this.vars.feeds = feeds;
+    if (idle) this.idleFeeds(feeds);
+  }
+
+  private idleFeeds(feeds: Phaser.GameObjects.Container[]) {
+    const alts: Record<string, string[]> = { bigodes: ["talk"], marola: ["happy", "look-w"], tilt: ["happy", "look"], marisa: ["happy", "look"], psiu: ["look", "happy"] };
+    const next = new Map<Phaser.GameObjects.Container, number>();
+    this.onUpdate((t) => {
+      if (this.vars.feedsLive) return;
+      feeds.forEach((f, i) => {
+        const id = f.getData("id") as string;
+        const keys = (alts[id] ?? []).map((k) => `${id}-${k}`).filter((k) => this.textures.exists(k));
+        if (!keys.length) return;
+        const due = next.get(f);
+        if (due === undefined) {
+          next.set(f, t + 1200 + i * 900 + Math.random() * 1500);
+          return;
+        }
+        if (t < due) return;
+        const yawn = id === "bigodes";
+        next.set(f, t + (yawn ? 4200 : 3500) + Math.random() * 3500);
+        const face = f.getData("face") as Phaser.GameObjects.Image;
+        const base = f.getData("base") as number;
+        face.setTexture(keys[Math.floor(Math.random() * keys.length)]);
+        if (yawn && !this.reduced) this.tweens.add({ targets: face, scaleY: base * 1.08, duration: 450, yoyo: true, hold: 300, ease: "Sine.easeInOut" });
+        this.time.delayedCall(yawn ? 1500 : 1000, () => {
+          if (!this.vars.feedsLive) face.setTexture(`${id}-normal`);
+        });
+      });
+    });
+  }
+
+  private wakeFeeds(feeds: Phaser.GameObjects.Container[]) {
+    feeds.forEach((f, i) => {
+      this.time.delayedCall(this.reduced ? 0 : i * 120, () => {
+        const id = f.getData("id") as string;
+        const face = f.getData("face") as Phaser.GameObjects.Image;
+        const noise = f.getData("noise") as Phaser.GameObjects.TileSprite;
+        this.tweens.killTweensOf(face);
+        face.setScale(f.getData("base") as number);
+        if (id !== "deco" && this.textures.exists(`${id}-look`)) face.setTexture(`${id}-look`);
+        noise.setAlpha(0.85).setTilePosition(Math.random() * 200, Math.random() * 200);
+        this.tweens.add({ targets: noise, alpha: 0, duration: this.reduced ? 10 : 260 });
+      });
+    });
   }
 
   private word(text: string, x: number, y: number, color: string) {
@@ -1330,8 +1386,14 @@ export class WorldScene extends Phaser.Scene implements Builder {
     const P = POOL.party;
     this.glow(P.glow[0], P.glow[1], 900, 520, 0x5cd0f5, 0.35, 4401);
     for (const [from, to, sag] of P.garlands) garland(this, from, to, sag);
+    for (const pr of this.props) {
+      if (!pr.key.startsWith("umbrella")) continue;
+      pr.img.setVisible(false);
+      pr.shadow?.setVisible(false);
+    }
     const people: [FolkKey, number, number, NpcOpts][] = [
       ["tilt", P.tilt[0], P.tilt[1], { scale: 0.8 }],
+      ["clique", P.clique[0], P.clique[1], { scale: 0.82 }],
       ["marisa", P.marisa[0], P.marisa[1], { scale: 0.85 }],
       ["psiu", P.psiu[0], P.psiu[1], { scale: 0.8 }],
     ];
@@ -1368,6 +1430,7 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.partyPan((P.bigodes[0] + P.player[0]) / 2);
     await this.say("bigodes", off ? T.bigodesOff : T.bigodesOn, "happy");
     this.partyPan(P.player[0]);
+    this.time.delayedCall(this.reduced ? 0 : 700, () => this.partyPhoto());
     await this.say("deco", T.decoParty, "happy");
     this.dialog.close();
     this.partyPan(P.player[0], true);
@@ -1378,12 +1441,24 @@ export class WorldScene extends Phaser.Scene implements Builder {
     this.finish();
   }
 
+  private partyPhoto() {
+    const c = this.npcs.get("clique");
+    if (!c) return;
+    c.playSeq(["shoot", "shoot", "shoot", "happy"], 200, this.time.now);
+    this.time.delayedCall(this.reduced ? 0 : 420, () => {
+      this.sfx("pick", 0.7);
+      if (this.reduced) return;
+      const fl = this.glow(c.x + 40, c.topY + 50, 180, 180, 0xffffff, 0.95, 5900);
+      this.tweens.add({ targets: fl, alpha: 0, scale: 1.6, duration: 380, onComplete: () => fl.destroy() });
+    });
+  }
+
   private partyPan(x: number, settle = false) {
     if (!this.upright) return;
     const cam = this.cameras.main;
     const vh = cam.height / this.zoomGoal;
     const y = POOL.party.player[1] + 30 - vh * 0.2;
-    cam.pan(x, settle ? Math.min(y, this.h - vh / 2) : y, this.reduced ? 0 : 800, "Sine.easeInOut");
+    cam.pan(x, settle ? Math.min(y, this.h - vh / 2) : y, this.reduced ? 0 : 800, "Sine.easeInOut", true);
   }
 
   private firework() {

@@ -153,7 +153,7 @@ export const TEXT = {
     pauseSea: "Na praia, pause o mar perto da placa das ondas.",
     takeRemote: "Leve o controle mestre até a praia.",
     pauseFall: "Pause a cachoeira com o controle mestre.",
-    findStation: "Procure a sala de transmissão, atrás da cachoeira.",
+    findStation: "Descubra onde fica a sala de transmissão.",
     deliver: "Entregue a ordem final na mesa de corte.",
   },
   side: {
@@ -514,8 +514,8 @@ export const TEXT = {
       pause: "O mar para no meio da onda e recua. Tem uma garrafa presa na areia molhada!",
     },
     bottle: {
-      note: "Dentro da garrafa, um bilhete: 'ORDEM FINAL: encerrar a transmissão do Resort Canal 404. Entregar na sala de transmissão, atrás da cachoeira.'",
-      deco: "Atrás da cachoeira... na floresta!",
+      note: "Dentro da garrafa, um bilhete: 'ORDEM FINAL: encerrar a transmissão do Resort Canal 404. Entregar na sala de transmissão.' No verso, alguém desenhou uma água cheia de chiado.",
+      deco: "Água que faz chiado... já ouvi isso em algum lugar.",
     },
     shellToken: {
       empty: "Uma concha enorme. Dá pra ouvir o mar. A mesma onda de sempre.",
