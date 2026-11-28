@@ -85,7 +85,7 @@ function Lights({ w, y, sag, r, sw }: { w: number; y: number; sag: number; r: nu
   );
 }
 
-function Room({ w, h, floor, window: win, poster }: { w: number; h: number; floor: number; window: { x: number; y: number; w: number }; poster: { x: number; y: number; w: number } }) {
+function Room({ w, h, floor, window: win, poster, locale }: { w: number; h: number; floor: number; window: { x: number; y: number; w: number }; poster: { x: number; y: number; w: number }; locale: Locale }) {
   const lines = [0.14, 0.32, 0.56, 0.86].map((t) => Math.round((floor + (h - floor) * t) * 10) / 10);
   const sw = w / 110;
   return (
@@ -95,7 +95,7 @@ function Room({ w, h, floor, window: win, poster }: { w: number; h: number; floo
         <rect key={i} x={i * 22 + 6} y={0} width={9} height={floor} fill="#6a4cad" opacity={0.35} />
       ))}
       <Asset name="window-night" x={win.x} y={win.y} w={win.w} h={(win.w * 290) / 320} />
-      <Asset name="poster-rocket" x={poster.x} y={poster.y} w={poster.w} h={(poster.w * 220) / 170} />
+      <Asset name={locale === "en" ? "poster-rocket-en" : "poster-rocket"} x={poster.x} y={poster.y} w={poster.w} h={(poster.w * 220) / 170} />
       <Lights w={w} y={h * 0.05} sag={h * 0.08} r={w * 0.013} sw={sw * 0.9} />
       <rect y={floor} width={w} height={h - floor} fill="#b8774a" />
       <rect y={floor - sw * 2.4} width={w} height={sw * 2.4} fill="#3f2c75" />
@@ -177,21 +177,21 @@ function Badge({ x, y, r, fill, children }: Pt & { r: number; fill: string; chil
   );
 }
 
-function Panel({ children }: { children: React.ReactNode }) {
+function Panel({ locale, children }: { locale: Locale; children: React.ReactNode }) {
   return (
     <svg viewBox="0 0 200 130" className="h-full w-full" aria-hidden>
-      <Room w={200} h={130} floor={80} window={{ x: 74, y: 10, w: 58 }} poster={{ x: 154, y: 16, w: 26 }} />
+      <Room w={200} h={130} floor={80} window={{ x: 74, y: 10, w: 58 }} poster={{ x: 154, y: 16, w: 26 }} locale={locale} />
       {children}
     </svg>
   );
 }
 
-function ChoosePanel() {
+function ChoosePanel({ locale }: { locale: Locale }) {
   const nico: Placement = { x: 118, feet: 96, h: 44 };
   const bia: Placement = { x: 162, feet: 110, h: 52 };
   const lia: Placement = { x: 66, feet: 121, h: 62 };
   return (
-    <Panel>
+    <Panel locale={locale}>
       <SideBed x={2} floor={98} w={58} teddy />
       <Rug x={84} y={118} rx={46} />
       <KidSprite who="nico" pose="idle-f" at={nico} />
@@ -221,7 +221,7 @@ function ChoosePanel() {
   );
 }
 
-function HitPanel() {
+function HitPanel({ locale }: { locale: Locale }) {
   const lia: Placement = { x: 180, feet: 93, h: 40, flip: true };
   const bia: Placement = { x: 132, feet: 108, h: 52 };
   const nico: Placement = { x: 44, feet: 124, h: 64 };
@@ -229,7 +229,7 @@ function HitPanel() {
   const hit = { x: bia.x - 10, y: bia.feet - 40 };
   const pillow = { x: Math.round((hand.x * 0.25 + hit.x * 0.75) * 10) / 10, y: Math.round((hand.y * 0.25 + hit.y * 0.75 - 8) * 10) / 10 };
   return (
-    <Panel>
+    <Panel locale={locale}>
       <HeldPillow who="lia" pose="windup-s" at={lia} w={13} />
       <KidSprite who="lia" pose="windup-s" at={lia} />
       <g style={display}>
@@ -257,7 +257,7 @@ function StandPanel({ locale }: { locale: Locale }) {
   const nico: Placement = { x: 34, feet: 126, h: 52 };
   const bia: Placement = { x: 168, feet: 106, h: 50 };
   return (
-    <Panel>
+    <Panel locale={locale}>
       <Rug x={96} y={114} rx={48} />
       <KidSprite who="bia" pose="ko" at={bia} />
       <SideBed x={118} floor={128} w={80} />
@@ -277,19 +277,19 @@ function StandPanel({ locale }: { locale: Locale }) {
 }
 
 export function PajamaWarHowToPanel({ step, locale }: { step: 0 | 1 | 2; locale: Locale }) {
-  if (step === 0) return <ChoosePanel />;
-  if (step === 1) return <HitPanel />;
+  if (step === 0) return <ChoosePanel locale={locale} />;
+  if (step === 1) return <HitPanel locale={locale} />;
   return <StandPanel locale={locale} />;
 }
 
-export function PajamaWarCoverArt() {
+export function PajamaWarCoverArt({ locale }: { locale: Locale }) {
   const bia: Placement = { x: 288, feet: 170, h: 82, flip: true };
   const lia: Placement = { x: 222, feet: 210, h: 110, flip: true };
   const nico: Placement = { x: 72, feet: 188, h: 120 };
   const pillow = { x: 156, y: 92 };
   return (
     <>
-      <Room w={320} h={240} floor={150} window={{ x: 108, y: 20, w: 120 }} poster={{ x: 250, y: 30, w: 52 }} />
+      <Room w={320} h={240} floor={150} window={{ x: 108, y: 20, w: 120 }} poster={{ x: 250, y: 30, w: 52 }} locale={locale} />
       <Rug x={226} y={206} rx={78} />
       <HeldPillow who="bia" pose="windup-s" at={bia} w={30} />
       <KidSprite who="bia" pose="windup-s" at={bia} />

@@ -53,7 +53,7 @@ export default async function OgCard({ params }: PageProps<"/[lang]/og-card/[slu
         style={{ left: 64, top: 92, width: 600, height: 450, padding: 14, transform: "rotate(-3deg)" }}
       >
         <div className="h-full w-full overflow-hidden rounded-[16px] border-[4px] border-ink">
-          <Cover decorative />
+          <Cover decorative locale={lang} />
         </div>
       </div>
       <div className="absolute flex flex-col items-center" style={{ left: 700, top: 70, width: 450 }}>

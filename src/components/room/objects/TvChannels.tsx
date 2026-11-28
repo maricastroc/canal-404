@@ -184,11 +184,12 @@ function ChannelLogo({ game }: { game: GameMeta }) {
 
 function GameScreen({ game }: { game: GameMeta }) {
   const Cover = COVERS[game.slug];
+  const locale = useLocale();
   return (
     <div className="absolute inset-0 bg-plum-900">
       {Cover && (
         <div className="absolute inset-0">
-          <Cover decorative />
+          <Cover decorative locale={locale} />
         </div>
       )}
       <ChannelLogo game={game} />

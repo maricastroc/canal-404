@@ -87,7 +87,10 @@ export class BootScene extends Phaser.Scene {
       for (const pose of POSES) this.load.svg(`kid-${kid}-${pose}`, `${BASE}kid-${kid}-${pose}.svg`, { width: 300 * KID_RES, height: 224 * KID_RES });
       for (const face of ["normal", "happy", "ouch", "dizzy"]) this.load.svg(`face-${kid}-${face}`, `${BASE}face-${kid}-${face}.svg`, { width: 200, height: 222 });
     }
-    for (const [key, width, height] of PROPS) this.load.svg(key, `${BASE}${key}.svg`, { width: width * 1.25, height: height * 1.25 });
+    for (const [key, width, height] of PROPS) {
+      const file = key === "poster-rocket" && ctx.locale === "en" ? "poster-rocket-en" : key;
+      this.load.svg(key, `${BASE}${file}.svg`, { width: width * 1.25, height: height * 1.25 });
+    }
     loadIcons(this, [
       { key: "icon-heart-on", icon: Heart, size: 40, color: "#1d1830", fill: "#ef4f43", strokeWidth: 2.4 },
       { key: "icon-heart-off", icon: Heart, size: 40, color: "#7d6fb0", fill: "#3a3157", strokeWidth: 2.4 },
