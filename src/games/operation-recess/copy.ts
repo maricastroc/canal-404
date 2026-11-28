@@ -94,6 +94,7 @@ export const COPY = localized({
       snack: "LANCHE!",
       saved: "SALVO!",
       tripped: "TROPEÇOU!",
+      bumped: "ESBARROU!",
       wavePop: "PLIM!",
       kick: "CHUTE!",
       letsGo: "VAMOS!",
@@ -143,6 +144,7 @@ export const COPY = localized({
       bellMission: "Sino tocado! Na missão, a fase vale do começo ao fim.",
       bellSaved: "Sino tocado! Se for pego, você volta daqui.",
       tripped: (n: number) => (n === 1 ? "Tropeçou na corda! Resta 1 coração. Pule quando ela descer." : `Tropeçou na corda! Restam ${n} corações. Pule quando ela descer.`),
+      bumped: (n: number) => (n === 1 ? "Esbarrou no monitor! Resta 1 coração. Pule por cima ou acerte primeiro." : `Esbarrou no monitor! Restam ${n} corações. Pule por cima ou acerte primeiro.`),
       newSticker: (name: string, n: number, total: number) => `Figurinha nova: ${name}! ${n} de ${total} no álbum.`,
     },
     result: {
@@ -258,6 +260,7 @@ export const COPY = localized({
       snack: "SNACK!",
       saved: "SAVED!",
       tripped: "TRIPPED!",
+      bumped: "BUMPED!",
       wavePop: "PING!",
       kick: "KICK!",
       letsGo: "LET'S GO!",
@@ -307,6 +310,7 @@ export const COPY = localized({
       bellMission: "Bell rung! In today's mission, you play the level from start to finish.",
       bellSaved: "Bell rung! If you get caught, you'll restart from here.",
       tripped: (n: number) => (n === 1 ? "Tripped on the rope! 1 heart left. Jump when it comes down." : `Tripped on the rope! ${n} hearts left. Jump when it comes down.`),
+      bumped: (n: number) => (n === 1 ? "Bumped into a monitor! 1 heart left. Jump over or hit first." : `Bumped into a monitor! ${n} hearts left. Jump over or hit first.`),
       newSticker: (name: string, n: number, total: number) => `New sticker: ${name}! ${n} of ${total} in the album.`,
     },
     result: {

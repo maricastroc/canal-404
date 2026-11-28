@@ -46,6 +46,8 @@ const FULL_RISE = (JUMP_V * JUMP_V) / (2 * GRAVITY);
 const LESSON_GAP = 800;
 const HARD_LANDING = 330;
 const SAY_GAP = 700;
+const SAFE_MARGIN = 200;
+const RESPAWN_HOLD_MS = 450;
 const DOOR_KID: Record<Theme, string> = { corridor: "deco", yard: "lina", library: "mila", office: "lina" };
 const learned = new Set<Lesson>();
 
@@ -866,6 +868,8 @@ export class StageScene extends Phaser.Scene {
       return;
     }
     this.hero.body.reset(this.safe.x, this.safe.y);
+    this.hero.settle(this.t, RESPAWN_HOLD_MS);
+    for (const sh of this.shelves) sh.restore();
     this.invulnUntil = this.t + INVULN_MS;
     this.word(this.copy.words.oops, this.safe.x, FLOOR_Y - 240, "#fbf5e6", 54);
     this.announce(this.copy.say.fell);
@@ -1312,6 +1316,11 @@ export class StageScene extends Phaser.Scene {
     for (const e of this.enemies) {
       const box = e.attackBox();
       if (box && Phaser.Geom.Intersects.RectangleToRectangle(hr, box)) this.hurt(e.x);
+      const body = e.contactBox();
+      if (body && this.t >= this.invulnUntil && this.mode === "play" && Phaser.Geom.Intersects.RectangleToRectangle(hr, body)) {
+        e.gloat();
+        this.hurt(e.x, { word: this.copy.words.bumped, say: this.copy.say.bumped });
+      }
     }
     if (this.boss) {
       const box = this.boss.attackBox();
@@ -1374,7 +1383,7 @@ export class StageScene extends Phaser.Scene {
       this.fell();
       return;
     }
-    if (this.hero.body.blocked.down && this.world.groundAt(view.x - 70) && this.world.groundAt(view.x + 70) && t > this.invulnUntil) {
+    if (this.hero.body.blocked.down && this.world.groundAt(view.x - SAFE_MARGIN) && this.world.groundAt(view.x + SAFE_MARGIN) && t > this.invulnUntil) {
       this.safe = { x: this.hero.rect.x, y: this.hero.rect.y };
     }
     if (this.lesson && (this.t > this.lessonUntil || this.hero.x > this.lessonPast)) this.endLesson();

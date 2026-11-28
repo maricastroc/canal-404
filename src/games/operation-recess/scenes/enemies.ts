@@ -42,6 +42,9 @@ const STYLE_ART: Record<EnemyStyle, string> = { patrol: "common", mixed: "common
 const SAY_EVERY = 3200;
 const CALM = new Set(["patrol", "wait", "watch", "lost", "home"]);
 const LOST_MS = 900;
+const CONTACT = { half: 24, top: 50 };
+const COMMON_TOUCHY = new Set(["alert", "chase", "windup", "attack"]);
+const SHIELD_TOUCHY = new Set(["guard", "windup", "bash", "rush"]);
 let slot = 0;
 const turns = new WeakMap<readonly string[], number>();
 
@@ -357,6 +360,23 @@ export abstract class Enemy {
     return null;
   }
 
+  protected touchy() {
+    return false;
+  }
+
+  contactBox(): Phaser.Geom.Rectangle | null {
+    if (this.dead || this.t < this.hurtUntil || !this.touchy()) return null;
+    const b = this.body;
+    return new Phaser.Geom.Rectangle(b.center.x - CONTACT.half, b.top + CONTACT.top, CONTACT.half * 2, b.height - CONTACT.top - 10);
+  }
+
+  gloat() {
+    if (this.dead) return;
+    this.express("spot", 700);
+    this.hop(16);
+    this.bark(this.api.barks.caught, true);
+  }
+
   sync() {
     if (this.dead) return;
     const b = this.body;
@@ -401,6 +421,8 @@ export abstract class Enemy {
 }
 
 type CommonTune = { sight: number; speed: number; windup: number; lunge: number; recover: number; dodge: number };
+
+const REAIM = 260;
 
 const COMMON: Record<EnemyStyle, CommonTune> = {
   patrol: { sight: 640, speed: 155, windup: 460, lunge: 330, recover: 620, dodge: 0.3 },
@@ -607,6 +629,7 @@ export class CommonMonitor extends Enemy {
         if (t >= this.until) {
           this.state = "attack";
           this.until = t + 240;
+          if (Math.abs(dx) < REAIM && level) this.faceHero(h);
           this.tex("attack");
           this.api.sfx("lunge", 0.7);
           this.body.setVelocityX(this.facing * this.tune.lunge);
@@ -640,6 +663,10 @@ export class CommonMonitor extends Enemy {
         }
         return;
     }
+  }
+
+  protected touchy() {
+    return COMMON_TOUCHY.has(this.state);
   }
 
   attackBox() {
@@ -1136,6 +1163,10 @@ export class ShieldMonitor extends Enemy {
         }
         return;
     }
+  }
+
+  protected touchy() {
+    return SHIELD_TOUCHY.has(this.state) || (this.state === "advance" && this.seenAt >= 0);
   }
 
   attackBox() {

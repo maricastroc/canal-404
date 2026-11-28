@@ -55,6 +55,7 @@ export class Hero {
   private wasGround = true;
   private airSince = 0;
   private stunUntil = 0;
+  private settleUntil = 0;
   private recoilUntil = 0;
   private pose: Pose = "idle";
   private runClock = 0;
@@ -160,6 +161,13 @@ export class Hero {
     this.setPose("hurt");
   }
 
+  settle(t: number, ms: number) {
+    this.body.setVelocity(0, 0);
+    this.stunUntil = t + ms;
+    this.settleUntil = t + ms;
+    this.jumping = false;
+  }
+
   recoil(fromX: number, t: number, kx: number, ky: number) {
     const dir = Math.sign(this.x - fromX) || -this.facing;
     this.body.setVelocity(dir * kx, -ky);
@@ -252,7 +260,7 @@ export class Hero {
     if (this.locked) return;
     const since = t - this.attackAt;
     if (t < this.recoilUntil) this.setPose("attack-a");
-    else if (t < this.stunUntil) this.setPose("hurt");
+    else if (t < this.stunUntil && t >= this.settleUntil) this.setPose("hurt");
     else if (since < ATTACK.windup) this.setPose("attack-a");
     else if (since < ATTACK.windup + ATTACK.active * 0.6) this.setPose("attack-b");
     else if (since < ATTACK.windup + ATTACK.active + 70) this.setPose("attack-c");
