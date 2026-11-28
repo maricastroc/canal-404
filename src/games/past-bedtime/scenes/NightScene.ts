@@ -74,7 +74,7 @@ const REPEAT_CAP = 2;
 const NOSE = { fill: 0xffb36b, edge: 0xe0782c, stripe: 0xffc48a };
 
 const LESSON_TIPS: Record<string, readonly number[]> = {
-  hallway: [1],
+  hallway: [2],
   laundry: [3],
   living: [3],
   return: [2],
@@ -82,7 +82,7 @@ const LESSON_TIPS: Record<string, readonly number[]> = {
 
 const LESSON_FOCUS: Record<string, readonly (Focus | null)[]> = {
   doorway: ["creak", "clock", "dad", "creak"],
-  hallway: ["clock", null, "dad"],
+  hallway: ["clock", "dad", null],
   stairs: ["grandma", "grandma", "grandma"],
   kitchen: ["grandma", null, null],
   pantry: ["grandma", "hide", "hide"],
@@ -143,6 +143,7 @@ export class NightScene extends Phaser.Scene {
   private marksTold = new Set<MarkKind>();
   private repeats = new Map<string, number>();
   private noteTag: NoteTag | undefined;
+  private untell: (() => void) | null = null;
   private noteAt = 0;
   private lessonAt = 0;
   private lessonShownAt = 0;
@@ -295,6 +296,7 @@ export class NightScene extends Phaser.Scene {
     this.lessonAt = 1;
     this.lessonShownAt = this.time.now;
     this.rings = [];
+    this.untell = null;
     const grid = this.sim.grid;
     const L = this.layout;
     const s = L.tile;
@@ -899,7 +901,6 @@ export class NightScene extends Phaser.Scene {
   private afterTurn(prev: State, events: SimEvent[]) {
     this.turnTimer = undefined;
     this.busy = false;
-    const before = this.ahead;
     this.syncViews(true);
     this.refreshOverlays();
     if (this.state.status === "caught") {
@@ -912,7 +913,7 @@ export class NightScene extends Phaser.Scene {
       this.playWin();
       return;
     }
-    this.turnNote(prev, events, before);
+    this.turnNote(prev, events);
     if (this.moodFor(this.state) === "tense") this.sfx(NIGHT_SFX.heartbeat);
     if (this.flinch) {
       this.flinch = false;
@@ -926,7 +927,7 @@ export class NightScene extends Phaser.Scene {
     if (next) this.command(next, "touch");
   }
 
-  private turnNote(prev: State, events: SimEvent[], before: Ahead | null) {
+  private turnNote(prev: State, events: SimEvent[]) {
     const n = this.copy.notes;
     const picks: Note[] = [];
     const note = (text: string, kind: NoteKind, fleeting = false, routine = false, extra: Partial<Note> = {}) => picks.push({ text, kind, fleeting, routine, ...extra });
@@ -938,7 +939,7 @@ export class NightScene extends Phaser.Scene {
     if (events.some((e) => e.type === "knock")) note(n.knocked, "info");
     if (creak && creak.type === "creak") {
       if (creak.masked) note(n.masked, "good", false, false, { repeat: "masked" });
-      else if (heard.length === 0) note(n.unheard(this.hearer()), "info");
+      else if (heard.length === 0) note(n.unheard(this.hearer()), "info", false, false, { repeat: "unheard" });
     }
     if (events.some((e) => e.type === "sleep")) note(n.backToSleep, "good");
     if (events.some((e) => e.type === "resume")) note(n.grandmaBack, "info");
@@ -1001,7 +1002,7 @@ export class NightScene extends Phaser.Scene {
     const fresh = this.ruleFresh();
     const teaching = !fresh && usable.some((p) => p.text === n.stepNow || p.text === n.masked);
     const shownDanger = danger && !(danger.soft && teaching) ? danger : null;
-    const stripes = [before, this.ahead].find((a) => a && (a.striped.size || a.nose.size));
+    const stripes = this.ahead && (this.ahead.striped.size || this.ahead.nose.size) ? this.ahead : null;
     const firstStripes: Note | null = !this.stripesTold && stripes ? { text: stripes.striped.size ? n.stripes : n.stripesNose, kind: "info", tag: "rule" } : null;
     const markLesson = this.markLesson();
     const pin = this.pinned;
@@ -1016,17 +1017,20 @@ export class NightScene extends Phaser.Scene {
     this.pinned = danger;
     this.fleeting = shown?.fleeting ? shown.text : null;
     if (!shown) return;
+    const mark = shown.mark;
     if (shown === firstStripes) this.stripesTold = true;
-    if (shown.mark) this.marksTold.add(shown.mark);
+    if (mark) this.marksTold.add(mark);
     if (shown.repeat) this.repeats.set(shown.repeat, this.timesShown(shown.repeat) + 1);
-    this.post(shown);
+    this.post(shown, shown === firstStripes ? () => (this.stripesTold = false) : mark ? () => this.marksTold.delete(mark) : shown === lesson ? this.retell(this.lessonAt) : null);
     if (shown === lesson) {
       this.lessonAt += 1;
       this.showLesson(this.lessonAt - 1);
     } else if (shown.focus) this.ringFocus(shown.focus);
   }
 
-  private post(note: Note) {
+  private post(note: Note, untell: (() => void) | null = null) {
+    if (this.untell && this.ruleFresh()) this.untell();
+    this.untell = untell;
     this.notebook.note(note.text, note.kind, note.tag);
     this.noteTag = note.tag;
     this.noteAt = this.time.now;
@@ -1036,6 +1040,12 @@ export class NightScene extends Phaser.Scene {
     if (this.noteTag !== "rule" && this.noteTag !== "tip") return false;
     if (this.fleeting && this.notebook.showing(this.fleeting)) return false;
     return this.time.now - this.noteAt < LESSON_HOLD_MS;
+  }
+
+  private retell(index: number) {
+    return () => {
+      this.lessonAt = Math.min(this.lessonAt, index);
+    };
   }
 
   private timesShown(key: string) {
@@ -1080,7 +1090,7 @@ export class NightScene extends Phaser.Scene {
     if (!lesson) return;
     this.lessonAt += 1;
     this.fleeting = null;
-    this.post(lesson);
+    this.post(lesson, this.retell(this.lessonAt - 1));
     this.showLesson(this.lessonAt - 1);
   }
 
