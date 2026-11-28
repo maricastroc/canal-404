@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { StarBadge } from "@/components/art/Badges";
 import { canResume } from "@/games/resume";
 import { GAME_CAST } from "@/components/art/GameCast";
-import { ArrowLeftIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RatingStar, RestartIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
+import { ArrowLeftIcon, HouseIcon, MissionIcon, PlayIcon, QuestionIcon, RatingStar, RestartIcon, SpeakerIcon, TrophyIcon, UsersIcon } from "@/components/art/Icons";
 import { GAME_LOGOS } from "@/components/art/GameLogos";
 import { CheckIcon, ControllerIcon, LevelsIcon, LockIcon, PennantIcon, ShareIcon } from "@/components/art/Icons";
 import { NextProgram } from "@/components/catalog/NextProgram";
@@ -22,6 +22,7 @@ import { countOf, formatNumber, ordinal } from "@/i18n/format";
 import { localePath } from "@/i18n/locales";
 import { SITE_URL } from "@/lib/site";
 import { useSound } from "@/lib/audio/hooks";
+import { useHydrated, useProgress } from "@/lib/progress/hooks";
 import { scrollMotion } from "@/lib/device";
 import { useNarrowScreen, useTouchScreen } from "@/lib/device";
 import type { JoinOutcome } from "@/lib/competition/client";
@@ -91,6 +92,9 @@ const COPY = localized({
     stars: (count: number, total: number) => `${count} de ${total} estrelas`,
     introLabel: (title: string) => `${title}: tela de apresentação`,
     howTo: "Como jogar",
+    soundHint: "Melhor com som: confira se o celular não está no silencioso.",
+    soundFirstTitle: "Jogue com som!",
+    soundFirstText: "É um jogo de ritmo. Confira se o celular não está no silencioso.",
     missionLink: "Ver a missão de hoje",
     tuning: "Sintonizando a missão…",
     chooseLevel: (word: LevelWord) => (word === "etapa" ? "Escolha uma etapa" : `Escolha sua ${word}`),
@@ -164,6 +168,9 @@ const COPY = localized({
     stars: (count: number, total: number) => `${count} of ${total} stars`,
     introLabel: (title: string) => `${title}: title screen`,
     howTo: "How to play",
+    soundHint: "Best with sound: check your phone isn't on silent.",
+    soundFirstTitle: "Play with sound on!",
+    soundFirstText: "It's a rhythm game. Check your phone isn't on silent.",
     missionLink: "See today's mission",
     tuning: "Tuning in the mission…",
     chooseLevel: (word: LevelWord) => PICK[word],
@@ -418,6 +425,32 @@ function StarRule({ rule }: { rule: NonNullable<GameMeta["starRule"]> }) {
           </span>
         ))}
       </span>
+    </p>
+  );
+}
+
+function SoundHint({ game }: { game: GameMeta }) {
+  const copy = useCopy(COPY);
+  const touch = useTouchScreen();
+  const hydrated = useHydrated();
+  const progress = useProgress();
+  if (!touch || !hydrated) return null;
+  if (game.soundFirst) {
+    return (
+      <p className="mt-3 flex items-center gap-2.5 rounded-lg border-[3px] border-ink bg-sun px-3 py-2 leading-snug text-ink shorter:mt-2 shorter:py-1.5 [@media(max-height:540px)]:mt-1.5 [@media(max-height:540px)]:py-1 [@media(max-height:540px)]:text-sm">
+        <SpeakerIcon className="size-7 shrink-0 [@media(max-height:540px)]:size-5" />
+        <span>
+          <span className="block font-display uppercase tracking-wide">{copy.soundFirstTitle}</span>{" "}
+          <span className="block font-semibold">{copy.soundFirstText}</span>
+        </span>
+      </p>
+    );
+  }
+  if (!progress.settings.sfx) return null;
+  return (
+    <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold leading-snug text-ink-soft shorter:mt-1.5 max-sm:mt-2.5 [@media(max-height:540px)]:mt-1 [@media(max-height:540px)]:text-xs">
+      <SpeakerIcon className="size-5 shrink-0 [@media(max-height:540px)]:size-4" />
+      <span>{copy.soundHint}</span>
     </p>
   );
 }
@@ -742,6 +775,7 @@ export function IntroPanel({
           <div className="[@media(max-height:540px)]:min-w-0">
             <p className="mt-2 text-lg font-semibold leading-snug text-ink shorter:mt-1 shorter:text-base max-sm:mt-3 max-sm:text-base [@media(max-height:540px)]:mt-0 [@media(max-height:540px)]:text-sm">{game.objective}</p>
             {game.starRule ? <StarRule rule={game.starRule} /> : null}
+            <SoundHint game={game} />
           </div>
         </div>
         <div className="hidden sm:block [@media(max-height:540px)]:hidden">{Cast ? <Cast mood="intro" locale={locale} /> : <CastPair game={game} />}</div>
