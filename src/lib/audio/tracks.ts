@@ -2,7 +2,7 @@ import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 import type { Wave } from "./types";
 
-export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live" | "downhill" | "lunch" | "inspector" | "street-finale";
+export type TrackId = "theme" | "recess" | "street" | "sign-off" | "karaoke" | "live" | "downhill" | "lunch" | "inspector" | "street-finale" | "bedtime-finale";
 
 export type TrackUnlock =
   | { type: "default" }
@@ -67,6 +67,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
       mood: "O tema da rua em tom de festa, enquanto o Seu Arlindo junta os gnomos.",
       unlock: "",
     },
+    "bedtime-finale": {
+      title: "Madrugada (Missão Cumprida)",
+      mood: "Uma canção de ninar que vira manhã. Termina com o cuco, claro.",
+      unlock: "",
+    },
   },
   en: {
     theme: {
@@ -117,6 +122,11 @@ export const TRACK_TEXT = localized<Record<TrackId, TrackText>>({
     "street-finale": {
       title: "Dead End Street (The Big Mess)",
       mood: "The street's theme turned into a party while Mr. Arlindo picks up his gnomes.",
+      unlock: "",
+    },
+    "bedtime-finale": {
+      title: "Past Bedtime (Mission Accomplished)",
+      mood: "A lullaby that turns into morning. It ends with the cuckoo, of course.",
       unlock: "",
     },
   },
