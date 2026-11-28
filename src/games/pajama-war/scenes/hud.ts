@@ -30,7 +30,9 @@ const LIFE_R = 58;
 
 type Pin = { root: Phaser.GameObjects.Container; arrow: Phaser.GameObjects.Graphics; ring: Phaser.GameObjects.Graphics; bang: Phaser.GameObjects.Text; shown: boolean };
 
-export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number; aim: number | null; shot: number | null };
+export type Walk = { x: number; y: number; seq: number; fresh: boolean };
+
+export type Touch = { x: number; y: number; throwing: boolean; active: boolean; tapAt: number; aim: number | null; shot: number | null; walk: Walk | null };
 
 export type Offscreen = { kid: KidId; x: number; y: number; alert: boolean };
 
@@ -43,12 +45,13 @@ export type FlashAt = "start" | "event" | "center" | "end";
 const STICK = { base: 104, knob: 54, leash: 64, dead: 12 };
 const BUTTON_R = 112;
 const FIRE = { decide: 150, start: 9, steady: 5 };
+const WALK_STEP = 4;
 const FLOOR = 0.86;
 
 type Fire = { id: number; x: number; y: number; at: number; mode: "pending" | "auto" | "aim" };
 
 export class PajamaHud {
-  readonly touch: Touch = { x: 0, y: 0, throwing: false, active: false, tapAt: -99999, aim: null, shot: null };
+  readonly touch: Touch = { x: 0, y: 0, throwing: false, active: false, tapAt: -99999, aim: null, shot: null, walk: null };
   private timer: Phaser.GameObjects.Text;
   private portraits = new Map<KidId, Portrait>();
   private banner: Phaser.GameObjects.Text;
@@ -64,6 +67,8 @@ export class PajamaHud {
   private throwIcon: Phaser.GameObjects.Image;
   private aimKnob: Phaser.GameObjects.Container;
   private stickId: number | null = null;
+  private walkId: number | null = null;
+  private walkSeq = 0;
   private fire: Fire | null = null;
   private tutorialStep: "off" | "basics" | "aim" = "off";
   private stickOrigin = { x: 0, y: 0 };
@@ -721,7 +726,7 @@ export class PajamaHud {
   setTutorial(step: "off" | "basics" | "aim") {
     if (step === this.tutorialStep) return;
     this.tutorialStep = step;
-    this.stickLabel.setText(step === "basics" ? this.text.moveHelp : this.text.move).setColor(step === "basics" ? "#ffc83d" : "#fbf5e6");
+    this.stickLabel.setText(step === "basics" ? (this.frame.kind === "tall" ? this.text.walkHelp : this.text.moveHelp) : this.text.move).setColor(step === "basics" ? "#ffc83d" : "#fbf5e6");
     this.throwLabel.setText(step === "aim" ? this.text.aimHelp : this.text.throwHelp);
     if (this.stickId === null) this.restStick();
     this.placeControls();
@@ -781,6 +786,11 @@ export class PajamaHud {
       this.refreshControls();
     }
     const f = this.frame;
+    if (f.kind === "tall" && p.y < f.height - f.deck) {
+      this.walkId = p.id;
+      this.setWalk(p, true);
+      return;
+    }
     if (p.x > f.width * 0.5) {
       const now = this.scene.time.now;
       if (this.fire) {
@@ -839,7 +849,17 @@ export class PajamaHud {
     }
   }
 
+  private setWalk(p: Phaser.Input.Pointer, fresh: boolean) {
+    this.walkSeq += 1;
+    this.touch.walk = { x: p.x, y: p.y, seq: this.walkSeq, fresh };
+  }
+
   private move(p: Phaser.Input.Pointer) {
+    if (p.id === this.walkId) {
+      const last = this.touch.walk;
+      if (!last || Math.hypot(p.x - last.x, p.y - last.y) >= WALK_STEP * this.cssUnit) this.setWalk(p, false);
+      return;
+    }
     if (this.fire && p.id === this.fire.id) {
       this.aimMove(p, this.fire);
       return;
@@ -870,6 +890,10 @@ export class PajamaHud {
   }
 
   private up(p: Phaser.Input.Pointer) {
+    if (p.id === this.walkId) {
+      this.walkId = null;
+      return;
+    }
     const fire = this.fire;
     if (fire && fire.id === p.id) {
       const now = this.scene.time.now;
@@ -905,6 +929,8 @@ export class PajamaHud {
 
   release() {
     this.endFire();
+    this.walkId = null;
+    this.touch.walk = null;
     this.touch.shot = null;
     this.touch.tapAt = -99999;
     if (this.stickId !== null) {
@@ -920,6 +946,8 @@ export class PajamaHud {
   hideControls() {
     this.controlsOn = false;
     this.stickId = null;
+    this.walkId = null;
+    this.touch.walk = null;
     this.endFire();
     this.touch.shot = null;
     this.touch.x = 0;

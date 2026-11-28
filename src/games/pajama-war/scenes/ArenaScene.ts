@@ -8,7 +8,7 @@ import { BODY, ESCALATE, FORT, GLOAT, H, HP, KID_INFO, KIDS, PILLOW, SCORE, W, t
 import { challengeGoals, COPY, resultCopy, winShout, type PajamaCopy } from "../copy";
 import { matchScore } from "../score";
 import { HEAD_MIN, LIP, WALL_EXT, type Frame } from "../layout";
-import { firstTallHit, FLOOR_Y, pointOnTrace, resolveBody, separateBodies, traceShot, type Box, type Point } from "../nav";
+import { firstTallHit, FLOOR_Y, Navigator, pointOnTrace, resolveBody, separateBodies, traceShot, type Box, type Point, type SteerOut } from "../nav";
 import { PAJAMA_SFX, type PajamaSfx } from "../sounds";
 import { SPECIAL, SpecialSpawner } from "../special";
 import { loadStats, markHint, saveStats } from "../storage";
@@ -100,6 +100,13 @@ export class ArenaScene extends Phaser.Scene {
   private offscreen: Offscreen[] = [];
   private ceilingY = 0;
   private tutorial: { moved: boolean; threw: boolean; step: "basics" | "aim" } | null = null;
+  private walk: Navigator | null = null;
+  private walkSeq = 0;
+  private walkOut: SteerOut = { x: 0, y: 0, arrived: false };
+  private walkDir = { x: 0, y: 0 };
+  private walkMark: Phaser.GameObjects.Container | null = null;
+  private walkRing: Phaser.GameObjects.Graphics | null = null;
+  private walkShown = false;
 
   constructor() {
     super("arena");
@@ -146,6 +153,12 @@ export class ArenaScene extends Phaser.Scene {
     this.mechanicDelay = 700;
     this.vignette = null;
     this.tutorial = null;
+    this.walk = null;
+    this.walkSeq = 0;
+    this.walkDir = { x: 0, y: 0 };
+    this.walkMark = null;
+    this.walkRing = null;
+    this.walkShown = false;
   }
 
   get attract() {
@@ -189,6 +202,10 @@ export class ArenaScene extends Phaser.Scene {
       }
       this.fighters.push(f);
     });
+    if (this.player) {
+      this.walk = new Navigator(this.room.nav);
+      this.walkMark = this.drawWalkMark();
+    }
     this.guide = this.add.graphics().setDepth(1200);
     const mark = (key: string, depth: number) => this.add.image(0, 0, key).setDepth(depth).setVisible(false);
     this.aimMarks = {
@@ -225,6 +242,94 @@ export class ArenaScene extends Phaser.Scene {
       this.ctx.onReady();
     }
     if (!this.attract) this.countdown();
+  }
+
+  private drawWalkMark() {
+    const ring = this.add.graphics();
+    ring.lineStyle(8, 0x1d1830, 0.85);
+    ring.strokeEllipse(0, 0, 104, 38);
+    ring.lineStyle(5, 0xffc83d, 1);
+    ring.strokeEllipse(0, 0, 104, 38);
+    const dot = this.add.graphics();
+    dot.fillStyle(0x1d1830, 0.9);
+    dot.fillEllipse(0, 0, 40, 17);
+    dot.fillStyle(0xffc83d, 1);
+    dot.fillEllipse(0, -1, 30, 11);
+    this.walkRing = ring;
+    return this.add.container(0, 0, [ring, dot]).setDepth(31).setVisible(false);
+  }
+
+  private pulseWalkRing() {
+    const ring = this.walkRing;
+    if (!ring) return;
+    this.tweens.killTweensOf(ring);
+    if (this.ctx.reducedMotion) {
+      ring.setScale(1).setAlpha(1);
+      return;
+    }
+    ring.setScale(0.45).setAlpha(1);
+    this.tweens.add({ targets: ring, scale: 1.1, alpha: 0.1, duration: 700, ease: "Sine.easeOut", repeat: -1 });
+  }
+
+  private walkTo(sx: number, sy: number, t: number, fresh: boolean) {
+    const walk = this.walk;
+    const mark = this.walkMark;
+    if (!walk || !mark || this.frame.kind !== "tall") return;
+    const z = this.frame.zoom;
+    const b = ARENAS[this.levelIndex].bounds;
+    let x = Phaser.Math.Clamp(this.camAt.x + sx / z, b.x0, b.x1);
+    let y = Phaser.Math.Clamp(this.camAt.y + sy / z, b.y0, b.y1);
+    const nav = this.room.nav;
+    if (!nav.clearAt(x, y, 4)) {
+      const i = nav.nearest(x, y);
+      if (i < 0) return;
+      x = nav.centerX(i);
+      y = nav.centerY(i);
+    }
+    walk.setGoal(x, y, t, fresh ? 0 : 20);
+    if (!walk.goal) return;
+    const at = walk.goal;
+    mark.setPosition(at.x, at.y);
+    if (!fresh && this.walkShown) return;
+    this.tweens.killTweensOf(mark);
+    mark.setVisible(true).setAlpha(1).setScale(1);
+    this.walkShown = true;
+    this.pulseWalkRing();
+  }
+
+  private stopWalk() {
+    this.walk?.clear();
+    this.walkDir.x = 0;
+    this.walkDir.y = 0;
+    const mark = this.walkMark;
+    if (!mark || !this.walkShown) return;
+    this.walkShown = false;
+    this.tweens.killTweensOf(mark);
+    if (this.walkRing) this.tweens.killTweensOf(this.walkRing);
+    if (this.ctx.reducedMotion) mark.setVisible(false);
+    else this.tweens.add({ targets: mark, alpha: 0, scale: 0.6, duration: 160, onComplete: () => mark.setVisible(false) });
+  }
+
+  private steerWalk(p: Fighter, t: number, manual: boolean) {
+    const walk = this.walk;
+    if (!walk) return null;
+    const goal = this.hud?.touch.walk;
+    if (goal && goal.seq !== this.walkSeq) {
+      this.walkSeq = goal.seq;
+      if (!manual) this.walkTo(goal.x, goal.y, t, goal.fresh);
+    }
+    if (manual || !walk.goal) {
+      if (walk.goal || this.walkShown) this.stopWalk();
+      return null;
+    }
+    const mag = walk.steer(p, t, this.walkOut);
+    if (this.walkOut.arrived || !walk.goal) {
+      this.stopWalk();
+      return null;
+    }
+    this.walkDir.x = this.walkOut.x;
+    this.walkDir.y = this.walkOut.y;
+    return { x: this.walkOut.x * mag, y: this.walkOut.y * mag };
   }
 
   private onResume() {
@@ -750,8 +855,8 @@ export class ArenaScene extends Phaser.Scene {
     }
     const k = this.keys;
     const tx = this.hud?.touch;
-    const mx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0) + (tx?.x ?? 0);
-    const my = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0) + (tx?.y ?? 0);
+    const mx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0) + (tx?.x ?? 0) + this.walkDir.x;
+    const my = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0) + (tx?.y ?? 0) + this.walkDir.y;
     const angle = mx || my ? Math.atan2(my, mx) : p.facing > 0 ? 0 : Math.PI;
     return { angle, target: null, x: p.x + Math.cos(angle) * 400, y: p.y + Math.sin(angle) * 400 * 0.86, free: true };
   }
@@ -766,8 +871,8 @@ export class ArenaScene extends Phaser.Scene {
     const scores = new Map<Fighter, number>();
     const k = this.keys;
     const tx = this.hud?.touch;
-    let fx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0) + (tx?.x ?? 0);
-    let fy = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0) + (tx?.y ?? 0);
+    let fx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0) + (tx?.x ?? 0) + this.walkDir.x;
+    let fy = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0) + (tx?.y ?? 0) + this.walkDir.y;
     if (!fx && !fy) {
       fx = p.facing;
       fy = 0;
@@ -822,6 +927,7 @@ export class ArenaScene extends Phaser.Scene {
       const p = this.player;
       this.hud.setCooldown(p.canThrow(t) ? 1 : Phaser.Math.Clamp(1 - (p.readyAt - t) / p.stats.cooldown, 0, 0.99), p.special);
     }
+    if (this.walkShown && (this.mode !== "play" || !this.player?.alive)) this.stopWalk();
     this.trackOffscreen(t);
     if (this.drop && this.spawner?.spot) this.drop.update(t, this.matchTime - this.spawner.spawnedAt);
     this.sweat(t);
@@ -871,7 +977,12 @@ export class ArenaScene extends Phaser.Scene {
               mx = touch.x;
               my = touch.y;
             }
-            if (this.tutorial && touch) this.learn(touch.active && Math.hypot(touch.x, touch.y) > 0.3, false);
+            const walking = this.steerWalk(f, t, mx !== 0 || my !== 0 || Boolean(touch?.active));
+            if (walking) {
+              mx = walking.x;
+              my = walking.y;
+            }
+            if (this.tutorial && touch) this.learn((touch.active && Math.hypot(touch.x, touch.y) > 0.3) || walking !== null, false);
             const shotWindow = touch?.shot != null ? 320 : 180;
             const tapped = this.time.now - (touch?.tapAt ?? -99999) < shotWindow;
             const queued = this.time.now - this.throwQueued < 180 || tapped;
