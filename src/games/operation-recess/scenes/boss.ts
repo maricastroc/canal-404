@@ -3,10 +3,15 @@ import { FLOOR_Y } from "../config";
 import type { HeroView, HitResult, StageApi } from "./enemies";
 
 type BossState = "wait" | "intro" | "guard" | "puff" | "blow" | "tired" | "stomp" | "charge" | "dizzy" | "raise" | "slam" | "stuck" | "beaten";
-type Move = "wave" | "charge" | "slam";
+type Move = "wave" | "charge" | "slam" | "combo";
 
 const SCALE = 0.82;
 const WHISTLE = { x: 52, y: 225 };
+const TOUCHY = new Set<BossState>(["guard", "puff", "blow", "stomp", "raise"]);
+const CONTACT = { half: 52, top: 90 };
+const STAGGER_MS = 2000;
+const COMBO_PUFF_MS = 420;
+const CALL = { near: 140, far: 330 };
 const INTRO = { stomp: 420, inhale: 460, blast: 820, guard: 380, shortStomp: 260, shortBlast: 520, shortGuard: 250 };
 
 export class Inspector {
@@ -29,6 +34,9 @@ export class Inspector {
   private introShort = false;
   private recoil = 0;
   private wasAngry = false;
+  private comboing = false;
+  private comboWave = false;
+  private heroX = 0;
 
   constructor(
     private api: StageApi,
@@ -132,7 +140,7 @@ export class Inspector {
 
   private nextMove(): Move {
     if (!this.moves.length) {
-      this.moves = Phaser.Utils.Array.Shuffle(["wave", "charge", "slam"] as Move[]);
+      this.moves = Phaser.Utils.Array.Shuffle((this.angry ? ["wave", "charge", "slam", "combo"] : ["wave", "charge", "slam"]) as Move[]);
       if (this.moves[0] === this.lastMove) this.moves.push(this.moves.shift() as Move);
     }
     const m = this.moves.shift() as Move;
@@ -149,6 +157,7 @@ export class Inspector {
 
   update(t: number, dt: number, h: HeroView) {
     this.t = t;
+    this.heroX = h.x;
     const b = this.body;
     if (this.state === "wait" || this.state === "beaten") {
       b.setVelocityX(0);
@@ -183,7 +192,8 @@ export class Inspector {
           this.tex("puff");
           this.api.sfx("puff", 0.9);
           this.api.warn(this.x, b.top - 60, this.tele(820));
-        } else if (m === "charge") {
+        } else if (m === "charge" || m === "combo") {
+          this.comboing = m === "combo";
           this.state = "stomp";
           this.until = t + this.tele(780);
           this.tex("stomp");
@@ -209,7 +219,8 @@ export class Inspector {
         this.api.sfx("bigWhistle", 1);
         this.api.spawnWave(this.x + this.facing * 120, FLOOR_Y, this.facing, true);
         this.api.room("whistle", this.facing);
-        this.secondWaveAt = this.angry ? t + 1000 : 0;
+        this.secondWaveAt = this.angry && !this.comboWave ? t + 1000 : 0;
+        this.comboWave = false;
         return;
       case "blow":
         if (this.secondWaveAt && t >= this.secondWaveAt) {
@@ -235,6 +246,23 @@ export class Inspector {
         b.setVelocityX(this.facing * (this.angry ? 900 : 780));
         if (Math.random() < 0.3) this.api.dust(this.x - this.facing * 60, FLOOR_Y, -this.facing);
         const hitWall = (this.facing < 0 && this.x <= this.left + 180) || (this.facing > 0 && this.x >= this.right - 180);
+        if (hitWall && this.comboing) {
+          this.comboing = false;
+          this.comboWave = true;
+          b.setVelocityX(0);
+          this.sprite.setAngle(0);
+          this.facing = -this.facing;
+          this.state = "puff";
+          this.until = t + COMBO_PUFF_MS;
+          this.tex("puff");
+          this.api.sfx("crash", 0.8);
+          this.api.sfx("puff", 0.9);
+          this.api.word(this.api.words.bonk, this.x - this.facing * 60, b.top - 20, "#ffc83d", 44);
+          this.api.warn(this.x, b.top - 60, COMBO_PUFF_MS);
+          this.api.room("crash", -this.facing);
+          if (!this.api.reduced) this.api.scene.cameras.main.shake(200, 0.008);
+          return;
+        }
         if (hitWall) {
           b.setVelocityX(0);
           this.sprite.setAngle(0);
@@ -314,7 +342,8 @@ export class Inspector {
     if (this.angry && !this.wasAngry) {
       this.wasAngry = true;
       this.api.room("angry");
-      this.api.word("GRRR!", this.x, this.body.top - 40, "#ef4f43", 46);
+      this.api.word(this.api.words.grrr, this.x, this.body.top - 40, "#ef4f43", 46);
+      this.callHelp(this.heroX);
     }
     if (this.hp <= 0) {
       this.state = "beaten";
@@ -326,6 +355,39 @@ export class Inspector {
     }
     if (this.state === "stuck" || this.state === "tired") this.until = Math.min(this.until, t + 900);
     return "hit";
+  }
+
+  stagger(attackId: number, fromX: number, t: number): HitResult {
+    if (this.state === "beaten" || this.state === "wait" || this.state === "intro") return null;
+    this.body.setVelocityX(0);
+    this.sprite.setAngle(0);
+    this.shock.setVisible(false);
+    this.comboing = false;
+    this.secondWaveAt = 0;
+    this.state = "dizzy";
+    this.until = t + STAGGER_MS;
+    this.tex("dizzy");
+    this.api.sfx("crash", 0.9);
+    this.api.word(this.api.words.returned, this.x, this.body.top - 60, "#9df0dc", 50);
+    this.api.room("crash", Math.sign(this.x - fromX) || 1);
+    const res = this.hitBy(attackId, fromX, t);
+    if (res === "hit") this.until = t + STAGGER_MS;
+    return res;
+  }
+
+  private callHelp(heroX: number) {
+    const leftGap = heroX - this.left;
+    const side = leftGap > this.right - heroX ? -1 : 1;
+    const edge = side < 0 ? this.left : this.right;
+    this.api.sfx("bigWhistle", 0.8);
+    this.api.summon(edge - side * CALL.near, "rush");
+    this.api.summon(edge - side * CALL.far, "patrol");
+  }
+
+  contactBox(): Phaser.Geom.Rectangle | null {
+    if (!TOUCHY.has(this.state)) return null;
+    const b = this.body;
+    return new Phaser.Geom.Rectangle(b.center.x - CONTACT.half, b.top + CONTACT.top, CONTACT.half * 2, b.height - CONTACT.top);
   }
 
   attackBox(): Phaser.Geom.Rectangle | null {
