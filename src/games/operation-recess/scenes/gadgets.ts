@@ -781,8 +781,13 @@ export class WobblyShelf {
       return;
     }
     if (t < this.until) return;
+    this.restore();
+  }
+
+  restore() {
+    if (this.state === "solid") return;
     this.state = "solid";
-    body.enable = true;
+    (this.zone.body as Phaser.Physics.Arcade.StaticBody).enable = true;
     this.api.scene.tweens.killTweensOf([this.img, this.load]);
     for (const o of [this.img, this.load]) o.setPosition(this.x0, this.y).setAngle(0).setVisible(true).setAlpha(this.api.reduced ? 1 : 0);
     if (!this.api.reduced) this.api.scene.tweens.add({ targets: [this.img, this.load], alpha: 1, duration: 300 });

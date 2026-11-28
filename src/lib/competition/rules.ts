@@ -331,7 +331,7 @@ function killSums(kinds: (keyof typeof KILL_POINTS)[], kills: number) {
 const operationRecess: GameRule = {
   game: "operation-recess",
   replay: "recess-trace",
-  version: 4,
+  version: 5,
   levels: RECESS_LEVELS.map((l) => l.id),
   stats: ["kills", "killPoints", "stickers", "extras", "hits", "hearts", "resumed", "boss", "timeMs"],
   judge(level, claim) {
