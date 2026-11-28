@@ -21,6 +21,8 @@ import { NightLighting, type DynamicLight } from "./lighting";
 import { floatZ, noiseRing, pop, popIcon, say, sightLine, soundLine, squiggle, type BubbleTone, type Box, type Speaker } from "./fx";
 import { drawExit } from "./exit";
 import { StoryBox } from "./story";
+import { StingPlayer } from "../../kit/sting";
+import { BEDTIME_FINALE } from "../music";
 import { DECO_KEY, DECO_URL, playEnding } from "./ending";
 import { drawCreakMarks, drawCreaks, drawFloor, drawHides, drawProps, drawWalls, faceMap, hideStyleFor, NIGHT, themeFor, type HideStyle, type Theme } from "./house";
 import { ARROW_ICONS, iconKey, loadNightIcons } from "./icons";
@@ -157,6 +159,7 @@ export class NightScene extends Phaser.Scene {
   private story: StoryBox | null = null;
   private bubbles: Phaser.GameObjects.Container[] = [];
   private ui!: NightUiScene;
+  private music!: StingPlayer;
   private overviewOn = false;
   private following = false;
   private viewChip: { box: Box; label: Phaser.GameObjects.Text; icon: Phaser.GameObjects.Image; size: number; bg: Phaser.GameObjects.Graphics } | null = null;
@@ -182,6 +185,9 @@ export class NightScene extends Phaser.Scene {
     this.ui = this.scene.get("night-ui") as NightUiScene;
     this.scene.bringToTop("night-ui");
     this.levelIndex = Math.max(0, Math.min(LEVELS.length - 1, this.bridge.level));
+    this.music = new StingPlayer("bedtime-finale");
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.music.destroy());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.music.destroy());
     this.cameras.main.setBackgroundColor("#0d0a1c");
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       this.pointerStart = { x: p.x, y: p.y };
@@ -196,6 +202,7 @@ export class NightScene extends Phaser.Scene {
   }
 
   loadPart(index: number) {
+    this.music.stop();
     this.loadLevel(Math.max(0, Math.min(LEVELS.length - 1, index)));
   }
 
@@ -1895,9 +1902,14 @@ export class NightScene extends Phaser.Scene {
     const b = this.bruno.container;
     this.talk(b.x, b.y - s * 0.5, line, "cheer", 2600, "bruno");
     this.notebook.showWin(turns, level.par, got, this.levelIndex === LEVELS.length - 1, line);
-    if (this.levelIndex === LEVELS.length - 1) this.time.delayedCall(1300, () => this.state.status === "won" && playEnding(this.ui, this.layout, this.bridge.fonts, this.copy, { reducedMotion: this.bridge.reducedMotion, touch: this.bridge.touch, onDone: () => this.bridge.finishWin() }));
+    if (this.levelIndex === LEVELS.length - 1) this.time.delayedCall(1300, () => this.state.status === "won" && this.playFinale());
     const st = this.state;
     this.bridge.onWin({ level: level.id, index: this.levelIndex, turns, par: level.par, stars: got, hints: this.hints, moves: encodeMoves(this.actions), wakes: st.wakes, creaks: st.creaks - st.masked, covered: st.masked });
+  }
+
+  private playFinale() {
+    this.music.play(BEDTIME_FINALE);
+    playEnding(this.ui, this.layout, this.bridge.fonts, this.copy, { reducedMotion: this.bridge.reducedMotion, touch: this.bridge.touch, onDone: () => this.bridge.finishWin() });
   }
 
   private clearHint() {
@@ -1912,6 +1924,7 @@ export class NightScene extends Phaser.Scene {
     this.sfx(NIGHT_SFX.erase);
     const wasCaught = this.state.status === "caught";
     const wasWon = this.state.status === "won";
+    if (wasWon) this.music.stop();
     this.busy = true;
     this.hush();
     this.notebook.strikeLast(() => {
@@ -1935,6 +1948,7 @@ export class NightScene extends Phaser.Scene {
 
   private restart() {
     if (this.history.length === 0 && this.state.status === "playing") return;
+    this.music.stop();
     this.sfx(NIGHT_SFX.erase);
     this.hush();
     this.dropPending();
