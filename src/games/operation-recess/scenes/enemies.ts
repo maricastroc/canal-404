@@ -29,6 +29,7 @@ export type StageApi = {
   say: (text: string, anchor: Anchor) => boolean;
   orderClear: (self: Enemy) => boolean;
   ordered: (self: Enemy) => void;
+  summon: (x: number, style: EnemyStyle) => void;
 };
 
 export type HitResult = "hit" | "block" | "kill" | "dodge" | null;
@@ -43,7 +44,12 @@ const SAY_EVERY = 3200;
 const CALM = new Set(["patrol", "wait", "watch", "lost", "home"]);
 const LOST_MS = 900;
 const CONTACT = { half: 24, top: 50 };
-const COMMON_TOUCHY = new Set(["alert", "chase", "windup", "attack"]);
+const DAZE = { ms: 950, again: 2400 };
+const DASH = { min: 280, max: 560, aim: 420, speed: 760, ms: 620, recover: 760, again: 2600 };
+const GUARD_BACK_MS = 3200;
+const GUARD_OPEN = new Set(["windup", "attack", "recover", "back", "dazed", "patrol", "lost", "home"]);
+const COUNTER_MS = 260;
+const COMMON_TOUCHY = new Set(["alert", "chase", "windup", "attack", "aim", "dash"]);
 const SHIELD_TOUCHY = new Set(["guard", "windup", "bash", "rush"]);
 let slot = 0;
 const turns = new WeakMap<readonly string[], number>();
@@ -80,6 +86,8 @@ export abstract class Enemy {
   lift = 0;
   protected alarm: Phaser.GameObjects.Text | null = null;
   private flashing = false;
+  private stompReady = 0;
+  summoned = false;
 
   constructor(
     protected api: StageApi,
@@ -351,7 +359,47 @@ export abstract class Enemy {
       if (this.grounded) this.body.setVelocityX(this.body.velocity.x * 0.85);
       return;
     }
+    if (this.state === "dazed") {
+      if (this.grounded) this.body.setVelocityX(0);
+      this.tex("hurt");
+      if (t >= this.until) {
+        this.sprite.setAngle(0);
+        this.state = this.wakeState();
+      }
+      return;
+    }
     this.think(t, dt, hero);
+  }
+
+  protected wakeState() {
+    return "chase";
+  }
+
+  get dazed() {
+    return this.state === "dazed";
+  }
+
+  canStomp(t: number) {
+    return !this.dead && t >= this.stompReady && t >= this.hurtUntil && this.state !== "dazed";
+  }
+
+  stomp(t: number) {
+    this.state = "dazed";
+    this.until = t + DAZE.ms;
+    this.stompReady = t + DAZE.again;
+    this.alarm?.destroy();
+    this.alarm = null;
+    this.telegraphUntil = 0;
+    this.body.setVelocityX(0);
+    this.tex("hurt");
+    this.express("lost", DAZE.ms);
+    this.api.burst(this.x, this.headTop + 20, 5, "spark");
+    if (this.api.reduced) return;
+    const scene = this.api.scene;
+    scene.tweens.killTweensOf(this.sprite);
+    this.sprite.setScale(MON_SCALE * 1.12, MON_SCALE * 0.82).setAngle(0);
+    scene.tweens.add({ targets: this.sprite, scaleX: MON_SCALE, scaleY: MON_SCALE, duration: 260, ease: "Back.easeOut" });
+    scene.tweens.add({ targets: this.sprite, angle: { from: -7, to: 7 }, duration: 160, yoyo: true, repeat: 2, onComplete: () => this.sprite.active && this.sprite.setAngle(0) });
   }
 
   protected abstract think(t: number, dt: number, hero: HeroView): void;
@@ -441,15 +489,20 @@ export class CommonMonitor extends Enemy {
   private spottedAt = -1e9;
   private lostFacing = 1;
   private lostNext: "home" | "patrol" = "patrol";
+  private dashReady = 0;
+  private guardUp: boolean;
+  private guardBackAt = 0;
+  private countering = false;
 
   constructor(
     api: StageApi,
     x: number,
     feet: number,
-    private style: EnemyStyle = "patrol",
+    readonly style: EnemyStyle = "patrol",
   ) {
     super(api, "common", x, feet, 2, STYLE_ART[style]);
     this.tune = COMMON[style];
+    this.guardUp = style === "guard";
     this.state = style === "guard" ? "wait" : "patrol";
     this.mood = "watch";
   }
@@ -492,6 +545,25 @@ export class CommonMonitor extends Enemy {
     return super.hitBy(attackId, fromX, t);
   }
 
+  protected blocks(fromX: number) {
+    const front = (fromX - this.x) * this.facing > 0;
+    if (this.countering && this.state === "windup") return front;
+    if (!this.guardUp || GUARD_OPEN.has(this.state)) return false;
+    return front;
+  }
+
+  protected onBlock(t: number) {
+    this.api.sfx("block", 0.9);
+    this.api.clang(this.x + this.facing * 50, this.body.top + 80);
+    this.api.word(this.api.words.block, this.x + this.facing * 60, this.body.top - 30, "#cfe4ff", 38);
+    if (this.countering && this.state === "windup") return;
+    this.countering = true;
+    this.guardUp = false;
+    this.guardBackAt = t + GUARD_BACK_MS;
+    this.express("spot", 500);
+    this.startWindup(t, COUNTER_MS);
+  }
+
   protected onHurt(dir: number, t: number) {
     this.facing = -dir;
     if (this.style === "rush") {
@@ -502,20 +574,41 @@ export class CommonMonitor extends Enemy {
     this.until = t + 820;
   }
 
-  private startWindup(t: number) {
+  private startWindup(t: number, ms = this.tune.windup) {
     this.state = "windup";
-    this.until = t + this.tune.windup;
+    this.until = t + ms;
     this.body.setVelocityX(0);
     this.tex("windup");
-    this.telegraph(this.tune.windup);
+    this.telegraph(ms);
     this.api.sfx("shout", 0.7);
-    this.alarm = this.api.warn(this.x, this.headTop - 30, this.tune.windup);
+    this.alarm?.destroy();
+    this.alarm = this.api.warn(this.x, this.headTop - 30, ms);
+  }
+
+  private startAim(t: number) {
+    this.state = "aim";
+    this.until = t + DASH.aim;
+    this.body.setVelocityX(0);
+    this.tex("point");
+    this.telegraph(DASH.aim);
+    this.api.sfx("shout", 0.8);
+    this.alarm = this.api.warn(this.x, this.headTop - 30, DASH.aim);
+    this.api.dust(this.x - this.facing * 30, this.feet, -this.facing);
+  }
+
+  private endDash(t: number) {
+    this.state = "recover";
+    this.until = t + DASH.recover;
+    this.dashReady = t + DASH.again;
+    this.body.setVelocityX(0);
+    this.tex("walk-a");
   }
 
   protected think(t: number, dt: number, h: HeroView) {
     const dx = h.x - this.x;
     const level = Math.abs(h.feet - this.feet) < 280;
     const near = Math.abs(dx) < this.tune.sight && level;
+    if (!this.guardUp && this.style === "guard" && t >= this.guardBackAt) this.guardUp = true;
     switch (this.state) {
       case "patrol":
         this.mood = "watch";
@@ -573,6 +666,10 @@ export class CommonMonitor extends Enemy {
           this.startWindup(t);
           return;
         }
+        if (this.style === "rush" && t >= this.dashReady && this.grounded && Math.abs(h.feet - this.feet) < 120 && Math.abs(dx) > DASH.min && Math.abs(dx) < DASH.max && this.api.groundAt(this.x + this.facing * DASH.min)) {
+          this.startAim(t);
+          return;
+        }
         if (!near) {
           this.lose(t, h);
           return;
@@ -627,6 +724,7 @@ export class CommonMonitor extends Enemy {
       case "windup":
         this.body.setVelocityX(0);
         if (t >= this.until) {
+          this.countering = false;
           this.state = "attack";
           this.until = t + 240;
           if (Math.abs(dx) < REAIM && level) this.faceHero(h);
@@ -662,6 +760,28 @@ export class CommonMonitor extends Enemy {
           this.state = "chase";
         }
         return;
+      case "aim":
+        this.body.setVelocityX(0);
+        if (t >= this.until) {
+          this.state = "dash";
+          this.until = t + DASH.ms;
+          this.tex("attack");
+          this.api.sfx("lunge", 0.9);
+        }
+        return;
+      case "dash": {
+        const wall = this.facing > 0 ? this.body.blocked.right : this.body.blocked.left;
+        if (t >= this.until || wall || !this.api.groundAt(this.x + this.facing * 60)) {
+          this.endDash(t);
+          return;
+        }
+        this.body.setVelocityX(this.facing * DASH.speed);
+        if (t > this.dustAt) {
+          this.dustAt = t + 90;
+          this.api.dust(this.x - this.facing * 30, this.feet, this.facing);
+        }
+        return;
+      }
     }
   }
 
@@ -670,8 +790,10 @@ export class CommonMonitor extends Enemy {
   }
 
   attackBox() {
-    if (this.dead || this.state !== "attack") return null;
+    if (this.dead) return null;
     const b = this.body;
+    if (this.state === "dash") return new Phaser.Geom.Rectangle(b.center.x - 60, b.top + 10, 120, b.height - 40);
+    if (this.state !== "attack") return null;
     const x0 = this.facing > 0 ? b.center.x : b.center.x - 130;
     return new Phaser.Geom.Rectangle(x0, b.top + 10, 130, b.height - 40);
   }
@@ -694,6 +816,10 @@ export class WhistleMonitor extends Enemy {
     this.state = "watch";
     this.nextShot = 900;
     this.mood = "watch";
+  }
+
+  protected wakeState() {
+    return "watch";
   }
 
 
@@ -801,7 +927,7 @@ export class WhistleMonitor extends Enemy {
   }
 }
 
-const ORDER = { min: 250, max: 620, reach: 780, level: 60, raise: 620, hold: 1100, go: 1250, fine: 420, rush: 1000, speed: 560, still: 45, slack: 130, rest: 4600, notice: 450 };
+const ORDER = { min: 250, max: 620, reach: 780, level: 220, raise: 620, hold: 1100, go: 1250, fine: 420, rush: 1000, speed: 560, still: 45, slack: 130, rest: 4600, notice: 450 };
 const PLATE = { x: 82, y: 286, scale: 0.86 };
 
 export class ShieldMonitor extends Enemy {
@@ -974,8 +1100,12 @@ export class ShieldMonitor extends Enemy {
     return true;
   }
 
+  protected wakeState() {
+    return "advance";
+  }
+
   protected blocks(fromX: number) {
-    if (this.state === "open" || this.state === "recover" || this.state === "go") return false;
+    if (this.state === "open" || this.state === "recover" || this.state === "go" || this.state === "dazed") return false;
     const fromFront = (fromX - this.x) * this.facing > 0;
     return fromFront;
   }
@@ -1177,9 +1307,13 @@ export class ShieldMonitor extends Enemy {
   }
 }
 
+let waveIds = 0;
+
 export class Wave {
   readonly img: Phaser.GameObjects.Image;
   alive = true;
+  friendly = false;
+  readonly hitId = -1 - waveIds++;
   private age = 0;
 
   constructor(
@@ -1193,9 +1327,20 @@ export class Wave {
     if (big) this.img.setOrigin(0.5, 1);
   }
 
+  get heading() {
+    return this.dir;
+  }
+
+  reflect() {
+    this.dir = -this.dir;
+    this.friendly = true;
+    this.age = 0;
+    this.img.setFlipX(this.dir < 0).setTint(0x9df0dc);
+  }
+
   update(dt: number) {
     this.age += dt;
-    this.img.x += this.dir * (this.big ? 560 : 470) * dt;
+    this.img.x += this.dir * (this.big ? 560 : 470) * (this.friendly ? 1.25 : 1) * dt;
     if (!this.big) this.img.setScale(1 + Math.sin(this.age * 18) * 0.06);
     if (this.age > 3.2) this.kill();
   }

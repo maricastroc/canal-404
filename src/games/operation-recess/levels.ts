@@ -94,11 +94,11 @@ export const LEVELS: LevelDef[] = [
       { kind: "whistle", col: 25, row: 6 },
       { kind: "common", col: 33 },
       { kind: "common", col: 37, style: "rush" },
-      { kind: "whistle", col: 45 },
+      { kind: "whistle", col: 45, style: "mixed" },
       { kind: "common", col: 55, style: "guard" },
       { kind: "whistle", col: 61, row: 6 },
       { kind: "common", col: 70, style: "rush" },
-      { kind: "whistle", col: 75 },
+      { kind: "whistle", col: 75, style: "mixed" },
     ],
     items: [
       { kind: "sticker", col: 10, row: 9, id: "ball" },
