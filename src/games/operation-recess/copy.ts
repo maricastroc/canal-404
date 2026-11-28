@@ -1,6 +1,8 @@
 import { localized } from "@/i18n/copy";
 import type { Locale } from "@/i18n/locales";
 
+export type Blame = "monitor" | "wave" | "watcher" | "ball" | "locker" | "light" | "rope" | "pit" | "boss";
+
 export const COPY = localized({
   "pt-BR": {
     levels: {
@@ -168,6 +170,7 @@ export const COPY = localized({
       loseSummary: (kills: number, stickers: number) => `Monitores: ${kills}. Figurinhas: ${stickers}.`,
       finalTitle: "Recreio liberado!",
       finalText: "O Inspetor dançou e o pátio é da criançada de novo!",
+      campaign: (n: number, total: number) => `Campanha: ${n} de ${total} estrelas.`,
       passedTitle: "Passou!",
       passedText: (win: string) => `${win} Bora pra próxima!`,
       winSummary: (kills: number, hits: number) => `Monitores: ${kills}. Batidas: ${hits}.`,
@@ -179,6 +182,18 @@ export const COPY = localized({
       boss: "Inspetor vencido",
       album: (n: number, total: number) => `Álbum: ${n} de ${total}.`,
       levelStickers: (n: number, total: number) => `Figurinhas: ${n} de ${total}`,
+      caughtBy: (blame: Blame, n: number) =>
+        ({
+          monitor: `Quem mais te pegou: os monitores (${n}×). Pule na cabeça deles ou acerte primeiro.`,
+          wave: `Quem mais te pegou: as ondas de apito (${n}×). Pule as baixas ou rebata com a espada.`,
+          watcher: `Quem mais te pegou: o vigia (${n}×). Quando o jornal baixar, fique parado.`,
+          ball: `Quem mais te pegou: as bolas (${n}×). Pule ou chute com a espada.`,
+          locker: `Quem mais te pegou: os armários (${n}×). Espere a porta abrir ou feche com a espada.`,
+          light: `Quem mais te pegou: o holofote (${n}×). Saia da luz antes que ela fique vermelha.`,
+          rope: `Quem mais te pegou: a corda (${n}×). Pule quando ela descer.`,
+          pit: `Quem mais te pegou: os buracos (${n}×). Pule bem perto da beirada.`,
+          boss: `Quem mais te pegou: o Inspetor (${n}×). Só chegue perto quando ele ficar tonto, cansado ou preso.`,
+        })[blame],
     },
   },
   en: {
@@ -347,6 +362,7 @@ export const COPY = localized({
       loseSummary: (kills: number, stickers: number) => `Monitors: ${kills}. Stickers: ${stickers}.`,
       finalTitle: "Recess is back!",
       finalText: "The Inspector is done for and the schoolyard belongs to the kids again!",
+      campaign: (n: number, total: number) => `Campaign: ${n} of ${total} stars.`,
       passedTitle: "Made it!",
       passedText: (win: string) => `${win} On to the next one!`,
       winSummary: (kills: number, hits: number) => `Monitors: ${kills}. Hits taken: ${hits}.`,
@@ -358,6 +374,18 @@ export const COPY = localized({
       boss: "Inspector defeated",
       album: (n: number, total: number) => `Album: ${n} of ${total}.`,
       levelStickers: (n: number, total: number) => `Stickers: ${n} of ${total}`,
+      caughtBy: (blame: Blame, n: number) =>
+        ({
+          monitor: `What got you most: the monitors (${n}×). Jump on their heads or hit first.`,
+          wave: `What got you most: whistle waves (${n}×). Jump the low ones or hit them back with your sword.`,
+          watcher: `What got you most: the lookout (${n}×). When the paper comes down, freeze.`,
+          ball: `What got you most: the balls (${n}×). Jump them or kick them with your sword.`,
+          locker: `What got you most: the lockers (${n}×). Wait for the door or slam it with your sword.`,
+          light: `What got you most: the spotlight (${n}×). Leave the light before it turns red.`,
+          rope: `What got you most: the rope (${n}×). Jump when it comes down.`,
+          pit: `What got you most: the pits (${n}×). Jump right at the edge.`,
+          boss: `What got you most: the Inspector (${n}×). Only get close when he's dizzy, tired or stuck.`,
+        })[blame],
     },
   },
 });

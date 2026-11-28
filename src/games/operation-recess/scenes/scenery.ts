@@ -1003,7 +1003,7 @@ export class Scenery {
     const p2 = this.img("principal-c", left + W - 720, 520, D.back, [0.5, 0.5]);
     this.set?.watch(p2, "principal-c");
     this.set?.clock(cx, 500, 230);
-    const desk = this.grounded(this.img("big-desk", cx, FLOOR_Y - 4, D.wall + 0.15).setScale(0.86).setTint(0xd6cbe0), 0.95);
+    const desk = this.img("big-desk", cx, FLOOR_Y - 22, D.back).setScale(0.8).setTint(RECEDE);
     this.img("file-cabinet", left + W - 300, FLOOR_Y, D.floor).setScale(0.9);
     this.img("plant-big", left + 300, FLOOR_Y, D.floor).setScale(0.9);
     this.img("lamp-warm", cx, 90, D.back + 0.1, [0.5, 0]);

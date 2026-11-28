@@ -1147,6 +1147,7 @@ export function ResultPanel({
     />
   );
   const text = result.copy?.text ?? (result.won ? game.copy?.winText : game.copy?.loseText) ?? "";
+  const showScore = result.won || result.score !== 0;
   return (
     <OverlayFrame label={result.won ? copy.winLabel(title) : copy.loseLabel(title)} className="max-w-2xl p-5 sm:p-7 wideshort:max-w-5xl wideshort:p-5">
       {isRecord && (
@@ -1201,36 +1202,39 @@ export function ResultPanel({
           {result.standings?.length ? <Standings rows={result.standings} label={copy.standings} /> : null}
           {result.facts?.length ? <Facts facts={result.facts} label={copy.facts} /> : null}
           {result.goals?.length ? <Goals goals={result.goals} label={result.goalsTitle ?? copy.goals} done={copy.goalDone} fresh={copy.goalNew} /> : null}
-          <dl className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 px-4 pt-1 max-sm:mt-3 max-sm:px-3 wideshort:mt-3">
-            {result.breakdown.map((row, i) => (
-              <motion.div
-                key={row.label}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.12 }}
-                className={`flex items-baseline justify-between gap-4 py-2 max-sm:py-1.5 wideshort:py-1.5 ${i ? "border-t-2 border-dashed border-ink/20" : ""}`}
-              >
-                <dt className="copy min-w-0 text-ink-soft">{row.label}</dt>
-                <dd className={`shrink-0 text-right font-display text-xl leading-none tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
-                  {row.value < 0 ? "−" : "+"}
-                  {formatNumber(Math.abs(row.value), locale)}
+          {showScore ? (
+            <dl className="mt-5 rounded-xl border-[3px] border-ink bg-cream-2 px-4 pt-1 max-sm:mt-3 max-sm:px-3 wideshort:mt-3">
+              {result.breakdown.map((row, i) => (
+                <motion.div
+                  key={row.label}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.12 }}
+                  className={`flex items-baseline justify-between gap-4 py-2 max-sm:py-1.5 wideshort:py-1.5 ${i ? "border-t-2 border-dashed border-ink/20" : ""}`}
+                >
+                  <dt className="copy min-w-0 text-ink-soft">{row.label}</dt>
+                  <dd className={`shrink-0 text-right font-display text-xl leading-none tabular-nums ${row.value < 0 ? "text-tomato-deep" : "text-ink"}`}>
+                    {row.value < 0 ? "−" : "+"}
+                    {formatNumber(Math.abs(row.value), locale)}
+                  </dd>
+                </motion.div>
+              ))}
+              <div className="-mx-4 flex items-baseline justify-between gap-4 rounded-b-[9px] border-t-[3px] border-ink bg-cream px-4 py-2.5 max-sm:-mx-3 max-sm:px-3">
+                <dt className="font-display text-xl uppercase tracking-wide text-ink">{copy.total}</dt>
+                <dd className="shrink-0 font-display text-4xl leading-none tabular-nums text-ink max-sm:text-3xl">
+                  <CountUp value={result.score} delay={0.3 + result.breakdown.length * 0.12} />
                 </dd>
-              </motion.div>
-            ))}
-            <div className="-mx-4 flex items-baseline justify-between gap-4 rounded-b-[9px] border-t-[3px] border-ink bg-cream px-4 py-2.5 max-sm:-mx-3 max-sm:px-3">
-              <dt className="font-display text-xl uppercase tracking-wide text-ink">{copy.total}</dt>
-              <dd className="shrink-0 font-display text-4xl leading-none tabular-nums text-ink max-sm:text-3xl">
-                <CountUp value={result.score} delay={0.3 + result.breakdown.length * 0.12} />
-              </dd>
-            </div>
-          </dl>
+              </div>
+            </dl>
+          ) : null}
           {recordNote && <p className="copy-sm mt-2 text-ink-soft">{recordNote}</p>}
         </div>
         <div className="wideshort:mt-4 wideshort:[&>*:first-child]:mt-0">
           {mission ? <MissionLine view={mission} board={board ?? null} /> : null}
           {board && onJoin ? <BoardLine game={game} state={board} onJoin={onJoin} /> : null}
+          {!narrow && !result.won ? actions : null}
           {!onNext && <NextProgram current={game.slug} />}
-          {narrow ? null : actions}
+          {narrow || !result.won ? null : actions}
         </div>
       </div>
       {narrow ? actions : null}

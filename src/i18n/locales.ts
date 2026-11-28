@@ -27,7 +27,6 @@ export function localePath(locale: Locale, path: string) {
 
 export function splitLocale(pathname: string): { locale: Locale; path: string } {
   for (const locale of LOCALES) {
-    if (locale === DEFAULT_LOCALE) continue;
     const prefix = `/${locale}`;
     if (pathname === prefix) return { locale, path: "/" };
     if (pathname.startsWith(`${prefix}/`)) return { locale, path: pathname.slice(prefix.length) };
